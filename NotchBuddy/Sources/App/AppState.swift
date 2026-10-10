@@ -135,6 +135,17 @@ final class AppState: ObservableObject {
     @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
         didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
     }
+    /// Claude Code in the chat: its model ("default" = its own), effort ("" = its
+    /// own) and working folder ("" = Coucou's own, so nothing lands in $HOME).
+    @Published var claudeCodeChatModel: String = ChatProvider.claudecode.defaultModel {
+        didSet { UserDefaults.standard.set(claudeCodeChatModel, forKey: "claudeCodeChatModel") }
+    }
+    @Published var claudeCodeEffort: String = "" {
+        didSet { UserDefaults.standard.set(claudeCodeEffort, forKey: "claudeCodeEffort") }
+    }
+    @Published var claudeCodeDir: String = "" {
+        didSet { UserDefaults.standard.set(claudeCodeDir, forKey: "claudeCodeDir") }
+    }
     @Published var ollamaServerURL: String = "" {
         didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
     }
@@ -157,6 +168,11 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        // Claude Code: the aliases its --model takes, nothing to ask anyone.
+        if provider == .claudecode {
+            fetchedProviderModels[provider] = ClaudeCodeChat.modelList
+            return
+        }
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -204,7 +220,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
+            case .ollama, .lmstudio, .claudecode: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -224,7 +240,7 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .claudecode: break
                 }
             }
         }
@@ -238,7 +254,15 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .claudecode: return claudeCodeChatModel
         }
+    }
+
+    /// The model button's text: Claude Code's shows its effort too.
+    var chatModelLabel: String {
+        chatProvider == .claudecode
+            ? ClaudeCodeChat.label(model: claudeCodeChatModel, effort: claudeCodeEffort)
+            : activeChatModel
     }
 
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
@@ -491,6 +515,9 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "claudeCodeChatModel"), !v.isEmpty { claudeCodeChatModel = v }
+        if let v = ud.string(forKey: "claudeCodeEffort") { claudeCodeEffort = v }
+        if let v = ud.string(forKey: "claudeCodeDir") { claudeCodeDir = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s

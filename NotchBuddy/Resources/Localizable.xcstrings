@@ -26141,6 +26141,582 @@
           }
         }
       }
+    },
+    "Effort": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجهد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রচেষ্টা"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रयास"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upaya"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esforço"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усилие"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "思考强度"
+          }
+        }
+      }
+    },
+    "Working folder": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجلد العمل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কাজের ফোল্ডার"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Working folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta de trabajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier de travail"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कार्य फ़ोल्डर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder kerja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasta de trabalho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рабочая папка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作文件夹"
+          }
+        }
+      }
+    },
+    "Claude Code's default": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الافتراضي في Claude Code"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-এর ডিফল্ট"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code's default"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo predeterminado de Claude Code"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par défaut de Claude Code"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code का डिफ़ॉल्ट"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bawaan Claude Code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Padrão do Claude Code"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По умолчанию в Claude Code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 的默认设置"
+          }
+        }
+      }
+    },
+    "Coucou's own folder": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجلد Coucou الخاص"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-এর নিজস্ব ফোল্ডার"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou's own folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La carpeta propia de Coucou"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le dossier de Coucou"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou का अपना फ़ोल्डर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder milik Coucou"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pasta do próprio Coucou"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Собственная папка Coucou"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 自己的文件夹"
+          }
+        }
+      }
+    },
+    "No response text.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد نص في الرد."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "উত্তরে কোনো লেখা নেই।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No response text."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La respuesta no tiene texto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse ne contient pas de texte."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जवाब में कोई टेक्स्ट नहीं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada teks balasan."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A resposta não tem texto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В ответе нет текста."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有回复内容。"
+          }
+        }
+      }
+    },
+    "Claude Code isn't installed (no `claude` command found).": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code غير مثبّت (لم يُعثر على الأمر `claude`)."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code ইনস্টল করা নেই (`claude` কমান্ড পাওয়া যায়নি)।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code isn't installed (no `claude` command found)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code no está instalado (no se encontró el comando `claude`)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code n'est pas installé (commande `claude` introuvable)."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code इंस्टॉल नहीं है (`claude` कमांड नहीं मिला)।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code belum terpasang (perintah `claude` tidak ditemukan)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Claude Code não está instalado (comando `claude` não encontrado)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code не установлен (команда `claude` не найдена)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装 Claude Code（找不到 `claude` 命令）。"
+          }
+        }
+      }
+    },
+    "Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يشغّل Claude Code الخاص بك، بتسجيل دخوله وخوادم MCP والمهارات و‎hooks. لا حاجة إلى مفتاح هنا."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপনার নিজের Claude Code চালায়, তার সাইন-ইন, MCP সার্ভার, skills ও hooks সহ। এখানে কোনো কী লাগে না।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecuta tu propio Claude Code, con su inicio de sesión, servidores MCP, skills y hooks. Aquí no hace falta clave."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lance ton propre Claude Code, avec sa connexion, ses serveurs MCP, ses skills et ses hooks. Aucune clé ici."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपका अपना Claude Code चलाता है, उसके साइन-इन, MCP सर्वर, स्किल्स और hooks के साथ। यहाँ कोई कुंजी नहीं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menjalankan Claude Code Anda sendiri, dengan login, server MCP, skill, dan hooks-nya. Tanpa kunci di sini."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roda o seu próprio Claude Code, com o login, os servidores MCP, as skills e os hooks dele. Nenhuma chave aqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускает ваш собственный Claude Code с его входом, серверами MCP, навыками и hooks. Ключ здесь не нужен."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行你自己的 Claude Code，使用它的登录、MCP 服务器、技能和 hooks。这里不需要密钥。"
+          }
+        }
+      }
+    },
+    "Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اتركه فارغًا ليعمل Claude Code في مجلد خاص بـ Coucou، لا في مجلدك الرئيسي. اختر مجلد مشروع ليعمل على ذلك المشروع. تظهر موافقات الأدوات في الجزيرة مثل أي جلسة أخرى."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "খালি রাখলে Claude Code আপনার হোম ফোল্ডারে নয়, Coucou-এর নিজস্ব ফোল্ডারে কাজ করে। কোনো প্রজেক্টে কাজ করাতে তার ফোল্ডার বেছে নিন। টুলের অনুমোদন অন্য যেকোনো সেশনের মতোই আইল্যান্ডে দেখা যায়।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si lo dejas vacío, Claude Code trabaja en una carpeta propia de Coucou, no en tu carpeta personal. Elige la carpeta de un proyecto para que trabaje en él. Las aprobaciones de herramientas aparecen en la isla como las de cualquier otra sesión."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laisse vide et Claude Code travaille dans un dossier de Coucou, pas dans ton dossier personnel. Choisis le dossier d'un projet pour qu'il travaille sur ce projet. Les autorisations d'outils s'affichent dans l'île comme pour toute autre session."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "खाली छोड़ें तो Claude Code Coucou के अपने फ़ोल्डर में काम करता है, आपके होम फ़ोल्डर में नहीं। किसी प्रोजेक्ट पर काम कराने के लिए उसका फ़ोल्डर चुनें। टूल की अनुमतियाँ किसी भी दूसरे सत्र की तरह आइलैंड में दिखती हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biarkan kosong dan Claude Code bekerja di folder milik Coucou, bukan di folder rumah Anda. Pilih folder proyek agar ia mengerjakan proyek itu. Persetujuan alat muncul di pulau seperti sesi lainnya."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixe vazio e o Claude Code trabalha numa pasta do próprio Coucou, não na sua pasta pessoal. Escolha a pasta de um projeto para ele trabalhar nesse projeto. As aprovações de ferramentas aparecem na ilha como as de qualquer outra sessão."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если оставить пустым, Claude Code работает в собственной папке Coucou, а не в вашей домашней. Выберите папку проекта, чтобы он работал над этим проектом. Разрешения для инструментов появляются на острове, как у любого другого сеанса."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空时，Claude Code 在 Coucou 自己的文件夹中工作，而不是你的主文件夹。选择一个项目文件夹，即可让它处理该项目。工具审批会像其他会话一样显示在岛上。"
+          }
+        }
+      }
+    },
+    "%@ is not a folder.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ليس مجلدًا."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ কোনো ফোল্ডার নয়।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is not a folder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no es una carpeta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ n'est pas un dossier."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ फ़ोल्डर नहीं है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bukan folder."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ não é uma pasta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ не является папкой."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 不是文件夹。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

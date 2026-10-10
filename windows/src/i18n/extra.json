@@ -1387,17 +1387,6 @@
    "ru": "Моделей пока нет. Сначала загрузите модель в {name}.",
    "id": "Belum ada model. Unduh satu di {name} terlebih dahulu."
   },
-  "No response text.": {
-   "zh-Hans": "没有回复内容。",
-   "hi": "जवाब में कोई टेक्स्ट नहीं।",
-   "es": "La respuesta no tiene texto.",
-   "ar": "لا يوجد نص في الرد.",
-   "fr": "La réponse ne contient pas de texte.",
-   "bn": "উত্তরে কোনো লেখা নেই।",
-   "pt-BR": "A resposta não tem texto.",
-   "ru": "В ответе нет текста.",
-   "id": "Tidak ada teks balasan."
-  },
   "No settings.json yet — nothing to back up.": {
    "zh-Hans": "还没有 settings.json — 无需备份。",
    "hi": "अभी कोई settings.json नहीं — बैकअप के लिए कुछ नहीं।",
@@ -3360,6 +3349,28 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "{path} is not a folder.": {
+   "zh-Hans": "{path} 不是文件夹。",
+   "hi": "{path} फ़ोल्डर नहीं है।",
+   "es": "{path} no es una carpeta.",
+   "ar": "{path} ليس مجلدًا.",
+   "fr": "{path} n'est pas un dossier.",
+   "bn": "{path} কোনো ফোল্ডার নয়।",
+   "pt-BR": "{path} não é uma pasta.",
+   "ru": "{path} не является папкой.",
+   "id": "{path} bukan folder."
+  },
+  "Stopped.": {
+   "zh-Hans": "已停止。",
+   "hi": "रोक दिया गया।",
+   "es": "Detenido.",
+   "ar": "تم الإيقاف.",
+   "fr": "Arrêté.",
+   "bn": "থামানো হয়েছে।",
+   "pt-BR": "Interrompido.",
+   "ru": "Остановлено.",
+   "id": "Dihentikan."
   }
  }
 }

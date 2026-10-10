@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CLAUDE_CODE_EFFORTS, CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -585,6 +585,61 @@ function chatProvidersSection(
     h("h2", {}, h("span", { text: CHAT_STRINGS.providersTitle })),
     h("div", { class: "hint", text: CHAT_STRINGS.providersHint }),
     list,
+    claudeCodeBlock(),
+  );
+}
+
+/** Claude Code in the chat: what it starts with. The picker above the chat box changes the same values. */
+function claudeCodeBlock(): HTMLElement {
+  const p = providerDef("claudecode");
+  const current = settings.chatModels.claudecode || p.defaultModel;
+  const model = h("select", {}, h("option", { value: current, text: current })) as HTMLSelectElement;
+  // The list comes from claude_code.rs, so both sides offer the same models.
+  void Bridge.chatModels("claudecode").then((models) => {
+    clear(model);
+    for (const m of models) model.append(h("option", { value: m.id, text: m.label }));
+    model.value = current;
+  }).catch(() => {});
+  model.addEventListener("change", () => {
+    settings.chatModels = { ...settings.chatModels, claudecode: model.value };
+    void save();
+  });
+
+  const effort = h("select", {}) as HTMLSelectElement;
+  for (const level of ["", ...CLAUDE_CODE_EFFORTS]) {
+    effort.append(h("option", { value: level, text: level || t("Claude Code's default") }));
+  }
+  effort.value = settings.claudeCodeEffort;
+  effort.addEventListener("change", () => {
+    settings.claudeCodeEffort = effort.value;
+    void save();
+  });
+
+  const folder = h("input", {
+    type: "text",
+    value: settings.claudeCodeDir,
+    placeholder: t("Coucou's own folder"),
+    spellcheck: "false",
+    autocomplete: "off",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  folder.addEventListener("change", () => {
+    settings.claudeCodeDir = folder.value.trim();
+    void save();
+  });
+
+  return h("div", { style: "display:flex;flex-direction:column;gap:8px;margin-top:14px" },
+    h("div", { class: "row" },
+      h("label", {},
+        h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+        h("span", { text: p.name }),
+      ),
+      h("span", { class: "hint", text: t("Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here.") }),
+    ),
+    h("div", { class: "row" }, h("label", { text: t("Model") }), model),
+    h("div", { class: "row" }, h("label", { text: t("Effort") }), effort),
+    h("div", { class: "row" }, h("label", { text: t("Working folder") }), folder),
+    h("div", { class: "hint", text: t("Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's.") }),
   );
 }
 

@@ -69,6 +69,11 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// Claude Code in the chat (claude_code.rs): its effort level, "" for
+    /// Claude Code's own; its model is in `chat_models`.
+    pub claude_code_effort: String,
+    /// The folder it works in; "" is Coucou's own, so nothing lands in $HOME.
+    pub claude_code_dir: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -124,6 +129,8 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            claude_code_effort: String::new(),
+            claude_code_dir: String::new(),
         }
     }
 }
@@ -400,7 +407,9 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
-  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
+  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "claudeCodeEffort": "high",
+  "claudeCodeDir": "/home/me/projects/site"
 }"##;
 
     fn custom() -> Value {
@@ -804,6 +813,8 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "claudeCodeEffort",
+                "claudeCodeDir",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

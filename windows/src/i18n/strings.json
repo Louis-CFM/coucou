@@ -486,6 +486,28 @@
    "ru": "Claude Code спрашивает",
    "id": "Claude Code bertanya"
   },
+  "Claude Code isn't installed (no `claude` command found).": {
+   "zh-Hans": "未安装 Claude Code（找不到 `claude` 命令）。",
+   "hi": "Claude Code इंस्टॉल नहीं है (`claude` कमांड नहीं मिला)।",
+   "es": "Claude Code no está instalado (no se encontró el comando `claude`).",
+   "ar": "Claude Code غير مثبّت (لم يُعثر على الأمر `claude`).",
+   "fr": "Claude Code n'est pas installé (commande `claude` introuvable).",
+   "bn": "Claude Code ইনস্টল করা নেই (`claude` কমান্ড পাওয়া যায়নি)।",
+   "pt-BR": "O Claude Code não está instalado (comando `claude` não encontrado).",
+   "ru": "Claude Code не установлен (команда `claude` не найдена).",
+   "id": "Claude Code belum terpasang (perintah `claude` tidak ditemukan)."
+  },
+  "Claude Code's default": {
+   "zh-Hans": "Claude Code 的默认设置",
+   "hi": "Claude Code का डिफ़ॉल्ट",
+   "es": "Lo predeterminado de Claude Code",
+   "ar": "الافتراضي في Claude Code",
+   "fr": "Par défaut de Claude Code",
+   "bn": "Claude Code-এর ডিফল্ট",
+   "pt-BR": "Padrão do Claude Code",
+   "ru": "По умолчанию в Claude Code",
+   "id": "Bawaan Claude Code"
+  },
   "Claude is reading {name}…": {
    "zh-Hans": "Claude 正在读取 {name}…",
    "hi": "Claude {name} पढ़ रहा है…",
@@ -717,6 +739,17 @@
    "ru": "Скопировать",
    "id": "Salin"
   },
+  "Coucou's own folder": {
+   "zh-Hans": "Coucou 自己的文件夹",
+   "hi": "Coucou का अपना फ़ोल्डर",
+   "es": "La carpeta propia de Coucou",
+   "ar": "مجلد Coucou الخاص",
+   "fr": "Le dossier de Coucou",
+   "bn": "Coucou-এর নিজস্ব ফোল্ডার",
+   "pt-BR": "A pasta do próprio Coucou",
+   "ru": "Собственная папка Coucou",
+   "id": "Folder milik Coucou"
+  },
   "Custom…": {
    "zh-Hans": "自定义…",
    "hi": "कस्टम…",
@@ -881,6 +914,17 @@
    "pt-BR": "Edita",
    "ru": "Редактирует",
    "id": "Mengedit"
+  },
+  "Effort": {
+   "zh-Hans": "思考强度",
+   "hi": "प्रयास",
+   "es": "Esfuerzo",
+   "ar": "الجهد",
+   "fr": "Effort",
+   "bn": "প্রচেষ্টা",
+   "pt-BR": "Esforço",
+   "ru": "Усилие",
+   "id": "Upaya"
   },
   "Emails": {
    "zh-Hans": "邮件",
@@ -1377,6 +1421,17 @@
    "ru": "Запускать при старте Mac",
    "id": "Jalankan saat Mac startup"
   },
+  "Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's.": {
+   "zh-Hans": "留空时，Claude Code 在 Coucou 自己的文件夹中工作，而不是你的主文件夹。选择一个项目文件夹，即可让它处理该项目。工具审批会像其他会话一样显示在岛上。",
+   "hi": "खाली छोड़ें तो Claude Code Coucou के अपने फ़ोल्डर में काम करता है, आपके होम फ़ोल्डर में नहीं। किसी प्रोजेक्ट पर काम कराने के लिए उसका फ़ोल्डर चुनें। टूल की अनुमतियाँ किसी भी दूसरे सत्र की तरह आइलैंड में दिखती हैं।",
+   "es": "Si lo dejas vacío, Claude Code trabaja en una carpeta propia de Coucou, no en tu carpeta personal. Elige la carpeta de un proyecto para que trabaje en él. Las aprobaciones de herramientas aparecen en la isla como las de cualquier otra sesión.",
+   "ar": "اتركه فارغًا ليعمل Claude Code في مجلد خاص بـ Coucou، لا في مجلدك الرئيسي. اختر مجلد مشروع ليعمل على ذلك المشروع. تظهر موافقات الأدوات في الجزيرة مثل أي جلسة أخرى.",
+   "fr": "Laisse vide et Claude Code travaille dans un dossier de Coucou, pas dans ton dossier personnel. Choisis le dossier d'un projet pour qu'il travaille sur ce projet. Les autorisations d'outils s'affichent dans l'île comme pour toute autre session.",
+   "bn": "খালি রাখলে Claude Code আপনার হোম ফোল্ডারে নয়, Coucou-এর নিজস্ব ফোল্ডারে কাজ করে। কোনো প্রজেক্টে কাজ করাতে তার ফোল্ডার বেছে নিন। টুলের অনুমোদন অন্য যেকোনো সেশনের মতোই আইল্যান্ডে দেখা যায়।",
+   "pt-BR": "Deixe vazio e o Claude Code trabalha numa pasta do próprio Coucou, não na sua pasta pessoal. Escolha a pasta de um projeto para ele trabalhar nesse projeto. As aprovações de ferramentas aparecem na ilha como as de qualquer outra sessão.",
+   "ru": "Если оставить пустым, Claude Code работает в собственной папке Coucou, а не в вашей домашней. Выберите папку проекта, чтобы он работал над этим проектом. Разрешения для инструментов появляются на острове, как у любого другого сеанса.",
+   "id": "Biarkan kosong dan Claude Code bekerja di folder milik Coucou, bukan di folder rumah Anda. Pilih folder proyek agar ia mengerjakan proyek itu. Persetujuan alat muncul di pulau seperti sesi lainnya."
+  },
   "Let my iPhone send instructions to Claude Code": {
    "zh-Hans": "允许我的 iPhone 向 Claude Code 发送指令",
    "hi": "मेरे iPhone को Claude Code को निर्देश भेजने दें",
@@ -1684,6 +1739,17 @@
    "pt-BR": "Nenhum modelo ainda — baixe um no {name} primeiro.",
    "ru": "Нет моделей — скачай одну в {name} сначала.",
    "id": "Belum ada model — unduh satu di {name} terlebih dahulu."
+  },
+  "No response text.": {
+   "zh-Hans": "没有回复内容。",
+   "hi": "जवाब में कोई टेक्स्ट नहीं।",
+   "es": "La respuesta no tiene texto.",
+   "ar": "لا يوجد نص في الرد.",
+   "fr": "La réponse ne contient pas de texte.",
+   "bn": "উত্তরে কোনো লেখা নেই।",
+   "pt-BR": "A resposta não tem texto.",
+   "ru": "В ответе нет текста.",
+   "id": "Tidak ada teks balasan."
   },
   "Not connected": {
    "zh-Hans": "未连接",
@@ -2411,6 +2477,17 @@
    "ru": "Запускает",
    "id": "Menjalankan"
   },
+  "Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here.": {
+   "zh-Hans": "运行你自己的 Claude Code，使用它的登录、MCP 服务器、技能和 hooks。这里不需要密钥。",
+   "hi": "आपका अपना Claude Code चलाता है, उसके साइन-इन, MCP सर्वर, स्किल्स और hooks के साथ। यहाँ कोई कुंजी नहीं।",
+   "es": "Ejecuta tu propio Claude Code, con su inicio de sesión, servidores MCP, skills y hooks. Aquí no hace falta clave.",
+   "ar": "يشغّل Claude Code الخاص بك، بتسجيل دخوله وخوادم MCP والمهارات و‎hooks. لا حاجة إلى مفتاح هنا.",
+   "fr": "Lance ton propre Claude Code, avec sa connexion, ses serveurs MCP, ses skills et ses hooks. Aucune clé ici.",
+   "bn": "আপনার নিজের Claude Code চালায়, তার সাইন-ইন, MCP সার্ভার, skills ও hooks সহ। এখানে কোনো কী লাগে না।",
+   "pt-BR": "Roda o seu próprio Claude Code, com o login, os servidores MCP, as skills e os hooks dele. Nenhuma chave aqui.",
+   "ru": "Запускает ваш собственный Claude Code с его входом, серверами MCP, навыками и hooks. Ключ здесь не нужен.",
+   "id": "Menjalankan Claude Code Anda sendiri, dengan login, server MCP, skill, dan hooks-nya. Tanpa kunci di sini."
+  },
   "SESSIONS": {
    "zh-Hans": "会话",
    "hi": "सेशन",
@@ -3082,6 +3159,17 @@
    "ru": "Рабочие процессы",
    "id": "Alur kerja"
   },
+  "Working folder": {
+   "zh-Hans": "工作文件夹",
+   "hi": "कार्य फ़ोल्डर",
+   "es": "Carpeta de trabajo",
+   "ar": "مجلد العمل",
+   "fr": "Dossier de travail",
+   "bn": "কাজের ফোল্ডার",
+   "pt-BR": "Pasta de trabalho",
+   "ru": "Рабочая папка",
+   "id": "Folder kerja"
+  },
   "Writes": {
    "zh-Hans": "写入",
    "hi": "लिखता है",
@@ -3290,6 +3378,17 @@
    "pt-BR": "{0} personalizados",
    "ru": "своих: {0}",
    "id": "{0} kustom"
+  },
+  "{0} is not a folder.": {
+   "zh-Hans": "{0} 不是文件夹。",
+   "hi": "{0} फ़ोल्डर नहीं है।",
+   "es": "{0} no es una carpeta.",
+   "ar": "{0} ليس مجلدًا.",
+   "fr": "{0} n'est pas un dossier.",
+   "bn": "{0} কোনো ফোল্ডার নয়।",
+   "pt-BR": "{0} não é uma pasta.",
+   "ru": "{0} не является папкой.",
+   "id": "{0} bukan folder."
   },
   "{0} — open Spotify": {
    "zh-Hans": "{0} — 打开 Spotify",

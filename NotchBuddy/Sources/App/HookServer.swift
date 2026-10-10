@@ -321,6 +321,23 @@ final class HookServer: @unchecked Sendable {
 
         let eventName = payload["hook_event_name"] as? String ?? ""
 
+        // Coucou's own chat runs Claude Code (ClaudeCodeChat.swift): no session to
+        // show, but a tool it wants still needs a click on the card. A turn that
+        // ends still takes its waiting card down.
+        if payload["coucou_chat"] as? Bool == true && eventName != "PermissionRequest" {
+            let sessionId = payload["session_id"] as? String ?? ""
+            if ["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd"].contains(eventName) {
+                Task { @MainActor in
+                    if AppState.shared.pendingApproval?.sessionId == sessionId {
+                        self.dismissApprovalCard(note: "Handled in the chat.")
+                    }
+                }
+            }
+            sendLine(fd: fd, text: #"{"ok":true}"#)
+            close(fd)
+            return
+        }
+
         if eventName == "PermissionRequest" {
             // Hold fd open — Claude Code waits for our decision (up to 120s)
             Task { @MainActor in self.processPermissionRequest(fd: fd, payload: payload) }
@@ -687,11 +704,15 @@ final class HookServer: @unchecked Sendable {
         let isHermesRequest  = rawAgent == "hermes"
             && UserDefaults.standard.bool(forKey: "hermesApprovalsEnabled")
             && (payload["coucou_has_transport"] as? Bool == true)
+        // Coucou's own chat (Claude Code as chat provider): always a card, on the
+        // Claude Code pill as it is.
+        let isChatRequest    = payload["coucou_chat"] as? Bool == true
         #else
         let isCodexRequest   = false
         let isCopilotRequest = false
         let isMuseRequest    = false
         let isHermesRequest  = false
+        let isChatRequest    = false
         #endif
         if !isCodexRequest && !isCopilotRequest && !isMuseRequest && !isHermesRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
@@ -720,7 +741,7 @@ final class HookServer: @unchecked Sendable {
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
-        guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
+        guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal || isChatRequest else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -761,7 +782,9 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        if !isChatRequest {
+            upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        }
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
                                               command: command, inputKey: inputKey, pillId: pillId)
@@ -3163,6 +3186,10 @@ def main():
     except Exception:
         if '--statusline' not in sys.argv[1:]:
             return
+
+    # Coucou's own chat runs Claude Code: the app shows its permission requests only.
+    if os.environ.get('COUCOU_CHAT') == '1' and isinstance(payload, dict):
+        payload['coucou_chat'] = True
 
     socket_path = os.path.expanduser(
         '~/Library/Application Support/NotchBuddy/nb.sock'
