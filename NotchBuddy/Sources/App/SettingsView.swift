@@ -32,6 +32,7 @@ struct SettingsView: View {
     @State private var showDiff: Bool = false
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
+    @State private var claudeHooksInstalled: Bool = HookServer.claudeHooksInstalled()
 
     #if !APPSTORE
     @State private var showStatusLineDiff: Bool = false
@@ -560,7 +561,9 @@ struct SettingsView: View {
                     #endif
                 }
                 #if APPSTORE
-                Text("~/.claude/coucou/nb-hook")
+                Text(claudeHooksInstalled
+                     ? String(localized: "hooks.claude-code.installed")
+                     : "~/.claude/coucou/nb-hook")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
@@ -570,7 +573,9 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                 }
                 #else
-                Text("nb-hook : \(HookServer.hookScriptPath)")
+                Text(claudeHooksInstalled
+                     ? String(localized: "hooks.claude-code.installed")
+                     : "nb-hook : \(HookServer.hookScriptPath)")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
@@ -1488,6 +1493,7 @@ struct SettingsView: View {
         do {
             try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
             hookNeedsUpdate = false
+            claudeHooksInstalled = true
             statusMessage = String(localized: "status.hooks-installed-claude")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1498,6 +1504,7 @@ struct SettingsView: View {
         guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
         do {
             try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
+            claudeHooksInstalled = false
             statusMessage = String(localized: "status.hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1558,6 +1565,7 @@ struct SettingsView: View {
             statusMessage = String(localized: "status.hooks-installed-settings")
             pendingHookJSON = ""
             hookNeedsUpdate = false
+            claudeHooksInstalled = true
         } catch {
             statusMessage = "❌ Write error: \(error.localizedDescription)"
         }
@@ -1566,6 +1574,7 @@ struct SettingsView: View {
     private func uninstallHooks() {
         do {
             try HookServer.shared.uninstallClaudeHooks()
+            claudeHooksInstalled = false
             statusMessage = String(localized: "status.hooks-removed")
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
