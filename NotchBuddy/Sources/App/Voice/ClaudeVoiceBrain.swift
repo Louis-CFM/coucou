@@ -28,12 +28,17 @@ final class ClaudeVoiceBrain {
     }
 
     private var messages: [[String: Any]] = []
+    /// One turn at a time: a second "OK Coucou" during the wait must not interleave.
+    private var busy = false
 
     func reset() { messages = [] }
 
     // MARK: Turn
 
     func respond(to transcript: String) async -> Reply? {
+        guard !busy else { return nil }
+        busy = true
+        defer { busy = false; repairHistory() }
         messages.append(["role": "user", "content": transcript])
         trimHistory()
         var acted = false
@@ -47,7 +52,9 @@ final class ClaudeVoiceBrain {
                 // Leave the history coherent: drop the question that got no answer.
                 if let last = messages.last, last["role"] as? String == "user",
                    last["content"] is String { messages.removeLast() }
-                return nil
+                // Something already happened (a pill, the music, the mail card): the
+                // parser must not do it again. Say it's done.
+                return acted ? Reply(text: "", acted: true, failed: false) : nil
             }
             messages.append(["role": "assistant", "content": turn.content])
             if let text = claudeResponseText(fromContent: turn.content) { spoken = text }
@@ -71,6 +78,21 @@ final class ClaudeVoiceBrain {
 
         let text = VoiceQuery.spokenText(spoken)
         return Reply(text: text, acted: acted, failed: text.isEmpty && !acted)
+    }
+
+    /// The API refuses a history whose last assistant turn calls a tool with no result
+    /// after it (cut by max_tokens, a failure, or a pause on the last round): drop it.
+    private func repairHistory() {
+        guard let last = messages.last, last["role"] as? String == "assistant",
+              let content = last["content"] as? [[String: Any]] else { return }
+        let calls = content.contains {
+            let t = $0["type"] as? String
+            return t == "tool_use" || t == "server_tool_use"
+        }
+        let answered = content.contains { $0["type"] as? String == "web_search_tool_result" }
+        if calls && !answered || content.contains(where: { $0["type"] as? String == "tool_use" }) {
+            messages.removeLast()
+        }
     }
 
     /// Keeps the last exchanges, never cutting between a tool call and its result.
@@ -182,8 +204,14 @@ final class ClaudeVoiceBrain {
                 "required": ["recipient", "subject", "body"],
             ],
         ],
-        ["type": "web_search_20250305", "name": "web_search", "max_uses": 3],
+        webSearchTool,
     ]
+
+    private static var webSearchTool: [String: Any] {
+        var location: [String: Any] = ["type": "approximate", "timezone": TimeZone.current.identifier]
+        if let country = Locale.current.region?.identifier, country.count == 2 { location["country"] = country }
+        return ["type": "web_search_20250305", "name": "web_search", "max_uses": 3, "user_location": location]
+    }
 
     // MARK: Running a tool
 
@@ -284,6 +312,8 @@ final class ClaudeVoiceBrain {
             file = info.findFile(name, folder: nil)
             if file == nil { note = " The file \(name) was not found: the user can drop it on the notch." }
         }
+        // A file already dropped on the open card stays attached when Claude revises the mail.
+        if file == nil, AppState.shared.voiceMailDraft != nil { file = AppState.shared.droppedFile?.url }
         info.showMailCard(to: address, subject: subject, body: body, file: file)
         let attach = (input["wants_attachment"] as? Bool ?? false) && file == nil
             ? " The user wants an attachment: tell them to drop the file on the notch." : ""

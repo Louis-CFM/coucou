@@ -26018,61 +26018,61 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "بعد «OK Coucou»، يُرسل ما تقوله إلى Claude بمفتاح Anthropic API الخاص بك: ينفّذ (الحبوب، الموسيقى، البريد، خدماتك) ويبحث على الويب. تُرسل كلماتك فقط، وليس الصوت أبدًا."
+            "value": "بعد «OK Coucou»، يُرسل ما تقوله إلى Claude بمفتاح Anthropic API الخاص بك، مع ما يقرؤه Coucou للإجابة (حبوبك، بيانات خدماتك، عنوان جهة اتصال). ينفّذ ويبحث على الويب. لا يُرسل الصوت أبدًا."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "«OK Coucou»-এর পরে তুমি যা বলো তা তোমার Anthropic API কী দিয়ে Claude-এর কাছে যায়: সে কাজ করে (পিল, গান, মেইল, তোমার সার্ভিস) আর ওয়েবে খোঁজে। শুধু তোমার কথা পাঠানো হয়, কখনো অডিও নয়।"
+            "value": "«OK Coucou»-এর পরে তুমি যা বলো তা তোমার Anthropic API কী দিয়ে Claude-এর কাছে যায়, সঙ্গে Coucou উত্তর দিতে যা পড়ে (তোমার পিল, তোমার সার্ভিসের ডেটা, কোনো কন্টাক্টের ঠিকানা)। সে কাজ করে আর ওয়েবে খোঁজে। অডিও কখনো নয়।"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "After «OK Coucou», what you say goes to Claude with your Anthropic API key: it acts (pills, music, email, your services) and searches the web. Only your words are sent, never audio."
+            "value": "After «OK Coucou», what you say goes to Claude with your Anthropic API key, with what Coucou reads to answer (your pills, your services' data, a contact's address). It acts and searches the web. Never audio."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tras «OK Coucou», lo que dices va a Claude con tu clave de API de Anthropic: actúa (píldoras, música, correo, tus servicios) y busca en la web. Solo se envían tus palabras, nunca el audio."
+            "value": "Tras «OK Coucou», lo que dices va a Claude con tu clave de API de Anthropic, junto con lo que Coucou lee para responder (tus píldoras, los datos de tus servicios, la dirección de un contacto). Actúa y busca en la web. Nunca el audio."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Après « OK Coucou », ce que tu dis part chez Claude avec ta clé API Anthropic : il agit (pilules, musique, mail, tes services) et cherche sur le web. Seuls tes mots sont envoyés, jamais l'audio."
+            "value": "Après « OK Coucou », ce que tu dis part chez Claude avec ta clé API Anthropic, avec ce que Coucou lit pour répondre (tes pilules, les données de tes services, l'adresse d'un contact). Il agit et cherche sur le web. Jamais l'audio."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "«OK Coucou» के बाद तुम जो कहते हो वह तुम्हारी Anthropic API कुंजी से Claude को जाता है: वह काम करता है (पिल्स, संगीत, ईमेल, तुम्हारी सेवाएँ) और वेब पर खोजता है। सिर्फ़ तुम्हारे शब्द भेजे जाते हैं, ऑडियो कभी नहीं।"
+            "value": "«OK Coucou» के बाद तुम जो कहते हो वह तुम्हारी Anthropic API कुंजी से Claude को जाता है, साथ में वह जो Coucou जवाब देने के लिए पढ़ता है (तुम्हारी पिल्स, तुम्हारी सेवाओं का डेटा, किसी संपर्क का पता)। वह काम करता है और वेब पर खोजता है। ऑडियो कभी नहीं।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Setelah «OK Coucou», ucapanmu dikirim ke Claude dengan kunci API Anthropic-mu: ia bertindak (pil, musik, email, layananmu) dan mencari di web. Hanya kata-katamu yang dikirim, tidak pernah audio."
+            "value": "Setelah «OK Coucou», ucapanmu dikirim ke Claude dengan kunci API Anthropic-mu, beserta apa yang dibaca Coucou untuk menjawab (pil-mu, data layananmu, alamat kontak). Ia bertindak dan mencari di web. Tidak pernah audio."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Depois de «OK Coucou», o que você diz vai para o Claude com sua chave de API da Anthropic: ele age (pílulas, música, e-mail, seus serviços) e pesquisa na web. Só suas palavras são enviadas, nunca o áudio."
+            "value": "Depois de «OK Coucou», o que você diz vai para o Claude com sua chave de API da Anthropic, junto com o que o Coucou lê para responder (suas pílulas, os dados dos seus serviços, o endereço de um contato). Ele age e pesquisa na web. Nunca o áudio."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "После «OK Coucou» сказанное уходит в Claude по твоему ключу Anthropic API: он действует (пилюли, музыка, почта, твои сервисы) и ищет в интернете. Отправляются только слова, никогда не звук."
+            "value": "После «OK Coucou» сказанное уходит в Claude по твоему ключу Anthropic API вместе с тем, что Coucou читает для ответа (твои пилюли, данные твоих сервисов, адрес контакта). Он действует и ищет в интернете. Звук — никогда."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "说「OK Coucou」后，你说的话会用你的 Anthropic API 密钥发送给 Claude：它会执行操作（药丸、音乐、邮件、你的服务）并进行网页搜索。只发送文字，从不发送音频。"
+            "value": "说「OK Coucou」后，你说的话会用你的 Anthropic API 密钥发送给 Claude，同时发送 Coucou 为回答而读取的内容（你的药丸、你的服务数据、联系人地址）。它会执行操作并进行网页搜索。从不发送音频。"
           }
         }
       }

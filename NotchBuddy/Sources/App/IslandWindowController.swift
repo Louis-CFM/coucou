@@ -164,7 +164,7 @@ final class IslandWindowController: NSWindowController {
                     return
                 }
                 // The mail card prepared by voice (Claude) is open: the file is its attachment.
-                if AppState.shared.voiceMailDraft != nil, let url = urls.first {
+                if AppState.shared.voiceMailDraft != nil, AppState.shared.view == .mail, let url = urls.first {
                     self?.attachToVoiceMailCard(url)
                     return
                 }
@@ -1851,6 +1851,9 @@ extension IslandWindowController {
     /// attachment, and Coucou says so.
     @MainActor
     func attachToVoiceMailCard(_ url: URL) {
+        // Not listening any more: Coucou's own "attached" must not come back as a turn.
+        VoiceEngine.shared.cancelListening()
+        if isInConversation || AppState.shared.voiceActive { closeVoiceTurn() }
         let state = AppState.shared
         state.fileDragOver = false
         state.droppedFile = DroppedFile(url: url, name: url.lastPathComponent)

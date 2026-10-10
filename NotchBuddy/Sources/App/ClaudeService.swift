@@ -510,7 +510,7 @@ final class ClaudeService {
         async -> (content: [[String: Any]], stopReason: String)? {
         guard let key = apiKey, !key.isEmpty else { return nil }
         func body(_ model: String) -> [String: Any] {
-            ["model": model, "max_tokens": 600, "system": system, "tools": tools, "messages": messages]
+            ["model": model, "max_tokens": 2048, "system": system, "tools": tools, "messages": messages]
         }
         let data: Data
         do {
