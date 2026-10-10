@@ -214,6 +214,8 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  /** The chat's model picker is open: the chat view takes its full height. */
+  modelPickerOpen = false;
   pendingApproval: ApprovalInfo | null = null;
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;

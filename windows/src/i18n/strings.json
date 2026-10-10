@@ -1674,6 +1674,17 @@
    "ru": "Нет подробностей об ошибке.",
    "id": "Tidak ada detail kesalahan yang tersedia."
   },
+  "No model matches.": {
+   "zh-Hans": "没有匹配的模型。",
+   "hi": "कोई मॉडल मेल नहीं खाता।",
+   "es": "Ningún modelo coincide.",
+   "ar": "لا يوجد نموذج مطابق.",
+   "fr": "Aucun modèle ne correspond.",
+   "bn": "কোনো মডেল মেলেনি।",
+   "pt-BR": "Nenhum modelo corresponde.",
+   "ru": "Нет подходящих моделей.",
+   "id": "Tidak ada model yang cocok."
+  },
   "No models yet — download one in {name} first.": {
    "zh-Hans": "暂无模型 — 请先在 {name} 中下载一个。",
    "hi": "अभी कोई मॉडल नहीं — पहले {name} में एक डाउनलोड करें।",
@@ -2465,6 +2476,17 @@
    "pt-BR": "Agenda",
    "ru": "Расписание",
    "id": "Jadwal"
+  },
+  "Search models": {
+   "zh-Hans": "搜索模型",
+   "hi": "मॉडल खोजें",
+   "es": "Buscar modelos",
+   "ar": "ابحث عن النماذج",
+   "fr": "Rechercher un modèle",
+   "bn": "মডেল খুঁজুন",
+   "pt-BR": "Buscar modelos",
+   "ru": "Поиск моделей",
+   "id": "Cari model"
   },
   "Searches": {
    "zh-Hans": "搜索",
