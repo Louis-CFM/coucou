@@ -176,10 +176,7 @@ function buildOverview(actions: ViewActions): ViewHost {
     if (activeDiffId == null) return;
     activeDiffId = null;
     // Closing a live diff stops following that session until its next prompt.
-    if (State.liveDiff) {
-      State.liveStopped.add(State.liveDiff.pillId);
-      State.liveDiff = null;
-    }
+    State.stopFollowing();
     State.notify();
   };
   /** Set by a click on a diff row, so the same click does not also open the code view. */
@@ -198,8 +195,13 @@ function buildOverview(actions: ViewActions): ViewHost {
     { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 8),
   );
-  const expandHint = h("span", { class: "expand-hint", title: tl("Show the code") }, svg(ICONS.expand, 10, { stroke: 2 }));
-  const left = card(null, leftBody, jump, expandHint);
+  // </> next to ↗, as on the Mac; a click anywhere on the card opens it too.
+  const codeBtn = h(
+    "button",
+    { class: "icon-btn code-open", title: tl("Code"), onclick: () => { actions.blip(); actions.setView("code"); } },
+    svg(ICONS.code, 9, { stroke: 2.2 }),
+  );
+  const left = card(null, leftBody, jump, codeBtn);
   // A Claude Code session that has edited a file or run a command: its card opens
   // the code view. Only on a click, nothing opens by itself.
   const codeOpens = () => mode === "ticker" && hasCode(State.focusTask?.id);
@@ -207,7 +209,7 @@ function buildOverview(actions: ViewActions): ViewHost {
     const tapped = diffTapped;
     diffTapped = false;
     if (tapped || !codeOpens()) return;
-    if ((e.target as Element | null)?.closest?.(".jump")) return;
+    if ((e.target as Element | null)?.closest?.(".jump, .code-open")) return;
     actions.blip();
     actions.setView("code");
   });
@@ -408,6 +410,7 @@ function buildOverview(actions: ViewActions): ViewHost {
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
       left.classList.toggle("expandable", codeOpens());
+      codeBtn.style.display = codeOpens() && jump.style.display !== "none" ? "" : "none";
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];

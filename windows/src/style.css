@@ -558,7 +558,8 @@ body {
   flex: 1 1 auto;
 }
 
-.diff-head .diff-live {
+.diff-head .diff-live,
+.code-name .diff-live {
   flex: 0 0 auto;
   padding: 1px 6px;
   border-radius: 999px;
@@ -2923,24 +2924,15 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 .tok-f { color: #f2c070; }
 .tok-c { color: var(--dim-4); font-style: italic; }
 
-/* The overview's left card opens the code view when there is code to show. */
-.expand-hint {
+/* The overview's left card opens the code view when there is code to show:
+   a click on the card, or its </> next to ↗ (as on the Mac). */
+.code-open {
   position: absolute;
-  right: 12px;
-  bottom: 10px;
+  top: 8px;
+  right: 30px;
   z-index: 2;
-  display: none;
-  color: var(--dim-4);
 }
 
 .card.expandable {
   cursor: pointer;
-}
-
-.card.expandable .expand-hint {
-  display: block;
-}
-
-.card.expandable:hover .expand-hint {
-  color: var(--dim-2);
 }

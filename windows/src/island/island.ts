@@ -788,7 +788,11 @@ export class Island {
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded") {
         if (State.pendingApproval) this.foldApproval();
-        else if (!State.isPinned) this.collapse();
+        else if (State.view === "code") {
+          // Back to the overview, as its ← does; a followed session stops being followed.
+          State.stopFollowing();
+          this.setView("overview");
+        } else if (!State.isPinned) this.collapse();
       }
       State.lastActivity = performance.now();
     });

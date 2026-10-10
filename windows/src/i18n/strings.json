@@ -343,6 +343,17 @@
    "ru": "Автоматизация не разрешена",
    "id": "Otomatisasi tidak diizinkan"
   },
+  "Back": {
+   "zh-Hans": "返回",
+   "hi": "वापस",
+   "es": "Atrás",
+   "ar": "رجوع",
+   "fr": "Retour",
+   "bn": "ফিরে যান",
+   "pt-BR": "Voltar",
+   "ru": "Назад",
+   "id": "Kembali"
+  },
   "Behavior": {
    "zh-Hans": "行为",
    "hi": "व्यवहार",
@@ -573,6 +584,17 @@
    "pt-BR": "Fechar island (se não fixado)",
    "ru": "Закрыть нотч (если не закреплён)",
    "id": "Tutup island (jika tidak disematkan)"
+  },
+  "Code": {
+   "zh-Hans": "代码",
+   "hi": "कोड",
+   "es": "Código",
+   "ar": "شيفرة",
+   "fr": "Code",
+   "bn": "কোড",
+   "pt-BR": "Código",
+   "ru": "Код",
+   "id": "Kode"
   },
   "Codex hooks": {
    "zh-Hans": "Codex 钩子",

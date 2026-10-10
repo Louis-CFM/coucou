@@ -186,6 +186,10 @@ struct OverviewView: View {
                 }
             }
             .frame(width: 322)
+            // A click on the card opens the code view too, as on Windows and Linux;
+            // the ticker's diff rows and the buttons keep their own taps.
+            .contentShape(Rectangle())
+            .onTapGesture { if hasCode && !detailOpen { openCode() } }
 
             // Right card: agent pills
             CardBackground(wash: nil) {
@@ -221,6 +225,15 @@ struct OverviewView: View {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
             }
         }
+    }
+
+    /// A detail (n8n, plan, a diff) stands in for the ticker.
+    private var detailOpen: Bool {
+        #if !APPSTORE
+        return showingN8nDetail || state.showingPlanDetail || shownDiffId != nil
+        #else
+        return showingN8nDetail || shownDiffId != nil
+        #endif
     }
 
     /// The focused Claude Code session has an edit or a command for the code view.

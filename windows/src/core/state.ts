@@ -237,6 +237,12 @@ class AppState {
   liveDiff: { pillId: string; diffId: number } | null = null;
   /** Pills whose live diff was closed: not followed again until their next prompt. */
   liveStopped = new Set<string>();
+
+  /** The live view was closed: that session is not followed until its next prompt. */
+  stopFollowing() {
+    if (this.liveDiff) this.liveStopped.add(this.liveDiff.pillId);
+    this.liveDiff = null;
+  }
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;

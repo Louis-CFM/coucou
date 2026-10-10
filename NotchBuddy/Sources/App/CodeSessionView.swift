@@ -38,11 +38,29 @@ struct CodeSessionView: View {
             .help(String(localized: "Back"))
             .padding(.top, 10)
             .padding(.leading, 10)
+            if live {
+                Text(String(localized: "Live").uppercased())
+                    .font(.system(size: 9, weight: .semibold).monospaced())
+                    .foregroundColor(Color(hex: "#22C55E"))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(Color(hex: "#22C55E").opacity(0.18))
+                    .clipShape(Capsule())
+                    .padding(.top, 11)
+                    .padding(.leading, 32)
+            }
         }
         .onExitCommand(perform: back)
     }
 
+    /// Following edits live (Settings → Follow edits live) shows this session here.
+    private var live: Bool {
+        state.liveDiff != nil && state.liveDiff?.pillId == state.focusTask?.id
+    }
+
     private func back() {
+        // Closing a followed session stops following it until its next prompt.
+        if live { state.stopFollowing() }
         withAnimation(.easeIn(duration: 0.16)) { state.view = .overview }
     }
 }

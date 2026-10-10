@@ -411,20 +411,35 @@ export function buildCodeView(actions: ViewActions): ViewHost {
         clear(editor);
         return;
       }
-      const next = JSON.stringify([task.id, task.color, d]);
+      const live = State.liveDiff?.pillId === task.id;
+      const next = JSON.stringify([task.id, task.color, d, live]);
       if (next === key) return;
       key = next;
 
       clear(left);
       left.append(
-        h("div", { class: "code-name" }, dot(task.color, 7), h("span", { text: d.project })),
+        h(
+          "div",
+          { class: "code-name" },
+          dot(task.color, 7),
+          h("span", { text: d.project }),
+          live ? h("span", { class: "diff-live", text: tl("Live") }) : null,
+        ),
         h(
           "div",
           { class: "code-tool" },
           h("span", { text: "Claude Code" }),
           h(
             "button",
-            { class: "code-back", title: tl("Back"), onclick: () => actions.setView("overview") },
+            {
+              class: "code-back",
+              title: tl("Back"),
+              onclick: () => {
+                // Closing a followed session stops following it until its next prompt.
+                if (live) State.stopFollowing();
+                actions.setView("overview");
+              },
+            },
             svg(ICONS.chevronLeft, 9, { stroke: 2.4 }),
           ),
         ),

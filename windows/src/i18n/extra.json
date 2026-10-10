@@ -199,17 +199,6 @@
    "ru": "Автозакрытие",
    "id": "Tutup otomatis"
   },
-  "Back": {
-   "zh-Hans": "返回",
-   "hi": "वापस",
-   "es": "Atrás",
-   "ar": "رجوع",
-   "fr": "Retour",
-   "bn": "ফিরে যান",
-   "pt-BR": "Voltar",
-   "ru": "Назад",
-   "id": "Kembali"
-  },
   "Back up and remove": {
    "zh-Hans": "备份并移除",
    "hi": "बैकअप लें और हटाएँ",
@@ -451,17 +440,6 @@
    "pt-BR": "Fechar a ilha",
    "ru": "Закрыть остров",
    "id": "Tutup pulau"
-  },
-  "Code": {
-   "zh-Hans": "代码",
-   "hi": "कोड",
-   "es": "Código",
-   "ar": "شيفرة",
-   "fr": "Code",
-   "bn": "কোড",
-   "pt-BR": "Código",
-   "ru": "Код",
-   "id": "Kode"
   },
   "Codex plan": {
    "zh-Hans": "Codex 套餐",
@@ -2090,17 +2068,6 @@
    "pt-BR": "Mostrar na pasta",
    "ru": "Показать в папке",
    "id": "Tampilkan di folder"
-  },
-  "Show the code": {
-   "zh-Hans": "显示代码",
-   "hi": "कोड दिखाएँ",
-   "es": "Mostrar el código",
-   "ar": "عرض الشيفرة",
-   "fr": "Afficher le code",
-   "bn": "কোড দেখান",
-   "pt-BR": "Mostrar o código",
-   "ru": "Показать код",
-   "id": "Tampilkan kode"
   },
   "Show other coding agents in the island. Coucou adds its entries to each agent's own config: you see the exact change and where the backup goes before anything is written, and uninstalling removes only what Coucou added.": {
    "zh-Hans": "在岛中显示其他编程代理。Coucou 会把自己的条目添加到各代理的配置中：写入之前，你会看到确切的改动和备份位置；卸载只会移除 Coucou 添加的内容。",

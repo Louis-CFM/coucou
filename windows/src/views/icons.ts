@@ -61,6 +61,7 @@ export const ICONS = {
   terminal: "M5 7l5 5-5 5M12.5 17H19",
   // arrow.up.left.and.arrow.down.right (stroked)
   expand: "M14 4.5h5.5V10M10 19.5H4.5V14M19.5 4.5 13.5 10.5M4.5 19.5l6-6",
+  code: "M8.5 7 3.5 12l5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15",
   // ── Now playing (the Spotify pill and card) ──
   // play.fill
   play: "M7 4.6c0-.8.9-1.3 1.6-.9l11 6.9c.6.4.6 1.4 0 1.8l-11 6.9c-.7.4-1.6-.1-1.6-.9V4.6z",

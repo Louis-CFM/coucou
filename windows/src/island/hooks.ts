@@ -15,7 +15,7 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
-import { beginTurn, dropCode, endTurn, toolFinished, toolStarted, type CodeSource } from "../views/session";
+import { beginTurn, dropCode, endTurn, hasCode, toolFinished, toolStarted, type CodeSource } from "../views/session";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -241,12 +241,16 @@ function followEdit(island: Island, pillId: string, diffId: number) {
   if (!State.settings.followEdits || State.liveStopped.has(pillId) || State.pendingApproval) return;
   const expanded = State.mode === "expanded";
   const typing = /^(INPUT|TEXTAREA)$/.test(globalThis.document?.activeElement?.tagName ?? "");
-  if (expanded && (State.view !== "overview" || typing)) return;
+  // The code view this session is followed in counts as the overview.
+  const onOverview = State.view === "overview" || (State.view === "code" && State.liveDiff?.pillId === pillId);
+  if (expanded && (!onOverview || typing)) return;
   if (expanded && State.liveDiff && State.liveDiff.pillId !== pillId) return;
   State.liveDiff = { pillId, diffId };
   State.setFocus(pillId);
-  if (expanded) island.setView("overview");
-  else island.alert("overview");
+  // Its code view when the session has one; the diff card otherwise (remote hosts, other agents).
+  const view = hasCode(pillId) ? "code" : "overview";
+  if (expanded) island.setView(view);
+  else island.alert(view);
 }
 
 /** The session's turn is over or starts anew: it stops being followed, or may be again. */

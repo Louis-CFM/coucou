@@ -628,7 +628,6 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Helpers
 
-    @MainActor
     /// Settings → Follow edits live: the edit just made opens on its diff (LiveEdits.mayFollow).
     @MainActor
     private func followEdit(pillId: String, diffId: Int) {
@@ -638,17 +637,23 @@ final class HookServer: @unchecked Sendable {
             stopped: state.liveStopped.contains(pillId),
             cardPending: state.pendingApproval != nil || state.pendingQuestion != nil,
             expanded: state.mode == .expanded,
-            onOverview: state.view == .overview,
+            // The code view this session is followed in counts as the overview.
+            onOverview: state.view == .overview || (state.view == .code && state.liveDiff?.pillId == pillId),
             typing: NSApp.keyWindow?.firstResponder is NSTextView,
             followingOther: state.liveDiff.map { $0.pillId != pillId } ?? false)
         guard follow else { return }
         state.liveDiff = LiveDiff(pillId: pillId, diffId: diffId)
         state.focusId = pillId
+        // Its code view when the session has one; the diff card otherwise (remote hosts, other agents).
+        let view: IslandView = state.codeSessions[pillId]?.hasContent == true ? .code : .overview
         if state.mode != .expanded {
-            NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+            NotificationCenter.default.post(name: .hookExpand, object: view)
+        } else if state.view != view {
+            withAnimation(.easeIn(duration: 0.16)) { state.view = view }
         }
     }
 
+    @MainActor
     private func expandIfNeeded(to view: IslandView) {
         let state = AppState.shared
         let isAlert: Bool
