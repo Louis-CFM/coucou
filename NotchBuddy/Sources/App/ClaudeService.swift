@@ -186,8 +186,37 @@ final class ClaudeService {
     // Multi-turn conversation messages (for API)
     private var conversationMessages: [[String: Any]] = []
 
+    /// Identifies the file/window context already sent in this conversation, so a file
+    /// dropped mid-chat is attached to the next message instead of being ignored.
+    private var sentContextKey: String?
+
     func clearConversation() {
         conversationMessages = []
+        sentContextKey = nil
+    }
+
+    /// A new file was dropped: attach it to the next message even if one with the same
+    /// name was sent before (it may be an updated version).
+    func contextDidChange() {
+        sentContextKey = nil
+    }
+
+    /// File contexts are keyed by name: the drop handler swaps the original URL for the
+    /// inbox copy, which must not count as a new file.
+    private static func contextKey(_ context: PromptContext) -> String {
+        switch context {
+        case .window(let app, let title, let url): return "window:\(app)|\(title)|\(url ?? "")"
+        case .file(let name, _):                   return "file:\(name)"
+        }
+    }
+
+    /// The context to add to this turn, or nil when it was already sent. Window context
+    /// only makes sense at the start of a conversation; a file is attached whenever a new
+    /// one shows up.
+    private func pendingContext(_ context: PromptContext?) -> PromptContext? {
+        guard let context, Self.contextKey(context) != sentContextKey else { return nil }
+        if case .window = context, !conversationMessages.isEmpty { return nil }
+        return context
     }
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
@@ -235,8 +264,8 @@ final class ClaudeService {
         // Build user content for this turn
         var userContent: [[String: Any]] = []
 
-        // Add file/window context on first message only
-        if conversationMessages.isEmpty, let context = context {
+        let attached = pendingContext(context)
+        if let context = attached {
             switch context {
             case .window(let app, let title, let url):
                 var text = "Context — App: \(app), Window: \(title)"
@@ -263,6 +292,7 @@ final class ClaudeService {
 
         do {
             let data = try await callAPI(body: body, key: key, beta: "web-search-2025-03-05")
+            if let attached { sentContextKey = Self.contextKey(attached) }
             await handleChatResult(data, state: state)
         } catch {
             conversationMessages.removeLast()
@@ -314,15 +344,18 @@ final class ClaudeService {
         var msgs: [[String: Any]] = [["role": "system", "content": systemPrompt]]
         for m in conversationMessages {
             var simplified = m
-            if let content = m["content"] as? [[String: Any]],
-               let textBlock = content.first(where: { ($0["type"] as? String) == "text" }),
-               let text = textBlock["text"] as? String {
-                simplified["content"] = text
+            // Anthropic turns hold several blocks (file label + question): keep all the text
+            if let content = m["content"] as? [[String: Any]] {
+                let texts = content.compactMap { block -> String? in
+                    (block["type"] as? String) == "text" ? block["text"] as? String : nil
+                }
+                if !texts.isEmpty { simplified["content"] = texts.joined(separator: "\n\n") }
             }
             msgs.append(simplified)
         }
         var userText = query
-        if conversationMessages.isEmpty, let ctx = context {
+        let attached = pendingContext(context)
+        if let ctx = attached {
             switch ctx {
             case .window(let app, let title, let url):
                 var prefix = "Context — App: \(app), Window: \(title)"
@@ -348,6 +381,9 @@ final class ClaudeService {
         }
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
+        // Marked sent up front; each failure path below hands the turn back.
+        let previousContextKey = sentContextKey
+        if let attached { sentContextKey = Self.contextKey(attached) }
 
         let useStream = provider.isLocal
         var body: [String: Any] = [
@@ -399,6 +435,7 @@ final class ClaudeService {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             } catch let e as LocalChatError {
                 conversationMessages.removeLast()
+                sentContextKey = previousContextKey
                 state.chatHistory.removeAll { $0.id == msgId }
                 state.stateOverride = nil
                 let msg: String
@@ -415,6 +452,7 @@ final class ClaudeService {
                 await showError(msg, state: state)
             } catch {
                 conversationMessages.removeLast()
+                sentContextKey = previousContextKey
                 state.chatHistory.removeAll { $0.id == msgId }
                 state.stateOverride = nil
                 await showError(error.localizedDescription, state: state)
@@ -444,6 +482,7 @@ final class ClaudeService {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             } catch {
                 conversationMessages.removeLast()
+                sentContextKey = previousContextKey
                 await showError(error.localizedDescription, state: state)
             }
         }

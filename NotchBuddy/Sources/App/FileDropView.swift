@@ -54,6 +54,7 @@ enum FileDropHandler {
         state.uploadProgress = 0
         state.fileDragOver = false
         state.promptContext = .file(name: name, fileURL: url)
+        ClaudeService.shared.contextDidChange()
 
         let dur = 2.4
         UploadSequenceEngine.shared.performDrop(uploadDuration: dur)

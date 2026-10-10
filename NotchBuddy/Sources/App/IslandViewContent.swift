@@ -1274,8 +1274,25 @@ struct PromptView: View {
                     Spacer()
                 }
 
-                HStack(spacing: 0) {
+                HStack(spacing: 6) {
                     Spacer()
+                    if !state.chatHistory.isEmpty || state.promptContext != nil {
+                        Button(action: startNewConversation) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 9.5, weight: .medium))
+                                Text("New chat")
+                                    .font(.system(size: 10.5, weight: .medium))
+                            }
+                            .foregroundColor(Color(hex: "#7B8089"))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.06))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "New conversation (⌘K)"))
+                    }
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                             showModelPicker.toggle()
@@ -1370,11 +1387,20 @@ struct PromptView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandNewConversation)) { _ in
             guard state.view == .prompt else { return }
-            text = ""
-            state.chatHistory = []
-            ClaudeService.shared.clearConversation()
-            focused = true
+            startNewConversation()
         }
+    }
+
+    /// Starts over: empties the thread and drops the attached file or window, so the next
+    /// question is not answered with the previous context.
+    private func startNewConversation() {
+        guard state.stateOverride != .thinking else { return }
+        text = ""
+        state.chatHistory = []
+        state.promptContext = nil
+        ClaudeService.shared.clearConversation()
+        SoundEngine.shared.play("pop")
+        focused = true
     }
 
     private func sendMessage() {
