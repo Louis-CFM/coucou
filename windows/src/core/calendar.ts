@@ -34,6 +34,13 @@ export const REMINDER_MS = 5 * 60_000;
 
 const DAY_MS = 86_400_000;
 const MAX_PERIODS = 20_000;
+/** Dates one event may produce on the way to the window, and a whole feed. */
+const MAX_DATES_PER_EVENT = 20_000;
+const MAX_DATES_PER_FEED = 400_000;
+/** More than any UTC offset: a wall time this far before an instant is before it in every zone. */
+const ZONE_SLACK_MS = 2 * DAY_MS;
+/** A link longer than this is not a meeting link. */
+const MAX_LINK = 2048;
 
 // ── Wall-clock dates ──────────────────────────────────────────────────────────
 
@@ -246,12 +253,44 @@ function monthDays(rule: Rule, y: number, mo: number, defaultDay: number): numbe
   return [...new Set(days)].sort((a, b) => a - b);
 }
 
-/** Every date the rule makes, period by period, ascending, from DTSTART's period. */
-function* candidates(rule: Rule, start: Wall): Generator<Wall> {
+const dayNumber = (w: Wall) => Math.floor(Date.UTC(w.y, w.mo - 1, w.d) / DAY_MS);
+
+/**
+ * The first period worth walking for dates on or after the UTC day `day`: every
+ * date of an earlier period is before it. A rule with COUNT must still be counted
+ * from DTSTART, so it starts at 0.
+ */
+function firstPeriod(rule: Rule, start: Wall, day: number): number {
+  if (rule.count != null) return 0;
+  const date = new Date(day * DAY_MS);
+  const y = date.getUTCFullYear();
+  const mo = date.getUTCMonth() + 1;
+  let k: number;
+  switch (rule.freq) {
+    case "DAILY":
+      k = Math.floor((day - dayNumber(start)) / rule.interval);
+      break;
+    case "WEEKLY": {
+      const weekStart = dayNumber(start) - ((weekday(start) - rule.wkst + 7) % 7);
+      k = Math.floor((day - weekStart) / (7 * rule.interval));
+      break;
+    }
+    case "MONTHLY":
+      k = Math.floor((y * 12 + mo - (start.y * 12 + start.mo)) / rule.interval);
+      break;
+    case "YEARLY":
+      k = Math.floor((y - start.y) / rule.interval);
+      break;
+  }
+  return Math.max(0, k - 1);
+}
+
+/** Every date the rule makes, period by period, ascending, from period `first` on. */
+function* candidates(rule: Rule, start: Wall, first = 0): Generator<Wall> {
   const at = (y: number, mo: number, d: number): Wall => ({ y, mo, d, h: start.h, mi: start.mi, s: start.s });
   const monthOk = (w: Wall) => rule.bymonth.length === 0 || rule.bymonth.includes(w.mo);
 
-  for (let k = 0; k < MAX_PERIODS; k++) {
+  for (let k = first; k < first + MAX_PERIODS; k++) {
     switch (rule.freq) {
       case "DAILY": {
         const w = addDays(start, k * rule.interval);
@@ -315,7 +354,12 @@ const JOIN_LINK =
 export function findJoinLink(...texts: (string | undefined)[]): string | null {
   for (const text of texts) {
     const m = text?.match(JOIN_LINK);
-    if (m) return m[0].replace(/[).,;]+$/, "");
+    if (!m) continue;
+    // A loop, not /[).,;]+$/: that regex is quadratic on a long run of dots.
+    let end = m[0].length;
+    while (end > 0 && ").,;".includes(m[0][end - 1])) end--;
+    const link = m[0].slice(0, end);
+    if (link.length <= MAX_LINK && JOIN_LINK.test(link)) return link;
   }
   return null;
 }
@@ -396,6 +440,7 @@ export function eventsBetween(cal: ParsedCalendar, from: number, to: number, loc
   }
 
   const out: CalendarEvent[] = [];
+  let budget = MAX_DATES_PER_FEED;
   const push = (e: VEvent, startWall: Wall, zone: string) => {
     const span = length(e, localTz);
     const start = zonedToUtc(startWall, zone);
@@ -413,21 +458,35 @@ export function eventsBetween(cal: ParsedCalendar, from: number, to: number, loc
       continue;
     }
 
-    const first = zonedToUtc(e.start.wall, zone);
     const until = e.rule.until
       ? e.rule.until.date
         ? zonedToUtc(addDays(e.rule.until.wall, 1), zone) - 1
         : zonedToUtc(e.rule.until.wall, e.rule.until.zone ?? zone)
       : Infinity;
+    // Wall times compare without a zone: only dates near the window or UNTIL need Intl.
+    const span = length(e, localTz);
+    const early = from - span.ms - span.days * DAY_MS - ZONE_SLACK_MS;
+    if (until < early) continue;
+    const startWall = wallMs(e.start.wall);
     const excluded = new Set(e.exdates.map((x) => {
       const t = parseTime(x.value, x.params);
       return t ? zonedToUtc(t.wall, t.date ? zone : t.zone ?? zone) : NaN;
     }));
 
     let n = 0;
-    for (const wall of candidates(e.rule, e.start.wall)) {
+    let made = 0;
+    const firstK = firstPeriod(e.rule, e.start.wall, Math.floor(early / DAY_MS));
+    for (const wall of candidates(e.rule, e.start.wall, firstK)) {
+      if (++made > MAX_DATES_PER_EVENT || --budget < 0) break;
+      const rough = wallMs(wall);
+      if (rough < startWall) continue;
+      if (rough - ZONE_SLACK_MS > until) break;
+      if (rough < early && rough + ZONE_SLACK_MS < until) {
+        n++;
+        if (e.rule.count != null && n > e.rule.count) break;
+        continue;
+      }
       const ms = zonedToUtc(wall, zone);
-      if (ms < first) continue;
       if (ms > until) break;
       n++;
       if (e.rule.count != null && n > e.rule.count) break;
@@ -435,6 +494,7 @@ export function eventsBetween(cal: ParsedCalendar, from: number, to: number, loc
       if (excluded.has(ms) || moved.has(key(e.uid, ms))) continue;
       push(e, wall, zone);
     }
+    if (budget < 0) break;
   }
   return out.sort((a, b) => a.start - b.start || a.end - b.end);
 }

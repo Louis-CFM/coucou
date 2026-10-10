@@ -103,6 +103,7 @@
 		541AF30CF808CC0FC1B8D97D /* ElevenLabsTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046F9CD91704C34AE5BE9393 /* ElevenLabsTTS.swift */; };
 		56BE8C733F10A030A638FB60 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */; };
 		59FABCC0B6794FE95319825C /* CoucouNotificationContent.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D6DF93125491729E14636AD8 /* CoucouNotificationContent.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5A30DF00FA19DC91F0DB79F6 /* CalendarJoinLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB0FADFF54724C51F98EAE9 /* CalendarJoinLink.swift */; };
 		5B9A00AFB0837731FA678E4E /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
 		5C6D0BC8C546718CAA82BF90 /* MusicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F142FB3952B5F0639383047 /* MusicController.swift */; };
 		607E548D1DD274CD73FDC290 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACB4350729C6513824D1ADF /* ColorHex.swift */; };
@@ -124,6 +125,7 @@
 		68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		68C3ACC708B69035FD0CB8C4 /* TurnSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1C4152EBDBD7C24CABFFD7 /* TurnSnapshot.swift */; };
 		694AB4504CD65662E1681E5C /* ServicePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F0C229BD085D76EB3DD94DF /* ServicePublisher.swift */; };
+		69BB91C11CFFD63A0A850EB5 /* CalendarJoinLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB0FADFF54724C51F98EAE9 /* CalendarJoinLink.swift */; };
 		6A1AC92C431FA842928E8115 /* NotificationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB831F5623E699A2506698E /* NotificationViewController.swift */; };
 		6B4A9D635FD529CE1C2692B8 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACB4350729C6513824D1ADF /* ColorHex.swift */; };
 		6BB32D6B5E627555994DC3CB /* SpotterGeneration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4EF48A44D82B5422E631FE0 /* SpotterGeneration.swift */; };
@@ -499,6 +501,7 @@
 		EBB84A66045EB20CAC93A8A6 /* AskQuestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskQuestion.swift; sourceTree = "<group>"; };
 		EDC1DEBFCAEBE6F0EEB865F3 /* EntityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityResolver.swift; sourceTree = "<group>"; };
 		EE60A834934474CDAE022FF8 /* SearchAndSpotlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchAndSpotlight.swift; sourceTree = "<group>"; };
+		EEB0FADFF54724C51F98EAE9 /* CalendarJoinLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarJoinLink.swift; sourceTree = "<group>"; };
 		F0E2C3ACD815230A0ECAB014 /* EnergyVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyVAD.swift; sourceTree = "<group>"; };
 		F1064AD8471C51AFF4F12258 /* SharedSessions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSessions.swift; sourceTree = "<group>"; };
 		F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchBuddyApp.swift; sourceTree = "<group>"; };
@@ -536,6 +539,7 @@
 				EBB84A66045EB20CAC93A8A6 /* AskQuestion.swift */,
 				A29F4C0B02BE91654D02AA0C /* BotCanvasView.swift */,
 				3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */,
+				EEB0FADFF54724C51F98EAE9 /* CalendarJoinLink.swift */,
 				D9B356A12970A1E1FF99C55D /* CalendarWatcher.swift */,
 				D797CC384B5BC70D34F121BC /* ChatMarkdown.swift */,
 				BFE88A53AEAA637F866D479D /* ChatMarkdownView.swift */,
@@ -981,6 +985,7 @@
 				CD8DECA66B9E09C97E469DB9 /* BotCanvasView.swift in Sources */,
 				845D762E9F4F0AD0D5FCEDF4 /* BotEngine.swift in Sources */,
 				4F1E0B3C838DA3CD6F864BC0 /* CalcomPoller.swift in Sources */,
+				69BB91C11CFFD63A0A850EB5 /* CalendarJoinLink.swift in Sources */,
 				AE88CF1BB37FE5522D224358 /* CalendarWatcher.swift in Sources */,
 				8FC5907E9506DC79EB1DDC3C /* ChatMarkdown.swift in Sources */,
 				4976F8BF814D6F817370F1D8 /* ChatMarkdownView.swift in Sources */,
@@ -1173,6 +1178,7 @@
 				651FA3F09608DE5D02D61CCE /* BotCanvasView.swift in Sources */,
 				B314F09AD7924387D0E04B45 /* BotEngine.swift in Sources */,
 				1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */,
+				5A30DF00FA19DC91F0DB79F6 /* CalendarJoinLink.swift in Sources */,
 				DAC36C6C5B8C7A6C5FC8AD37 /* CalendarWatcher.swift in Sources */,
 				B2D86BE268D6F4C86BD0C446 /* ChatMarkdown.swift in Sources */,
 				733FCC6A45DE963EF2024B4E /* ChatMarkdownView.swift in Sources */,

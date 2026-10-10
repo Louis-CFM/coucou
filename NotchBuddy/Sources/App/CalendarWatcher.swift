@@ -42,10 +42,6 @@ final class CalendarWatcher {
 
     private static let refreshInterval: TimeInterval = 300
     private static let clearAfterStart: TimeInterval = 60
-    private static let joinPattern = try! NSRegularExpression(
-        pattern: #"https://(?:meet\.google\.com/[a-z0-9-]+|(?:[\w-]+\.)?zoom\.us/(?:j|my|w|s)/[^\s"<>\\]+|teams\.microsoft\.com/l/meetup-join/[^\s"<>\\]+|teams\.live\.com/meet/[^\s"<>\\]+)"#,
-        options: [.caseInsensitive])
-
     private let store = EKEventStore()
     private var refreshTimer: Timer?
     private var reminderTimer: Timer?
@@ -130,14 +126,7 @@ final class CalendarWatcher {
 
     /// The first Meet, Zoom or Teams link in these texts, in order.
     static func joinURL(_ texts: String?...) -> URL? {
-        for text in texts.compactMap({ $0 }) {
-            let range = NSRange(text.startIndex..., in: text)
-            guard let match = joinPattern.firstMatch(in: text, range: range),
-                  let r = Range(match.range, in: text) else { continue }
-            let link = String(text[r]).replacingOccurrences(of: #"[).,;]+$"#, with: "", options: .regularExpression)
-            if let url = URL(string: link) { return url }
-        }
-        return nil
+        CalendarJoinLink.find(texts)
     }
 
     private func label(_ calendar: EKCalendar) -> String {

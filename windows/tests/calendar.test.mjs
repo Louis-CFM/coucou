@@ -154,6 +154,127 @@ test("a time skipped when clocks go forward moves forward", () => {
   assert.equal(iso(ev[0].start), "2026-03-29T01:30:00.000Z"); // 04:30 EEST
 });
 
+// ── Far from DTSTART ──────────────────────────────────────────────────────────
+
+// A series that started long ago is not walked from its first day: the window is
+// reached arithmetically. The expected rows are what the walk from DTSTART gave.
+const FAR_CASES = [
+  ["daily from 1900", "2026-10-12T12:00:00Z", HEL, feed(["UID:a", "SUMMARY:a", "DTSTART;TZID=Europe/Paris:19000101T090000", "DTEND;TZID=Europe/Paris:19000101T093000", "RRULE:FREQ=DAILY"])],
+  ["weekly BYDAY interval 2 from 2015", "2026-10-12T12:00:00Z", HEL, feed(["UID:b", "SUMMARY:b", "DTSTART;TZID=Europe/Helsinki:20150105T100000", "DTEND;TZID=Europe/Helsinki:20150105T110000", "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TU,FR"])],
+  ["weekly BYDAY interval 2 other phase", "2026-10-19T12:00:00Z", HEL, feed(["UID:b2", "SUMMARY:b", "DTSTART;TZID=Europe/Helsinki:20150105T100000", "DTEND;TZID=Europe/Helsinki:20150105T110000", "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TU,FR;WKST=SU"])],
+  ["monthly 2nd Monday from 2010", "2026-10-12T05:00:00Z", HEL, feed(["UID:c", "SUMMARY:c", "DTSTART;TZID=America/New_York:20100111T080000", "DTEND;TZID=America/New_York:20100111T090000", "RRULE:FREQ=MONTHLY;BYDAY=2MO"])],
+  ["monthly last day interval 5", "2026-07-31T05:00:00Z", HEL, feed(["UID:c2", "SUMMARY:c", "DTSTART:19990131T080000Z", "DURATION:PT1H", "RRULE:FREQ=MONTHLY;INTERVAL=5;BYMONTHDAY=-1"])],
+  ["yearly BYMONTH BYMONTHDAY from 1990", "2026-10-12T05:00:00Z", HEL, feed(["UID:d", "SUMMARY:d", "DTSTART;VALUE=DATE:19901012", "RRULE:FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=12,13"])],
+  ["yearly interval 4 Feb 29", "2028-02-29T05:00:00Z", HEL, feed(["UID:d2", "SUMMARY:d", "DTSTART;TZID=Europe/Helsinki:19960229T120000", "DTEND;TZID=Europe/Helsinki:19960229T130000", "RRULE:FREQ=YEARLY;INTERVAL=4"])],
+  ["daily COUNT ends today", "2026-10-12T12:00:00Z", HEL, feed(["UID:e", "SUMMARY:e", "DTSTART;TZID=Europe/Helsinki:20150101T090000", "DTEND;TZID=Europe/Helsinki:20150101T091500", "RRULE:FREQ=DAILY;COUNT=4303"])],
+  ["daily COUNT reaches past window", "2026-10-12T12:00:00Z", HEL, feed(["UID:e2", "SUMMARY:e", "DTSTART;TZID=Europe/Helsinki:20150101T090000", "DTEND;TZID=Europe/Helsinki:20150101T091500", "RRULE:FREQ=DAILY;COUNT=5000"])],
+  ["daily UNTIL today", "2026-10-12T12:00:00Z", HEL, feed(["UID:f", "SUMMARY:f", "DTSTART;TZID=Europe/Helsinki:20000101T090000", "DTEND;TZID=Europe/Helsinki:20000101T091500", "RRULE:FREQ=DAILY;UNTIL=20261012T235959Z"])],
+  ["daily UNTIL long gone", "2026-10-12T12:00:00Z", HEL, feed(["UID:f2", "SUMMARY:f", "DTSTART;TZID=Europe/Helsinki:20000101T090000", "DTEND;TZID=Europe/Helsinki:20000101T091500", "RRULE:FREQ=DAILY;UNTIL=20100101"])],
+  ["daily interval 3 from 1950", "2026-10-12T12:00:00Z", HEL, feed(["UID:g", "SUMMARY:g", "DTSTART;TZID=Europe/Helsinki:19500101T070000", "DTEND;TZID=Europe/Helsinki:19500101T080000", "RRULE:FREQ=DAILY;INTERVAL=3"])],
+  ["DST end in Helsinki, repeated hour", "2026-10-25T12:00:00Z", HEL, feed(["UID:h", "SUMMARY:h", "DTSTART;TZID=Europe/Helsinki:19800101T033000", "DTEND;TZID=Europe/Helsinki:19800101T040000", "RRULE:FREQ=DAILY"])],
+  ["DST start in New York, skipped hour", "2027-03-14T12:00:00Z", "America/New_York", feed(["UID:h2", "SUMMARY:h", "DTSTART;TZID=America/New_York:19900101T023000", "DTEND;TZID=America/New_York:19900101T030000", "RRULE:FREQ=DAILY"])],
+  ["EXDATE and moved instance", "2026-10-12T12:00:00Z", HEL, feed(
+    ["UID:i", "SUMMARY:i", "DTSTART;TZID=Europe/Helsinki:20000103T090000", "DTEND;TZID=Europe/Helsinki:20000103T100000", "RRULE:FREQ=DAILY", "EXDATE;TZID=Europe/Helsinki:20261012T090000"],
+    ["UID:i", "SUMMARY:i moved", "RECURRENCE-ID;TZID=Europe/Helsinki:20261013T090000", "DTSTART;TZID=Europe/Helsinki:20261013T150000", "DTEND;TZID=Europe/Helsinki:20261013T160000"])],
+  ["weekly started in the window", "2026-10-12T12:00:00Z", HEL, feed(["UID:j", "SUMMARY:j", "DTSTART;TZID=Europe/Helsinki:20261013T090000", "DTEND;TZID=Europe/Helsinki:20261013T100000", "RRULE:FREQ=WEEKLY"])],
+  ["multi-day all-day yearly", "2026-12-25T12:00:00Z", HEL, feed(["UID:k", "SUMMARY:k", "DTSTART;VALUE=DATE:19801224", "DTEND;VALUE=DATE:19801227", "RRULE:FREQ=YEARLY"])],
+];
+
+const FAR_EXPECTED = {
+  "daily from 1900": [
+    "a|2026-10-12T07:00:00.000Z|2026-10-12T07:30:00.000Z",
+    "a|2026-10-13T07:00:00.000Z|2026-10-13T07:30:00.000Z"
+  ],
+  "weekly BYDAY interval 2 from 2015": [
+    "b|2026-10-12T07:00:00.000Z|2026-10-12T08:00:00.000Z",
+    "b|2026-10-13T07:00:00.000Z|2026-10-13T08:00:00.000Z"
+  ],
+  "weekly BYDAY interval 2 other phase": [],
+  "monthly 2nd Monday from 2010": [
+    "c|2026-10-12T12:00:00.000Z|2026-10-12T13:00:00.000Z"
+  ],
+  "monthly last day interval 5": [
+    "c|2026-07-31T08:00:00.000Z|2026-07-31T09:00:00.000Z"
+  ],
+  "yearly BYMONTH BYMONTHDAY from 1990": [
+    "d|2026-10-11T21:00:00.000Z|2026-10-12T21:00:00.000Z",
+    "d|2026-10-12T21:00:00.000Z|2026-10-13T21:00:00.000Z"
+  ],
+  "yearly interval 4 Feb 29": [
+    "d|2028-02-29T10:00:00.000Z|2028-02-29T11:00:00.000Z"
+  ],
+  "daily COUNT ends today": [
+    "e|2026-10-12T06:00:00.000Z|2026-10-12T06:15:00.000Z"
+  ],
+  "daily COUNT reaches past window": [
+    "e|2026-10-12T06:00:00.000Z|2026-10-12T06:15:00.000Z",
+    "e|2026-10-13T06:00:00.000Z|2026-10-13T06:15:00.000Z"
+  ],
+  "daily UNTIL today": [
+    "f|2026-10-12T06:00:00.000Z|2026-10-12T06:15:00.000Z"
+  ],
+  "daily UNTIL long gone": [],
+  "daily interval 3 from 1950": [
+    "g|2026-10-13T04:00:00.000Z|2026-10-13T05:00:00.000Z"
+  ],
+  "DST end in Helsinki, repeated hour": [
+    "h|2026-10-25T00:30:00.000Z|2026-10-25T01:00:00.000Z",
+    "h|2026-10-26T01:30:00.000Z|2026-10-26T02:00:00.000Z"
+  ],
+  "DST start in New York, skipped hour": [
+    "h|2027-03-14T07:30:00.000Z|2027-03-14T08:00:00.000Z",
+    "h|2027-03-15T06:30:00.000Z|2027-03-15T07:00:00.000Z"
+  ],
+  "EXDATE and moved instance": [
+    "i moved|2026-10-13T12:00:00.000Z|2026-10-13T13:00:00.000Z"
+  ],
+  "weekly started in the window": [
+    "j|2026-10-13T06:00:00.000Z|2026-10-13T07:00:00.000Z"
+  ],
+  "multi-day all-day yearly": [
+    "k|2026-12-23T22:00:00.000Z|2026-12-26T22:00:00.000Z"
+  ]
+};
+
+for (const [name, now, tz, text] of FAR_CASES) {
+  test(`far from DTSTART: ${name}`, () => {
+    const w = upcomingWindow(Date.parse(now), tz);
+    const ev = eventsBetween(parseIcs(text), w.from, w.to, tz);
+    assert.deepEqual(ev.map((e) => `${e.title}|${iso(e.start)}|${iso(e.end)}`), FAR_EXPECTED[name]);
+  });
+}
+
+const timed = (fn) => {
+  const t0 = performance.now();
+  const value = fn();
+  return { value, ms: performance.now() - t0 };
+};
+
+test("a rule built to expand forever stays fast", () => {
+  const w = upcomingWindow(Date.parse("2026-10-12T12:00:00Z"), HEL);
+  const rules = [
+    "FREQ=DAILY",
+    "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR,SA,SU",
+    "FREQ=YEARLY;BYMONTH=1,2,3,4,5,6,7,8,9,10,11,12;BYDAY=MO,TU,WE,TH,FR,SA,SU",
+    "FREQ=YEARLY;BYMONTH=1,2,3,4,5,6,7,8,9,10,11,12;BYDAY=MO,TU,WE,TH,FR,SA,SU;COUNT=100000000",
+  ];
+  for (const rule of rules) {
+    const text = feed(["UID:x", "SUMMARY:x", "DTSTART;TZID=Europe/Paris:01000101T090000", "DTEND;TZID=Europe/Paris:01000101T093000",
+      `RRULE:${rule}`]);
+    const { value, ms } = timed(() => eventsBetween(parseIcs(text), w.from, w.to, HEL));
+    assert.ok(ms < 100, `${rule}: ${ms.toFixed(0)} ms`);
+    if (!rule.includes("COUNT")) assert.equal(value.length, 2, rule);
+  }
+});
+
+test("a feed full of such rules stays fast", () => {
+  const w = upcomingWindow(Date.parse("2026-10-12T12:00:00Z"), HEL);
+  const many = Array.from({ length: 50 }, (_, i) => ["UID:x" + i, "SUMMARY:x", "DTSTART;TZID=Europe/Paris:01000101T090000",
+    "RRULE:FREQ=YEARLY;BYMONTH=1,2,3,4,5,6,7,8,9,10,11,12;BYDAY=MO,TU,WE,TH,FR,SA,SU;COUNT=100000000"]);
+  const { ms } = timed(() => eventsBetween(parseIcs(feed(...many)), w.from, w.to, HEL));
+  assert.ok(ms < 500, `${ms.toFixed(0)} ms`);
+});
+
 // ── Join links ────────────────────────────────────────────────────────────────
 
 test("a Meet, Zoom or Teams link is found where calendars put it", () => {
@@ -169,6 +290,18 @@ test("a Meet, Zoom or Teams link is found where calendars put it", () => {
     "DESCRIPTION:Notes\\nhttps://us02web.zoom.us/j/111", "X-GOOGLE-CONFERENCE:https://meet.google.com/aaa-bbbb-ccc"]),
     "2026-10-12T00:00:00Z", "2026-10-13T00:00:00Z");
   assert.equal(ev[0].joinUrl, "https://meet.google.com/aaa-bbbb-ccc");
+});
+
+test("a link made of punctuation does not stall, and an endless link is ignored", () => {
+  const dots = "https://zoom.us/j/" + ".".repeat(40_000) + "x";
+  const { value, ms } = timed(() => findJoinLink(dots));
+  assert.ok(ms < 50, `${ms.toFixed(0)} ms`);
+  assert.equal(value, null);
+  const trailing = timed(() => findJoinLink("https://zoom.us/j/123" + ").,;".repeat(10_000)));
+  assert.ok(trailing.ms < 50, `${trailing.ms.toFixed(0)} ms`);
+  assert.equal(trailing.value, "https://zoom.us/j/123");
+  assert.equal(findJoinLink("https://acme.zoom.us/j/" + "1".repeat(3000), "https://meet.google.com/abc-defg-hij"),
+    "https://meet.google.com/abc-defg-hij");
 });
 
 // ── The card and the reminder ─────────────────────────────────────────────────
