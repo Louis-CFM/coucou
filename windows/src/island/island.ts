@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -45,6 +45,8 @@ const modeOrder = (m: IslandMode) => (m === "hidden" ? 0 : m === "compact" ? 1 :
 
 export class Island {
   readonly fsm = new IslandStateMachine();
+  /** A file drag entered the island since the mouse button last went up. */
+  private fileDragSeen = false;
   /** Mochi on the desktop: his life cycle and the drag out of the island. */
   readonly desktop: DesktopLink;
 
@@ -537,7 +539,11 @@ export class Island {
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
         UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
+        this.fileDragSeen = true;
         this.alert("upload");
+        // Waking a hidden island passes through the home view, and leaving the
+        // drop views on the way switches the sequence off: switch it back on.
+        if (!UploadSeq.isActive) UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         break;
       }
       case "leave": {
@@ -561,6 +567,22 @@ export class Island {
         break;
       }
     }
+  }
+
+  /**
+   * The mouse button went up. If a file drag had already left the island
+   * without being dropped, it ended somewhere else: close the drop view rather
+   * than wait for a file that is never coming.
+   */
+  private onPointerReleased() {
+    // Only a release that ends a file drag counts: the "+" tab opens the same
+    // view with a plain click, and that release must leave it open.
+    const wasFileDrag = this.fileDragSeen;
+    this.fileDragSeen = false;
+    if (!wasFileDrag || State.fileDragOver || State.view !== "upload" || UploadSeq.dropped) return;
+    void Bridge.log("drag ended outside the island");
+    this.engine.animateMorph(0);
+    this.setView(State.defaultView());
   }
 
   /**
@@ -794,6 +816,7 @@ export class Island {
     });
 
     void onDragDrop((e) => this.onDragDrop(e));
+    void onEvent<null>("pointer-released", () => this.onPointerReleased());
 
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
