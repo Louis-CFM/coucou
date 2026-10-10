@@ -188,7 +188,7 @@ pub async fn send(
 
     let (tx, mut cancelled) = tokio::sync::oneshot::channel();
     *CANCEL.lock().unwrap() = Some(tx);
-    let mut stderr = child.stderr.take().expect("piped");
+    let stderr = drain_tail(child.stderr.take().expect("piped"));
     let mut lines = BufReader::new(child.stdout.take().expect("piped")).lines();
     let (mut session, mut answer, mut done) = (resume, String::new(), None);
     loop {
@@ -227,8 +227,7 @@ pub async fn send(
         Some(_) => answer.trim().to_string(),
         None => {
             // No result line: Claude Code's own words on stderr, as they are.
-            let mut err = String::new();
-            let _ = stderr.read_to_string(&mut err).await;
+            let err = stderr.await.unwrap_or_default();
             let last = err.lines().rev().map(str::trim).find(|l| !l.is_empty()).unwrap_or_default().to_string();
             return Err(if last.is_empty() { t("No response text.") } else { last });
         }
@@ -247,6 +246,31 @@ pub async fn send(
     Ok(ChatReply { text: answer })
 }
 
+/// What a turn keeps of stderr: its end, for the error message.
+const STDERR_KEPT: usize = 8 * 1024;
+
+/// Reads `stderr` as it comes, so a chatty one never fills the pipe and stalls the
+/// turn; keeps only its last `STDERR_KEPT` bytes.
+fn drain_tail<R>(mut stderr: R) -> tokio::task::JoinHandle<String>
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        let mut kept: Vec<u8> = Vec::new();
+        let mut buf = [0u8; 4096];
+        while let Ok(n) = stderr.read(&mut buf).await {
+            if n == 0 {
+                break;
+            }
+            kept.extend_from_slice(&buf[..n]);
+            if kept.len() > STDERR_KEPT {
+                kept.drain(..kept.len() - STDERR_KEPT);
+            }
+        }
+        String::from_utf8_lossy(&kept).into_owned()
+    })
+}
+
 /// Asks Claude Code to stop, so it can end its MCP servers; only its own PID.
 fn stop(child: &mut tokio::process::Child) {
     #[cfg(target_os = "linux")]
@@ -260,6 +284,30 @@ fn stop(child: &mut tokio::process::Child) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn a_chatty_stderr_does_not_stall_the_answer() {
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        rt.block_on(async {
+            // More than a pipe buffer on stderr before the answer reaches stdout.
+            let mut child = tokio::process::Command::new("sh")
+                .args(["-c", "head -c 300000 /dev/zero | tr '\\0' x >&2; echo >&2; echo >&2 last words; echo answer"])
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            let tail = drain_tail(child.stderr.take().unwrap());
+            let mut out = String::new();
+            let mut stdout = child.stdout.take().unwrap();
+            let read = tokio::time::timeout(std::time::Duration::from_secs(5), stdout.read_to_string(&mut out)).await;
+            assert!(read.is_ok(), "stdout ended");
+            assert_eq!(out, "answer\n");
+            let err = tail.await.unwrap();
+            assert!(err.len() <= STDERR_KEPT);
+            assert!(err.trim_end().ends_with("last words"));
+        });
+    }
 
     /// Lines as `claude -p --output-format stream-json --verbose
     /// --include-partial-messages` 2.1.296 writes them, trimmed.
