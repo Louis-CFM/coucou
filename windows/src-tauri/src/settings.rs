@@ -105,7 +105,7 @@ impl Default for Settings {
             auto_close_interval: 15.0,
             open_on_hover: false,
             beat_sync: false,
-            chat_memory: true,
+            chat_memory: false,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),

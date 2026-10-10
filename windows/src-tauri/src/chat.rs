@@ -59,6 +59,9 @@ struct Conversation {
     native: Vec<Value>,
     /// `{"role", "content": text}` turns, the same whoever answered.
     plain: Vec<Value>,
+    /// A file or window the user did not write has been sent in this conversation: it may
+    /// carry instructions, so nothing that can write is allowed until "New chat".
+    untrusted: bool,
 }
 
 /// What a provider needs to build one turn.
@@ -69,9 +72,16 @@ pub struct Turn {
     pub first: bool,
     /// The earlier turns, in this provider's format.
     pub history: Vec<Value>,
+    /// See `Conversation::untrusted`.
+    pub untrusted: bool,
 }
 
 impl Chat {
+    /// Called when a file or window goes into a question, even if that turn then fails.
+    pub fn note_untrusted(&self) {
+        self.inner.lock().unwrap().untrusted = true;
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -91,6 +101,7 @@ impl Chat {
             provider: provider.to_string(),
             first: c.plain.is_empty(),
             history: c.native.clone(),
+            untrusted: c.untrusted,
         }
     }
 
@@ -213,6 +224,9 @@ pub async fn send(
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
+    if context.is_some() {
+        chat.note_untrusted();
+    }
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
     if provider == claude_cli::ID {

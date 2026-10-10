@@ -651,6 +651,14 @@ Notes:
 - **Beat sync** needs PipeWire with `pw-record` on the `PATH`. It listens to the
   default output, never the microphone, and only while a player plays and
   *Settings → General → Dance to the beat* is on.
+- **Claude Code chat memory** is off by default. *Settings → Chat → Chat memory* lets the
+  chat read the notes folder (`COUCOU_MEMORY_DIR`, default the Obsidian vault's `.agent/memory`)
+  and nothing else on disk. It can also write notes there, but only in a chat that has not taken
+  in a dropped file or window (those may carry instructions); *New chat* lifts that. Grep and
+  Glob are not available in this mode.
+- **GitHub from `gh`**: with no token in Settings, `COUCOU_GH_CLI=1` lets the pill use your
+  `gh auth token`. It is off by default because a `gh` login usually has wide scopes
+  (`repo`, `workflow`, `read:org`); a read-only fine-grained token in Settings is the safer choice.
 - To see which one you have: `echo $XDG_SESSION_TYPE` (`x11` or `wayland`) and
   `echo $XDG_CURRENT_DESKTOP`. `COUCOU_X11=0`, `COUCOU_DOCK=0` and
   `COUCOU_LAYER_SHELL=0` (see above) force one behaviour when a setup misbehaves.

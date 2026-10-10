@@ -43,7 +43,8 @@ pub fn get(key: &str) -> Option<String> {
 // (`gh auth token`), asked each time it is needed, kept in memory for a few
 // minutes and never written anywhere: it is only ever sent to api.github.com,
 // like the stored one. A token stored in Settings always wins.
-// COUCOU_GH_CLI=0 turns this off.
+// Off unless COUCOU_GH_CLI=1: a `gh` login usually carries wide scopes (repo, workflow, read:org),
+// far more than the pill needs, so a read-only token in Settings is the safer default.
 
 #[cfg(unix)]
 fn gh_cli_token() -> Option<String> {
@@ -55,7 +56,7 @@ fn gh_cli_token() -> Option<String> {
     const FOUND_FOR: Duration = Duration::from_secs(600);
     const MISSING_FOR: Duration = Duration::from_secs(60);
 
-    if std::env::var("COUCOU_GH_CLI").is_ok_and(|v| v == "0") {
+    if !std::env::var("COUCOU_GH_CLI").is_ok_and(|v| v == "1") {
         return None;
     }
     let mut cache = CACHE.lock().ok()?;

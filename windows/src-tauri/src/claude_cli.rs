@@ -90,18 +90,31 @@ fn prompt(history: &[Value], question: &str) -> String {
 /// What the user typed, plus the file or window they dropped on Mochi.
 fn question(first: bool, context: Option<&ChatContext>, query: &str) -> String {
     match context.filter(|_| first) {
-        Some(ChatContext::File { name, path }) => match std::fs::read(path) {
-            Ok(bytes) if std::str::from_utf8(&bytes).is_ok() => {
-                let text = String::from_utf8_lossy(&bytes);
+        Some(ChatContext::File { name, path }) => match read_text_prefix(path) {
+            Some(text) => {
                 let shown: String = text.chars().take(MAX_INLINE_CHARS).collect();
                 format!("File: {name}\n\n```\n{shown}\n```\n\n{query}")
             }
-            _ => format!("File: {name} (binary, not shown)\n\n{query}"),
+            None => format!("File: {name} (binary, not shown)\n\n{query}"),
         },
         Some(ChatContext::Window { app_name, title, url }) => {
             format!("{}\n\n{query}", chat::window_line(app_name, title, url.as_deref()))
         }
         None => query.to_string(),
+    }
+}
+
+/// The start of a text file, at most `MAX_INLINE_CHARS` characters' worth of bytes: a huge
+/// file is never read whole. `None` for a missing, unreadable or binary file. A multi-byte
+/// character cut by the byte limit is dropped, not mistaken for binary.
+fn read_text_prefix(path: &str) -> Option<String> {
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    std::fs::File::open(path).ok()?.take(MAX_INLINE_CHARS as u64 * 4).read_to_end(&mut bytes).ok()?;
+    match std::str::from_utf8(&bytes) {
+        Ok(text) => Some(text.to_string()),
+        Err(e) if e.error_len().is_none() => std::str::from_utf8(&bytes[..e.valid_up_to()]).ok().map(str::to_string),
+        Err(_) => None,
     }
 }
 
@@ -158,7 +171,7 @@ pub fn memory_dir() -> Option<PathBuf> {
 }
 
 /// The system prompt with the memory instructions and index added.
-fn memory_prompt(base: &str, dir: &std::path::Path) -> String {
+fn memory_prompt(base: &str, dir: &std::path::Path, writable: bool) -> String {
     let mut index = std::fs::read_to_string(dir.join("MEMORY.md")).unwrap_or_default();
     if index.len() > MAX_INDEX_BYTES {
         let mut cut = MAX_INDEX_BYTES;
@@ -167,18 +180,43 @@ fn memory_prompt(base: &str, dir: &std::path::Path) -> String {
         }
         index.truncate(cut);
     }
+    let saving = if writable {
+        "When you learn something worth keeping (a preference, a decision, the state of a project), save it: first check the index \
+for a note on it and update that, otherwise create one note per fact in the same folder, as a file with this frontmatter \
+(name, description, type: user | feedback | project | reference) and then the content, and add or update its one line in MEMORY.md \
+(`- [Title](file.md) — one-line hook`). Never write anywhere but that folder, and tell the user when you saved something."
+    } else {
+        "The notes are read-only in this chat, because it contains a file or window the user did not write: do not try to save anything."
+    };
     format!(
         "{base}\n\n\
 You share the user's persistent memory with their other Claude sessions: Markdown notes in {dir}. \
 Its index, MEMORY.md, is below. Before answering anything that may depend on what is known about the user, \
-their projects or their preferences, Read the notes the index points to. \
-When you learn something worth keeping (a preference, a decision, the state of a project), save it: first check the index \
-for a note on it and update that, otherwise create one note per fact in the same folder, as a file with this frontmatter \
-(name, description, type: user | feedback | project | reference) and then the content, and add or update its one line in MEMORY.md \
-(`- [Title](file.md) — one-line hook`). Never write anywhere but that folder, and tell the user when you saved something.\n\n\
+their projects or their preferences, Read the notes the index points to. {saving}\n\n\
 --- MEMORY.md ---\n{index}",
         dir = dir.display(),
     )
+}
+
+/// The `claude` arguments for a chat with memory: one folder is readable, and writable only when
+/// `writable`. Every rule names the folder (`//` = absolute path); a bare `Read` would allow every
+/// file the user can read. Grep and Glob are left out: their rules do not take the folder.
+fn memory_args(dir: &std::path::Path, writable: bool) -> Vec<String> {
+    let rule = format!("/{}/**", dir.display());
+    let mut args: Vec<String> = vec![
+        "--tools".into(),
+        if writable { "Read,Write,Edit" } else { "Read" }.into(),
+        "--permission-mode".into(),
+        "dontAsk".into(),
+        "--add-dir".into(),
+        dir.display().to_string(),
+        "--allowedTools".into(),
+        format!("Read({rule})"),
+    ];
+    if writable {
+        args.push(format!("Edit({rule})"));
+    }
+    args
 }
 
 pub async fn send(
@@ -196,8 +234,10 @@ pub async fn send(
     let input = prompt(&turn.history, &asked);
 
     let memory_dir = memory.then(memory_dir).flatten();
+    // Writing is off once the conversation has taken in a file or window the user did not write.
+    let writable = !turn.untrusted;
     let system = match &memory_dir {
-        Some(dir) => memory_prompt(&chat::system_prompt(false), dir),
+        Some(dir) => memory_prompt(&chat::system_prompt(false), dir, writable),
         None => chat::system_prompt(false),
     };
 
@@ -215,17 +255,10 @@ pub async fn send(
     ])
     .arg(&system);
     match &memory_dir {
-        // Read anywhere under the folder, write only there; nothing else is allowed.
+        // The folder is the working directory and the only place that can be read; it is the only
+        // place that can be written, and only while nothing untrusted is in the conversation.
         Some(dir) => {
-            let rule = format!("/{}/**", dir.display());
-            cmd.args(["--tools", "Read,Grep,Glob,Write,Edit"])
-                .args(["--permission-mode", "dontAsk"])
-                .arg("--add-dir")
-                .arg(dir)
-                .arg("--allowedTools")
-                .args(["Read", "Grep", "Glob"])
-                .arg(format!("Write({rule})"))
-                .arg(format!("Edit({rule})"));
+            cmd.current_dir(dir).args(memory_args(dir, writable));
         }
         None => {
             cmd.args(["--tools", ""]);
@@ -323,11 +356,47 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("coucou-mem-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("MEMORY.md"), "- [A](a.md) — hook\n").unwrap();
-        let p = memory_prompt("You are Mochi.", &dir);
+        let p = memory_prompt("You are Mochi.", &dir, true);
         assert!(p.starts_with("You are Mochi."));
         assert!(p.contains(&dir.display().to_string()));
         assert!(p.ends_with("- [A](a.md) — hook\n"));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn memory_rules_always_name_the_folder() {
+        let dir = std::path::Path::new("/home/u/Notes Vault/.agent/memory");
+        for writable in [true, false] {
+            let args = memory_args(dir, writable);
+            let allowed = &args[args.iter().position(|a| a == "--allowedTools").unwrap() + 1..];
+            assert!(allowed.iter().all(|a| a.contains("//home/u/Notes Vault/.agent/memory/**")), "{allowed:?}");
+            assert!(!allowed.iter().any(|a| a == "Read" || a == "Grep" || a == "Glob" || a.starts_with("Write(")), "{allowed:?}");
+        }
+    }
+
+    #[test]
+    fn untrusted_conversations_cannot_write() {
+        let dir = std::path::Path::new("/m");
+        let ro = memory_args(dir, false);
+        assert!(ro.iter().any(|a| a == "Read") && !ro.iter().any(|a| a.contains("Edit") || a.contains("Write")));
+        let rw = memory_args(dir, true);
+        assert!(rw.iter().any(|a| a == "Read,Write,Edit") && rw.iter().any(|a| a.starts_with("Edit(")));
+        let dir = std::env::temp_dir().join(format!("coucou-memro-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(memory_prompt("b", &dir, false).contains("read-only"));
+        assert!(!memory_prompt("b", &dir, false).contains("save it"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_dropped_file_is_read_in_bounded_form() {
+        let path = std::env::temp_dir().join(format!("coucou-read-{}.txt", std::process::id()));
+        std::fs::write(&path, "é".repeat(MAX_INLINE_CHARS * 3)).unwrap();
+        let text = read_text_prefix(path.to_str().unwrap()).unwrap();
+        assert!(text.len() <= MAX_INLINE_CHARS * 4 && text.chars().all(|c| c == 'é'));
+        std::fs::write(&path, [0u8, 159, 146, 150]).unwrap();
+        assert!(read_text_prefix(path.to_str().unwrap()).is_none());
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
