@@ -240,18 +240,23 @@ struct ClaudeProcess {
 /// rather than from its next event. Each is remembered by `pid-<pid>` for
 /// "Open terminal" until its hook names its session.
 #[tauri::command]
-fn claude_sessions() -> Vec<ClaudeProcess> {
-    platform::claude_processes()
-        .into_iter()
-        .map(|(pid, cwd)| {
-            let mut owners = vec![pid];
-            owners.extend(platform::window_owners(&platform::process_ancestors(pid)));
-            session_window::remember(&format!("pid-{pid}"), owners);
-            let name = platform::tmux_session_name(pid)
-                .unwrap_or_else(|| session_window::folder_name(&cwd).to_string());
-            ClaudeProcess { pid, cwd, name }
-        })
-        .collect()
+async fn claude_sessions() -> Vec<ClaudeProcess> {
+    // Off the main thread: each tmux question can take up to 2 s.
+    tauri::async_runtime::spawn_blocking(|| {
+        platform::claude_processes()
+            .into_iter()
+            .map(|(pid, cwd)| {
+                let mut owners = vec![pid];
+                owners.extend(platform::window_owners(&platform::process_ancestors(pid)));
+                session_window::remember(&format!("pid-{pid}"), owners);
+                let name = platform::tmux_session_name(pid)
+                    .unwrap_or_else(|| session_window::folder_name(&cwd).to_string());
+                ClaudeProcess { pid, cwd, name }
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session
