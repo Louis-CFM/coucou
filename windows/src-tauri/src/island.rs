@@ -467,7 +467,14 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
             Some((x0, y0, x1 - x0, y1 - y0))
         }
     };
-    platform::set_input_region(&win, region);
+    // `set_input_region` reaches into raw GTK/gtk-layer-shell FFI through
+    // `win.gtk_window()`, which Tauri documents as main-thread-only — but this
+    // function is reached from `#[tauri::command]` handlers, which run on a
+    // Tokio worker thread, never the GTK main thread. Calling GTK off-thread
+    // is a race that can corrupt GDK's Wayland state (seen as a
+    // `gdk_wayland_window_get_wl_surface` assertion followed by a fatal
+    // Wayland protocol error and the compositor killing the connection).
+    let _ = app.run_on_main_thread(move || platform::set_input_region(&win, region));
 }
 
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {

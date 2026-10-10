@@ -166,10 +166,16 @@ fn set_island_rect(app: AppHandle, shared: State<Shared>, x: f64, y: f64, width:
 #[tauri::command]
 fn focus_window(app: AppHandle, focused: bool) {
     let Some(win) = island::window(&app) else { return };
-    platform::set_activating(&win, focused);
-    if focused {
-        let _ = win.set_focus();
-    }
+    // `set_activating` touches raw GTK FFI, which Tauri documents as
+    // main-thread-only; this command runs on a Tokio worker thread, so the
+    // GTK call (and the `set_focus` that follows it) must be dispatched back
+    // to the main thread rather than made directly here.
+    let _ = app.run_on_main_thread(move || {
+        platform::set_activating(&win, focused);
+        if focused {
+            let _ = win.set_focus();
+        }
+    });
 }
 
 #[tauri::command]

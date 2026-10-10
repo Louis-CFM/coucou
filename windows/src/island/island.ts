@@ -351,7 +351,15 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
-    if (mode === "expanded") Sound.play("open");
+    if (mode === "expanded") {
+      Sound.play("open");
+      // Keyboard-interactivity must be elevated for the whole expanded
+      // window, not just while the chat view happens to be open: on Linux a
+      // gtk-layer-shell surface in keyboard-mode "none" never receives any
+      // key event at all — Escape included — so Escape and click-outside
+      // only ever worked if chat had been opened first before this.
+      void Bridge.focusWindow(true);
+    }
     if (prev === "expanded") {
       Sound.play("close");
       // A folded card is still waiting: it keeps the island pinned.
@@ -1159,16 +1167,13 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // Window-level keyboard focus is now handled once in `setMode` for the
+    // whole expanded window (see there for why) — here we only still need to
+    // give the caret to the chat's own text field once it is on screen.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
       this.lastSyncedView = State.view;
       if (State.view === "prompt") {
-        void Bridge.focusWindow(true);
         window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
-      } else if (wasChat) {
-        void Bridge.focusWindow(false);
       }
     }
 
