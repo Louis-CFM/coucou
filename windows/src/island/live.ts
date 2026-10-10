@@ -10,6 +10,7 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import { State } from "../core/state";
+import { Sound } from "../core/sound";
 import { ICONS } from "../views/icons";
 import { h, svg, clear } from "../views/dom";
 import { N_, t } from "../i18n/i18n";
@@ -46,15 +47,23 @@ export interface LiveHost {
 }
 
 let endTimer: number | null = null;
+/** A ringing call rings until its card goes. */
+let ringTimer: number | null = null;
 
-export function showLive(host: LiveHost, e: LiveEvent) {
-  const ms = DURATION[e.kind] ?? 1500;
+function stopRing() {
+  if (ringTimer != null) window.clearInterval(ringTimer);
+  ringTimer = null;
+}
+
+export function showLive(host: LiveHost, e: LiveEvent, duration?: number) {
+  const ms = duration ?? DURATION[e.kind] ?? 1500;
   const wasShowing = Live.current != null;
   Live.current = e;
   Live.until = performance.now() + ms;
   if (endTimer != null) window.clearTimeout(endTimer);
   endTimer = window.setTimeout(() => {
     endTimer = null;
+    stopRing();
     Live.current = null;
     host.resize();
     State.notify();
@@ -64,8 +73,25 @@ export function showLive(host: LiveHost, e: LiveEvent) {
   State.notify();
 }
 
+/** The call whose card is up, so it goes when the call ends. */
+let ringing: number | null = null;
+/** A call's card stays while it rings, at most this long. */
+const CALL_MAX_MS = 90_000;
+
+export function endLive(host: LiveHost) {
+  if (endTimer != null) window.clearTimeout(endTimer);
+  endTimer = null;
+  stopRing();
+  Live.current = null;
+  ringing = null;
+  host.resize();
+  State.notify();
+}
+
 export interface ToastEvent {
+  id: number;
   kind: "call" | "message" | "app";
+  who: string;
   app: string;
   title: string;
   body: string;
@@ -75,11 +101,24 @@ export function registerLiveHandlers(host: LiveHost) {
   void onEvent<LiveEvent>("live", (e) => showLive(host, e));
   // Another app's notification (notify.rs): who, and the first line.
   void onEvent<ToastEvent>("toast", (n) => {
-    const who = n.title || n.app;
-    const text = n.kind === "call"
-      ? t("{0} is calling", { 0: who })
-      : [who, n.body].filter((x) => x).join(" · ");
+    const who = n.who || n.title || n.app;
+    if (n.kind === "call") {
+      // Stays while it rings: Phone Link takes the toast away when it ends.
+      ringing = n.id;
+      stopRing();
+      Sound.play("approval");
+      ringTimer = window.setInterval(() => Sound.play("approval"), 2200);
+      showLive(host, { kind: "call", level: null, muted: false, charging: false, text: t("{0} is calling", { 0: who }) }, CALL_MAX_MS);
+      return;
+    }
+    // A message never covers a ringing call.
+    if (ringing != null) return;
+    const text = [who, n.body].filter((x) => x).join(" · ");
+    Sound.play("pop");
     showLive(host, { kind: n.kind, level: null, muted: false, charging: false, text });
+  });
+  void onEvent<number>("toast-gone", (id) => {
+    if (id === ringing) endLive(host);
   });
 }
 
@@ -145,8 +184,9 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
       el.classList.toggle("phone", isText);
       if (isText && e.kind !== "phone") {
         label.textContent = e.text;
-        el.title = e.text;
-        el.onclick = null;
+        // A call opens Phone Link, where it is answered or declined.
+        el.title = e.kind === "call" ? t("Click to answer or decline in Phone Link") : e.text;
+        el.onclick = e.kind === "call" ? () => void Bridge.openPhoneLink() : null;
         return;
       }
       if (e.kind === "phone") {

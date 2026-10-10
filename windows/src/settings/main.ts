@@ -1055,7 +1055,7 @@ function iphoneSection(): HTMLElement {
     h("div", { class: "hint", text: t("Install the free ntfy app on the iPhone, subscribe to a long, hard-to-guess topic, and paste the same topic here. Anyone who knows the topic can read the alerts.") }),
     h("div", { class: "row" }, testBtn, testNote),
     ...item("pushOnlyWhenAway", N_("Only when I'm away"), N_("Alerts go to the phone only after a minute without keyboard or mouse: an agent finished, failed, or needs your answer.")),
-    ...item("notifications", N_("Notifications in the island"), N_("Your iPhone's calls and messages (through Microsoft Phone Link) and other apps' notifications, shown in the island and never stored. Needs the identity package: run identity\\make-identity.ps1 once, then click Allow.")),
+    ...item("notifications", N_("Notifications in the island"), N_("Your iPhone's calls and messages (through Microsoft Phone Link) and other apps' notifications, shown in the island and never stored. Windows asks once to allow it.")),
   );
 }
 

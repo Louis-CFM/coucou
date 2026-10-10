@@ -765,6 +765,8 @@ pub fn run() {
             #[cfg(windows)]
             sysevents::clipboard_copy,
             #[cfg(windows)]
+            notify::open_phone_link,
+            #[cfg(windows)]
             phone::phone_send,
             #[cfg(windows)]
             phone::phone_status,

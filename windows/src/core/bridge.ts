@@ -225,6 +225,8 @@ export const Bridge = {
   phonePush: (title: string, body: string, urgent: boolean, force = false) =>
     call<boolean>("phone_push", { title, body, urgent, force }),
   phoneSend: (text: string) => call<boolean>("phone_send", { text }),
+  /** Phone Link in front, where a call is answered or declined (notify.rs). */
+  openPhoneLink: () => call<boolean>("open_phone_link"),
   spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),
 };
 

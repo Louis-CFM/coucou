@@ -661,7 +661,7 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
-    if (State.mode === "compact" && Live.current) w = LIVE_W;
+    if (State.mode === "compact" && Live.current) w = Live.current.kind === "call" ? LIVE_W + 64 : LIVE_W;
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
