@@ -910,14 +910,14 @@ function generalSection(): HTMLElement {
 
   const paddingField = (side: keyof CompactPadding, label: string) => {
     const input = h("input", {
-      type: "number", min: "0", max: String(COMPACT_PADDING_MAX), step: "1",
+      type: "number", min: "0", max: String(COMPACT_PADDING_MAX), step: "0.5",
       value: String(Math.round(settings.compactPadding[side])),
       title: label,
     }) as HTMLInputElement;
     input.addEventListener("change", () => {
       const v = Number(input.value);
       const value = Number.isFinite(v) && input.value !== ""
-        ? Math.max(0, Math.min(COMPACT_PADDING_MAX, Math.round(v)))
+        ? Math.max(0, Math.min(COMPACT_PADDING_MAX, Math.round(v * 2) / 2))
         : COMPACT_PADDING[side];
       settings.compactPadding = { ...settings.compactPadding, [side]: value };
       input.value = String(value);

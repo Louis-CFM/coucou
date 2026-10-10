@@ -9,7 +9,7 @@ test("the default padding stays close to the shipped compact layout", () => {
   assert.deepEqual(DEFAULT_SETTINGS.compactPadding, COMPACT_PADDING);
   assert.deepEqual(islandSize("compact", "overview"), { w: 288, h: 32 });
   const p = botPosition("compact", "overview", 32);
-  assert.deepEqual([p.cx, p.cy], [38, 16]);
+  assert.deepEqual([p.cx, p.cy], [40, 16]);
 });
 
 test("each side moves only its own edge", () => {

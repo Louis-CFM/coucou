@@ -86,7 +86,7 @@ pub struct CompactPadding {
 
 impl Default for CompactPadding {
     fn default() -> Self {
-        Self { top: 6.0, right: 28.0, bottom: 6.0, left: 28.0 }
+        Self { top: 6.0, right: 25.5, bottom: 6.0, left: 30.0 }
     }
 }
 

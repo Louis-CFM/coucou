@@ -338,12 +338,22 @@ struct SettingsView: View {
                         .frame(width: 48)
                     Text("min without movement")
                 }
-                HStack(spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("Padding")
-                    paddingField("Top", $state.compactPaddingTop)
-                    paddingField("Right", $state.compactPaddingRight)
-                    paddingField("Bottom", $state.compactPaddingBottom)
-                    paddingField("Left", $state.compactPaddingLeft)
+                    Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                        GridRow {
+                            paddingLabel("Top")
+                            paddingField($state.compactPaddingTop)
+                            paddingLabel("Right")
+                            paddingField($state.compactPaddingRight)
+                        }
+                        GridRow {
+                            paddingLabel("Bottom")
+                            paddingField($state.compactPaddingBottom)
+                            paddingLabel("Left")
+                            paddingField($state.compactPaddingLeft)
+                        }
+                    }
                 }
                 .help("pixels between the folded island's edges and Mochi or the pills")
             }
@@ -1976,12 +1986,17 @@ struct SettingsView: View {
         }.resume()
     }
 
-    private func paddingField(_ label: LocalizedStringKey, _ value: Binding<Double>) -> some View {
+    private func paddingLabel(_ label: LocalizedStringKey) -> some View {
+        Text(label).foregroundColor(.secondary).fixedSize()
+    }
+
+    private func paddingField(_ value: Binding<Double>) -> some View {
         HStack(spacing: 4) {
-            Text(label).foregroundColor(.secondary)
             TextField("", value: value, format: .number)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 44)
+            Stepper("", value: value, in: 0...IslandConst.compactPaddingMax, step: 1)
+                .labelsHidden()
         }
     }
 

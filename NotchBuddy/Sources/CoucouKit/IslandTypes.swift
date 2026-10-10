@@ -165,15 +165,15 @@ enum AgentLayoutMode {
 // MARK: - Constants (from NW, NH, EW in prototype)
 
 /// Compact island: the gap from each edge to Mochi's body and to the mini pills
-/// (Settings → Behavior → Padding). Left and right 28 are within 2.5 pt of the
-/// shipped 30 / 25.5; top and bottom 6 fit the 32 pt island, and a notch keeps its height.
+/// (Settings → Behavior → Padding). The defaults are the shipped layout: Mochi
+/// 30 pt in, the pills 26 pt in, the 32 pt island; a notch keeps its height.
 struct CompactPadding: Equatable, Sendable {
     var top: CGFloat
     var right: CGFloat
     var bottom: CGFloat
     var left: CGFloat
 
-    static let standard = CompactPadding(top: 6, right: 28, bottom: 6, left: 28)
+    static let standard = CompactPadding(top: 6, right: 26, bottom: 6, left: 30)
 }
 
 enum IslandConst {

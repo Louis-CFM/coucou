@@ -63,8 +63,8 @@ export const EXPANDED_W = 640;
 
 /**
  * Compact island: the gap from each edge to Mochi's body and to the mini pills
- * (Settings → General → Padding). Left and right 28 are within 2.5 px of the
- * shipped 30 / 25.5; top and bottom 6 keep its 32 px height.
+ * (Settings → General → Padding). The defaults are the shipped layout: Mochi
+ * 30 px in, the pills 25.5 px in, and the 32 px island.
  */
 export interface CompactPadding {
   top: number;
@@ -72,7 +72,7 @@ export interface CompactPadding {
   bottom: number;
   left: number;
 }
-export const COMPACT_PADDING: CompactPadding = { top: 6, right: 28, bottom: 6, left: 28 };
+export const COMPACT_PADDING: CompactPadding = { top: 6, right: 25.5, bottom: 6, left: 30 };
 export const COMPACT_PADDING_MAX = 40;
 /** Mochi's 20 px body: the compact island's content row. */
 export const COMPACT_ROW = 20;
