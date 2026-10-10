@@ -107,6 +107,8 @@ the main pill; session support is coming in a future version.
 
 Claude Desktop (`agent_claude-desktop`, every build) is there as well. Claude Code sessions started from the Claude desktop app's Code tab carry `CLAUDE_CODE_ENTRYPOINT=claude-desktop`; the relay tags them `coucou_agent: claude-desktop` on its own (an explicit `--agent` still wins), so nothing extra is installed. Declare the pill to keep it after the session ends; the ↗ button opens the Claude app.
 
+JetBrains (`agent_jetbrains`, macOS) is a workspace pill like Cursor: Claude Code sessions started in the integrated terminal of WebStorm, PyCharm, IntelliJ IDEA, RubyMine, GoLand or any other JetBrains IDE (Android Studio too) are recognised by the IDE's `__CFBundleIdentifier`, so nothing extra is installed. The session card names the IDE ("WebStorm"), approvals and questions show in the notch, Open brings back the IDE window of the session's project (the nearest folder holding `.idea`; this needs Coucou allowed in System Settings → Privacy & Security → Accessibility, otherwise the IDE comes forward on its last-used window), and it can be set as the main pill.
+
 ## Real-world examples
 
 ### Gemini CLI (macOS)

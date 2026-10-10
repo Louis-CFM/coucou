@@ -60,6 +60,9 @@ jobs:
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
 
+      - name: Test JetBrains IDE detection
+        run: bash scripts/test-jetbrains-ide.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 

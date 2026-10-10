@@ -230,6 +230,10 @@ struct OverviewView: View {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
+        case "agent_jetbrains":
+            #if !APPSTORE
+            JetBrainsIDE.open(sessionBundleId: task.sessionBundleId, cwd: task.sessionCwd)
+            #endif
         case "agent_codex":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -630,9 +634,11 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            // The app the session runs in (its terminal, or VS Code), then any known terminal
+                            // The app the session runs in (its terminal, VS Code or JetBrains IDE), then any known terminal
                             let task = state.focusTask
                             if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+                               !(task?.id == "agent_jetbrains"
+                                 && JetBrainsIDE.open(sessionBundleId: task?.sessionBundleId, cwd: task?.sessionCwd)),
                                !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                             }
@@ -1720,9 +1726,9 @@ struct IntegrationCardView: View {
 
     private var isConfigured: Bool {
         switch task.id {
-        // Cursor sessions are Claude Code running in Cursor's integrated terminal,
-        // so the Cursor pill is set up exactly when the Claude Code hooks are.
-        case "integration_claude", "agent_cursor":
+        // Cursor and JetBrains sessions are Claude Code running in the editor's integrated
+        // terminal, so these pills are set up exactly when the Claude Code hooks are.
+        case "integration_claude", "agent_cursor", "agent_jetbrains":
             return HookServer.claudeHooksInstalled()
         case "agent_codex":
             #if !APPSTORE
@@ -1916,6 +1922,7 @@ struct IntegrationCardView: View {
                    || task.id == "agent_codex"        || task.id == "agent_copilot"
                    || task.id == "agent_muse"         || task.id == "agent_opencode"
                    || task.id == "agent_amp"          || task.id == "agent_hermes"
+                   || task.id == "agent_jetbrains"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return String(localized: "Hooks installed") }
@@ -2022,7 +2029,8 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
+                    Text(task.id == "agent_jetbrains" ? JetBrainsIDE.name(for: task.sessionBundleId)
+                                                      : PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -2097,6 +2105,17 @@ struct IntegrationCardView: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
+                        }
+                        #endif
+                    } else if task.id == "agent_jetbrains" {
+                        #if !APPSTORE
+                        if let id = JetBrainsIDE.appBundleId(sessionBundleId: task.sessionBundleId) {
+                            Button("Open \(JetBrainsIDE.name(for: id))") {
+                                JetBrainsIDE.open(sessionBundleId: task.sessionBundleId, cwd: task.sessionCwd)
+                            }
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: task.color).opacity(0.85))
+                                .buttonStyle(.plain)
                         }
                         #endif
                     } else if task.id == "agent_codex" {
@@ -2175,9 +2194,10 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
                     }
-                    // Settings button: shown when not configured, except cursor/codex and music
+                    // Settings button: shown when not configured, except cursor/jetbrains/codex and music
                     if !isConfigured
                        && task.id != "agent_cursor"
+                       && task.id != "agent_jetbrains"
                        && task.id != "agent_codex"
                        && task.id != "integration_music" {
                         Button("Settings…") {
@@ -3905,9 +3925,14 @@ struct AgentPill: View {
 
     private var effectiveColor: String { task.color }
 
-    // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name
+    // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name;
+    // the JetBrains pill shows its IDE ("WebStorm", "PyCharm"…)
     private var displayName: String {
-        task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp) : task.name
+        switch task.id {
+        case "integration_claude": return ClaudeHost.pillName(hostApp: task.hostApp)
+        case "agent_jetbrains":    return JetBrainsIDE.name(for: task.sessionBundleId)
+        default:                   return task.name
+        }
     }
 
     var body: some View {
