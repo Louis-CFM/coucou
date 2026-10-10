@@ -103,21 +103,21 @@ test("labels() tables and dates read in the current language", () => {
 
 test("System follows the system's language when Coucou has it, else English", () => {
   assert.equal(resolveLanguage("", ["fr-FR", "en-US"]), "fr");
-  assert.equal(resolveLanguage("", ["de-DE", "es-MX"]), "es");
+  assert.equal(resolveLanguage("", ["it-IT", "es-MX"]), "es");
   assert.equal(resolveLanguage("", ["pt-PT"]), "pt-BR");
   assert.equal(resolveLanguage("", ["pt"]), "pt-BR");
   assert.equal(resolveLanguage("", ["zh-CN"]), "zh-Hans");
   assert.equal(resolveLanguage("", ["zh-TW"]), "en"); // Traditional is not one of ours
   assert.equal(resolveLanguage("", ["ar-EG"]), "ar");
-  assert.equal(resolveLanguage("", ["de-DE"]), "en");
+  assert.equal(resolveLanguage("", ["it-IT"]), "en");
   assert.equal(resolveLanguage("", []), "en");
   // A picked language wins; one this build doesn't know means System.
   assert.equal(resolveLanguage("ru", ["fr-FR"]), "ru");
   assert.equal(resolveLanguage("xx", ["bn-IN"]), "bn");
 });
 
-test("the picker offers the Mac's ten languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"]);
+test("the picker offers the Mac's languages, Arabic reads right to left", () => {
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });

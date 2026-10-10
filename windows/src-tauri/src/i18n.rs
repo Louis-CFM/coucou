@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 11] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -243,8 +243,8 @@ mod tests {
         assert_eq!(resolve("", &sys(&["fr_FR.UTF-8"])), "fr");
         assert_eq!(resolve("", &sys(&["pt-PT"])), "pt-BR");
         assert_eq!(resolve("", &sys(&["zh-CN"])), "zh-Hans");
-        assert_eq!(resolve("", &sys(&["zh-TW", "de", "es-MX"])), "es");
-        assert_eq!(resolve("", &sys(&["de-DE"])), "en");
+        assert_eq!(resolve("", &sys(&["zh-TW", "it", "es-MX"])), "es");
+        assert_eq!(resolve("", &sys(&["it-IT"])), "en");
         assert_eq!(resolve("xx", &[]), "en");
     }
 
