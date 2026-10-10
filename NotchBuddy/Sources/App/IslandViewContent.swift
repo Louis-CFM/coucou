@@ -4169,8 +4169,8 @@ struct TickerShimmerText: View {
     @Environment(\.islandViewActive) private var viewActive
 
     var body: some View {
-        // A 2.2 s sweep: 60 fps is as smooth as the display rate, and it stops when hidden.
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: paused || !viewActive)) { tl in
+        // A 2.2 s sweep at display refresh rate. Paused when hidden.
+        TimelineView(.animation(paused: paused || !viewActive)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             let p = CGFloat(t.truncatingRemainder(dividingBy: 2.2) / 2.2)
             // phase sweeps -0.1 → 1.1 so white peak enters from left and exits right

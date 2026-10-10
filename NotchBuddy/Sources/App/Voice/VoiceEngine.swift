@@ -55,6 +55,7 @@ final class VoiceEngine: ObservableObject {
     // Command session timers
     private var silenceWork:    DispatchWorkItem?
     private var commandMaxWork: DispatchWorkItem?
+    private var loggedDropWhileSpeaking = false
     private var wakeWindowWork: DispatchWorkItem?   // 20 s periodic restart
 
     private var lastWordCount = 0
@@ -166,6 +167,7 @@ final class VoiceEngine: ObservableObject {
         commandTranscript     = ""
         lastWordCount         = 0
         directInitialTimeout  = firstWordTimeout
+        loggedDropWhileSpeaking = false
         audio.bypassVAD       = true
         duckMusic()
         appendAppLog("nb.log", "[Voice] direct listen start (firstWordTimeout: \(firstWordTimeout)s)")
@@ -608,7 +610,14 @@ final class VoiceEngine: ObservableObject {
 
     private func commandUpdate(_ command: String) {
         // Semi-duplex: ignore updates while Coucou is speaking.
-        guard !VoiceSpeaker.shared.isBusy else { return }
+        guard !VoiceSpeaker.shared.isBusy else {
+            // Logged once per turn (no words): helps when an answer seems unheard.
+            if !loggedDropWhileSpeaking {
+                loggedDropWhileSpeaking = true
+                appendAppLog("nb.log", "[Voice] words heard while Coucou was speaking: ignored")
+            }
+            return
+        }
         // The recognizer often repeats the same partial: no update, no re-render.
         guard command != commandTranscript else { return }
         commandTranscript = command
@@ -638,13 +647,28 @@ final class VoiceEngine: ObservableObject {
         if lastWordCount == 0 {
             timeout = directInitialTimeout
         } else {
-            timeout = TurnEndPolicy.silenceDelay(for: WakePhrase.normalise(commandTranscript))
+            timeout = TurnEndPolicy.silenceDelay(for: WakePhrase.normalise(commandTranscript),
+                                                 longAnswer: VoiceActionRunner.shared.expectsLongAnswer)
         }
+        scheduleSilenceCheck(after: timeout)
+    }
+
+    /// The turn ends after the silence delay, unless I'm still making sound (an "euhhh"
+    /// while thinking gives no words but is not silence): then it waits a bit more. The
+    /// command's max duration still applies.
+    private func scheduleSilenceCheck(after delay: TimeInterval) {
         let item = DispatchWorkItem { [weak self] in
-            Task { @MainActor in self?.endCommand(postFinished: true) }
+            Task { @MainActor in
+                guard let self, self.isListeningForCommand else { return }
+                if let a = self.audio, Date().timeIntervalSince(a.lastVoicedTime) < 0.5 {
+                    self.scheduleSilenceCheck(after: 0.5)
+                } else {
+                    self.endCommand(postFinished: true)
+                }
+            }
         }
         silenceWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
     /// Idempotent: if not in command mode, only cancels timers.

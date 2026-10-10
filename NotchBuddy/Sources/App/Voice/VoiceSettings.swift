@@ -77,12 +77,15 @@ enum VoiceSettings {
         return v == 0 ? fallback : min(1.6, max(0.8, v))
     }
 
-    /// Questions answered with a web search by Claude, with the user's own Anthropic API
-    /// key. Off by default: the question leaves the Mac only once this is turned on.
-    static var webSearchEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "voiceWebSearchEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "voiceWebSearchEnabled") }
+    /// Claude is Coucou's brain (the user's Anthropic API key): what I say after
+    /// "OK Coucou" goes to Claude, which acts with Coucou's tools and searches the web.
+    /// Off by default: my words leave the Mac only once this is turned on.
+    static var claudeBrainEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "voiceClaudeBrain") }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceClaudeBrain") }
     }
+    /// The older web-search-only path follows the same switch.
+    static var webSearchEnabled: Bool { claudeBrainEnabled }
 
     /// Weather by voice (Open-Meteo, no key). Off by default: network only when the user
     /// turned it on and set a city.

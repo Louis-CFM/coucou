@@ -173,6 +173,7 @@
 		88A8F2E4E754FAFABF6B1960 /* VoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87F39805C78722F614295B4 /* VoiceAudio.swift */; };
 		88C3F0A4F3AE29DBED8710A0 /* ClaudeSettingsFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */; };
 		88F268E408FBBA2702B90E6C /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
+		89BC677F3ACB387A475FFFED /* ClaudeVoiceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8C8C843B4B30C547FF64A /* ClaudeVoiceBrain.swift */; };
 		8A6B3688D6B3BF728D106D8B /* UserIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */; };
 		8AC19BAF88822CB31519D447 /* CoucouIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708E1FD9894461B4AD727DB1 /* CoucouIntents.swift */; };
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
@@ -311,6 +312,7 @@
 		EF9E6418C3F39F6FE88FD812 /* CoucouPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D9CEB5655FCA197D6B10A91 /* CoucouPhoneApp.swift */; };
 		EFAA9936D5C9DE635CFBA2AB /* SharedSessions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1064AD8471C51AFF4F12258 /* SharedSessions.swift */; };
 		F06EE0A97CB77096A337AA8B /* sounds in Resources */ = {isa = PBXBuildFile; fileRef = C066E2B991AA4F56B2724263 /* sounds */; };
+		F0B7062107F8A91394707706 /* ClaudeVoiceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8C8C843B4B30C547FF64A /* ClaudeVoiceBrain.swift */; };
 		F157D7A9BF878DB2B286B1F7 /* DemoEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF5BD66B00BB64BB80AF38C /* DemoEngine.swift */; };
 		F1EE04000665E204E02DC5AC /* DenyApprovalIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D849B1A27AD17AEE1C7FFD1A /* DenyApprovalIntent.swift */; };
 		F25EB7EF3662AFF99AA1C8A1 /* TeamConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C1BB0DF7770A6B263995E6 /* TeamConfiguration.swift */; };
@@ -508,6 +510,7 @@
 		EBB84A66045EB20CAC93A8A6 /* AskQuestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskQuestion.swift; sourceTree = "<group>"; };
 		EDC1DEBFCAEBE6F0EEB865F3 /* EntityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityResolver.swift; sourceTree = "<group>"; };
 		EE60A834934474CDAE022FF8 /* SearchAndSpotlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchAndSpotlight.swift; sourceTree = "<group>"; };
+		EFE8C8C843B4B30C547FF64A /* ClaudeVoiceBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeVoiceBrain.swift; sourceTree = "<group>"; };
 		F0E2C3ACD815230A0ECAB014 /* EnergyVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyVAD.swift; sourceTree = "<group>"; };
 		F1064AD8471C51AFF4F12258 /* SharedSessions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSessions.swift; sourceTree = "<group>"; };
 		F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchBuddyApp.swift; sourceTree = "<group>"; };
@@ -748,6 +751,7 @@
 		FB8E4AAB0B5E949069B8D03D /* Voice */ = {
 			isa = PBXGroup;
 			children = (
+				EFE8C8C843B4B30C547FF64A /* ClaudeVoiceBrain.swift */,
 				2A67DA3B8EEF063C44E07F7E /* ConversationContext.swift */,
 				046F9CD91704C34AE5BE9393 /* ElevenLabsTTS.swift */,
 				F0E2C3ACD815230A0ECAB014 /* EnergyVAD.swift */,
@@ -1002,6 +1006,7 @@
 				1DAB0704A136FF8E6FB34191 /* ClaudeResponseText.swift in Sources */,
 				2DEB459FBD0BA3CEAAA5FDE9 /* ClaudeService.swift in Sources */,
 				88C3F0A4F3AE29DBED8710A0 /* ClaudeSettingsFile.swift in Sources */,
+				89BC677F3ACB387A475FFFED /* ClaudeVoiceBrain.swift in Sources */,
 				D45D9C8EAF67FC2F46E9F352 /* CloudProbe.swift in Sources */,
 				9AD370335A3ECC9C82375F93 /* CodexPlanGauge.swift in Sources */,
 				EE3AB10544113500486A9684 /* ColorHex.swift in Sources */,
@@ -1197,6 +1202,7 @@
 				0099C844CFD9424CEAA5CA77 /* ClaudeResponseText.swift in Sources */,
 				0329E76BA4A8FEEA8A6D76E7 /* ClaudeService.swift in Sources */,
 				D9EEB1079ACBCEEF74439C44 /* ClaudeSettingsFile.swift in Sources */,
+				F0B7062107F8A91394707706 /* ClaudeVoiceBrain.swift in Sources */,
 				FDF87CF7C5F703EDD9A7CC14 /* CloudProbe.swift in Sources */,
 				EB1D9680D3DB0F0707D4A043 /* CodexPlanGauge.swift in Sources */,
 				9ECEE890D4486B6E83BD5B7F /* ColorHex.swift in Sources */,
@@ -1783,6 +1789,7 @@
 				PRODUCT_NAME = Coucou;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG PHONE_LINK";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = DebugCloud;
 		};

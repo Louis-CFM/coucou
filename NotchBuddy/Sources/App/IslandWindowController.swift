@@ -140,6 +140,11 @@ final class IslandWindowController: NSWindowController {
                 }
                 let iLoc = self?.windowToIsland(loc) ?? CGPoint(x: 320, y: 88)
                 AppState.shared.fileDragOver = true
+                // The voice mail card stays on screen: the file will be its attachment.
+                if AppState.shared.voiceMailDraft != nil && AppState.shared.view == .mail {
+                    NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(1))
+                    return
+                }
                 // enterZone sets isActive=true BEFORE hookExpand triggers re-render,
                 // so IslandContainer sees isActive=true when state.view becomes .upload.
                 UploadSequenceEngine.shared.enterZone(x: iLoc.x, y: iLoc.y)
@@ -173,6 +178,11 @@ final class IslandWindowController: NSWindowController {
                 // dropped on the notch goes into that email.
                 if VoiceActionRunner.shared.isMailInProgress, let url = urls.first {
                     await self?.attachVoiceMailFile(url)
+                    return
+                }
+                // The mail card prepared by voice (Claude) is open: the file is its attachment.
+                if AppState.shared.voiceMailDraft != nil, AppState.shared.view == .mail, let url = urls.first {
+                    self?.attachToVoiceMailCard(url)
                     return
                 }
                 #endif
@@ -1533,6 +1543,14 @@ extension IslandWindowController {
             return
         }
 
+        // ── Claude as the brain (Settings → Voice, the user's Anthropic key) ───────
+        // Every phrase goes to Claude, which acts with Coucou's tools. Only when Claude
+        // can't be reached does the phrase parser below take over.
+        if runner.pendingQuestion == nil, ClaudeVoiceBrain.isActive {
+            if await handleWithClaude(transcript) { return }
+            appendAppLog("nb.log", "[Voice] Claude unreachable, phrase parser used")
+        }
+
         // ── Short noise / spurious activation guard (conversation mode only) ────────
         // A transcript shorter than 2 words that isn't a pill name or known command
         // is almost certainly a false activation. Silently re-listen without feedback.
@@ -1897,6 +1915,55 @@ extension IslandWindowController {
         }
     }
 
+    /// One turn with Claude: caption, spoken answer, and a re-listen when Claude asked
+    /// something (its answer ends with "?"). False when Claude couldn't be reached.
+    @MainActor
+    private func handleWithClaude(_ transcript: String) async -> Bool {
+        VoiceCaptionManager.shared.setUserLine(transcript)
+        // A stale "finished speaking" handler must not reopen the mic during the wait.
+        VoiceSpeaker.shared.onDidFinish = nil
+        let t0 = Date()
+        guard let reply = await ClaudeVoiceBrain.shared.respond(to: transcript), !reply.failed else {
+            return false
+        }
+        appendAppLog("nb.log", "[Voice] Claude turn \(Int(Date().timeIntervalSince(t0) * 1000)) ms\(reply.acted ? ", acted" : "")")
+        let fr = VoiceSettings.language == "fr"
+        let text = reply.text.isEmpty ? (fr ? "C'est fait." : "Done.") : reply.text
+        VoiceTranscriptHistory.shared.record(transcript: transcript, note: text, origin: .brain)
+        consecutiveFailures = 0
+        if reply.acted { NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy) }
+        VoiceCaptionManager.shared.appendResponse(text)
+        let result = VoiceActionResult(outcome: .success, message: text)
+        AppState.shared.voiceResult = result
+        speakAndContinueConversation(result)
+        return true
+    }
+
+    /// A file dropped on the notch while the voice email card is open: it becomes the
+    /// attachment, and Coucou says so.
+    @MainActor
+    func attachToVoiceMailCard(_ url: URL) {
+        // Not listening any more: Coucou's own "attached" must not come back as a turn.
+        VoiceEngine.shared.cancelListening()
+        if isInConversation || AppState.shared.voiceActive { closeVoiceTurn() }
+        let state = AppState.shared
+        state.fileDragOver = false
+        state.droppedFile = DroppedFile(url: url, name: url.lastPathComponent)
+        NotificationCenter.default.post(name: .botGulp, object: nil)
+        NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        if state.soundEnabled { SoundEngine.shared.play("approve") }
+        fsm.openedExternally()
+        expand(to: .mail)
+        let fr = VoiceSettings.language == "fr"
+        let text = fr ? "\(url.lastPathComponent) est en pièce jointe. Tu n'as plus qu'à cliquer sur Envoyer."
+                      : "\(url.lastPathComponent) is attached. Just click Send."
+        if VoiceSettings.speakEnabled {
+            VoiceSpeaker.shared.onDidFinish = nil
+            VoiceSpeaker.shared.speak(text, locale: VoiceSettings.answerLocale)
+        }
+    }
+
     /// A voice command that failed: a small "huh?" from Mochi. Not .botDizzy, which is the
     /// slap reaction and opened the "Too many hits at once" card in the middle of a mail.
     @MainActor
@@ -1943,6 +2010,7 @@ extension IslandWindowController {
             Task { @MainActor in
                 self?.conversationContext.reset()
                 VoiceActionRunner.shared.resetWebThread()
+                ClaudeVoiceBrain.shared.reset()
                 VoiceBrain.shared.endConversation()
             }
         }
