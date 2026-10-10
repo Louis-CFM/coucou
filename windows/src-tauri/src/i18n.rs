@@ -287,4 +287,28 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn german_resolves_translates_and_selects_singular_only_for_one() {
+        for tag in ["de", "de-DE", "de-AT", "de-CH", "de_DE.UTF-8"] {
+            assert_eq!(resolve("", &[tag.to_string()]), "de");
+        }
+        assert_eq!(resolve("de", &["fr-FR".to_string()]), "de");
+        assert_eq!(resolve("fr", &["de-DE".to_string()]), "fr");
+        set_for_test("de");
+        assert_eq!(t("Allow"), "Zulassen");
+        assert_eq!(t("Deny"), "Ablehnen");
+        assert_eq!(t("Open the chat"), "Chat öffnen");
+        assert_eq!(tf("Uploading {name}", &[("name", "Grüße.pdf")]), "Grüße.pdf wird hochgeladen");
+        assert_eq!(t("A string nobody translated"), "A string nobody translated");
+        for count in [0, 1, 2, 21] {
+            assert_eq!(plural_category("de", count), if count == 1 { "one" } else { "other" });
+            let repo = if count == 1 { "Repository" } else { "Repositorys" };
+            let model = if count == 1 { "Modell" } else { "Modelle" };
+            assert_eq!(tn("{count} repo", "{count} repos", count, &[]), format!("{count} {repo}"));
+            assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", count, &[]),
+                format!("✓ Verbunden · {count} {model}"));
+        }
+        set_for_test("en");
+    }
 }
