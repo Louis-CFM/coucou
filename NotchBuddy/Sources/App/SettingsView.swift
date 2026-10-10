@@ -1260,6 +1260,8 @@ struct SettingsView: View {
     @ObservedObject private var voiceEngine = VoiceEngine.shared
     @AppStorage("voiceSpeakEnabled")  private var speakEnabled:   Bool = true
     @AppStorage("voiceCaptionEnabled") private var captionEnabled: Bool = true
+    @AppStorage("voiceWeatherEnabled") private var weatherEnabled: Bool = false
+    @AppStorage("voiceWeatherCity")    private var weatherCity: String = ""
 
     @ViewBuilder private var voiceSection: some View {
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
@@ -1270,6 +1272,17 @@ struct SettingsView: View {
                 Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
 
                 Toggle(String(localized: "voice.setting-captions"), isOn: $captionEnabled)
+
+                Toggle(String(localized: "voice.setting-weather"), isOn: $weatherEnabled)
+                if weatherEnabled {
+                    TextField(String(localized: "voice.setting-weather-city"), text: $weatherCity)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 220)
+                    Text(String(localized: "voice.setting-weather-desc"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
                     .font(.system(size: 11))

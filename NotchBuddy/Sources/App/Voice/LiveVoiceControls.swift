@@ -91,6 +91,7 @@ extension VoiceActionRunner {
     func configureLive() {
         music = LiveMusicControl()
         pills = LivePillControl()
+        info  = LiveVoiceInfo.shared
     }
 }
 #endif

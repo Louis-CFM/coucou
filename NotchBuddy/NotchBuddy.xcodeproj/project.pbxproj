@@ -71,6 +71,10 @@
 		326971DDA23F331116E5A628 /* VoiceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C563E55884A7750B40EC9A01 /* VoiceBrain.swift */; };
 		3451DB0668FAEEF09503D808 /* WakePhrase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12EC8F605BBC37F8223D7AA /* WakePhrase.swift */; };
 		36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */; };
+		D08B378612B4CB0C8811925B /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */; };
+		A51E53A7BF9F23535F3A8B15 /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */; };
+		968932802E8017E2C23FF473 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */; };
+		EEDE0A39D216069D77F097C8 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */; };
 		3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
 		38EEB2D3A6EC538958D92575 /* GitHubPulse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */; };
 		390486F7CDC01C1BCDBB27F9 /* VoiceActionRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2737EC4885ADB8FDDA1C610 /* VoiceActionRunner.swift */; };
@@ -383,6 +387,8 @@
 		38BEAB5F20A13E5806A42EC9 /* ApprovalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCard.swift; sourceTree = "<group>"; };
 		3A27178AA6007F7B56901750 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
 		3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCaptionManager.swift; sourceTree = "<group>"; };
+		F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDataSources.swift; sourceTree = "<group>"; };
+		62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceQuery.swift; sourceTree = "<group>"; };
 		3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsFile.swift; sourceTree = "<group>"; };
 		444604C7E2C530B664849EF9 /* ClaudeResponseText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeResponseText.swift; sourceTree = "<group>"; };
 		49E39852175E81C9632A59C9 /* KitPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitPreviewView.swift; sourceTree = "<group>"; };
@@ -731,6 +737,8 @@
 				A87F39805C78722F614295B4 /* VoiceAudio.swift */,
 				C563E55884A7750B40EC9A01 /* VoiceBrain.swift */,
 				3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */,
+				F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */,
+				62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */,
 				B328028D18F590D6680B8A2B /* VoiceEngine.swift */,
 				D1A7C62058BB0C9D0DF58DCB /* VoiceIntent.swift */,
 				22E03C8E267399FA25C75877 /* VoiceIslandView.swift */,
@@ -1042,6 +1050,8 @@
 				88A8F2E4E754FAFABF6B1960 /* VoiceAudio.swift in Sources */,
 				326971DDA23F331116E5A628 /* VoiceBrain.swift in Sources */,
 				525FB188F09F68D26A9D587D /* VoiceCaptionManager.swift in Sources */,
+				D08B378612B4CB0C8811925B /* VoiceDataSources.swift in Sources */,
+				968932802E8017E2C23FF473 /* VoiceQuery.swift in Sources */,
 				BDEFF4223DA949E2B8AB85A7 /* VoiceEngine.swift in Sources */,
 				9C11C226915DBC97B5CD7953 /* VoiceIntent.swift in Sources */,
 				9088C7BADF166685E471D248 /* VoiceIslandView.swift in Sources */,
@@ -1229,6 +1239,8 @@
 				64FE8055CCAD30B44FE398E7 /* VoiceAudio.swift in Sources */,
 				273B404F55739D661D9489D8 /* VoiceBrain.swift in Sources */,
 				36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */,
+				A51E53A7BF9F23535F3A8B15 /* VoiceDataSources.swift in Sources */,
+				EEDE0A39D216069D77F097C8 /* VoiceQuery.swift in Sources */,
 				80B0B3C777A9DC8C82952FD2 /* VoiceEngine.swift in Sources */,
 				15D69752806E1D1D589B20A7 /* VoiceIntent.swift in Sources */,
 				C3BA3FA2A4025194FC088C5A /* VoiceIslandView.swift in Sources */,

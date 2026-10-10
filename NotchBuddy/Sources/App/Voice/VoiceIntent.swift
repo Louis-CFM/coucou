@@ -37,6 +37,12 @@ enum VoiceIntent: Equatable {
     case pillReplace(old: String, new: String)       // "remplace n8n par github"
     case pillOnly([String])                          // "garde seulement GitHub et Vercel"
 
+    // ── Questions, mail, apps ─────────────────────────────────────────────────
+
+    case query(VoiceTopic)                           // "combien d'étoiles sur GitHub ?"
+    case mail(VoiceQuery.MailRequest)                // "envoie le fichier X à Tana" (Mail opens, I click Send)
+    case openApp(name: String)                       // "ouvre Figma"
+
     // ── Unknown ───────────────────────────────────────────────────────────────
 
     case unknown

@@ -35,6 +35,17 @@ enum VoiceSettings {
         set { UserDefaults.standard.set(newValue, forKey: captionEnabledKey) }
     }
 
+    /// Weather by voice (Open-Meteo, no key). Off by default: network only when the user
+    /// turned it on and set a city.
+    static var weatherEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "voiceWeatherEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceWeatherEnabled") }
+    }
+    static var weatherCity: String {
+        get { UserDefaults.standard.string(forKey: "voiceWeatherCity") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceWeatherCity") }
+    }
+
     // MARK: - Permissions
 
     enum PermissionStatus { case granted, denied, undetermined }

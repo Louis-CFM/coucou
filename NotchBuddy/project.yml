@@ -139,6 +139,7 @@ targets:
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate a message in the chat."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
+        NSContactsUsageDescription: "Coucou looks up an email address when you ask it, by voice, to prepare an email."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         CFBundleLocalizations:

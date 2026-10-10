@@ -15,6 +15,11 @@ enum IntentParser {
         let words = norm.split(separator: " ").map(String.init)
         guard !words.isEmpty else { return .unknown }
 
+        // Email, questions about the services, opening an app (VoiceQuery).
+        if let m = VoiceQuery.mail(of: raw) { return .mail(m) }
+        if let t = VoiceQuery.topic(of: raw) { return .query(t) }
+        if let app = VoiceQuery.appToOpen(raw) { return .openApp(name: app) }
+
         // rawWords: same splits as normalise but no diacritics strip, no letter filter, original case
         let rawWords0 = buildRawWords(raw)
         // defilter both arrays in parallel: ma→la, mon→le, strip filler words

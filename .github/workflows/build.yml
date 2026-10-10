@@ -54,6 +54,11 @@ jobs:
       - name: Voice ActionRunner tests
         run: bash scripts/test-voice-runner.sh
 
+
+      - name: Voice query tests
+
+        run: bash scripts/test-voice-query.sh
+
       - name: Voice conversation end-phrase tests
         run: bash scripts/test-voice-conversation.sh
 

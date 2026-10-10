@@ -116,13 +116,15 @@ final class VoiceBrain {
             let session = LanguageModelSession(
                 tools: [PillTool(collector: collector),
                         MusicTool(collector: collector),
-                        StatusTool(collector: collector)],
+                        StatusTool(collector: collector),
+                        ServiceTool()],
                 instructions: """
                 Tu es Coucou, un assistant dans le notch du MacBook.
                 Réponds toujours dans la langue de l'utilisateur.
                 Réponds avec 1 à 2 phrases maximum. Sois direct et concis.
                 Ne pose une question que si tu as vraiment besoin d'une précision pour agir : une seule, courte, qui finit par « ? ». Sinon, ne finis jamais par une question.
                 Utilise les outils disponibles pour exécuter des commandes sur les pills et la musique.
+                Pour toute question sur Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, les agents (Claude Code, Codex…), le plan Claude ou Codex, la musique ou la météo, appelle d'abord l'outil service et réponds avec ses données, sans rien inventer.
                 Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
                 """
             )
@@ -363,6 +365,25 @@ struct MusicTool: Tool, @unchecked Sendable {
 }
 
 // MARK: StatusTool
+
+@available(macOS 26, *)
+struct ServiceTool: Tool, @unchecked Sendable {
+    let name        = "service"
+    let description = "Real data from Coucou: Stripe sales and balance, GitHub stars/PRs/CI, Vercel deployments, Resend emails, n8n runs, Notion pages, Cal.com bookings, agent sessions (Claude Code…), Claude/Codex plan usage, music now playing, active pills, weather today or tomorrow."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "One of: stripe, github, vercel, resend, n8n, notion, calcom, agents, claudePlan, codexPlan, music, pills, weatherToday, weatherTomorrow")
+        var topic: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        guard let topic = VoiceTopic(rawValue: arguments.topic) else {
+            return "unknown topic: \(arguments.topic)"
+        }
+        return await LiveVoiceInfo.shared.answer(topic, locale: nil)
+    }
+}
 
 @available(macOS 26, *)
 struct StatusTool: Tool, @unchecked Sendable {

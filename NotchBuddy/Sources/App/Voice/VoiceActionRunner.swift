@@ -31,6 +31,24 @@ protocol PillControlling {
     func setMainPill(_ id: String)
 }
 
+/// Answers questions and prepares mail / opens apps (Mac side: VoiceDataSources.swift).
+@MainActor
+protocol VoiceInfoProviding {
+    func answer(_ topic: VoiceTopic, locale: Locale?) async -> String
+    /// Opens a compose window (Mail) — never sends: I click Send myself.
+    func composeMail(_ request: VoiceQuery.MailRequest, locale: Locale?) async -> VoiceActionResult
+    func openApp(_ name: String, locale: Locale?) -> VoiceActionResult
+}
+
+@MainActor
+private final class NullInfo: VoiceInfoProviding {
+    func answer(_ topic: VoiceTopic, locale: Locale?) async -> String { "" }
+    func composeMail(_ request: VoiceQuery.MailRequest, locale: Locale?) async -> VoiceActionResult {
+        .init(outcome: .failure, message: "")
+    }
+    func openApp(_ name: String, locale: Locale?) -> VoiceActionResult { .init(outcome: .failure, message: "") }
+}
+
 // MARK: - Null implementations (test-safe, no AppKit)
 
 private final class NullMusic: MusicControlling, @unchecked Sendable {
@@ -67,6 +85,7 @@ final class VoiceActionRunner {
 
     var music: MusicControlling = NullMusic()
     var pills: PillControlling  = NullPills()
+    var info:  VoiceInfoProviding = NullInfo()
 
     /// Pending follow-up question (4-pill limit, ambiguity). Set when outcome is .question.
     var pendingQuestion: PendingVoiceQuestion? = nil
@@ -255,6 +274,18 @@ final class VoiceActionRunner {
             let fmt   = Self.localizedString("voice.pill-only", locale: commandLocale)
             let msg   = fmt.contains("%@") ? String(format: fmt, names) : names
             return .init(outcome: .success, message: msg)
+
+        // ── Questions, mail, apps ─────────────────────────────────────────────
+
+        case .query(let topic):
+            let text = await info.answer(topic, locale: commandLocale)
+            return text.isEmpty ? fail("voice.unknown") : .init(outcome: .success, message: text)
+
+        case .mail(let request):
+            return await info.composeMail(request, locale: commandLocale)
+
+        case .openApp(let name):
+            return info.openApp(name, locale: commandLocale)
 
         case .unknown:
             if rawTranscript.isEmpty { return fail("voice.unknown") }
