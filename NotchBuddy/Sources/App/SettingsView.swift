@@ -1152,7 +1152,7 @@ struct SettingsView: View {
         // Claude Code in the chat: what it starts with. The picker above the chat box changes the same values.
         GroupBox("Claude Code") {
             VStack(alignment: .leading, spacing: 10) {
-                Text(String(localized: "Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here."))
+                Text(String(localized: "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed."))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 Picker(String(localized: "chat.model"), selection: $state.claudeCodeChatModel) {
@@ -1168,10 +1168,10 @@ struct SettingsView: View {
                 }
                 HStack {
                     Text(String(localized: "Working folder"))
-                    TextField(String(localized: "Coucou's own folder"), text: $state.claudeCodeDir)
+                    TextField(String(localized: "Coucou's chat folder"), text: $state.claudeCodeDir)
                         .textFieldStyle(.roundedBorder)
                 }
-                Text(String(localized: "Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's."))
+                Text(String(localized: "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project."))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }

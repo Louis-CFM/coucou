@@ -26334,70 +26334,6 @@
         }
       }
     },
-    "Coucou's own folder": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مجلد Coucou الخاص"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou-এর নিজস্ব ফোল্ডার"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou's own folder"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La carpeta propia de Coucou"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le dossier de Coucou"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou का अपना फ़ोल्डर"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Folder milik Coucou"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A pasta do próprio Coucou"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Собственная папка Coucou"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou 自己的文件夹"
-          }
-        }
-      }
-    },
     "No response text.": {
       "localizations": {
         "ar": {
@@ -26526,134 +26462,6 @@
         }
       }
     },
-    "Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here.": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يشغّل Claude Code الخاص بك، بتسجيل دخوله وخوادم MCP والمهارات و‎hooks. لا حاجة إلى مفتاح هنا."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "আপনার নিজের Claude Code চালায়, তার সাইন-ইন, MCP সার্ভার, skills ও hooks সহ। এখানে কোনো কী লাগে না।"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ejecuta tu propio Claude Code, con su inicio de sesión, servidores MCP, skills y hooks. Aquí no hace falta clave."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lance ton propre Claude Code, avec sa connexion, ses serveurs MCP, ses skills et ses hooks. Aucune clé ici."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "आपका अपना Claude Code चलाता है, उसके साइन-इन, MCP सर्वर, स्किल्स और hooks के साथ। यहाँ कोई कुंजी नहीं।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Menjalankan Claude Code Anda sendiri, dengan login, server MCP, skill, dan hooks-nya. Tanpa kunci di sini."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Roda o seu próprio Claude Code, com o login, os servidores MCP, as skills e os hooks dele. Nenhuma chave aqui."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запускает ваш собственный Claude Code с его входом, серверами MCP, навыками и hooks. Ключ здесь не нужен."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行你自己的 Claude Code，使用它的登录、MCP 服务器、技能和 hooks。这里不需要密钥。"
-          }
-        }
-      }
-    },
-    "Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's.": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "اتركه فارغًا ليعمل Claude Code في مجلد خاص بـ Coucou، لا في مجلدك الرئيسي. اختر مجلد مشروع ليعمل على ذلك المشروع. تظهر موافقات الأدوات في الجزيرة مثل أي جلسة أخرى."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "খালি রাখলে Claude Code আপনার হোম ফোল্ডারে নয়, Coucou-এর নিজস্ব ফোল্ডারে কাজ করে। কোনো প্রজেক্টে কাজ করাতে তার ফোল্ডার বেছে নিন। টুলের অনুমোদন অন্য যেকোনো সেশনের মতোই আইল্যান্ডে দেখা যায়।"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Si lo dejas vacío, Claude Code trabaja en una carpeta propia de Coucou, no en tu carpeta personal. Elige la carpeta de un proyecto para que trabaje en él. Las aprobaciones de herramientas aparecen en la isla como las de cualquier otra sesión."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Laisse vide et Claude Code travaille dans un dossier de Coucou, pas dans ton dossier personnel. Choisis le dossier d'un projet pour qu'il travaille sur ce projet. Les autorisations d'outils s'affichent dans l'île comme pour toute autre session."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "खाली छोड़ें तो Claude Code Coucou के अपने फ़ोल्डर में काम करता है, आपके होम फ़ोल्डर में नहीं। किसी प्रोजेक्ट पर काम कराने के लिए उसका फ़ोल्डर चुनें। टूल की अनुमतियाँ किसी भी दूसरे सत्र की तरह आइलैंड में दिखती हैं।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Biarkan kosong dan Claude Code bekerja di folder milik Coucou, bukan di folder rumah Anda. Pilih folder proyek agar ia mengerjakan proyek itu. Persetujuan alat muncul di pulau seperti sesi lainnya."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deixe vazio e o Claude Code trabalha numa pasta do próprio Coucou, não na sua pasta pessoal. Escolha a pasta de um projeto para ele trabalhar nesse projeto. As aprovações de ferramentas aparecem na ilha como as de qualquer outra sessão."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Если оставить пустым, Claude Code работает в собственной папке Coucou, а не в вашей домашней. Выберите папку проекта, чтобы он работал над этим проектом. Разрешения для инструментов появляются на острове, как у любого другого сеанса."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "留空时，Claude Code 在 Coucou 自己的文件夹中工作，而不是你的主文件夹。选择一个项目文件夹，即可让它处理该项目。工具审批会像其他会话一样显示在岛上。"
-          }
-        }
-      }
-    },
     "%@ is not a folder.": {
       "localizations": {
         "ar": {
@@ -26714,6 +26522,198 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 不是文件夹。"
+          }
+        }
+      }
+    },
+    "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اتركه فارغًا لاستخدام مجلد الدردشة في Coucou. اختر مجلد مشروع ليعمل Claude Code على ذلك المشروع."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-র চ্যাট ফোল্ডার ব্যবহার করতে খালি রাখুন। Claude Code-কে কোনো প্রকল্পে কাজ করাতে সেই প্রকল্পের ফোল্ডার বেছে নিন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjalo vacío para usar la carpeta de chat de Coucou. Elige la carpeta de un proyecto para que Claude Code trabaje en ese proyecto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laissez vide pour utiliser le dossier de discussion de Coucou. Choisissez le dossier d'un projet pour que Claude Code travaille sur ce projet."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou का चैट फ़ोल्डर इस्तेमाल करने के लिए खाली छोड़ें। Claude Code को किसी प्रोजेक्ट पर काम कराने के लिए उसका फ़ोल्डर चुनें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biarkan kosong untuk memakai folder obrolan Coucou. Pilih folder proyek agar Claude Code bekerja di proyek itu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixe vazio para usar a pasta de chat do Coucou. Escolha a pasta de um projeto para o Claude Code trabalhar nele."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставьте пустым, чтобы использовать папку чата Coucou. Выберите папку проекта, чтобы Claude Code работал над этим проектом."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空则使用 Coucou 的聊天文件夹。选择项目文件夹，让 Claude Code 在该项目中工作。"
+          }
+        }
+      }
+    },
+    "Coucou's chat folder": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجلد الدردشة في Coucou"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-র চ্যাট ফোল্ডার"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou's chat folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta de chat de Coucou"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier de discussion de Coucou"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou का चैट फ़ोल्डर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder obrolan Coucou"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasta de chat do Coucou"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка чата Coucou"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 聊天文件夹"
+          }
+        }
+      }
+    },
+    "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم Claude Code مع تسجيل دخوله وخوادم MCP والمهارات والخطافات. لا حاجة إلى مفتاح API."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-এর সাইন-ইন, MCP সার্ভার, স্কিল ও হুকসহ এটি ব্যবহার করে। API কী লাগে না।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa Claude Code con su sesión, servidores MCP, skills y hooks. No hace falta clave de API."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilise Claude Code avec sa connexion, ses serveurs MCP, ses skills et ses hooks. Aucune clé API nécessaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code को उसके साइन-इन, MCP सर्वर, स्किल और हुक के साथ इस्तेमाल करता है। API कुंजी की ज़रूरत नहीं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memakai Claude Code dengan login, server MCP, skill, dan hook-nya. Tidak perlu kunci API."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa o Claude Code com o login, servidores MCP, skills e hooks dele. Não precisa de chave de API."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использует Claude Code с его входом, MCP-серверами, навыками и хуками. Ключ API не нужен."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Claude Code 及其登录、MCP 服务器、技能和钩子。无需 API 密钥。"
           }
         }
       }

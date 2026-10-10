@@ -618,7 +618,7 @@ function claudeCodeBlock(): HTMLElement {
   const folder = h("input", {
     type: "text",
     value: settings.claudeCodeDir,
-    placeholder: t("Coucou's own folder"),
+    placeholder: t("Coucou's chat folder"),
     spellcheck: "false",
     autocomplete: "off",
     style: "flex:1 1 auto;min-width:0",
@@ -634,12 +634,12 @@ function claudeCodeBlock(): HTMLElement {
         h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
         h("span", { text: p.name }),
       ),
-      h("span", { class: "hint", text: t("Runs your own Claude Code, with its sign-in, MCP servers, skills and hooks. No key here.") }),
+      h("span", { class: "hint", text: t("Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed.") }),
     ),
     h("div", { class: "row" }, h("label", { text: t("Model") }), model),
     h("div", { class: "row" }, h("label", { text: t("Effort") }), effort),
     h("div", { class: "row" }, h("label", { text: t("Working folder") }), folder),
-    h("div", { class: "hint", text: t("Leave it empty and Claude Code works in a folder of Coucou's own, not in your home folder. Pick a project folder to let it work on that project. Tool approvals show in the island like any other session's.") }),
+    h("div", { class: "hint", text: t("Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project.") }),
   );
 }
 
