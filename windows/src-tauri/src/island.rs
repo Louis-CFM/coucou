@@ -1,9 +1,11 @@
-// Island window: placement on the chosen display, the two window sizes
-// (full panel / invisible wake strip), click-through and the cursor poll.
+// Island window: placement on the chosen display, the window sizes (full panel,
+// invisible wake strip, or the small capsule of a floating island),
+// click-through and the cursor poll.
 //
 // There is no notch on a PC, so the island is a black shape drawn at the top
-// centre of the main display inside a borderless, transparent, always-on-top
-// window that never takes focus.
+// centre of the chosen display, or wherever the user dragged it
+// (island/placement.rs), inside a borderless, transparent, always-on-top window
+// that never takes focus.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -26,6 +28,8 @@ pub const WINDOW_LABEL: &str = "island";
 /// Margin around the island that still counts as "on the island", in logical px.
 /// Wider than the macOS 6 pt because a click must never be swallowed.
 const HIT_MARGIN: f64 = 14.0;
+
+pub mod placement;
 
 #[derive(Serialize, Clone)]
 pub struct CursorPayload {
@@ -61,6 +65,8 @@ pub struct PollGate {
     pub rect: Mutex<IslandRect>,
     /// Mirrors the window flag so we only call into the OS when it changes.
     ignoring: AtomicBool,
+    /// The island drag (placement.rs). The one in Mochi's `PollGate` (desktop.rs) stays idle.
+    pub free: placement::Free,
 }
 
 impl PollGate {
@@ -71,6 +77,7 @@ impl PollGate {
             collapsed: AtomicBool::new(true),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
+            free: placement::Free::default(),
         }
     }
 
@@ -185,11 +192,15 @@ fn describe(m: &Monitor) -> DisplayId {
     }
 }
 
-/// Which display a saved `at:` preference points at, best match first: same
-/// place and name; the same name and size elsewhere (layout rearranged); the
-/// same name alone when unique (resolution changed); the same place. None
-/// means unplugged, and the caller falls back to the primary display.
-fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
+/// The parts of an `at:<x>,<y>|<name>|<w>x<h>` key; an older key has no name and no size.
+struct DisplayKey<'a> {
+    x: i32,
+    y: i32,
+    name: Option<&'a str>,
+    size: Option<(i32, i32)>,
+}
+
+fn parse_key(pref: &str) -> Option<DisplayKey<'_>> {
     let rest = pref.strip_prefix("at:")?;
     let mut parts = rest.split('|');
     let (x, y) = parts.next()?.split_once(',')?;
@@ -199,6 +210,15 @@ fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
         let (w, h) = s.split_once('x')?;
         Some((w.parse::<i32>().ok()?, h.parse::<i32>().ok()?))
     });
+    Some(DisplayKey { x, y, name, size })
+}
+
+/// Which display a saved `at:` preference points at, best match first: same
+/// place and name; the same name and size elsewhere (layout rearranged); the
+/// same name alone when unique (resolution changed); the same place. None
+/// means unplugged, and the caller falls back to the primary display.
+fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
+    let DisplayKey { x, y, name, size } = parse_key(pref)?;
     let at = |d: &DisplayId| d.x == x && d.y == y;
     if let Some(name) = name {
         if let Some(i) = displays.iter().position(|d| at(d) && d.name == name) {
@@ -278,10 +298,18 @@ mod display_tests {
         assert_eq!(pick_display("primary", &[lap, ext]), None);
         assert_eq!(pick_display("at:nonsense", &[]), None);
     }
+
+    #[test]
+    fn a_display_left_of_the_main_one_is_found_by_its_negative_place() {
+        let d1 = d("DISPLAY1", 0, 0, 2560, 1440);
+        let d2 = d("DISPLAY2", -1080, 0, 1080, 1920);
+        assert_eq!(pick_display("at:-1080,0|DISPLAY2|1080x1920", &[d1, d2]), Some(1));
+    }
 }
 
 pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
-    match target_monitor(app, pref) {
+    let m = placement::resolved(app).map(|r| r.monitor).or_else(|| target_monitor(app, pref));
+    match m {
         Some(m) => {
             let scale = m.scale_factor();
             let p = m.position();
@@ -301,17 +329,31 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
-    let Some(m) = target_monitor(app, pref) else { return };
+    // Carried by the cursor (placement.rs): the drag places the window, and its end re-applies everything.
+    if placement::dragging(app) {
+        return;
+    }
+    // Placed by hand: None until the user moves the island, or while its display is unplugged.
+    let free = placement::resolved(app);
+    placement::announce(app, free.as_ref());
+    let Some(m) = free.as_ref().map(|f| f.monitor.clone()).or_else(|| target_monitor(app, pref)) else { return };
 
     let scale = m.scale_factor();
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    let (lw, lh) = match (&free, collapsed) {
+        // Hidden away from the top edge: a small visible capsule, so it can be found again.
+        (Some(f), true) if !f.docked => (placement::REST_W, placement::REST_H),
+        (_, true) => (STRIP_W, STRIP_H),
+        _ => (PANEL_W, PANEL_H),
+    };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let (x, y) = match &free {
+        Some(f) => placement::window_origin((f.cx, f.top), pw as f64),
+        None => (mp.x + (ms.width as i32 - pw as i32) / 2, mp.y), // unchanged: top centre
+    };
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -329,17 +371,23 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_always_on_top(true);
 }
 
+/// Position, size and scale of the island's monitor, then the rounded anchor of its spot
+/// (`i32::MIN` twice when there is none).
+type ScreenKey = (i32, i32, u32, u32, u64, i32, i32);
+
 /// Position, size and scale of the monitor the island lives on. Any change here
 /// means the island has to be placed again.
-fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
+fn current_screen_key(app: &AppHandle) -> Option<ScreenKey> {
     let pref = app
         .try_state::<crate::Shared>()
         .map(|s| s.settings.lock().unwrap().screen.clone())
         .unwrap_or_else(|| "primary".into());
-    let m = target_monitor(app, &pref)?;
+    let free = placement::resolved(app);
+    let m = free.as_ref().map(|f| f.monitor.clone()).or_else(|| target_monitor(app, &pref))?;
+    let anchor = free.as_ref().map(|f| (f.cx.round() as i32, f.top.round() as i32)).unwrap_or((i32::MIN, i32::MIN));
     let p = m.position();
     let size = m.size();
-    Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
+    Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits(), anchor.0, anchor.1))
 }
 
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
@@ -349,7 +397,9 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         let mut was_down = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
-        let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
+        let mut last_screen: Option<ScreenKey> = None;
+        // The previous tick carried the island (placement.rs).
+        let mut carried = false;
         // Without a cursor to read (Linux) the loop only watches the display
         // layout, and twice a second is plenty for that: waking at 60 Hz just to
         // find no cursor costs CPU for nothing.
@@ -359,7 +409,27 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             let mut last = (f64::MIN, f64::MIN);
             let mut ticks: u32 = 0;
             while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(period));
+                let nap = if gate.free.dragging() { placement::TICK_MS } else { period };
+                std::thread::sleep(Duration::from_millis(nap));
+
+                // During a drag, carrying the island is all this tick does: no click-through (the window
+                // keeps the mouse, the button is held on it), no `cursor` (the page would think the mouse
+                // stood still, then left, and collapse the island), no display check.
+                if gate.free.dragging() {
+                    placement::carry(&app, &gate);
+                    carried = true;
+                    continue;
+                }
+                if std::mem::take(&mut carried) {
+                    last = (f64::MIN, f64::MIN); // a fresh `cursor` goes out right away
+                    was_down = false;
+                    // The spot just changed, and the key with it: that is not a display change. Reading
+                    // the key here also covers a spot cleared just before.
+                    gate.free.take_rekey();
+                    if let Some(key) = current_screen_key(&app) {
+                        last_screen = Some(key);
+                    }
+                }
 
                 // Monitors get plugged in, unplugged, rearranged and rescaled, and
                 // an island pinned to coordinates that no longer exist is an island
@@ -371,7 +441,10 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
                         last_screen = now;
-                        if !first {
+                        // A cleared spot (placement.rs, island_reset_position) changes the key too, and
+                        // the island is already back in place.
+                        let rekeyed = gate.free.take_rekey();
+                        if !first && !rekeyed {
                             crate::log::line("display layout changed — repositioning".to_string());
                             let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
                         }

@@ -59,7 +59,7 @@ export const PANEL_H = 320;
 export const NOTCH_W = 184;
 export const NOTCH_H = 32;
 export const COMPACT_W = 288; // NOTCH_W + 104
-export const EXPANDED_W = 640;
+export const EXPANDED_W = 640; // = 2 × HALF_W (src-tauri/src/island/placement.rs): keep in sync
 
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;

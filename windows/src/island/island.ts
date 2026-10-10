@@ -2,7 +2,8 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, type PlacementInfo } from "../core/bridge";
+import { watchDpr } from "../core/dpr";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -15,7 +16,7 @@ import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { createMiniBot, pruneMiniBots, resizeMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
@@ -27,6 +28,7 @@ import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { WindowDragGesture, canGrab, isBarTarget } from "./window-drag";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -34,6 +36,10 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/** How long the pointer rests on a floating island's capsule before it opens: a passing cursor does not open it. */
+const WAKE_DWELL_MS = 200;
+/** Outline of a floating island: its top corners are rounded, nothing ties it to an edge. */
+const FLOATING_RING = "0 0 0 1px rgba(255,255,255,0.10), 0 4px 14px rgba(0,0,0,0.35)";
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -109,6 +115,17 @@ export class Island {
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
 
+  /** Movable island (window-drag.ts): the armed press, then the drag Rust carries out. */
+  private windowDrag = new WindowDragGesture();
+  private windowDragging = false;
+  private stillWaiters: Array<() => void> = [];
+  private placement: PlacementInfo = { capable: false, mode: "anchored" };
+  private wakeDwell: number | null = null;
+  /** The current click series (MouseEvent.detail, at the double-click speed set in Windows) opened
+   *  the small island, or moved the island: its dblclick is not a return to the top centre. */
+  private sequenceOpened = false;
+  private sequenceDragged = false;
+
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
   private uploadDone = false;
@@ -119,10 +136,12 @@ export class Island {
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
+      islandStill: () => this.islandStill(),
     });
     this.build();
     this.wireFsm();
     this.wireInput();
+    watchDpr(() => this.onDprChange());
     this.engine.onDizzy = () => this.handleDizzy();
     this.greeting.onComplete = () => {
       this.fsm.greetComplete();
@@ -295,14 +314,26 @@ export class Island {
       this.countdown,
     );
 
+    this.sizeGreetingCanvas();
+
+    this.root.append(this.wakeStrip, this.islandEl);
+    this.applyGeometry();
+  }
+
+  private sizeGreetingCanvas() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.greetingCanvas.width = Math.round(EXPANDED_W * dpr);
     this.greetingCanvas.height = Math.round(150 * dpr);
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
+  }
 
-    this.root.append(this.wakeStrip, this.islandEl);
-    this.applyGeometry();
+  /** The window moved to a display with another pixel density: resize the canvases so they stay sharp. */
+  private onDprChange() {
+    this.sizeGreetingCanvas();
+    this.canvasPx = -1; // makes drawBot resize its canvas
+    resizeMiniBots();
+    State.notify();
   }
 
   // ── FSM ─────────────────────────────────────────────────────────────────────
@@ -672,7 +703,12 @@ export class Island {
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    if (this.placement.mode === "floating") {
+      this.islandEl.style.borderRadius = `${r}px`;
+      this.islandEl.style.boxShadow = hh > 2 ? FLOATING_RING : "none"; // no outline while hidden
+    } else {
+      this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`; // unchanged
+    }
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -725,18 +761,32 @@ export class Island {
     // The wake strip is the only thing the OS can hit while the island is hidden.
     this.wakeStrip.addEventListener("mouseenter", () => {
       Sound.resume();
-      if (State.mode === "hidden") this.fsm.mouseEntered();
+      if (State.mode !== "hidden") return;
+      if (this.placement.mode !== "floating") { this.fsm.mouseEntered(); return; } // top edge: at once, as before
+      // A capsule in the middle of a display: a cursor passing over it must not open the island.
+      this.cancelWakeDwell();
+      this.wakeDwell = window.setTimeout(() => {
+        this.wakeDwell = null;
+        if (State.mode === "hidden") this.fsm.mouseEntered();
+      }, WAKE_DWELL_MS);
     });
+    this.wakeStrip.addEventListener("mouseleave", () => this.cancelWakeDwell());
 
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      // First press of a series: before fsm.click(), which opens the small island.
+      if (e.button === 0 && e.detail <= 1) {
+        this.sequenceOpened = State.mode !== "expanded";
+        this.sequenceDragged = false;
+      }
       // A click makes a hover-opened island an ordinary open one.
       this.fsm.userInteracted();
       // A press on Mochi may become a drag out to the desktop.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
         this.botPress = { x: e.clientX, y: e.clientY };
       }
+      if (e.button === 0 && this.grabbable(e)) this.windowDrag.press(e.clientX, e.clientY);
       // Right-click on Mochi opens the wardrobe, and closes it again.
       if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
@@ -759,10 +809,25 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
+    // A double-click on the empty part of the bar puts the island back at the top centre of its display.
+    this.islandEl.addEventListener("dblclick", (e) => {
+      if (this.placement.mode === "anchored" || State.mode !== "expanded") return;
+      // Not the two clicks that just opened the small island, nor a series in which a press moved the
+      // island: Chromium counts clicks in window coordinates, and the window followed the cursor.
+      if (this.windowDragging || this.sequenceOpened || this.sequenceDragged) return;
+      if (this.grabbable(e)) void Bridge.islandResetPosition();
+    });
+
     // Dragging Mochi out of the island puts him on the desktop.
     window.addEventListener("mousemove", (e) => {
       if (this.desktop.carrying) {
         this.desktop.carry(e.clientX, e.clientY);
+        return;
+      }
+      const pressAt = this.windowDrag.move(e.clientX, e.clientY, e.buttons);
+      if (pressAt) {
+        // A Mochi flight may have started since the press: it aims at where the island is now.
+        if (!this.desktop.moving) void this.startWindowDrag(pressAt);
         return;
       }
       const press = this.botPress;
@@ -779,6 +844,8 @@ export class Island {
     });
     window.addEventListener("mouseup", (e) => {
       this.botPress = null;
+      // The end of the island drag comes from Rust (island-drag-end), once the island has landed.
+      this.windowDrag.reset();
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
 
@@ -935,6 +1002,56 @@ export class Island {
       }
       this.engine.triggerEmote("happy");
     }, 3300);
+  }
+
+  // ── Movable island (window-drag.ts, src-tauri/src/island/placement.rs) ──────
+
+  /** Is this press on one of the island's handles (window-drag.ts)? */
+  private grabbable(e: MouseEvent): boolean {
+    const t = e.target;
+    const onBar = t instanceof HTMLElement && isBarTarget(t, this.header.el, this.contentEl);
+    return canGrab({
+      capable: this.placement.capable, mode: State.mode, view: State.view,
+      mochiMoving: this.desktop.moving, onBot: this.isBotHit(e.clientX, e.clientY), onBar,
+    });
+  }
+
+  private async startWindowDrag(press: { x: number; y: number }) {
+    this.windowDragging = true; // before awaiting: island-drag-end may arrive before the reply
+    this.sequenceDragged = true;
+    document.documentElement.dataset.dragging = "";
+    const ok = await Bridge.islandDragBegin(press.x, press.y);
+    if (!ok) this.endWindowDrag();
+  }
+
+  /** End of the island drag: Rust's island-drag-end event (or a refused start). */
+  endWindowDrag() {
+    if (!this.windowDragging) return;
+    this.windowDragging = false;
+    delete document.documentElement.dataset.dragging;
+    for (const resolve of this.stillWaiters.splice(0)) resolve();
+  }
+
+  /** Resolves once the island stands still: a Mochi flight aims at where it is. */
+  islandStill(): Promise<void> {
+    if (!this.windowDragging) return Promise.resolve();
+    return new Promise((resolve) => this.stillWaiters.push(resolve));
+  }
+
+  setPlacement(info: PlacementInfo) {
+    this.cancelWakeDwell();
+    this.placement = info;
+    const root = document.documentElement;
+    if (info.capable) root.dataset.freeIsland = ""; else delete root.dataset.freeIsland;
+    root.dataset.placement = info.mode;
+    if (info.mode !== "floating") this.islandEl.style.boxShadow = "";
+    this.applyGeometry();
+    this.ensureRunning();
+  }
+
+  private cancelWakeDwell() {
+    if (this.wakeDwell != null) window.clearTimeout(this.wakeDwell);
+    this.wakeDwell = null;
   }
 
   // ── Frame loop ──────────────────────────────────────────────────────────────
@@ -1144,6 +1261,8 @@ export class Island {
     // underneath, so only the header may keep taking clicks up here.
     this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
     this.header.el.style.pointerEvents = live ? "auto" : "none";
+    // Invisible header (confused): no grab hand over an empty space canGrab refuses.
+    this.header.el.style.cursor = State.view === "confused" ? "default" : "";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
     // Leaving the greeting, however it ends, lets its sound fade out.

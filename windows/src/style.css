@@ -212,6 +212,17 @@ body {
   transition: opacity 0.2s ease-in-out;
 }
 
+/* Movable island (island/window-drag.ts, src-tauri/src/island/placement.rs). */
+html[data-free-island] #header { cursor: grab; }                  /* .tab and .header-actions button keep default */
+html[data-free-island] #header .plan-pills { cursor: default; }  /* not a handle */
+html[data-dragging], html[data-dragging] * { cursor: grabbing !important; }
+html[data-placement="floating"] #wake-strip { width: 72px; height: 14px; }  /* = REST_W × REST_H (placement.rs): keep in sync */
+html[data-placement="floating"] #wake-strip::before {
+  content: ""; position: absolute; top: 3px; left: 50%; width: 44px; height: 6px;
+  transform: translateX(-50%); border-radius: 3px; background: #000;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
 .tabs {
   display: flex;
   gap: 5px;

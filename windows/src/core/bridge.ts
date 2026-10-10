@@ -32,6 +32,9 @@ export interface BootInfo {
   cursorPoll: boolean;
 }
 
+/** The island placed by hand (src-tauri/src/island/placement.rs): whether the platform allows it, and where it is. */
+export interface PlacementInfo { capable: boolean; mode: "anchored" | "docked" | "floating"; }
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -56,6 +59,11 @@ export const Bridge = {
 
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
+  /** Whether the island can be dropped anywhere here, and where it is (src-tauri/src/island/placement.rs). */
+  islandPlacement: () => call<PlacementInfo>("island_placement"),
+  /** The pointer left the dead zone: Rust carries the window. (x, y): the press point. */
+  islandDragBegin: (x: number, y: number) => call<boolean>("island_drag_begin", { x, y }),
+  islandResetPosition: () => call<void>("island_reset_position"),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 

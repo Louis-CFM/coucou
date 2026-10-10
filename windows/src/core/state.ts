@@ -151,6 +151,8 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Where the island was dropped (src-tauri/src/island/placement.rs). Owned by Rust: what a page sends back is ignored. */
+  islandSpot?: { display: string; x: number; y: number; docked: boolean } | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

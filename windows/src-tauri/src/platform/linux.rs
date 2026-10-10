@@ -308,6 +308,14 @@ pub fn left_button_down() -> bool {
     false
 }
 
+/// No global cursor to carry the window with (`cursor_physical` returns None, X11 included), and a
+/// layer-shell surface ignores `set_position`: the island stays at the top centre.
+pub const FREE_ISLAND: bool = false;
+
+pub fn primary_button_down() -> bool {
+    false
+}
+
 // ── Island window ─────────────────────────────────────────────────────────────
 
 /// The few gtk-layer-shell calls we need, straight from the C library.

@@ -804,6 +804,17 @@
    "ru": "Готово. Цифры появятся после следующего ответа в сессии Claude Code.",
    "id": "Selesai. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code."
   },
+  "Drag the small island, or the empty part of the open island's top bar, to put it anywhere on any display. To bring it back, drop it at the top centre, double-click that bar, or pick a display above.": {
+   "zh-Hans": "拖动小岛，或展开后岛顶部栏的空白处，即可把它放到任意显示器的任意位置。要还原，可将它拖回顶部中央、双击该栏，或在上方选择一个显示器。",
+   "hi": "छोटे आइलैंड को, या खुले आइलैंड की ऊपरी पट्टी के खाली हिस्से को खींचकर उसे किसी भी डिस्प्ले पर कहीं भी रखें। वापस लाने के लिए उसे ऊपर बीच में छोड़ें, उस पट्टी पर डबल-क्लिक करें, या ऊपर कोई डिस्प्ले चुनें।",
+   "es": "Arrastra la isla pequeña, o la parte vacía de la barra superior de la isla abierta, para dejarla en cualquier lugar de cualquier pantalla. Para devolverla, suéltala arriba en el centro, haz doble clic en esa barra o elige una pantalla arriba.",
+   "ar": "اسحب الشريط الصغير، أو الجزء الفارغ من الحافة العلوية للشريط المفتوح، لوضعه في أي مكان على أي شاشة. لإعادته، أفلته في أعلى المنتصف، أو انقر نقرًا مزدوجًا على تلك الحافة، أو اختر شاشة أعلاه.",
+   "fr": "Fais glisser la petite île, ou la partie vide de la barre du haut de l'île ouverte, pour la poser n'importe où sur n'importe quel écran. Pour la remettre en place, dépose-la en haut au centre, double-clique sur cette barre ou choisis un écran ci-dessus.",
+   "bn": "ছোট আইল্যান্ডটি, অথবা খোলা আইল্যান্ডের উপরের বারের ফাঁকা অংশ টেনে যেকোনো ডিসপ্লের যেকোনো জায়গায় রাখুন। ফেরাতে সেটিকে উপরে মাঝখানে ছেড়ে দিন, সেই বারে ডাবল-ক্লিক করুন, অথবা উপরে একটি ডিসপ্লে বেছে নিন।",
+   "pt-BR": "Arraste a ilha pequena, ou a parte vazia da barra superior da ilha aberta, para colocá-la em qualquer lugar de qualquer tela. Para trazê-la de volta, solte-a no topo, ao centro, clique duas vezes nessa barra ou escolha uma tela acima.",
+   "ru": "Перетащите маленький остров или пустую часть верхней панели открытого острова, чтобы поставить его в любое место на любом дисплее. Чтобы вернуть его, отпустите его вверху по центру, дважды щёлкните по этой панели или выберите дисплей выше.",
+   "id": "Seret pulau kecil, atau bagian kosong bilah atas pulau yang terbuka, untuk meletakkannya di mana saja pada layar mana pun. Untuk mengembalikannya, lepaskan di tengah atas, klik dua kali bilah itu, atau pilih layar di atas."
+  },
   "Drop": {
    "zh-Hans": "拖放",
    "hi": "छोड़ें",
@@ -2651,6 +2662,17 @@
    "pt-BR": "Onde você programa",
    "ru": "Где вы пишете код",
    "id": "Tempat Anda membuat kode"
+  },
+  "Where you left it": {
+   "zh-Hans": "你放下它的位置",
+   "hi": "जहाँ आपने इसे छोड़ा था",
+   "es": "Donde la dejaste",
+   "ar": "حيث تركته",
+   "fr": "Là où tu l'as laissée",
+   "bn": "যেখানে আপনি রেখে গেছেন",
+   "pt-BR": "Onde você a deixou",
+   "ru": "Там, где вы его оставили",
+   "id": "Di tempat Anda meletakkannya"
   },
   "Witch hat": {
    "zh-Hans": "女巫帽",
