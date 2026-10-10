@@ -536,6 +536,11 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
+    // Setting the same keyboard mode again stalls WebKit's repaints after a fold.
+    static ACTIVATING: AtomicBool = AtomicBool::new(false);
+    if ACTIVATING.swap(activating, Ordering::Relaxed) == activating {
+        return;
+    }
     let Ok(gw) = win.gtk_window() else { return };
     // The island is created `focusable: false` (tauri.linux.conf.json), so GTK
     // refuses focus until we say otherwise — on a layer surface too.
