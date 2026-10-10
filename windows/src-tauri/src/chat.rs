@@ -14,9 +14,13 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{claude, claude_cli, cursor_chat, kiro_chat, local_chat, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
+/// Chat through the user's own CLI sign-ins instead of an API key.
+pub const CLAUDE_CLI: &str = "claude-cli";
+pub const CURSOR: &str = "cursor";
+pub const KIRO: &str = "kiro";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -70,6 +74,11 @@ struct Conversation {
     native: Vec<Value>,
     /// `{"role", "content": text}` turns, the same whoever answered.
     plain: Vec<Value>,
+    /// The resume token of each CLI provider that keeps the conversation in
+    /// its own binary (`agent --resume <id>`, `claude --resume <id>`; Kiro's is
+    /// the folder's latest, so the value is only a "started" marker). A
+    /// provider switching away keeps its own — it resumes where it left off.
+    cli_sessions: std::collections::HashMap<String, String>,
 }
 
 /// What a provider needs to build one turn.
@@ -174,6 +183,22 @@ impl Chat {
         c.plain.push(json!({ "role": "user", "content": user_text }));
         c.plain.push(json!({ "role": "assistant", "content": answer }));
     }
+
+    /// The token a CLI provider resumes with — its own conversation in its own
+    /// binary — or None until its first answer.
+    pub fn cli_session(&self, provider: &str) -> Option<String> {
+        self.inner.lock().unwrap().cli_sessions.get(provider).cloned()
+    }
+
+    /// Stores the token, guarded like commit: an answer that lands after a
+    /// reset or a switch cannot write one.
+    pub fn set_cli_session(&self, turn: &Turn, session: String) {
+        let mut c = self.inner.lock().unwrap();
+        if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
+            return;
+        }
+        c.cli_sessions.insert(turn.provider.clone(), session);
+    }
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -230,11 +255,19 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         let m = settings.model.trim();
         return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
     }
+    let cli_default = match provider {
+        CURSOR => Some(cursor_chat::DEFAULT_MODEL),
+        KIRO => Some(kiro_chat::DEFAULT_MODEL),
+        // claude-cli's empty model means the user's own CLI setting.
+        CLAUDE_CLI => Some(""),
+        _ => None,
+    };
     settings
         .chat_models
         .get(provider)
         .map(|m| m.trim().to_string())
-        .filter(|m| !m.is_empty())
+        .filter(|m| !m.is_empty() || provider == CLAUDE_CLI)
+        .or_else(|| cli_default.map(str::to_string))
         .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
         .unwrap_or_default()
 }
@@ -263,6 +296,39 @@ pub(crate) fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
 }
 
+/// One turn through a provider whose conversation lives in its own CLI —
+/// `agent -p`, `kiro-cli chat`, `claude -p`. The resume token is the only
+/// history it needs, but the shared Chat still records the plain turns so
+/// switching provider mid-conversation loses nothing. `run` answers with the
+/// reply text and the token to resume with, when the CLI gave one.
+async fn cli_send<F, Fut>(
+    chat: &Chat,
+    provider: &str,
+    query: String,
+    context: Option<ChatContext>,
+    run: F,
+) -> Result<ChatReply, String>
+where
+    F: FnOnce(Option<String>, bool, Option<ChatContext>, String) -> Fut,
+    Fut: std::future::Future<Output = Result<(String, Option<String>), String>>,
+{
+    let turn = chat.begin(provider);
+    let session = chat.cli_session(provider);
+    let (text, resumed) = run(session, turn.first, context.clone(), query.clone()).await?;
+    let plain = plain_question(turn.first, context.as_ref(), &query);
+    chat.commit(
+        &turn,
+        json!({ "role": "user", "content": plain.clone() }),
+        json!({ "role": "assistant", "content": text.clone() }),
+        &plain,
+        &text,
+    );
+    if let Some(id) = resumed {
+        chat.set_cli_session(&turn, id);
+    }
+    Ok(ChatReply { text })
+}
+
 /// One chat turn with the provider chosen in the settings.
 pub async fn send(
     app: &AppHandle,
@@ -276,6 +342,25 @@ pub async fn send(
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
+    }
+    if provider == CURSOR {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            cursor_chat::send(model.clone(), first, s, q, c)
+        })
+        .await;
+    }
+    if provider == KIRO {
+        return cli_send(chat, provider, query, context, |s, _first, c, q| {
+            // `first` is not Kiro's to know — its resume is the folder's latest.
+            kiro_chat::send(model.clone(), s.is_some(), q, c)
+        })
+        .await;
+    }
+    if provider == CLAUDE_CLI {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            claude_cli::send(model.clone(), first, s, q, c)
+        })
+        .await;
     }
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, &model, query, context).await;
@@ -298,6 +383,16 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
     if let Some(p) = openai_compat::provider(provider) {
         let key = secrets::get(p.key).ok_or_else(no_key)?;
         return openai_compat::models(p, &key).await;
+    }
+    // The CLI providers ask the binary itself; no key gates it.
+    if provider == CURSOR {
+        return Ok(cursor_chat::models().await.into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == KIRO {
+        return Ok(kiro_chat::models().await.into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == CLAUDE_CLI {
+        return Ok(claude_cli::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
     }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::models(&server).await;
@@ -380,6 +475,33 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         Chat::default().refuse("google", "y");
         assert!(!file.exists());
+    }
+
+    #[test]
+    fn a_cli_session_is_per_provider_and_follows_the_turn_rules() {
+        let chat = Chat::default();
+        let t1 = chat.begin("cursor");
+        chat.commit(&t1, json!({"role":"user","content":"q"}), json!({"role":"assistant","content":"a"}), "q", "a");
+        chat.set_cli_session(&t1, "ses-1".into());
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // Another provider keeps its own; switching away keeps cursor's.
+        let t2 = chat.begin("kiro");
+        chat.commit(&t2, json!({"role":"user","content":"q2"}), json!({"role":"assistant","content":"a2"}), "q2", "a2");
+        chat.set_cli_session(&t2, "-".into());
+        assert_eq!(chat.cli_session("kiro").as_deref(), Some("-"));
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // A stale turn — one begun before a switch — cannot write a token back.
+        let stale = chat.begin("cursor");
+        let _other = chat.begin("kiro");
+        chat.set_cli_session(&stale, "ses-old".into());
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // "New chat" starts every provider's conversation over.
+        chat.reset();
+        assert!(chat.cli_session("cursor").is_none());
+        assert!(chat.cli_session("kiro").is_none());
     }
 
     #[test]

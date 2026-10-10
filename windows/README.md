@@ -241,6 +241,16 @@ images and PDFs by name only. Settings tells you whether the address is this
 PC — nothing leaves it then — and warns before a key would travel over plain
 `http://` to another machine.
 
+**On your plan**: **Settings… → On your plan** lets the chat answer through the
+command-line tools you already pay for — **Claude Code** (`claude -p`),
+**Cursor** (`agent -p`, browser sign-in from the settings page) and **Kiro**
+(`kiro-cli chat`). No API key: each runs on its own sign-in, on your
+subscription. Each keeps its own conversation (`--resume`), so switching to one
+mid-chat carries the plain text over and switching back picks its own
+conversation up where it left off. They run read-only in a private, empty
+folder of Coucou's own — Claude Code with `--setting-sources project` so the
+Coucou hook never sees these turns — and every call has a two-minute deadline.
+
 Answers from every provider are shown as **Markdown**: headings, lists, bold,
 inline code, quotes, and code blocks with a copy button. It is built from text
 nodes, never parsed as HTML, and only `http`/`https` links open. Mochi greets

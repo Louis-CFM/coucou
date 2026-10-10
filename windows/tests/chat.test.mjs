@@ -151,6 +151,42 @@ test("switching provider saves it and asks the new provider only", async () => {
   assert.deepEqual(models(), ["gemini-2.5-flash"]);
 });
 
+test("a signed-in CLI joins the chips; a signed-out one is never asked for models", async () => {
+  answers.secret_present = false;
+  answers.cli_status = (args) => (args.provider === "cursor" ? { cli: "/usr/bin/agent", status: "Logged in as a@b.c", loggedIn: true } : { cli: null, status: "", loggedIn: false });
+  $(".model-btn").fire("click");
+  await flush(); await flush();
+  // The CLIs are asked for their status, by name (once eagerly, once on open).
+  assert.deepEqual([...new Set(sent("cli_status").map((c) => c.provider))].sort(), ["claude-cli", "cursor", "kiro"]);
+  assert.deepEqual(chips(), ["Anthropic", "Cursor"]);
+  // The key providers were still asked about their keys the same way.
+  const keys = ["anthropic-api-key", "google-api-key", "openai-api-key", "openrouter-api-key"];
+  assert.ok(sent("secret_present").every((call) => keys.includes(call.key)));
+});
+
+test("a CLI provider without a sign-in says so and is never asked for its models", async () => {
+  answers.cli_status = { cli: "/usr/bin/claude", status: "", loggedIn: false };
+  State.settings = { ...State.settings, chatProvider: "claude-cli" };
+  view.sync();
+  $(".model-btn").fire("click");
+  await flush(); await flush();
+  assert.match($(".picker-status").textContent, /Not signed in/);
+  assert.deepEqual(sent("chat_models"), []);
+});
+
+test("a signed-in CLI provider lists its models and picking one saves it", async () => {
+  answers.cli_status = { cli: "/usr/bin/agent", status: "Logged in", loggedIn: true };
+  answers.chat_models = [{ id: "auto", label: "Auto" }, { id: "gpt-5", label: "GPT-5" }];
+  State.settings = { ...State.settings, chatProvider: "cursor" };
+  view.sync();
+  $(".model-btn").fire("click");
+  await flush(); await flush();
+  assert.deepEqual(sent("chat_models"), [{ provider: "cursor" }]);
+  assert.deepEqual(models(), ["Auto", "GPT-5"]);
+  view.el.find(".picker-model")[1].fire("click");
+  assert.equal(State.settings.chatModels.cursor, "gpt-5");
+});
+
 test("a local answer streams into one reply, then the finished text replaces it", async () => {
   let finish;
   answers.chat_send = () => new Promise((resolve) => (finish = resolve));

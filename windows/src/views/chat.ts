@@ -32,6 +32,7 @@ const STRINGS = {
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
+  noLogin: N_("Not signed in — see the Settings page."),
   notAvailable: N_("Not available"),
   openSettings: N_("Open Settings"),
 };
@@ -89,6 +90,8 @@ function buildPicker(onChange: () => void): Picker {
   const cache = new Map<string, ModelInfo[]>();
   /** The keys the credential store held the last time it was asked. */
   const stored = new Set<string>();
+  /** The CLI providers signed in the last time they were asked (`agent`, `kiro-cli`, `claude`). */
+  const cliOk = new Set<string>();
   let isOpen = false;
   let request = 0;
 
@@ -102,12 +105,28 @@ function buildPicker(onChange: () => void): Picker {
     });
     if (isOpen) drawChips();
   }
+
+  /**
+   * Which chat CLIs are signed in — `agent status`, `kiro-cli whoami`, the
+   * saved Claude Code login. Each spawns the CLI, so this runs with findKeys
+   * when the picker opens, not on every redraw.
+   */
+  async function findClis() {
+    const clis = PROVIDERS.filter((p) => p.cli);
+    const status = await Promise.all(clis.map((p) => Bridge.cliStatus(p.id)));
+    cliOk.clear();
+    clis.forEach((p, i) => {
+      if (status[i]?.loggedIn) cliOk.add(p.id);
+    });
+    if (isOpen) drawChips();
+  }
   // Known before the first opening, so the chips do not arrive one after another.
   void findKeys();
+  void findClis();
 
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings, (key) => stored.has(key))) {
+    for (const p of visibleProviders(State.settings, (key) => stored.has(key), (id) => cliOk.has(id))) {
       const on = p.id === State.settings.chatProvider;
       const chip = h(
         "button",
@@ -187,14 +206,27 @@ function buildPicker(onChange: () => void): Picker {
       if (ticket === request) status(t(STRINGS.noKey), true);
       return;
     }
+    // A chat CLI answers the same way: nothing until it is signed in. Asked
+    // here rather than trusting findClis, so the answer is always current.
+    if (p.cli) {
+      const st = await Bridge.cliStatus(p.id);
+      if (st?.loggedIn) cliOk.add(p.id);
+      else cliOk.delete(p.id);
+      if (ticket !== request) return;
+      if (!st?.loggedIn) {
+        status(t(STRINGS.noLogin), true);
+        return;
+      }
+    }
     if (ticket !== request) return;
     status(t(STRINGS.loading));
     try {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
       if (!p.urlField) cache.set(p.id, models);
+      // `keep` may be "": Claude Code lists its own default under that id.
       const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
-      if (keep && keep !== activeModel(State.settings)) {
+      if (keep !== null && keep !== activeModel(State.settings)) {
         State.settings = withModel(State.settings, p.id, keep);
         saveSettings();
         onChange();
@@ -210,6 +242,7 @@ function buildPicker(onChange: () => void): Picker {
     el.classList.add("on");
     drawChips();
     void findKeys();
+    void findClis();
     onChange();
     void loadModels();
   }
@@ -283,7 +316,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    // A CLI provider on its own default model has "" as the id: name the CLI.
+    modelName.textContent = activeModel(State.settings) || (p.cli ? t(p.name) : t(STRINGS.noModel));
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }

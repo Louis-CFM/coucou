@@ -7,7 +7,8 @@ import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
-  | "ollama" | "lmstudio" | "custom";
+  | "ollama" | "lmstudio" | "custom"
+  | "cursor" | "kiro" | "claude-cli";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -18,19 +19,24 @@ export interface ProviderDef {
   key: string | null;
   /** Settings field holding a model server's address. */
   urlField: "ollamaUrl" | "lmstudioUrl" | "customUrl" | null;
+  /** A CLI the chat asks instead of an API: the user's own plan, via `agent` / `kiro-cli` / `claude`. */
+  cli: boolean;
   defaultModel: string;
   /** When the saved model is not offered, the first one containing this is picked. */
   prefer: string | null;
 }
 
 export const PROVIDERS: readonly ProviderDef[] = [
-  { id: "anthropic", name: "Anthropic", accent: "#E07950", key: "anthropic-api-key", urlField: null, defaultModel: "claude-opus-5", prefer: "opus" },
-  { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-2.0-flash", prefer: "flash" },
-  { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, defaultModel: "gpt-4o", prefer: "mini" },
-  { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
-  { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
-  { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
-  { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  { id: "anthropic", name: "Anthropic", accent: "#E07950", key: "anthropic-api-key", urlField: null, cli: false, defaultModel: "claude-opus-5", prefer: "opus" },
+  { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, cli: false, defaultModel: "gemini-2.0-flash", prefer: "flash" },
+  { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, cli: false, defaultModel: "gpt-4o", prefer: "mini" },
+  { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, cli: false, defaultModel: "openrouter/auto", prefer: null },
+  { id: "claude-cli", name: N_("Claude Code"), accent: "#E07950", key: null, urlField: null, cli: true, defaultModel: "", prefer: null },
+  { id: "cursor", name: "Cursor", accent: "#4C9AFF", key: null, urlField: null, cli: true, defaultModel: "auto", prefer: null },
+  { id: "kiro", name: "Kiro", accent: "#A259FF", key: null, urlField: null, cli: true, defaultModel: "auto", prefer: null },
+  { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", cli: false, defaultModel: "", prefer: null },
+  { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", cli: false, defaultModel: "", prefer: null },
+  { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", cli: false, defaultModel: "", prefer: null },
 ];
 
 /** Credential store entry of the custom server's optional key. */
@@ -60,9 +66,14 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
  * active one says so when its key is missing; the others are added in
  * Settings, where their keys go.
  */
-export function visibleProviders(settings: Settings, hasKey: (key: string) => boolean): ProviderDef[] {
+export function visibleProviders(
+  settings: Settings,
+  hasKey: (key: string) => boolean,
+  hasCli: (id: ProviderId) => boolean = () => false,
+): ProviderDef[] {
   return PROVIDERS.filter((p) => {
     if (settings.chatProvider === p.id) return true;
+    if (p.cli) return hasCli(p.id);
     if (p.urlField) return settings[p.urlField] !== "";
     return p.key != null && hasKey(p.key);
   });

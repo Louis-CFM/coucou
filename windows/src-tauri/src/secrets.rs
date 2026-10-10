@@ -12,6 +12,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "google-api-key",
     "openrouter-api-key",
     "openai-compatible-key",
+    "cursor-api-key",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",

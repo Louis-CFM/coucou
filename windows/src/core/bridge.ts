@@ -127,6 +127,12 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
+  // ── Chat through a CLI the user already pays for (Cursor, Kiro, Claude Code) ──
+  /** Whether the provider's CLI is installed and signed in; null for a name that is not one. */
+  cliStatus: (provider: string) => call<CliStatus | null>("cli_status", { provider }),
+  /** The provider's own sign-in, when a button can start it (Cursor's opens the browser). */
+  cliLogin: (provider: string) => callOrThrow<void>("cli_login", { provider }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -308,6 +314,14 @@ export interface DroppedFile {
   name: string;
   path: string;
   size: number;
+}
+
+/** What a chat CLI's own status says (Cursor's `agent status`, Kiro's `whoami`…). */
+export interface CliStatus {
+  /** Path of the CLI, or null when it is not installed. */
+  cli: string | null;
+  status: string;
+  loggedIn: boolean;
 }
 
 export interface HookStatus {

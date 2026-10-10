@@ -4,8 +4,11 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod claude_cli;
+mod cli_chat;
 mod codex_plan;
 mod config_file;
+mod cursor_chat;
 mod desktop;
 mod dictation;
 mod files;
@@ -15,6 +18,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod island;
+mod kiro_chat;
 mod local_chat;
 mod log;
 mod net;
@@ -545,6 +549,29 @@ fn chat_reset(chat: State<Chat>) {
     chat.reset();
 }
 
+/// Whether a chat CLI (Cursor's `agent`, `kiro-cli`, `claude`) is installed and
+/// signed in — for the settings window and the picker's provider chips.
+#[tauri::command]
+async fn cli_status(provider: String) -> Option<cli_chat::CliStatus> {
+    match provider.as_str() {
+        "cursor" => Some(cursor_chat::status().await),
+        "kiro" => Some(kiro_chat::status().await),
+        "claude-cli" => Some(claude_cli::status().await),
+        _ => None,
+    }
+}
+
+/// Only from the settings' sign-in button: opens the CLI's browser sign-in and
+/// returns at once. Kiro's and Claude Code's logins are interactive — they are
+/// run in a terminal instead, so they get a hint line, not a button.
+#[tauri::command]
+fn cli_login(provider: String) -> Result<(), String> {
+    match provider.as_str() {
+        "cursor" => cursor_chat::login(),
+        _ => Err("That sign-in runs in a terminal.".into()),
+    }
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -775,6 +802,8 @@ pub fn run() {
             chat_send,
             chat_models,
             chat_refused,
+            cli_status,
+            cli_login,
             local_connect,
             local_set_key,
             chat_reset,

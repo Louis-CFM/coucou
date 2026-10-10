@@ -11,11 +11,20 @@ import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
 test("the ids and key names match the Rust side and the Mac", () => {
-  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom"]);
+  assert.deepEqual(
+    PROVIDERS.map((p) => p.id),
+    ["anthropic", "google", "openai", "openrouter", "claude-cli", "cursor", "kiro", "ollama", "lmstudio", "custom"],
+  );
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
   assert.equal(providerDef("ollama").key, null);
+  // The CLI providers have no key: the sign-in lives in their own binary.
+  for (const id of ["claude-cli", "cursor", "kiro"]) {
+    assert.equal(providerDef(id).cli, true, id);
+    assert.equal(providerDef(id).key, null, id);
+    assert.equal(providerDef(id).urlField, null, id);
+  }
   // An unknown id (an older or newer settings.json) falls back to Claude.
   assert.equal(providerDef("nope").id, "anthropic");
 });
@@ -50,6 +59,19 @@ test("the picker shows what is set up, and always where the chat goes", () => {
     ids(settings({ lmstudioUrl: "http://127.0.0.1:1234" }), ["openai-api-key", "anthropic-api-key"]),
     ["anthropic", "openai", "lmstudio"],
   );
+});
+
+test("a CLI provider shows once signed in, and always while in use", () => {
+  const ids = (s, clis = []) =>
+    visibleProviders(s, () => false, (id) => clis.includes(id)).map((p) => p.id);
+  // Signed out of everything: the picker is unchanged.
+  assert.deepEqual(ids(settings()), ["anthropic"]);
+  // Signed in to a CLI: it joins the chips in catalog order.
+  assert.deepEqual(ids(settings(), ["cursor"]), ["anthropic", "cursor"]);
+  assert.deepEqual(ids(settings({ chatProvider: "claude-cli" }), []), ["claude-cli"]);
+  assert.deepEqual(ids(settings(), ["claude-cli", "kiro", "cursor"]), ["anthropic", "claude-cli", "cursor", "kiro"]);
+  // A signed-out CLI stays while the chat uses it.
+  assert.deepEqual(ids(settings({ chatProvider: "kiro" }), ["cursor"]), ["cursor", "kiro"]);
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

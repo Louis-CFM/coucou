@@ -421,6 +421,18 @@
    "id": "Penyedia obrolan",
    "cs": "Poskytovatelé chatu"
   },
+  "Chat through the tools you already pay for: Cursor's agent, Kiro and Claude Code answer on your subscription — no API key. Once signed in, pick them above the chat box.": {
+   "zh-Hans": "通过你已付费的工具聊天：Cursor 的 agent、Kiro 和 Claude Code 使用你的订阅回复 — 无需 API 密钥。登录后，在聊天框上方选择它们。",
+   "hi": "उन टूल्स से चैट करें जिनके लिए आप पहले से भुगतान करते हैं: Cursor का agent, Kiro और Claude Code आपकी सदस्यता से उत्तर देते हैं — कोई API कुंजी नहीं। साइन इन करने के बाद, चैट बॉक्स के ऊपर उन्हें चुनें।",
+   "es": "Chatea con las herramientas por las que ya pagas: el agente de Cursor, Kiro y Claude Code responden con tu suscripción — sin clave API. Una vez conectado, elígelos sobre el cuadro de chat.",
+   "ar": "تحدث عبر الأدوات التي تدفع ثمنها بالفعل: وكيل Cursor وKiro وClaude Code يجيبون عبر اشتراكك — بلا مفتاح API. بعد تسجيل الدخول، اخترها فوق مربع الدردشة.",
+   "fr": "Discutez avec les outils pour lesquels vous payez déjà : l'agent de Cursor, Kiro et Claude Code répondent via votre abonnement — sans clé API. Une fois connecté, choisissez-les au-dessus de la zone de chat.",
+   "bn": "যে টুলগুলোর জন্য আপনি ইতিমধ্যে টাকা দেন সেগুলো দিয়ে চ্যাট করুন: Cursor-এর agent, Kiro এবং Claude Code আপনার সাবস্ক্রিপশনে উত্তর দেয় — API কী লাগে না। সাইন ইন করার পর, চ্যাট বাক্সের উপরে সেগুলো বেছে নিন।",
+   "pt-BR": "Converse pelas ferramentas pelas quais você já paga: o agente do Cursor, o Kiro e o Claude Code respondem na sua assinatura — sem chave de API. Depois de entrar, escolha-os acima da caixa de chat.",
+   "ru": "Общайтесь через инструменты, за которые вы уже платите: агент Cursor, Kiro и Claude Code отвечают по вашей подписке — без ключа API. После входа выберите их над полем чата.",
+   "id": "Ngobrol lewat alat yang sudah Anda bayar: agen Cursor, Kiro, dan Claude Code menjawab dengan langganan Anda — tanpa kunci API. Setelah masuk, pilih di atas kotak chat.",
+   "cs": "Chatujte přes nástroje, za které už platíte: agent Cursoru, Kiro a Claude Code odpovídají na vaše předplatné — bez klíče API. Po přihlášení je vyberte nad polem chatu."
+  },
   "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
    "zh-Hans": "用 Google AI、OpenAI 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
    "hi": "Claude की जगह Google AI, OpenAI या OpenRouter से चैट करें: यहाँ एक कुंजी जोड़ें, फिर प्रदाता और मॉडल बदलने के लिए चैट बॉक्स के ऊपर मॉडल के नाम पर क्लिक करें। कुंजियाँ सिस्टम कीचेन में रहती हैं। इन प्रदाताओं को न वेब सर्च मिलता है न टूल: वे जवाब दे सकते हैं, इस कंप्यूटर पर कभी कुछ नहीं करते।",
@@ -445,6 +457,18 @@
    "id": "Mengobrol dengan model yang Anda jalankan sendiri: Ollama atau LM Studio (kosongkan alamat untuk alamat biasa di komputer ini), atau server apa pun yang mendukung API OpenAI, seperti vLLM atau llama.cpp. Setelah terhubung, pilih di atas kotak obrolan.",
    "cs": "Chatujte s modelem, který provozujete sami: Ollama nebo LM Studio (pro obvyklou adresu na tomto počítači nechte pole prázdné), případně libovolný server mluvící OpenAI API, jako vLLM nebo llama.cpp. Po připojení ho vyberte nad chatovým polem."
   },
+  "Checking…": {
+   "zh-Hans": "正在检查…",
+   "hi": "जाँच हो रही है…",
+   "es": "Comprobando…",
+   "ar": "جارٍ التحقق…",
+   "fr": "Vérification…",
+   "bn": "পরীক্ষা করা হচ্ছে…",
+   "pt-BR": "Verificando…",
+   "ru": "Проверка…",
+   "id": "Memeriksa…",
+   "cs": "Kontrola…"
+  },
   "Choose a model": {
    "zh-Hans": "选择模型",
    "hi": "मॉडल चुनें",
@@ -468,6 +492,18 @@
    "ru": "Классический токен с областью repo или детализированный (fine-grained) с доступом на чтение к Pull requests, Commit statuses и Actions.",
    "id": "Token klasik dengan cakupan repo, atau fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions.",
    "cs": "Classic token s rozsahem repo, nebo fine-grained s přístupem pro čtení k Pull requests, Commit statuses a Actions."
+  },
+  "Claude Code": {
+   "zh-Hans": "Claude Code",
+   "hi": "Claude Code",
+   "es": "Claude Code",
+   "ar": "Claude Code",
+   "fr": "Claude Code",
+   "bn": "Claude Code",
+   "pt-BR": "Claude Code",
+   "ru": "Claude Code",
+   "id": "Claude Code",
+   "cs": "Claude Code"
   },
   "Claude declined this one.": {
    "zh-Hans": "Claude 拒绝了这个请求。",
@@ -973,18 +1009,6 @@
    "id": "Letakkan",
    "cs": "Přetáhnout"
   },
-  "Email sent to {recipient}.": {
-   "zh-Hans": "邮件已发送至 {recipient}。",
-   "hi": "{recipient} को ईमेल भेजा गया।",
-   "es": "Correo enviado a {recipient}.",
-   "ar": "تم إرسال البريد إلى {recipient}.",
-   "fr": "Courriel envoyé à {recipient}.",
-   "bn": "{recipient}-কে ইমেল পাঠানো হয়েছে।",
-   "pt-BR": "E-mail enviado para {recipient}.",
-   "ru": "Письмо отправлено на {recipient}.",
-   "id": "Email terkirim ke {recipient}.",
-   "cs": "E-mail odeslán na {recipient}."
-  },
   "Editor command": {
    "zh-Hans": "编辑器命令",
    "hi": "एडिटर कमांड",
@@ -996,6 +1020,18 @@
    "ru": "Команда редактора",
    "id": "Perintah editor",
    "cs": "Příkaz editoru"
+  },
+  "Email sent to {recipient}.": {
+   "zh-Hans": "邮件已发送至 {recipient}。",
+   "hi": "{recipient} को ईमेल भेजा गया।",
+   "es": "Correo enviado a {recipient}.",
+   "ar": "تم إرسال البريد إلى {recipient}.",
+   "fr": "Courriel envoyé à {recipient}.",
+   "bn": "{recipient}-কে ইমেল পাঠানো হয়েছে।",
+   "pt-BR": "E-mail enviado para {recipient}.",
+   "ru": "Письмо отправлено на {recipient}.",
+   "id": "Email terkirim ke {recipient}.",
+   "cs": "E-mail odeslán na {recipient}."
   },
   "Enter the server address first.": {
    "zh-Hans": "请先输入服务器地址。",
@@ -1032,6 +1068,18 @@
    "ru": "Файл",
    "id": "File",
    "cs": "Soubor"
+  },
+  "Finish the sign-in in your browser…": {
+   "zh-Hans": "请在浏览器中完成登录…",
+   "hi": "ब्राउज़र में साइन-इन पूरा करें…",
+   "es": "Termina el inicio de sesión en tu navegador…",
+   "ar": "أكمل تسجيل الدخول في متصفحك…",
+   "fr": "Terminez la connexion dans votre navigateur…",
+   "bn": "আপনার ব্রাউজারে সাইন-ইন সম্পন্ন করুন…",
+   "pt-BR": "Conclua o login no seu navegador…",
+   "ru": "Завершите вход в браузере…",
+   "id": "Selesaikan masuk di browser Anda…",
+   "cs": "Dokončete přihlášení v prohlížeči…"
   },
   "Folders can't be dropped yet.": {
    "zh-Hans": "暂时还不能拖放文件夹。",
@@ -1465,18 +1513,6 @@
    "id": "Alat utama",
    "cs": "Hlavní nástroj"
   },
-  "Minimize": {
-   "zh-Hans": "最小化",
-   "hi": "छोटा करें",
-   "es": "Minimizar",
-   "ar": "تصغير",
-   "fr": "Réduire",
-   "bn": "ছোট করুন",
-   "pt-BR": "Minimizar",
-   "ru": "Свернуть",
-   "id": "Kecilkan",
-   "cs": "Minimalizovat"
-  },
   "Meeting": {
    "zh-Hans": "会议",
    "hi": "मीटिंग",
@@ -1488,6 +1524,18 @@
    "ru": "Встреча",
    "id": "Rapat",
    "cs": "Schůzka"
+  },
+  "Minimize": {
+   "zh-Hans": "最小化",
+   "hi": "छोटा करें",
+   "es": "Minimizar",
+   "ar": "تصغير",
+   "fr": "Réduire",
+   "bn": "ছোট করুন",
+   "pt-BR": "Minimizar",
+   "ru": "Свернуть",
+   "id": "Kecilkan",
+   "cs": "Minimalizovat"
   },
   "Monday": {
    "zh-Hans": "星期一",
@@ -1789,6 +1837,30 @@
    "id": "Tidak diatur oleh desktop Anda",
    "cs": "Nenastaveno vaším desktopovým prostředím"
   },
+  "Not signed in": {
+   "zh-Hans": "未登录",
+   "hi": "साइन इन नहीं है",
+   "es": "Sin iniciar sesión",
+   "ar": "لم يتم تسجيل الدخول",
+   "fr": "Non connecté",
+   "bn": "সাইন ইন নেই",
+   "pt-BR": "Não conectado",
+   "ru": "Вход не выполнен",
+   "id": "Belum masuk",
+   "cs": "Nepřihlášeno"
+  },
+  "Not signed in — see the Settings page.": {
+   "zh-Hans": "未登录 — 请前往设置页面。",
+   "hi": "साइन इन नहीं है — सेटिंग पेज देखें।",
+   "es": "Sin iniciar sesión — consulta la página de Configuración.",
+   "ar": "لم يتم تسجيل الدخول — راجع صفحة الإعدادات.",
+   "fr": "Non connecté — voir la page Réglages.",
+   "bn": "সাইন ইন নেই — সেটিংস পৃষ্ঠা দেখুন।",
+   "pt-BR": "Não conectado — veja a página de Ajustes.",
+   "ru": "Вход не выполнен — откройте страницу настроек.",
+   "id": "Belum masuk — lihat halaman Pengaturan.",
+   "cs": "Nepřihlášeno — viz stránka Nastavení."
+  },
   "Nothing leaves your PC: the server runs on this computer.": {
    "zh-Hans": "数据不会离开你的电脑：服务器运行在这台电脑上。",
    "hi": "आपके PC से कुछ बाहर नहीं जाता: सर्वर इसी कंप्यूटर पर चलता है।",
@@ -1800,6 +1872,18 @@
    "ru": "Ничего не покидает ваш ПК: сервер работает на этом компьютере.",
    "id": "Tidak ada yang keluar dari PC Anda: server berjalan di komputer ini.",
    "cs": "Nic neopustí váš počítač: server běží na tomto počítači."
+  },
+  "On your plan": {
+   "zh-Hans": "你的订阅",
+   "hi": "आपकी योजना पर",
+   "es": "Con tu suscripción",
+   "ar": "من خطتك",
+   "fr": "Avec votre abonnement",
+   "bn": "আপনার প্ল্যানে",
+   "pt-BR": "No seu plano",
+   "ru": "По вашей подписке",
+   "id": "Dengan langganan Anda",
+   "cs": "S vaším předplatným"
   },
   "Only a file dropped on the island can be sent with a question.": {
    "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
@@ -2245,6 +2329,18 @@
    "id": "Kacamata bulat",
    "cs": "Kulaté brýle"
   },
+  "Run `{cmd}` in a terminal to sign in.": {
+   "zh-Hans": "在终端中运行 `{cmd}` 以登录。",
+   "hi": "साइन इन करने के लिए टर्मिनल में `{cmd}` चलाएँ।",
+   "es": "Ejecuta `{cmd}` en un terminal para iniciar sesión.",
+   "ar": "شغّل `{cmd}` في الطرفية لتسجيل الدخول.",
+   "fr": "Exécutez `{cmd}` dans un terminal pour vous connecter.",
+   "bn": "সাইন ইন করতে টার্মিনালে `{cmd}` চালান।",
+   "pt-BR": "Execute `{cmd}` em um terminal para entrar.",
+   "ru": "Выполните `{cmd}` в терминале, чтобы войти.",
+   "id": "Jalankan `{cmd}` di terminal untuk masuk.",
+   "cs": "Pro přihlášení spusťte v terminálu `{cmd}`."
+  },
   "Santa hat": {
    "zh-Hans": "圣诞帽",
    "hi": "सांता टोपी",
@@ -2520,6 +2616,18 @@
    "ru": "Показывает использование тарифа Codex (недельный лимит и оставшиеся бесплатные сбросы) в заголовке острова. Coucou спрашивает Codex CLI (codex app-server), когда видна вкладка; ничего не устанавливается. В Codex нужно войти через ChatGPT.",
    "id": "Menampilkan pemakaian paket Codex Anda (batas mingguan dan sisa reset gratis) di header pulau. Coucou menanyakan Codex CLI (codex app-server) saat tab tampil; tidak ada yang dipasang. Codex harus masuk dengan ChatGPT.",
    "cs": "Zobrazuje využití vašeho plánu Codex (týdenní limit a zbývající bezplatné resety) v záhlaví ostrůvku. Coucou se ptá Codex CLI (codex app-server), když se pilulka ukáže; nic se neinstaluje. Codex musí být přihlášený přes ChatGPT."
+  },
+  "Sign in…": {
+   "zh-Hans": "登录…",
+   "hi": "साइन इन करें…",
+   "es": "Iniciar sesión…",
+   "ar": "تسجيل الدخول…",
+   "fr": "Se connecter…",
+   "bn": "সাইন ইন করুন…",
+   "pt-BR": "Entrar…",
+   "ru": "Войти…",
+   "id": "Masuk…",
+   "cs": "Přihlásit se…"
   },
   "Speech recognition isn't available.": {
    "zh-Hans": "语音识别不可用。",
@@ -3658,30 +3766,6 @@
    "id": "Kunci API {name} tidak ada. Tambahkan di Pengaturan.",
    "cs": "Chybí API klíč {name}. Přidejte ho v Nastavení."
   },
-  "{position} of {total}": {
-   "zh-Hans": "第 {position} 项，共 {total} 项",
-   "hi": "{total} में से {position}",
-   "es": "{position} de {total}",
-   "ar": "{position} من {total}",
-   "fr": "{position} sur {total}",
-   "bn": "{position}/{total}",
-   "pt-BR": "{position} de {total}",
-   "ru": "{position} из {total}",
-   "id": "{position} dari {total}",
-   "cs": "{position} z {total}"
-  },
-  "{provider} is searching…": {
-   "zh-Hans": "{provider} 正在搜索…",
-   "hi": "{provider} खोज रहा है…",
-   "es": "{provider} está buscando…",
-   "ar": "{provider} يبحث…",
-   "fr": "{provider} recherche…",
-   "bn": "{provider} খুঁজছে…",
-   "pt-BR": "{provider} está pesquisando…",
-   "ru": "{provider} ищет…",
-   "id": "{provider} sedang mencari…",
-   "cs": "{provider} hledá…"
-  },
   "{name} rate limit reached (429): {detail}": {
    "zh-Hans": "{name} 已达到速率限制（429）：{detail}",
    "hi": "{name} की दर सीमा पूरी हो गई (429): {detail}",
@@ -3813,6 +3897,30 @@
    "ru": "{path} изменился после предпросмотра. Ничего не записано — проверьте новый diff.",
    "id": "{path} berubah sejak pratinjau. Tidak ada yang ditulis — tinjau diff yang baru.",
    "cs": "{path} se od náhledu změnil. Nic se nezapsalo — zkontrolujte nový diff."
+  },
+  "{position} of {total}": {
+   "zh-Hans": "第 {position} 项，共 {total} 项",
+   "hi": "{total} में से {position}",
+   "es": "{position} de {total}",
+   "ar": "{position} من {total}",
+   "fr": "{position} sur {total}",
+   "bn": "{position}/{total}",
+   "pt-BR": "{position} de {total}",
+   "ru": "{position} из {total}",
+   "id": "{position} dari {total}",
+   "cs": "{position} z {total}"
+  },
+  "{provider} is searching…": {
+   "zh-Hans": "{provider} 正在搜索…",
+   "hi": "{provider} खोज रहा है…",
+   "es": "{provider} está buscando…",
+   "ar": "{provider} يبحث…",
+   "fr": "{provider} recherche…",
+   "bn": "{provider} খুঁজছে…",
+   "pt-BR": "{provider} está pesquisando…",
+   "ru": "{provider} ищет…",
+   "id": "{provider} sedang mencari…",
+   "cs": "{provider} hledá…"
   },
   "{time} ago": {
    "zh-Hans": "{time}前",

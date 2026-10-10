@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CUSTOM_SERVER_KEY, providerDef, urlExposure, type ProviderId } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -742,6 +742,107 @@ function localSection(customKey: boolean): HTMLElement {
   return section;
 }
 
+// ── Chat through your CLIs section ───────────────────────────────────────────
+
+const CLI_STRINGS = {
+  get title() { return t("On your plan"); },
+  get hint() { return t("Chat through the tools you already pay for: Cursor's agent, Kiro and Claude Code answer on your subscription — no API key. Once signed in, pick them above the chat box."); },
+  get checking() { return t("Checking…"); },
+  get notInstalled() { return t("Not installed"); },
+  get notSignedIn() { return t("Not signed in"); },
+  get signIn() { return t("Sign in…"); },
+  get browser() { return t("Finish the sign-in in your browser…"); },
+  terminal: (cmd: string) => t("Run `{cmd}` in a terminal to sign in.", { cmd }),
+};
+
+/** A chat CLI the user already pays for: its status is asked once the section draws. */
+function cliSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: CLI_STRINGS.title })),
+    h("div", { class: "hint", text: CLI_STRINGS.hint }),
+    body,
+  );
+
+  /** The terminal command each CLI's sign-in lives behind, when a button can't open it. */
+  const loginCmd: Partial<Record<ProviderId, string>> = {
+    "claude-cli": "claude",
+    kiro: "kiro-cli login",
+  };
+
+  for (const id of ["claude-cli", "cursor", "kiro"] as const) {
+    const p = providerDef(id);
+    const dotEl = statusDot(false);
+    const state = h("span", { class: "hint", text: CLI_STRINGS.checking });
+    const actions = h("span", { style: "display:inline-flex;gap:8px" });
+    body.append(h("div", { class: "row" },
+      h("label", {},
+        h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+        h("span", { text: t(p.name) }),
+      ),
+      state, actions, dotEl,
+    ));
+
+    const refresh = async () => {
+      const st = await Bridge.cliStatus(id);
+      if (st === null) return;
+      clear(actions);
+      dotEl.style.background = st.loggedIn ? "#22c55e" : st.cli ? "#f5a524" : "#f4505e";
+      if (!st.cli) {
+        state.textContent = CLI_STRINGS.notInstalled;
+        return;
+      }
+      if (st.loggedIn) {
+        state.textContent = st.status;
+        const inUse = settings.chatProvider === id;
+        actions.append(h("button", {
+          class: inUse ? "" : "primary",
+          text: inUse ? CHAT_STRINGS.inUse : CHAT_STRINGS.useInChat,
+          disabled: inUse,
+          onclick: () => {
+            settings.chatProvider = id;
+            void save().then(refresh);
+          },
+        }));
+        return;
+      }
+      const cmd = loginCmd[id];
+      state.textContent = cmd
+        ? CLI_STRINGS.terminal(cmd)
+        : st.status || CLI_STRINGS.notSignedIn;
+      if (id === "cursor") {
+        // `agent login` opens the browser; the row watches for it to finish.
+        actions.append(h("button", {
+          class: "primary",
+          text: CLI_STRINGS.signIn,
+          onclick: async (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.disabled = true;
+            try {
+              await Bridge.cliLogin(id);
+            } catch {
+              btn.disabled = false;
+              return;
+            }
+            state.textContent = CLI_STRINGS.browser;
+            for (let i = 0; i < 30; i++) {
+              await new Promise((r) => window.setTimeout(r, 3000));
+              const next = await Bridge.cliStatus(id);
+              if (next?.loggedIn) { void refresh(); return; }
+            }
+            btn.disabled = false;
+            state.textContent = CLI_STRINGS.notSignedIn;
+          },
+        }));
+      }
+    };
+    void refresh();
+  }
+  return section;
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -1389,6 +1490,7 @@ async function render() {
     apiSection(hasKey),
     chatProvidersSection(chatKeys, keyChanged),
     localSection(customKey),
+    cliSection(),
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
