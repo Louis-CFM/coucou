@@ -24,6 +24,7 @@
 		<string>pt-BR</string>
 		<string>ru</string>
 		<string>zh-Hans</string>
+		<string>ko</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>Coucou</string>

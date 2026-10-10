@@ -62,6 +62,12 @@
             "state": "translated",
             "value": " 已就绪。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 준비 완료."
+          }
         }
       }
     },
@@ -125,6 +131,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — 打开 Spotify"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Spotify 열기"
           }
         }
       }
@@ -190,6 +202,12 @@
             "state": "translated",
             "value": "%lld 个自定义"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커스텀 %lld개"
+          }
         }
       }
     },
@@ -253,6 +271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동"
           }
         }
       }
@@ -318,6 +342,12 @@
             "state": "translated",
             "value": "活跃标签页"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성 탭"
+          }
         }
       }
     },
@@ -381,6 +411,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "动态"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활동"
           }
         }
       }
@@ -446,6 +482,12 @@
             "state": "translated",
             "value": "广告"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "광고"
+          }
         }
       }
     },
@@ -509,6 +551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "代理"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "에이전트"
           }
         }
       }
@@ -574,6 +622,12 @@
             "state": "translated",
             "value": "允许"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용"
+          }
         }
       }
     },
@@ -637,6 +691,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "允许 Coucou 控制音乐"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou의 음악 제어 허용"
           }
         }
       }
@@ -702,6 +762,12 @@
             "state": "translated",
             "value": "允许 Coucou 控制 Spotify"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou의 Spotify 제어 허용"
+          }
         }
       }
     },
@@ -765,6 +831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "始终允许"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항상"
           }
         }
       }
@@ -830,6 +902,12 @@
             "state": "translated",
             "value": "下次启动时生效"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 실행 시 적용"
+          }
         }
       }
     },
@@ -893,6 +971,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "问 Claude"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude에게 질문"
           }
         }
       }
@@ -958,6 +1042,12 @@
             "state": "translated",
             "value": "提问"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "질문하기"
+          }
         }
       }
     },
@@ -1021,6 +1111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "提问"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이에 대해 질문하기"
           }
         }
       }
@@ -1086,6 +1182,12 @@
             "state": "translated",
             "value": "问我任何事…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무엇이든 물어보세요…"
+          }
         }
       }
     },
@@ -1149,6 +1251,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动关闭 · %lld 秒"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 닫기 · %lld초"
           }
         }
       }
@@ -1214,6 +1322,12 @@
             "state": "translated",
             "value": "不允许自动化"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동화가 허용되지 않음"
+          }
         }
       }
     },
@@ -1277,6 +1391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "行为"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동작"
           }
         }
       }
@@ -1342,6 +1462,12 @@
             "state": "translated",
             "value": "取消"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소"
+          }
         }
       }
     },
@@ -1405,6 +1531,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "聊天"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "채팅"
           }
         }
       }
@@ -1470,6 +1602,12 @@
             "state": "translated",
             "value": "与 %@ 聊天"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@와(과) 대화"
+          }
         }
       }
     },
@@ -1533,6 +1671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择你使用的工具。Coucou 只显示你在这里声明的内容。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용하는 도구를 선택하세요. Coucou는 여기에 선언된 항목만 표시합니다."
           }
         }
       }
@@ -1598,6 +1742,12 @@
             "state": "translated",
             "value": "Claude Code 已完成"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 완료됨"
+          }
         }
       }
     },
@@ -1661,6 +1811,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code 正在询问"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code가 질문 중"
           }
         }
       }
@@ -1726,6 +1882,12 @@
             "state": "translated",
             "value": "Claude 正在读取 %@…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude가 %@ 읽는 중…"
+          }
         }
       }
     },
@@ -1789,6 +1951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude 正在搜索…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude가 검색 중…"
           }
         }
       }
@@ -1854,6 +2022,12 @@
             "state": "translated",
             "value": "清除"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지우기"
+          }
         }
       }
     },
@@ -1917,6 +2091,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "清除历史记录"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기록 지우기"
           }
         }
       }
@@ -1982,6 +2162,12 @@
             "state": "translated",
             "value": "关闭"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "닫기"
+          }
         }
       }
     },
@@ -2045,6 +2231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动关闭"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 시간 후 닫기"
           }
         }
       }
@@ -2110,6 +2302,12 @@
             "state": "translated",
             "value": "颜色"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상"
+          }
         }
       }
     },
@@ -2173,6 +2371,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "即将推出"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출시 예정"
           }
         }
       }
@@ -2238,6 +2442,12 @@
             "state": "translated",
             "value": "已成功完成。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "성공적으로 완료되었습니다."
+          }
         }
       }
     },
@@ -2301,6 +2511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已连接"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결됨"
           }
         }
       }
@@ -2366,6 +2582,12 @@
             "state": "translated",
             "value": "已连接 · %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결됨 · %@"
+          }
         }
       }
     },
@@ -2429,6 +2651,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已连接 · 加载中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결됨 · 로딩 중…"
           }
         }
       }
@@ -2494,6 +2722,12 @@
             "state": "translated",
             "value": "继续…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계속…"
+          }
         }
       }
     },
@@ -2558,6 +2792,12 @@
             "state": "translated",
             "value": "复制"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사"
+          }
         }
       }
     },
@@ -2621,6 +2861,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본값"
           }
         }
       }
@@ -2687,6 +2933,12 @@
             "state": "translated",
             "value": "演示模式"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 모드"
+          }
         }
       }
     },
@@ -2750,6 +3002,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已拒绝"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "거부됨"
           }
         }
       }
@@ -2815,6 +3073,12 @@
             "state": "translated",
             "value": "拒绝"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "거부"
+          }
         }
       }
     },
@@ -2878,6 +3142,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "部署"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "배포"
           }
         }
       }
@@ -2943,6 +3213,12 @@
             "state": "translated",
             "value": "Diff 太大"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff가 너무 큼"
+          }
         }
       }
     },
@@ -3006,6 +3282,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "草稿"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "초안"
           }
         }
       }
@@ -3071,6 +3353,12 @@
             "state": "translated",
             "value": "在声音文件夹中放入与 Mochi 某个声音同名的文件（finish.wav、approval.mp3、greet.m4a…）即可替换它，然后重新载入。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사운드 폴더에 Mochi의 사운드 이름(finish.wav, approval.mp3, greet.m4a…)과 일치하는 파일을 드롭하여 교체한 다음 다시 로드하세요."
+          }
         }
       }
     },
@@ -3134,6 +3422,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "拖入文件或窗口，或问我任何问题。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일이나 창을 드롭하거나, 무엇이든 물어보세요."
           }
         }
       }
@@ -3199,6 +3493,12 @@
             "state": "translated",
             "value": "把文件拖到这里"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기에 파일을 드롭하세요"
+          }
         }
       }
     },
@@ -3262,6 +3562,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "邮件"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이메일"
           }
         }
       }
@@ -3327,6 +3633,12 @@
             "state": "translated",
             "value": "启用声音"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사운드 활성화"
+          }
         }
       }
     },
@@ -3390,6 +3702,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "启用语音命令"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 명령 활성화"
           }
         }
       }
@@ -3455,6 +3773,12 @@
             "state": "translated",
             "value": "失败"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실패"
+          }
         }
       }
     },
@@ -3518,6 +3842,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "즐겨찾기"
           }
         }
       }
@@ -3583,6 +3913,12 @@
             "state": "translated",
             "value": "通用"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일반"
+          }
         }
       }
     },
@@ -3646,6 +3982,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "获取 Spotify"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify 다운로드"
           }
         }
       }
@@ -3711,6 +4053,12 @@
             "state": "translated",
             "value": "给我一秒钟——三秒后恢复工作。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시만 기다려주세요 — 3초 후에 작업을 재개합니다."
+          }
         }
       }
     },
@@ -3774,6 +4122,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gmail 节点在 30 秒后超时。请重试或打开 n8n。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail 노드가 30초 후 시간 초과되었습니다. 다시 시도하거나 n8n을 여세요."
           }
         }
       }
@@ -3839,6 +4193,12 @@
             "state": "translated",
             "value": "已授权"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용됨"
+          }
         }
       }
     },
@@ -3902,6 +4262,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "隐藏于"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 시간 후 숨기기"
           }
         }
       }
@@ -3967,6 +4333,12 @@
             "state": "translated",
             "value": "在分享图片中隐藏项目名称"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유 이미지에서 프로젝트 이름 숨기기"
+          }
         }
       }
     },
@@ -4030,6 +4402,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已安装"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치됨"
           }
         }
       }
@@ -4095,6 +4473,12 @@
             "state": "translated",
             "value": "Hooks 未安装"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치되지 않음"
+          }
         }
       }
     },
@@ -4158,6 +4542,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷键"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단축키"
           }
         }
       }
@@ -4223,6 +4613,12 @@
             "state": "translated",
             "value": "将指针悬停在岛上即可打开；指针离开后不久会再次收起。在其中点按可保持打开。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아일랜드에 마우스를 올리면 열리고, 포인터가 벗어나면 잠시 후 다시 접힙니다. 내부를 클릭하면 열린 상태가 유지됩니다."
+          }
         }
       }
     },
@@ -4286,6 +4682,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "集成"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연동"
           }
         }
       }
@@ -4351,6 +4753,12 @@
             "state": "translated",
             "value": "保留我的编程会话历史记录"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코딩 세션 기록 보관"
+          }
         }
       }
     },
@@ -4414,6 +4822,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "密钥已配置 · %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키 설정됨 · %@"
           }
         }
       }
@@ -4479,6 +4893,12 @@
             "state": "translated",
             "value": "密钥未配置"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키 설정되지 않음"
+          }
         }
       }
     },
@@ -4542,6 +4962,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "语言"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언어"
           }
         }
       }
@@ -4607,6 +5033,12 @@
             "state": "translated",
             "value": "在 Mac 启动时自动启动"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac 시동 시 실행"
+          }
         }
       }
     },
@@ -4670,6 +5102,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在收听…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "듣는 중…"
           }
         }
       }
@@ -4735,6 +5173,12 @@
             "state": "translated",
             "value": "正在加载模型…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델 로딩 중…"
+          }
         }
       }
     },
@@ -4798,6 +5242,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "加载中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로딩 중…"
           }
         }
       }
@@ -4863,6 +5313,12 @@
             "state": "translated",
             "value": "邮件不可用。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메일을 사용할 수 없습니다."
+          }
         }
       }
     },
@@ -4926,6 +5382,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메인"
           }
         }
       }
@@ -4991,6 +5453,12 @@
             "state": "translated",
             "value": "麦克风不可用"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마이크를 사용할 수 없음"
+          }
         }
       }
     },
@@ -5054,6 +5522,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "麦克风："
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마이크:"
           }
         }
       }
@@ -5119,6 +5593,12 @@
             "state": "translated",
             "value": "收件人缺失。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받는 사람이 없습니다."
+          }
         }
       }
     },
@@ -5182,6 +5662,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "我的 PR"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 PR"
           }
         }
       }
@@ -5247,6 +5733,12 @@
             "state": "translated",
             "value": "新邮件"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 이메일"
+          }
         }
       }
     },
@@ -5310,6 +5802,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一步"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음"
           }
         }
       }
@@ -5375,6 +5873,12 @@
             "state": "translated",
             "value": "没有计划的通话"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예정된 통화 없음"
+          }
         }
       }
     },
@@ -5439,6 +5943,12 @@
             "state": "translated",
             "value": "没有变更"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항 없음"
+          }
         }
       }
     },
@@ -5502,6 +6012,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "没有贡献"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기여 없음"
           }
         }
       }
@@ -5568,6 +6084,12 @@
             "state": "translated",
             "value": "无错误详情。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오류 세부 정보를 사용할 수 없습니다."
+          }
         }
       }
     },
@@ -5631,6 +6153,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 기기에서 사용할 수 있는 음성 인식 모델이 없습니다. 시스템 설정 → 키보드 → 받아쓰기에서 설치하세요."
           }
         }
       }
@@ -5696,6 +6224,12 @@
             "state": "translated",
             "value": "未连接"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결되지 않음"
+          }
         }
       }
     },
@@ -5759,6 +6293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未安装"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설치되지 않음"
           }
         }
       }
@@ -5824,6 +6364,12 @@
             "state": "translated",
             "value": "未播放"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 중이 아님"
+          }
         }
       }
     },
@@ -5887,6 +6433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未请求"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "요청되지 않음"
           }
         }
       }
@@ -5952,6 +6504,12 @@
             "state": "translated",
             "value": "这里没有内容"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내용이 없습니다"
+          }
         }
       }
     },
@@ -6015,6 +6573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "当前没有任务。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 실행 중인 항목이 없습니다."
           }
         }
       }
@@ -6080,6 +6644,12 @@
             "state": "translated",
             "value": "确定"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인"
+          }
         }
       }
     },
@@ -6143,6 +6713,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "열기"
           }
         }
       }
@@ -6208,6 +6784,12 @@
             "state": "translated",
             "value": "打开 %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 열기"
+          }
         }
       }
     },
@@ -6271,6 +6853,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Codex"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex 열기"
           }
         }
       }
@@ -6336,6 +6924,12 @@
             "state": "translated",
             "value": "打开 Coucou"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 열기"
+          }
         }
       }
     },
@@ -6399,6 +6993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Cursor"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cursor 열기"
           }
         }
       }
@@ -6464,6 +7064,12 @@
             "state": "translated",
             "value": "打开 Music"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음악 열기"
+          }
         }
       }
     },
@@ -6527,6 +7133,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开设置…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 열기…"
           }
         }
       }
@@ -6592,6 +7204,12 @@
             "state": "translated",
             "value": "打开 Spotify"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify 열기"
+          }
         }
       }
     },
@@ -6655,6 +7273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Visual Studio Code"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visual Studio Code 열기"
           }
         }
       }
@@ -6720,6 +7344,12 @@
             "state": "translated",
             "value": "在 n8n 中打开"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "n8n에서 열기"
+          }
         }
       }
     },
@@ -6783,6 +7413,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "悬停时打开"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마우스 올릴 때 열기"
           }
         }
       }
@@ -6848,6 +7484,12 @@
             "state": "translated",
             "value": "打开声音文件夹"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사운드 폴더 열기"
+          }
         }
       }
     },
@@ -6911,6 +7553,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开终端"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널 열기"
           }
         }
       }
@@ -6976,6 +7624,12 @@
             "state": "translated",
             "value": "其他…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기타…"
+          }
         }
       }
     },
@@ -7039,6 +7693,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "概览"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개요"
           }
         }
       }
@@ -7104,6 +7764,12 @@
             "state": "translated",
             "value": "暂停"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 정지"
+          }
         }
       }
     },
@@ -7167,6 +7833,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "付款"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "결제"
           }
         }
       }
@@ -7232,6 +7904,12 @@
             "state": "translated",
             "value": "权限"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한"
+          }
         }
       }
     },
@@ -7295,6 +7973,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "播放"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생"
           }
         }
       }
@@ -7360,6 +8044,12 @@
             "state": "translated",
             "value": "正在播放 · %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 중 · %@"
+          }
         }
       }
     },
@@ -7423,6 +8113,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件未安装"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플러그인 설치되지 않음"
           }
         }
       }
@@ -7488,6 +8184,12 @@
             "state": "translated",
             "value": "上一首"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전"
+          }
         }
       }
     },
@@ -7551,6 +8253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "退出"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "종료"
           }
         }
       }
@@ -7616,6 +8324,12 @@
             "state": "translated",
             "value": "最近"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최근"
+          }
         }
       }
     },
@@ -7679,6 +8393,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "刷新"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로고침"
           }
         }
       }
@@ -7744,6 +8464,12 @@
             "state": "translated",
             "value": "重新载入声音"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사운드 다시 로드"
+          }
         }
       }
     },
@@ -7807,6 +8533,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "取消收藏"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "즐겨찾기에서 제거"
           }
         }
       }
@@ -7872,6 +8604,12 @@
             "state": "translated",
             "value": "全部重复"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 반복"
+          }
         }
       }
     },
@@ -7935,6 +8673,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "重复：关"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복 끔"
           }
         }
       }
@@ -8000,6 +8744,12 @@
             "state": "translated",
             "value": "重复：开"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "반복 켬"
+          }
         }
       }
     },
@@ -8063,6 +8813,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "单曲重复"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한 곡 반복"
           }
         }
       }
@@ -8128,6 +8884,12 @@
             "state": "translated",
             "value": "在终端回复"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널에서 응답"
+          }
         }
       }
     },
@@ -8191,6 +8953,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "请求权限"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한 요청"
           }
         }
       }
@@ -8256,6 +9024,12 @@
             "state": "translated",
             "value": "重新发送"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재전송"
+          }
         }
       }
     },
@@ -8319,6 +9093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "重启 Coucou"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 재시동"
           }
         }
       }
@@ -8384,6 +9164,12 @@
             "state": "translated",
             "value": "重试"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 시도"
+          }
         }
       }
     },
@@ -8447,6 +9233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장"
           }
         }
       }
@@ -8512,6 +9304,12 @@
             "state": "translated",
             "value": "存储…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장…"
+          }
         }
       }
     },
@@ -8575,6 +9373,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "说出您的命令"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "명령을 말씀하세요"
           }
         }
       }
@@ -8640,6 +9444,12 @@
             "state": "translated",
             "value": "日程"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정"
+          }
         }
       }
     },
@@ -8703,6 +9513,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보내기"
           }
         }
       }
@@ -8768,6 +9584,12 @@
             "state": "translated",
             "value": "通过邮件发送"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이메일로 보내기"
+          }
         }
       }
     },
@@ -8831,6 +9653,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보내는 중…"
           }
         }
       }
@@ -8896,6 +9724,12 @@
             "state": "translated",
             "value": "会话已结束"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세션 완료됨"
+          }
         }
       }
     },
@@ -8959,6 +9793,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정…"
           }
         }
       }
@@ -9024,6 +9864,12 @@
             "state": "translated",
             "value": "分享…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유…"
+          }
         }
       }
     },
@@ -9087,6 +9933,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷键"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단축키"
           }
         }
       }
@@ -9152,6 +10004,12 @@
             "state": "translated",
             "value": "快捷键"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단축키"
+          }
         }
       }
     },
@@ -9215,6 +10073,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "用快捷键显示岛"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단축키로 아일랜드 표시"
           }
         }
       }
@@ -9280,6 +10144,12 @@
             "state": "translated",
             "value": "随机播放：关"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "임의 재생 끔"
+          }
         }
       }
     },
@@ -9343,6 +10213,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "随机播放：开"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "임의 재생 켬"
           }
         }
       }
@@ -9408,6 +10284,12 @@
             "state": "translated",
             "value": "声音"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사운드"
+          }
         }
       }
     },
@@ -9471,6 +10353,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "语音识别："
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 인식:"
           }
         }
       }
@@ -9536,6 +10424,12 @@
             "state": "translated",
             "value": "未安装 Spotify"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify가 설치되지 않음"
+          }
         }
       }
     },
@@ -9599,6 +10493,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "启动"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시동"
           }
         }
       }
@@ -9664,6 +10564,12 @@
             "state": "translated",
             "value": "储存在 Mac 本地，不会离开你的 Mac，保留 12 周。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac에 로컬로 저장됩니다. 어떤 데이터도 Mac 외부로 나가지 않습니다. 12주 동안 보관됩니다."
+          }
         }
       }
     },
@@ -9727,6 +10633,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主题"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제목"
           }
         }
       }
@@ -9792,6 +10704,12 @@
             "state": "translated",
             "value": "成功"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "성공"
+          }
         }
       }
     },
@@ -9855,6 +10773,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "系统"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시스템"
           }
         }
       }
@@ -9920,6 +10844,12 @@
             "state": "translated",
             "value": "收件人"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받는 사람"
+          }
         }
       }
     },
@@ -9983,6 +10913,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "待审查"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검토 대기"
           }
         }
       }
@@ -10048,6 +10984,12 @@
             "state": "translated",
             "value": "一次点击太多次了。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한 번에 너무 많은 요청이 발생했습니다."
+          }
         }
       }
     },
@@ -10111,6 +11053,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未知"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알 수 없음"
           }
         }
       }
@@ -10176,6 +11124,12 @@
             "state": "translated",
             "value": "正在上传 %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 업로드 중"
+          }
         }
       }
     },
@@ -10239,6 +11193,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "语音"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성"
           }
         }
       }
@@ -10304,6 +11264,12 @@
             "state": "translated",
             "value": "音量"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음량"
+          }
         }
       }
     },
@@ -10367,6 +11333,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "音量 %lld%%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음량 %lld%%"
           }
         }
       }
@@ -10432,6 +11404,12 @@
             "state": "translated",
             "value": "衣橱"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "옷장"
+          }
         }
       }
     },
@@ -10495,6 +11473,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "监控 %lld / %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld 감시 중"
           }
         }
       }
@@ -10560,6 +11544,12 @@
             "state": "translated",
             "value": "每周回顾"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주간 요약"
+          }
         }
       }
     },
@@ -10623,6 +11613,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "您想对它做什么？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어떤 작업을 수행하시겠습니까?"
           }
         }
       }
@@ -10688,6 +11684,12 @@
             "state": "translated",
             "value": "启用后，Coucou 会监听唤醒词« OK Coucou »。语音识别完全在设备上运行—任何音频或文字记录都不会离开您的 Mac。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성화하면 Coucou가 호출어 « OK Coucou »를 듣습니다. 음성 인식은 기기 내에서만 실행되며, 어떤 오디오나 텍스트도 Mac 외부로 전송되지 않습니다."
+          }
         }
       }
     },
@@ -10751,6 +11753,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "收听时，macOS 会在菜单栏右上角显示橙色麦克风指示灯。这是正常的系统行为。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "듣는 동안 macOS 메뉴 막대 오른쪽 상단에 주황색 마이크 표시가 나타납니다. 이는 정상적인 시스템 동작입니다."
           }
         }
       }
@@ -10816,6 +11824,12 @@
             "state": "translated",
             "value": "工作流已停止。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "워크플로가 중지되었습니다."
+          }
         }
       }
     },
@@ -10879,6 +11893,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "您的答案…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "답변 입력…"
           }
         }
       }
@@ -10944,6 +11964,12 @@
             "state": "translated",
             "value": "将写入：\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json（先创建备份）"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 경로에 작성합니다:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (백업이 먼저 생성됨)"
+          }
         }
       }
     },
@@ -11007,6 +12033,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "安装"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설치"
           }
         }
       }
@@ -11072,6 +12104,12 @@
             "state": "translated",
             "value": "是否将 Coucou Hooks 安装到 ~/.claude？"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.claude에 Coucou hooks를 설치할까요?"
+          }
         }
       }
     },
@@ -11132,6 +12170,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "Anthropic API"
@@ -11200,6 +12244,12 @@
             "state": "translated",
             "value": "API 密钥 (sk-ant-…)"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키 (sk-ant-…)"
+          }
         }
       }
     },
@@ -11263,6 +12313,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API 密钥 (AI Studio)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키 (AI Studio)"
           }
         }
       }
@@ -11328,6 +12384,12 @@
             "state": "translated",
             "value": "API 密钥 (sk-…)"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키 (sk-…)"
+          }
         }
       }
     },
@@ -11391,6 +12453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "连接"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결"
           }
         }
       }
@@ -11456,6 +12524,12 @@
             "state": "translated",
             "value": "正在连接…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결 중…"
+          }
         }
       }
     },
@@ -11520,6 +12594,12 @@
             "state": "translated",
             "value": "断开连接"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결 해제"
+          }
         }
       }
     },
@@ -11580,6 +12660,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google AI"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "Google AI"
@@ -11648,6 +12734,12 @@
             "state": "translated",
             "value": "连接到本地模型服务器。无需 API 密钥。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 모델 서버에 연결합니다. API 키가 필요하지 않습니다."
+          }
         }
       }
     },
@@ -11711,6 +12803,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "本地模型"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 모델"
           }
         }
       }
@@ -11776,6 +12874,12 @@
             "state": "translated",
             "value": "模型"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델"
+          }
         }
       }
     },
@@ -11839,6 +12943,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自定义…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커스텀…"
           }
         }
       }
@@ -11904,6 +13014,12 @@
             "state": "translated",
             "value": "模型 ID（如 claude-sonnet-4-6）"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델 ID (예: claude-sonnet-4-6)"
+          }
         }
       }
     },
@@ -11968,6 +13084,12 @@
             "state": "translated",
             "value": "由聊天使用。列表来自你的 Anthropic 账户。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "채팅에서 사용됩니다. 목록은 Anthropic 계정에서 가져옵니다."
+          }
         }
       }
     },
@@ -12028,6 +13150,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI"
@@ -12096,6 +13224,12 @@
             "state": "translated",
             "value": "用于在聊天中使用 Google Gemini 或 OpenAI。密钥存储在 Keychain 中。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "채팅에서 Google Gemini 또는 OpenAI를 사용합니다. 키는 키체인에 저장됩니다."
+          }
         }
       }
     },
@@ -12159,6 +13293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "聊天 — 其他服务商"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "채팅 — 다른 제공업체"
           }
         }
       }
@@ -12225,6 +13365,12 @@
             "state": "translated",
             "value": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키나 Claude Code 없이 모든 기능을 체험해보세요. 디스크에 아무것도 기록되지 않습니다."
+          }
         }
       }
     },
@@ -12289,6 +13435,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "演示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모"
           }
         }
       }
@@ -12355,6 +13507,12 @@
             "state": "translated",
             "value": "试用演示模式"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 모드 사용해보기"
+          }
         }
       }
     },
@@ -12420,6 +13578,12 @@
             "state": "translated",
             "value": "停止演示"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 중지"
+          }
         }
       }
     },
@@ -12483,6 +13647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 已就绪。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 준비 완료."
           }
         }
       }
@@ -12548,6 +13718,12 @@
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Antigravity 以激活"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치됨 — 적용하려면 Antigravity를 재시동하세요"
+          }
         }
       }
     },
@@ -12611,6 +13787,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Antigravity 钩子"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antigravity hooks"
           }
         }
       }
@@ -12676,6 +13858,12 @@
             "state": "translated",
             "value": "Claude Code 钩子"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code hooks"
+          }
         }
       }
     },
@@ -12739,6 +13927,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已安装 — 打开 Codex 并运行 /hooks，或在应用设置中打开 Hooks 以信任它们"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치됨 — Codex를 열고 /hooks를 실행하거나 앱 설정에서 Hooks를 열어 승인하세요"
           }
         }
       }
@@ -12804,6 +13998,12 @@
             "state": "translated",
             "value": "Codex 钩子"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex hooks"
+          }
         }
       }
     },
@@ -12867,6 +14067,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "确认并写入"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou는 다음 항목에만 씁니다"
           }
         }
       }
@@ -12932,6 +14138,12 @@
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Copilot CLI 以激活"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치됨 — 새 터미널을 열어 적용하세요"
+          }
         }
       }
     },
@@ -12995,6 +14207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "GitHub Copilot CLI 钩子"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copilot CLI hooks"
           }
         }
       }
@@ -13060,6 +14278,12 @@
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Gemini CLI 以激活"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치됨 — 새 터미널을 열어 적용하세요"
+          }
         }
       }
     },
@@ -13123,6 +14347,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gemini CLI 钩子"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini CLI hooks"
           }
         }
       }
@@ -13188,6 +14418,12 @@
             "state": "translated",
             "value": "安装 Hooks"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치"
+          }
         }
       }
     },
@@ -13251,6 +14487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Muse Code 以激活"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 설치됨 — 새 터미널을 열어 적용하세요"
           }
         }
       }
@@ -13316,6 +14558,12 @@
             "state": "translated",
             "value": "Muse Code 钩子"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muse Code hooks"
+          }
         }
       }
     },
@@ -13379,6 +14627,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已过期 — 请更新以便从刘海处回答 Claude 的问题"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks가 오래됨 — 노치에서 Claude의 질문에 답변하려면 업데이트하세요"
           }
         }
       }
@@ -13444,6 +14698,12 @@
             "state": "translated",
             "value": "确认前请检查以下 JSON。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인하기 전에 아래 JSON을 검토하세요."
+          }
         }
       }
     },
@@ -13507,6 +14767,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "卸载"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제거"
           }
         }
       }
@@ -13572,6 +14838,12 @@
             "state": "translated",
             "value": "更新 Hooks"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks 업데이트"
+          }
         }
       }
     },
@@ -13635,6 +14907,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "具有 repo 权限的经典令牌，或具有 Pull requests、Commit statuses 和 Actions 读取权限的细粒度令牌。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "repo 스코프가 있는 기본 토큰, 또는 Pull requests, 커밋 상태, Actions에 대한 읽기 권한이 있는 세분화된 토큰."
           }
         }
       }
@@ -13700,6 +14978,12 @@
             "state": "translated",
             "value": "项目"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "프로젝트"
+          }
         }
       }
     },
@@ -13763,6 +15047,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存集成"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연동 저장"
           }
         }
       }
@@ -13828,6 +15118,12 @@
             "state": "translated",
             "value": "工作流"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "워크플로"
+          }
         }
       }
     },
@@ -13891,6 +15187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "从 iPhone 发送的指令使用聊天中当前打开的模型。系统提示和对话历史适用。Coucou 未运行时发送的指令将排队，并在下次启动时执行。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone에서 전송된 지침은 채팅에 열려 있는 모델을 사용합니다. 시스템 프롬프트와 대화 기록이 적용됩니다. Coucou가 실행되지 않을 때 전송된 지침은 대기열에 추가되어 다음 실행 시 실행됩니다."
           }
         }
       }
@@ -13956,6 +15258,12 @@
             "state": "translated",
             "value": "允许我的 iPhone 向 Claude Code 发送指令"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 iPhone이 Claude Code에 지침을 보낼 수 있도록 허용"
+          }
         }
       }
     },
@@ -14019,6 +15327,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "通过 Coucou 中继传至 Apple 推送服务。仅发送 Agent 的名称和状态：不含项目名称、命令或路径。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 릴레이를 통해 Apple의 푸시 서비스로 이동합니다. 에이전트 이름과 상태만 전송되며 프로젝트 이름, 명령 또는 경로는 전송되지 않습니다."
           }
         }
       }
@@ -14084,6 +15398,12 @@
             "state": "translated",
             "value": "Mac 锁定时将 Mochi 移至我 iPhone 的灵动岛"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac이 잠겨 있을 때 Mochi를 내 iPhone의 Dynamic Island로 이동"
+          }
         }
       }
     },
@@ -14147,6 +15467,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "将你的会话发送到私有 iCloud，供 Coucou iPhone 应用使用。项目名称、命令和问题使用你的 iCloud 密钥加密。关闭后将从 iCloud 中删除。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone의 Coucou 앱을 위해 세션을 비공개 iCloud로 전송합니다. 프로젝트 이름, 명령 및 질문은 iCloud 키로 암호화됩니다. 비활성화하면 iCloud에서 데이터가 삭제됩니다."
           }
         }
       }
@@ -14212,6 +15538,12 @@
             "state": "translated",
             "value": "在我的 iPhone 上显示我的 Agent 会话"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 에이전트 세션을 iPhone에 표시"
+          }
         }
       }
     },
@@ -14275,6 +15607,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "附件 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 첨부"
           }
         }
       }
@@ -14340,6 +15678,12 @@
             "state": "translated",
             "value": "分钟无动作"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "분간 움직임 없음"
+          }
         }
       }
     },
@@ -14403,6 +15747,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "需要权限"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한 필요"
           }
         }
       }
@@ -14468,6 +15818,12 @@
             "state": "translated",
             "value": "5 小时"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5시간"
+          }
         }
       }
     },
@@ -14531,6 +15887,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude 计划"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude 플랜"
           }
         }
       }
@@ -14596,6 +15958,12 @@
             "state": "translated",
             "value": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치 헤더에 Claude 플랜 사용량(5시간 및 주간 한도)을 표시합니다. Coucou는 ~/.claude/settings.json에 상태 표시줄 릴레이를 추가합니다. 이미 상태 표시줄이 있다면 이전과 동일하게 계속 작동합니다. Pro 및 Max 플랜 전용입니다."
+          }
         }
       }
     },
@@ -14659,6 +16027,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 小时前"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld시간 전"
           }
         }
       }
@@ -14724,6 +16098,12 @@
             "state": "translated",
             "value": "刚刚"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "방금"
+          }
         }
       }
     },
@@ -14787,6 +16167,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 分钟前"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld분 전"
           }
         }
       }
@@ -14852,6 +16238,12 @@
             "state": "translated",
             "value": "安装中继"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴레이 설치"
+          }
         }
       }
     },
@@ -14915,6 +16307,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "中继：已安装"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴레이: 설치됨"
           }
         }
       }
@@ -14980,6 +16378,12 @@
             "state": "translated",
             "value": "中继：未安装"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴레이: 설치되지 않음"
+          }
         }
       }
     },
@@ -15043,6 +16447,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "卸载中继"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴레이 제거"
           }
         }
       }
@@ -15108,6 +16518,12 @@
             "state": "translated",
             "value": "%lld 小时 %lld 分后"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld시간 %lld분 후"
+          }
         }
       }
     },
@@ -15171,6 +16587,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 分钟后"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld분 후"
           }
         }
       }
@@ -15236,6 +16658,12 @@
             "state": "translated",
             "value": "重置中…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재설정 중…"
+          }
         }
       }
     },
@@ -15299,6 +16727,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在刘海中显示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치에 표시"
           }
         }
       }
@@ -15364,6 +16798,12 @@
             "state": "translated",
             "value": "计划用量"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플랜 사용량"
+          }
         }
       }
     },
@@ -15427,6 +16867,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "等待 Claude Code 回复"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code의 응답을 기다리는 중"
           }
         }
       }
@@ -15492,6 +16938,12 @@
             "state": "translated",
             "value": "一周"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주간"
+          }
         }
       }
     },
@@ -15555,6 +17007,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件已安装 — 重启 Amp 以激活"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플러그인 설치됨 — 적용하려면 Amp를 재시동하세요"
           }
         }
       }
@@ -15620,6 +17078,12 @@
             "state": "translated",
             "value": "Amp 插件"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp 플러그인"
+          }
         }
       }
     },
@@ -15683,6 +17147,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在刘海中显示审批请求"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치에 승인 요청 표시"
           }
         }
       }
@@ -15748,6 +17218,12 @@
             "state": "translated",
             "value": "审批请求由 Hermes 处理（终端或网关）。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승인 요청은 Hermes(터미널 또는 게이트웨이)에서 처리됩니다."
+          }
         }
       }
     },
@@ -15811,6 +17287,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "审批请求显示在刘海中。若 Coucou 未运行，Hermes 将回退到其自己的提示。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승인 요청이 노치에 표시됩니다. Coucou가 실행되지 않으면 Hermes는 자체 프롬프트로 대체합니다."
           }
         }
       }
@@ -15876,6 +17358,12 @@
             "state": "translated",
             "value": "✓ Hermes 插件已安装至 ~/.hermes/plugins/coucou/"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.hermes/plugins/coucou/에 Hermes 플러그인이 설치되었습니다"
+          }
         }
       }
     },
@@ -15936,6 +17424,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "Hermes Agent"
@@ -16004,6 +17498,12 @@
             "state": "translated",
             "value": "安装插件"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플러그인 설치"
+          }
         }
       }
     },
@@ -16067,6 +17567,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件已安装 — 重启 OpenCode 以激活"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플러그인 설치됨 — 적용하려면 OpenCode를 재시동하세요"
           }
         }
       }
@@ -16132,6 +17638,12 @@
             "state": "translated",
             "value": "OpenCode 插件"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode 플러그인"
+          }
         }
       }
     },
@@ -16195,6 +17707,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "确认前请检查以下内容。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인하기 전에 아래 내용을 검토하세요."
           }
         }
       }
@@ -16260,6 +17778,12 @@
             "state": "translated",
             "value": "按此键 → 岛打开"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 키를 누름 → 아일랜드 열림"
+          }
         }
       }
     },
@@ -16323,6 +17847,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "编程"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코딩"
           }
         }
       }
@@ -16388,6 +17918,12 @@
             "state": "translated",
             "value": "条命令"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개 명령"
+          }
         }
       }
     },
@@ -16451,6 +17987,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "个文件"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개 파일"
           }
         }
       }
@@ -16516,6 +18058,12 @@
             "state": "translated",
             "value": "个文件"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개 파일"
+          }
         }
       }
     },
@@ -16579,6 +18127,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已批准"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승인됨"
           }
         }
       }
@@ -16644,6 +18198,12 @@
             "state": "translated",
             "value": "最忙的一天"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가장 바쁜 날"
+          }
         }
       }
     },
@@ -16707,6 +18267,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "命令"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "명령어"
           }
         }
       }
@@ -16772,6 +18338,12 @@
             "state": "translated",
             "value": "已拒绝"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "거부됨"
+          }
         }
       }
     },
@@ -16835,6 +18407,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일"
           }
         }
       }
@@ -16900,6 +18478,12 @@
             "state": "translated",
             "value": "最长会话"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가장 긴 세션"
+          }
         }
       }
     },
@@ -16963,6 +18547,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "会话"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세션"
           }
         }
       }
@@ -17028,6 +18618,12 @@
             "state": "translated",
             "value": "编程时长"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코딩 시간"
+          }
         }
       }
     },
@@ -17091,6 +18687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "最活跃 Agent"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최고 에이전트"
           }
         }
       }
@@ -17156,6 +18758,12 @@
             "state": "translated",
             "value": "最活跃项目"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최고 프로젝트"
+          }
         }
       }
     },
@@ -17219,6 +18827,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上周无活动"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지난주 활동 없음"
           }
         }
       }
@@ -17284,6 +18898,12 @@
             "state": "translated",
             "value": "个会话"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개 세션"
+          }
         }
       }
     },
@@ -17347,6 +18967,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "个会话"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개 세션"
           }
         }
       }
@@ -17412,6 +19038,12 @@
             "state": "translated",
             "value": "分享图片"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지 공유"
+          }
         }
       }
     },
@@ -17475,6 +19107,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "每周回顾"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주간 요약"
           }
         }
       }
@@ -17540,6 +19178,12 @@
             "state": "translated",
             "value": "秒无活动"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "초 동안 비활성"
+          }
         }
       }
     },
@@ -17603,6 +19247,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메인"
           }
         }
       }
@@ -17668,6 +19318,12 @@
             "state": "translated",
             "value": "已用 %lld/4 个插槽"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/4개 슬롯 사용됨"
+          }
         }
       }
     },
@@ -17731,6 +19387,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置 — Coucou"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 — Coucou"
           }
         }
       }
@@ -17796,6 +19458,12 @@
             "state": "translated",
             "value": "附加前端窗口"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전면 창 첨부"
+          }
         }
       }
     },
@@ -17859,6 +19527,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "重复"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중복됨"
           }
         }
       }
@@ -17924,6 +19598,12 @@
             "state": "translated",
             "value": "系统冲突"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시스템 충돌"
+          }
         }
       }
     },
@@ -17987,6 +19667,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mochi 桌面开/关"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데스크탑 Mochi 켜기/끄기"
           }
         }
       }
@@ -18052,6 +19738,12 @@
             "state": "translated",
             "value": "跳转到警告"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림으로 이동"
+          }
         }
       }
     },
@@ -18115,6 +19807,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "全局快捷键 — 在任何应用中有效"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전역 단축키 — 모든 앱에서 활성화"
           }
         }
       }
@@ -18180,6 +19878,12 @@
             "state": "translated",
             "value": "岛快捷键 — 岛获得焦点时有效"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치 단축키 — 노치가 전면에 있을 때 활성화"
+          }
         }
       }
     },
@@ -18243,6 +19947,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "按编号切换标签"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번호로 탭 이동"
           }
         }
       }
@@ -18308,6 +20018,12 @@
             "state": "translated",
             "value": "关闭岛（如未固定）"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치 닫기 (고정되지 않은 경우)"
+          }
         }
       }
     },
@@ -18371,6 +20087,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开/关闭当前差异"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 diff 열기 / 닫기"
           }
         }
       }
@@ -18436,6 +20158,12 @@
             "state": "translated",
             "value": "在列表项中导航"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목록 항목 탐색"
+          }
         }
       }
     },
@@ -18499,6 +20227,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "新建对话"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 대화"
           }
         }
       }
@@ -18564,6 +20298,12 @@
             "state": "translated",
             "value": "下一个/上一个标签"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 / 이전 탭"
+          }
         }
       }
     },
@@ -18627,6 +20367,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开选定项"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 항목 열기"
           }
         }
       }
@@ -18692,6 +20438,12 @@
             "state": "translated",
             "value": "固定/取消固定岛"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치 고정 / 고정 해제"
+          }
         }
       }
     },
@@ -18755,6 +20507,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送聊天消息"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "채팅 메시지 전송"
           }
         }
       }
@@ -18820,6 +20578,12 @@
             "state": "translated",
             "value": "打开设置"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 열기"
+          }
         }
       }
     },
@@ -18883,6 +20647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "跳转到终端"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널로 이동"
           }
         }
       }
@@ -18948,6 +20718,12 @@
             "state": "translated",
             "value": "静音/取消静音"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사운드 음소거 / 음소거 해제"
+          }
         }
       }
     },
@@ -19011,6 +20787,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一个标签"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 탭"
           }
         }
       }
@@ -19076,6 +20858,12 @@
             "state": "translated",
             "value": "打开聊天"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "채팅 열기"
+          }
         }
       }
     },
@@ -19139,6 +20927,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开/关闭岛"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노치 열기 / 닫기"
           }
         }
       }
@@ -19204,6 +20998,12 @@
             "state": "translated",
             "value": "上一个标签"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 탭"
+          }
         }
       }
     },
@@ -19267,6 +21067,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部重置为默认值"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모두 기본값으로 재설정"
           }
         }
       }
@@ -19332,6 +21138,12 @@
             "state": "translated",
             "value": "打开/关闭衣橱"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "옷장 열기 / 닫기"
+          }
         }
       }
     },
@@ -19395,6 +21207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Antigravity Hooks 已安装至 ~/.gemini/config/hooks.json"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.gemini/config/hooks.json에 Antigravity hooks가 설치되었습니다"
           }
         }
       }
@@ -19460,6 +21278,12 @@
             "state": "translated",
             "value": "✓ Antigravity Hooks 已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Antigravity hooks가 제거되었습니다."
+          }
         }
       }
     },
@@ -19523,6 +21347,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Amp 插件已安装至 ~/.config/amp/plugins/coucou.ts"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.config/amp/plugins/coucou.ts에 Amp 플러그인이 설치되었습니다"
           }
         }
       }
@@ -19588,6 +21418,12 @@
             "state": "translated",
             "value": "✓ Amp 插件已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Amp 플러그인이 제거되었습니다."
+          }
         }
       }
     },
@@ -19651,6 +21487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Codex Hooks 已安装 — 在 Codex 中运行 /hooks，或在应用设置中打开 Hooks 以信任它们。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Codex hooks가 설치되었습니다 — Codex에서 /hooks를 실행하거나 앱 설정에서 Hooks를 열어 승인하세요."
           }
         }
       }
@@ -19716,6 +21558,12 @@
             "state": "translated",
             "value": "✓ Codex Hooks 已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Codex hooks가 제거되었습니다."
+          }
         }
       }
     },
@@ -19779,6 +21627,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Copilot CLI Hooks 已安装至 ~/.copilot/hooks/coucou.json"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.copilot/hooks/coucou.json에 Copilot CLI hooks가 설치되었습니다"
           }
         }
       }
@@ -19844,6 +21698,12 @@
             "state": "translated",
             "value": "✓ Copilot CLI Hooks 已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Copilot CLI hooks가 제거되었습니다."
+          }
         }
       }
     },
@@ -19907,6 +21767,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Gemini CLI Hooks 已安装至 ~/.gemini/settings.json"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.gemini/settings.json에 Gemini CLI hooks가 설치되었습니다"
           }
         }
       }
@@ -19972,6 +21838,12 @@
             "state": "translated",
             "value": "✓ Gemini CLI Hooks 已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Gemini CLI hooks가 제거되었습니다."
+          }
         }
       }
     },
@@ -20035,6 +21907,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Google 密钥已保存。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Google 키가 저장되었습니다."
           }
         }
       }
@@ -20100,6 +21978,12 @@
             "state": "translated",
             "value": "✓ Hermes 插件已安装"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes 플러그인이 설치되었습니다"
+          }
         }
       }
     },
@@ -20163,6 +22047,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hermes 插件已移除。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes 플러그인이 제거되었습니다."
           }
         }
       }
@@ -20228,6 +22118,12 @@
             "state": "translated",
             "value": "✓ Hooks 已安装 — 重启 VS Code 以激活。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooks가 설치되었습니다 — 활성화하려면 VS Code를 재시동하세요."
+          }
         }
       }
     },
@@ -20291,6 +22187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks 已安装至 ~/.claude/settings.json"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.claude/settings.json에 Hooks가 설치되었습니다"
           }
         }
       }
@@ -20356,6 +22258,12 @@
             "state": "translated",
             "value": "✓ Hooks 已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooks가 제거되었습니다."
+          }
         }
       }
     },
@@ -20420,6 +22328,12 @@
             "state": "translated",
             "value": "✓ 集成密钥已保存。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 연동 키가 저장되었습니다."
+          }
         }
       }
     },
@@ -20483,6 +22397,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ 密钥已保存。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 키가 저장되었습니다."
           }
         }
       }
@@ -20668,6 +22588,24 @@
               }
             }
           }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ 연결됨 · 모델 %lld개"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ 연결됨 · 모델 %lld개"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -20731,6 +22669,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "LM Studio 已断开连接。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio 연결이 끊어졌습니다."
           }
         }
       }
@@ -20796,6 +22740,12 @@
             "state": "translated",
             "value": "暂无模型 — 请先在 %@ 中下载一个。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 모델이 없습니다 — 먼저 %@에서 다운로드하세요."
+          }
         }
       }
     },
@@ -20859,6 +22809,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ollama 已断开连接。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama 연결이 끊어졌습니다."
           }
         }
       }
@@ -20924,6 +22880,12 @@
             "state": "translated",
             "value": "无法访问 %1$@（%2$@）。它正在运行吗？"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@의 %1$@에 연결할 수 없습니다. 실행 중인가요?"
+          }
         }
       }
     },
@@ -20987,6 +22949,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "仅支持 http:// 和 https:// URL。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "http:// 및 https:// URL만 허용됩니다."
           }
         }
       }
@@ -21052,6 +23020,12 @@
             "state": "translated",
             "value": "✓ Muse Code Hooks 已安装至 ~/.config/muse/settings.json"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.config/muse/settings.json에 Muse Code hooks가 설치되었습니다"
+          }
         }
       }
     },
@@ -21115,6 +23089,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Muse Code Hooks 已移除。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Muse Code hooks가 제거되었습니다."
           }
         }
       }
@@ -21180,6 +23160,12 @@
             "state": "translated",
             "value": "✓ OpenAI 密钥已保存。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenAI 키가 저장되었습니다."
+          }
         }
       }
     },
@@ -21243,6 +23229,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ OpenCode 插件已安装至 ~/.config/opencode/plugins/coucou.js"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.config/opencode/plugins/coucou.js에 OpenCode 플러그인이 설치되었습니다"
           }
         }
       }
@@ -21308,6 +23300,12 @@
             "state": "translated",
             "value": "✓ OpenCode 插件已移除。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenCode 플러그인이 제거되었습니다."
+          }
         }
       }
     },
@@ -21371,6 +23369,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "❌ 请选择 .claude 文件夹（隐藏，在你的 Home 目录中）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ .claude 폴더를 선택하세요 (홈 디렉토리의 숨김 폴더)."
           }
         }
       }
@@ -21436,6 +23440,12 @@
             "state": "translated",
             "value": "✓ 状态栏已安装。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 상태 표시줄이 설치되었습니다."
+          }
         }
       }
     },
@@ -21499,6 +23509,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ 状态栏已移除。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 상태 표시줄이 제거되었습니다."
           }
         }
       }
@@ -21564,6 +23580,12 @@
             "state": "translated",
             "value": "代理"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "에이전트"
+          }
         }
       }
     },
@@ -21627,6 +23649,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "编辑"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집"
           }
         }
       }
@@ -21692,6 +23720,12 @@
             "state": "translated",
             "value": "获取"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져오기"
+          }
         }
       }
     },
@@ -21755,6 +23789,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "列出"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목록"
           }
         }
       }
@@ -21820,6 +23860,12 @@
             "state": "translated",
             "value": "Notebook"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노트북"
+          }
         }
       }
     },
@@ -21883,6 +23929,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "读取"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽기"
           }
         }
       }
@@ -21948,6 +24000,12 @@
             "state": "translated",
             "value": "执行"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행"
+          }
         }
       }
     },
@@ -22011,6 +24069,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "搜索"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색"
           }
         }
       }
@@ -22076,6 +24140,12 @@
             "state": "translated",
             "value": "任务"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업"
+          }
         }
       }
     },
@@ -22139,6 +24209,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "测试"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "테스트"
           }
         }
       }
@@ -22204,6 +24280,12 @@
             "state": "translated",
             "value": "搜索网络"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "웹 검색"
+          }
         }
       }
     },
@@ -22267,6 +24349,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "写入"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "쓰기"
           }
         }
       }
@@ -22332,6 +24420,12 @@
             "state": "translated",
             "value": "附带"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포함"
+          }
         }
       }
     },
@@ -22395,6 +24489,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "« OK Coucou » — 语音唤醒词"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — 음성 호출어"
           }
         }
       }
@@ -22461,6 +24561,12 @@
             "state": "translated",
             "value": "与 Coucou 对话"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou와 대화"
+          }
         }
       }
     },
@@ -22524,6 +24630,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "4 个激活 — 删除哪个？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4개 활성 — 어느 것을 제거할까요?"
           }
         }
       }
@@ -22589,6 +24701,12 @@
             "state": "translated",
             "value": "未找到：%@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "찾을 수 없음: %@"
+          }
         }
       }
     },
@@ -22653,6 +24771,12 @@
             "state": "translated",
             "value": "正在打开 Apple Music…"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Music 여는 중…"
+          }
         }
       }
     },
@@ -22716,6 +24840,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一首"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 곡"
           }
         }
       }
@@ -22782,6 +24912,12 @@
             "state": "translated",
             "value": "没有音乐应用"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중인 음악 앱 없음"
+          }
         }
       }
     },
@@ -22845,6 +24981,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已暂停"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일시 정지됨"
           }
         }
       }
@@ -22910,6 +25052,12 @@
             "state": "translated",
             "value": "正在播放"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 중"
+          }
         }
       }
     },
@@ -22973,6 +25121,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一首"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 곡"
           }
         }
       }
@@ -23038,6 +25192,12 @@
             "state": "translated",
             "value": "调低音量"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음량 낮추기"
+          }
         }
       }
     },
@@ -23101,6 +25261,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "音量：%d%%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음량: %d%%"
           }
         }
       }
@@ -23166,6 +25332,12 @@
             "state": "translated",
             "value": "调高音量"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음량 높이기"
+          }
         }
       }
     },
@@ -23229,6 +25401,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已添加 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 추가됨"
           }
         }
       }
@@ -23294,6 +25472,12 @@
             "state": "translated",
             "value": "已激活"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미 활성화됨"
+          }
         }
       }
     },
@@ -23357,6 +25541,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要：%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메인: %@"
           }
         }
       }
@@ -23423,6 +25613,12 @@
             "state": "translated",
             "value": "已添加 %@ — 钩子未安装"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 추가됨 — hooks 설치되지 않음"
+          }
         }
       }
     },
@@ -23486,6 +25682,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未激活"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성화되지 않음"
           }
         }
       }
@@ -23551,6 +25753,12 @@
             "state": "translated",
             "value": "仅：%@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단독: %@"
+          }
         }
       }
     },
@@ -23615,6 +25823,12 @@
             "state": "translated",
             "value": "已移除 %@"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 제거됨"
+          }
         }
       }
     },
@@ -23675,6 +25889,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ → %@"
@@ -23743,6 +25963,12 @@
             "state": "translated",
             "value": "好的，保持原样"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알겠습니다, 그대로 유지합니다"
+          }
         }
       }
     },
@@ -23806,6 +26032,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法识别指令"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "명령을 인식할 수 없음"
           }
         }
       }
@@ -23871,6 +26103,12 @@
             "state": "translated",
             "value": "无法理解：« %@ »"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인식할 수 없음: « %@ »"
+          }
         }
       }
     },
@@ -23934,6 +26172,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coucou 大声回应"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou가 음성으로 응답"
           }
         }
       }
@@ -23999,6 +26243,12 @@
             "state": "translated",
             "value": "Coucou 用语音语言朗读结果。完全在设备上处理。"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou가 합성된 음성을 사용하여 말한 언어로 결과를 읽어줍니다. 100% 기기 내에서 처리됩니다."
+          }
         }
       }
     },
@@ -24062,6 +26312,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "不在你的资料库中，已打开 %@ 的搜索"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보관함에 없습니다. %@ 검색을 열었습니다"
           }
         }
       }
@@ -24127,6 +26383,12 @@
             "state": "translated",
             "value": "本地 AI 模型：可用"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 AI 모델: 사용 가능"
+          }
         }
       }
     },
@@ -24190,6 +26452,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "本地 AI 模型：需要 macOS 26 或更高版本"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 AI 모델: macOS 26 이상 필요"
           }
         }
       }
@@ -24255,6 +26523,12 @@
             "state": "translated",
             "value": "本地 AI 模型：Apple Intelligence 已关闭"
           }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 AI 모델: Apple Intelligence 꺼짐"
+          }
         }
       }
     },
@@ -24318,6 +26592,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "本地 AI 模型：不支持该语言"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 AI 모델: 지원되지 않는 언어"
           }
         }
       }
