@@ -219,6 +219,51 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 2bis. Timely (suivi du temps)
+
+**Plateformes** : macOS, Windows et Linux. Code : `TimelyAPI.swift` + `TimelyPoller.swift` (Mac), `src-tauri/src/timely.rs` + `integrations.rs` (Windows/Linux).
+
+### Créer l'app OAuth dans Timely
+
+L'API Timely n'a pas de clé personnelle : elle passe par OAuth 2, avec une app que l'utilisateur crée dans son propre compte.
+
+1. Dans Timely : **Settings → Devs** → enregistrer une app.
+2. Redirect URI : `urn:ietf:wg:oauth:2.0:oob` (code affiché par Timely, à recopier).
+3. Copier l'**ID client** et le **secret** dans Coucou : Réglages → Intégrations → Timely.
+4. **Connect** ouvre `https://api.timelyapp.com/1.1/oauth/authorize?response_type=code&redirect_uri=urn:ietf:wg:oauth:2.0:oob&client_id=…` dans le navigateur ; se connecter, autoriser, puis coller le code affiché dans le champ « Authorization code » et **Save**.
+
+Sources : [guide Timely « Getting started with Timely's API »](https://www.timely.com/help/handbook/tips-tricks/getting-started-with-timelys-api/). La référence complète (https://developer.timely.com/) demande une connexion.
+
+### Jetons
+
+- Échange du code : `POST /1.1/oauth/token`, corps JSON `grant_type=authorization_code`, `client_id`, `client_secret`, `code`, `redirect_uri`.
+- Rafraîchissement : même URL, `grant_type=refresh_token` + `refresh_token`. Fait **une seule fois** quand une requête répond 401, puis la requête est rejouée. Si la réponse n'a pas de `refresh_token`, l'ancien est gardé.
+- Stockage : Trousseau / Credential Manager / Secret Service, clés `timely-client-id`, `timely-client-secret`, `timely-access-token`, `timely-refresh-token`. **Disconnect** efface les deux jetons.
+
+### Données récupérées
+
+Toutes les 60 s, seulement si la pastille Timely est active (première requête 9 s après le lancement) :
+- `GET /1.1/accounts` → premier compte ; `GET /1.1/{compte}/users/current` → utilisateur. Gardés en mémoire jusqu'au prochain jeton.
+- `GET /1.1/{compte}/users/{id}/capacities` → `daily_capacity` de la période `current: true`. Une fois par jour.
+- `GET /1.1/{compte}/users/{id}/events?since=…&upto=…` → entrées du jour. Champs lus : `id`, `day`, `note`, `project.name`, `project.color`, `project.client.name`, `duration.total_seconds`, `timer_state`, `timer_started_on`.
+  - Mac : `since` = `upto` = jour local.
+  - Windows/Linux : Rust n'a pas le fuseau, il demande la veille et le lendemain (UTC) ; l'île garde les entrées du jour local.
+
+Minuteur en cours : `timer_state` ≠ `stop` et `timer_started_on` > 0. Temps affiché = `duration.total_seconds` + (maintenant − `timer_started_on`).
+
+### Carte
+
+- En-tête : « Timely · Today » + total du jour / capacité (`3:20 / 7:30`), ou le total seul sans capacité.
+- Première ligne : minuteur en cours (projet, note, durée), sinon « No timer running ».
+- Puis les deux dernières entrées arrêtées (projet, durée).
+- Mac : la carte se met à jour toutes les 30 s tant qu'elle est visible (`TimelineView`). Windows/Linux : à chaque poll.
+- ↗ et « Open Timely » ouvrent `https://app.timelyapp.com`.
+- Erreurs : 401 après rafraîchissement → « Invalid API key (401) » ; autre code → « API error N ».
+
+Pas de badge ni de son : Timely n'a pas d'événement qui mérite d'interrompre.
+
+---
+
 ## 3. Fichiers déposés
 
 - Glisser-déposer natif sur la panel (types `fileURL`). Copier les fichiers dans `~/Library/Application Support/NotchBuddy/inbox/` (c'est la phase `uploading`).

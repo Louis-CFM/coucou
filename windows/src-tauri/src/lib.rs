@@ -29,6 +29,7 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+mod timely;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -536,6 +537,25 @@ async fn refresh_integration(app: AppHandle, id: String) {
     integrations::poll_once(app, &id).await;
 }
 
+/// Settings → Timely → Connect: Timely's consent page, which then shows a code.
+#[tauri::command]
+fn timely_authorize() -> bool {
+    let Some(id) = secrets::get("timely-client-id") else { return false };
+    platform::open_url(&timely::authorize_url(&id));
+    true
+}
+
+/// Settings → Timely → Save: trades the pasted code for tokens.
+#[tauri::command]
+async fn timely_connect(app: AppHandle, code: String) -> Result<(), String> {
+    integrations::timely_connect(app, &code).await
+}
+
+#[tauri::command]
+fn timely_disconnect(app: AppHandle) {
+    integrations::timely_disconnect(&app);
+}
+
 /// The GitHub card was opened: refetch its `section` ("pulse" or "activity")
 /// if it is stale. The pollers still decline while the pill is off or paused.
 #[tauri::command]
@@ -707,6 +727,9 @@ pub fn run() {
             secret_set,
             secret_clear,
             refresh_integration,
+            timely_authorize,
+            timely_connect,
+            timely_disconnect,
             github_refresh,
             open_n8n,
             open_settings_window,

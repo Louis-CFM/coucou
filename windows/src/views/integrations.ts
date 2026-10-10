@@ -12,6 +12,7 @@ import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard } from "./github";
+import { entrySeconds, hm, loggedSeconds, readTimelyDay } from "../core/timely";
 import { N_, language, t } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
@@ -56,6 +57,7 @@ const OPEN_URLS: Record<string, string> = {
   integration_stripe: "https://dashboard.stripe.com/payments",
   integration_notion: "https://notion.so",
   integration_calcom: "https://app.cal.com/bookings",
+  integration_timely: "https://app.timelyapp.com",
 };
 
 /** IntegrationCardView.statusLabel on macOS. */
@@ -357,6 +359,35 @@ function calcomCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
 }
 
+// ── Timely ────────────────────────────────────────────────────────────────────
+
+function timelyCard(color: string): HTMLElement {
+  const now = new Date();
+  const day = readTimelyDay(get("integration_timely"), now);
+  const logged = hm(day ? loggedSeconds(day, now) : 0);
+  const total = day?.capacityHours != null ? `${logged} / ${hm(day.capacityHours * 3600)}` : logged;
+  const rows = h("div", { class: "int-rows" });
+
+  if (day?.running) {
+    const r = day.running;
+    const cells: Node[] = [h("span", { class: "int-name", text: r.project })];
+    if (r.note) cells.push(h("span", { class: "int-sub", text: r.note }));
+    cells.push(h("span", { class: "int-ago", text: hm(entrySeconds(r, now)) }));
+    rows.append(listRow(r.color, true, ...cells));
+  } else {
+    rows.append(h("div", { class: "int-empty", text: t("No timer running") }));
+  }
+  const others = (day?.entries ?? []).filter((e) => e.timerStartedOn == null).slice(-2).reverse();
+  for (const e of others) {
+    rows.append(
+      listRow(e.color, false, h("span", { class: "int-name", text: e.project }), h("span", { class: "int-ago", text: hm(e.loggedSeconds) })),
+    );
+  }
+
+  const extra = h("span", { class: "int-total" }, h("span", { text: total }));
+  return h("div", { class: "int-card" }, header(color, "Timely", t("Today"), extra), rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -440,6 +471,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_timely":
+      return readTimelyDay(get(id), new Date()) != null;
     default:
       return false;
   }
@@ -479,6 +512,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_timely":
+      return timelyCard(task.color);
     default:
       return idleCard(task, hooks.openSettings);
   }

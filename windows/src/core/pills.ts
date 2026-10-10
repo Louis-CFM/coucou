@@ -128,6 +128,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
+  // Connected once Settings has traded Timely's code for a token.
+  { id: "integration_timely", name: "Timely", color: "#F5A524", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("timely-access-token") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
   // Spotify's MPRIS interface on the session bus (src-tauri/src/spotify.rs).

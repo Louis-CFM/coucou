@@ -112,6 +112,17 @@
    "ru": "Активность",
    "id": "Aktivitas"
   },
+  "Add your Anthropic API key in Settings → Chat first.": {
+   "zh-Hans": "请先在设置 → 聊天中添加你的 Anthropic API 密钥。",
+   "hi": "पहले सेटिंग्स → चैट में अपनी Anthropic API कुंजी जोड़ो।",
+   "es": "Primero añade tu clave de API de Anthropic en Ajustes → Chat.",
+   "ar": "أضف أولًا مفتاح Anthropic API في الإعدادات ← الدردشة.",
+   "fr": "Ajoute d'abord ta clé API Anthropic dans Réglages → Chat.",
+   "bn": "আগে সেটিংস → চ্যাটে তোমার Anthropic API কী যোগ করো।",
+   "pt-BR": "Primeiro adicione sua chave de API da Anthropic em Ajustes → Chat.",
+   "ru": "Сначала добавь ключ Anthropic API в Настройки → Чат.",
+   "id": "Tambahkan dulu kunci API Anthropic-mu di Pengaturan → Chat."
+  },
   "Advertisement": {
    "zh-Hans": "广告",
    "hi": "विज्ञापन",
@@ -221,6 +232,17 @@
    "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Coucou não está em execução ficam na fila e são executadas no próximo início.",
    "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске.",
    "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
+  },
+  "Answer questions with a web search": {
+   "zh-Hans": "用网页搜索回答问题",
+   "hi": "वेब खोज से सवालों के जवाब",
+   "es": "Responder preguntas buscando en la web",
+   "ar": "الإجابة عن الأسئلة ببحث على الويب",
+   "fr": "Répondre aux questions avec une recherche web",
+   "bn": "ওয়েবে খুঁজে প্রশ্নের উত্তর দাও",
+   "pt-BR": "Responder perguntas com uma busca na web",
+   "ru": "Отвечать на вопросы с поиском в интернете",
+   "id": "Jawab pertanyaan dengan pencarian web"
   },
   "Anthropic API": {
    "zh-Hans": "Anthropic API",
@@ -342,6 +364,17 @@
    "pt-BR": "Anexar janela frontal",
    "ru": "Прикрепить переднее окно",
    "id": "Lampirkan jendela depan"
+  },
+  "Authorization code": {
+   "zh-Hans": "授权码",
+   "hi": "ऑथराइज़ेशन कोड",
+   "es": "Código de autorización",
+   "ar": "رمز التفويض",
+   "fr": "Code d'autorisation",
+   "bn": "অনুমোদন কোড",
+   "pt-BR": "Código de autorização",
+   "ru": "Код авторизации",
+   "id": "Kode otorisasi"
   },
   "Auto-close · {seconds}s": {
    "zh-Hans": "自动关闭 · {seconds} 秒",
@@ -584,6 +617,28 @@
    "pt-BR": "Limpar histórico",
    "ru": "Очистить историю",
    "id": "Hapus riwayat"
+  },
+  "Client ID": {
+   "zh-Hans": "客户端 ID",
+   "hi": "क्लाइंट ID",
+   "es": "ID de cliente",
+   "ar": "معرّف العميل",
+   "fr": "ID client",
+   "bn": "ক্লায়েন্ট আইডি",
+   "pt-BR": "ID do cliente",
+   "ru": "ID клиента",
+   "id": "ID klien"
+  },
+  "Client secret": {
+   "zh-Hans": "客户端密钥",
+   "hi": "क्लाइंट सीक्रेट",
+   "es": "Secreto de cliente",
+   "ar": "سر العميل",
+   "fr": "Secret client",
+   "bn": "ক্লায়েন্ট সিক্রেট",
+   "pt-BR": "Segredo do cliente",
+   "ru": "Секрет клиента",
+   "id": "Rahasia klien"
   },
   "Close": {
    "zh-Hans": "关闭",
@@ -1069,6 +1124,17 @@
    "ru": "Получает",
    "id": "Mengambil"
   },
+  "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
+   "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
+   "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
+   "es": "Para una voz más natural, descarga una voz Premium: Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del sistema → Gestionar voces. En inglés: Ava para mujer, Jamie para hombre (británico).",
+   "ar": "لصوت أكثر طبيعية، نزّل صوتًا Premium: إعدادات النظام ← تسهيلات الاستخدام ← المحتوى المنطوق ← صوت النظام ← إدارة الأصوات. بالإنجليزية: Ava لامرأة، Jamie لرجل (بريطاني).",
+   "fr": "Pour une voix plus naturelle, télécharge une voix Premium : Réglages Système → Accessibilité → Contenu énoncé → Voix du système → Gérer les voix. En anglais : Ava pour une femme, Jamie pour un homme (britannique).",
+   "bn": "আরও স্বাভাবিক কণ্ঠের জন্য একটি Premium কণ্ঠ ডাউনলোড করো: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। ইংরেজিতে: নারী হলে Ava, পুরুষ হলে Jamie (ব্রিটিশ)।",
+   "pt-BR": "Para uma voz mais natural, baixe uma voz Premium: Ajustes do Sistema → Acessibilidade → Conteúdo Falado → Voz do Sistema → Gerenciar Vozes. Em inglês: Ava para mulher, Jamie para homem (britânico).",
+   "ru": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский).",
+   "id": "Untuk suara yang lebih alami, unduh suara Premium: Pengaturan Sistem → Aksesibilitas → Konten Lisan → Suara Sistem → Kelola Suara. Bahasa Inggris: Ava untuk wanita, Jamie untuk pria (Inggris)."
+  },
   "From Open-Meteo for this city, only when you ask.": {
    "zh-Hans": "仅在你询问时，从 Open-Meteo 获取该城市的天气。",
    "hi": "इस शहर के लिए Open-Meteo से, सिर्फ़ पूछने पर।",
@@ -1365,6 +1431,17 @@
    "pt-BR": "Passar o cursor pela ilha a abre; ela se fecha logo depois que o cursor sai. Clique dentro para mantê-la aberta.",
    "ru": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым.",
    "id": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
+  },
+  "In Timely, open Settings → Devs and register an app with the redirect URI urn:ietf:wg:oauth:2.0:oob. Enter its client ID and secret, connect, then paste the code Timely shows.": {
+   "zh-Hans": "在 Timely 中打开 Settings → Devs，注册一个应用，重定向 URI 填 urn:ietf:wg:oauth:2.0:oob。填入它的客户端 ID 和密钥并连接，然后粘贴 Timely 显示的代码。",
+   "hi": "Timely में Settings → Devs खोलें और रीडायरेक्ट URI urn:ietf:wg:oauth:2.0:oob के साथ एक ऐप रजिस्टर करें। उसका क्लाइंट ID और सीक्रेट डालकर कनेक्ट करें, फिर Timely का दिखाया गया कोड पेस्ट करें।",
+   "es": "En Timely, abre Settings → Devs y registra una app con la URI de redirección urn:ietf:wg:oauth:2.0:oob. Introduce su ID y secreto de cliente, conecta y pega el código que muestra Timely.",
+   "ar": "في Timely، افتح Settings ← Devs وسجّل تطبيقًا بعنوان إعادة التوجيه urn:ietf:wg:oauth:2.0:oob. أدخل معرّف العميل والسر ثم اتصل، والصق الرمز الذي يعرضه Timely.",
+   "fr": "Dans Timely, ouvrez Settings → Devs et enregistrez une app avec l'URI de redirection urn:ietf:wg:oauth:2.0:oob. Saisissez son ID client et son secret, connectez-vous, puis collez le code affiché par Timely.",
+   "bn": "Timely-তে Settings → Devs খুলে রিডাইরেক্ট URI urn:ietf:wg:oauth:2.0:oob দিয়ে একটি অ্যাপ নিবন্ধন করুন। এর ক্লায়েন্ট আইডি ও সিক্রেট দিয়ে সংযোগ করুন, তারপর Timely-র দেখানো কোড পেস্ট করুন।",
+   "pt-BR": "No Timely, abra Settings → Devs e registre um app com a URI de redirecionamento urn:ietf:wg:oauth:2.0:oob. Informe o ID e o segredo do cliente, conecte e cole o código que o Timely mostrar.",
+   "ru": "В Timely откройте Settings → Devs и зарегистрируйте приложение с URI перенаправления urn:ietf:wg:oauth:2.0:oob. Введите его ID и секрет клиента, подключитесь и вставьте код, который покажет Timely.",
+   "id": "Di Timely, buka Settings → Devs dan daftarkan aplikasi dengan URI pengalihan urn:ietf:wg:oauth:2.0:oob. Masukkan ID dan rahasia kliennya, hubungkan, lalu tempel kode yang ditampilkan Timely."
   },
   "Install": {
    "zh-Hans": "安装",
@@ -1971,6 +2048,17 @@
    "ru": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка.",
    "id": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte."
   },
+  "No timer running": {
+   "zh-Hans": "没有正在计时的条目",
+   "hi": "कोई टाइमर नहीं चल रहा",
+   "es": "Ningún temporizador en marcha",
+   "ar": "لا يوجد مؤقت قيد التشغيل",
+   "fr": "Aucun minuteur en cours",
+   "bn": "কোনো টাইমার চলছে না",
+   "pt-BR": "Nenhum cronômetro rodando",
+   "ru": "Таймер не запущен",
+   "id": "Tidak ada timer berjalan"
+  },
   "Not active": {
    "zh-Hans": "未激活",
    "hi": "सक्रिय नहीं",
@@ -2201,6 +2289,17 @@
    "pt-BR": "Abrir / fechar guarda-roupa",
    "ru": "Открыть / закрыть гардероб",
    "id": "Buka / tutup lemari"
+  },
+  "Open Accessibility settings": {
+   "zh-Hans": "打开辅助功能",
+   "hi": "Accessibility खोलें",
+   "es": "Abrir Accesibilidad",
+   "ar": "افتح تسهيلات الاستخدام",
+   "fr": "Ouvrir Accessibilité",
+   "bn": "Accessibility খোলো",
+   "pt-BR": "Abrir Acessibilidade",
+   "ru": "Открыть Универсальный доступ",
+   "id": "Buka Aksesibilitas"
   },
   "Open Codex": {
    "zh-Hans": "打开 Codex",
@@ -2477,6 +2576,17 @@
    "ru": "Закрепить / открепить нотч",
    "id": "Sematkan / lepas island"
   },
+  "Pitch": {
+   "zh-Hans": "音调",
+   "hi": "आवाज़ की पिच",
+   "es": "Tono",
+   "ar": "حدّة الصوت",
+   "fr": "Hauteur",
+   "bn": "কণ্ঠের তীক্ষ্ণতা",
+   "pt-BR": "Tom",
+   "ru": "Высота голоса",
+   "id": "Nada suara"
+  },
   "Plan usage": {
    "zh-Hans": "计划用量",
    "hi": "प्लान उपयोग",
@@ -2597,6 +2707,17 @@
    "pt-BR": "Projetos",
    "ru": "Проекты",
    "id": "Proyek"
+  },
+  "Questions your pills can't answer go to Claude with a web search, using your Anthropic API key. Only the question is sent.": {
+   "zh-Hans": "药丸无法回答的问题会用你的 Anthropic API 密钥发送给 Claude 并进行网页搜索。只发送问题本身。",
+   "hi": "जिन सवालों का जवाब तुम्हारी पिल्स नहीं दे सकतीं, वे तुम्हारी Anthropic API कुंजी से वेब खोज के साथ Claude को जाते हैं। सिर्फ़ सवाल भेजा जाता है।",
+   "es": "Las preguntas que tus píldoras no responden van a Claude con una búsqueda web, con tu clave de API de Anthropic. Solo se envía la pregunta.",
+   "ar": "الأسئلة التي لا تجيب عنها حبوبك تُرسل إلى Claude مع بحث على الويب، بمفتاح Anthropic API الخاص بك. يُرسل السؤال فقط.",
+   "fr": "Les questions auxquelles tes pilules ne répondent pas partent chez Claude avec une recherche web, avec ta clé API Anthropic. Seule la question est envoyée.",
+   "bn": "যে প্রশ্নের উত্তর তোমার পিলগুলো দিতে পারে না, সেগুলো তোমার Anthropic API কী দিয়ে ওয়েব সার্চসহ Claude-এর কাছে যায়। শুধু প্রশ্নটাই পাঠানো হয়।",
+   "pt-BR": "Perguntas que suas pílulas não respondem vão para o Claude com uma busca na web, usando sua chave de API da Anthropic. Só a pergunta é enviada.",
+   "ru": "Вопросы, на которые не отвечают твои пилюли, уходят в Claude с поиском в интернете, по твоему ключу Anthropic API. Отправляется только вопрос.",
+   "id": "Pertanyaan yang tidak bisa dijawab pil-mu dikirim ke Claude dengan pencarian web, memakai kunci API Anthropic-mu. Hanya pertanyaannya yang dikirim."
   },
   "Quit": {
    "zh-Hans": "退出",
@@ -3368,6 +3489,17 @@
    "ru": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain.",
    "id": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
   },
+  "Today": {
+   "zh-Hans": "今天",
+   "hi": "आज",
+   "es": "Hoy",
+   "ar": "اليوم",
+   "fr": "Aujourd'hui",
+   "bn": "আজ",
+   "pt-BR": "Hoje",
+   "ru": "Сегодня",
+   "id": "Hari ini"
+  },
   "Too many hits at once.": {
    "zh-Hans": "一次点击太多次了。",
    "hi": "एक बार में बहुत ज़्यादा टैप।",
@@ -3488,6 +3620,17 @@
    "pt-BR": "Voz",
    "ru": "Голос",
    "id": "Suara"
+  },
+  "Voice in use: {0}": {
+   "zh-Hans": "当前声音：{0}",
+   "hi": "उपयोग में आवाज़: {0}",
+   "es": "Voz en uso: {0}",
+   "ar": "الصوت المستخدم: {0}",
+   "fr": "Voix utilisée : {0}",
+   "bn": "ব্যবহৃত কণ্ঠ: {0}",
+   "pt-BR": "Voz em uso: {0}",
+   "ru": "Используется голос: {0}",
+   "id": "Suara yang dipakai: {0}"
   },
   "Voice type": {
    "zh-Hans": "声音类型",
@@ -4367,6 +4510,17 @@
    "ru": "✓ Строка статуса удалена.",
    "id": "✓ Baris status dihapus."
   },
+  "✓ Timely connected.": {
+   "zh-Hans": "✓ 已连接 Timely。",
+   "hi": "✓ Timely कनेक्ट हो गया।",
+   "es": "✓ Timely conectado.",
+   "ar": "✓ تم الاتصال بـ Timely.",
+   "fr": "✓ Timely connecté.",
+   "bn": "✓ Timely সংযুক্ত হয়েছে।",
+   "pt-BR": "✓ Timely conectado.",
+   "ru": "✓ Timely подключён.",
+   "id": "✓ Timely terhubung."
+  },
   "❌ Select the .claude folder (hidden, in your Home directory).": {
    "zh-Hans": "❌ 请选择 .claude 文件夹（隐藏，在你的 Home 目录中）。",
    "hi": "❌ .claude फ़ोल्डर चुनें (छुपा हुआ, आपके Home डायरेक्टरी में)।",
@@ -4377,6 +4531,17 @@
    "pt-BR": "❌ Selecione a pasta .claude (oculta, no seu diretório Home).",
    "ru": "❌ Выбери папку .claude (скрытая, в домашнем каталоге).",
    "id": "❌ Pilih folder .claude (tersembunyi, di direktori Home Anda)."
+  },
+  "❌ Timely did not accept the code. Check the client ID and secret, then connect again.": {
+   "zh-Hans": "❌ Timely 未接受该代码。请检查客户端 ID 和密钥，然后重新连接。",
+   "hi": "❌ Timely ने कोड स्वीकार नहीं किया। क्लाइंट ID और सीक्रेट जाँचें, फिर दोबारा कनेक्ट करें।",
+   "es": "❌ Timely no aceptó el código. Revisa el ID y el secreto de cliente y vuelve a conectar.",
+   "ar": "❌ لم يقبل Timely الرمز. تحقّق من معرّف العميل والسر ثم اتصل مجددًا.",
+   "fr": "❌ Timely a refusé le code. Vérifiez l'ID client et le secret, puis reconnectez-vous.",
+   "bn": "❌ Timely কোডটি গ্রহণ করেনি। ক্লায়েন্ট আইডি ও সিক্রেট যাচাই করে আবার সংযোগ করুন।",
+   "pt-BR": "❌ O Timely não aceitou o código. Confira o ID e o segredo do cliente e conecte de novo.",
+   "ru": "❌ Timely не принял код. Проверьте ID и секрет клиента и подключитесь снова.",
+   "id": "❌ Timely tidak menerima kode. Periksa ID dan rahasia klien, lalu hubungkan lagi."
   }
  }
 }

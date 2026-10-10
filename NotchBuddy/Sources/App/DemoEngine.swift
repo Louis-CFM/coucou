@@ -34,7 +34,7 @@ final class DemoEngine: ObservableObject {
     private var demoCycleIndex: Int = 0
     private let rotatingIntegrationIds = [
         "integration_stripe", "integration_calcom",
-        "integration_n8n", "integration_notion", "integration_vercel"
+        "integration_n8n", "integration_notion", "integration_vercel", "integration_timely"
     ]
     private var demoDiffIds: [String: [Int]] = [:]   // [pillId: [diffId]]
     private var lastApprovalDecision: String = "allow"
@@ -67,6 +67,9 @@ final class DemoEngine: ObservableObject {
         var n8nRuns: [N8nRun]
         var notionPages: [NotionPage]
         var notionLoaded: Bool
+        var timelyDay: TimelyDay?
+        var timelyLoaded: Bool
+        var timelyError: String?
         // NOTE: pendingApproval and pendingQuestion are intentionally NOT snapshotted.
         // HookServer's file descriptors are authoritative for real requests.
         var mode: IslandMode
@@ -113,6 +116,9 @@ final class DemoEngine: ObservableObject {
             n8nRuns:             s.n8nRuns,
             notionPages:         s.notionPages,
             notionLoaded:        s.notionLoaded,
+            timelyDay:           s.timelyDay,
+            timelyLoaded:        s.timelyLoaded,
+            timelyError:         s.timelyError,
             mode:                s.mode,
             view:                s.view
         )
@@ -222,6 +228,9 @@ final class DemoEngine: ObservableObject {
         s.n8nRuns              = snap.n8nRuns
         s.notionPages          = snap.notionPages
         s.notionLoaded         = snap.notionLoaded
+        s.timelyDay            = snap.timelyDay
+        s.timelyLoaded         = snap.timelyLoaded
+        s.timelyError          = snap.timelyError
 
         // Restore tasks: keep real tasks that arrived during the demo, discard demo-only ones.
         // For tasks that existed before the demo (realTaskIdsAtStart), use the CURRENT version
@@ -382,6 +391,17 @@ final class DemoEngine: ObservableObject {
                        url: "https://notion.so/demo/auth-notes"),
         ]
         s.notionLoaded = true
+
+        // Timely
+        s.timelyDay = TimelyDay(entries: [
+            TimelyEntry(id: 2001, project: "my-app", client: "Acme", color: "#7C5CFF",
+                        note: "Weekly sync", loggedSeconds: 2700, timerStartedAt: nil),
+            TimelyEntry(id: 2002, project: "my-app", client: "Acme", color: "#7C5CFF",
+                        note: "Auth refactor", loggedSeconds: 3600,
+                        timerStartedAt: now.addingTimeInterval(-1500)),
+        ], capacityHours: 7.5)
+        s.timelyLoaded = true
+        s.timelyError = nil
 
         // Inject GitHub pill only — rotating 4th integration added per cycle.
         var injected: [String] = []

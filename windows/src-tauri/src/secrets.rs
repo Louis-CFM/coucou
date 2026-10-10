@@ -20,6 +20,10 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
+    "timely-client-id",
+    "timely-client-secret",
+    "timely-access-token",
+    "timely-refresh-token",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

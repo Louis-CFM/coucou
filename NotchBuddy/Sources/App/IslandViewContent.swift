@@ -223,6 +223,8 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "integration_timely":
+            NSWorkspace.shared.open(TimelyAPI.webURL)
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -1831,6 +1833,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        case "integration_timely":  return KeychainStore.shared.get(TimelyPoller.Key.access) != nil
         default: return false
         }
     }
@@ -1847,6 +1850,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case "integration_timely":  return TimelyAPI.webURL
         default: return nil
         }
     }
@@ -1894,6 +1898,12 @@ struct IntegrationCardView: View {
         task.id == "integration_calcom" && appState.calcomLoaded
     }
 
+    // Timely: show the day as soon as first poll completes
+    private var timelyHasData: Bool {
+        task.id == "integration_timely" && appState.timelyLoaded && appState.timelyDay != nil
+            && appState.timelyError == nil
+    }
+
     // Notion: show pages as soon as first poll completes
     private var notionHasData: Bool {
         task.id == "integration_notion" && appState.notionLoaded
@@ -1929,6 +1939,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_timely"  ? appState.timelyError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
         return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
@@ -1945,6 +1956,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_timely"  ? appState.timelyError
                    : nil
         if let err = svcErr { return err }
         // Pills driven by hooks, never by a key: the idle card reports whether the
@@ -2035,6 +2047,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if calcomHasData {
             CalcomCardView()
+                .transition(.opacity)
+        } else if timelyHasData {
+            TimelyCardView()
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
@@ -2212,6 +2227,12 @@ struct IntegrationCardView: View {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
+                            .buttonStyle(.plain)
+                    }
+                    if task.id == "integration_timely" && isConfigured {
+                        Button("Refresh") { Task { @MainActor in TimelyPoller.shared.pollNow() } }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     // Settings button: shown when not configured, except cursor/codex and music
@@ -3568,6 +3589,80 @@ struct NotionCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading).padding(.top, 4)
         .transition(.opacity)
+    }
+}
+
+// MARK: - Timely Card View
+
+struct TimelyCardView: View {
+    @ObservedObject private var appState = AppState.shared
+
+    private var color: String { PillCatalog.definition(for: TimelyPoller.pillId)?.color ?? "#F5A524" }
+
+    var body: some View {
+        // Ticks only while the card is on screen, for the running timer.
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            if let day = appState.timelyDay { content(day, now: context.date) }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+
+    private func content(_ day: TimelyDay, now: Date) -> some View {
+        let logged = TimelyFormat.hm(day.loggedSeconds(at: now))
+        let total = day.capacityHours.map { "\(logged) / \(TimelyFormat.hm(hours: $0))" } ?? logged
+        let others = day.entries.filter { !$0.isRunning }.suffix(2).reversed()
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: color)).frame(width: 7, height: 7)
+                Text("Timely").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
+                Text("Today").font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
+                Text(total).font(.system(size: 11, weight: .medium)).foregroundColor(Color(hex: "#C5C8CD"))
+                    .monospacedDigit()
+            }
+            .padding(.top, 6).padding(.leading, 108).padding(.trailing, 36)
+
+            VStack(alignment: .leading, spacing: 3) {
+                if let running = day.running {
+                    row(running, now: now, highlighted: true)
+                } else {
+                    Text("No timer running")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                }
+                ForEach(Array(others)) { entry in row(entry, now: now, highlighted: false) }
+            }
+            .padding(.top, 5).padding(.leading, 108).padding(.trailing, 12)
+        }
+    }
+
+    private func row(_ entry: TimelyEntry, now: Date, highlighted: Bool) -> some View {
+        let accent = Color(hex: entry.color)
+        return HStack(spacing: 5) {
+            Circle().fill(accent).frame(width: 5, height: 5)
+            Text(entry.project)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color(hex: highlighted ? "#C5C8CD" : "#9398A1"))
+                .lineLimit(1).truncationMode(.tail)
+                .layoutPriority(1)
+            if highlighted && !entry.note.isEmpty {
+                Text(entry.note)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#4D5159"))
+                    .lineLimit(1).truncationMode(.tail)
+            }
+            Spacer(minLength: 4)
+            Text(TimelyFormat.hm(entry.seconds(at: now)))
+                .font(.system(size: 10))
+                .foregroundColor(Color(hex: "#6B7079"))
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(highlighted ? accent.opacity(0.08) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 }
 

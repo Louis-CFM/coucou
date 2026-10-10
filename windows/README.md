@@ -418,6 +418,8 @@ own window.
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
   here, and the drop card would need a third button it doesn't have.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Timely's running timer moves on with each poll, once a minute, rather than
+  every 30 seconds on screen.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is

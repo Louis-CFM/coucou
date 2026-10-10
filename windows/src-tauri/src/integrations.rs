@@ -1,5 +1,6 @@
 // Integration pollers — the Rust side of StripePoller / GithubPoller /
-// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller.
+// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller /
+// TimelyPoller.
 //
 // Same endpoints, same first-run delays and intervals as the Swift pollers. Each
 // one emits an `integration` event; the island owns the badge, the sound and the
@@ -71,7 +72,8 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app, TIMELY, 9, 60, poll_timely);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -120,6 +122,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        TIMELY => poll_timely(app).await,
         _ => {}
     }
 }
@@ -841,6 +844,164 @@ async fn poll_calcom(app: AppHandle) {
     emit(&app, IntegrationUpdate {
         id: "integration_calcom",
         data: json!({ "bookings": bookings }),
+        error: None,
+        event: None,
+    });
+}
+
+// ── Timely ────────────────────────────────────────────────────────────────────
+
+const TIMELY: &str = "integration_timely";
+
+/// Account and user, looked up once per token; the daily capacity, once per day.
+#[derive(Default)]
+struct TimelyCache {
+    ids: Option<(i64, i64)>,
+    capacity: Option<(String, Option<f64>)>,
+}
+
+static TIMELY_CACHE: std::sync::LazyLock<Mutex<TimelyCache>> =
+    std::sync::LazyLock::new(|| Mutex::new(TimelyCache::default()));
+
+fn timely_forget() {
+    *TIMELY_CACHE.lock().unwrap() = TimelyCache::default();
+}
+
+fn store_timely_tokens(tokens: &crate::timely::Tokens) {
+    let _ = secrets::set("timely-access-token", &tokens.access);
+    if let Some(refresh) = &tokens.refresh {
+        let _ = secrets::set("timely-refresh-token", refresh);
+    }
+}
+
+async fn timely_token_request(body: Value, old_refresh: Option<&str>) -> Option<crate::timely::Tokens> {
+    let response = client()
+        .post(format!("{}/oauth/token", crate::timely::BASE))
+        .json(&body)
+        .send()
+        .await
+        .ok()?;
+    if !response.status().is_success() {
+        log::line(format!("timely token HTTP {}", response.status()));
+        return None;
+    }
+    let json: Value = response.json().await.ok()?;
+    crate::timely::parse_tokens(&json, old_refresh)
+}
+
+async fn timely_refresh() -> Option<String> {
+    let (id, secret, refresh) = (
+        secrets::get("timely-client-id")?,
+        secrets::get("timely-client-secret")?,
+        secrets::get("timely-refresh-token")?,
+    );
+    let tokens = timely_token_request(crate::timely::refresh_body(&id, &secret, &refresh), Some(&refresh)).await?;
+    store_timely_tokens(&tokens);
+    Some(tokens.access)
+}
+
+/// Settings → Timely → Save: trades the pasted code for tokens.
+pub async fn timely_connect(app: AppHandle, code: &str) -> Result<(), String> {
+    let (Some(id), Some(secret)) = (secrets::get("timely-client-id"), secrets::get("timely-client-secret")) else {
+        return Err("missing client".into());
+    };
+    let tokens = timely_token_request(crate::timely::code_body(&id, &secret, code.trim()), None)
+        .await
+        .ok_or_else(|| "refused".to_string())?;
+    store_timely_tokens(&tokens);
+    timely_forget();
+    if enabled(&app, TIMELY) {
+        poll_timely(app).await;
+    }
+    Ok(())
+}
+
+pub fn timely_disconnect(app: &AppHandle) {
+    let _ = secrets::clear("timely-access-token");
+    let _ = secrets::clear("timely-refresh-token");
+    timely_forget();
+    emit(app, IntegrationUpdate { id: TIMELY, data: json!({}), error: None, event: None });
+}
+
+async fn timely_get(path: &str) -> (u16, Option<Value>) {
+    let Some(access) = secrets::get("timely-access-token") else {
+        return (crate::timely::HTTP_UNAUTHORIZED, None);
+    };
+    let url = format!("{}{path}", crate::timely::BASE);
+    let http = client();
+    crate::timely::with_refresh(
+        access,
+        |token: String| {
+            let request = http.get(&url).bearer_auth(token).header("Accept", "application/json");
+            async move {
+                match request.send().await {
+                    Ok(r) => {
+                        let status = r.status().as_u16();
+                        (status, r.json::<Value>().await.ok())
+                    }
+                    Err(_) => (0, None),
+                }
+            }
+        },
+        timely_refresh,
+    )
+    .await
+}
+
+async fn timely_ids() -> Result<(i64, i64), u16> {
+    if let Some(ids) = TIMELY_CACHE.lock().unwrap().ids {
+        return Ok(ids);
+    }
+    let (status, accounts) = timely_get("/accounts").await;
+    let account = accounts.as_ref().and_then(crate::timely::first_account_id).ok_or(status)?;
+    let (status, me) = timely_get(&format!("/{account}/users/current")).await;
+    let user = me.as_ref().and_then(crate::timely::user_id).ok_or(status)?;
+    TIMELY_CACHE.lock().unwrap().ids = Some((account, user));
+    Ok((account, user))
+}
+
+/// No answer at all (status 0) is left alone, as the other pollers do: the card keeps its last data.
+fn timely_error(app: &AppHandle, status: u16) {
+    if status == 0 {
+        return;
+    }
+    let error = status_error(status, &crate::i18n::t("Key lacks access"));
+    emit(app, IntegrationUpdate { id: TIMELY, data: json!({}), error: Some(error), event: None });
+}
+
+async fn poll_timely(app: AppHandle) {
+    if !secrets::present("timely-access-token") {
+        return;
+    }
+    let (account, user) = match timely_ids().await {
+        Ok(ids) => ids,
+        Err(status) => return timely_error(&app, status),
+    };
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let today = crate::timely::utc_day(now);
+    let cached = TIMELY_CACHE.lock().unwrap().capacity.clone().filter(|(day, _)| *day == today);
+    let capacity = match cached {
+        Some((_, hours)) => hours,
+        None => {
+            let (_, caps) = timely_get(&format!("/{account}/users/{user}/capacities")).await;
+            let hours = caps.as_ref().and_then(crate::timely::daily_capacity);
+            TIMELY_CACHE.lock().unwrap().capacity = Some((today, hours));
+            hours
+        }
+    };
+
+    let (since, upto) = crate::timely::day_window(now);
+    let (status, events) = timely_get(&format!("/{account}/users/{user}/events?since={since}&upto={upto}")).await;
+    let Some(entries) = events.as_ref().and_then(crate::timely::parse_entries) else {
+        return timely_error(&app, status);
+    };
+    emit(&app, IntegrationUpdate {
+        id: TIMELY,
+        data: json!({ "entries": entries, "capacityHours": capacity }),
         error: None,
         event: None,
     });
