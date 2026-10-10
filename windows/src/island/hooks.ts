@@ -53,6 +53,7 @@ function isSessionPill(id: string): boolean {
 }
 
 function stale(sessionId: string, pillId: string, now: number): boolean {
+  if (hasProcess(sessionId)) return false;
   const heard = lastHeard.get(sessionId) ?? 0;
   const t = State.tasks.find((x) => x.id === pillId);
   return now - heard > SESSION_STALE_MS && (!t || t.state === "idle");
@@ -87,6 +88,90 @@ function claudePill(workspaceId: string, sessionId: string): string {
 function endSession(sessionId: string) {
   sessionPills.delete(sessionId);
   lastHeard.delete(sessionId);
+  for (const [key, id] of pidSessions) {
+    if (id === sessionId) pidSessions.delete(key);
+  }
+}
+
+/** Forgets every session, as a fresh island would (the tests start from one). */
+export function forgetSessions() {
+  sessionPills.clear();
+  lastHeard.clear();
+  pidSessions.clear();
+}
+
+// ── Sessions found running ───────────────────────────────────────────────────
+//
+// A session is only heard of at its next event, and an idle one has none to
+// send: after a launch its pill would be missing until it did something. So
+// Rust lists the `claude` processes running, each gets its pill at once under
+// the key `pid-<pid>`, and the first event names the session the pill was for.
+
+/** `pid-<pid>` → the session key its pill is under (the same key until adopted). */
+const pidSessions = new Map<string, string>();
+
+const pidKey = (pid: number) => `pid-${pid}`;
+
+/** A pill made from a process never goes stale: the next scan says if it is gone. */
+function hasProcess(sessionId: string): boolean {
+  if (sessionId.startsWith("pid-")) return true;
+  for (const id of pidSessions.values()) {
+    if (id === sessionId) return true;
+  }
+  return false;
+}
+
+/** The session's first event: its pill was made for its process under `pid-<pid>`. */
+function adoptProcess(pid: number, sessionId: string) {
+  const key = pidKey(pid);
+  if (!sessionId || sessionId === key || sessionPills.has(sessionId)) return;
+  if (pidSessions.get(key) !== key) {
+    const owner = State.tasks.find((t) => t.sessionId === sessionId);
+    if (owner) pidSessions.set(key, sessionId);
+    return;
+  }
+  const own = sessionPills.get(key);
+  if (own) {
+    sessionPills.set(sessionId, own);
+    sessionPills.delete(key);
+  }
+  const heard = lastHeard.get(key);
+  if (heard != null) lastHeard.set(sessionId, heard);
+  lastHeard.delete(key);
+  const t = State.tasks.find((x) => x.sessionId === key);
+  if (t) t.sessionId = sessionId;
+  pidSessions.set(key, sessionId);
+}
+
+/** Makes the pills of the sessions running, and drops those whose process is gone. */
+export async function discoverSessions() {
+  const list = (await Bridge.claudeSessions()) ?? [];
+  const alive = new Set(list.map((s) => pidKey(s.pid)));
+  for (const [key, sessionId] of [...pidSessions]) {
+    if (alive.has(key)) continue;
+    const pillId = sessionPills.get(sessionId) ?? State.tasks.find((t) => t.sessionId === sessionId)?.id;
+    endSession(sessionId);
+    if (!pillId) continue;
+    cancelStopTimer(pillId);
+    State.clearSessionDiffs(pillId);
+    if (isSessionPill(pillId)) State.removeTask(pillId);
+    else clearSession(pillId);
+  }
+  for (const { pid, cwd, name } of list) {
+    const key = pidKey(pid);
+    if (pidSessions.has(key)) continue;
+    pidSessions.set(key, key);
+    const projectName = aliasProjectName(name || lastPathComponent(cwd) || "Session");
+    const pillId = claudePill(CLAUDE_ID, key);
+    if (isSessionPill(pillId)) State.upsertExternalAgent(pillId, projectName, colorForProject(projectName));
+    else upsert(pillId, projectName, cwd, key);
+    const t = State.tasks.find((x) => x.id === pillId);
+    if (t) {
+      t.sessionCwd = cwd;
+      t.sessionId = key;
+    }
+  }
+  State.notify();
 }
 
 function cancelStopTimer(id: string): boolean {
@@ -122,6 +207,8 @@ interface HookPayload {
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
+  /** The session's own `claude` process, set by Rust (pipe.rs). */
+  coucou_claude_pid?: number;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -281,6 +368,7 @@ export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  void discoverSessions();
 }
 
 function handleHook(island: Island, payload: HookPayload) {
@@ -311,6 +399,7 @@ function handleHook(island: Island, payload: HookPayload) {
   const validAgent = validateAgent(payload.coucou_agent);
   const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
   const sessionId = payload.session_id ?? "";
+  if (!validAgent && typeof payload.coucou_claude_pid === "number") adoptProcess(payload.coucou_claude_pid, sessionId);
   const agentId = validAgent ? `agent_${validAgent}` : claudePill(workspaceId, sessionId);
   const isExternalAgent = validAgent !== null;
   const ownSession = isSessionPill(agentId);
@@ -378,6 +467,7 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       surface("overview", false);
       Sound.play("work");
+      void discoverSessions();
       break;
 
     case "UserPromptSubmit": {
@@ -493,6 +583,7 @@ function handleHook(island: Island, payload: HookPayload) {
       cancelStopTimer(agentId);
       State.clearSessionDiffs(agentId);
       if (sessionId) endSession(sessionId);
+      if (!isExternalAgent) void discoverSessions();
       if (isExternalAgent || ownSession) {
         State.removeTask(agentId);
       } else {

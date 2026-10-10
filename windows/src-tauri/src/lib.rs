@@ -227,6 +227,33 @@ fn open_in_vscode(path: Option<String>) -> bool {
     false
 }
 
+/// A Claude Code session found running, before any hook event of its own.
+#[derive(Serialize)]
+struct ClaudeProcess {
+    pid: u32,
+    cwd: String,
+    /// What to call it: the tmux session the user named, else its folder.
+    name: String,
+}
+
+/// The Claude Code sessions running now, so each has its pill from the start
+/// rather than from its next event. Each is remembered by `pid-<pid>` for
+/// "Open terminal" until its hook names its session.
+#[tauri::command]
+fn claude_sessions() -> Vec<ClaudeProcess> {
+    platform::claude_processes()
+        .into_iter()
+        .map(|(pid, cwd)| {
+            let mut owners = vec![pid];
+            owners.extend(platform::window_owners(&platform::process_ancestors(pid)));
+            session_window::remember(&format!("pid-{pid}"), owners);
+            let name = platform::tmux_session_name(pid)
+                .unwrap_or_else(|| session_window::folder_name(&cwd).to_string());
+            ClaudeProcess { pid, cwd, name }
+        })
+        .collect()
+}
+
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
 /// folder in VS Code, as before.
@@ -708,6 +735,7 @@ pub fn run() {
             chat_models,
             local_connect,
             local_set_key,
+            claude_sessions,
             chat_reset,
             ingest_file,
             secret_present,

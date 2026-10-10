@@ -79,6 +79,42 @@ pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
     ancestors.to_vec()
 }
 
+/// The Claude Code sessions running now: each top-level `claude` process of
+/// ours (one whose parent is not `claude`, which the helpers it spawns under
+/// its own name are) with its working folder.
+pub fn claude_processes() -> Vec<(u32, String)> {
+    let uid = my_uid();
+    let Ok(entries) = std::fs::read_dir("/proc") else { return Vec::new() };
+    let mut out: Vec<(u32, String)> = entries
+        .flatten()
+        .filter_map(|entry| entry.file_name().to_str()?.parse::<u32>().ok())
+        .filter_map(|pid| {
+            let p = read_proc(pid, uid).filter(|p| p.exe == "claude")?;
+            if read_proc(p.parent, uid).is_some_and(|parent| parent.exe == "claude") {
+                return None;
+            }
+            let cwd = std::fs::read_link(format!("/proc/{pid}/cwd")).ok()?;
+            Some((pid, cwd.to_string_lossy().into_owned()))
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// The tmux session a process runs in, by the name the user gave it. None
+/// outside tmux.
+pub fn tmux_session_name(pid: u32) -> Option<String> {
+    let pane = tmux::locate(&[(pid, String::new())])?;
+    tmux::session_name(&pane)
+}
+
+/// The farthest of `ancestors` (nearest first) named `name`: the agent itself,
+/// above any helper it runs under the same name.
+pub fn farthest_named(ancestors: &[u32], name: &str) -> Option<u32> {
+    let uid = my_uid();
+    ancestors.iter().rev().find(|pid| read_proc(**pid, uid).is_some_and(|p| p.exe == name)).copied()
+}
+
 /// The remembered ancestors still alive and still each other's parents, with
 /// their names: a closed terminal's IDs may since belong to someone else.
 fn still_linked(owners: &[u32]) -> Vec<(u32, String)> {
@@ -647,6 +683,10 @@ mod tmux {
 
     fn tell(pane: &Pane, args: &[&str]) -> bool {
         command(pane).is_some_and(|mut cmd| run_quietly(cmd.args(args), Duration::from_secs(2)))
+    }
+
+    pub(super) fn session_name(pane: &Pane) -> Option<String> {
+        target(pane).map(|t| t.name).filter(|n| !n.is_empty())
     }
 
     fn target(pane: &Pane) -> Option<Target> {

@@ -5,6 +5,9 @@
 /** Every command the island invoked, oldest first: [name, args]. */
 export const calls = [];
 
+/** What a command answers, by name: a function of its arguments. Unset → null. */
+export const answers = new Map();
+
 const listeners = new Map();
 
 export const internals = {
@@ -15,7 +18,7 @@ export const internals = {
       return listeners.size;
     }
     calls.push([cmd, args]);
-    return null;
+    return answers.has(cmd) ? answers.get(cmd)(args) : null;
   },
 };
 

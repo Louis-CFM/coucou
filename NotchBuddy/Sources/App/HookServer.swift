@@ -210,6 +210,7 @@ final class HookServer: @unchecked Sendable {
         installHookScript()
         #endif
         Thread.detachNewThread { self.serverThread() }
+        discoverSessions()
     }
 
     // MARK: - Socket server (background thread)
@@ -398,6 +399,7 @@ final class HookServer: @unchecked Sendable {
             return
         }
         // Claude Code sessions running at once each get their own pill; agents keep theirs.
+        if !isExternalAgent && !isCodexEvent { adoptProcess(sessionId: sessionId, cwd: cwd) }
         let agentId = isExternalAgent || isCodexEvent ? baseId : claudePill(workspaceId: baseId, sessionId: sessionId)
         let ownSession = agentId.hasPrefix(PillCatalog.sessionPillPrefix)
 
@@ -466,6 +468,7 @@ final class HookServer: @unchecked Sendable {
             ensurePill()
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
+            if !isExternalAgent { discoverSessions() }
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
@@ -576,6 +579,7 @@ final class HookServer: @unchecked Sendable {
         case "SessionEnd":
             activeSessionId = nil
             endSession(sessionId)
+            if !isExternalAgent { discoverSessions() }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
@@ -605,6 +609,8 @@ final class HookServer: @unchecked Sendable {
 
     @MainActor
     private func isStale(_ sessionId: String, pillId: String, now: Date) -> Bool {
+        // A pill made from a process never goes stale: the next scan says if it is gone.
+        if hasProcess(sessionId) { return false }
         let heard = lastHeard[sessionId] ?? .distantPast
         let idle = AppState.shared.tasks.first(where: { $0.id == pillId }).map { $0.state == .idle } ?? true
         return now.timeIntervalSince(heard) > Self.sessionStale && idle
@@ -639,7 +645,152 @@ final class HookServer: @unchecked Sendable {
         sessionPills[sessionId] = nil
         lastHeard[sessionId] = nil
         for (pill, owner) in workspaceOwner where owner == sessionId { workspaceOwner[pill] = nil }
+        for (key, id) in pidSessions where id == sessionId {
+            pidSessions[key] = nil
+            pidCwd[key] = nil
+        }
     }
+
+    // MARK: - Sessions found running
+    //
+    // A session is only heard of at its next event, and an idle one has none to send:
+    // after a launch its pill would be missing until it did something. So the `claude`
+    // processes running get their pills at once under `pid-<pid>`, and the session's
+    // first event in that folder takes the pill over.
+
+    /// `pid-<pid>` → the session key its pill is under (that same key until adopted).
+    private var pidSessions: [String: String] = [:]
+    private var pidCwd: [String: String] = [:]
+
+    private struct FoundSession: Sendable {
+        let pid: Int32
+        let cwd: String
+        /// The tmux session the user named, "" outside tmux.
+        let name: String
+    }
+
+    private func hasProcess(_ sessionId: String) -> Bool {
+        sessionId.hasPrefix("pid-") || pidSessions.values.contains(sessionId)
+    }
+
+    /// The session's first event: a pill made for a found process in the same folder is its.
+    @MainActor
+    private func adoptProcess(sessionId: String, cwd: String) {
+        guard !sessionId.isEmpty, sessionId != "unknown", !cwd.isEmpty,
+              sessionPills[sessionId] == nil, !workspaceOwner.values.contains(sessionId),
+              !pidSessions.values.contains(sessionId) else { return }
+        // ponytail: matched by folder; two idle sessions in one folder may swap pills (same name).
+        guard let key = pidSessions.first(where: { $0.key == $0.value && pidCwd[$0.key] == cwd })?.key else { return }
+        if let own = sessionPills.removeValue(forKey: key) { sessionPills[sessionId] = own }
+        for (pill, owner) in workspaceOwner where owner == key { workspaceOwner[pill] = sessionId }
+        lastHeard[sessionId] = lastHeard.removeValue(forKey: key)
+        pidSessions[key] = sessionId
+    }
+
+    /// Pills for the sessions running now; those whose process is gone go.
+    func discoverSessions() {
+        #if !APPSTORE
+        DispatchQueue.global(qos: .utility).async {
+            let found = Self.claudeProcesses()
+            Task { @MainActor in self.applyDiscovered(found) }
+        }
+        #endif
+    }
+
+    @MainActor
+    private func applyDiscovered(_ found: [FoundSession]) {
+        let state = AppState.shared
+        let alive = Set(found.map { "pid-\($0.pid)" })
+        for (key, sessionId) in pidSessions where !alive.contains(key) {
+            let pillId = sessionPills[sessionId] ?? workspaceOwner.first(where: { $0.value == sessionId })?.key
+            endSession(sessionId)
+            guard let pillId else { continue }
+            state.clearSessionDiffs(for: pillId)
+            state.removeTask(id: pillId)
+        }
+        for session in found {
+            let key = "pid-\(session.pid)"
+            guard pidSessions[key] == nil else { continue }
+            // A session already heard from in this folder is this process's: no second pill.
+            let known = Set(sessionPills.keys).union(workspaceOwner.values)
+                .filter { !$0.hasPrefix("pid-") && !pidSessions.values.contains($0) }
+            if let sid = known.first(where: { sid in
+                let pill = sessionPills[sid] ?? workspaceOwner.first(where: { $0.value == sid })?.key
+                return state.tasks.first(where: { $0.id == pill })?.sessionCwd == session.cwd
+            }) {
+                pidSessions[key] = sid
+                pidCwd[key] = session.cwd
+                continue
+            }
+            pidSessions[key] = key
+            pidCwd[key] = session.cwd
+            let raw = session.name.isEmpty ? URL(fileURLWithPath: session.cwd).lastPathComponent : session.name
+            let projectName = aliasProjectName(raw.isEmpty ? "Session" : raw)
+            let pillId = claudePill(workspaceId: "integration_claude", sessionId: key)
+            if pillId.hasPrefix(PillCatalog.sessionPillPrefix) {
+                upsertSessionTask(id: pillId, projectName: projectName, cwd: session.cwd, bundleId: "")
+            } else {
+                let host = state.tasks.first(where: { $0.id == pillId })?.hostApp
+                upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: session.cwd, hostApp: host)
+            }
+        }
+    }
+
+    #if !APPSTORE
+    private static func commandOutput(_ path: String, _ args: [String]) -> String {
+        let task = Process(); let pipe = Pipe()
+        task.executableURL = URL(fileURLWithPath: path)
+        task.arguments = args; task.standardOutput = pipe; task.standardError = Pipe()
+        guard (try? task.run()) != nil else { return "" }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    /// Each top-level `claude` process of ours (not one whose parent is `claude`: the
+    /// helpers it spawns under its own name), with its folder and tmux session.
+    private static func claudeProcesses() -> [FoundSession] {
+        let uid = getuid()
+        var parent: [Int32: Int32] = [:]
+        var name: [Int32: String] = [:]
+        for line in commandOutput("/bin/ps", ["-axo", "pid=,ppid=,uid=,ucomm="]).split(separator: "\n") {
+            let f = line.split(separator: " ", omittingEmptySubsequences: true)
+            guard f.count >= 4, let pid = Int32(f[0]), let ppid = Int32(f[1]),
+                  let owner = UInt32(f[2]), owner == uid else { continue }
+            parent[pid] = ppid
+            name[pid] = String(f[3])
+        }
+        let panes = tmuxPanes()
+        var found: [FoundSession] = []
+        for (pid, comm) in name where comm == "claude" {
+            if let ppid = parent[pid], name[ppid] == "claude" { continue }
+            let cwd = commandOutput("/usr/sbin/lsof", ["-a", "-d", "cwd", "-Fn", "-p", String(pid)])
+                .split(separator: "\n").first(where: { $0.hasPrefix("n/") }).map { String($0.dropFirst()) }
+            guard let cwd else { continue }
+            var tmux = ""
+            var walk: Int32? = pid
+            for _ in 0..<8 {
+                guard let current = walk else { break }
+                if let session = panes[current] { tmux = session; break }
+                walk = parent[current]
+            }
+            found.append(FoundSession(pid: pid, cwd: cwd, name: tmux))
+        }
+        return found.sorted { $0.pid < $1.pid }
+    }
+
+    /// The process in each tmux pane → its session's name. Empty without tmux.
+    private static func tmuxPanes() -> [Int32: String] {
+        let paths = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/opt/local/bin/tmux"]
+        guard let tmux = paths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return [:] }
+        var panes: [Int32: String] = [:]
+        for line in commandOutput(tmux, ["list-panes", "-a", "-F", "#{pane_pid} #{session_name}"]).split(separator: "\n") {
+            let f = line.split(separator: " ", maxSplits: 1)
+            if f.count == 2, let pid = Int32(f[0]) { panes[pid] = String(f[1]) }
+        }
+        return panes
+    }
+    #endif
 
     /// A session's own pill: named after its folder, in that folder's colour, with what
     /// Open terminal needs.
