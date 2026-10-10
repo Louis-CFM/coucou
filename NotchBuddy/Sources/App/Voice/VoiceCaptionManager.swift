@@ -45,11 +45,13 @@ final class VoiceCaptionManager {
     private var subs: Set<AnyCancellable> = []
 
     private let captionWidth:        CGFloat = 360
+    private let captionExpandedWidth: CGFloat = 480   // wider and taller when unfolded
     private let captionCompactHeight: CGFloat = 76    // 1 heard + 2 answer lines
     private let captionExpandedHeight: CGFloat = 240  // full response + scroll
     private let notchGap:             CGFloat = 6
 
     private var currentHeight: CGFloat { state.isExpanded ? captionExpandedHeight : captionCompactHeight }
+    private var currentWidth: CGFloat { state.isExpanded ? captionExpandedWidth : captionWidth }
 
     private init() {
         // Only these engine properties: observing the whole engine redraws on every mic frame.
@@ -167,10 +169,10 @@ final class VoiceCaptionManager {
 
     private func _buildPanel() {
         let view = NSHostingView(rootView: VoiceCaptionView(state: state, manager: self))
-        view.frame = NSRect(x: 0, y: 0, width: captionWidth, height: captionExpandedHeight)
+        view.frame = NSRect(x: 0, y: 0, width: captionExpandedWidth, height: captionExpandedHeight)
 
         let p = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: captionWidth, height: captionExpandedHeight),
+            contentRect: NSRect(x: 0, y: 0, width: captionExpandedWidth, height: captionExpandedHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -203,9 +205,10 @@ final class VoiceCaptionManager {
         let sf = screen.frame
         let h  = currentHeight
         // Panel grows upward: bottom at notchGap below the island, top at h above that.
-        let origin = NSPoint(x: sf.midX - captionWidth / 2,
+        let w  = currentWidth
+        let origin = NSPoint(x: sf.midX - w / 2,
                              y: sf.maxY - visibleH - notchGap - h)
-        let newFrame = NSRect(origin: origin, size: NSSize(width: captionWidth, height: h))
+        let newFrame = NSRect(origin: origin, size: NSSize(width: w, height: h))
 
         if animated && p.isVisible {
             NSAnimationContext.runAnimationGroup { ctx in
@@ -292,7 +295,7 @@ struct VoiceCaptionView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .frame(maxWidth: 360, alignment: .leading)
+                .frame(maxWidth: state.isExpanded ? 480 : 360, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: !state.isExpanded)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -305,7 +308,7 @@ struct VoiceCaptionView: View {
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.75), value: state.isExpanded)
         .animation(.easeOut(duration: 0.2), value: heard.isEmpty && answer.isEmpty)
-        .frame(width: 360, height: state.isExpanded ? 240 : 76, alignment: .top)
+        .frame(width: state.isExpanded ? 480 : 360, height: state.isExpanded ? 240 : 76, alignment: .top)
         .environment(\.colorScheme, .dark)
     }
 }
