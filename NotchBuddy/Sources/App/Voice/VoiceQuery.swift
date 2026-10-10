@@ -128,6 +128,11 @@ enum VoiceQuery {
                                       "pour lui dire que", "pour lui dire", "pour dire que", "en disant que",
                                       "en disant", "qui dit", "with the text", "body", "saying that", "saying",
                                       "that says", "to say that", "to say", "telling"]
+    /// Markers after which the text is what the mail is about, for Coucou to write it
+    /// ("pour lui dire que l'image est prête"); the others dictate the exact text.
+    private static let instructionMarkers: Set<String> = ["pour lui dire que", "pour lui dire", "pour dire que",
+                                                          "en disant que", "en disant", "saying that", "saying",
+                                                          "to say that", "to say", "telling"]
 
     static func mail(of raw: String) -> MailRequest? {
         // 1. Subject and body are free text: cut them out of the raw string first.
@@ -142,7 +147,9 @@ enum VoiceQuery {
             return cleanFreeText(String(raw[m.range.upperBound..<end]))
         }
         let subject = segment(subj, other: body)
-        let bodyText = segment(body, other: subj)
+        let bodySegment = segment(body, other: subj)
+        let bodyIsInstruction = body.map { instructionMarkers.contains($0.marker) } ?? false
+        let bodyText = bodyIsInstruction ? nil : bodySegment
 
         // 2. Verb, recipient, file and folder from the head.
         let n = IntentParser.normalise(head).split(separator: " ").map(String.init)
@@ -152,7 +159,12 @@ enum VoiceQuery {
         let isMail = n.contains(where: { mailWords.contains($0) }) || ["email", "mail"].contains(n[v])
         guard isMail || n.contains(where: { fileWords.contains($0) }) else { return nil }
 
-        guard let to = n.lastIndex(where: { $0 == "a" || $0 == "to" }), to > v, to + 1 < n.count else { return nil }
+        // No "à / to": a guided mail — Coucou asks who, the subject, the text, an attachment.
+        guard let to = n.lastIndex(where: { $0 == "a" || $0 == "to" }), to > v, to + 1 < n.count else {
+            guard isMail else { return nil }
+            return MailRequest(recipient: "", file: nil, folder: nil, subject: subject, body: bodyText,
+                               instruction: bodyIsInstruction ? bodySegment : nil)
+        }
         let after = Array(r[(to + 1)...])
         var recipientWords: [String] = []
         var rest: [String] = []
@@ -200,13 +212,151 @@ enum VoiceQuery {
             if !name.isEmpty { file = name } else if n[f] == "pdf" { file = "pdf" }
         }
 
-        var instruction: String? = nil
-        if bodyText == nil {
+        var instruction: String? = bodyIsInstruction ? bodySegment : nil
+        if bodyText == nil && instruction == nil {
             let extra = rest.joined(separator: " ").trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
             if !extra.isEmpty { instruction = extra }
         }
         return MailRequest(recipient: recipient, file: file, folder: folder,
                            subject: subject, body: bodyText, instruction: instruction)
+    }
+
+    // MARK: Guided email answers
+
+    /// "c'est Tana", "à tana arobase gmail point com", "send it to Paul" → "Tana" / "tana@gmail.com" / "Paul".
+    static func recipientAnswer(_ raw: String) -> String {
+        var t = stripLead(raw, ["envoie le à", "envoie-le à", "envoie la à", "envoie-la à", "send it to", "it's for",
+                                "il s'appelle", "elle s'appelle", "ils s'appellent", "elles s'appellent", "s'appelle",
+                                "son nom c'est", "son nom est", "son prénom c'est", "son prénom est", "son mail c'est",
+                                "son adresse c'est", "son adresse mail c'est", "son email c'est", "mon ami", "mon amie",
+                                "mon pote", "ma pote", "mon frère", "ma sœur", "ma soeur",
+                                "his name is", "her name is", "their name is", "the name is", "name is",
+                                "his email is", "her email is", "it's called", "called",
+                                "c'est pour", "c'est", "c est", "it's", "its", "to", "à", "a", "pour", "for", "the", "le", "la"])
+        t = t.trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!?"))
+        return spokenEmail(t) ?? t
+    }
+
+    /// "image image" → "image", "Paul Dupont Paul Dupont" → "Paul Dupont": an answer said
+    /// twice in the same turn (the first time looked unheard) counts once.
+    static func collapseRepeat(_ raw: String) -> String {
+        let words = raw.split(separator: " ").map(String.init)
+        guard words.count >= 2, words.count % 2 == 0 else { return raw }
+        let half = words.count / 2
+        let a = IntentParser.normalise(words[..<half].joined(separator: " "))
+        let b = IntentParser.normalise(words[half...].joined(separator: " "))
+        return a == b && !a.isEmpty ? words[..<half].joined(separator: " ") : raw
+    }
+
+    /// Names to try in the contacts for a spoken recipient: the whole of it, then its
+    /// capitalised words, then each word ("le pote Enzo" → "Enzo").
+    static func contactCandidates(_ raw: String) -> [String] {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        guard !trimmed.isEmpty else { return [] }
+        let words = trimmed.split(separator: " ").map(String.init)
+        let stop: Set<String> = ["le", "la", "les", "l", "de", "du", "des", "mon", "ma", "mes", "ami", "amie", "pote",
+                                 "c", "est", "il", "elle", "s", "appelle", "the", "my", "friend", "is", "name", "his",
+                                 "her", "a", "à", "et", "and"]
+        var out = [trimmed]
+        let caps = words.filter { $0.first?.isUppercase == true && !stop.contains(IntentParser.normalise($0)) }
+        if !caps.isEmpty { out.append(caps.joined(separator: " ")) }
+        for w in words.reversed() where w.count >= 2 && !stop.contains(IntentParser.normalise(w)) { out.append(w) }
+        var seen = Set<String>()
+        return out.filter { seen.insert($0.lowercased()).inserted }
+    }
+
+    /// "l'objet c'est Voilà votre image" → "Voilà votre image"; "pas d'objet" / "no subject" → "".
+    static func subjectAnswer(_ raw: String) -> String {
+        let n = IntentParser.normalise(raw)
+        if ["pas d objet", "aucun objet", "sans objet", "no subject", "none", "rien", "nothing", "pas d objet merci"].contains(n) { return "" }
+        return stripLead(raw, ["l'objet c'est", "l'objet est", "l'objet", "objet", "en objet", "the subject is", "subject is",
+                               "subject", "c'est", "it's", "mets", "put", "write"])
+            .trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!?\"«»“”"))
+    }
+
+    /// One rule, always the same: Coucou writes the mail from what I say ("faut dire que
+    /// l'image est prête" → a short mail saying it). Only "mot pour mot / exactement /
+    /// word for word …" dictates the exact text.
+    static func bodyAnswer(_ raw: String) -> (body: String?, instruction: String?) {
+        let literalLeads = ["mot pour mot", "texte exact", "le texte exact c'est", "écris exactement", "ecris exactement",
+                            "exactement", "word for word", "verbatim", "exactly", "write exactly", "the exact text is"]
+        let literal = stripLead(raw, literalLeads)
+        if literal.count < raw.trimmingCharacters(in: .whitespacesAndNewlines).count {
+            return (literal.trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”")), nil)
+        }
+        let what = instructionText(raw)
+        return (nil, what.isEmpty ? raw : what)
+    }
+
+    /// What the mail should say, without the way I asked: "faut dire que l'image est prête",
+    /// "écris-lui que…", "tell her that…" → "l'image est prête" / "…".
+    static func instructionText(_ raw: String) -> String {
+        stripLead(raw, ["il faut lui dire que", "il faut dire que", "faut lui dire que", "faut dire que", "faut lui dire",
+                        "faut dire", "il faut dire", "écris-lui un message pour lui dire que", "écris-lui un message pour lui dire",
+                        "écris-lui pour lui dire que", "écris-lui pour lui dire", "écris-lui que", "écris-lui", "écris lui",
+                        "écris un message pour lui dire que", "écris un message pour lui dire", "écris que", "écris", "ecris",
+                        "rédige-lui", "rédige", "dis-lui que", "dis-lui", "dis lui que", "dis lui", "dites-lui que",
+                        "pour lui dire que", "pour lui dire", "pour dire que", "dire que", "que", "préviens-la que",
+                        "préviens-le que", "préviens-la", "préviens-le", "le message c'est", "le message", "c'est",
+                        "write her that", "write him that", "write them that", "write that", "write", "tell her that",
+                        "tell him that", "tell them that", "tell her", "tell him", "tell them", "say that", "say",
+                        "let her know that", "let him know that", "let them know that", "draft", "the message is", "that"])
+            .trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”"))
+    }
+
+    /// The instruction reads as French (to write the mail in the same language).
+    static func looksFrench(_ s: String) -> Bool {
+        let words = IntentParser.normalise(s).split(separator: " ").map(String.init)
+        let fr: Set<String> = ["le", "la", "les", "l", "que", "qu", "est", "sont", "de", "des", "du", "pour", "je", "tu",
+                               "il", "elle", "nous", "vous", "un", "une", "et", "a", "au", "avec", "pas", "prete", "pret",
+                               "merci", "demain", "hier", "bien", "c", "ce", "sa", "son", "ton", "ta", "mon", "ma"]
+        let en: Set<String> = ["the", "is", "are", "that", "to", "of", "for", "i", "you", "he", "she", "we", "and",
+                               "with", "not", "ready", "thanks", "thank", "tomorrow", "yesterday", "it", "my", "your"]
+        let f = words.filter { fr.contains($0) }.count
+        let e = words.filter { en.contains($0) }.count
+        return f > e
+    }
+
+    /// A plain mail from the instruction when no model can write it: "l'image est prête"
+    /// → "Bonjour,\n\nL'image est prête.\n\nBonne journée !"
+    static func simpleMail(from instruction: String) -> String {
+        var t = instructionText(instruction).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = t.first else { return instruction }
+        t = first.uppercased() + t.dropFirst()
+        if let last = t.last, !".!?".contains(last) { t += "." }
+        return looksFrench(instruction) ? "Bonjour,\n\n\(t)\n\nBonne journée !" : "Hi,\n\n\(t)\n\nBest,"
+    }
+
+    /// "oui, Goku.png" / "yes the file called invoice" → "Goku.png" / "invoice"; nil for "no".
+    static func attachmentAnswer(_ raw: String) -> String? {
+        var t = stripLead(raw, ["oui", "ouais", "yes", "yeah", "c'est", "it's", "le fichier qui s'appelle", "l'image qui s'appelle",
+                                "le fichier", "l'image", "la photo", "the file called", "the image called", "the file", "the image",
+                                "attach", "joins", "joint"])
+        t = t.trimmingCharacters(in: CharacterSet(charactersIn: " ,;:!?"))
+        if t.hasSuffix(".") && !t.dropLast().contains(".") { t.removeLast() }
+        // "goku point png" → "goku.png"
+        for ext in ["png", "jpg", "jpeg", "pdf", "heic", "gif", "mov", "mp4", "docx", "zip", "txt"] {
+            t = t.replacingOccurrences(of: " point \(ext)", with: ".\(ext)", options: .caseInsensitive)
+                 .replacingOccurrences(of: " dot \(ext)", with: ".\(ext)", options: .caseInsensitive)
+        }
+        return t.isEmpty ? nil : t
+    }
+
+    /// Drops the first matching lead phrase (case/diacritic-insensitive, whole words), repeatedly.
+    static func stripLead(_ raw: String, _ leads: [String]) -> String {
+        var t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var changed = true
+        while changed {
+            changed = false
+            t = t.trimmingCharacters(in: CharacterSet(charactersIn: " ,:;-–—").union(.whitespaces))
+            for l in leads.sorted(by: { $0.count > $1.count }) {
+                guard let r = t.range(of: l, options: [.caseInsensitive, .diacriticInsensitive, .anchored]) else { continue }
+                if r.upperBound == t.endIndex || !t[r.upperBound].isLetter {
+                    t = String(t[r.upperBound...]); changed = true; break
+                }
+            }
+        }
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// "tana arobase gmail point com" / "tana at gmail dot com" / "tana@gmail.com." → "tana@gmail.com".
@@ -262,6 +412,129 @@ enum VoiceQuery {
         t = t.trimmingCharacters(in: CharacterSet(charactersIn: " .,;\"«»“”").union(.whitespacesAndNewlines))
         for tail in [" et", " and", " puis"] where t.lowercased().hasSuffix(tail) { t = String(t.dropLast(tail.count)) }
         return t.isEmpty ? nil : t
+    }
+
+    // MARK: Web search: "cherche sur internet qui a gagné hier", "search the web for…"
+
+    /// The question in an explicit web search, "" when nothing follows ("cherche sur
+    /// internet"), nil when the phrase is not a web search. Leading and trailing words
+    /// ("cherche", "sur internet", "for me"…) are removed; the rest keeps its spelling.
+    static func webQuery(of raw: String) -> String? {
+        let toks = tokens(raw)
+        let n = toks.map { $0.norm }
+        guard !n.isEmpty else { return nil }
+        let joined = " " + n.joined(separator: " ") + " "
+        let webWords = [" internet ", " web ", " google ", " googler ", " en ligne ", " online ", " look up ", " look it up "]
+        guard webWords.contains(where: { joined.contains($0) }) else { return nil }
+        let verbs: Set<String> = ["cherche", "cherches", "chercher", "recherche", "recherches", "rechercher",
+                                  "regarde", "regardes", "regarder", "trouve", "trouves", "trouver",
+                                  "search", "look", "find", "check", "fais", "faire"]
+        // "Google" is a verb only first ("Google the weather…"), not in "ouvre Google Chrome".
+        guard n.contains(where: { verbs.contains($0) }) || ["google", "googler"].contains(n[0]) else { return nil }
+
+        let heads: [[String]] = [
+            ["est", "ce", "que", "tu", "pourrais"], ["est", "ce", "que", "tu", "peux"], ["je", "veux", "que", "tu"],
+            ["i", "want", "you", "to"], ["tu", "pourrais"], ["pourrais", "tu"], ["tu", "peux"], ["peux", "tu"],
+            ["can", "you"], ["could", "you"], ["would", "you"],
+            ["ok"], ["okay"], ["coucou"], ["hey"], ["dis"], ["alors"], ["bon"], ["euh"], ["please"], ["stp"],
+            ["fais", "moi", "une", "recherche"], ["fais", "une", "recherche"], ["faire", "une", "recherche"],
+            ["fais", "des", "recherches"], ["do", "a", "web", "search"], ["do", "a", "search"],
+            ["recherche", "internet"], ["recherche"], ["recherches"], ["rechercher"],
+            ["cherche", "moi"], ["cherche"], ["cherches"], ["chercher"], ["regarde"], ["regardes"], ["regarder"],
+            ["trouve", "moi"], ["trouve"], ["trouver"], ["search"], ["look", "it", "up"], ["look", "up"],
+            ["google"], ["googler"], ["find", "out"], ["find"], ["check"],
+            ["sur", "internet"], ["sur", "le", "web"], ["sur", "google"], ["en", "ligne"], ["internet"],
+            ["on", "the", "internet"], ["on", "the", "web"], ["the", "internet"], ["the", "web"], ["online"],
+            ["on", "google"], ["le", "web"],
+            ["des", "informations", "sur"], ["des", "infos", "sur"], ["infos", "sur"], ["information", "about"],
+            ["info", "about"], ["info", "on"], ["for", "me"], ["pour", "moi"], ["moi"], ["me"], ["for"],
+            ["about"], ["sur"],
+        ]
+        let tails: [[String]] = [
+            ["sur", "internet"], ["sur", "le", "web"], ["sur", "google"], ["en", "ligne"], ["on", "the", "internet"],
+            ["on", "the", "web"], ["on", "internet"], ["on", "google"], ["online"], ["internet"],
+            ["s", "il", "te", "plait"], ["s", "il", "vous", "plait"], ["stp"], ["please"], ["pour", "moi"],
+            ["for", "me"], ["merci"], ["thanks"], ["thank", "you"],
+        ]
+        var h = 0, t = n.count
+        var changed = true
+        while changed && h < t {
+            changed = false
+            for seq in heads where h + seq.count <= t && Array(n[h..<(h + seq.count)]) == seq {
+                h += seq.count; changed = true; break
+            }
+            for seq in tails where t - seq.count >= h && Array(n[(t - seq.count)..<t]) == seq {
+                t -= seq.count; changed = true; break
+            }
+        }
+        guard h < t else { return "" }
+        return String(raw[toks[h].range.lowerBound..<toks[t - 1].range.upperBound])
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+    }
+
+    /// A question rather than a command: "qui a gagné hier ?", "what's the capital of…",
+    /// "c'est quoi…". Requests ("tu peux…", "can you…") are not questions.
+    static func looksLikeQuestion(_ raw: String) -> Bool {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var n = IntentParser.normalise(trimmed).split(separator: " ").map(String.init)
+        while let f = n.first, n.count > 1,
+              ["ok", "okay", "coucou", "hey", "alors", "bon", "euh", "et", "and", "so", "mais", "but"].contains(f) {
+            n.removeFirst()
+        }
+        guard let first = n.first else { return false }
+        let joined = n.joined(separator: " ")
+        let requests = ["tu peux", "peux tu", "est ce que tu peux", "est ce que tu pourrais", "tu pourrais",
+                        "pourrais tu", "can you", "could you", "would you", "will you", "please"]
+        if requests.contains(where: { joined == $0 || joined.hasPrefix($0 + " ") }) { return false }
+        if trimmed.hasSuffix("?") || trimmed.hasSuffix("？") { return true }
+        let starters: Set<String> = ["what", "who", "when", "where", "why", "how", "which", "whose",
+                                     "is", "are", "was", "were", "does", "did",
+                                     "qui", "quoi", "quand", "pourquoi", "comment", "combien",
+                                     "quel", "quelle", "quels", "quelles", "explain", "explique", "raconte"]
+        if starters.contains(first) { return true }
+        let phrases = ["qu est ce", "c est quoi", "c est qui", "est ce que", "est ce qu", "tell me", "dis moi",
+                       "parle moi", "ou est", "ou sont", "ou se", "ou en est"]
+        return phrases.contains(where: { joined == $0 || joined.hasPrefix($0 + " ") })
+    }
+
+    /// Text Coucou can say aloud: no markdown, links, URLs, citation marks or bullets.
+    static func spokenText(_ s: String) -> String {
+        var t = s
+        func sub(_ pattern: String, _ with: String) {
+            t = t.replacingOccurrences(of: pattern, with: with, options: .regularExpression)
+        }
+        sub(#"\[([^\]]+)\]\((?:[^)]*)\)"#, "$1")         // [text](url) → text
+        sub(#"https?://\S+"#, "")                          // bare URLs
+        sub(#"\[\d+(?:,\s*\d+)*\]"#, "")                // [1], [2, 3]
+        sub(#"(?m)^\s{0,3}#{1,6}\s*"#, "")                 // headings
+        sub(#"(?m)^\s*(?:[-*•]|\d+[.)])\s+"#, "")          // bullets, numbered lists
+        sub(#"\*\*|__|\*|`"#, "")                          // bold, italics, code
+        sub(#"\s*\n+\s*"#, " ")
+        sub(#"\s{2,}"#, " ")
+        sub(#"\s+([.,;:!?])"#, "$1")
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Words of `raw` split like IntentParser.normalise, each with its normalised form and
+    /// its range in `raw` (to cut the original text, apostrophes and accents kept).
+    static func tokens(_ raw: String) -> [(norm: String, range: Range<String.Index>)] {
+        var out: [(norm: String, range: Range<String.Index>)] = []
+        var start: String.Index? = nil
+        var i = raw.startIndex
+        func close(_ end: String.Index) {
+            guard let s = start else { return }
+            let norm = IntentParser.normalise(String(raw[s..<end]))
+            if !norm.isEmpty { out.append((norm, s..<end)) }
+            start = nil
+        }
+        while i < raw.endIndex {
+            let c = raw[i]
+            if c == " " || c == "'" || c == "\u{2019}" || c == "-" || c.isNewline { close(i) }
+            else if start == nil { start = i }
+            i = raw.index(after: i)
+        }
+        close(raw.endIndex)
+        return out
     }
 
     // MARK: Open an app: "ouvre Figma", "open Safari"
