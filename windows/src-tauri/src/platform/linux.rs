@@ -213,6 +213,18 @@ pub fn relay_socket_path() -> Option<PathBuf> {
     is_private_dir(&dir).then(|| dir.join("coucou.sock"))
 }
 
+/// True when `pid` is the deployed relay binary — the only process allowed to
+/// raise an Allow/Deny card on the island (see pipe.rs). The client's uid was
+/// already checked when it connected; here the executable matters.
+pub fn exe_is_hook(pid: u32) -> bool {
+    // /proc/<pid>/exe is fully resolved; canonicalize the path we compare with.
+    let want = std::fs::canonicalize(crate::settings::hook_exe_path())
+        .unwrap_or_else(|_| crate::settings::hook_exe_path());
+    std::fs::read_link(format!("/proc/{pid}/exe"))
+        .ok()
+        .is_some_and(|got| got == want)
+}
+
 // ── Who we are ────────────────────────────────────────────────────────────────
 
 /// The account's full name: the first field of the passwd GECOS entry
