@@ -792,6 +792,33 @@ body {
   flex: none;
 }
 
+/* ↻ on the Claude plan card. */
+.plan-refresh {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--dim-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.plan-refresh:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+}
+.plan-refresh.spin svg {
+  animation: plan-spin 0.8s linear infinite;
+}
+@keyframes plan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* A call's answer / end buttons in the live card. */
 .call-btn {
   flex: none;

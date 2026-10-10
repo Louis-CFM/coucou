@@ -184,6 +184,46 @@ pub async fn send(
     Ok(ChatReply { text: answer })
 }
 
+/// The plan's usage, as Claude Code's own `/usage` prints it. A slash command:
+/// no model call, no tokens. The text goes to the page, which reads the
+/// percentages and reset times out of it (core/plan.ts parseUsageText).
+#[tauri::command]
+pub async fn claude_usage_text() -> Result<String, String> {
+    let Some(exe) = cli() else {
+        return Err(t("Claude Code isn't installed. Install it from claude.com/code, run `claude` once and log in with your Claude account."));
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = std::env::temp_dir().join("coucou-chat");
+        let _ = std::fs::create_dir_all(&dir);
+        let mut cmd = Command::new(exe);
+        cmd.args([
+            "-p",
+            "/usage",
+            "--output-format",
+            "json",
+            "--tools",
+            "",
+            "--setting-sources",
+            "local",
+            "--strict-mcp-config",
+            "--no-session-persistence",
+        ])
+        .current_dir(&dir)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null());
+        crate::platform::no_console(&mut cmd);
+        let out = cmd.output().map_err(|e| format!("claude: {e}"))?;
+        let j: Value = serde_json::from_slice(&out.stdout).map_err(|_| t("No response text."))?;
+        let text = j["result"].as_str().unwrap_or_default().to_string();
+        if j["is_error"].as_bool().unwrap_or(false) || text.is_empty() {
+            return Err(if text.contains("/login") { t("Claude Code isn't logged in. Open a terminal, run `claude`, then type /login and sign in with your Claude account.") } else { text });
+        }
+        Ok(text)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

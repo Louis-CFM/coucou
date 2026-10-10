@@ -773,6 +773,7 @@ pub fn run() {
             sysevents::clipboard_clear,
             #[cfg(windows)]
             sysevents::clipboard_copy,
+            claude_cli::claude_usage_text,
             #[cfg(windows)]
             notify::open_phone_link,
             #[cfg(windows)]

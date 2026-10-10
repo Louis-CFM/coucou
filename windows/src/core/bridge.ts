@@ -227,6 +227,8 @@ export const Bridge = {
   phoneSend: (text: string) => call<boolean>("phone_send", { text }),
   /** Phone Link in front, where a call is answered or declined (notify.rs). */
   openPhoneLink: () => call<boolean>("open_phone_link"),
+  /** Claude Code's `/usage` text: the plan's numbers, fetched on demand (claude_cli.rs). */
+  claudeUsageText: () => call<string>("claude_usage_text"),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */
   callAction: (answer: boolean) => call<boolean>("call_action", { answer }),
   spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),
