@@ -25953,61 +25953,61 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الإجابة عن الأسئلة ببحث على الويب"
+            "value": "Claude عقل Coucou"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ওয়েবে খুঁজে প্রশ্নের উত্তর দাও"
+            "value": "Coucou-র মস্তিষ্ক: Claude"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Answer questions with a web search"
+            "value": "Claude as Coucou's brain"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Responder preguntas buscando en la web"
+            "value": "Claude como cerebro de Coucou"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Répondre aux questions avec une recherche web"
+            "value": "Claude comme cerveau de Coucou"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "वेब खोज से सवालों के जवाब"
+            "value": "Coucou का दिमाग: Claude"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jawab pertanyaan dengan pencarian web"
+            "value": "Claude sebagai otak Coucou"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Responder perguntas com uma busca na web"
+            "value": "Claude como cérebro do Coucou"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Отвечать на вопросы с поиском в интернете"
+            "value": "Claude — мозг Coucou"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用网页搜索回答问题"
+            "value": "由 Claude 担任 Coucou 的大脑"
           }
         }
       }
@@ -26018,61 +26018,61 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الأسئلة التي لا تجيب عنها حبوبك تُرسل إلى Claude مع بحث على الويب، بمفتاح Anthropic API الخاص بك. يُرسل السؤال فقط."
+            "value": "بعد «OK Coucou»، يُرسل ما تقوله إلى Claude بمفتاح Anthropic API الخاص بك: ينفّذ (الحبوب، الموسيقى، البريد، خدماتك) ويبحث على الويب. تُرسل كلماتك فقط، وليس الصوت أبدًا."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "যে প্রশ্নের উত্তর তোমার পিলগুলো দিতে পারে না, সেগুলো তোমার Anthropic API কী দিয়ে ওয়েব সার্চসহ Claude-এর কাছে যায়। শুধু প্রশ্নটাই পাঠানো হয়।"
+            "value": "«OK Coucou»-এর পরে তুমি যা বলো তা তোমার Anthropic API কী দিয়ে Claude-এর কাছে যায়: সে কাজ করে (পিল, গান, মেইল, তোমার সার্ভিস) আর ওয়েবে খোঁজে। শুধু তোমার কথা পাঠানো হয়, কখনো অডিও নয়।"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questions your pills can't answer go to Claude with a web search, using your Anthropic API key. Only the question is sent."
+            "value": "After «OK Coucou», what you say goes to Claude with your Anthropic API key: it acts (pills, music, email, your services) and searches the web. Only your words are sent, never audio."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las preguntas que tus píldoras no responden van a Claude con una búsqueda web, con tu clave de API de Anthropic. Solo se envía la pregunta."
+            "value": "Tras «OK Coucou», lo que dices va a Claude con tu clave de API de Anthropic: actúa (píldoras, música, correo, tus servicios) y busca en la web. Solo se envían tus palabras, nunca el audio."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les questions auxquelles tes pilules ne répondent pas partent chez Claude avec une recherche web, avec ta clé API Anthropic. Seule la question est envoyée."
+            "value": "Après « OK Coucou », ce que tu dis part chez Claude avec ta clé API Anthropic : il agit (pilules, musique, mail, tes services) et cherche sur le web. Seuls tes mots sont envoyés, jamais l'audio."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "जिन सवालों का जवाब तुम्हारी पिल्स नहीं दे सकतीं, वे तुम्हारी Anthropic API कुंजी से वेब खोज के साथ Claude को जाते हैं। सिर्फ़ सवाल भेजा जाता है।"
+            "value": "«OK Coucou» के बाद तुम जो कहते हो वह तुम्हारी Anthropic API कुंजी से Claude को जाता है: वह काम करता है (पिल्स, संगीत, ईमेल, तुम्हारी सेवाएँ) और वेब पर खोजता है। सिर्फ़ तुम्हारे शब्द भेजे जाते हैं, ऑडियो कभी नहीं।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pertanyaan yang tidak bisa dijawab pil-mu dikirim ke Claude dengan pencarian web, memakai kunci API Anthropic-mu. Hanya pertanyaannya yang dikirim."
+            "value": "Setelah «OK Coucou», ucapanmu dikirim ke Claude dengan kunci API Anthropic-mu: ia bertindak (pil, musik, email, layananmu) dan mencari di web. Hanya kata-katamu yang dikirim, tidak pernah audio."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Perguntas que suas pílulas não respondem vão para o Claude com uma busca na web, usando sua chave de API da Anthropic. Só a pergunta é enviada."
+            "value": "Depois de «OK Coucou», o que você diz vai para o Claude com sua chave de API da Anthropic: ele age (pílulas, música, e-mail, seus serviços) e pesquisa na web. Só suas palavras são enviadas, nunca o áudio."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вопросы, на которые не отвечают твои пилюли, уходят в Claude с поиском в интернете, по твоему ключу Anthropic API. Отправляется только вопрос."
+            "value": "После «OK Coucou» сказанное уходит в Claude по твоему ключу Anthropic API: он действует (пилюли, музыка, почта, твои сервисы) и ищет в интернете. Отправляются только слова, никогда не звук."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "药丸无法回答的问题会用你的 Anthropic API 密钥发送给 Claude 并进行网页搜索。只发送问题本身。"
+            "value": "说「OK Coucou」后，你说的话会用你的 Anthropic API 密钥发送给 Claude：它会执行操作（药丸、音乐、邮件、你的服务）并进行网页搜索。只发送文字，从不发送音频。"
           }
         }
       }

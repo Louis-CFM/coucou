@@ -1268,7 +1268,7 @@ struct SettingsView: View {
     @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
     @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
     @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
-    @AppStorage("voiceWebSearchEnabled") private var webSearchEnabled: Bool = false
+    @AppStorage("voiceClaudeBrain") private var webSearchEnabled: Bool = false
     @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     @State private var elevenKeyDraft: String = ""
     @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
