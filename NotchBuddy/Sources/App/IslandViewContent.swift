@@ -921,7 +921,8 @@ struct UploadingView: View {
     var body: some View {
         // TimelineView fires at display refresh rate — progress derived from elapsed wall time,
         // not from @Published uploadProgress (which only flips to 1.0 at completion).
-        TimelineView(.animation) { tl in
+        // Only runs while this view is shown (it stays mounted behind the others).
+        TimelineView(.animation(paused: state.view != .uploading || state.mode != .expanded)) { tl in
             let elapsed: Double = {
                 guard let start = state.uploadStartTime else { return 0 }
                 return tl.date.timeIntervalSince(start)
@@ -1216,10 +1217,22 @@ struct MailView: View {
             send m
         end tell
         """
-        var err: NSDictionary?
-        NSAppleScript(source: script)?.executeAndReturnError(&err)
-        if err == nil { onSuccess(recipient: to) }
-        else { statusMsg = "Mail error: \(err?["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
+        // Off the main thread: the script waits for Mail (and has a 1 s delay), which used
+        // to freeze the whole island until the mail was sent.
+        isSending = true
+        statusMsg = ""
+        let recipient = to
+        Task {
+            let message: String? = await Task.detached(priority: .userInitiated) {
+                var err: NSDictionary?
+                NSAppleScript(source: script)?.executeAndReturnError(&err)
+                return err.map { "Mail error: \($0["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
+            }.value
+            await MainActor.run {
+                isSending = false
+                if let message { statusMsg = message } else { onSuccess(recipient: recipient) }
+            }
+        }
         #endif
     }
 
@@ -3688,7 +3701,8 @@ struct TickerView: View {
             Color.clear
 
             // Row A: completed row — always rendered at phase=1 + completedScale
-            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, onDiffTap: rowADiffTap)
+            // Row A never shows its shimmer (phase 1): it doesn't animate one either.
+            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, shimmerPaused: true, onDiffTap: rowADiffTap)
                 .scaleEffect(completedScale, anchor: .leading)
                 .offset(x: -10, y: rowAOffset)
                 .opacity(rowAOpacity)
@@ -3779,6 +3793,7 @@ struct TickerRowView: View {
     let text: String
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
     var isActive: Bool = true
+    var shimmerPaused: Bool = false
     var onDiffTap: (() -> Void)? = nil
 
     var body: some View {
@@ -3804,7 +3819,7 @@ struct TickerRowView: View {
                 // Filename + counts
                 HStack(spacing: 0) {
                     ZStack(alignment: .leading) {
-                        TickerShimmerText(text: dp.filename)
+                        TickerShimmerText(text: dp.filename, paused: shimmerPaused || !isActive)
                             .opacity(shimmerOpacity)
                         Text(dp.filename)
                             .font(.system(size: 13, weight: .medium))
@@ -3847,7 +3862,8 @@ struct TickerRowView: View {
 
                 // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
                 ZStack(alignment: .leading) {
-                    TickerShimmerText(text: text)
+                    // An idle task never shows the shimmer (nor row A, see shimmerPaused).
+                    TickerShimmerText(text: text, paused: shimmerPaused || !isActive)
                         .opacity(shimmerOpacity)
                     Text(text)
                         .font(.system(size: 13, weight: .medium))
@@ -3864,9 +3880,12 @@ struct TickerRowView: View {
 
 struct TickerShimmerText: View {
     let text: String
+    var paused: Bool = false
+    @Environment(\.islandViewActive) private var viewActive
 
     var body: some View {
-        TimelineView(.animation) { tl in
+        // A 2.2 s sweep: 60 fps is as smooth as the display rate, and it stops when hidden.
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: paused || !viewActive)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             let p = CGFloat(t.truncatingRemainder(dividingBy: 2.2) / 2.2)
             // phase sweeps -0.1 → 1.1 so white peak enters from left and exits right

@@ -524,11 +524,11 @@ final class VoiceActionRunner {
         }
         if m.body == nil {
             if let what = m.instruction {
-                m.body = await info.draftBody(to: m.recipient, about: what) ?? what
+                m.body = await info.draftBody(to: m.recipient, about: what) ?? VoiceQuery.simpleMail(from: what)
                 mail = m
             } else {
-                return askMail(.body, t("Qu'est-ce que je mets dans le message ? Je peux aussi l'écrire pour toi, dis-moi juste de quoi il parle.",
-                                        "What should the message say? I can also write it for you, just tell me what it's about."))
+                return askMail(.body, t("Qu'est-ce que je lui dis ? Je l'écris pour toi.",
+                                        "What should the email say? I'll write it for you."))
             }
         }
         if !mailAttachmentAsked {

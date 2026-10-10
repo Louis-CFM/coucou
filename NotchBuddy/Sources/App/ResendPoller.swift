@@ -8,7 +8,7 @@ final class ResendPoller: @unchecked Sendable {
     func start() {
         guard timer == nil else { return }
         let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 6, repeating: 60)
+        t.schedule(deadline: .now() + 6, repeating: 60, leeway: .seconds(10))
         t.setEventHandler { [weak self] in self?.poll() }
         t.resume()
         timer = t

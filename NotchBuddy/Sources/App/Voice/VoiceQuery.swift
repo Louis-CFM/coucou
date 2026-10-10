@@ -128,6 +128,11 @@ enum VoiceQuery {
                                       "pour lui dire que", "pour lui dire", "pour dire que", "en disant que",
                                       "en disant", "qui dit", "with the text", "body", "saying that", "saying",
                                       "that says", "to say that", "to say", "telling"]
+    /// Markers after which the text is what the mail is about, for Coucou to write it
+    /// ("pour lui dire que l'image est prête"); the others dictate the exact text.
+    private static let instructionMarkers: Set<String> = ["pour lui dire que", "pour lui dire", "pour dire que",
+                                                          "en disant que", "en disant", "saying that", "saying",
+                                                          "to say that", "to say", "telling"]
 
     static func mail(of raw: String) -> MailRequest? {
         // 1. Subject and body are free text: cut them out of the raw string first.
@@ -142,7 +147,9 @@ enum VoiceQuery {
             return cleanFreeText(String(raw[m.range.upperBound..<end]))
         }
         let subject = segment(subj, other: body)
-        let bodyText = segment(body, other: subj)
+        let bodySegment = segment(body, other: subj)
+        let bodyIsInstruction = body.map { instructionMarkers.contains($0.marker) } ?? false
+        let bodyText = bodyIsInstruction ? nil : bodySegment
 
         // 2. Verb, recipient, file and folder from the head.
         let n = IntentParser.normalise(head).split(separator: " ").map(String.init)
@@ -155,7 +162,8 @@ enum VoiceQuery {
         // No "à / to": a guided mail — Coucou asks who, the subject, the text, an attachment.
         guard let to = n.lastIndex(where: { $0 == "a" || $0 == "to" }), to > v, to + 1 < n.count else {
             guard isMail else { return nil }
-            return MailRequest(recipient: "", file: nil, folder: nil, subject: subject, body: bodyText)
+            return MailRequest(recipient: "", file: nil, folder: nil, subject: subject, body: bodyText,
+                               instruction: bodyIsInstruction ? bodySegment : nil)
         }
         let after = Array(r[(to + 1)...])
         var recipientWords: [String] = []
@@ -204,8 +212,8 @@ enum VoiceQuery {
             if !name.isEmpty { file = name } else if n[f] == "pdf" { file = "pdf" }
         }
 
-        var instruction: String? = nil
-        if bodyText == nil {
+        var instruction: String? = bodyIsInstruction ? bodySegment : nil
+        if bodyText == nil && instruction == nil {
             let extra = rest.joined(separator: " ").trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
             if !extra.isEmpty { instruction = extra }
         }
@@ -232,20 +240,57 @@ enum VoiceQuery {
             .trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!?\"«»“”"))
     }
 
-    /// The message text, or nil when it is a request to write it ("écris-lui que…", "write something nice").
+    /// One rule, always the same: Coucou writes the mail from what I say ("faut dire que
+    /// l'image est prête" → a short mail saying it). Only "mot pour mot / exactement /
+    /// word for word …" dictates the exact text.
     static func bodyAnswer(_ raw: String) -> (body: String?, instruction: String?) {
-        let n = IntentParser.normalise(raw)
-        let draftLeads = ["ecris lui", "ecris", "redige", "redige lui", "dis lui", "write", "tell her", "tell him",
-                          "tell them", "say that", "fais un message", "fais lui", "make it", "draft"]
-        if draftLeads.contains(where: { n.hasPrefix($0 + " ") || n == $0 }) || n.contains("pour lui dire") {
-            let what = stripLead(raw, ["écris-lui un message pour lui dire", "écris-lui pour lui dire", "écris-lui que", "écris-lui",
-                                       "écris un message pour lui dire", "écris que", "écris", "ecris", "rédige-lui", "rédige",
-                                       "dis-lui que", "dis-lui", "write her that", "write him that", "write that", "write",
-                                       "tell her that", "tell him that", "tell her", "tell him", "say that", "draft"])
-            return (nil, what.isEmpty ? raw : what)
+        let literalLeads = ["mot pour mot", "texte exact", "le texte exact c'est", "écris exactement", "ecris exactement",
+                            "exactement", "word for word", "verbatim", "exactly", "write exactly", "the exact text is"]
+        let literal = stripLead(raw, literalLeads)
+        if literal.count < raw.trimmingCharacters(in: .whitespacesAndNewlines).count {
+            return (literal.trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”")), nil)
         }
-        return (stripLead(raw, ["le message c'est", "le message", "message", "c'est", "the message is", "it says", "body"])
-            .trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”")), nil)
+        let what = instructionText(raw)
+        return (nil, what.isEmpty ? raw : what)
+    }
+
+    /// What the mail should say, without the way I asked: "faut dire que l'image est prête",
+    /// "écris-lui que…", "tell her that…" → "l'image est prête" / "…".
+    static func instructionText(_ raw: String) -> String {
+        stripLead(raw, ["il faut lui dire que", "il faut dire que", "faut lui dire que", "faut dire que", "faut lui dire",
+                        "faut dire", "il faut dire", "écris-lui un message pour lui dire que", "écris-lui un message pour lui dire",
+                        "écris-lui pour lui dire que", "écris-lui pour lui dire", "écris-lui que", "écris-lui", "écris lui",
+                        "écris un message pour lui dire que", "écris un message pour lui dire", "écris que", "écris", "ecris",
+                        "rédige-lui", "rédige", "dis-lui que", "dis-lui", "dis lui que", "dis lui", "dites-lui que",
+                        "pour lui dire que", "pour lui dire", "pour dire que", "dire que", "que", "préviens-la que",
+                        "préviens-le que", "préviens-la", "préviens-le", "le message c'est", "le message", "c'est",
+                        "write her that", "write him that", "write them that", "write that", "write", "tell her that",
+                        "tell him that", "tell them that", "tell her", "tell him", "tell them", "say that", "say",
+                        "let her know that", "let him know that", "let them know that", "draft", "the message is", "that"])
+            .trimmingCharacters(in: CharacterSet(charactersIn: " :;\"«»“”"))
+    }
+
+    /// The instruction reads as French (to write the mail in the same language).
+    static func looksFrench(_ s: String) -> Bool {
+        let words = IntentParser.normalise(s).split(separator: " ").map(String.init)
+        let fr: Set<String> = ["le", "la", "les", "l", "que", "qu", "est", "sont", "de", "des", "du", "pour", "je", "tu",
+                               "il", "elle", "nous", "vous", "un", "une", "et", "a", "au", "avec", "pas", "prete", "pret",
+                               "merci", "demain", "hier", "bien", "c", "ce", "sa", "son", "ton", "ta", "mon", "ma"]
+        let en: Set<String> = ["the", "is", "are", "that", "to", "of", "for", "i", "you", "he", "she", "we", "and",
+                               "with", "not", "ready", "thanks", "thank", "tomorrow", "yesterday", "it", "my", "your"]
+        let f = words.filter { fr.contains($0) }.count
+        let e = words.filter { en.contains($0) }.count
+        return f > e
+    }
+
+    /// A plain mail from the instruction when no model can write it: "l'image est prête"
+    /// → "Bonjour,\n\nL'image est prête.\n\nBonne journée !"
+    static func simpleMail(from instruction: String) -> String {
+        var t = instructionText(instruction).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = t.first else { return instruction }
+        t = first.uppercased() + t.dropFirst()
+        if let last = t.last, !".!?".contains(last) { t += "." }
+        return looksFrench(instruction) ? "Bonjour,\n\n\(t)\n\nBonne journée !" : "Hi,\n\n\(t)\n\nBest,"
     }
 
     /// "oui, Goku.png" / "yes the file called invoice" → "Goku.png" / "invoice"; nil for "no".

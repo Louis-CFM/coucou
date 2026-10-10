@@ -168,6 +168,7 @@ final class IslandWindowController: NSWindowController {
         panel.contentView = container
 
         startPolling()
+        observeScreenForPolling()
         startKeyMonitor()
         startLocalKeyMonitor()
         startHotKeys()
@@ -377,27 +378,43 @@ final class IslandWindowController: NSWindowController {
     // is elsewhere, so a hidden island costs next to nothing (CLAUDE.md: 0 % CPU when hidden).
 
     private static let fastPoll: TimeInterval = 1.0 / 60.0
+    private static let nearPoll: TimeInterval = 1.0 / 20.0
     private static let idlePoll: TimeInterval = 1.0 / 8.0
     private var pollInterval: TimeInterval = 0
 
+    /// Screen asleep or locked: nothing to hover, the poll stops entirely.
+    private var screenOff = false
+
     private func startPolling(interval: TimeInterval = IslandWindowController.fastPoll) {
         frameTimer?.invalidate()
+        frameTimer = nil
         pollInterval = interval
+        guard !screenOff else { return }
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             // Scheduled on the main run loop: already on the main actor, no Task per tick.
             MainActor.assumeIsolated { self?.pollFrame() }
         }
-        timer.tolerance = interval == Self.idlePoll ? 0.04 : 0
+        // A few ms of slack lets macOS group our wakeups with others; hover is unaffected.
+        timer.tolerance = interval == Self.idlePoll ? 0.04 : interval == Self.nearPoll ? 0.01 : 0.004
         RunLoop.main.add(timer, forMode: .common)
         frameTimer = timer
     }
 
     /// Picks the polling rate for the next ticks (see startPolling).
-    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect) {
-        let nearIsland = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
-        let busy = state.mode != .hidden || state.mochiOnDesktop || inAttachDrag || attachDragStart != nil
-            || fsm.state != .hidden || nearIsland
-        let wanted = busy ? Self.fastPoll : Self.idlePoll
+    /// Three rates for a hidden or resting island: 60 Hz close to the island itself, 20 Hz in the
+    /// wide band around the panel (a pointer flicked up still reaches the close zone
+    /// within one tick), 8 Hz elsewhere. Before, the whole band ran at 60 Hz, so a hidden
+    /// island polled at 60 Hz most of the time. Desktop Mochi has its own poll.
+    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect, islandRect: NSRect) {
+        let island = islandRect.offsetBy(dx: panelFrame.minX, dy: panelFrame.minY)
+        let nearIsland = island.insetBy(dx: -200, dy: -160).contains(mouse)
+        let inBand = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
+        // The resting (compact) island is treated like the hidden one: Mochi reads the
+        // pointer itself every frame, so only hover and clicks need this poll, and those
+        // only near the island. 60 Hz while open, dragging or close to it.
+        let busy = state.mode == .expanded || inAttachDrag || attachDragStart != nil
+            || fsm.state == .home || fsm.state == .coucou || fsm.state == .listening || nearIsland
+        let wanted = busy ? Self.fastPoll : inBand ? Self.nearPoll : Self.idlePoll
         if wanted != pollInterval { startPolling(interval: wanted) }
     }
 
@@ -476,10 +493,42 @@ final class IslandWindowController: NSWindowController {
             updateWindowHighlight()
         }
 
-        adjustPollRate(mouse: mouse, panelFrame: pf)
+        adjustPollRate(mouse: mouse, panelFrame: pf, islandRect: islandRect)
+    }
+
+    /// Screen asleep or locked: stop polling; back at the idle rate when it wakes.
+    private func observeScreenForPolling() {
+        let ws = NSWorkspace.shared.notificationCenter
+        let dc = DistributedNotificationCenter.default()
+        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.pausePollingForScreenOff() }
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.resumePollingAfterScreenOff() }
+        }
+        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.pausePollingForScreenOff() }
+        }
+        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.resumePollingAfterScreenOff() }
+        }
+    }
+
+    private func pausePollingForScreenOff() {
+        screenOff = true
+        frameTimer?.invalidate()
+        frameTimer = nil
+    }
+
+    private func resumePollingAfterScreenOff() {
+        guard screenOff else { return }
+        screenOff = false
+        startPolling(interval: Self.idlePoll)
     }
 
     private var lastMouse: CGPoint = .zero
+    private var lastHighlightMouse: CGPoint = .zero
+    private var lastHighlightScan: CFTimeInterval = 0
 
     // MARK: - Bot-head hover (love emote — mirrors prototype botHover())
 
@@ -782,14 +831,14 @@ final class IslandWindowController: NSWindowController {
 
     private func startKeyMonitor() {
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Every key typed anywhere lands here: only Escape goes further (no Task per key).
+            guard event.keyCode == 53 else { return }
             Task { @MainActor in
                 guard let self = self else { return }
-                if event.keyCode == 53 { // Escape
-                    // Escape typed in another app (Claude Code's own interrupt, an editor…)
-                    // never folds a pending approval away: only Escape in the notch does.
-                    if self.state.mode == .expanded && !self.state.isPinned {
-                        self.collapse()
-                    }
+                // Escape typed in another app (Claude Code's own interrupt, an editor…)
+                // never folds a pending approval away: only Escape in the notch does.
+                if self.state.mode == .expanded && !self.state.isPinned {
+                    self.collapse()
                 }
             }
         }
@@ -1046,6 +1095,13 @@ final class IslandWindowController: NSWindowController {
 
     private func updateWindowHighlight() {
         let mouse = NSEvent.mouseLocation
+        // Listing every window is costly: skip while the pointer stays put (a window
+        // moving under a still pointer is caught within a quarter second).
+        let now = CACurrentMediaTime()
+        if hypot(mouse.x - lastHighlightMouse.x, mouse.y - lastHighlightMouse.y) < 2,
+           now - lastHighlightScan < 0.25 { return }
+        lastHighlightMouse = mouse
+        lastHighlightScan = now
         guard let (appKitBounds, pid) = windowBoundsAtScreenPoint(mouse) else {
             // Fade out + close if no window under cursor
             if let old = highlightPanel {
@@ -1409,9 +1465,8 @@ extension IslandWindowController {
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
             VoiceTranscriptHistory.shared.record(transcript: transcript, note: result.message, origin: .answer)
-            if result.outcome != .success {
-                NotificationCenter.default.post(name: .botDizzy, object: nil)
-            }
+            // A question back ("What's the subject?") is not a miss: no reaction.
+            if result.outcome == .failure { voiceMissReaction() }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(result.message)
             AppState.shared.voiceResult = result
@@ -1455,9 +1510,7 @@ extension IslandWindowController {
                 outcome: anyFailure ? .failure : .success,
                 message: parts.joined(separator: " · ")
             )
-            if anyFailure {
-                NotificationCenter.default.post(name: .botDizzy, object: nil)
-            }
+            if anyFailure { voiceMissReaction() }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(combined.message)
             AppState.shared.voiceResult = combined
@@ -1618,7 +1671,7 @@ extension IslandWindowController {
             conversationContext.update(effectiveIntent)
             consecutiveFailures = 0
         case .failure:
-            NotificationCenter.default.post(name: .botDizzy, object: nil)
+            voiceMissReaction()
             if isInConversation { consecutiveFailures += 1 }
         case .question:
             break   // Mochi will show listening after re-open
@@ -1665,7 +1718,7 @@ extension IslandWindowController {
         if let emote = emote {
             NotificationCenter.default.post(name: .triggerEmote, object: emote)
         } else if result.outcome == .failure {
-            NotificationCenter.default.post(name: .botDizzy, object: nil)
+            voiceMissReaction()
         }
         AppState.shared.voiceResult = result
         expand(to: .voiceResult)
@@ -1750,6 +1803,13 @@ extension IslandWindowController {
         } else {
             closeVoiceTurn()
         }
+    }
+
+    /// A voice command that failed: a small "huh?" from Mochi. Not .botDizzy, which is the
+    /// slap reaction and opened the "Too many hits at once" card in the middle of a mail.
+    @MainActor
+    func voiceMissReaction() {
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
     }
 
     /// Seconds to wait for the first word of a reply: longer while Coucou waits for a
