@@ -54,6 +54,9 @@ jobs:
       - name: Test ask question
         run: bash scripts/test-ask-question.sh
 
+      - name: Test approval queue
+        run: bash scripts/test-approval-queue.sh
+
       - name: Diff engine tests
         run: bash scripts/test-diff-engine.sh
 

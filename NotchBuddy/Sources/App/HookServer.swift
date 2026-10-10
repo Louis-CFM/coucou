@@ -123,14 +123,17 @@ final class HookServer: @unchecked Sendable {
     private func refreshApprovalCard(releasedPill: String, emptyNote: String?) {
         let state = AppState.shared
         // Never show a request whose socket is already dead: drop it and move on.
+        // The dropped request may belong to another pill than `releasedPill`: release that one too.
+        var affectedPills: [String] = [releasedPill]
         while let head = approvalQueue.head, !Self.isAlive(fd: head.fd) {
             nbLog("Dropped dead approval \(head.tool) [\(head.pillId)]")
+            if !affectedPills.contains(head.pillId) { affectedPills.append(head.pillId) }
             if let removed = detachApproval(id: head.id) { removed.source?.cancel() }
         }
         // A pill with no request left goes back to work.
-        if !approvalQueue.hasEntries(forPill: releasedPill) {
-            state.updateTask(id: releasedPill, state: .working)
-            clearPillBadge(id: releasedPill)
+        for pillId in affectedPills where !approvalQueue.hasEntries(forPill: pillId) {
+            state.updateTask(id: pillId, state: .working)
+            clearPillBadge(id: pillId)
         }
         guard let head = approvalQueue.head else {
             state.pendingApproval = nil
