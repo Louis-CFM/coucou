@@ -5,7 +5,7 @@
 // arc angles produce a different shape.
 
 import { Ease, lerp, type EaseFn } from "../core/anim";
-import { beatPosition } from "./beat";
+import { beatPosition, danceCalm } from "./beat";
 import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
@@ -762,7 +762,7 @@ export class BotEngine {
     const R = W * 0.3;
     const px = W / 2 + this.ox * R;
     const py = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + R * 0.88;
-    const d = danceAtBeat(beatPosition(Date.now()), this.dancingLevel, R);
+    const d = danceAtBeat(beatPosition(Date.now()), this.dancingLevel * danceCalm(), R);
     x.translate(px + d.dx, py + d.dy);
     x.rotate(d.rotate);
     x.scale(d.sx, d.sy);

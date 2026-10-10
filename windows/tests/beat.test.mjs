@@ -59,3 +59,15 @@ test("landing squash is on the whole beats", () => {
   assert.ok(mid.dy < -3);
   assert.ok(onBeat.sy < 1 && mid.sy >= 0.99);
 });
+
+test("a fast song gets a smaller dance, the fixed bounce stays full size", async () => {
+  const { danceCalm, feedBeat, resetBeat } = await import("../src/mochi/beat.ts");
+  resetBeat();
+  assert.equal(danceCalm(), 1);
+  feedBeat({ bpm: 118, beatAtMs: Date.now() });
+  assert.ok(danceCalm() < 0.7 && danceCalm() >= 0.55);
+  resetBeat();
+  feedBeat({ bpm: 90, beatAtMs: Date.now() });
+  assert.equal(danceCalm(), 1);
+  resetBeat();
+});

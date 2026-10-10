@@ -61,3 +61,12 @@ export function resetBeat(): void {
 export function currentBpm(): number {
   return bpm;
 }
+
+/**
+ * How big the dance is at the tempo in use (0…1): a fast song gets smaller hops
+ * so one hop per beat does not look frantic. The fixed bounce stays full size.
+ */
+export function danceCalm(): number {
+  if (!fed) return 1;
+  return Math.min(1, Math.max(0.55, 1 - (bpm - 100) / 45));
+}
