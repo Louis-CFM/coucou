@@ -1216,7 +1216,8 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .chat-body.picking .chat-log,
-.chat-body.picking .chip-row {
+.chat-body.picking .chip-row,
+.chat-body.picking .chat-bar {
   display: none;
 }
 
@@ -1260,6 +1261,21 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 0 0 1px;
   background: rgba(255, 255, 255, 0.2);
   opacity: 0.4;
+}
+
+.picker-search {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c8cdd4;
+  font: 400 12px var(--font);
+  outline: none;
+}
+
+.picker-search:focus {
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .picker-list {

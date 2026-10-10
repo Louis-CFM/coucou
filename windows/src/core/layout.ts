@@ -102,9 +102,12 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
 /** The question view with options to pick from: room for two rows of them. */
 export const QUESTION_PICKER_H = 200;
 
+/** The chat view's tallest: a long conversation, or the model picker open. */
+export const CHAT_MAX_H = 300;
+
 /** Chat view grows with the conversation — IslandContainer.chatPromptHeight. */
 export function chatPromptHeight(messageCount: number): number {
-  return Math.min(300, 240 + messageCount * 40);
+  return Math.min(CHAT_MAX_H, 240 + messageCount * 40);
 }
 
 export function islandSize(
