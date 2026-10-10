@@ -26,7 +26,52 @@ use crate::{net, secrets};
 /// Credential store entry of the key of the user's own OpenAI-compatible server.
 pub const CUSTOM_KEY: &str = "openai-compatible-key";
 
-const MAX_TOKENS: u32 = 4096;
+/// A stable id for this Coucou run, sent as `x-opencode-session`.
+///
+/// Gateways that route on it — OpenCode Go above all, which refuses a request
+/// that arrives without one — use it to keep a conversation on the same backend
+/// and to cache its prompt prefix. One id per run is what "stable" means here:
+/// every turn of a conversation carries the same value, and a new chat after a
+/// restart simply starts a new one.
+fn session_id() -> &'static str {
+    use std::sync::OnceLock;
+    static ID: OnceLock<String> = OnceLock::new();
+    ID.get_or_init(|| {
+        let mut bytes = [0u8; 16];
+        // /dev/urandom, or the clock and the pid when there is none to read.
+        let filled = std::fs::File::open("/dev/urandom")
+            .and_then(|mut f| std::io::Read::read_exact(&mut f, &mut bytes))
+            .is_ok();
+        if !filled {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or_default();
+            bytes[..16].copy_from_slice(&nanos.to_le_bytes()[..16]);
+            bytes[8..16].copy_from_slice(&(std::process::id() as u128).to_le_bytes()[..8]);
+        }
+        bytes.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join("")
+    })
+}
+
+/// Who we say we are. A gateway that watches traffic wants a client that names
+/// itself rather than one that arrives as a bare HTTP library.
+const USER_AGENT: &str = concat!("coucou/", env!("CARGO_PKG_VERSION"));
+
+/// The two headers every request to a model server carries.
+fn agent_headers(request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    request.header("x-opencode-session", session_id()).header(reqwest::header::USER_AGENT, USER_AGENT)
+}
+
+/// Ceiling on the tokens a turn may use.
+///
+/// Large enough for a reasoning model to think *and* answer: the budget covers
+/// the thinking tokens too, and a model that spends all of them on reasoning
+/// ends its turn with `finish_reason: "length"` and no answer at all — measured
+/// on OpenCode Go, `deepseek-v4.1-flash` returns nothing under 4096 and answers
+/// normally under 16384. It is a ceiling, never a cost: a turn that ends earlier
+/// is billed for what it used.
+const MAX_TOKENS: u32 = 16384;
 /// A text file is sent inline up to this many characters; the rest is cut.
 const MAX_INLINE_CHARS: usize = 24_000;
 /// The island is told about new text at most this often.
@@ -168,10 +213,12 @@ pub async fn models(server: &Server) -> Result<Vec<ModelInfo>, String> {
 
 /// `GET /v1/models`, chat models only, or why the server can't be reached.
 async fn list(base: &Url, key: Option<&str>) -> Result<Vec<String>, String> {
-    let response = net::client(base, Duration::from_secs(5))?
-        .get(net::join(base, "v1/models"))
-        .header("Authorization", bearer(key))
-        .send()
+    let response = agent_headers(
+        net::client(base, Duration::from_secs(5))?
+            .get(net::join(base, "v1/models"))
+            .header("Authorization", bearer(key)),
+    )
+    .send()
         .await
         .map_err(|_| unreachable(base))?;
     if matches!(response.status().as_u16(), 401 | 403) {
@@ -332,11 +379,13 @@ async fn stream(
     body: &Value,
     mut on_delta: impl FnMut(String),
 ) -> Result<String, String> {
-    let mut reply = net::client(base, Duration::from_secs(300))?
-        .post(net::join(base, "v1/chat/completions"))
-        .header("Authorization", bearer(key))
-        .json(body)
-        .send()
+    let mut reply = agent_headers(
+        net::client(base, Duration::from_secs(300))?
+            .post(net::join(base, "v1/chat/completions"))
+            .header("Authorization", bearer(key))
+            .json(body),
+    )
+    .send()
         .await
         .map_err(|_| unreachable(base))?;
 
@@ -376,6 +425,12 @@ async fn stream(
     // A last line without its newline.
     if let Some(Ok(delta)) = parse_sse_line(String::from_utf8_lossy(&pending).trim_end()) {
         accumulated.push_str(&delta);
+    }
+    // A turn that streamed reasoning and then stopped on its token ceiling has
+    // no answer in it. Say so: the island would otherwise keep waiting on a
+    // reply that is never coming.
+    if accumulated.trim().is_empty() {
+        return Err(t("The model thought the whole answer away without writing one. Try another model, or a shorter question."));
     }
     // The last state always goes out, whatever the throttle skipped.
     on_delta(progressive_filter(&accumulated));
@@ -510,6 +565,50 @@ mod tests {
         assert_eq!(block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap_err(), "context too long");
         let u = serve_once("200 OK", "", b"data: {\"error\":{\"message\":\"crashed\"}}\n".to_vec());
         assert_eq!(block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap_err(), "crashed");
+    }
+
+    #[test]
+    fn a_turn_that_only_thought_is_reported_instead_of_left_hanging() {
+        // What a reasoning model sends when it spends the whole token ceiling on
+        // thinking: deltas with `reasoning_content` and never a `content` one,
+        // then `finish_reason: "length"`. Coucou hides the thinking, so without
+        // this the island would wait on an answer that never comes.
+        let events = [
+            r#"{"choices":[{"delta":{"role":"assistant","reasoning_content":"We need"}}]}"#,
+            r#"{"choices":[{"delta":{"reasoning_content":" a todo app"}}]}"#,
+            r#"{"choices":[{"delta":{},"finish_reason":"length"}]}"#,
+        ];
+        let mut body = String::new();
+        for e in events {
+            body.push_str(&format!("data: {e}\n\n"));
+        }
+        body.push_str("data: [DONE]\n\n");
+        let u = serve_once("200 OK", "Content-Type: text/event-stream\r\n", body.into_bytes());
+        let err = block_on(stream(&url(&u), None, "reasoner", &json!({}), |_| {})).unwrap_err();
+        assert_eq!(err, "The model thought the whole answer away without writing one. Try another model, or a shorter question.");
+
+        // An answer that is there is never called empty.
+        let u = serve_once("200 OK", "", b"data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n".to_vec());
+        assert_eq!(block_on(stream(&url(&u), None, "m", &json!({}), |_| {})).unwrap(), "ok");
+    }
+
+    #[test]
+    fn a_reasoning_model_gets_room_to_answer_as_well_as_to_think() {
+        // The ceiling counts the thinking tokens: too small a one and the turn
+        // ends with `finish_reason: "length"` and no answer at all.
+        assert!(MAX_TOKENS >= 16384, "a reasoning model needs room past its thinking");
+        let body = request_body("reasoner", "sys", &[], &json!({"role":"user","content":"hi"}));
+        assert_eq!(body["max_tokens"], MAX_TOKENS);
+    }
+
+    #[test]
+    fn every_request_carries_a_session_id_and_names_the_client() {
+        // Stable for the run, so a conversation keeps one routing and cache.
+        let first = session_id().to_string();
+        assert_eq!(first, session_id());
+        assert_eq!(first.len(), 32, "128 bits of hex: {first}");
+        assert!(first.chars().all(|c| c.is_ascii_hexdigit()), "{first}");
+        assert!(USER_AGENT.starts_with("coucou/"), "{USER_AGENT}");
     }
 
     #[test]
