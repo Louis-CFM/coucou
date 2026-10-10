@@ -112,6 +112,14 @@ test("a permission or a question sends him back to the island", () => {
   assert.equal(alertActive({ pendingApproval: { requestId: "r", pillId: "agent_codex" }, tasks: [] }), true);
 });
 
+test("compact-island visibility does not change floating Mochi alert handling", () => {
+  const pending = { requestId: "r", pillId: "integration_claude" };
+  for (const showCompactIsland of [true, false]) {
+    assert.equal(alertActive({ pendingApproval: pending, tasks: [], settings: { showCompactIsland } }), true);
+    assert.equal(alertActive({ pendingApproval: null, tasks: [{ state: "working" }], settings: { showCompactIsland } }), false);
+  }
+});
+
 // ── Linux drags ───────────────────────────────────────────────────────────────
 
 test("layer-shell drag: display coordinates once the overlay is up", () => {

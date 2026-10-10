@@ -50,7 +50,7 @@ You can also [build it yourself](#build-it-yourself).
 
 | What you do | What happens |
 |---|---|
-| Move the mouse to the very top-centre of the screen | Mochi peeks out |
+| Move the mouse to the very top-centre of the screen | Mochi peeks out. If **Settings → General → Show compact island** is off, the invisible wake strip opens the full island instead |
 | Click the small island | It opens. With **Settings → General → Open on hover**, resting the pointer on it is enough, and it folds again shortly after the pointer leaves (click inside to keep it open) |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
@@ -105,13 +105,20 @@ island with **Deny / Allow**, a question from Claude Code shows its options to
 pick from, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
 
+**Settings → General → Show compact island** is on by default. Turn it off to
+keep the ordinary resting island hidden; launch greetings still play, and the
+invisible strip at the top-centre of the screen, tray actions and keyboard
+shortcuts still open the full island.
+
 A permission card or a question stays until you answer it: the mouse leaving
 never folds it, it comes up even when the island is already open or another
 pill is in front, and the pill you were on comes back once you answer. To keep
 it for later, fold it with the **⌃** in its corner (or `Esc` in the island): the
 island shrinks to its compact size and stays on screen, nothing is answered, and
 opening it again shows the card. **Open terminal** brings the window the session
-runs in to the front.
+runs in to the front. This pinned compact card is a safety exception to **Show
+compact island** being off: unanswered permissions and questions stay visible
+and accessible until you decide or answer them.
 
 When Mochi lives on the desktop, he flies back to the island with a permission
 request or a question and returns to his spot once you have answered; he does a

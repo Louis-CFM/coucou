@@ -1197,6 +1197,7 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.showCompactIsland = State.settings.showCompactIsland;
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
   }

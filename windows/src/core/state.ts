@@ -101,6 +101,8 @@ export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
   autoCloseInterval: number;
+  /** Show the compact island while Coucou is resting (off keeps the wake strip). */
+  showCompactIsland: boolean;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
   absenceInterval: number;
@@ -157,6 +159,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,
+  showCompactIsland: true,
   openOnHover: false,
   absenceInterval: 180,
   activeIntegrations: [

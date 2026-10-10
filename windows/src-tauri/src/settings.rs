@@ -16,6 +16,8 @@ pub struct Settings {
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub auto_close_interval: f64,
+    /// Show the compact island while Coucou rests. Off still keeps the wake strip.
+    pub show_compact_island: bool,
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
@@ -98,6 +100,7 @@ impl Default for Settings {
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
+            show_compact_island: true,
             open_on_hover: false,
             absence_interval: 180.0,
             active_integrations: vec![
@@ -380,6 +383,7 @@ mod tests {
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
+  "showCompactIsland": false,
   "openOnHover": true,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
@@ -488,6 +492,14 @@ mod tests {
         let mut expected = custom();
         expected["model"] = json!(crate::claude::DEFAULT_MODEL);
         assert_eq!(loaded, expected);
+    }
+
+    #[test]
+    fn a_file_from_before_compact_visibility_keeps_the_compact_island() {
+        let loaded = parse(&custom_with("showCompactIsland", None)).unwrap();
+        assert!(loaded.show_compact_island);
+        assert_eq!(loaded.model, "some-model");
+        assert!(!loaded.sound_enabled);
     }
 
     #[test]
@@ -783,6 +795,7 @@ mod tests {
                 "soundEnabled",
                 "soundVolume",
                 "autoCloseInterval",
+                "showCompactIsland",
                 "openOnHover",
                 "absenceInterval",
                 "activeIntegrations",

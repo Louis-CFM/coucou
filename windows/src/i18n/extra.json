@@ -2080,6 +2080,17 @@
    "ru": "Показывать тариф Codex в нотче",
    "id": "Tampilkan paket Codex di notch"
   },
+  "Show compact island": {
+   "zh-Hans": "显示紧凑岛",
+   "hi": "कॉम्पैक्ट आइलैंड दिखाएँ",
+   "es": "Mostrar la isla compacta",
+   "ar": "إظهار الجزيرة المصغّرة",
+   "fr": "Afficher l'île compacte",
+   "bn": "কমপ্যাক্ট আইল্যান্ড দেখান",
+   "pt-BR": "Mostrar a ilha compacta",
+   "ru": "Показывать компактный остров",
+   "id": "Tampilkan pulau ringkas"
+  },
   "Show in folder": {
    "zh-Hans": "在文件夹中显示",
    "hi": "फ़ोल्डर में दिखाएँ",
@@ -2640,6 +2651,17 @@
    "pt-BR": "Quarta-feira",
    "ru": "Среда",
    "id": "Rabu"
+  },
+  "When off, Coucou stays hidden while resting; hover the top edge to open it. Pending approvals and questions stay visible.": {
+   "zh-Hans": "关闭后，Coucou 会在休息时保持隐藏；将鼠标悬停在屏幕顶部边缘即可打开。待处理的批准请求和问题仍会显示。",
+   "hi": "बंद होने पर, आराम के दौरान Coucou छिपा रहता है; खोलने के लिए पॉइंटर को ऊपरी किनारे पर रखें। लंबित अनुमतियाँ और सवाल दिखाई देते रहते हैं।",
+   "es": "Si se desactiva, Coucou permanece oculto mientras está inactivo; pasa el puntero por el borde superior para abrirlo. Las aprobaciones y preguntas pendientes siguen visibles.",
+   "ar": "عند إيقافه، يبقى Coucou مخفيًا أثناء الراحة؛ مرّر المؤشر فوق الحافة العلوية لفتحه. تظل الموافقات والأسئلة المعلّقة ظاهرة.",
+   "fr": "Lorsque cette option est désactivée, Coucou reste caché au repos ; survole le bord supérieur pour l'ouvrir. Les autorisations et questions en attente restent visibles.",
+   "bn": "বন্ধ থাকলে Coucou বিশ্রামের সময় লুকিয়ে থাকে; খুলতে উপরের প্রান্তে পয়েন্টার রাখুন। অপেক্ষমাণ অনুমোদন ও প্রশ্ন দেখা যেতে থাকে।",
+   "pt-BR": "Quando desativado, o Coucou fica oculto em repouso; passe o ponteiro pela borda superior para abri-lo. Aprovações e perguntas pendentes continuam visíveis.",
+   "ru": "Когда параметр выключен, Coucou скрыт в состоянии покоя; наведите указатель на верхний край, чтобы открыть его. Ожидающие подтверждения и вопросы остаются видимыми.",
+   "id": "Saat dinonaktifkan, Coucou tetap tersembunyi ketika beristirahat; arahkan penunjuk ke tepi atas untuk membukanya. Persetujuan dan pertanyaan yang tertunda tetap terlihat."
   },
   "Where you code": {
    "zh-Hans": "编程环境",
