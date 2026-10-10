@@ -805,6 +805,24 @@ body {
   gap: 6px;
 }
 
+/* The answer typed under "Other…", shaped like the buttons beside it. */
+.question-input {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink);
+  font: 400 12.5px var(--font);
+  outline: none;
+  cursor: text;
+}
+
+.question-input::placeholder {
+  color: var(--dim-3);
+}
+
 .question-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;

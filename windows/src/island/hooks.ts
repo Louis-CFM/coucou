@@ -172,11 +172,14 @@ function askedQuestions(tool: string, input: Record<string, unknown>): AskedQues
         label: o.label as string,
         description: typeof o.description === "string" ? o.description : "",
       }));
-    // A question cut short by the relay would be answered under the wrong text.
+    // A question cut short by the relay would be answered under the wrong text,
+    // and two with the same text would share one answer.
     if (!question || question.endsWith("…") || options.length < 2) return null;
+    if (out.some((q) => q.question === question)) return null;
     out.push({ question, options, multiSelect: raw.multiSelect === true });
   }
-  return out.length > 0 ? out : null;
+  // Claude Code asks one to four at a time; anything else is not ours to guess.
+  return out.length > 0 && out.length <= 4 ? out : null;
 }
 
 /** The Claude Code session's pill, named after its project for the session. */
@@ -349,8 +352,10 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "PostToolUse":
+    case "PostToolUseFailure":
       supersedeStop();
-      // The question was answered in the terminal: the card would be lying.
+      // The question was answered (or dismissed) in the terminal: the card
+      // would be lying.
       if (
         payload.tool_name === "AskUserQuestion" &&
         State.pendingApproval?.questions &&
@@ -361,12 +366,10 @@ function handleHook(island: Island, payload: HookPayload) {
         dropPendingCard(island);
       }
       State.updateTask(agentId, "working");
-      recordDiff(agentId, payload);
-      break;
-
-    case "PostToolUseFailure":
-      supersedeStop();
-      State.updateTask(agentId, "working");
+      if (name === "PostToolUse") {
+        recordDiff(agentId, payload);
+        break;
+      }
       State.appendStep(agentId, t("⚠ failed"));
       break;
 

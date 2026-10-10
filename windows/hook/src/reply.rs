@@ -68,8 +68,12 @@ pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String>
     if decision.trim_start().starts_with('{') {
         let reply = serde_json::from_str::<Value>(decision).ok()?;
         let answers = reply.get("answers")?.as_object()?;
+        let other: Vec<&str> = match reply.get("other") {
+            None => Vec::new(),
+            Some(list) => list.as_array()?.iter().map(Value::as_str).collect::<Option<_>>()?,
+        };
         let question = question?;
-        if !answers_fit(question, answers) {
+        if !answers_fit(question, answers, &other) {
             return None;
         }
         let mut input = question.as_object()?.clone();
@@ -100,14 +104,18 @@ pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String>
 /// per question, keyed by its text; a single-select answer is one of its option
 /// labels (a string), a multi-select answer a non-empty list of distinct labels
 /// (Claude Code 2.1.136+ takes the list, as the Mac sends it). Same rule as
-/// `QuestionPayload.accepts` on macOS.
-fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
+/// `QuestionPayload.accepts` on macOS, plus the questions listed in `other`,
+/// answered in words under "Other…" as in the terminal: any non-blank text.
+fn answers_fit(question: &Value, answers: &Map<String, Value>, other: &[&str]) -> bool {
     let Some(items) = question.get("questions").and_then(|q| q.as_array()) else { return false };
     if items.is_empty() || items.len() != answers.len() {
         return false;
     }
     items.iter().all(|item| {
         let Some(text) = item.get("question").and_then(|q| q.as_str()) else { return false };
+        if other.contains(&text) {
+            return matches!(answers.get(text), Some(Value::String(words)) if !words.trim().is_empty());
+        }
         let labels: Vec<&str> = item
             .get("options")
             .and_then(|o| o.as_array())
@@ -276,5 +284,29 @@ mod tests {
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":"Tests"}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":[]}}"#));
         assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Tests","Tests"]}}"#));
+    }
+
+    #[test]
+    fn words_typed_under_other_are_taken_only_where_marked() {
+        let q = json!({ "questions": [
+            { "question": "Which one?", "options": [{ "label": "A" }, { "label": "B" }] },
+            { "question": "Extras?", "multiSelect": true,
+              "options": [{ "label": "Tests" }, { "label": "Docs" }] }
+        ]});
+        let ok = |a: &str| decision_json(a, Some(&q)).is_some();
+        assert!(ok(r#"{"answers":{"Which one?":"Neither, \"C\"\nplease","Extras?":["Docs"]},"other":["Which one?"]}"#));
+        assert!(ok(r#"{"answers":{"Which one?":"A","Extras?":"Benchmarks"},"other":["Extras?"]}"#));
+        // Not marked: still has to be a label.
+        assert!(!ok(r#"{"answers":{"Which one?":"C","Extras?":["Docs"]},"other":[]}"#));
+        // Marked: has to be words, not blank and not a list.
+        assert!(!ok(r#"{"answers":{"Which one?":"  ","Extras?":["Docs"]},"other":["Which one?"]}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":["A"],"Extras?":["Docs"]},"other":["Which one?"]}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Docs"]},"other":"Which one?"}"#));
+        assert!(!ok(r#"{"answers":{"Which one?":"A","Extras?":["Docs"]},"other":[1]}"#));
+        // The marker never reaches Claude Code: only the answers do.
+        let out = decision_json(r#"{"answers":{"Which one?":"C","Extras?":["Docs"]},"other":["Which one?"]}"#, Some(&q)).unwrap();
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["hookSpecificOutput"]["decision"]["updatedInput"]["answers"]["Which one?"], "C");
+        assert!(v["hookSpecificOutput"]["decision"]["updatedInput"].get("other").is_none());
     }
 }

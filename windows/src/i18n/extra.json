@@ -3360,6 +3360,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Type your answer…": {
+   "zh-Hans": "输入你的回答…",
+   "hi": "अपना जवाब लिखें…",
+   "es": "Escribe tu respuesta…",
+   "ar": "اكتب إجابتك…",
+   "fr": "Tape ta réponse…",
+   "bn": "আপনার উত্তর লিখুন…",
+   "pt-BR": "Digite sua resposta…",
+   "ru": "Введите ответ…",
+   "id": "Ketik jawabanmu…"
   }
  }
 }

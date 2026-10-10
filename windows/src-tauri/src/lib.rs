@@ -420,10 +420,11 @@ fn approval_answer(
     app: AppHandle,
     request_id: String,
     answers: std::collections::HashMap<String, serde_json::Value>,
+    other: Option<Vec<String>>,
 ) {
     // An answered question is not an Allow / Deny: nothing for the recap.
     recap::forget_request(&app, &request_id);
-    pipe::answer_question(&app, &request_id, &answers);
+    pipe::answer_question(&app, &request_id, &answers, &other.unwrap_or_default());
 }
 
 /// The island has the card on screen, so the long wait for a human may begin.

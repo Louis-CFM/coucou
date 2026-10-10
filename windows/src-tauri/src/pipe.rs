@@ -352,10 +352,17 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
 
 /// Called when an option is picked for a question Claude Code asked. `answers`
 /// maps each question's text to the chosen label, which is the shape
-/// AskUserQuestion takes them in.
-pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<String, serde_json::Value>) {
+/// AskUserQuestion takes them in. `other` lists the questions answered in words
+/// under "Other…", which the relay then accepts as free text.
+pub fn answer_question(
+    app: &AppHandle,
+    request_id: &str,
+    answers: &HashMap<String, serde_json::Value>,
+    other: &[String],
+) {
     log::line(format!("decision id={request_id} answered a question"));
-    // One line: the relay reads up to the first newline.
-    let line = json!({ "answers": answers }).to_string();
+    // One line: the relay reads up to the first newline (serde_json escapes any
+    // newline typed in a free-text answer).
+    let line = json!({ "answers": answers, "other": other }).to_string();
     send(app, request_id, Reply::Decision(line), false);
 }

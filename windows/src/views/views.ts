@@ -40,8 +40,11 @@ export interface ViewActions {
   openTarget(): void;
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
-  /** Answers the question Claude Code asked: question text → chosen label. */
-  answer(answers: Record<string, string | string[]>): void;
+  /**
+   * Answers the question Claude Code asked: question text → chosen label, or
+   * the words typed under "Other…" for the questions listed in `other`.
+   */
+  answer(answers: Record<string, string | string[]>, other: string[]): void;
   /** Hands the pending request back to the terminal. */
   answerInTerminal(): void;
   toggleSound(): void;
@@ -60,6 +63,8 @@ export interface ViewHost {
   sync(): void;
   /** Called when the view becomes active, for views with a text field. */
   focus?(): void;
+  /** True while the view shows a text field that needs the keyboard (the chat always does). */
+  wantsKeyboard?(): boolean;
   /** Called every frame while the view is on screen. True = needs another frame. */
   tick?(nowMs: number): boolean | void;
   /** Ctrl+O / Ctrl+E while the view is on screen (island/shortcuts.ts). */
@@ -560,21 +565,77 @@ function buildQuestion(actions: ViewActions): ViewHost {
   let requestId = "";
   let index = 0;
   let answers: Record<string, string | string[]> = {};
+  // The questions answered in words under "Other…" rather than with a label.
+  let other = new Set<string>();
   let picked = new Set<string>();
+  // "Other…" was clicked: the row is a text field until it is sent or left.
+  let typing = false;
   // The buttons are only rebuilt when what they show changes: rebuilding them
   // between a mouse-down and a mouse-up would swallow the click.
   let rowKey = "";
+  // What 1–9 and Enter do for the question on screen (null when nothing).
+  let pick: ((n: number) => void) | null = null;
+  let confirm: (() => void) | null = null;
 
-  const next = (question: string, answer: string | string[], total: number) => {
+  const field = h("input", {
+    class: "question-input",
+    type: "text",
+    placeholder: tl("Type your answer…"),
+  });
+
+  // The keys belong to the question on screen: they go quiet until the next one
+  // is drawn, or a quick second key would answer the old one again.
+  const disarm = () => {
+    pick = null;
+    confirm = null;
+  };
+
+  const next = (question: string, answer: string | string[], total: number, free = false) => {
+    disarm();
     answers[question] = answer;
+    if (free) other.add(question);
+    else other.delete(question);
     picked = new Set();
+    typing = false;
+    field.value = "";
     index += 1;
-    if (index >= total) actions.answer(answers);
+    if (index >= total) actions.answer(answers, [...other]);
     else State.notify();
   };
 
+  // Back to the previous question, with what was picked there ticked again.
+  const back = () => {
+    if (index === 0) return;
+    disarm();
+    index -= 1;
+    const questions = State.pendingApproval?.questions;
+    const previous = questions && answers[questions[index].question];
+    picked = new Set(Array.isArray(previous) ? previous : []);
+    State.notify();
+  };
+
+  // Plain 1–9 pick an option and Enter confirms, as in the terminal. Ctrl+digit
+  // stays the pill shortcut, and keys typed in the "Other…" field are its own.
+  window.addEventListener("keydown", (e) => {
+    if (State.mode !== "expanded" || State.view !== "question" || typing) return;
+    if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+    if (/^[1-9]$/.test(e.key) && pick) {
+      e.preventDefault();
+      pick(Number(e.key) - 1);
+    } else if (e.key === "Enter" && confirm) {
+      e.preventDefault();
+      confirm();
+    }
+  });
+
   return {
     el,
+    // The island window does not take the keyboard on a click (Windows), so
+    // the "Other…" field asks for it while it is open.
+    wantsKeyboard: () => typing && !!State.pendingApproval?.questions,
+    focus: () => {
+      if (typing) field.focus();
+    },
     sync() {
       const questions = State.pendingApproval?.questions;
       clear(who);
@@ -583,6 +644,7 @@ function buildQuestion(actions: ViewActions): ViewHost {
 
       // A question that arrived as a notification has nothing to pick from.
       if (!questions) {
+        disarm();
         who.append(agentWho(State.focusTask, t("is asking a question")));
         const task = State.focusTask;
         title.textContent = (task && lastTextStep(task.steps)) ?? t("Claude needs an answer.");
@@ -598,7 +660,10 @@ function buildQuestion(actions: ViewActions): ViewHost {
         requestId = State.pendingApproval!.requestId;
         index = 0;
         answers = {};
+        other = new Set();
         picked = new Set();
+        typing = false;
+        field.value = "";
       }
       const q = questions[Math.min(index, questions.length - 1)];
       const asking = questions.length > 1
@@ -608,39 +673,83 @@ function buildQuestion(actions: ViewActions): ViewHost {
       title.textContent = q.question;
       title.title = q.question;
 
-      const key = `${requestId}:${index}:${[...picked].join("|")}`;
+      const key = `${requestId}:${index}:${typing}:${[...picked].join("|")}`;
       if (rowKey === key) return;
       rowKey = key;
       clear(row);
+      // Until the next question is drawn these handlers are still on screen: a
+      // second click or key in that frame must not answer this question again.
+      const at = index;
+      const live = (f: () => void) => () => {
+        if (index === at) f();
+      };
+      const link = (label: Msg, onclick: () => void) =>
+        h("button", { class: "link-btn", style: "color:#8e939c", text: label, onclick });
+      const toTerminal = link(tl("Answer in terminal"), () => actions.answerInTerminal());
+
+      if (typing) {
+        disarm();
+        const send = live(() => {
+          const text = field.value.trim();
+          if (text) next(q.question, text, questions.length, true);
+        });
+        const ok = btn(tl("OK"), "primary", send);
+        ok.classList.toggle("off", !field.value.trim());
+        field.oninput = () => ok.classList.toggle("off", !field.value.trim());
+        // Enter sends; Escape leaves the field rather than folding the card.
+        field.onkeydown = (e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            send();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            typing = false;
+            State.notify();
+          }
+        };
+        row.append(field, ok, link(tl("Back"), live(() => {
+          typing = false;
+          State.notify();
+        })), toTerminal);
+        field.focus();
+        return;
+      }
+
+      const choose = (option: { label: string }) => {
+        if (!q.multiSelect) {
+          next(q.question, option.label, questions.length);
+          return;
+        }
+        if (picked.has(option.label)) picked.delete(option.label);
+        else picked.add(option.label);
+        State.notify();
+      };
+      pick = (n) => {
+        if (q.options[n]) choose(q.options[n]);
+      };
+      confirm = null;
       for (const option of q.options) {
         const on = picked.has(option.label);
-        const button = btn(option.label, on ? "primary" : "secondary", () => {
-          if (!q.multiSelect) {
-            next(q.question, option.label, questions.length);
-            return;
-          }
-          if (on) picked.delete(option.label);
-          else picked.add(option.label);
-          State.notify();
-        });
+        const button = btn(option.label, on ? "primary" : "secondary", live(() => choose(option)));
         if (option.description) button.title = option.description;
         row.append(button);
       }
+      row.append(btn(tl("Other…"), "secondary", live(() => {
+        typing = true;
+        State.notify();
+      })));
       if (q.multiSelect) {
-        const done = btn(tl("Done"), "primary", () => {
+        const last = index === questions.length - 1;
+        const done = btn(last ? tl("Done") : tl("Next"), "primary", live(() => {
           if (picked.size > 0) next(q.question, [...picked], questions.length);
-        });
+        }));
+        confirm = () => done.click();
         if (picked.size === 0) done.classList.add("off");
         row.append(done);
       }
-      row.append(
-        h("button", {
-          class: "link-btn",
-          style: "color:#8e939c",
-          text: tl("Answer in terminal"),
-          onclick: () => actions.answerInTerminal(),
-        }),
-      );
+      if (index > 0) row.append(link(tl("Back"), live(back)));
+      row.append(toTerminal);
     },
   };
 }
