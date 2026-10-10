@@ -44,6 +44,8 @@
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Coucou looks up an email address when you ask it, by voice, to prepare an email.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>

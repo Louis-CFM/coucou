@@ -302,6 +302,20 @@ enum IntentParserTests {
         check("bon alors ajoute Notion",
               parse("bon alors ajoute Notion", pills: pills), .pillAdd(id: "integration_notion"))
         check("On s'en fout c'est", parse("On s'en fout c'est", pills: pills), .unknown)
+        check("Je veux que tu ajoutes la pilule Gemini",
+              parse("Je veux que tu ajoutes la pilule Gemini", pills: pills), .pillAdd(id: "agent_gemini"))
+        check("il faut que tu enlèves Stripe",
+              parse("il faut que tu enlèves Stripe", pills: pills), .pillRemove(id: "integration_stripe"))
+        checkSearch("OK tu peux démarrer Apple Music j'ai envie d'écouter du Drake",
+                    parse("OK tu peux démarrer Apple Music j'ai envie d'écouter du Drake", pills: pills), "drake")
+        check("j'ai envie d'écouter de la musique",
+              parse("j'ai envie d'écouter de la musique", pills: pills), .musicPlay(target: nil))
+        check("make Cursor my main pill",
+              parse("make Cursor my main pill", pills: pills), .pillSetMain(id: "agent_cursor"))
+        checkPlaylist("play my Focus playlist", parse("play my Focus playlist", pills: pills), "focus")
+        check("add Gemini (EN)", parse("add Gemini", pills: pills), .pillAdd(id: "agent_gemini"))
+        check("tu peux lancer ma playlist",
+              parse("tu peux lancer ma playlist", pills: pills), .musicPlayPlaylist(name: ""))
         checkMultiAction("Enlève la pilule GT et mets Stripe à la place",
                          parseMulti("Enlève la pilule GT et mets Stripe à la place"),
                          [.pillRemove(id: "integration_github"), .pillAdd(id: "integration_stripe")])
@@ -316,6 +330,11 @@ enum IntentParserTests {
         // Unknown part → not multi-action
         checkNilMultiAction("mets Gemini et blahblah",
                             parseMulti("mets Gemini et blahblah"))
+
+        // ── Music: lecture / stop la musique (feat/voice-jarvis) ─────────────
+        check("lecture",                     parse("lecture"),                 .musicPlay(target: nil))
+        check("stop la musique",             parse("stop la musique"),         .musicPause)
+        check("stop la chanson",             parse("stop la chanson"),         .musicPause)
 
         // Summary
         let total = pass + fail

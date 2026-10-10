@@ -42,23 +42,47 @@ final class VoiceBrain {
 
     // MARK: - Conversation lifecycle
 
+    /// Keeps the session created (and prewarmed) at wake time, so the first turn's
+    /// context and the warm model carry into the conversation.
     func beginConversation() {
-        sessionBox = VoiceBrain._makeSession()
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
     }
 
     func endConversation() {
         sessionBox = nil
     }
 
+    /// Ensures a session exists and is warmed up. Call on wake detection.
+    func prewarmSession() {
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
+        // prewarm already fired in _makeSession via Task.detached
+    }
+
+    /// True when a session is already created (warm), false on first call (cold).
+    var isSessionReady: Bool { sessionBox != nil }
+
     // MARK: - Intent resolution
 
-    /// Try to resolve `transcript` using the language model.
+    /// Try to resolve `transcript` using the language model (non-streaming).
     /// Returns nil if the model is unavailable or if the model cannot map to any intent.
     func resolve(_ transcript: String, pills: [PillDefinition]) async -> BrainResult? {
         // Lazily create session on first call so the model is available
         // even for the very first turn (before speakAndContinueConversation fires).
         if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
         return await VoiceBrain._resolve(transcript, pills: pills, sessionBox: sessionBox)
+    }
+
+    /// Streaming variant: calls onSentence for each complete sentence as it arrives.
+    /// Returns the full BrainResult when the stream ends. 8s total timeout.
+    func resolveWithStreaming(
+        _ transcript: String,
+        pills: [PillDefinition],
+        onSentence: @escaping @MainActor (_ sentence: String, _ hasActions: Bool) -> Void
+    ) async -> BrainResult? {
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
+        return await VoiceBrain._resolveWithStreaming(
+            transcript, pills: pills, sessionBox: sessionBox, onSentence: onSentence
+        )
     }
 
     // MARK: - Static impl helpers
@@ -84,6 +108,58 @@ final class VoiceBrain {
         return .notMacOS26
     }
 
+    /// Instructions in the language Coucou speaks (Settings → Voice, English by default).
+    static func instructions() -> String {
+        if VoiceSettings.language == "fr" {
+            return """
+            Tu es Coucou, un assistant dans le notch du MacBook. L'utilisateur peut parler anglais ou français : réponds toujours en français.
+            Réponds avec 1 à 2 phrases maximum. Sois direct et concis.
+            Ne pose une question que si tu as vraiment besoin d'une précision pour agir : une seule, courte, qui finit par « ? ». Sinon, ne finis jamais par une question.
+            Utilise les outils pour les pilules et la musique.
+            Pour toute question sur Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, les agents (Claude Code, Codex…), le plan Claude ou Codex, la musique ou la météo, appelle d'abord l'outil service et réponds avec ses données, sans rien inventer.
+            Pour un mail, appelle l'outil mail : Coucou demande ce qui manque, puis ouvre le mail dans le notch et c'est l'utilisateur qui clique sur Envoyer. Si on te demande de l'écrire, rédige toi-même le texte.
+            Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
+            """
+        }
+        return """
+        You are Coucou, an assistant living in the MacBook notch. The user may speak French or English: always answer in English.
+        Answer in one or two short sentences. Be direct.
+        Only ask a question when you truly need a detail to act: one short question ending with "?". Otherwise never end with a question.
+        Use the tools for pills and music.
+        For any question about Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agents (Claude Code, Codex…), the Claude or Codex plan, music or the weather, call the service tool first and answer from its data, never invent.
+        For an email, call the mail tool: Coucou asks for what is missing, then opens the email in the notch and the user clicks Send. When asked to write it, write the text yourself.
+        For pill names, use the exact name the user said.
+        """
+    }
+
+    /// A short email body written by the on-device model from an instruction
+    /// ("thanking her for yesterday"). nil when the model is unavailable.
+    static func draftMail(to recipient: String, about instruction: String) async -> String? {
+        #if canImport(FoundationModels)
+        if #available(macOS 26, *) {
+            guard SystemLanguageModel.default.availability == .available else { return nil }
+            // The mail is written in the language I used for it, whatever Coucou speaks.
+            let fr = VoiceQuery.looksFrench(instruction)
+            // An address is not a name to greet: a plain greeting then.
+            let name = recipient.contains("@") ? "" : recipient
+            let session = LanguageModelSession(instructions: fr
+                ? "Tu écris des mails courts et naturels à la place de l'utilisateur : une salutation, 1 à 3 phrases qui disent ce qu'il veut dire, sans rien inventer, sans objet ni signature. Réponds uniquement avec le texte du mail."
+                : "You write short, natural emails for the user: a greeting, 1 to 3 sentences saying what they want to say, inventing nothing, no subject line or signature. Reply with the email text only.")
+            let to = name.isEmpty ? "" : (fr ? " à \(name)" : " to \(name)")
+            let prompt = fr ? "Mail\(to). Ce que je veux dire : \(instruction)"
+                            : "Email\(to). What I want to say: \(instruction)"
+            // Boxed like the conversation session: the timeout closure must be Sendable.
+            let box = SessionContainer(session: session, collector: IntentCollector())
+            do {
+                return try await withBrainTimeout(seconds: 8) {
+                    try await box.session.respond(to: prompt).content
+                }
+            } catch { return nil }
+        }
+        #endif
+        return nil
+    }
+
     static func _makeSession() -> AnyObject? {
         #if canImport(FoundationModels)
         if #available(macOS 26, *) {
@@ -92,16 +168,17 @@ final class VoiceBrain {
             let session = LanguageModelSession(
                 tools: [PillTool(collector: collector),
                         MusicTool(collector: collector),
-                        StatusTool(collector: collector)],
-                instructions: """
-                Tu es Coucou, un assistant dans le notch du MacBook.
-                Réponds toujours dans la langue de l'utilisateur.
-                Réponds avec une phrase courte et directe.
-                Utilise les outils disponibles pour exécuter des commandes sur les pills et la musique.
-                Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
-                """
+                        StatusTool(collector: collector),
+                        ServiceTool(),
+                        MailTool(collector: collector)],
+                instructions: VoiceBrain.instructions()
             )
-            return SessionContainer(session: session, collector: collector)
+            let container = SessionContainer(session: session, collector: collector)
+            // Prewarm in background — warms the attention cache without blocking the caller.
+            Task.detached {
+                session.prewarm()
+            }
+            return container
         }
         #endif
         return nil
@@ -133,6 +210,73 @@ final class VoiceBrain {
                     return response.content
                 }
                 return BrainResult(intents: collector.intents, text: text)
+            } catch {
+                return nil
+            }
+        }
+        #endif
+        return nil
+    }
+
+    static func _resolveWithStreaming(
+        _ transcript: String,
+        pills: [PillDefinition],
+        sessionBox: AnyObject?,
+        onSentence: @escaping @MainActor (_ sentence: String, _ hasActions: Bool) -> Void
+    ) async -> BrainResult? {
+        #if canImport(FoundationModels)
+        if #available(macOS 26, *) {
+            guard SystemLanguageModel.default.availability == .available else { return nil }
+            guard let container = sessionBox as? SessionContainer else { return nil }
+            let collector = container.collector
+            collector.reset()
+
+            let pillNames = pills.map { $0.name }.joined(separator: ", ")
+            let prompt = """
+                User said: "\(transcript)"
+                Available pill names: \(pillNames)
+                Use a tool if this is a command. Otherwise answer naturally in the user's language.
+                """
+
+            do {
+                let fullText = try await withBrainTimeout(seconds: 8) { () -> String in
+                    let stream = container.session.streamResponse(to: prompt)
+                    var sentUpTo = 0
+                    var accumulated = ""
+
+                    for try await snapshot in stream {
+                        accumulated = snapshot.content
+                        guard sentUpTo < accumulated.count else { continue }
+
+                        let startIdx = accumulated.index(accumulated.startIndex, offsetBy: sentUpTo)
+                        let slice = accumulated[startIdx...]
+                        let sentenceEnders: Set<Character> = [".", "!", "?", "\n"]
+
+                        if let boundary = slice.lastIndex(where: { sentenceEnders.contains($0) }) {
+                            let afterBoundary = accumulated.index(after: boundary)
+                            let sentence = String(accumulated[startIdx..<afterBoundary])
+                                .trimmingCharacters(in: .whitespaces)
+                            if !sentence.isEmpty {
+                                let acts = !collector.intents.isEmpty
+                                await MainActor.run { onSentence(sentence, acts) }
+                            }
+                            sentUpTo = accumulated.distance(from: accumulated.startIndex, to: afterBoundary)
+                        }
+                    }
+
+                    // Flush any trailing text without sentence terminator
+                    if sentUpTo < accumulated.count {
+                        let startIdx = accumulated.index(accumulated.startIndex, offsetBy: sentUpTo)
+                        let remaining = String(accumulated[startIdx...]).trimmingCharacters(in: .whitespaces)
+                        if !remaining.isEmpty {
+                            let acts = !collector.intents.isEmpty
+                            await MainActor.run { onSentence(remaining, acts) }
+                        }
+                    }
+
+                    return accumulated
+                }
+                return BrainResult(intents: collector.intents, text: fullText)
             } catch {
                 return nil
             }
@@ -266,6 +410,53 @@ struct MusicTool: Tool, @unchecked Sendable {
 }
 
 // MARK: StatusTool
+
+@available(macOS 26, *)
+struct MailTool: Tool, @unchecked Sendable {
+    let name        = "mail"
+    let description = "Prepare an email (Coucou asks for anything missing; the user clicks Send). Recipient is a contact name or an email address; file is an optional file name to attach (searched in Downloads, Desktop, Documents, Pictures)."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Contact name or email address")
+        var recipient: String
+        @Guide(description: "File name to attach, or empty")
+        var file: String
+        @Guide(description: "Subject line, or empty")
+        var subject: String
+        @Guide(description: "Full email body written for the user, or empty")
+        var body: String
+    }
+
+    let collector: IntentCollector
+
+    func call(arguments: Arguments) async throws -> String {
+        func opt(_ s: String) -> String? { s.trimmingCharacters(in: .whitespaces).isEmpty ? nil : s }
+        let recipient = VoiceQuery.spokenEmail(arguments.recipient) ?? arguments.recipient
+        collector.append(.mail(VoiceQuery.MailRequest(recipient: recipient, file: opt(arguments.file), folder: nil,
+                                                      subject: opt(arguments.subject), body: opt(arguments.body))))
+        return "mail prepared for \(recipient)"
+    }
+}
+
+@available(macOS 26, *)
+struct ServiceTool: Tool, @unchecked Sendable {
+    let name        = "service"
+    let description = "Real data from Coucou: Stripe sales and balance, GitHub stars/PRs/CI, Vercel deployments, Resend emails, n8n runs, Notion pages, Cal.com bookings, agent sessions (Claude Code…), Claude/Codex plan usage, music now playing, active pills, weather today or tomorrow."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "One of: stripe, github, vercel, resend, n8n, notion, calcom, agents, claudePlan, codexPlan, music, pills, weatherToday, weatherTomorrow")
+        var topic: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        guard let topic = VoiceTopic(rawValue: arguments.topic) else {
+            return "unknown topic: \(arguments.topic)"
+        }
+        return await LiveVoiceInfo.shared.answer(topic, locale: Locale(identifier: VoiceSettings.language == "fr" ? "fr-FR" : "en-US"))
+    }
+}
 
 @available(macOS 26, *)
 struct StatusTool: Tool, @unchecked Sendable {

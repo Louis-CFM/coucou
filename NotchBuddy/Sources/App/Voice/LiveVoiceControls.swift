@@ -91,6 +91,11 @@ extension VoiceActionRunner {
     func configureLive() {
         music = LiveMusicControl()
         pills = LivePillControl()
+        info  = LiveVoiceInfo.shared
+        onLanguageSwitch = { lang in
+            VoiceSettings.language = lang          // Settings picker follows (same key)
+            VoiceBrain.shared.endConversation()    // next session gets the new instructions
+        }
     }
 }
 #endif
