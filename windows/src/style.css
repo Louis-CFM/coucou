@@ -746,6 +746,97 @@ body {
 
 /* ── Agent pills ────────────────────────────────────────────────────────── */
 
+/* The top bar's own-pill buttons (Focus, To-do, Inbox), after a thin divider. */
+.tab-sep {
+  width: 1px;
+  height: 12px;
+  margin: 0 3px;
+  background: rgba(255, 255, 255, 0.14);
+  align-self: center;
+}
+#header .tab {
+  position: relative;
+}
+#header .tab.live {
+  color: #f97316;
+}
+.tab-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #60a5fa;
+}
+
+/* The mini player in the compact island (island/miniplayer.ts). */
+#mini-player {
+  position: absolute;
+  top: 0;
+  left: 62px;
+  right: 12px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease-out, transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+#mini-player.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+.mp-art {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.mp-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.mp-art.has-art img {
+  opacity: 1;
+}
+.mp-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 11px var(--font);
+  color: rgba(245, 246, 248, 0.88);
+}
+.mp-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f6f8;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+.mp-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.mp-btn:active {
+  transform: scale(0.9);
+}
+
 /* Pages of four pills on a sliding track, with dots to jump between them. */
 .pill-pages {
   position: relative;

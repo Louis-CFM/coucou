@@ -23,10 +23,10 @@ import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { isMusicPill } from "../core/spotify";
-import { isExtraPill } from "../core/extras";
+import { FOCUS_ID, Focus, INBOX_ID, Inbox, TODO_ID, isExtraPill } from "../core/extras";
 import { buildExtraCard, type ExtraCard } from "./extras";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
-import { language, t, tl, type Msg } from "../i18n/i18n";
+import { N_, language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
@@ -37,6 +37,8 @@ export interface ViewActions {
   /** Folds a waiting card to the compact island without answering it. */
   foldApproval(): void;
   setFocus(id: string): void;
+  /** Declares the pill if needed, then opens the island on it. */
+  openPill(id: string): void;
   openTerminal(): void;
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
@@ -112,6 +114,17 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  // Coucou's own pills, one click away (core/extras.ts): declared on first use.
+  const extraTab = (id: string, title: string, icon: string, stroke = 0) => {
+    const b = h("button", { class: "tab", title: tl(title), onclick: () => { actions.blip(); actions.openPill(id); } },
+      svg(icon, 13, stroke ? { stroke } : {}));
+    return b;
+  };
+  const tabFocus = extraTab(FOCUS_ID, N_("Focus"), ICONS.timer);
+  const tabTodo = extraTab(TODO_ID, N_("To-do"), ICONS.check, 2.4);
+  const tabInbox = extraTab(INBOX_ID, N_("Inbox"), ICONS.phone, 2);
+  const inboxDot = h("i", { class: "tab-dot" });
+  tabInbox.append(inboxDot);
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
@@ -129,7 +142,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, h("span", { class: "tab-sep" }), tabFocus, tabTodo, tabInbox),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -141,6 +154,13 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      const onPill = (id: string) => v === "overview" && State.focusId === id;
+      tabFocus.classList.toggle("on", onPill(FOCUS_ID));
+      tabTodo.classList.toggle("on", onPill(TODO_ID));
+      tabInbox.classList.toggle("on", onPill(INBOX_ID));
+      // A running timer and unread calls show on their buttons.
+      tabFocus.classList.toggle("live", Focus.active);
+      inboxDot.style.display = Inbox.unseen > 0 ? "" : "none";
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));

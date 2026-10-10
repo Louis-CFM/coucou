@@ -28,6 +28,7 @@ import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 import { LIVE_W, Live, buildLive } from "./live";
+import { buildMiniPlayer, miniPlayerWanted } from "./miniplayer";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -59,6 +60,9 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private live = buildLive();
+  private mini = buildMiniPlayer();
+  /** The compact width last animated to, so music starting widens it once. */
+  private compactW = 0;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -163,6 +167,14 @@ export class Island {
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
       foldApproval: () => this.foldApproval(),
+      openPill: (id) => {
+        if (!State.settings.activeIntegrations.includes(id)) {
+          State.toggleIntegration(id);
+          void Bridge.saveSettings(State.settings);
+        }
+        State.setFocus(id);
+        this.setView("overview");
+      },
       setFocus: (id) => {
         State.setFocus(id);
         Sound.play("blip");
@@ -295,6 +307,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.live.el,
+      this.mini.el,
       this.countdown,
     );
 
@@ -662,6 +675,7 @@ export class Island {
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
     if (State.mode === "compact" && Live.current) w = Live.current.kind === "call" ? LIVE_W + 64 : LIVE_W;
+    else if (State.mode === "compact" && miniPlayerWanted()) w = LIVE_W;
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1193,7 +1207,17 @@ export class Island {
     this.live.sync(expanded);
 
     // Compact mini grid
-    const showGrid = State.mode === "compact" && !Live.current;
+    // Music: the mini player, unless a live activity is up (it comes back after).
+    const showMini = State.mode === "compact" && !Live.current && miniPlayerWanted();
+    this.mini.sync(showMini);
+    if (State.mode === "compact") {
+      const w = this.targetSize().w;
+      if (w !== this.compactW) {
+        this.compactW = w;
+        this.animateGeometry(false);
+      }
+    }
+    const showGrid = State.mode === "compact" && !Live.current && !showMini;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);

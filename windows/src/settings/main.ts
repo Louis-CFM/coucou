@@ -780,6 +780,10 @@ const INTEGRATIONS: IntegrationDef[] = [
   // media controls on Windows — see core/pills.ts).
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Coucou's own pills: nothing to connect; also one click away in the island's top bar.
+  { id: "integration_focus", name: N_("Focus"), color: "#F97316", fields: [] },
+  { id: "integration_todo", name: N_("To-do"), color: "#22D3EE", fields: [] },
+  { id: "integration_inbox", name: N_("Inbox"), color: "#60A5FA", fields: [] },
   { id: "integration_media", name: "Now Playing", color: "#A78BFA", fields: [],
     hint: N_("Any app that plays: a browser tab, VLC, Media Player…") },
 ];
@@ -866,7 +870,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
           colorDot(def, "", () => settings.pillColors, pickColor),
-          h("span", { style: "font-size:12.5px", text: def.name }),
+          h("span", { style: "font-size:12.5px", text: t(def.name) }),
         ),
         rows,
       ),
