@@ -34,6 +34,7 @@ final class HookServer: @unchecked Sendable {
     private static let maxPayload = 1_048_576          // 1 MB — reject oversized messages
     private static let receiveTimeoutSeconds: Int = 5   // SO_RCVTIMEO on client sockets
     private static let maxConnections = 32              // concurrent connection ceiling
+    private static let maxAgentPills = 12               // dynamic coucou_agent pills at once
 
     private var serverFD: Int32 = -1
     private let connectionLock = NSLock()
@@ -602,6 +603,16 @@ final class HookServer: @unchecked Sendable {
     private func upsertExternalAgent(id: String, name: String) {
         let state = AppState.shared
         guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
+        // A tag whose session never ends would keep its pill forever: past the cap,
+        // drop the oldest one not working. Same rule as Windows and Linux (state.ts).
+        let dynamic = state.tasks.filter {
+            $0.source == .agent && $0.id != state.mainPillId && !state.activeIntegrations.contains($0.id)
+        }
+        if dynamic.count >= Self.maxAgentPills {
+            let busy: Set<BotState> = [.working, .thinking, .searching, .approval, .question]
+            guard let stale = dynamic.first(where: { !busy.contains($0.state) }) else { return }
+            state.removeTask(id: stale.id)
+        }
         let color: String
         if let def = PillCatalog.definition(for: id) {
             color = def.color
