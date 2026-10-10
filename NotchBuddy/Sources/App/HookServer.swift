@@ -1063,7 +1063,7 @@ final class HookServer: @unchecked Sendable {
         let rawName = URL(fileURLWithPath: cwd).lastPathComponent
         let name = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
         guard let host = payload["coucou_remote"] as? String else { return (cwd, name) }
-        return ("", "\(name) · \(host)")
+        return ("", "\(name) · \(SSHDestination.label(host))")
     }
 
     // MARK: - Project name alias mapping

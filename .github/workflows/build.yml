@@ -65,6 +65,9 @@ jobs:
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
 
+      - name: Test SSH destinations
+        run: bash scripts/test-ssh-destination.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 

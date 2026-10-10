@@ -19,8 +19,7 @@ enum RemoteSSH {
 
     /// A destination `ssh` takes as a host and nothing else: never an option.
     static func validHost(_ host: String) -> Bool {
-        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@._-:[]/")
-        return !host.isEmpty && host.count <= 255 && !host.hasPrefix("-") && host.allSatisfy { allowed.contains($0) }
+        SSHDestination.valid(host)
     }
 
     /// The host's socket here. macOS allows 103 bytes of path: a long host name
@@ -308,8 +307,7 @@ final class RemoteHosts: ObservableObject {
     func start() { sync() }
 
     func add(_ host: String) -> Bool {
-        let host = host.trimmingCharacters(in: .whitespaces)
-        guard RemoteSSH.validHost(host) else { return false }
+        guard let host = SSHDestination.parse(host) else { return false }
         if !hosts.contains(host) { hosts.append(host) }
         save()
         return true

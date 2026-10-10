@@ -18,6 +18,7 @@ import {
 import { h, clear } from "../views/dom";
 import { agentsSection } from "./agents";
 import { colorDot } from "./colors";
+import { sshDestination } from "../core/ssh";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -231,8 +232,6 @@ function claudeSection(status: HookStatus): HTMLElement {
 // ── Remote hosts section (Linux) ──────────────────────────────────────────────
 
 /** What `ssh` takes as a destination and never as an option (remote.rs valid_host). */
-const SSH_HOST = /^[A-Za-z0-9@._:[\]/-]{1,255}$/;
-
 /** The hooks change of one host's ~/.claude/settings.json, over SSH. */
 function remoteChange(host: string): Change {
   return {
@@ -310,8 +309,8 @@ function remoteSection(): HTMLElement {
     }) as HTMLInputElement;
     const add = h("button", { class: "primary", text: t("Add") });
     const submit = () => {
-      const host = input.value.trim();
-      if (!SSH_HOST.test(host) || host.startsWith("-")) {
+      const host = sshDestination(input.value);
+      if (!host) {
         input.setCustomValidity(t("Not a host name"));
         input.reportValidity();
         return;

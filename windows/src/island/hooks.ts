@@ -15,6 +15,7 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { sshLabel } from "../core/ssh";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -255,7 +256,7 @@ function handleHook(island: Island, payload: HookPayload) {
   const cwd = remote ? "" : payload.cwd ?? "";
   const raw = lastPathComponent(payload.cwd ?? "");
   const projectName = remote
-    ? `${aliasProjectName(raw || "Session")} · ${remote}`
+    ? `${aliasProjectName(raw || "Session")} · ${sshLabel(remote)}`
     : aliasProjectName(raw || "Session");
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
