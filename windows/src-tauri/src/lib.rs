@@ -2,8 +2,10 @@
 
 mod agent_hooks;
 mod agents;
+mod beat;
 mod chat;
 mod claude;
+mod claude_cli;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -665,6 +667,7 @@ pub fn run() {
         })
         .manage(Pending::default())
         .manage(Chat::default())
+        .manage(beat::Listener::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
@@ -735,6 +738,7 @@ pub fn run() {
             sounds::custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
+            beat::beat_enable,
             spotify::spotify_refresh,
             spotify::spotify_control,
             spotify::spotify_open,

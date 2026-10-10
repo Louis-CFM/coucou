@@ -5,6 +5,7 @@
 // arc angles produce a different shape.
 
 import { Ease, lerp, type EaseFn } from "../core/anim";
+import { beatPosition } from "./beat";
 import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
@@ -180,7 +181,11 @@ export function stepDanceLevel(level: number, dancing: boolean, dt: number): num
  * (0…1): a sideways sway, a hop, a tilt, and a squash on landing.
  */
 export function danceTransform(seconds: number, level: number, R: number) {
-  const beat = (seconds * 112) / 60;
+  return danceAtBeat((seconds * 112) / 60, level, R);
+}
+
+/** The same bounce at beat number `beat` (whole numbers land): see mochi/beat.ts. */
+export function danceAtBeat(beat: number, level: number, R: number) {
   const hop = Math.abs(Math.sin(Math.PI * beat));
   const land = Math.pow(1 - hop, 6);
   return {
@@ -757,7 +762,7 @@ export class BotEngine {
     const R = W * 0.3;
     const px = W / 2 + this.ox * R;
     const py = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + R * 0.88;
-    const d = danceTransform(now(), this.dancingLevel, R);
+    const d = danceAtBeat(beatPosition(Date.now()), this.dancingLevel, R);
     x.translate(px + d.dx, py + d.dy);
     x.rotate(d.rotate);
     x.scale(d.sx, d.sy);

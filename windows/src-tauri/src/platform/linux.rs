@@ -533,6 +533,31 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
     unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
+/// How far below the top of the display (logical px) a regular window starts
+/// without covering the desktop's own top bar: the display's work area, which
+/// the shell shrinks by its panel. A layer surface goes over the panel on
+/// purpose (like the Mac's notch), so it gets 0, and so does a display with no
+/// top panel. COUCOU_TOP_INSET=<px> overrides it (0 puts the island back on the
+/// bar).
+pub fn top_inset(win: &WebviewWindow, x: i32, y: i32) -> i32 {
+    if let Some(px) = std::env::var("COUCOU_TOP_INSET").ok().and_then(|v| v.trim().parse::<i32>().ok()) {
+        return px.max(0);
+    }
+    if LAYER_SURFACE.load(Ordering::Relaxed) {
+        return 0;
+    }
+    let Ok(gw) = win.gtk_window() else { return 0 };
+    let display = gw.display();
+    (0..display.n_monitors())
+        .filter_map(|i| display.monitor(i))
+        .find(|m| {
+            let g = m.geometry();
+            g.x() == x && g.y() == y
+        })
+        .map(|m| (m.workarea().y() - m.geometry().y()).clamp(0, 200))
+        .unwrap_or(0)
+}
+
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {

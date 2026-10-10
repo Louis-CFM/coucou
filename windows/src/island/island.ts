@@ -3,6 +3,7 @@
 
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { resetBeat } from "../mochi/beat";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -696,6 +697,16 @@ export class Island {
     return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
   }
 
+  /** Listening for the beat while music plays and the setting is on (beat.rs). */
+  private beatWanted = false;
+
+  private syncBeat(wanted: boolean) {
+    if (wanted === this.beatWanted) return;
+    this.beatWanted = wanted;
+    if (!wanted) resetBeat();
+    void Bridge.beatEnable(wanted);
+  }
+
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
 
   private updateWindowCollapsed() {
@@ -1096,6 +1107,8 @@ export class Island {
       view: State.view,
       focusId: State.focusTask?.id,
     }));
+
+    this.syncBeat(State.settings.beatSync && State.spotifyPlaying);
 
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);

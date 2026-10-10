@@ -8,6 +8,7 @@
 // all while he sleeps.
 
 import { Bridge, emitToWindow, onEvent, type DesktopMode } from "../core/bridge";
+import { feedBeat, type BeatMessage } from "../mochi/beat";
 import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { BotEngine } from "../mochi/engine";
@@ -85,6 +86,7 @@ class DesktopMochi {
       this.engine.triggerEmote(e.emote, e.duration);
       this.schedule();
     });
+    await onEvent<BeatMessage>("beat", (b) => feedBeat(b));
     await onEvent<Point>(DESKTOP_EVENTS.cursor, (p) => this.notePointer(p));
     await onEvent<boolean>(DESKTOP_EVENTS.visible, (on) => this.setVisible(on));
     await onEvent<string>(DESKTOP_EVENTS.flight, (kind) => {

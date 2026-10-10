@@ -3360,6 +3360,72 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Claude Code is not installed: run `claude` once in a terminal to log in.": {
+   "zh-Hans": "未安装 Claude Code：请先在终端中运行一次 `claude` 并登录。",
+   "hi": "Claude Code इंस्टॉल नहीं है: टर्मिनल में एक बार `claude` चलाकर लॉग इन करें।",
+   "es": "Claude Code no está instalado: ejecuta `claude` una vez en una terminal para iniciar sesión.",
+   "ar": "Claude Code غير مثبّت: شغّل `claude` مرة واحدة في الطرفية لتسجيل الدخول.",
+   "fr": "Claude Code n'est pas installé : lancez `claude` une fois dans un terminal pour vous connecter.",
+   "bn": "Claude Code ইনস্টল করা নেই: লগ ইন করতে টার্মিনালে একবার `claude` চালান।",
+   "pt-BR": "O Claude Code não está instalado: execute `claude` uma vez em um terminal para entrar.",
+   "ru": "Claude Code не установлен: один раз запустите `claude` в терминале и войдите.",
+   "id": "Claude Code belum terpasang: jalankan `claude` sekali di terminal untuk masuk."
+  },
+  "Claude Code took too long.": {
+   "zh-Hans": "Claude Code 响应时间过长。",
+   "hi": "Claude Code ने बहुत देर लगा दी।",
+   "es": "Claude Code tardó demasiado.",
+   "ar": "استغرق Claude Code وقتًا طويلًا.",
+   "fr": "Claude Code a mis trop de temps.",
+   "bn": "Claude Code অনেক সময় নিয়েছে।",
+   "pt-BR": "O Claude Code demorou demais.",
+   "ru": "Claude Code отвечал слишком долго.",
+   "id": "Claude Code terlalu lama."
+  },
+  "Dance to the beat": {
+   "zh-Hans": "随节拍起舞",
+   "hi": "बीट पर नाचें",
+   "es": "Bailar al ritmo",
+   "ar": "الرقص مع الإيقاع",
+   "fr": "Danser en rythme",
+   "bn": "বিটের তালে নাচুন",
+   "pt-BR": "Dançar no ritmo",
+   "ru": "Танцевать в такт",
+   "id": "Menari mengikuti ketukan"
+  },
+  "While Spotify plays, Coucou listens to your speakers' output (not the microphone) to find the beat, so Mochi dances in time. Nothing is recorded or sent anywhere. Needs PipeWire.": {
+   "zh-Hans": "Spotify 播放时，Coucou 会监听扬声器的输出（不是麦克风）来找出节拍，让 Mochi 踩着点跳舞。不会录音，也不会发送到任何地方。需要 PipeWire。",
+   "hi": "Spotify चलने पर Coucou आपके स्पीकर के आउटपुट (माइक्रोफ़ोन नहीं) को सुनकर बीट ढूँढता है, ताकि Mochi ताल में नाचे। कुछ भी रिकॉर्ड या कहीं भेजा नहीं जाता। PipeWire चाहिए।",
+   "es": "Mientras suena Spotify, Coucou escucha la salida de tus altavoces (no el micrófono) para encontrar el ritmo y que Mochi baile al compás. No se graba ni se envía nada. Requiere PipeWire.",
+   "ar": "أثناء تشغيل Spotify، يستمع Coucou إلى خرج مكبرات الصوت (وليس الميكروفون) ليجد الإيقاع فيرقص Mochi معه. لا يُسجَّل شيء ولا يُرسل إلى أي مكان. يتطلب PipeWire.",
+   "fr": "Pendant que Spotify joue, Coucou écoute la sortie de vos haut-parleurs (pas le micro) pour trouver le rythme et faire danser Mochi en mesure. Rien n'est enregistré ni envoyé. Nécessite PipeWire.",
+   "bn": "Spotify বাজলে Coucou আপনার স্পিকারের আউটপুট (মাইক্রোফোন নয়) শুনে বিট খুঁজে নেয়, যাতে Mochi তালে নাচে। কিছুই রেকর্ড বা কোথাও পাঠানো হয় না। PipeWire লাগে।",
+   "pt-BR": "Enquanto o Spotify toca, o Coucou escuta a saída dos seus alto-falantes (não o microfone) para achar a batida e o Mochi dançar no ritmo. Nada é gravado nem enviado. Requer PipeWire.",
+   "ru": "Пока играет Spotify, Coucou слушает выход ваших колонок (не микрофон), чтобы найти ритм, и Mochi танцует в такт. Ничего не записывается и никуда не отправляется. Нужен PipeWire.",
+   "id": "Saat Spotify memutar, Coucou mendengarkan keluaran speaker Anda (bukan mikrofon) untuk menemukan ketukan agar Mochi menari sesuai irama. Tidak ada yang direkam atau dikirim. Membutuhkan PipeWire."
+  },
+  "Chat memory": {
+   "zh-Hans": "聊天记忆",
+   "hi": "चैट मेमोरी",
+   "es": "Memoria del chat",
+   "ar": "ذاكرة الدردشة",
+   "fr": "Mémoire du chat",
+   "bn": "চ্যাট মেমরি",
+   "pt-BR": "Memória do chat",
+   "ru": "Память чата",
+   "id": "Memori obrolan"
+  },
+  "The Claude Code chat shares your memory notes (the Obsidian vault's .agent/memory folder, or COUCOU_MEMORY_DIR): it reads them and can save new ones there, nowhere else.": {
+   "zh-Hans": "Claude Code 聊天会共享你的记忆笔记（Obsidian 库的 .agent/memory 文件夹，或 COUCOU_MEMORY_DIR）：它可以读取，也可以在那里保存新笔记，不会写到其他地方。",
+   "hi": "Claude Code चैट आपके मेमोरी नोट्स साझा करता है (Obsidian vault का .agent/memory फ़ोल्डर, या COUCOU_MEMORY_DIR): वह उन्हें पढ़ता है और नए नोट वहीं सहेज सकता है, कहीं और नहीं।",
+   "es": "El chat de Claude Code comparte tus notas de memoria (la carpeta .agent/memory del vault de Obsidian, o COUCOU_MEMORY_DIR): las lee y puede guardar notas nuevas ahí, en ningún otro sitio.",
+   "ar": "تشارك دردشة Claude Code ملاحظات ذاكرتك (مجلد .agent/memory في مخزن Obsidian أو COUCOU_MEMORY_DIR): تقرأها ويمكنها حفظ ملاحظات جديدة هناك فقط.",
+   "fr": "Le chat Claude Code partage vos notes de mémoire (le dossier .agent/memory du vault Obsidian, ou COUCOU_MEMORY_DIR) : il les lit et peut y enregistrer de nouvelles notes, nulle part ailleurs.",
+   "bn": "Claude Code চ্যাট আপনার মেমরি নোট শেয়ার করে (Obsidian vault-এর .agent/memory ফোল্ডার, বা COUCOU_MEMORY_DIR): এটি সেগুলো পড়ে এবং সেখানেই নতুন নোট সংরক্ষণ করতে পারে, অন্য কোথাও নয়।",
+   "pt-BR": "O chat do Claude Code compartilha suas notas de memória (a pasta .agent/memory do vault do Obsidian, ou COUCOU_MEMORY_DIR): ele as lê e pode salvar novas notas ali, em nenhum outro lugar.",
+   "ru": "Чат Claude Code использует ваши заметки памяти (папка .agent/memory в хранилище Obsidian или COUCOU_MEMORY_DIR): он читает их и может сохранять новые только там.",
+   "id": "Obrolan Claude Code berbagi catatan memori Anda (folder .agent/memory di vault Obsidian, atau COUCOU_MEMORY_DIR): ia membacanya dan dapat menyimpan catatan baru di sana, bukan di tempat lain."
   }
  }
 }

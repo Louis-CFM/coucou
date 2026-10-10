@@ -20,6 +20,19 @@ pub const PANEL_H: f64 = 320.0;
 /// Logical size of the invisible strip that wakes the island when it is hidden.
 pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
+/// The wake strip is taller when the island sits below a top bar: the pointer
+/// has to stop on it instead of slamming into the screen's edge.
+const STRIP_H_BELOW_BAR: f64 = 14.0;
+/// The strip height in use (logical px, as f32 bits): set with the geometry,
+/// read for the click-through region.
+static STRIP_H_NOW: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+fn strip_height() -> f64 {
+    match STRIP_H_NOW.load(Ordering::Relaxed) {
+        0 => STRIP_H,
+        bits => f32::from_bits(bits) as f64,
+    }
+}
 
 pub const WINDOW_LABEL: &str = "island";
 
@@ -307,11 +320,16 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    let (lx, ly) = logical_origin(&m);
+    // Below the desktop's top bar rather than over it (0 where it may cover it).
+    let inset = platform::top_inset(&win, lx, ly);
+    let strip_h = if inset > 0 { STRIP_H_BELOW_BAR } else { STRIP_H };
+    STRIP_H_NOW.store((strip_h as f32).to_bits(), Ordering::Relaxed);
+    let (lw, lh) = if collapsed { (STRIP_W, strip_h) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let y = mp.y + (inset as f64 * scale).round() as i32;
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -322,7 +340,6 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
-    let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
@@ -453,7 +470,7 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
         // The wake strip itself, never "the whole window": if the window ever
         // fails to shrink to the strip, the rest of it must not swallow clicks
         // meant for whatever sits under the top of the screen.
-        Some((0.0, 0.0, STRIP_W, STRIP_H))
+        Some((0.0, 0.0, STRIP_W, strip_height()))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {

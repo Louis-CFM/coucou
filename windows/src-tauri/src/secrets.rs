@@ -30,7 +30,58 @@ fn entry(key: &str) -> Option<Entry> {
 }
 
 pub fn get(key: &str) -> Option<String> {
-    entry(key)?.get_password().ok().filter(|v| !v.is_empty())
+    let stored = entry(key).and_then(|e| e.get_password().ok()).filter(|v| !v.is_empty());
+    if stored.is_none() && key == "github-token" {
+        return gh_cli_token();
+    }
+    stored
+}
+
+// ── GitHub CLI login ──────────────────────────────────────────────────────────
+//
+// With no GitHub token stored, the pill uses the login of the user's own `gh`
+// (`gh auth token`), asked each time it is needed, kept in memory for a few
+// minutes and never written anywhere: it is only ever sent to api.github.com,
+// like the stored one. A token stored in Settings always wins.
+// COUCOU_GH_CLI=0 turns this off.
+
+#[cfg(unix)]
+fn gh_cli_token() -> Option<String> {
+    use std::process::{Command, Stdio};
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+
+    static CACHE: Mutex<Option<(Instant, Option<String>)>> = Mutex::new(None);
+    const FOUND_FOR: Duration = Duration::from_secs(600);
+    const MISSING_FOR: Duration = Duration::from_secs(60);
+
+    if std::env::var("COUCOU_GH_CLI").is_ok_and(|v| v == "0") {
+        return None;
+    }
+    let mut cache = CACHE.lock().ok()?;
+    if let Some((at, token)) = cache.as_ref() {
+        let ttl = if token.is_some() { FOUND_FOR } else { MISSING_FOR };
+        if at.elapsed() < ttl {
+            return token.clone();
+        }
+    }
+    let token = Command::new("gh")
+        .args(["auth", "token", "--hostname", "github.com"])
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty() && t.len() < 512 && t.bytes().all(|b| b.is_ascii_graphic()));
+    *cache = Some((Instant::now(), token.clone()));
+    token
+}
+
+#[cfg(not(unix))]
+fn gh_cli_token() -> Option<String> {
+    None
 }
 
 pub fn set(key: &str, value: &str) -> Result<(), String> {

@@ -103,6 +103,10 @@ export interface Settings {
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
+  /** Mochi dances on the beat of the music (Linux; listens to the speakers' output). */
+  beatSync: boolean;
+  /** The Claude Code chat shares the user's memory notes (Linux; claude_cli.rs). */
+  chatMemory: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -158,6 +162,8 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   openOnHover: false,
+  beatSync: false,
+  chatMemory: true,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",

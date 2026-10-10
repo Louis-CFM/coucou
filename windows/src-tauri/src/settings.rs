@@ -19,6 +19,11 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    /// Mochi dances on the beat of the music, found by listening to the
+    /// speakers' output (beat.rs, Linux). Off by default.
+    pub beat_sync: bool,
+    /// The Claude Code chat shares the user's memory notes (claude_cli.rs).
+    pub chat_memory: bool,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -99,6 +104,8 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            beat_sync: false,
+            chat_memory: true,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -114,7 +121,7 @@ impl Default for Settings {
             show_plan_in_notch: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
-            chat_provider: crate::chat::ANTHROPIC.into(),
+            chat_provider: crate::claude_cli::ID.into(),
             chat_models: BTreeMap::new(),
             ollama_url: String::new(),
             lmstudio_url: String::new(),
@@ -381,6 +388,8 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "beatSync": true,
+  "chatMemory": false,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -784,6 +793,8 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "beatSync",
+                "chatMemory",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
