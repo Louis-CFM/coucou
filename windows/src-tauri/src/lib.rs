@@ -211,7 +211,8 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
+    // VSCodium is the same editor under another name.
+    if let Some(code) = platform::find_on_path("code").or_else(|| platform::find_on_path("codium")) {
         let mut cmd = Command::new(code);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
@@ -248,9 +249,14 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
-                open_in_vscode(path);
+            if platform::focus_session_window(&owners, &folder) {
+                return;
             }
+            if platform::runs_in_terminal(&owners) {
+                crate::log::line("open terminal: its window could not be raised".to_string());
+                return;
+            }
+            open_in_vscode(path);
         });
         true
     }
@@ -277,7 +283,8 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
+    // VSCodium is the same editor under another name.
+    if let Some(code) = platform::find_on_path("code").or_else(|| platform::find_on_path("codium")) {
         let mut cmd = Command::new(code);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
