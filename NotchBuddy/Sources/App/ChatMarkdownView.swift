@@ -22,14 +22,14 @@ struct ChatMarkdownView: View {
     private func blockView(_ block: MDBlock) -> some View {
         switch block {
         case .heading(let level, let text):
-            Text(inlineAttributed(text))
+            Text(ChatMarkdown.inlineAttributed(text))
                 .font(.system(size: level <= 2 ? 14 : 13, weight: level <= 2 ? .bold : .semibold))
                 .foregroundColor(Color(hex: "#F1F2F4"))
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
 
         case .paragraph(let text):
-            Text(inlineAttributed(text))
+            Text(ChatMarkdown.inlineAttributed(text))
                 .font(.system(size: 12.5))
                 .foregroundColor(Color(hex: "#B0B5BE"))
                 .fixedSize(horizontal: false, vertical: true)
@@ -56,7 +56,7 @@ struct ChatMarkdownView: View {
                     .font(.system(size: 12.5))
                     .foregroundColor(Color(hex: "#6B7079"))
                     .frame(minWidth: prefix.count > 2 ? 20 : 10, alignment: .leading)
-                Text(inlineAttributed(text))
+                Text(ChatMarkdown.inlineAttributed(text))
                     .font(.system(size: 12.5))
                     .foregroundColor(Color(hex: "#B0B5BE"))
                     .fixedSize(horizontal: false, vertical: true)
@@ -70,7 +70,7 @@ struct ChatMarkdownView: View {
                     .fill(Color(hex: "#4B5563"))
                     .frame(width: 2)
                     .clipShape(Capsule())
-                Text(inlineAttributed(text))
+                Text(ChatMarkdown.inlineAttributed(text))
                     .font(.system(size: 12.5))
                     .foregroundColor(Color(hex: "#8A8F98"))
                     .fixedSize(horizontal: false, vertical: true)
@@ -80,13 +80,6 @@ struct ChatMarkdownView: View {
         case .rule:
             Divider().opacity(0.3)
         }
-    }
-
-    private func inlineAttributed(_ text: String) -> AttributedString {
-        var options = AttributedString.MarkdownParsingOptions(
-            interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        options.failurePolicy = .returnPartiallyParsedIfPossible
-        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
 

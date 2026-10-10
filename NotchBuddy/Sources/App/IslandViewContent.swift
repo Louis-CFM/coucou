@@ -607,19 +607,26 @@ private func openClaudeDesktopApp() {
 struct FinishedView: View {
     @ObservedObject var state: AppState
 
+    private var completionText: String {
+        if let finalLine = state.focusTask?.finalLine { return finalLine }
+        if let step = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return step }
+        return String(localized: "Session finished")
+    }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
                 AgentWho(task: state.focusTask, label: "Claude Code finished")
-                Text({
-                    if let fl = state.focusTask?.finalLine { return fl }
-                    if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
-                    return String(localized: "Session finished")
-                }())
+                Text(ChatMarkdown.inlineAttributed(completionText))
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard let safe = safeWebURL(url.absoluteString) else { return .discarded }
+                        NSWorkspace.shared.open(safe)
+                        return .handled
+                    })
                 HStack(spacing: 8) {
                     if state.focusTask?.id == "agent_claude-desktop" {
                         // Sessions from the Claude desktop app live there, not in a terminal.

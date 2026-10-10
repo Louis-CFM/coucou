@@ -16,6 +16,15 @@ enum MDBlock {
 
 enum ChatMarkdown {
 
+    /// Parses the inline Markdown supported by assistant responses while
+    /// preserving whitespace for compact, single-line surfaces.
+    static func inlineAttributed(_ text: String) -> AttributedString {
+        var options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        options.failurePolicy = .returnPartiallyParsedIfPossible
+        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+    }
+
     static func parse(_ input: String) -> [MDBlock] {
         var blocks: [MDBlock] = []
         let lines = input.components(separatedBy: "\n")
