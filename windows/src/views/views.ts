@@ -233,6 +233,8 @@ function buildOverview(actions: ViewActions): ViewHost {
   let lastFocus: string | null = null;
   let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | null = null;
   let cardKey = "";
+  /** Whether the diff card on screen follows edits live. */
+  let liveCardShown = false;
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
 
@@ -351,7 +353,10 @@ function buildOverview(actions: ViewActions): ViewHost {
         const key = `diff~${task.id}~${diff.id}~${live}`;
         if (key !== cardKey) {
           cardKey = key;
+          // A live edit replacing a live card: cross-fade, no slide.
+          const swap = live && mode === "diff" && liveCardShown;
           mode = "diff";
+          liveCardShown = live;
           clear(leftBody);
           leftBody.append(buildDiffCard(diff, {
             dismiss: () => {
@@ -360,6 +365,7 @@ function buildOverview(actions: ViewActions): ViewHost {
             },
             open: (path) => void Bridge.openFileInVSCode(path),
             live,
+            swap,
           }));
         }
       } else if (task && sessionActive) {

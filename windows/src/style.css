@@ -528,6 +528,46 @@ body {
   padding: 4px 10px 4px 108px;
 }
 
+/* Live edit: the card slides in, or cross-fades when it replaces another
+   (numbers from core/reveal.ts). */
+.diff-card.diff-enter {
+  animation: diff-enter 220ms ease-out both;
+}
+
+.diff-card.diff-swap {
+  animation: diff-swap 160ms ease-out both;
+}
+
+@keyframes diff-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes diff-swap {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Context that arrives after the edit started revealing. */
+.reveal-late {
+  animation: diff-swap 150ms ease-out both;
+}
+
+.reveal-caret {
+  color: var(--green);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diff-card.diff-enter,
+  .diff-card.diff-swap,
+  .reveal-late {
+    animation: none;
+  }
+}
+
 .diff-head {
   display: flex;
   align-items: center;

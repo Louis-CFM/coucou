@@ -14,6 +14,7 @@ import { State } from "../core/state";
 import { tl } from "../i18n/i18n";
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
+import { caret, playReveal, revealWanted, type RevealRow, type RevealRun } from "./reveal";
 import type { ViewActions, ViewHost } from "./views";
 
 export interface EditShown {
@@ -314,15 +315,31 @@ function fileTab(d: CodeData): HTMLElement {
   );
 }
 
-function codeRow(r: Row): HTMLElement {
-  return h(
+function codeRow(r: Row): RevealRow & { kind: Row["kind"] } {
+  const text = h("span", { class: "ed-text" }, ...highlight(r.text));
+  const el = h(
     "div",
     { class: `ed-row ${r.kind}` },
     h("span", { class: "ed-n", text: r.n == null ? "" : String(r.n) }),
     h("span", { class: "ed-sign", text: r.kind === "add" ? "+" : r.kind === "del" ? "−" : "" }),
-    h("span", { class: "ed-text" }, ...highlight(r.text)),
+    text,
   );
+  const chars = Array.from(r.text);
+  return {
+    kind: r.kind,
+    el,
+    typed: r.kind === "add",
+    length: chars.length,
+    paint(n, withCaret) {
+      clear(text);
+      text.append(...highlight(chars.slice(0, n).join("")));
+      if (withCaret) text.append(caret());
+    },
+  };
 }
+
+/** What makes an edit the same one: a snippet arriving late does not change it. */
+const editKey = (e: EditShown): string => `${e.file}\n${e.added}`;
 
 /** A line a test runner printed: PASS / FAIL as a badge, ticks and crosses coloured. */
 function tailLine(text: string): HTMLElement {
@@ -398,6 +415,13 @@ export function buildCodeView(actions: ViewActions): ViewHost {
   const editor = h("div", { class: "editor" });
   const el = h("div", { class: "view" }, h("div", { class: "card" }, h("div", { class: "code-view" }, left, editor)));
   let key = "";
+  // The reveal of the edit shown (restarted when the edit changes).
+  let run: RevealRun | null = null;
+  let revealed = "";
+  let revealDone = false;
+  /** The first rows came without their context: it fades in on its own when it arrives. */
+  let lateContext = false;
+  let lateFaded = false;
 
   return {
     el,
@@ -407,6 +431,8 @@ export function buildCodeView(actions: ViewActions): ViewHost {
       if (!task || !d) {
         // The pill in front has nothing to show (yet): no stale code of another one.
         key = "";
+        run?.stop();
+        run = null;
         clear(left);
         clear(editor);
         return;
@@ -446,11 +472,39 @@ export function buildCodeView(actions: ViewActions): ViewHost {
         phaseList(d),
       );
 
+      const prev = run;
+      prev?.stop();
+      run = null;
+
       clear(editor);
       editor.append(fileTab(d));
-      const rows = d.edit ? fit(codeRows(d.edit), codeRowBudget(d)) : [];
-      if (rows.length) editor.append(h("div", { class: "ed-code" }, ...rows.map(codeRow)));
+      const rows = (d.edit ? fit(codeRows(d.edit), codeRowBudget(d)) : []).map(codeRow);
+      if (rows.length) editor.append(h("div", { class: "ed-code" }, ...rows.map((r) => r.el)));
       if (d.command) editor.append(terminal(d.command));
+
+      // Only the followed session's edit is played; one opened by hand stays still.
+      if (!live || !d.edit || !revealWanted(rows.length)) return;
+      const edit = editKey(d.edit);
+      let from = 0;
+      if (edit !== revealed) {
+        revealed = edit;
+        revealDone = false;
+        lateContext = !d.edit.snippet;
+        lateFaded = false;
+      } else {
+        if (prev?.done) revealDone = true;
+        from = prev?.elapsed() ?? 0;
+      }
+
+      // Context that arrives after the edit just fades in.
+      const late = lateContext ? rows.filter((r) => r.kind === "ctx") : [];
+      if (!lateFaded) for (const r of late) r.el.classList.add("reveal-late");
+      if (late.length) lateFaded = true;
+      if (revealDone) return;
+      run = playReveal(
+        rows.filter((r) => !late.includes(r)),
+        { from },
+      );
     },
   };
 }
