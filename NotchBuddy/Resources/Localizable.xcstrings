@@ -26730,6 +26730,12 @@
             "value": "Subtitel di bawah notch"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Napisy pod notchem"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -26793,6 +26799,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mendengarkan…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Słucham…"
           }
         },
         "pt-BR": {
@@ -26860,6 +26872,12 @@
             "value": "Maaf, bisa diulang?"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przepraszam, możesz powtórzyć?"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -26923,6 +26941,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pil mana yang mau ditambahkan?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Którą zakładkę dodać?"
           }
         },
         "pt-BR": {
@@ -26990,6 +27014,12 @@
             "value": "Pil mana yang mau dihapus?"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Którą zakładkę usunąć?"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27053,6 +27083,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Playlist yang mana?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Która playlista?"
           }
         },
         "pt-BR": {
@@ -27120,6 +27156,12 @@
             "value": "Cuaca lewat suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pogoda na głos"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27183,6 +27225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kota"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miasto"
           }
         },
         "pt-BR": {
@@ -27250,6 +27298,12 @@
             "value": "Dari Open-Meteo untuk kota ini, hanya saat kamu bertanya."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z Open-Meteo dla tego miasta, tylko gdy zapytasz."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27313,6 +27367,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coucou menjawab dalam"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou odpowiada po"
           }
         },
         "pt-BR": {
@@ -27380,6 +27440,12 @@
             "value": "Suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głos"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27443,6 +27509,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suara Mac"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głos Maca"
           }
         },
         "pt-BR": {
@@ -27510,6 +27582,12 @@
             "value": "Kunci API ElevenLabs"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz API ElevenLabs"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27573,6 +27651,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kunci tersimpan di Keychain"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz zapisany w pęku kluczy"
           }
         },
         "pt-BR": {
@@ -27640,6 +27724,12 @@
             "value": "Jenis suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rodzaj głosu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27703,6 +27793,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wanita"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kobiecy"
           }
         },
         "pt-BR": {
@@ -27770,6 +27866,12 @@
             "value": "Pria"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Męski"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27833,6 +27935,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coba suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przetestuj głos"
           }
         },
         "pt-BR": {
@@ -27900,6 +28008,12 @@
             "value": "Kamu berbicara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mówisz po"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -27963,6 +28077,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otomatis (bahasa dikte Mac)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatycznie (język dyktowania Twojego Maca)"
           }
         },
         "pt-BR": {
