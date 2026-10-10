@@ -10,6 +10,7 @@ import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
+import { colorForProject } from "../core/layout";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
@@ -35,6 +36,58 @@ function dropPendingCard(island: Island): void {
 
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
+
+/**
+ * Claude Code sessions running at once: the first keeps the workspace pill,
+ * every other one gets a pill of its own, by session ID, until it ends.
+ */
+const sessionPills = new Map<string, string>();
+const SESSION_PILL = "session_";
+/** When each session was last heard from (performance.now()). */
+const lastHeard = new Map<string, number>();
+/** A session silent this long, and idle, was closed without saying so. */
+const SESSION_STALE_MS = 30 * 60 * 1000;
+
+function isSessionPill(id: string): boolean {
+  return id.startsWith(SESSION_PILL);
+}
+
+function stale(sessionId: string, pillId: string, now: number): boolean {
+  const heard = lastHeard.get(sessionId) ?? 0;
+  const t = State.tasks.find((x) => x.id === pillId);
+  return now - heard > SESSION_STALE_MS && (!t || t.state === "idle");
+}
+
+/** Drops the pills of sessions that went away without a SessionEnd. */
+function pruneSessions(now: number) {
+  for (const [sessionId, pillId] of sessionPills) {
+    if (!stale(sessionId, pillId, now)) continue;
+    sessionPills.delete(sessionId);
+    lastHeard.delete(sessionId);
+    State.removeTask(pillId);
+  }
+}
+
+/** The pill a Claude Code session's events go to. */
+function claudePill(workspaceId: string, sessionId: string): string {
+  if (!sessionId) return workspaceId;
+  const now = performance.now();
+  pruneSessions(now);
+  lastHeard.set(sessionId, now);
+  const own = sessionPills.get(sessionId);
+  if (own) return own;
+  const owner = State.tasks.find((t) => t.id === workspaceId)?.sessionId;
+  if (!owner || owner === sessionId || stale(owner, workspaceId, now)) return workspaceId;
+  // Session IDs are UUIDs; anything else still makes a plain pill ID.
+  const pillId = SESSION_PILL + sessionId.replace(/[^A-Za-z0-9-]/g, "").slice(0, 36);
+  sessionPills.set(sessionId, pillId);
+  return pillId;
+}
+
+function endSession(sessionId: string) {
+  sessionPills.delete(sessionId);
+  lastHeard.delete(sessionId);
+}
 
 function cancelStopTimer(id: string): boolean {
   const timer = stopTimers.get(id);
@@ -257,9 +310,10 @@ function handleHook(island: Island, payload: HookPayload) {
   // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
   const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
-  const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
-  const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
+  const agentId = validAgent ? `agent_${validAgent}` : claudePill(workspaceId, sessionId);
+  const isExternalAgent = validAgent !== null;
+  const ownSession = isSessionPill(agentId);
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -274,8 +328,9 @@ function handleHook(island: Island, payload: HookPayload) {
 
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
-    if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
+    if (isExternalAgent || ownSession) {
+      if (ownSession) State.upsertExternalAgent(agentId, projectName, colorForProject(projectName));
+      else State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
       const t = State.tasks.find((x) => x.id === agentId);
       if (t && cwd) t.sessionCwd = cwd;
       if (t && sessionId) t.sessionId = sessionId;
@@ -437,7 +492,8 @@ function handleHook(island: Island, payload: HookPayload) {
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
       State.clearSessionDiffs(agentId);
-      if (isExternalAgent) {
+      if (sessionId) endSession(sessionId);
+      if (isExternalAgent || ownSession) {
         State.removeTask(agentId);
       } else {
         State.updateTask(agentId, "idle");
