@@ -638,6 +638,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
+  scroll-behavior: smooth;
   user-select: text;
 }
 

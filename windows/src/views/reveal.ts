@@ -2,7 +2,7 @@
 // page. A frame is requested only while it runs: once it is done, the rows are
 // gone or another one starts, nothing is left to wake the CPU.
 
-import { REVEAL_CARET, REVEAL_MAX_LINES, REVEAL_SLIDE_PX, revealAt, revealDuration } from "../core/reveal";
+import { REVEAL_CARET, REVEAL_MAX_LINES, revealAt, revealDuration } from "../core/reveal";
 import { h } from "./dom";
 
 export interface RevealRow {
@@ -46,6 +46,7 @@ export function playReveal(rows: RevealRow[], opts: { from?: number; scroll?: HT
   let frame: number | null = null;
   let at = from;
   let done = false;
+  let followed = -1;
 
   const run: RevealRun = {
     stop() {
@@ -70,7 +71,6 @@ export function playReveal(rows: RevealRow[], opts: { from?: number; scroll?: HT
     done = true;
     rows.forEach((r, i) => {
       r.el.style.opacity = "";
-      r.el.style.transform = "";
       if (r.typed) paint(r, i, r.length, false);
     });
   };
@@ -80,13 +80,13 @@ export function playReveal(rows: RevealRow[], opts: { from?: number; scroll?: HT
     revealAt(specs, t).forEach((s, i) => {
       const r = rows[i];
       r.el.style.opacity = String(s.opacity);
-      r.el.style.transform = `translateY(${((1 - s.opacity) * REVEAL_SLIDE_PX).toFixed(2)}px)`;
       if (r.typed) paint(r, i, s.characters, s.typing);
       if (s.started) latest = i;
     });
     const box = opts.scroll;
     const row = latest >= 0 ? rows[latest].el : null;
-    if (!box || !row) return;
+    if (!box || !row || latest === followed) return;
+    followed = latest;
     // Keep the line being typed in view.
     const bottom = row.offsetTop + row.offsetHeight;
     if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = bottom - box.clientHeight;

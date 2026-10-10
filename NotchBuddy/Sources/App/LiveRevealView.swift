@@ -26,14 +26,13 @@ struct LiveRevealList<Row: View>: View, Animatable {
                 if shown[i].started {
                     row(i, shown[i])
                         .opacity(shown[i].opacity)
-                        .offset(y: (1 - shown[i].opacity) * 4)
                         .id(i)
                 }
             }
         }
         .onChange(of: started) { _, count in
             guard count > 0 else { return }
-            scrollProxy?.scrollTo(count - 1, anchor: .bottom)
+            withAnimation(.easeOut(duration: 0.12)) { scrollProxy?.scrollTo(count - 1, anchor: .bottom) }
         }
     }
 }
@@ -67,12 +66,5 @@ enum LiveRevealStyle {
     static func text(_ full: String, _ shown: LiveReveal.Shown) -> String {
         guard shown.characters < full.count || shown.typing else { return full }
         return String(full.prefix(shown.characters)) + (shown.typing ? caret : "")
-    }
-}
-
-extension AnyTransition {
-    /// A followed edit's card: fades in while rising a few points.
-    static var liveCard: AnyTransition {
-        .opacity.combined(with: .offset(y: 6))
     }
 }

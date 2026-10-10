@@ -8,7 +8,6 @@ export const REVEAL_CHARS_PER_SECOND = 90;
 export const REVEAL_STAGGER_S = 0.04;
 /** One line's fade-in. */
 export const REVEAL_FADE_S = 0.15;
-export const REVEAL_SLIDE_PX = 4;
 /** The whole sequence is scaled down to fit this. */
 export const REVEAL_MAX_S = 1.6;
 /** A bigger diff is shown at once. */

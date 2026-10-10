@@ -147,7 +147,7 @@ struct OverviewView: View {
                     CardBackground(wash: nil)
                     DiffCardView(diff: diff, live: liveDiffId != nil, onDismiss: { closeDiff() })
                         .id(diff.id)
-                        .transition(liveDiffId != nil ? .liveCard : .opacity)
+                        .transition(.opacity)
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open

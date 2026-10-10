@@ -200,6 +200,11 @@ test("the code view's rows are revealed while following live", () => {
   assert.deepEqual(rows.map((r) => r.style.opacity || ""), ["0", "0", "0"]);
   assert.equal(frames.size, 1);
 
+  // Rows fade in where they stand: nothing slides, so nothing bobs.
+  advance(60);
+  assert.ok(rows.some((r) => r.style.opacity && r.style.opacity !== "0"));
+  assert.ok(rows.every((r) => !r.style.transform));
+
   advance(2000);
   assert.deepEqual(rows.map(edText), ["const total = 0;", "const total = sum(items);", "return total;"]);
   assert.deepEqual(rows.map((r) => r.style.opacity || ""), ["", "", ""]);
