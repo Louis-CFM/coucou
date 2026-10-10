@@ -34,6 +34,8 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/** Frame pacing while only the working dots move: enough for the pulse to read as one. */
+const PULSE_FRAME_MS = 1000 / 15;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -84,6 +86,7 @@ export class Island {
   // Rust starts the window at full size so the launch greeting has room.
   private collapsed = false;
   private collapseTimer: number | null = null;
+  private blinkTimer: number | null = null;
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
@@ -941,9 +944,27 @@ export class Island {
 
   ensureRunning() {
     if (this.running) return;
+    if (this.blinkTimer != null) {
+      window.clearTimeout(this.blinkTimer);
+      this.blinkTimer = null;
+    }
     this.running = true;
     this.lastFrame = performance.now();
     requestAnimationFrame(this.frame);
+  }
+
+  /**
+   * The loop has stopped with Mochi still on screen: come back for his next
+   * blink, which only a frame can start. A hidden island schedules nothing.
+   */
+  private wakeForBlink() {
+    if (State.mode === "hidden") return;
+    const wait = this.engine.msUntilBlink();
+    if (wait === null) return;
+    this.blinkTimer = window.setTimeout(() => {
+      this.blinkTimer = null;
+      if (State.mode !== "hidden") this.ensureRunning();
+    }, Math.max(100, wait));
   }
 
   private frame = (nowMs: number) => {
@@ -1004,11 +1025,22 @@ export class Island {
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
 
-    if (busy) {
-      requestAnimationFrame(this.frame);
-    } else {
+    if (!busy) {
       this.running = false;
       Sound.idle();
+      this.wakeForBlink();
+    } else if (
+      this.engine.onlyPulsing && State.mode !== "hidden" && !settling && !greetingActive &&
+      this.botCx.settled && this.botCy.settled && this.botSize.settled &&
+      !UploadSeq.isActive && !viewAnimating
+    ) {
+      // Only the working dots are moving. A pulse that small does not need the
+      // display's own rate — eight times this on a 120 Hz panel — and no sound
+      // goes with it, so the audio thread can rest as it does when the loop stops.
+      Sound.idle();
+      window.setTimeout(() => requestAnimationFrame(this.frame), PULSE_FRAME_MS);
+    } else {
+      requestAnimationFrame(this.frame);
     }
   };
 
