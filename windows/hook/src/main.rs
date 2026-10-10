@@ -50,9 +50,16 @@ mod statusline;
 
 /// The live diff needs the whole text of a file edit, once it has happened:
 /// PostToolUse of these tools keeps its edit strings far longer than the rest.
-const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write"];
+const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write", "replace_file_content", "write_to_file"];
 /// The `tool_input` keys holding the text being replaced or written.
-const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content"];
+const DIFF_FIELDS: &[&str] = &[
+    "old_string",
+    "new_string",
+    "content",
+    "TargetContent",
+    "ReplacementContent",
+    "CodeContent",
+];
 /// Per edit string. The island stops diffing at 200 KB anyway (DiffEngine).
 const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the
@@ -474,6 +481,16 @@ mod tests {
         let raw = format!(r#"{{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{{"old_string":"{big}","new_string":"a"}}}}"#);
         let (v, _) = run(&raw, "", "");
         assert_eq!(v["tool_input"]["old_string"].as_str().unwrap().len(), big.len());
+        // Antigravity's finished replace_file_content: kept whole.
+        let raw = format!(r#"{{"hook_event_name":"PostToolUse","toolCall":{{"name":"replace_file_content","args":{{"TargetFile":"a.rs","TargetContent":"{big}","ReplacementContent":"b"}}}}}}"#);
+        let (v, _) = run(&raw, "antigravity", "");
+        assert_eq!(v["tool_input"]["old_string"].as_str().unwrap().len(), big.len());
+        assert_eq!(v["tool_input"]["TargetContent"].as_str().unwrap().len(), big.len());
+        // Antigravity's finished write_to_file: kept whole.
+        let raw = format!(r#"{{"hook_event_name":"PostToolUse","toolCall":{{"name":"write_to_file","args":{{"TargetFile":"b.rs","CodeContent":"{big}"}}}}}}"#);
+        let (v, _) = run(&raw, "antigravity", "");
+        assert_eq!(v["tool_input"]["content"].as_str().unwrap().len(), big.len());
+        assert_eq!(v["tool_input"]["CodeContent"].as_str().unwrap().len(), big.len());
         // The same edit before it happens, or an agent's event renamed onto
         // PreToolUse: the ordinary cap.
         let raw = format!(r#"{{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{{"old_string":"{big}"}}}}"#);

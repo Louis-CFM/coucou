@@ -120,7 +120,7 @@ two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
 polling, a few frames a second. He remembers his spot between launches; if it
 was on a display that is no longer connected, he stays in the island.
 
-**Live diff.** Every file Claude edits (Edit, MultiEdit, Write) shows up in the
+**Live diff.** Every file Claude or Antigravity edits (`Edit`, `MultiEdit`, `Write`, `replace_file_content`, `write_to_file`) shows up in the
 session ticker with its **+N −M** lines; click it for the diff. Same limits as the
 Mac: past 200 KB or 4 000 lines only the counts are kept, at most 50 diffs per
 session, and they are forgotten an hour after the last edit or when the session
@@ -160,8 +160,8 @@ It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
 As on the Mac, the island's header can show your plan limits: a small pill
 ("Claude 73%", green below 50 %, orange up to 80 %, red above) for the 5-hour and
-weekly Claude limits, and another for Codex. Click one for the details and the
-reset times. Both are off by default; turn them on in **Settings… → Plan usage**.
+weekly Claude limits, and pills for Codex and Antigravity. Click one for the details and the
+reset times. All are off by default; turn them on in **Settings… → Plan usage**.
 
 - **Claude** (Pro and Max plans): the numbers come from Claude Code's own status
   line. **Show in notch** first shows you the diff of the `statusLine` change in
@@ -178,6 +178,10 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
   once a minute) Coucou starts `codex app-server` and asks it
   `account/rateLimits/read`, as Codex's `/status` does, then stops it (15 s at
   most, never while paused). Codex must be signed in with ChatGPT.
+- **Antigravity**: nothing is installed and no CLI is required. When the pill shows
+  (or is clicked, at most once a minute), Coucou queries the local Antigravity
+  application's language server to retrieve your 5-hour and weekly limits for
+  Gemini models (and 3rd-party models).
 
 ## Weekly recap
 
@@ -435,8 +439,9 @@ own window.
   (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
   shows its "Edits · file" step without counts rather than wrong ones. The
   diff's ↗ needs `code` on your `PATH`; without it, it opens the file's folder —
-  never the file itself. Counts and diffs come from Claude Code's Edit,
-  MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
+  never the file itself. Counts and diffs come from Claude Code (`Edit`,
+  `MultiEdit`, `Write`) and Antigravity (`replace_file_content`, `write_to_file`),
+  on whichever pill its session is on (VS Code, Cursor, Antigravity,
   Claude Desktop); other agents' edits show as plain steps.
 - There is no iPhone to keep fetching the GitHub lists while the pill is off.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different

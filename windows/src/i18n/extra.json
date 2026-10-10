@@ -45,6 +45,17 @@
    "ru": "Уже есть группа хуков «coucou», которую написал не Coucou, — Coucou её не трогал.",
    "id": "Sudah ada grup hook bernama “coucou” yang tidak ditulis Coucou — Coucou tidak menyentuhnya."
   },
+  "A key is only sent over https, or to a server on this computer.": {
+   "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
+   "hi": "कुंजी केवल https पर, या इसी कंप्यूटर के सर्वर को भेजी जाती है।",
+   "es": "La clave solo se envía por https o a un servidor de este ordenador.",
+   "ar": "لا يُرسَل المفتاح إلا عبر https، أو إلى خادم على هذا الحاسوب.",
+   "fr": "La clé n'est envoyée qu'en https, ou à un serveur sur cet ordinateur.",
+   "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
+   "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
+   "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
+   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
+  },
   "AI for the chat": {
    "zh-Hans": "聊天用的 AI",
    "hi": "चैट के लिए AI",
@@ -122,6 +133,28 @@
    "ru": "Ответьте в терминале.",
    "id": "Jawab di terminal Anda."
   },
+  "Antigravity plan": {
+   "zh-Hans": "Antigravity 套餐",
+   "hi": "Antigravity प्लान",
+   "es": "Plan de Antigravity",
+   "ar": "خطة Antigravity",
+   "fr": "Forfait Antigravity",
+   "bn": "Antigravity প্ল্যান",
+   "pt-BR": "Plano Antigravity",
+   "ru": "Тариф Antigravity",
+   "id": "Paket Antigravity"
+  },
+  "Antigravity plan usage": {
+   "zh-Hans": "Antigravity 套餐用量",
+   "hi": "Antigravity प्लान का उपयोग",
+   "es": "Uso del plan de Antigravity",
+   "ar": "استخدام خطة Antigravity",
+   "fr": "Utilisation du forfait Antigravity",
+   "bn": "Antigravity প্ল্যানের ব্যবহার",
+   "pt-BR": "Uso do plano Antigravity",
+   "ru": "Использование тарифа Antigravity",
+   "id": "Pemakaian paket Antigravity"
+  },
   "Ask": {
    "zh-Hans": "提问",
    "hi": "पूछें",
@@ -132,6 +165,17 @@
    "pt-BR": "Perguntar",
    "ru": "Спросить",
    "id": "Tanya"
+  },
+  "Asking Antigravity…": {
+   "zh-Hans": "正在询问 Antigravity…",
+   "hi": "Antigravity से पूछ रहे हैं…",
+   "es": "Consultando a Antigravity…",
+   "ar": "جارٍ سؤال Antigravity…",
+   "fr": "Interrogation d'Antigravity…",
+   "bn": "Antigravity-কে জিজ্ঞেস করা হচ্ছে…",
+   "pt-BR": "Consultando o Antigravity…",
+   "ru": "Запрос к Antigravity…",
+   "id": "Menanyakan Antigravity…"
   },
   "Asking Codex…": {
    "zh-Hans": "正在询问 Codex…",
@@ -1486,6 +1530,17 @@
    "ru": "Ничего не покидает ваш ПК: сервер работает на этом компьютере.",
    "id": "Tidak ada yang keluar dari PC Anda: server berjalan di komputer ini."
   },
+  "Only a file dropped on the island can be sent with a question.": {
+   "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
+   "hi": "सवाल के साथ केवल वही फ़ाइल भेजी जा सकती है जो island पर छोड़ी गई हो।",
+   "es": "Solo se puede enviar con una pregunta un archivo soltado en la isla.",
+   "ar": "لا يمكن إرسال ملف مع سؤال إلا إذا أُفلِت على الجزيرة.",
+   "fr": "Seul un fichier déposé sur l'île peut être envoyé avec une question.",
+   "bn": "প্রশ্নের সঙ্গে কেবল আইল্যান্ডে ছাড়া ফাইলই পাঠানো যায়।",
+   "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
+   "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
+   "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
   "Only files dropped on the island can be added.": {
    "zh-Hans": "只能添加拖放到岛上的文件。",
    "hi": "केवल आइलैंड पर छोड़ी गई फ़ाइलें ही जोड़ी जा सकती हैं।",
@@ -2069,6 +2124,17 @@
    "ru": "Поделитесь своей неделей",
    "id": "Bagikan minggu Anda"
   },
+  "Show Antigravity plan in the notch": {
+   "zh-Hans": "在刘海中显示 Antigravity 套餐",
+   "hi": "नॉच में Antigravity प्लान दिखाएं",
+   "es": "Mostrar el plan de Antigravity en el notch",
+   "ar": "عرض خطة Antigravity في الشريط العلوي",
+   "fr": "Afficher le forfait Antigravity dans l'encoche",
+   "bn": "নচে Antigravity প্ল্যান দেখান",
+   "pt-BR": "Mostrar o plano Antigravity no notch",
+   "ru": "Показывать тариф Antigravity в нотче",
+   "id": "Tampilkan paket Antigravity di notch"
+  },
   "Show Codex plan in the notch": {
    "zh-Hans": "在刘海中显示 Codex 套餐",
    "hi": "नॉच में Codex प्लान दिखाएं",
@@ -2101,6 +2167,17 @@
    "pt-BR": "Mostre outros agentes de programação na ilha. O Coucou adiciona as próprias entradas à configuração de cada agente: você vê a alteração exata e para onde vai o backup antes de qualquer gravação, e desinstalar remove só o que o Coucou adicionou.",
    "ru": "Показывайте другие агенты для кода в острове. Coucou добавляет свои записи в конфигурацию каждого агента: до любой записи вы видите точное изменение и куда пойдёт резервная копия, а удаление убирает только то, что добавил Coucou.",
    "id": "Tampilkan agen coding lain di pulau. Coucou menambahkan entrinya ke konfigurasi masing-masing agen: Anda melihat perubahan persisnya dan lokasi cadangan sebelum apa pun ditulis, dan mencopot pemasangan hanya menghapus yang ditambahkan Coucou."
+  },
+  "Shows your Antigravity plan usage (5-hour and weekly limits) in the island's header. Coucou connects to the local Antigravity application when the pill shows; nothing is installed.": {
+   "zh-Hans": "在岛的顶栏显示你的 Antigravity 套餐用量（5 小时和每周限额）。标签显示时，Coucou 会连接本地 Antigravity 应用程序；不会安装任何东西。",
+   "hi": "आइलैंड के हेडर में आपके Antigravity प्लान का उपयोग (5 घंटे और साप्ताहिक सीमा) दिखाता है। टैब दिखने पर Coucou स्थानीय Antigravity एप्लिकेशन से कनेक्ट होता है; कुछ भी इंस्टॉल नहीं होता।",
+   "es": "Muestra el uso de tu plan de Antigravity (límites de 5 horas y semanal) en la cabecera de la isla. Coucou se conecta a la aplicación local de Antigravity cuando aparece la pestaña; no se instala nada.",
+   "ar": "يعرض استخدام خطة Antigravity (حدّا الخمس ساعات والأسبوع) في رأس الشريط. يتصل Coucou بتطبيق Antigravity المحلي عند ظهور التبويب؛ ولا يُثبَّت أي شيء.",
+   "fr": "Affiche l'utilisation de ton forfait Antigravity (limites sur 5 heures et à la semaine) dans l'en-tête de l'île. Coucou se connecte à l'application locale Antigravity quand l'onglet s'affiche ; rien n'est installé.",
+   "bn": "আইল্যান্ডের হেডারে আপনার Antigravity প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। ট্যাব দেখা গেলে Coucou স্থানীয় Antigravity অ্যাপ্লিকেশনের সাথে সংযোগ করে; কিছুই ইনস্টল হয় না।",
+   "pt-BR": "Mostra o uso do seu plano Antigravity (limites de 5 horas e semanal) no cabeçalho da ilha. O Coucou se conecta ao aplicativo local do Antigravity quando a aba aparece; nada é instalado.",
+   "ru": "Показывает использование тарифа Antigravity (лимиты на 5 часов и на неделю) в заголовке острова. Coucou подключается к локальному приложению Antigravity, когда видна вкладка; ничего не устанавливается.",
+   "id": "Menampilkan pemakaian paket Antigravity Anda (batas 5 jam dan mingguan) di header pulau. Coucou terhubung ke aplikasi lokal Antigravity saat tab tampil; tidak ada yang dipasang."
   },
   "Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在岛的顶栏显示你的 Claude 套餐用量（5 小时和每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一个状态栏中继。如果你已有状态栏，它会照常工作。仅限 Pro 和 Max 套餐。",
@@ -3338,28 +3415,6 @@
    "pt-BR": "⚠ falhou",
    "ru": "⚠ ошибка",
    "id": "⚠ gagal"
-  },
-  "A key is only sent over https, or to a server on this computer.": {
-   "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
-   "hi": "कुंजी केवल https पर, या इसी कंप्यूटर के सर्वर को भेजी जाती है।",
-   "es": "La clave solo se envía por https o a un servidor de este ordenador.",
-   "ar": "لا يُرسَل المفتاح إلا عبر https، أو إلى خادم على هذا الحاسوب.",
-   "fr": "La clé n'est envoyée qu'en https, ou à un serveur sur cet ordinateur.",
-   "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
-   "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
-   "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
-   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
-  },
-  "Only a file dropped on the island can be sent with a question.": {
-   "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
-   "hi": "सवाल के साथ केवल वही फ़ाइल भेजी जा सकती है जो island पर छोड़ी गई हो।",
-   "es": "Solo se puede enviar con una pregunta un archivo soltado en la isla.",
-   "ar": "لا يمكن إرسال ملف مع سؤال إلا إذا أُفلِت على الجزيرة.",
-   "fr": "Seul un fichier déposé sur l'île peut être envoyé avec une question.",
-   "bn": "প্রশ্নের সঙ্গে কেবল আইল্যান্ডে ছাড়া ফাইলই পাঠানো যায়।",
-   "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
-   "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
-   "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
   }
  }
 }

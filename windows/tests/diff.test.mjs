@@ -190,3 +190,29 @@ test("buildFileDiff — Write and other tools", () => {
   assert.equal(buildFileDiff("Bash", { command: "ls" }), null);
   assert.equal(buildFileDiff("Read", { file_path: "/p/n.md" }), null);
 });
+
+test("buildFileDiff — Antigravity replace_file_content and write_to_file", () => {
+  const d1 = buildFileDiff("replace_file_content", {
+    file_path: "C:\\p\\a.ts",
+    old_string: "a\nb",
+    new_string: "a\nc\nd",
+  });
+  assert.equal(fileName(d1.path), "a.ts");
+  assert.deepEqual([d1.added, d1.removed, d1.isNewFile], [2, 1, false]);
+
+  // Raw Antigravity field names
+  const d2 = buildFileDiff("replace_file_content", {
+    TargetFile: "/p/b.rs",
+    TargetContent: "fn old() {}",
+    ReplacementContent: "fn new() {\n  println!();\n}",
+  });
+  assert.equal(fileName(d2.path), "b.rs");
+  assert.deepEqual([d2.added, d2.removed, d2.isNewFile], [3, 1, false]);
+
+  const d3 = buildFileDiff("write_to_file", {
+    TargetFile: "/p/new.txt",
+    CodeContent: "hello\nworld\n",
+  });
+  assert.equal(fileName(d3.path), "new.txt");
+  assert.deepEqual([d3.added, d3.removed, d3.isNewFile], [2, 0, true]);
+});

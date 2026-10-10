@@ -31,6 +31,12 @@ export interface CodexPlanUsage extends PlanUsage {
   planType?: string;
 }
 
+export interface AntigravityPlanUsage extends PlanUsage {
+  planType?: string;
+  claudeGptWeekly?: PlanWindow;
+  claudeGptFiveHour?: PlanWindow;
+}
+
 import { dayMonth, t, weekdayShort } from "../i18n/i18n";
 
 const DAY_MS = 86_400_000;
@@ -39,10 +45,13 @@ const DAY_MS = 86_400_000;
 export const PLAN_TEXT = {
   get claudeTitle() { return t("Claude plan"); },
   get codexTitle() { return t("Codex plan"); },
+  get antigravityTitle() { return t("Antigravity plan"); },
   get claudePillTitle() { return t("Claude plan usage"); },
   get codexPillTitle() { return t("Codex plan usage"); },
+  get antigravityPillTitle() { return t("Antigravity plan usage"); },
   get waiting() { return t("Waiting for a response from Claude Code"); },
   get askingCodex() { return t("Asking Codex…"); },
+  get askingAntigravity() { return t("Asking Antigravity…"); },
   get justNow() { return t("just now"); },
   minAgo: (n: number) => t("{n} min ago", { n }),
   hAgo: (n: number) => t("{n} h ago", { n }),
@@ -125,6 +134,56 @@ export function parseCodexPlan(result: unknown, now = Date.now()): CodexPlanUsag
   return usage.fiveHour || usage.sevenDay ? usage : null;
 }
 
+// ── Antigravity ───────────────────────────────────────────────────────────────
+
+/**
+ * AntigravityPlanGauge.parse: the result of `RetrieveUserQuotaSummary`.
+ * Groups contain buckets with `remainingFraction` (0..1) and `resetTime` (ISO string).
+ */
+export function parseAntigravityPlan(result: unknown, now = Date.now()): AntigravityPlanUsage | null {
+  const r = asObj(result);
+  const resp = asObj(r?.response) ?? r;
+  const groups = Array.isArray(resp?.groups) ? resp.groups : [];
+  if (!groups.length) return null;
+
+  const usage: AntigravityPlanUsage = { updatedAt: now };
+
+  for (const group of groups) {
+    const g = asObj(group);
+    if (!g) continue;
+    const name = String(g.displayName ?? "");
+    const buckets = Array.isArray(g.buckets) ? g.buckets : [];
+    const isGemini = name.toLowerCase().includes("gemini");
+    const is3p = name.toLowerCase().includes("claude") || name.toLowerCase().includes("gpt");
+
+    for (const bucket of buckets) {
+      const b = asObj(bucket);
+      if (!b || b.disabled === true) continue;
+      const frac = isNum(b.remainingFraction) ? b.remainingFraction : null;
+      if (frac == null) continue;
+      // remainingFraction is 0..1 (e.g. 0.75 remaining = 25% used)
+      const usedPct = Math.min(100, Math.max(0, Math.round((1 - frac) * 100)));
+      const resetTimeStr = typeof b.resetTime === "string" ? b.resetTime : null;
+      const resetsAt = resetTimeStr ? Date.parse(resetTimeStr) : NaN;
+      if (Number.isNaN(resetsAt) || resetsAt <= 0) continue;
+
+      const windowObj: PlanWindow = { usedPct, resetsAt };
+      const winType = String(b.window ?? "").toLowerCase();
+      const is5h = winType.includes("5h") || winType.includes("5-hour") || String(b.bucketId ?? "").includes("5h");
+
+      if (isGemini) {
+        if (is5h) usage.fiveHour = windowObj;
+        else usage.sevenDay = windowObj;
+      } else if (is3p) {
+        if (is5h) usage.claudeGptFiveHour = windowObj;
+        else usage.claudeGptWeekly = windowObj;
+      }
+    }
+  }
+
+  return (usage.fiveHour || usage.sevenDay) ? usage : null;
+}
+
 // ── Shared ────────────────────────────────────────────────────────────────────
 
 /** What to show for a window: 0 once its reset time has passed. */
@@ -144,8 +203,8 @@ export function planColor(pct: number | null): string {
   return "#F4505E";
 }
 
-/** "Claude 73%" / "Codex 12%" on the pill; "Claude —" while there are no numbers. */
-export function pillLabel(name: "Claude" | "Codex", u: PlanUsage | null | undefined, now = Date.now()): string {
+/** "Claude 73%" / "Codex 12%" / "Antigravity 25%" on the pill; "—" while there are no numbers. */
+export function pillLabel(name: "Claude" | "Codex" | "Antigravity" | string, u: PlanUsage | null | undefined, now = Date.now()): string {
   const pct = dominantPct(u, now);
   return pct == null ? `${name} ${PLAN_TEXT.none}` : `${name} ${Math.round(pct)}%`;
 }
@@ -182,6 +241,12 @@ export function codexSubtitle(u: CodexPlanUsage | null, now = Date.now()): strin
   return (u.planType ? `${u.planType} · ` : "") + ageLabel(u.updatedAt, now);
 }
 
+/** The Antigravity card's subtitle: "Google AI Pro · 3 min ago" or "3 min ago". */
+export function antigravitySubtitle(u: AntigravityPlanUsage | null, now = Date.now()): string {
+  if (!u) return PLAN_TEXT.askingAntigravity;
+  return (u.planType ? `${u.planType} · ` : "") + ageLabel(u.updatedAt, now);
+}
+
 /** "2 available · until Oct 9", or "—" when Codex said nothing about resets. */
 export function codexResetsLabel(u: CodexPlanUsage | null): string {
   if (u?.resetCredits == null) return PLAN_TEXT.none;
@@ -193,12 +258,17 @@ export function codexResetsLabel(u: CodexPlanUsage | null): string {
   return text;
 }
 
-/** How long a Codex answer stays good before the pill asks again (as on the Mac). */
+/** How long an answer stays good before the pill asks again (as on the Mac). */
 export const CODEX_STALE_MS = 60_000;
+export const ANTIGRAVITY_STALE_MS = 60_000;
 
 /** True when the Codex numbers are missing or older than a minute. */
 export const codexIsStale = (u: CodexPlanUsage | null, now = Date.now()): boolean =>
   !u || now - u.updatedAt >= CODEX_STALE_MS;
+
+/** True when the Antigravity numbers are missing or older than a minute. */
+export const antigravityIsStale = (u: AntigravityPlanUsage | null, now = Date.now()): boolean =>
+  !u || now - u.updatedAt >= ANTIGRAVITY_STALE_MS;
 
 /** A stored Claude usage, if it still looks like one (the last numbers survive a restart). */
 export function restorePlanUsage(raw: string | null): PlanUsage | null {

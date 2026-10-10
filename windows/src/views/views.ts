@@ -14,7 +14,8 @@ import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import {
-  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
+  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, antigravityPillVisible,
+  planCardOpen, refreshCodexPlanUsage, refreshAntigravityPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
 import { lastTextStep } from "../core/diff";
@@ -116,8 +117,10 @@ export function buildHeader(actions: ViewActions): ViewHost {
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
   const claudePill = buildPlanPill(false);
   const codexPill = buildPlanPill(true);
-  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
+  const antigravityPill = buildPlanPill("antigravity");
+  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el, antigravityPill.el);
   let codexShown = false;
+  let antigravityShown = false;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -152,17 +155,25 @@ export function buildHeader(actions: ViewActions): ViewHost {
   function syncPlanPills() {
     const claudeOn = claudePillVisible();
     const codexOn = codexPillVisible();
+    const antigravityOn = antigravityPillVisible();
     claudePill.el.style.display = claudeOn ? "" : "none";
     codexPill.el.style.display = codexOn ? "" : "none";
-    planPills.classList.toggle("on", claudeOn || codexOn);
-    // Both pills: the right side tightens so it still clears the screen edge.
-    headerActions.classList.toggle("both-plans", claudeOn && codexOn);
+    antigravityPill.el.style.display = antigravityOn ? "" : "none";
+    const onCount = (claudeOn ? 1 : 0) + (codexOn ? 1 : 0) + (antigravityOn ? 1 : 0);
+    planPills.classList.toggle("on", onCount > 0);
+    // Multiple pills: the right side tightens so it still clears the screen edge.
+    headerActions.classList.toggle("both-plans", onCount > 1);
     if (claudeOn) claudePill.sync();
     if (codexOn) codexPill.sync();
+    if (antigravityOn) antigravityPill.sync();
     // Codex is asked when its pill comes into view (stale answers only).
     const shown = codexOn && State.mode === "expanded";
     if (shown && !codexShown) refreshCodexPlanUsage();
     codexShown = shown;
+    // Antigravity is asked when its pill comes into view (stale answers only).
+    const agyShown = antigravityOn && State.mode === "expanded";
+    if (agyShown && !antigravityShown) refreshAntigravityPlanUsage();
+    antigravityShown = agyShown;
   }
 }
 

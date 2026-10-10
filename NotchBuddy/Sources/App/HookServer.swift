@@ -1120,11 +1120,11 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func buildFileDiff(tool: String, input: [String: Any], pillId: String) -> FileDiff? {
         switch tool {
-        case "Edit":
-            guard let old = input["old_string"] as? String,
-                  let new = input["new_string"] as? String,
-                  let path = input["file_path"] as? String,
-                  !old.isEmpty || !new.isEmpty else { return nil }
+        case "Edit", "replace_file_content":
+            let old = (input["old_string"] as? String) ?? (input["TargetContent"] as? String)
+            let new = (input["new_string"] as? String) ?? (input["ReplacementContent"] as? String)
+            let path = (input["file_path"] as? String) ?? (input["TargetFile"] as? String)
+            guard let old, let new, let path, !old.isEmpty || !new.isEmpty else { return nil }
             let d = DiffEngine.fromEdit(old: old, new: new, path: path)
             return (d.added > 0 || d.removed > 0) ? d : nil
 
@@ -1143,9 +1143,10 @@ final class HookServer: @unchecked Sendable {
             return FileDiff(path: path, added: totalAdded, removed: totalRemoved,
                             hunks: allHunks, tooLarge: anyLarge, isNewFile: false)
 
-        case "Write":
-            guard let path = input["file_path"] as? String,
-                  let content = input["content"] as? String, !content.isEmpty else { return nil }
+        case "Write", "write_to_file":
+            let path = (input["file_path"] as? String) ?? (input["TargetFile"] as? String)
+            let content = (input["content"] as? String) ?? (input["CodeContent"] as? String)
+            guard let path, let content, !content.isEmpty else { return nil }
             let d = DiffEngine.fromNew(content: content, path: path)
             return (d.added > 0 || d.removed > 0) ? d : nil
 
@@ -3133,7 +3134,9 @@ def normalize_tool_fields(payload):
             if isinstance(tool.get('args'), dict):
                 flat = dict(tool['args'])
                 for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
-                                 ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
+                                 ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern'),
+                                 ('TargetFile', 'file_path'), ('TargetContent', 'old_string'),
+                                 ('ReplacementContent', 'new_string'), ('CodeContent', 'content')]:
                     if src in flat:
                         flat[dst] = flat[src]
                 payload['tool_input'] = flat
@@ -3440,7 +3443,9 @@ def normalize_tool_fields(payload):
             if isinstance(tool.get('args'), dict):
                 flat = dict(tool['args'])
                 for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
-                                 ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
+                                 ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern'),
+                                 ('TargetFile', 'file_path'), ('TargetContent', 'old_string'),
+                                 ('ReplacementContent', 'new_string'), ('CodeContent', 'content')]:
                     if src in flat:
                         flat[dst] = flat[src]
                 payload['tool_input'] = flat

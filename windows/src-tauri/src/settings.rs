@@ -38,6 +38,9 @@ pub struct Settings {
     /// Show the Codex plan pill (5 h / weekly limits from `codex app-server`).
     /// Off by default; nothing is installed for it.
     pub show_codex_plan_in_notch: bool,
+    /// Show the Antigravity plan pill (5 h / weekly limits from Antigravity).
+    /// Off by default; nothing is installed for it.
+    pub show_antigravity_plan_in_notch: bool,
     /// Who the chat talks to: "anthropic", a cloud provider of
     /// openai_compat.rs ("openai", "google", "openrouter"), or a model server
     /// of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
@@ -114,6 +117,7 @@ impl Default for Settings {
             show_plan_in_notch: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
+            show_antigravity_plan_in_notch: false,
             chat_provider: crate::chat::ANTHROPIC.into(),
             chat_models: BTreeMap::new(),
             ollama_url: String::new(),
@@ -391,6 +395,7 @@ mod tests {
   "showPlanInNotch": true,
   "planRelayInstalled": true,
   "showCodexPlanInNotch": true,
+  "showAntigravityPlanInNotch": true,
   "chatProvider": "ollama",
   "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
   "ollamaUrl": "http://127.0.0.1:11434",
@@ -794,6 +799,7 @@ mod tests {
                 "showPlanInNotch",
                 "planRelayInstalled",
                 "showCodexPlanInNotch",
+                "showAntigravityPlanInNotch",
                 "chatProvider",
                 "chatModels",
                 "ollamaUrl",

@@ -6,7 +6,7 @@ import {
   DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
   toggleDeclared, type HostOs, type PillDefinition,
 } from "./pills";
-import type { CodexPlanUsage, PlanUsage } from "./plan";
+import type { AntigravityPlanUsage, CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
@@ -120,6 +120,8 @@ export interface Settings {
   planRelayInstalled: boolean;
   /** Show the Codex plan pill in the island's header. */
   showCodexPlanInNotch: boolean;
+  /** Show the Antigravity plan pill in the island's header. */
+  showAntigravityPlanInNotch: boolean;
   /** Who the chat talks to (see core/providers.ts); picked in the chat view. */
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
@@ -170,6 +172,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showPlanInNotch: false,
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
+  showAntigravityPlanInNotch: false,
   chatProvider: "anthropic",
   chatModels: {},
   ollamaUrl: "",
@@ -224,10 +227,13 @@ class AppState {
   planUsage: PlanUsage | null = null;
   /** Codex's limits, from `codex app-server` (null until it has answered). */
   codexPlanUsage: CodexPlanUsage | null = null;
+  /** Antigravity's limits (null until answered). */
+  antigravityPlanUsage: AntigravityPlanUsage | null = null;
   /** A plan card is open in place of the overview's left card. */
   showingPlanDetail = false;
-  /** Which one: the Codex card rather than Claude's. */
+  /** Which one: Codex or Antigravity rather than Claude's. */
   planDetailIsCodex = false;
+  planDetailIsAntigravity = false;
   /** Per-pill file diffs, in order of reception. Steps carry their ids. */
   sessionDiffs = new Map<string, FileDiff[]>();
   private sessionDiffTimers = new Map<string, number>();

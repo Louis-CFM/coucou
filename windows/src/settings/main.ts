@@ -241,6 +241,8 @@ const PLAN_SETTINGS_TEXT = {
   get showClaude() { return t("Show in notch"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
+  get antigravity() { return t("Shows your Antigravity plan usage (5-hour and weekly limits) in the island's header. Coucou connects to the local Antigravity application when the pill shows; nothing is installed."); },
+  get showAntigravity() { return t("Show Antigravity plan in the notch"); },
 };
 
 function planSection(status: HookStatus): HTMLElement {
@@ -306,6 +308,15 @@ function planSection(status: HookStatus): HTMLElement {
         h("label", { text: PLAN_SETTINGS_TEXT.showCodex }),
         toggle(settings.showCodexPlanInNotch, (on) => {
           settings.showCodexPlanInNotch = on;
+          void save();
+        }),
+      ),
+      // Antigravity: connects locally to Antigravity when the pill shows.
+      h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.antigravity }),
+      h("div", { class: "row" },
+        h("label", { text: PLAN_SETTINGS_TEXT.showAntigravity }),
+        toggle(settings.showAntigravityPlanInNotch, (on) => {
+          settings.showAntigravityPlanInNotch = on;
           void save();
         }),
       ),

@@ -2,6 +2,7 @@
 
 mod agent_hooks;
 mod agents;
+mod antigravity_plan;
 mod chat;
 mod claude;
 mod codex_plan;
@@ -408,6 +409,13 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+/// Antigravity plan usage, asked of the local language server started by
+/// the Antigravity desktop app when its pill shows.
+#[tauri::command]
+async fn antigravity_plan_usage() -> Option<serde_json::Value> {
+    antigravity_plan::read().await
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     recap::record_decision(&app, &request_id, &decision);
@@ -692,6 +700,7 @@ pub fn run() {
             status_line_preview,
             status_line_apply,
             codex_plan_usage,
+            antigravity_plan_usage,
             approval_decision,
             approval_answer,
             approval_ack,

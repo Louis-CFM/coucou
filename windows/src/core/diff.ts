@@ -104,16 +104,18 @@ export function fromNew(content: string, path: string): FileDiff {
 }
 
 /**
- * HookServer.buildFileDiff — the diff of one Edit, MultiEdit or Write tool call,
+ * HookServer.buildFileDiff — the diff of one Edit, MultiEdit, Write,
+ * replace_file_content or write_to_file tool call,
  * or null when the call changes nothing (or is not a file edit at all).
  */
 export function buildFileDiff(tool: string, input: Record<string, unknown>): FileDiff | null {
   const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
-  const path = str(input.file_path);
+  const path = str(input.file_path) ?? str(input.TargetFile);
   switch (tool) {
-    case "Edit": {
-      const oldText = str(input.old_string);
-      const newText = str(input.new_string);
+    case "Edit":
+    case "replace_file_content": {
+      const oldText = str(input.old_string) ?? str(input.TargetContent);
+      const newText = str(input.new_string) ?? str(input.ReplacementContent);
       if (oldText == null || newText == null || path == null) return null;
       if (!oldText && !newText) return null;
       const d = fromEdit(oldText, newText, path);
@@ -141,8 +143,9 @@ export function buildFileDiff(tool: string, input: Record<string, unknown>): Fil
       if (added === 0 && removed === 0) return null;
       return { id: 0, path, added, removed, hunks, tooLarge, isNewFile: false };
     }
-    case "Write": {
-      const content = str(input.content);
+    case "Write":
+    case "write_to_file": {
+      const content = str(input.content) ?? str(input.CodeContent);
       if (path == null || !content) return null;
       const d = fromNew(content, path);
       return d.added > 0 || d.removed > 0 ? d : null;

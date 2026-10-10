@@ -5,13 +5,13 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct, effectivePct,
-  parseClaudePlan, parseCodexPlan, pillLabel, planColor, resetLabel, restorePlanUsage,
+  antigravityIsStale, antigravitySubtitle, claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct, effectivePct,
+  parseAntigravityPlan, parseClaudePlan, parseCodexPlan, pillLabel, planColor, resetLabel, restorePlanUsage,
 } from "../src/core/plan.ts";
 import { emit } from "./tauri.mjs";
 import { registerHookHandlers } from "../src/island/hooks.ts";
 import {
-  claudePillVisible, codexPillVisible, openPlanColor, planCardOpen,
+  antigravityPillVisible, claudePillVisible, codexPillVisible, openPlanColor, planCardOpen,
 } from "../src/views/usage.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
@@ -188,6 +188,69 @@ test("Codex is asked again only once its numbers are a minute old", () => {
   assert.equal(codexIsStale({ updatedAt: NOW - 60_000 }, NOW), true);
 });
 
+// ── AntigravityPlanGauge.parse ────────────────────────────────────────────────
+
+test("Antigravity parse extracts 5-hour and weekly Gemini limits", () => {
+  const payload = {
+    response: {
+      groups: [
+        {
+          displayName: "Gemini Models",
+          buckets: [
+            { bucketId: "gemini-weekly", remainingFraction: 0.616, resetTime: "2026-10-14T09:30:10Z" },
+            { bucketId: "gemini-5h", remainingFraction: 0.679, resetTime: "2026-10-08T19:46:00Z" },
+          ],
+        },
+        {
+          displayName: "Claude and GPT models",
+          buckets: [
+            { bucketId: "claude-weekly", remainingFraction: 0.90, resetTime: "2026-10-14T09:30:10Z" },
+          ],
+        },
+      ],
+    },
+  };
+  const u = parseAntigravityPlan(payload, NOW);
+  assert.ok(u);
+  assert.equal(u.fiveHour.usedPct, 32); // (1 - 0.679) * 100 = 32%
+  assert.equal(u.sevenDay.usedPct, 38); // (1 - 0.616) * 100 = 38%
+  assert.equal(u.claudeGptWeekly.usedPct, 10); // (1 - 0.90) * 100 = 10%
+  assert.equal(u.fiveHour.resetsAt, Date.parse("2026-10-08T19:46:00Z"));
+  assert.equal(u.sevenDay.resetsAt, Date.parse("2026-10-14T09:30:10Z"));
+  assert.equal(u.updatedAt, NOW);
+});
+
+test("disabled Antigravity buckets or empty payload are ignored", () => {
+  assert.equal(parseAntigravityPlan(null, NOW), null);
+  assert.equal(parseAntigravityPlan({}, NOW), null);
+  assert.equal(parseAntigravityPlan({ response: { groups: [] } }, NOW), null);
+  const disabled = {
+    response: {
+      groups: [
+        {
+          displayName: "Gemini Models",
+          buckets: [
+            { bucketId: "gemini-5h", remainingFraction: 0.5, resetTime: "2026-10-08T19:46:00Z", disabled: true },
+          ],
+        },
+      ],
+    },
+  };
+  assert.equal(parseAntigravityPlan(disabled, NOW), null);
+});
+
+test("Antigravity is asked again once numbers are a minute old", () => {
+  assert.equal(antigravityIsStale(null, NOW), true);
+  assert.equal(antigravityIsStale({ updatedAt: NOW - 59_000 }, NOW), false);
+  assert.equal(antigravityIsStale({ updatedAt: NOW - 60_000 }, NOW), true);
+});
+
+test("Antigravity subtitle shows status or age", () => {
+  assert.equal(antigravitySubtitle(null, NOW), "Asking Antigravity…");
+  assert.equal(antigravitySubtitle({ updatedAt: NOW - 120_000 }, NOW), "2 min ago");
+  assert.equal(antigravitySubtitle({ planType: "Google AI Pro", updatedAt: NOW - 120_000 }, NOW), "Google AI Pro · 2 min ago");
+});
+
 // ── The pills in the island ───────────────────────────────────────────────────
 
 registerHookHandlers({ alert() {}, setView() {}, reveal() {}, dropPin() {} });
@@ -198,13 +261,16 @@ beforeEach(() => {
   State.paused = false;
   State.planUsage = null;
   State.codexPlanUsage = null;
+  State.antigravityPlanUsage = null;
   State.showingPlanDetail = false;
   State.planDetailIsCodex = false;
+  State.planDetailIsAntigravity = false;
 });
 
-test("both pills are off by default, so the header is as it shipped", () => {
+test("all plan pills are off by default, so the header is as it shipped", () => {
   assert.equal(claudePillVisible(), false);
   assert.equal(codexPillVisible(), false);
+  assert.equal(antigravityPillVisible(), false);
 });
 
 test("the Claude pill needs the switch and the relay, and the overview", () => {
@@ -223,6 +289,13 @@ test("the Codex pill needs only its switch, on the overview", () => {
   assert.equal(codexPillVisible(), false);
 });
 
+test("the Antigravity pill needs only its switch, on the overview", () => {
+  State.settings.showAntigravityPlanInNotch = true;
+  assert.equal(antigravityPillVisible(), true);
+  State.view = "settings";
+  assert.equal(antigravityPillVisible(), false);
+});
+
 test("an open card follows its pill, and Mochi wears that plan's colour", () => {
   State.settings.showPlanInNotch = true;
   State.settings.planRelayInstalled = true;
@@ -235,6 +308,14 @@ test("an open card follows its pill, and Mochi wears that plan's colour", () => 
   State.settings.showCodexPlanInNotch = true;
   assert.equal(planCardOpen(), true);
   State.codexPlanUsage = { sevenDay: win(85, Date.now() / 1000 + 3600), updatedAt: Date.now() };
+  assert.equal(openPlanColor(), "#F4505E");
+  // The Antigravity card cannot be open without its pill.
+  State.planDetailIsCodex = false;
+  State.planDetailIsAntigravity = true;
+  assert.equal(planCardOpen(), false);
+  State.settings.showAntigravityPlanInNotch = true;
+  assert.equal(planCardOpen(), true);
+  State.antigravityPlanUsage = { sevenDay: win(90, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   assert.equal(openPlanColor(), "#F4505E");
 });
 

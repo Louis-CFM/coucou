@@ -188,7 +188,7 @@ export class Island {
           integration_calcom: "https://app.cal.com/bookings",
         };
         if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
-        else if (task.id === "integration_claude" || task.sessionId) {
+        else if (task.id === "integration_claude" || task.id === "agent_antigravity" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
