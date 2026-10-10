@@ -218,6 +218,40 @@ test("a snippet that answers late, for an edit since replaced, is dropped", asyn
   assert.equal(codeFor(CLAUDE).edit.snippet, undefined);
 });
 
+test("an edit's rows wait for the lines around it, so they never shift", async () => {
+  const pending = [];
+  answers.file_snippet = () => new Promise((resolve) => pending.push(resolve));
+  State.focusId = CLAUDE;
+  pre("Edit", EDIT);
+  assert.equal(render().find(".ed-row").length, 0, "not before the edit lands");
+  assert.equal(render().querySelector(".ed-name").textContent, "cart.ts");
+  post("Edit", EDIT);
+  await flush();
+  assert.equal(render().find(".ed-row").length, 0, "nor while its lines are read");
+
+  pending[0](SNIPPET);
+  await flush();
+  assert.deepEqual(render().find(".ed-row").map((r) => r.querySelector(".ed-n").textContent).slice(0, 4), ["9", "10", "11", ""]);
+});
+
+test("an edit whose lines cannot be read, or that failed, shows alone", async () => {
+  answers.file_snippet = () => Promise.reject(new Error("outside the folder"));
+  State.focusId = CLAUDE;
+  pre("Edit", EDIT);
+  post("Edit", EDIT);
+  await flush();
+  assert.equal(render().find(".ed-row").length, 3);
+
+  pre("Edit", { ...EDIT, new_string: "other" });
+  hook({ hook_event_name: "PostToolUseFailure", tool_name: "Edit", tool_input: { ...EDIT, new_string: "other" }, error: "no match" });
+  assert.equal(render().find(".ed-row").length, 2);
+
+  // Interrupted before it finished: the turn's end lets it show.
+  pre("Edit", { ...EDIT, new_string: "third" });
+  hook({ hook_event_name: "Stop" });
+  assert.equal(render().find(".ed-row").length, 2);
+});
+
 test("a write is numbered from line 1, an edit without a snippet is unnumbered", async () => {
   pre("Write", { file_path: `${ROOT}/notes.md`, content: "# Notes\n\n- one\n" });
   let rows = codeRows(codeFor(CLAUDE).edit);

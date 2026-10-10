@@ -23,6 +23,8 @@ export interface EditShown {
   removed: string;
   added: string;
   snippet?: Snippet | null;
+  /** The lines around it are being read: its rows wait for them, so they do not shift. */
+  pending?: boolean;
 }
 
 export interface CommandShown {
@@ -113,7 +115,9 @@ export function beginTurn(pillId: string, src: CodeSource) {
 
 export function endTurn(pillId: string) {
   const d = byPill.get(pillId);
-  if (d) d.finished = true;
+  if (!d) return;
+  d.finished = true;
+  if (d.edit) d.edit.pending = false;
 }
 
 /** The session is over. */
@@ -148,7 +152,10 @@ export function toolStarted(pillId: string, src: CodeSource, tool: string, input
   }
 
   const edit = editOf(tool, input, relativeTo(str(input.file_path), d.root, src.cwd));
-  if (edit) d.edit = edit;
+  if (edit) {
+    edit.pending = edit.kind === "edit" && !!edit.added && !d.remote;
+    d.edit = edit;
+  }
   if ((tool === "Bash" || tool === "PowerShell") && str(input.command)) {
     d.command = { tool, command: str(input.command), tail: [], status: "pending" };
   }
@@ -189,7 +196,10 @@ export function toolFinished(pillId: string, cwd: string, tool: string, input: R
     d.command.tail = tail.length ? tail : error ? [error] : [];
     return;
   }
-  if (result.failed) return;
+  if (result.failed) {
+    if (d.edit && editOf(tool, input, "")) d.edit.pending = false;
+    return;
+  }
 
   const path = str(input.file_path);
   // After the edit the relay sends its text whole; before, it was cut short.
@@ -203,13 +213,15 @@ export function toolFinished(pillId: string, cwd: string, tool: string, input: R
   if (whole.kind !== "edit" || !find || d.remote) return;
   // Read from inside the session's folder; the shell's folder only if the file is not in it.
   const base = inside(path, d.root) ? d.root : cwd;
-  void Bridge.fileSnippet(base, path, find, SNIPPET_CONTEXT).then((snip) => {
+  shown.pending = true;
+  const settle = (snip: Snippet | null) => {
     // Only if it is still the edit this answer belongs to.
-    if (snip && byPill.get(pillId)?.edit === shown) {
-      shown.snippet = snip;
-      State.notify();
-    }
-  });
+    if (byPill.get(pillId)?.edit !== shown) return;
+    if (snip) shown.snippet = snip;
+    shown.pending = false;
+    State.notify();
+  };
+  void Bridge.fileSnippet(base, path, find, SNIPPET_CONTEXT).then(settle, () => settle(null));
 }
 
 const KEPT_LINES = 40;
@@ -433,7 +445,7 @@ export function buildCodeView(actions: ViewActions): ViewHost {
 
       clear(editor);
       editor.append(fileTab(d));
-      const rows = d.edit ? fit(codeRows(d.edit), codeRowBudget(d)) : [];
+      const rows = d.edit && !d.edit.pending ? fit(codeRows(d.edit), codeRowBudget(d)) : [];
       if (rows.length) editor.append(h("div", { class: "ed-code" }, ...rows.map(codeRow)));
       if (d.command) editor.append(terminal(d.command));
     },

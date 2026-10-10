@@ -28,6 +28,8 @@ struct CodeEdit: Equatable, Sendable {
     var removed: String
     var added: String
     var snippet: CodeSnippet? = nil
+    /// The lines around it are being read: its rows wait for them, so they do not shift.
+    var pending = false
 }
 
 struct CodeCommand: Equatable, Sendable {
@@ -69,7 +71,19 @@ struct CodeSession: Equatable, Sendable {
         finished = false
     }
 
-    mutating func endTurn() { finished = true }
+    mutating func endTurn() {
+        finished = true
+        edit?.pending = false
+    }
+
+    mutating func awaitSnippet() { edit?.pending = true }
+
+    /// The lines around `edit` were read, or could not be: its rows can show.
+    mutating func snippetRead(_ snippet: CodeSnippet?, for edit: CodeEdit) {
+        guard self.edit == edit else { return }
+        self.edit?.snippet = snippet
+        self.edit?.pending = false
+    }
 
     mutating func toolStarted(tool: String, input: [String: Any], cwd: String) {
         finished = false
@@ -98,6 +112,7 @@ struct CodeSession: Equatable, Sendable {
     }
 
     mutating func toolFinished(tool: String, response: Any?, failed: Bool, error: String?) {
+        if failed, CodeView.phase(of: tool) == .edit { edit?.pending = false }
         guard tool == "Bash", command != nil else { return }
         command?.status = failed ? .failed : .ok
         var tail = CodeView.tail(of: response)

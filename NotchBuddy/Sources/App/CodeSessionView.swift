@@ -113,7 +113,7 @@ private struct CodeEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             tab
-            if let edit = session.edit {
+            if let edit = session.edit, !edit.pending {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(CodeView.fit(CodeView.rows(for: edit), max: maxRows).enumerated()), id: \.offset) { _, row in
                         CodeRowView(row: row)

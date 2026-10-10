@@ -1053,11 +1053,11 @@ final class HookServer: @unchecked Sendable {
             session = CodeSession(project: project, root: cwd)
         case "PreToolUse":
             session.toolStarted(tool: tool, input: payload["tool_input"] as? [String: Any] ?? [:], cwd: cwd)
+            if readsSnippet(tool, payload, session.edit) { session.awaitSnippet() }
         case "PostToolUse", "PostToolUseFailure":
             let failed = event == "PostToolUseFailure"
             session.toolFinished(tool: tool, response: payload["tool_response"], failed: failed, error: payload["error"] as? String)
-            // A remote session's files are on its host, not here.
-            if !failed, tool == "Edit", payload["coucou_remote"] == nil, let edit = session.edit, !edit.added.isEmpty {
+            if !failed, readsSnippet(tool, payload, session.edit), let edit = session.edit {
                 loadSnippet(edit, pillId: pillId, root: session.root, cwd: cwd)
             }
         case "Stop":
@@ -1073,13 +1073,17 @@ final class HookServer: @unchecked Sendable {
     private func loadSnippet(_ edit: CodeEdit, pillId: String, root: String, cwd: String) {
         let base = edit.path.hasPrefix(root + "/") ? root : cwd
         DispatchQueue.global(qos: .utility).async {
-            guard let snippet = CodeView.readSnippet(path: edit.path, root: base, find: edit.added) else { return }
+            let snippet = CodeView.readSnippet(path: edit.path, root: base, find: edit.added)
             Task { @MainActor in
-                let state = AppState.shared
-                guard state.codeSessions[pillId]?.edit == edit else { return }
-                state.codeSessions[pillId]?.edit?.snippet = snippet
+                AppState.shared.codeSessions[pillId]?.snippetRead(snippet, for: edit)
             }
         }
+    }
+
+    /// An Edit made on this Mac: the lines around it are read from the file. A remote
+    /// session's files are on its host.
+    private func readsSnippet(_ tool: String, _ payload: [String: Any], _ edit: CodeEdit?) -> Bool {
+        tool == "Edit" && payload["coucou_remote"] == nil && edit?.added.isEmpty == false
     }
 
     // MARK: - Project name alias mapping
