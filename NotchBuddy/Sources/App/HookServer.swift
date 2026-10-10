@@ -753,12 +753,13 @@ final class HookServer: @unchecked Sendable {
         let uid = getuid()
         var parent: [Int32: Int32] = [:]
         var name: [Int32: String] = [:]
-        for line in commandOutput("/bin/ps", ["-axo", "pid=,ppid=,uid=,ucomm="]).split(separator: "\n") {
+        for line in commandOutput("/bin/ps", ["-axo", "pid=,ppid=,uid=,comm="]).split(separator: "\n") {
             let f = line.split(separator: " ", omittingEmptySubsequences: true)
             guard f.count >= 4, let pid = Int32(f[0]), let ppid = Int32(f[1]),
                   let owner = UInt32(f[2]), owner == uid else { continue }
             parent[pid] = ppid
-            name[pid] = String(f[3])
+            // macOS reports Claude Code as its version in ucomm; comm is its path, may have spaces
+            name[pid] = URL(fileURLWithPath: f[3...].joined(separator: " ")).lastPathComponent
         }
         let panes = tmuxPanes()
         var found: [FoundSession] = []
