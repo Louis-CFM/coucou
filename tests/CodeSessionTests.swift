@@ -57,6 +57,33 @@ struct CodeSessionTests {
         let write = CodeEdit(isWrite: true, path: "/work/shop/new.ts", file: "new.ts", removed: "", added: "a\nb")
         check(CodeView.rows(for: write).map(\.number) == [1, 2], "a new file counts from line 1")
 
+        // An edit's rows wait for the lines around it, so they never shift
+        var w = CodeSession(project: "shop", root: "/work/shop")
+        let editInput = { (added: String) -> [String: Any] in
+            ["file_path": "/work/shop/a.ts", "old_string": "x", "new_string": added]
+        }
+        let around = CodeSnippet(start: 1, lines: ["a", "y"], at: 1, len: 1)
+        w.toolStarted(tool: "Edit", input: editInput("y"), cwd: "/work/shop")
+        w.awaitSnippet()
+        check(w.edit?.pending == true && w.hasContent, "an edit waits for its lines")
+        let first = w.edit!
+        w.snippetRead(around, for: first)
+        check(w.edit?.pending == false && w.edit?.snippet == around, "its lines arrive with it")
+        w.toolStarted(tool: "Edit", input: editInput("z"), cwd: "/work/shop")
+        w.awaitSnippet()
+        w.snippetRead(around, for: first)
+        check(w.edit?.pending == true && w.edit?.snippet == nil, "an answer for an older edit is dropped")
+        w.snippetRead(nil, for: w.edit!)
+        check(w.edit?.pending == false, "lines that cannot be read let it show alone")
+        w.toolStarted(tool: "Edit", input: editInput("q"), cwd: "/work/shop")
+        w.awaitSnippet()
+        w.toolFinished(tool: "Edit", response: nil, failed: true, error: "no match")
+        check(w.edit?.pending == false, "a failed edit shows alone")
+        w.toolStarted(tool: "Edit", input: editInput("r"), cwd: "/work/shop")
+        w.awaitSnippet()
+        w.endTurn()
+        check(w.edit?.pending == false, "the end of the turn lets an interrupted edit show")
+
         // File reads stay inside the session folder
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("code-session-\(getpid())")
         try? FileManager.default.removeItem(at: dir)
