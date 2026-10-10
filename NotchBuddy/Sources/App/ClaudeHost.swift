@@ -82,8 +82,8 @@ struct ClaudeHost: Equatable {
     private static let tabQueue = DispatchQueue(label: "fr.louisraille.coucou.terminal-tab")
 
     /// Opens the app at `url` through Launch Services: NSRunningApplication.activate() is ignored
-    /// on macOS 14+ unless the caller is the active app, which Coucou never is. For Apple Terminal
-    /// with the session's tty, that tab is selected and its window raised first, so the session's
+    /// on macOS 14+ unless the caller is the active app, which Coucou never is. With the session's
+    /// tty, its tmux pane is selected and its Terminal or iTerm2 tab raised first, so the session's
     /// own window comes back rather than the last one used.
     static func bringForward(_ url: URL, bundleId: String, tty: String?) {
         let open: @Sendable () -> Void = {
@@ -92,22 +92,13 @@ struct ClaudeHost: Equatable {
             }
         }
         #if !APPSTORE
-        if bundleId == "com.apple.Terminal", let tty, isTTY(tty) {
+        if let tty, isTTY(tty) {
             tabQueue.async {
-                var error: NSDictionary?
-                NSAppleScript(source: """
-                    tell application id "com.apple.Terminal"
-                        repeat with w in windows
-                            repeat with t in tabs of w
-                                if tty of t is "\(tty)" then
-                                    set selected tab of w to t
-                                    set index of w to 1
-                                    return
-                                end if
-                            end repeat
-                        end repeat
-                    end tell
-                    """)?.executeAndReturnError(&error)
+                for candidate in TerminalTarget.tabTTYs(for: tty) where ClaudeHost.isTTY(candidate) {
+                    guard let source = TerminalTarget.tabScript(bundleId: bundleId, tty: candidate) else { break }
+                    var error: NSDictionary?
+                    if NSAppleScript(source: source)?.executeAndReturnError(&error).booleanValue == true { break }
+                }
                 open()
             }
             return
