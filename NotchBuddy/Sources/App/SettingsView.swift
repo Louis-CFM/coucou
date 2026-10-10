@@ -5,6 +5,9 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @ObservedObject private var demoEngine = DemoEngine.shared
+    #if !APPSTORE
+    @ObservedObject private var systemVolume = SystemVolume.shared
+    #endif
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
@@ -319,6 +322,41 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+
+        #if !APPSTORE
+        GroupBox("Volume") {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle("Show the volume in the notch", isOn: Binding(
+                    get: { state.volumeInNotch },
+                    set: { on in
+                        state.volumeInNotch = on
+                        if on { SystemVolume.shared.requestKeyAccess() }
+                    }
+                ))
+                Text("When the volume changes, the island opens under the notch and ten mini Mochis show the level. Off: macOS shows its own volume popup.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if state.volumeInNotch && systemVolume.handlesKeys {
+                    Text("The volume keys go to Coucou: the macOS volume popup stays hidden.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if state.volumeInNotch && !systemVolume.handlesKeys {
+                    HStack(spacing: 8) {
+                        Text("To hide the macOS volume popup, allow Coucou in Accessibility.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Allow…") { SystemVolume.shared.requestKeyAccess() }
+                    }
+                }
+            }
+            .padding(6)
+            .onAppear { SystemVolume.shared.refreshAccess() }
+        }
+        #endif
 
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {

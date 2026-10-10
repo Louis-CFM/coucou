@@ -43,6 +43,9 @@ struct IslandContainer: View {
     /// = 0 in expanded mode (no ears), = earRadius in compact/notch mode.
     private var earOffset: CGFloat { max(0, -islandTopRadius) }
 
+    /// The volume HUD takes over the hidden or compact island; the open island keeps its view.
+    private var volumeHUDActive: Bool { state.volumeHUD != nil && state.mode != .expanded }
+
     var body: some View {
         // Canvas active during drag-over (.upload), post-drop animation (.uploading),
         // AND choose overlay (.choose) — canvas handles the full sequence through user action.
@@ -92,6 +95,17 @@ struct IslandContainer: View {
                 }
             }
 
+            if volumeHUDActive, let hud = state.volumeHUD {
+                VolumeHUDView(hud: hud, islandW: islandWidth, notchH: state.notchHeight)
+                    .frame(width: islandWidth, height: islandHeight, alignment: .topLeading)
+                    .clipShape(IslandShape(width: islandWidth, height: islandHeight,
+                                           cornerRadius: cornerRadius, topRadius: 0))
+                    .allowsHitTesting(false)
+                    .transition(.asymmetric(
+                        insertion: .opacity.animation(.easeOut(duration: 0.3).delay(0.16)),
+                        removal: .opacity.animation(.easeIn(duration: 0.16))))
+            }
+
             // Single BotPlacement — always alive in the view tree so spring animations
             // fire from the current position (e.g. choose at 60,101) when canvas deactivates.
             // Hidden during upload canvas or greeting (both draw their own Mochi).
@@ -121,29 +135,54 @@ struct IslandContainer: View {
             }
 
             Group {
-                if state.mode == .compact {
+                if state.mode == .compact && !volumeHUDActive {
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
+            .animation(.easeInOut(duration: 0.25), value: state.mode == .compact && !volumeHUDActive)
         }
         .frame(width: islandWidth, height: islandHeight, alignment: .topLeading)
         .onChange(of: state.mode) { oldMode, newMode in
             let shrinking = modeOrder(newMode) < modeOrder(oldMode)
             let anim = shrinking ? closeEase : openSpring
-            let (w, h) = islandSize(mode: newMode, view: state.view,
+            var (w, h) = islandSize(mode: newMode, view: state.view,
                                     progress: state.uploadProgress,
                                     nw: state.notchWidth, nh: state.notchHeight)
-            let cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
+            var cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
+            if state.volumeHUD != nil && newMode != .expanded {
+                (w, h) = VolumeHUDLayout.size(nw: state.notchWidth, nh: state.notchHeight)
+                cr = IslandConst.expandedCorner
+            }
             let tr: CGFloat = 0
             withAnimation(anim) {
                 islandWidth      = w
                 islandHeight     = (newMode == .expanded && state.view == .prompt) ? chatPromptHeight : h
                 cornerRadius     = cr
                 islandTopRadius  = tr
+            }
+        }
+        .onChange(of: volumeHUDActive) { _, active in
+            // Into the open island, the mode change above sizes it.
+            guard state.mode != .expanded else { return }
+            if active {
+                let (w, h) = VolumeHUDLayout.size(nw: state.notchWidth, nh: state.notchHeight)
+                withAnimation(openSpring) {
+                    islandWidth  = w
+                    islandHeight = h
+                    cornerRadius = IslandConst.expandedCorner
+                }
+            } else {
+                let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                        progress: state.uploadProgress,
+                                        nw: state.notchWidth, nh: state.notchHeight)
+                withAnimation(closeEase) {
+                    islandWidth  = w
+                    islandHeight = h
+                    cornerRadius = IslandConst.roundedCorner
+                }
             }
         }
         .onChange(of: state.view) { _, newView in
@@ -280,7 +319,12 @@ struct BotPlacement: View {
     let islandH: CGFloat
 
     var body: some View {
-        let (cx, cy, diameter, opacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
+        // Volume HUD: Mochi sits in its left wing, where the compact island keeps him.
+        let volumeHUD = state.volumeHUD != nil && state.mode != .expanded
+        let (cx, cy, diameter, opacity) = volumeHUD
+            ? botPosition(mode: .compact, view: state.view, islandW: islandW, islandH: state.notchHeight,
+                          uploadProgress: 0, hasNotch: state.hasNotch)
+            : botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
         let canvasSize = diameter / 0.6
         let overhang: CGFloat = 40
         let isUploading = state.view == .uploading
@@ -334,6 +378,8 @@ struct BotPlacement: View {
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cx)
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: cy)
                     .animation(.spring(response: 0.5, dampingFraction: 0.72), value: canvasSize)
+                    // Back into a hidden notch after the volume HUD: fade, not blink out.
+                    .animation(.easeIn(duration: 0.2), value: volumeHUD)
                     .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             }
         }
