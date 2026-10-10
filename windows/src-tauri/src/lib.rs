@@ -179,6 +179,26 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     island::apply_geometry(&app, &pref, collapsed);
 }
 
+/// The panel is laid out in CSS px against the window's own scale. If the webview
+/// reports a different devicePixelRatio (it ends up bigger than the window and gets
+/// cut), correct its zoom so one CSS px is one logical px again.
+#[tauri::command]
+fn fit_zoom(app: AppHandle, dpr: f64) -> bool {
+    let Some(win) = island::window(&app) else { return false };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    static ZOOM: std::sync::Mutex<f64> = std::sync::Mutex::new(1.0);
+    let mut zoom = ZOOM.lock().unwrap();
+    if let Some(new_zoom) = island::calculate_zoom_correction(*zoom, scale, dpr) {
+        *zoom = new_zoom;
+        log::line(format!("webview dpr {dpr} != window scale {scale} — setting zoom {new_zoom:.3}"));
+        let _ = win.set_zoom(new_zoom);
+        true
+    } else {
+        false
+    }
+}
+
+
 /// The displays the island can be pinned to, for Settings.
 #[tauri::command]
 fn list_monitors(app: AppHandle) -> Vec<island::MonitorChoice> {
@@ -675,6 +695,7 @@ pub fn run() {
             set_island_rect,
             focus_window,
             reposition,
+            fit_zoom,
             list_monitors,
             open_url,
             open_in_vscode,
