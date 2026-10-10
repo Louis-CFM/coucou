@@ -58,6 +58,8 @@ struct PillDefinition {
         case "agent_codex":        return "Codex"
         case "agent_hermes":       return "Hermes"
         case "agent_claude-desktop": return "Claude Desktop"
+        case "agent_pi":           return "Pi"
+        case "ai_acp":             return "ACP Agent"
         default:                   return "Agent"
         }
     }
@@ -90,6 +92,10 @@ enum PillCatalog {
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        // Pi reports through its own coucou-pi-status extension, which tags
+        // payloads with coucou_agent: "pi". Nothing to install on the Coucou side.
+        .init(id: "agent_pi",            name: "Pi",          color: "#FACC15",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         // Claude Code sessions run from the Claude desktop app: the relay tags them
         // `coucou_agent: claude-desktop` from CLAUDE_CODE_ENTRYPOINT, so nothing to install.
         .init(id: "agent_claude-desktop", name: "Claude Desktop", color: "#D97757",
@@ -104,6 +110,10 @@ enum PillCatalog {
         .init(id: "ai_ollama",           name: "Ollama",      color: ChatProvider.ollama.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,
+              category: .ai,        subtitle: "Chat",         source: .n8n),
+        // ACP: connects to any ACP-compatible agent via JSON-RPC over stdio.
+        // Configured in Settings → ACP Agents. Dynamic: appears only when agents are configured.
+        .init(id: "ai_acp",             name: "ACP Agent",   color: "#818CF8",
               category: .ai,        subtitle: "Chat",         source: .n8n),
         // ── Services ─────────────────────────────────────────────────────────
         .init(id: "integration_resend",  name: "Resend",      color: "#22C55E",

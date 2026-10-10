@@ -199,17 +199,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
         // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
-        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { [weak self] _ in
-            DesktopMochiController.shared.launchFlyIfNeeded()
-            self?.checkMondayRecap()
+        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { _ in
+            Task { @MainActor in
+                DesktopMochiController.shared.launchFlyIfNeeded()
+            }
         }
         // Check for Monday recap on wake and when a new session/prompt arrives
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification,
                                                           object: nil, queue: .main) { [weak self] _ in
-            self?.checkMondayRecap()
+            Task { @MainActor in
+                self?.checkMondayRecap()
+            }
         }
         NotificationCenter.default.addObserver(forName: .checkMondayRecap, object: nil, queue: .main) { [weak self] _ in
-            self?.checkMondayRecap()
+            Task { @MainActor in
+                self?.checkMondayRecap()
+            }
         }
         #if !APPSTORE
         _ = MusicController.shared

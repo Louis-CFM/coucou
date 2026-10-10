@@ -188,6 +188,7 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        disconnectAcp()
     }
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
@@ -285,7 +286,7 @@ final class ClaudeService {
             switch provider {
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
-            case .anthropic, .ollama, .lmstudio: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .acp: baseURL = ""
             }
         }
 
@@ -608,6 +609,143 @@ final class ClaudeService {
         state.stateOverride = nil
         state.view = .result
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.proud)
+    }
+
+    // MARK: - ACP chat (Agent Client Protocol)
+
+    /// Persistent ACP client — reused across turns within the same conversation.
+    private var acpClient: AcpClient?
+    /// Config ID of the agent currently connected in `acpClient`.
+    private var acpConnectedAgentId: String?
+
+    /// Chat via an ACP-compatible agent subprocess.
+    /// Reuses the same subprocess/session across turns; only reconnects when
+    /// the user picks a different agent or explicitly starts a new conversation.
+    func chatACP(query: String, state: AppState) async {
+        let configs = AcpConfigStore.load()
+        let config: AcpAgentConfig
+        if let c = configs.first(where: { $0.id == state.acpSelectedAgentId }) {
+            config = c
+        } else if let first = configs.first {
+            config = first
+            state.acpSelectedAgentId = first.id
+        } else {
+            await showError("No ACP agent configured. Add one in Settings → ACP Agents.", state: state)
+            return
+        }
+
+        // Reuse existing client if it's still connected to the same agent;
+        // otherwise tear down and reconnect.
+        let needsConnect: Bool
+        if let client = acpClient, client.isConnected, acpConnectedAgentId == config.id {
+            needsConnect = false
+        } else {
+            acpClient?.disconnect()
+            acpClient = AcpClient()
+            acpConnectedAgentId = config.id
+            needsConnect = true
+        }
+        let client = acpClient!
+
+        // Add placeholder for streaming
+        let placeholder = ChatMessage(role: .assistant, content: "")
+        let msgId = placeholder.id
+        state.chatHistory.append(placeholder)
+        state.stateOverride = .thinking
+
+        do {
+            if needsConnect {
+                let cwd: String
+                if case .file(_, let fileURL?) = state.promptContext {
+                    cwd = fileURL.deletingLastPathComponent().path
+                } else {
+                    cwd = NSHomeDirectory()
+                }
+                try await client.connect(config: config, cwd: cwd)
+            }
+
+            var accumulated = ""
+
+            let stopReason = try await client.prompt(
+                message: query,
+                onChunk: { chunk in
+                    accumulated += chunk
+                    if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                        state.chatHistory[idx].content = accumulated
+                    }
+                    if state.stateOverride == .thinking {
+                        state.stateOverride = nil
+                    }
+                },
+                onToolCall: { toolCallId, title in
+                    if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                        state.chatHistory[idx].content = accumulated + "\n🔧 " + title
+                    }
+                },
+                onToolUpdate: { toolCallId, status in
+                    if status == "completed", let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                        state.chatHistory[idx].content = accumulated
+                    }
+                }
+            )
+
+            // Finalize
+            let trimmed = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                // Agent returned no content — remove the placeholder and show a note
+                state.chatHistory.removeAll { $0.id == msgId }
+                state.stateOverride = .error
+                state.noteMessage = "Agent returned no response. Check the model configuration in Settings → ACP Agents."
+                state.view = .note
+            } else {
+                if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                    state.chatHistory[idx].content = trimmed
+                }
+                state.stateOverride = nil
+                state.view = .prompt
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
+        } catch let err as AcpError {
+            // On disconnect, tear down the persistent client so the next turn reconnects.
+            acpClient?.disconnect()
+            acpClient = nil
+            acpConnectedAgentId = nil
+
+            state.chatHistory.removeAll { $0.id == msgId }
+            state.stateOverride = nil
+            let msg: String
+            switch err {
+            case .disconnected:
+                msg = "Agent disconnected. Check the command path and try again."
+            case .noSession:
+                msg = "Agent did not create a session."
+            case .agentError(let detail):
+                msg = detail
+            case .launchFailed(let detail):
+                msg = detail
+            }
+            await showError(msg, state: state)
+        } catch {
+            acpClient?.disconnect()
+            acpClient = nil
+            acpConnectedAgentId = nil
+
+            state.chatHistory.removeAll { $0.id == msgId }
+            state.stateOverride = nil
+            await showError(error.localizedDescription, state: state)
+        }
+    }
+
+    /// Disconnect the persistent ACP client (called on new-conversation or app shutdown).
+    func disconnectAcp() {
+        acpClient?.disconnect()
+        acpClient = nil
+        acpConnectedAgentId = nil
+    }
+
+    /// Whether the persistent ACP client is currently connected.
+    var acpIsConnected: Bool {
+        acpClient?.isConnected == true
     }
 
     private func showError(_ message: String, state: AppState) async {

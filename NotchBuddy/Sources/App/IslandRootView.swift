@@ -420,7 +420,9 @@ struct CountdownBar: View {
 
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            updateBar()
+            Task { @MainActor in
+                updateBar()
+            }
         }
     }
 
@@ -522,6 +524,10 @@ struct IslandHeader: View {
                 }
                 if state.view == .overview && state.showCodexPlanInNotch {
                     ClaudePlanHeaderPill(state: state, codex: true)
+                }
+                // ACP agent pill: shown when ACP is the active chat provider and connected
+                if state.view == .overview && state.chatProvider == .acp {
+                    AcpAgentHeaderPill(state: state)
                 }
                 #endif
                 HStack(spacing: bothPlans ? 10 : 14) {
@@ -646,6 +652,73 @@ struct ClaudePlanHeaderPill: View {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
         }
         .onAppear { if codex { state.refreshCodexPlanUsage() } }
+    }
+}
+
+/// ACP agent header pill — shows connected agent name in the notch header.
+/// Replaces the "Claude —" plan pill context when an ACP agent is the active chat provider.
+struct AcpAgentHeaderPill: View {
+    @ObservedObject var state: AppState
+    @State private var isHovered = false
+    @State private var acpConnected = false
+
+    private var agentName: String {
+        let configs = AcpConfigStore.load()
+        if let cfg = configs.first(where: { $0.id == state.acpSelectedAgentId }) { return cfg.name }
+        return configs.first?.name ?? "ACP Agent"
+    }
+
+    private var agentColor: String {
+        let configs = AcpConfigStore.load()
+        if let cfg = configs.first(where: { $0.id == state.acpSelectedAgentId }) { return cfg.color }
+        return configs.first?.color ?? "#818CF8"
+    }
+
+    private var isActive: Bool { isHovered }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(Color(hex: agentColor))
+                .frame(width: 6, height: 6)
+                .opacity(acpConnected ? 1 : 0.4)
+            Text(acpConnected ? "\(agentName) —" : "\(agentName)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(isActive
+                                 ? Color(hex: agentColor).lighter(by: 0.3)
+                                 : Color(hex: "#6B7079"))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(isActive
+                      ? Color(hex: agentColor).opacity(0.18)
+                      : Color(hex: "#0E0F11"))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color(hex: agentColor).opacity(isActive ? 0.55 : 0.14), lineWidth: 1)
+        )
+        .onHover { h in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
+        }
+        .onTapGesture {
+            if state.chatProvider == .acp {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    state.view = .prompt
+                }
+                SoundEngine.shared.play("pop")
+            }
+        }
+        .onAppear {
+            acpConnected = ClaudeService.shared.acpIsConnected
+        }
+        .onChange(of: state.chatHistory.count) { _, _ in
+            acpConnected = ClaudeService.shared.acpIsConnected
+        }
     }
 }
 #endif

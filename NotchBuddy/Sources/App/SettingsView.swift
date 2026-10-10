@@ -177,6 +177,7 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
                         SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
                         SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
+                        SettingsSidebarRow(title: "ACP Agents",   icon: "app.connected.to.app.below.fill",  color: "#818CF8").tag("acp")
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
@@ -256,6 +257,7 @@ struct SettingsView: View {
         case "agents":       agentsSection
         case "chat":         chatSection
         case "integrations": integrationsSection
+        case "acp":        acpAgentsSection
         case "shortcuts":    ShortcutsSettingsView()
         default:             generalSection
         }
@@ -1237,7 +1239,7 @@ struct SettingsView: View {
                         Circle().fill(Color(hex: "#E8E8E8")).frame(width: 8, height: 8)
                         Text("Notion").font(.system(size: 12, weight: .semibold))
                     }
-                    SecureField("Integration token  (secret_…)", text: $notionKey)
+                    SecureField("Integration token  (secret_… / ntn_…)", text: $notionKey)
                         .textFieldStyle(.roundedBorder)
                 }
 
@@ -1246,6 +1248,12 @@ struct SettingsView: View {
             }
             .padding(6)
         }
+    }
+
+    // MARK: - ACP Agents section
+
+    @ViewBuilder private var acpAgentsSection: some View {
+        AcpAgentsSettingsView()
     }
 
     // MARK: - Actions
@@ -1798,6 +1806,7 @@ struct SettingsView: View {
             if def.id == "agent_muse"          && !HookServer.museHooksInstalled()       { return String(localized: "Hooks not installed") }
             if def.id == "agent_opencode"      && !HookServer.openCodePluginInstalled()  { return String(localized: "Plugin not installed") }
             if def.id == "agent_amp"           && !HookServer.ampPluginInstalled()       { return String(localized: "Plugin not installed") }
+            if def.id == "agent_hermes"        && !HookServer.hermesPluginInstalled()    { return String(localized: "Hooks not installed") }
             if def.id == SpotifyController.pillId && !SpotifyController.shared.isInstalled { return String(localized: "Not installed") }
             #endif
             if def.category == .ai {
@@ -2049,5 +2058,170 @@ struct ShortcutRecorderButton: View {
             34:"I", 37:"L", 38:"J", 40:"K", 45:"N", 46:"M", 49:"Space", 50:"`", 27:"-"
         ]
         return map[c] ?? "·"
+    }
+}
+
+// MARK: - ACP Agents Settings (reactive)
+
+/// Separate struct so we can hold @State for the config list.
+/// All mutations (add/remove/update) go through `reload()` which
+/// re-reads UserDefaults and triggers SwiftUI refresh.
+struct AcpAgentsSettingsView: View {
+    @State private var configs: [AcpAgentConfig] = AcpConfigStore.load()
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("ACP Agents")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#8A8F98"))
+
+                ForEach(configs) { config in
+                    AcpAgentRow(config: config) { updated in
+                        AcpConfigStore.update(updated)
+                        reload()
+                    } onDelete: {
+                        AcpConfigStore.remove(id: config.id)
+                        reload()
+                    }
+                }
+
+                // Quick-add defaults (e.g. Pi via pi-acp)
+                let notYetAdded = AcpConfigStore.defaultNotYetAdded()
+                if !notYetAdded.isEmpty {
+                    Divider()
+                    Text("Quick Add")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                    ForEach(notYetAdded) { def in
+                        Button {
+                            AcpConfigStore.add(def)
+                            reload()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(Color(hex: def.color))
+                                    .frame(width: 8, height: 8)
+                                Text("+ \(def.name)")
+                            }
+                            .font(.system(size: 11))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Button {
+                    let newConfig = AcpAgentConfig(name: "New Agent", command: "")
+                    AcpConfigStore.add(newConfig)
+                    reload()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text("Add Agent")
+                    }
+                    .font(.system(size: 11))
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(6)
+        }
+    }
+
+    private func reload() {
+        configs = AcpConfigStore.load()
+    }
+}
+
+// MARK: - ACP Agent Row (inline editable config)
+
+struct AcpAgentRow: View {
+    var config: AcpAgentConfig
+    var onUpdate: (AcpAgentConfig) -> Void
+    var onDelete: () -> Void
+
+    @State private var name: String = ""
+    @State private var command: String = ""
+    @State private var args: String = ""
+    @State private var env: String = ""
+    @State private var color: String = ""
+    @State private var model: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Circle().fill(Color(hex: color)).frame(width: 8, height: 8)
+                TextField("Name", text: $name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .textFieldStyle(.roundedBorder)
+                Spacer()
+                Button(role: .destructive) { onDelete() } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#F4505E"))
+                }
+                .buttonStyle(.plain)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "terminal")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#5C6370"))
+                TextField("Command  (/usr/local/bin/my-agent)", text: $command)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#5C6370"))
+                TextField("Args  (--acp --stdio)", text: $args)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#5C6370"))
+                TextField("Env  (KEY=value, one per line)", text: $env)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(2...4)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "paintbrush.fill")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: color))
+                TextField("Color  (#818CF8)", text: $color)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "cpu")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color(hex: "#5C6370"))
+                TextField("Model  (catpaw-relay/gpt-6-sol)", text: $model)
+                    .textFieldStyle(.roundedBorder)
+            }
+        }
+        .onAppear {
+            name = config.name
+            command = config.command
+            args = config.args
+            env = config.env
+            color = config.color
+            model = config.model
+        }
+        .onChange(of: name) { _, _ in save() }
+        .onChange(of: command) { _, _ in save() }
+        .onChange(of: args) { _, _ in save() }
+        .onChange(of: env) { _, _ in save() }
+        .onChange(of: color) { _, _ in save() }
+        .onChange(of: model) { _, _ in save() }
+    }
+
+    private func save() {
+        var updated = config
+        updated.name = name
+        updated.command = command
+        updated.args = args
+        updated.env = env
+        updated.color = color.isEmpty ? "#818CF8" : color
+        updated.model = model
+        onUpdate(updated)
     }
 }

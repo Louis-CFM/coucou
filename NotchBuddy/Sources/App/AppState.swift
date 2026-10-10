@@ -142,6 +142,11 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
 
+    // ACP agent selection — which configured agent to use for ACP chat
+    @Published var acpSelectedAgentId: String = "" {
+        didSet { UserDefaults.standard.set(acpSelectedAgentId, forKey: "acpSelectedAgentId") }
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -157,6 +162,8 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        // ACP: no model list to fetch — agents are listed in acpAgentListView
+        if provider == .acp { return }
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -205,6 +212,7 @@ final class AppState: ObservableObject {
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
+            case .acp:       models = []  // ACP agents don't expose model lists
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -225,6 +233,7 @@ final class AppState: ObservableObject {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
                 case .ollama, .lmstudio: break
+                case .acp: break
                 }
             }
         }
@@ -238,6 +247,10 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .acp:
+            let configs = AcpConfigStore.load()
+            if let cfg = configs.first(where: { $0.id == acpSelectedAgentId }) { return cfg.name }
+            return configs.first?.name ?? "ACP Agent"
         }
     }
 

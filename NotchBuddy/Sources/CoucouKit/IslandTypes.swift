@@ -78,6 +78,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     case openai    = "openai"
     case ollama    = "ollama"
     case lmstudio  = "lmstudio"
+    case acp       = "acp"
 
     var displayName: String {
         switch self {
@@ -86,6 +87,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "OpenAI"
         case .ollama:    "Ollama"
         case .lmstudio:  "LM Studio"
+        case .acp:       "ACP Agent"
         }
     }
 
@@ -96,6 +98,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "#10A37F"
         case .ollama:    "#FACC15"
         case .lmstudio:  "#A3E635"
+        case .acp:       "#818CF8"
         }
     }
 
@@ -106,6 +109,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "gpt-4o"
         case .ollama:    "llama3.2"
         case .lmstudio:  "local-model"
+        case .acp:       "agent"
         }
     }
 
@@ -116,6 +120,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "openai-api-key"
         case .ollama:    ""
         case .lmstudio:  ""
+        case .acp:       ""
         }
     }
 
@@ -130,6 +135,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "ai_openai"
         case .ollama:    "ai_ollama"
         case .lmstudio:  "ai_lmstudio"
+        case .acp:       "ai_acp"
         }
     }
 
@@ -140,6 +146,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case "ai_openai":    self = .openai
         case "ai_ollama":    self = .ollama
         case "ai_lmstudio":  self = .lmstudio
+        case "ai_acp":       self = .acp
         default:             return nil
         }
     }

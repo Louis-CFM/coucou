@@ -95,6 +95,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_hermes", name: "Hermes", color: "#C084FC", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
+  // Pi reports through its own coucou-pi-status extension, which tags
+  // payloads with coucou_agent: "pi". Nothing to install on the Coucou side.
+  { id: "agent_pi", name: "Pi", color: "#FACC15", category: "agent",
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   // Claude Code sessions run from the Claude desktop app: the relay tags them
   // from CLAUDE_CODE_ENTRYPOINT, so there is nothing to install. The app has no
   // Linux build.
@@ -113,6 +117,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Chat"), source: "n8n", support: "yes", connect: server("ollamaUrl") },
   { id: "ai_lmstudio", name: "LM Studio", color: ACCENT.lmstudio, category: "ai",
     subtitle: N_("Chat"), source: "n8n", support: "yes", connect: server("lmstudioUrl") },
+  // ACP: chat with any ACP-compatible agent via JSON-RPC over stdio.
+  { id: "ai_acp", name: "ACP Agent", color: "#818CF8", category: "ai",
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: none },
   // ── Services ───────────────────────────────────────────────────────────────
   { id: "integration_resend", name: "Resend", color: "#22C55E", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("resend-api-key") },
@@ -181,6 +188,8 @@ export function sessionSubtitle(id: string): string {
     case "agent_codex": return "Codex";
     case "agent_hermes": return "Hermes";
     case "agent_claude-desktop": return "Claude Desktop";
+    case "agent_pi": return "Pi";
+    case "ai_acp": return "ACP Agent";
     default: return N_("Agent");
   }
 }
