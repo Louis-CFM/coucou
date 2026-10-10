@@ -779,7 +779,7 @@ const INTEGRATIONS: IntegrationDef[] = [
       // Not returned by the API, and every page link needs it.
       { key: "betterstack-team", label: N_("Team ID (optional)"), placeholder: "t1234", secret: false },
     ],
-    hint: N_("Better Stack → API tokens → Team-based tokens: an Uptime API token. Coucou only reads incidents and monitors.") },
+    hint: N_("Better Stack → API tokens → Team-based tokens: an Uptime API token.") },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];

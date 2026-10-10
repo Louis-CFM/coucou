@@ -431,16 +431,16 @@
    "ru": "Поведение",
    "id": "Perilaku"
   },
-  "Better Stack → API tokens → Team-based tokens: an Uptime API token. Coucou only reads incidents and monitors.": {
-   "zh-Hans": "Better Stack → API tokens → Team-based tokens：一个 Uptime API 令牌。Coucou 只读取事件和监控。",
-   "hi": "Better Stack → API tokens → Team-based tokens: एक Uptime API टोकन। Coucou केवल घटनाएँ और मॉनिटर पढ़ता है।",
-   "es": "Better Stack → API tokens → Team-based tokens: un token de la API de Uptime. Coucou solo lee incidentes y monitores.",
-   "ar": "Better Stack → API tokens → Team-based tokens: رمز Uptime API. يقرأ Coucou الحوادث وأدوات المراقبة فقط.",
-   "fr": "Better Stack → API tokens → Team-based tokens : un jeton de l'API Uptime. Coucou lit seulement les incidents et les moniteurs.",
-   "bn": "Better Stack → API tokens → Team-based tokens: একটি Uptime API টোকেন। Coucou শুধু ঘটনা আর মনিটর পড়ে।",
-   "pt-BR": "Better Stack → API tokens → Team-based tokens: um token da API Uptime. O Coucou só lê incidentes e monitores.",
-   "ru": "Better Stack → API tokens → Team-based tokens: токен Uptime API. Coucou только читает инциденты и мониторы.",
-   "id": "Better Stack → API tokens → Team-based tokens: token API Uptime. Coucou hanya membaca insiden dan monitor."
+  "Better Stack → API tokens → Team-based tokens: an Uptime API token.": {
+   "zh-Hans": "Better Stack → API tokens → Team-based tokens：一个 Uptime API 令牌。",
+   "hi": "Better Stack → API tokens → Team-based tokens: एक Uptime API टोकन।",
+   "es": "Better Stack → API tokens → Team-based tokens: un token de la API de Uptime.",
+   "ar": "Better Stack → API tokens → Team-based tokens: رمز Uptime API.",
+   "fr": "Better Stack → API tokens → Team-based tokens : un jeton de l'API Uptime.",
+   "bn": "Better Stack → API tokens → Team-based tokens: একটি Uptime API টোকেন।",
+   "pt-BR": "Better Stack → API tokens → Team-based tokens: um token da API Uptime.",
+   "ru": "Better Stack → API tokens → Team-based tokens: токен Uptime API.",
+   "id": "Better Stack → API tokens → Team-based tokens: token API Uptime."
   },
   "Busiest day": {
    "zh-Hans": "最忙的一天",

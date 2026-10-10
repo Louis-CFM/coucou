@@ -13900,61 +13900,61 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: رمز Uptime API. يقرأ Coucou الحوادث وأدوات المراقبة فقط."
+            "value": "Better Stack → API tokens → Team-based tokens: رمز Uptime API."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: একটি Uptime API টোকেন। Coucou শুধু ঘটনা আর মনিটর পড়ে।"
+            "value": "Better Stack → API tokens → Team-based tokens: একটি Uptime API টোকেন।"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: an Uptime API token. Coucou only reads incidents and monitors."
+            "value": "Better Stack → API tokens → Team-based tokens: an Uptime API token."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: un token de la API de Uptime. Coucou solo lee incidentes y monitores."
+            "value": "Better Stack → API tokens → Team-based tokens: un token de la API de Uptime."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens : un jeton de l'API Uptime. Coucou lit seulement les incidents et les moniteurs."
+            "value": "Better Stack → API tokens → Team-based tokens : un jeton de l'API Uptime."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: एक Uptime API टोकन। Coucou केवल घटनाएँ और मॉनिटर पढ़ता है।"
+            "value": "Better Stack → API tokens → Team-based tokens: एक Uptime API टोकन।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: token API Uptime. Coucou hanya membaca insiden dan monitor."
+            "value": "Better Stack → API tokens → Team-based tokens: token API Uptime."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: um token da API Uptime. O Coucou só lê incidentes e monitores."
+            "value": "Better Stack → API tokens → Team-based tokens: um token da API Uptime."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens: токен Uptime API. Coucou только читает инциденты и мониторы."
+            "value": "Better Stack → API tokens → Team-based tokens: токен Uptime API."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Better Stack → API tokens → Team-based tokens：一个 Uptime API 令牌。Coucou 只读取事件和监控。"
+            "value": "Better Stack → API tokens → Team-based tokens：一个 Uptime API 令牌。"
           }
         }
       }
