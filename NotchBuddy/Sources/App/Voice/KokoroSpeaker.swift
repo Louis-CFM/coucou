@@ -23,8 +23,10 @@ import MLXUtilsLibrary
 final class KokoroSpeaker {
     static let shared = KokoroSpeaker()
 
+    /// English only: an answer in French goes to the Mac voice, not to English phonemes.
     @MainActor static var isActive: Bool {
         VoiceSettings.ttsEngine == "kokoro" && KokoroModelManager.shared.isDownloaded
+            && VoiceSettings.language != "fr"
     }
 
     private let engine    = KokoroEngine()

@@ -26145,10 +26145,28 @@
     "voice.kokoro-delete": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف النموذج"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মডেল মুছুন"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Delete model"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar el modelo"
           }
         },
         "fr": {
@@ -26156,16 +26174,64 @@
             "state": "translated",
             "value": "Supprimer le modèle"
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "मॉडल हटाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hapus model"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excluir o modelo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить модель"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除模型"
+          }
         }
       }
     },
     "voice.kokoro-desc": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · بدون حساب · محلي 100% · الإنجليزية فقط"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · অ্যাকাউন্ট ছাড়া · ১০০% ডিভাইসে · শুধু ইংরেজি"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Kokoro-82M · no account · 100% on-device · English only"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · sin cuenta · 100 % local · solo inglés"
           }
         },
         "fr": {
@@ -26173,16 +26239,64 @@
             "state": "translated",
             "value": "Kokoro-82M · sans compte · 100% local · anglais uniquement"
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · बिना खाते · 100% डिवाइस पर · सिर्फ़ अंग्रेज़ी"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · tanpa akun · 100% di perangkat · hanya bahasa Inggris"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · sem conta · 100% local · só inglês"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · без аккаунта · 100% на устройстве · только английский"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokoro-82M · 无需账户 · 完全本地 · 仅英语"
+          }
         }
       }
     },
     "voice.kokoro-download": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تنزيل الصوت الطبيعي (~300 ميغابايت)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রাকৃতিক কণ্ঠ ডাউনলোড করুন (~৩০০ MB)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Download natural voice (~300 MB)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar la voz natural (~300 MB)"
           }
         },
         "fr": {
@@ -26190,16 +26304,64 @@
             "state": "translated",
             "value": "Télécharger la voix naturelle (~300 Mo)"
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्राकृतिक आवाज़ डाउनलोड करें (~300 MB)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unduh suara alami (~300 MB)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar a voz natural (~300 MB)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать естественный голос (~300 МБ)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载自然语音（约 300 MB）"
+          }
         }
       }
     },
     "voice.kokoro-label": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صوت طبيعي (Kokoro)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রাকৃতিক কণ্ঠ (Kokoro)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Natural voice (Kokoro)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz natural (Kokoro)"
           }
         },
         "fr": {
@@ -26207,22 +26369,100 @@
             "state": "translated",
             "value": "Voix naturelle (Kokoro)"
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्राकृतिक आवाज़ (Kokoro)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara alami (Kokoro)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz natural (Kokoro)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Естественный голос (Kokoro)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自然语音（Kokoro）"
+          }
         }
       }
     },
     "voice.kokoro-ready": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصوت الطبيعي مثبت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রাকৃতিক কণ্ঠ ইনস্টল হয়েছে"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Natural voice installed"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz natural instalada"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Voix naturelle installée"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्राकृतिक आवाज़ इंस्टॉल है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara alami terpasang"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz natural instalada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Естественный голос установлен"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自然语音已安装"
           }
         }
       }

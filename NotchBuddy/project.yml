@@ -22,7 +22,8 @@ configs:
 packages:
   KokoroSwift:
     url: https://github.com/mlalma/kokoro-ios
-    branch: main
+    # Pinned: the project has no releases and main can change under us.
+    revision: 4d6d1d8ff8cd012014180c9cd4cf0151e7682354
   MLX:
     url: https://github.com/ml-explore/mlx-swift
     exactVersion: "0.30.2"
@@ -69,7 +70,6 @@ schemes:
     build:
       targets:
         NotchBuddy: all
-      buildImplicitDependencies: false
     run:
       config: Debug
     archive:
