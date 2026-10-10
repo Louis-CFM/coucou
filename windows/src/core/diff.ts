@@ -35,6 +35,8 @@ export interface FileDiff {
   tooLarge: boolean;
   /** True when produced by fromNew (Write tool). */
   isNewFile: boolean;
+  /** Made on a remote host: its path is not on this machine. */
+  remote?: boolean;
 }
 
 /** FileDiff.maxBytes / maxLines on macOS. */

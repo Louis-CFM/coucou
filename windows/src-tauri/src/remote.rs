@@ -26,16 +26,46 @@ use crate::hooks::HookPreview;
 /// Sessions whose events came over a tunnel: nothing local may be opened for them.
 static REMOTE_SESSIONS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
-/// Called by the pipe for every event from a remote host.
-pub fn note_session(payload: &Value, event: &str) {
-    let Some(id) = payload.get("session_id").and_then(Value::as_str) else { return };
-    let mut set = REMOTE_SESSIONS.lock().unwrap();
-    let set = set.get_or_insert_with(HashSet::new);
+/// Claude Code's ids are UUIDs: a longer one is not a session.
+const MAX_SESSION_ID: usize = 128;
+/// Remote sessions at once, all hosts together: past it, a new one is dropped.
+const MAX_REMOTE_SESSIONS: usize = 256;
+/// The one `coucou_` field a host's relay may set; the rest are this machine's to say.
+const HOST_FIELDS: &[&str] = &["coucou_diff_truncated"];
+
+/// A remote host's event as this machine takes it, tagged with the host.
+/// False: drop it. A host never speaks for a local agent's pill or the plan gauge.
+pub fn admit(payload: &mut Value, event: &str, host: &str) -> bool {
+    if event == "StatusLine" {
+        return false;
+    }
+    let id = payload.get("session_id").and_then(Value::as_str).unwrap_or_default();
+    if id.len() > MAX_SESSION_ID {
+        return false;
+    }
+    if !id.is_empty() && !note(REMOTE_SESSIONS.lock().unwrap().get_or_insert_with(HashSet::new), id, event) {
+        return false;
+    }
+    let Some(fields) = payload.as_object_mut() else { return false };
+    fields.retain(|k, _| !k.starts_with("coucou_") || HOST_FIELDS.contains(&k.as_str()));
+    fields.insert("coucou_remote".into(), Value::String(host.to_string()));
+    true
+}
+
+/// Records `id` as remote. False when the set is full and `id` is new.
+fn note(set: &mut HashSet<String>, id: &str, event: &str) -> bool {
     if event == "SessionEnd" {
         set.remove(id);
-    } else {
-        set.insert(id.to_string());
+        return true;
     }
+    if set.contains(id) {
+        return true;
+    }
+    if set.len() >= MAX_REMOTE_SESSIONS {
+        return false;
+    }
+    set.insert(id.to_string());
+    true
 }
 
 pub fn is_remote_session(id: &str) -> bool {
@@ -67,10 +97,17 @@ pub fn valid_host(host: &str) -> bool {
         && host.chars().all(|c| c.is_ascii_alphanumeric() || "@._-:[]/".contains(c))
 }
 
-/// The host as a file name for its local socket.
+/// The host as a file name for its local socket. A hash of the whole host keeps
+/// hosts that clean up alike ("a@b", "a_b") apart; the name is cut to stay short.
 fn socket_name(host: &str) -> String {
-    let safe: String = host.chars().map(|c| if c.is_ascii_alphanumeric() || "._-".contains(c) { c } else { '_' }).collect();
-    format!("{safe}.sock")
+    let safe: String = host
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || "._-".contains(c) { c } else { '_' })
+        .take(32)
+        .collect();
+    // FNV-1a: stable across runs and Rust versions, unlike std's hasher.
+    let hash = host.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3));
+    format!("{safe}-{:08x}.sock", hash as u32)
 }
 
 // ── The remote side, as scripts ───────────────────────────────────────────────
@@ -93,7 +130,7 @@ const READ_SETTINGS: &str = r#"echo "$HOME"; f=$HOME/.claude/settings.json; if [
 
 /// Takes the relay on stdin, checks it runs cleanly on this host (a glibc too old
 /// only warns), then puts it in place.
-const PUT_RELAY: &str = r#"set -e; d=$HOME/.local/share/coucou/bin; mkdir -p "$d"; t=$d/coucou-hook.new; trap "rm -f $t" EXIT
+const PUT_RELAY: &str = r#"set -e; d=$HOME/.local/share/coucou/bin; mkdir -p "$d"; t=$d/coucou-hook.new; cleanup() { rm -f "$t"; }; trap cleanup EXIT
 cat > "$t"; chmod 755 "$t"; e=$("$t" < /dev/null 2>&1 > /dev/null) || true; if [ -n "$e" ]; then echo "$e" >&2; exit 1; fi
 mv -f "$t" "$d/coucou-hook""#;
 
@@ -102,7 +139,7 @@ mv -f "$t" "$d/coucou-hook""#;
 fn put_settings(stamp: &str) -> String {
     format!(
         r#"set -e; f=$HOME/.claude/settings.json; if [ -L "$f" ]; then f=$(readlink -f "$f"); fi; mkdir -p "$(dirname "$f")"
-t=$f.coucou-new; trap "rm -f $t" EXIT
+t=$f.coucou-new; cleanup() {{ rm -f "$t"; }}; trap cleanup EXIT
 if [ -e "$f" ]; then b=$f.bak-{stamp}; n=0; while [ -e "$b" ]; do n=$((n+1)); b=$f.bak-{stamp}-$n; done; cp -p "$f" "$b"; cp -p "$f" "$t"; echo "$b"; fi
 cat > "$t"; mv -f "$t" "$f""#
     )
@@ -363,6 +400,7 @@ fn listen(app: &AppHandle, host: &str) -> Result<std::path::PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn hosts_are_never_options() {
@@ -461,8 +499,55 @@ mod tests {
     }
 
     #[test]
-    fn socket_names_stay_plain() {
-        assert_eq!(socket_name("me@[::1]:22"), "me____1__22.sock");
-        assert_eq!(socket_name("devbox"), "devbox.sock");
+    fn socket_names_stay_plain_and_apart() {
+        assert!(socket_name("me@[::1]:22").starts_with("me____1__22-"));
+        assert!(socket_name("devbox").ends_with(".sock"));
+        assert_eq!(socket_name("devbox"), socket_name("devbox"));
+        // Hosts that clean up alike still get a socket each.
+        assert_ne!(socket_name("a@b"), socket_name("a_b"));
+        assert!(socket_name(&"h".repeat(200)).len() <= 46);
+    }
+
+    fn event(fields: Value) -> Value {
+        let mut payload = json!({ "hook_event_name": "PreToolUse", "session_id": "0f8fad5b-d9cb-469f-a165-70867728950e" });
+        payload.as_object_mut().unwrap().extend(fields.as_object().unwrap().clone());
+        payload
+    }
+
+    #[test]
+    fn a_hosts_event_keeps_only_what_a_host_may_say() {
+        let mut payload = event(json!({ "coucou_agent": "codex", "coucou_remote": "spoofed", "coucou_diff_truncated": true }));
+        assert!(admit(&mut payload, "PreToolUse", "devbox"));
+        assert_eq!(payload["coucou_remote"], "devbox");
+        assert!(payload.get("coucou_agent").is_none(), "a host never speaks for a local agent's pill");
+        assert_eq!(payload["coucou_diff_truncated"], true);
+    }
+
+    #[test]
+    fn a_hosts_status_line_and_oversized_ids_are_dropped() {
+        let mut status = event(json!({ "hook_event_name": "StatusLine" }));
+        assert!(!admit(&mut status, "StatusLine", "devbox"), "the plan gauge is this machine's");
+        let mut long = event(json!({ "session_id": "x".repeat(MAX_SESSION_ID + 1) }));
+        assert!(!admit(&mut long, "PreToolUse", "devbox"));
+    }
+
+    #[test]
+    fn remote_sessions_are_capped() {
+        let mut set = HashSet::new();
+        for n in 0..MAX_REMOTE_SESSIONS {
+            assert!(note(&mut set, &format!("cap-{n}"), "SessionStart"));
+        }
+        assert!(!note(&mut set, "cap-one-more", "SessionStart"), "a full set takes no new session");
+        assert!(note(&mut set, "cap-0", "PreToolUse"), "a known one still passes");
+        assert!(note(&mut set, "cap-0", "SessionEnd"));
+        assert!(note(&mut set, "cap-one-more", "SessionStart"), "room again once one ends");
+    }
+
+    #[test]
+    fn scripts_quote_their_cleanup() {
+        for script in [PUT_RELAY.to_string(), put_settings("20261011-0100")] {
+            assert!(!script.contains(r#"trap "rm -f $t""#), "{script}");
+            assert!(script.contains(r#"rm -f "$t""#), "{script}");
+        }
     }
 }

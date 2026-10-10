@@ -44,8 +44,11 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
-/// The `coucou_` fields coucou-hook itself writes.
-const RELAY_FIELDS: &[&str] = &["coucou_agent", "coucou_diff_truncated"];
+/// The relay writes its line at once: 5 s is the Mac's receive timeout too.
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
+/// Connections at once on one remote host's socket: a host can't pile them up.
+#[cfg(target_os = "linux")]
+const MAX_REMOTE_CONNECTIONS: usize = 8;
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -141,7 +144,11 @@ pub fn start(app: AppHandle) {
 /// (remote.rs), whose events are tagged with it.
 #[cfg(target_os = "linux")]
 pub async fn serve(app: AppHandle, listener: tokio::net::UnixListener, host: Option<String>) {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::Arc;
+
     let uid = unsafe { libc::getuid() };
+    let open = Arc::new(AtomicUsize::new(0));
     loop {
         let stream = match listener.accept().await {
             Ok((stream, _)) => stream,
@@ -155,9 +162,17 @@ pub async fn serve(app: AppHandle, listener: tokio::net::UnixListener, host: Opt
             log::line("refused a relay connection from another user");
             continue;
         }
+        if host.is_some() && open.load(Ordering::Relaxed) >= MAX_REMOTE_CONNECTIONS {
+            continue;
+        }
+        open.fetch_add(1, Ordering::Relaxed);
         let app = app.clone();
         let host = host.clone();
-        tauri::async_runtime::spawn(async move { handle(app, stream, host).await });
+        let open = open.clone();
+        tauri::async_runtime::spawn(async move {
+            handle(app, stream, host).await;
+            open.fetch_sub(1, Ordering::Relaxed);
+        });
     }
 }
 
@@ -192,21 +207,27 @@ impl Relay for tokio::net::UnixStream {
     }
 }
 
-async fn handle(app: AppHandle, mut pipe: impl Relay, host: Option<String>) {
+/// Reads up to the first newline (or MAX_PAYLOAD). None: the read failed.
+async fn read_request(pipe: &mut impl Relay) -> Option<Vec<u8>> {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
         match pipe.read(&mut chunk).await {
-            Ok(0) => break,
+            Ok(0) => return Some(buf),
             Ok(n) => {
                 buf.extend_from_slice(&chunk[..n]);
                 if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
-                    break;
+                    return Some(buf);
                 }
             }
-            Err(_) => return,
+            Err(_) => return None,
         }
     }
+}
+
+async fn handle(app: AppHandle, mut pipe: impl Relay, host: Option<String>) {
+    // A client that connects and says nothing does not hold the connection forever.
+    let Ok(Some(buf)) = tokio::time::timeout(READ_TIMEOUT, read_request(&mut pipe)).await else { return };
     let line = match buf.iter().position(|b| *b == b'\n') {
         Some(i) => &buf[..i],
         None => &buf[..],
@@ -225,12 +246,10 @@ async fn handle(app: AppHandle, mut pipe: impl Relay, host: Option<String>) {
     match host {
         // The process on our end is ssh, not the session: nothing local to find.
         Some(host) => {
-            crate::remote::note_session(&payload, &event);
-            // Fields the app adds itself are never taken from another machine.
-            if let Some(fields) = payload.as_object_mut() {
-                fields.retain(|k, _| !k.starts_with("coucou_") || RELAY_FIELDS.contains(&k.as_str()));
+            if !crate::remote::admit(&mut payload, &event, &host) {
+                pipe.finish();
+                return;
             }
-            payload["coucou_remote"] = json!(host);
         }
         None => note_session_window(&pipe, &payload, &event),
     }

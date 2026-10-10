@@ -223,6 +223,7 @@ function recordDiff(agentId: string, payload: HookPayload) {
   if (!State.tasks.some((t) => t.id === agentId)) return;
   const diff = buildFileDiff(payload.tool_name ?? "", payload.tool_input ?? {});
   if (!diff) return;
+  if (payload.coucou_remote) diff.remote = true;
   const id = State.appendSessionDiff(agentId, diff);
   State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
 }
