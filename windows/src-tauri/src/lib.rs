@@ -194,10 +194,14 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// The lines around an edit, for the code view (see snippet.rs).
+/// The lines around an edit, for the code view (see snippet.rs). Off the main
+/// thread: a slow disk must not freeze the island.
 #[tauri::command]
-fn file_snippet(cwd: String, path: String, find: String, context: usize) -> Option<snippet::Snippet> {
-    snippet::around(&cwd, &path, &find, context)
+async fn file_snippet(cwd: String, path: String, find: String, context: usize) -> Option<snippet::Snippet> {
+    tauri::async_runtime::spawn_blocking(move || snippet::for_session(&cwd, &path, &find, context))
+        .await
+        .ok()
+        .flatten()
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,

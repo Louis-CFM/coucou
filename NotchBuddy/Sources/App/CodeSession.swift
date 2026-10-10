@@ -128,6 +128,8 @@ enum CodeView {
     static let tailWidth = 160
     static let maxFileBytes = 2 * 1024 * 1024
     static let maxLineLength = 200
+    /// A Write or a long edit keeps its first lines only, as on Linux.
+    static let keptLines = 40
 
     private static let phases: [String: CodePhase] = [
         "Read": .read, "Glob": .read, "Grep": .read, "LS": .read, "WebFetch": .read, "WebSearch": .read,
@@ -189,19 +191,27 @@ enum CodeView {
         guard !root.isEmpty, !path.isEmpty else { return nil }
         let base = URL(fileURLWithPath: root).resolvingSymlinksInPath().path
         let file = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
-        guard file.hasPrefix(base + "/"),
-              let attrs = try? FileManager.default.attributesOfItem(atPath: file),
-              attrs[.type] as? FileAttributeType == .typeRegular,
-              let size = attrs[.size] as? Int, size <= maxFileBytes,
-              let text = try? String(contentsOfFile: file, encoding: .utf8) else { return nil }
+        guard file.hasPrefix(base + "/"), let text = readRegularFile(file, max: maxFileBytes) else { return nil }
         return snippet(in: text, find: find, context: context)
+    }
+
+    /// A regular file's text, opened once and checked on that handle: a FIFO or a link
+    /// swapped in after the folder check is refused, never read, and nothing past `max` is.
+    static func readRegularFile(_ path: String, max: Int) -> String? {
+        let fd = open(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW)
+        guard fd >= 0 else { return nil }
+        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+        var info = stat()
+        guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFREG, info.st_size <= max,
+              let data = try? handle.read(upToCount: max + 1), data.count <= max else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     private static func lines(_ text: String) -> [String] {
         guard !text.isEmpty else { return [] }
         var t = text
         if t.hasSuffix("\n") { t.removeLast() }
-        return t.components(separatedBy: "\n")
+        return t.components(separatedBy: "\n").prefix(keptLines).map { String($0.prefix(maxLineLength)) }
     }
 
     /// The editor pane's rows for one edit, in file order.

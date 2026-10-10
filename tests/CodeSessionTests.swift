@@ -96,7 +96,25 @@ struct CodeSessionTests {
         let link = dir.appendingPathComponent("src/link.ts")
         try? FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "/etc/hosts")
         check(CodeView.readSnippet(path: link.path, root: dir.path, find: "localhost") == nil, "a link out of the folder is not")
+
+        // One open, checked on the handle: a FIFO never blocks, a file over the cap is not read
+        let fifo = dir.appendingPathComponent("src/pipe.ts")
+        mkfifo(fifo.path, 0o600)
+        let started = Date()
+        check(CodeView.readRegularFile(fifo.path, max: 64) == nil && Date().timeIntervalSince(started) < 1,
+              "a FIFO is refused without blocking")
+        check(CodeView.readRegularFile(file.path, max: 8) == nil, "a file over the cap is not read")
+        check(CodeView.readRegularFile(file.path, max: 4096) == text, "a regular file is read")
+        check(CodeView.readRegularFile(link.path, max: 4096) == nil, "a link is not followed")
         try? FileManager.default.removeItem(at: dir)
+
+        // A Write's rows are cut like Linux: the first lines, each to the line width
+        let longLine = String(repeating: "x", count: 5000)
+        let big = CodeEdit(isWrite: true, path: "/work/shop/min.js", file: "min.js", removed: "",
+                           added: Array(repeating: longLine, count: 500).joined(separator: "\n"))
+        let bigRows = CodeView.rows(for: big)
+        check(bigRows.count == CodeView.keptLines && bigRows.allSatisfy { $0.text.count == CodeView.maxLineLength },
+              "long Write rows are cut")
 
         if failures > 0 { print("\(failures) failure(s)"); exit(1) }
         print("All code view tests passed")
