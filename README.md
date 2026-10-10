@@ -1,17 +1,101 @@
 > [!IMPORTANT]
-> ### Unofficial Coucou Windows Modification
+> **Unofficial Windows fork.** This branch contains community modifications built on Coucou's Windows/Linux **0.2.0-era source** (starting from upstream commit [`ca72e1a`](https://github.com/Louis-CFM/coucou/commit/ca72e1a)). It is **not** an official Coucou release or an update to upstream Windows 0.3.0.
 >
-> This fork includes a customized Windows version based on Coucou 0.2.0.
+> **Branch:** [`windows-mod-0.2.0`](https://github.com/abdulazis06/coucou/tree/windows-mod-0.2.0) · **Original project:** [`Louis-CFM/coucou`](https://github.com/Louis-CFM/coucou)
 >
-> **Modified branch:** [windows-mod-0.2.0](https://github.com/abdulazis06/coucou/tree/windows-mod-0.2.0)
->
-> **Features:** Windows Dark Frosted theme, multi-agent Auto-Launch, configurable Auto-Quit, and improved agent monitoring.
->
-> See the [Windows documentation](windows/README.md) for details and known limitations.
->
-> This modification is unofficial and is not affiliated with the original developer. Download links to upstream releases do not provide this modified version.
->
+> **Important:** Installer/download links in the original README below lead to **upstream Coucou**, not to this modified build. No public installer for this fork is provided here.
+
+## Coucou Windows — Dark Frosted & Agent Lifecycle Modifications
+
+This fork experiments with a Windows-styled floating island and automatic app lifecycle behavior for AI coding agents. The goal is to keep Coucou available when an agent starts working, show the correct agent's activity, and close the app only after monitored sessions have **actually ended**.
+
+These modifications are Windows-focused. The original cross-platform project and its existing features belong to the upstream maintainers.
+
+### What's different in this fork?
+
+| Area | Modification |
+| --- | --- |
+| **Island appearance** | Optional **Windows Dark Frosted** theme with a dark translucent-looking surface, Windows accent tint, soft depth, and light edge highlights. The original appearance remains selectable. |
+| **Auto-Launch** | Optional automatic startup when supported coding-agent hooks report new work. **Off by default**; independent of Windows startup. |
+| **Auto-Quit** | Optional quit after the last *reliably tracked* agent session ends. **Off by default**; does not quit merely because an agent finished one response or became idle. |
+| **Quit after** | Choose **5, 10, 15, 30, or 60 minutes**; default **10 minutes**. |
+| **Multi-agent monitoring** | Cleaner distinction between user prompts, tool activity, and agent responses; response popups retain the correct agent identity and queue when multiple agents finish. |
+| **Click-through & pills** | Existing Click-Through, Hold Ctrl, keyboard shortcuts, Mochi animations, and Active Pills behavior are preserved. |
+
+**Appearance note:** Windows Dark Frosted is a styled WebView/CSS appearance with accent integration. It is **not** a claim of native Windows Acrylic or actual desktop background blur.
+
+### Supported agents for the new lifecycle features
+
+| Agent | Auto-Launch | Reliable session-end tracking for Auto-Quit |
+| --- | --- | --- |
+| Codex CLI | Tested | Supported |
+| Claude Code | Tested | Supported |
+| Hermes Agent | Tested | Supported (finalization signal) |
+| OpenCode | Tested | Supported (`session.deleted`) |
+| Antigravity | Tested | **Not available reliably** |
+| Antigravity IDE | Tested | **Not available reliably** |
+
+Antigravity and Antigravity IDE are separate apps but share Antigravity's hook configuration and a single monitoring pill. This table describes **these fork-specific lifecycle features**, not every agent supported by upstream Coucou.
+
+### How the automation behaves
+
+**Auto-Launch** lives in **Settings → General → Auto-launch with agents**. It activates on supported agent hook events, such as submitting a prompt or starting work; simply opening a terminal or IDE does not necessarily launch Coucou. The app retains its single-instance and startup safeguards.
+
+**Auto-Quit** lives in **Settings → General → Auto-quit when agents finish**. The **Quit after** control sets the delay. A new session cancels the countdown. Open Settings, Chat, permission requests, popups, uploads, window focus, and other active interactions can defer quitting. **Active Pills** does not control whether Auto-Launch runs.
+
+### Screenshots
+
+These screenshots show the **modified Windows build** running on Windows 11. The images have been cropped and compressed for this README.
+
+**Floating island appearances**
+
+| Windows Dark Frosted | Original Coucou |
+|:---:|:---:|
+| <img src="windows/screenshots/dark-frosted.webp" width="490" alt="Windows Dark Frosted floating island"> | <img src="windows/screenshots/original-theme.webp" width="490" alt="Original Coucou island"> |
+
+**Appearance and agent lifecycle settings**
+
+| Appearance selector | Auto-Launch and Auto-Quit controls |
+|:---:|:---:|
+| <img src="windows/screenshots/appearance-options.webp" width="390" alt="Original and Dark Frosted theme settings"> | <img src="windows/screenshots/lifecycle-settings.webp" width="390" alt="Auto-launch and Auto-quit settings"> |
+
+| Quit delay options | Click-through and keyboard shortcuts |
+|:---:|:---:|
+| <img src="windows/screenshots/quit-delay.webp" width="390" alt="Auto-Quit delay choices from 5 to 60 minutes"> | <img src="windows/screenshots/click-through-shortcuts.webp" width="390" alt="Click-through controls and shortcut settings"> |
+
+**Agent response popup**
+
+<img src="windows/screenshots/agent-response.webp" width="680" alt="Codex completion response with agent pills in Coucou">
+
+### Build this fork on Windows
+
+Requirements: **Windows 10/11**, **Node.js 20+**, **Rust**, and **Visual Studio Build Tools with Desktop development with C++**. Follow the [original Windows build guide](windows/README.md#build-it-yourself) for prerequisites and troubleshooting.
+
+```powershell
+git clone --branch windows-mod-0.2.0 https://github.com/abdulazis06/coucou.git
+cd coucou/windows
+npm install
+npm run tauri -- build --no-bundle
+```
+
+The non-installer executable is generated at `windows/target/release/coucou.exe`. To package an installer locally, run `npm run pack` from `windows/`. This fork's Windows build has been installed and tested locally, but **a GitHub release/installer for this branch has not been published**.
+
+### Testing and known limitations
+
+- **Manual Windows checks:** Auto-Launch was tested with the six agent apps listed above. Auto-Quit was verified for Codex and for a Hermes/Codex sequence, including a five-minute countdown and a session remaining open. These checks do **not** constitute a full automated end-to-end test suite.
+- **Antigravity output:** Its final popup may show **`Session finished`** rather than the final response text because the available hook data does not reliably identify that answer.
+- **Antigravity Auto-Quit:** No dependable end-of-session signal is available, so Coucou conservatively avoids auto-quitting when those sessions have been observed.
+- **Older sessions:** A session that started before Coucou was manually opened might not be tracked; an unmatched `SessionEnd` will not trigger Auto-Quit.
+- **GUI E2E:** WebdriverIO/Tauri integration remains incomplete. **Automated GUI E2E tests are not claimed to pass.**
+
+For implementation notes and earlier test results, see [backend flow](windows/docs/backend-flow.md) and [UI changes](windows/docs/ui-changes.md).
+
+### Credits and license
+
+Based on [Coucou by Louis-CFM](https://github.com/Louis-CFM/coucou). Credit and original license notices are retained. Source code is distributed under the project's **MIT License**; **Coucou**, **Mochi**, and certain sounds/assets have additional ownership notices documented by the upstream project. This fork is unofficial and is not affiliated with or endorsed by the original author.
+
 ---
+
 <div align="center">
 
 <img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Coucou icon">

@@ -1,19 +1,17 @@
 > [!IMPORTANT]
-> **Unofficial Windows Modification | Based on Coucou 0.2.0**
+> **Unofficial Windows modification based on Coucou 0.2.0.**
 >
-> This community fork adds:
-> - Windows Dark Frosted floating island theme.
-> - Auto-Launch for Codex, Hermes, OpenCode, Claude Code, and Antigravity.
-> - Auto-Quit with configurable delays (5-60 minutes).
-> - Improved multi-agent monitoring and popup handling.
+> This branch adds Windows Dark Frosted appearance, multi-agent Auto-Launch,
+> configurable Auto-Quit, and improvements to agent monitoring.
 >
-> **Known limitations:** Antigravity response fallback and incomplete automated E2E testing.
+> See the [fork overview, screenshots, supported agents, and known limitations](../README.md#coucou-windows--dark-frosted--agent-lifecycle-modifications).
 >
-> **Installation:** The download links below point to official upstream releases, NOT this modified version.
+> **The installer links below point to official upstream releases, not this modified build.**
 >
 > Original project: [Louis-CFM/coucou](https://github.com/Louis-CFM/coucou).
->
+
 ---
+
 <div align="center">
 
 <img src="src-tauri/icons/128x128.png" width="96" alt="Coucou icon">
