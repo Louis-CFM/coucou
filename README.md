@@ -151,6 +151,15 @@ The App Store build of the Mac app runs in Apple's sandbox, so a few features st
 
 Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md).
 
+### Homebrew (macOS)
+
+```bash
+brew tap louis-cfm/coucou https://github.com/Louis-CFM/coucou
+brew install --cask coucou
+```
+
+Update with `brew upgrade --cask coucou`. It installs the same signed and notarized GitHub build as the download below.
+
 ### Download for macOS
 
 1. Grab the latest `Coucou.zip` from [Releases](https://github.com/Louis-CFM/coucou/releases).
