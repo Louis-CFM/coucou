@@ -98,7 +98,7 @@ struct OverviewView: View {
                             }
                             .padding(.top, 6)
                             .padding(.leading, 108)
-                            .padding(.trailing, 36)
+                            .padding(.trailing, hasCode ? 56 : 36)
 
                             TickerView(task: agent, onDiffTap: { diffIdx in
                                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
@@ -2101,7 +2101,7 @@ struct IntegrationCardView: View {
                 }
                 .padding(.top, 6)
                 .padding(.leading, 108)
-                .padding(.trailing, 36)
+                .padding(.trailing, appState.codeSessions[task.id]?.hasContent == true ? 56 : 36)
 
                 TickerView(task: task, onDiffTap: onDiffTap)
                     .frame(height: 44)
