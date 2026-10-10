@@ -219,6 +219,8 @@ struct OverviewView: View {
             }
         case "integration_stripe":
             NSWorkspace.shared.open(URL(string: "https://dashboard.stripe.com/payments")!)
+        case "integration_cursor_cloud":
+            NSWorkspace.shared.open(URL(string: "https://cursor.com/agents")!)
         case "integration_notion":
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
@@ -1790,6 +1792,7 @@ struct IntegrationCardView: View {
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
         case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
+        case "integration_cursor_cloud": return KeychainStore.shared.get("cursor-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
         default: return false
@@ -1806,6 +1809,7 @@ struct IntegrationCardView: View {
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
         case "integration_github":  return URL(string: "https://github.com")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
+        case "integration_cursor_cloud": return URL(string: "https://cursor.com/agents")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
         default: return nil
@@ -1850,6 +1854,11 @@ struct IntegrationCardView: View {
         task.id == "integration_stripe" && appState.stripeLoaded
     }
 
+    // Cursor Cloud: show card as soon as first poll completes
+    private var cursorCloudHasData: Bool {
+        task.id == "integration_cursor_cloud" && appState.cursorCloudLoaded
+    }
+
     // Cal.com: show calendar as soon as first poll completes
     private var calcomHasData: Bool {
         task.id == "integration_calcom" && appState.calcomLoaded
@@ -1889,6 +1898,7 @@ struct IntegrationCardView: View {
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_cursor_cloud" ? appState.cursorCloudError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
@@ -1905,6 +1915,7 @@ struct IntegrationCardView: View {
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
+                   : task.id == "integration_cursor_cloud" ? appState.cursorCloudError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
         if let err = svcErr { return err }
@@ -1993,6 +2004,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
+                .transition(.opacity)
+        } else if cursorCloudHasData {
+            CursorCloudCardView()
                 .transition(.opacity)
         } else if calcomHasData {
             CalcomCardView()
@@ -2167,6 +2181,12 @@ struct IntegrationCardView: View {
                         Button("Refresh") { Task { @MainActor in StripePoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#0570DE").opacity(0.85))
+                            .buttonStyle(.plain)
+                    }
+                    if task.id == "integration_cursor_cloud" && isConfigured {
+                        Button("Refresh") { Task { @MainActor in CursorCloudPoller.shared.pollNow() } }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: "#C0C4CC").opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     if task.id == "integration_calcom" && isConfigured {
@@ -3100,6 +3120,77 @@ private struct StatRow: View {
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Cursor Cloud Card View
+
+struct CursorCloudCardView: View {
+    @ObservedObject private var appState = AppState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color(hex: "#C0C4CC"))
+                    .frame(width: 7, height: 7)
+                Text("Cursor Cloud")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(hex: "#F5F6F8"))
+                Text("Agents")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8E939C"))
+            }
+            .padding(.top, 6)
+            .padding(.leading, 108)
+            .padding(.trailing, 36)
+
+            VStack(alignment: .leading, spacing: 3) {
+                if appState.cursorCloudAgents.isEmpty {
+                    Text("No cloud agents")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                } else {
+                    ForEach(Array(appState.cursorCloudAgents.prefix(3).enumerated()), id: \.element.id) { index, agent in
+                        let accent = Color(hex: agent.isActive ? "#22C55E" : "#6B7079")
+                        Button {
+                            CursorCloudPoller.openAgent(agent)
+                        } label: {
+                            HStack(spacing: 5) {
+                                Circle().fill(accent).frame(width: 5, height: 5)
+                                Text(agent.name)
+                                    .font(.system(size: 11, weight: index == 0 ? .medium : .regular))
+                                    .foregroundColor(Color(hex: index == 0 ? "#C5C8CD" : "#9398A1"))
+                                    .lineLimit(1).truncationMode(.tail)
+                                    .layoutPriority(1)
+                                Text(agent.statusLabel)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(accent)
+                                    .lineLimit(1).truncationMode(.tail)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .layoutPriority(0)
+                                Text(agent.timeAgo)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color(hex: "#6B7079"))
+                                    .fixedSize()
+                            }
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(index == 0 ? accent.opacity(0.08) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.top, 5)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
     }
 }
 

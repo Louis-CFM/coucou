@@ -69,6 +69,7 @@ final class KeychainStore: @unchecked Sendable {
         "vercel-token",
         "github-token",
         "stripe-api-key",
+        "cursor-api-key",
         "calcom-api-key",
         "notion-api-key",
     ]

@@ -101,6 +101,7 @@ struct SettingsView: View {
     @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
     @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
+    @State private var cursorApiKey: String = KeychainStore.shared.get("cursor-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
 
@@ -1226,6 +1227,19 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // Cursor Cloud
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#C0C4CC")).frame(width: 8, height: 8)
+                        Text("Cursor Cloud").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("API key  (crsr_…)", text: $cursorApiKey)
+                        .textFieldStyle(.roundedBorder)
+                    Text("User API key from cursor.com/dashboard → API Keys. Lists your Cloud Agents.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+
                 // Cal.com
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
@@ -1889,8 +1903,12 @@ struct SettingsView: View {
         }
 
         saveKey("stripe-api-key",  value: stripeKey)
+        saveKey("cursor-api-key",  value: cursorApiKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+        if KeychainStore.shared.get("cursor-api-key") != nil {
+            CursorCloudPoller.shared.pollNow()
+        }
         statusMessage = String(localized: "status.integrations-saved")
     }
 

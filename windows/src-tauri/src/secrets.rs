@@ -17,6 +17,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "vercel-token",
     "github-token",
     "stripe-api-key",
+    "cursor-api-key",
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
