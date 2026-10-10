@@ -26,6 +26,7 @@ const STRINGS = {
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
+  noAnswer: N_("No answer came within two minutes — try again."),
   openSettings: N_("Open Settings"),
 };
 
@@ -235,7 +236,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
-  let renderedCount = -1;
+  /** chatEpoch the log was last fully rendered for; -1 forces a rebuild. */
+  let renderedEpoch = -1;
+  /** Bubbles in the log (the typing dots do not count). */
+  let renderedCount = 0;
+  let dotsUp = false;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
 
@@ -273,7 +278,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     drawModelButton();
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    State.addChat({ id: nextId++, role: "user", content: query });
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();
@@ -283,8 +288,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      // A provider that never answers must not latch the input: the island
+      // cannot cancel the call, so it stops waiting instead.
+      const reply = await Promise.race([
+        Bridge.chatSend(query, context),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(t(STRINGS.noAnswer))), 120_000),
+        ),
+      ]);
+      State.addChat({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
@@ -295,7 +307,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     } finally {
       sending = false;
       live = null;
-      renderedCount = -1; // the finished answer replaces the streamed one
+      renderedEpoch = -1; // the finished answer replaces the streamed one
       drawModelButton();
       State.notify();
       onHeightChange();
@@ -328,13 +340,25 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       }
 
       const thinking = State.stateOverride === "thinking";
-      const count = State.chatHistory.length + (thinking ? 0.5 : 0);
-      if (count !== renderedCount && !live) {
-        renderedCount = count;
-        clear(log);
-        for (const m of State.chatHistory) log.append(bubble(m));
-        if (thinking) log.append(typingDots());
-        log.scrollTop = log.scrollHeight;
+      if (!live) {
+        // Append only the new bubbles: clearing and re-rendering the whole log
+        // on every send re-parsed each code block again and grew quadratically.
+        if (State.chatEpoch !== renderedEpoch || State.chatHistory.length < renderedCount) {
+          renderedEpoch = State.chatEpoch;
+          renderedCount = 0;
+          dotsUp = false;
+          clear(log);
+        }
+        while (renderedCount < State.chatHistory.length) {
+          log.append(bubble(State.chatHistory[renderedCount]));
+          renderedCount++;
+        }
+        if (thinking !== dotsUp) {
+          log.querySelector(".typing")?.parentElement?.remove();
+          if (thinking) log.append(typingDots());
+          dotsUp = thinking;
+        }
+        if (renderedCount > 0 || thinking) log.scrollTop = log.scrollHeight;
       }
 
       // Leaving the chat folds the picker away.

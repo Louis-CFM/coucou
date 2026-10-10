@@ -187,6 +187,10 @@ type Listener = () => void;
 export const MAX_DIFFS_PER_PILL = 50;
 /** A pill's diffs are forgotten after an hour without a new one, as on macOS. */
 export const DIFF_TTL_MS = 3_600_000;
+/** Dynamic `coucou_agent` pills that may sit next to the declared ones at once. */
+export const MAX_AGENT_PILLS = 12;
+/** Chat bubbles kept in the island's history — dropped in whole turns. */
+export const MAX_CHAT_MESSAGES = 100;
 
 class AppState {
   mode: IslandMode = "hidden";
@@ -214,9 +218,31 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  /** Bumped whenever chatHistory is reset or trimmed — chat views re-render fully. */
+  chatEpoch = 0;
   pendingApproval: ApprovalInfo | null = null;
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
+
+  /**
+   * One chat turn appended to the visible history. Once it grows past the cap
+   * the oldest turns are dropped in pairs, so a user bubble never loses its
+   * answer. Trimming bumps chatEpoch: the log was rendered from the longer
+   * array and can no longer be appended to.
+   */
+  addChat(message: ChatMessage) {
+    this.chatHistory.push(message);
+    while (this.chatHistory.length > MAX_CHAT_MESSAGES) {
+      this.chatHistory.splice(0, 2);
+      this.chatEpoch++;
+    }
+  }
+
+  /** The whole conversation forgotten (Ctrl+K, the provider switch reset). */
+  resetChat() {
+    this.chatHistory = [];
+    this.chatEpoch++;
+  }
 
   integrations: Record<string, IntegrationInfo> = {};
 
@@ -448,6 +474,19 @@ class AppState {
    */
   upsertExternalAgent(id: string, name: string, color: string) {
     if (this.tasks.some((t) => t.id === id)) return;
+    // Dynamic pills are created per coucou_agent tag and dropped on SessionEnd,
+    // so a tag whose session never ended would leak its pill forever. Past the
+    // cap, drop the oldest one that is not running — a busy pill owns a live
+    // session and its next event would recreate it anyway.
+    const dynamic = this.tasks.filter(
+      (t) => t.source === "agent" && !t.isIntegration && !this.isKept(t.id),
+    );
+    if (dynamic.length >= MAX_AGENT_PILLS) {
+      const BUSY: ReadonlySet<BotStateName> = new Set(["working", "thinking", "searching", "approval", "question"]);
+      const stale = dynamic.find((t) => !BUSY.has(t.state));
+      if (!stale) return; // every slot is a live session: this tag gets no pill
+      this.removeTask(stale.id);
+    }
     const def = pillDefinition(id);
     this.insertAfterMain({
       id, name, color: def ? pillColor(def.id, def.color, this.settings.pillColors) : color,

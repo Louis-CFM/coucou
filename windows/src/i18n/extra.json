@@ -1310,6 +1310,17 @@
    "ru": "Нет папки «Изображения» или «Загрузки» для сохранения.",
    "id": "Tidak ada folder Gambar atau Unduhan untuk menyimpan."
   },
+  "No answer came within two minutes — try again.": {
+   "zh-Hans": "两分钟内没有回复 — 请重试。",
+   "hi": "दो मिनट में कोई जवाब नहीं आया — फिर कोशिश करें।",
+   "es": "No llegó ninguna respuesta en dos minutos — inténtalo de nuevo.",
+   "ar": "لم يصل أي رد خلال دقيقتين — حاول مجددًا.",
+   "fr": "Aucune réponse en deux minutes — réessaie.",
+   "bn": "দুই মিনিটে কোনো উত্তর আসেনি — আবার চেষ্টা করুন।",
+   "pt-BR": "Nenhuma resposta em dois minutos — tente de novo.",
+   "ru": "Ответа не было две минуты — попробуйте ещё раз.",
+   "id": "Tidak ada jawaban dalam dua menit — coba lagi."
+  },
   "No change.": {
    "zh-Hans": "没有改动。",
    "hi": "कोई बदलाव नहीं।",
