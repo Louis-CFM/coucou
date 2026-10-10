@@ -4804,22 +4804,40 @@ struct SendButtonStyle: ButtonStyle {
 struct SettingsIslandView: View {
     @ObservedObject var state: AppState
 
-    private var claudeConnected: Bool {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/settings.json")
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = json["hooks"] as? [String: Any],
-              let ss = hooks["SessionStart"] as? [[String: Any]] else { return false }
-        return ss.contains { matcher in
-            (matcher["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false
-        }
+    private func hasKey(_ key: String) -> Bool {
+        guard let value = KeychainStore.shared.get(key) else { return false }
+        return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var apiConnected: Bool {
-        KeychainStore.shared.get("anthropic-api-key") != nil
+    /// Resources Coucou can use right now. Agent labels mean their Coucou hook or
+    /// plugin is installed; API labels mean a key or local endpoint is configured.
+    private var activeResources: [String] {
+        var resources: [String] = []
+
+        if HookServer.claudeHooksInstalled() { resources.append("Claude Code") }
+
+        #if !APPSTORE
+        if HookServer.codexHooksInstalled()     { resources.append("Codex") }
+        if HookServer.geminiHooksInstalled()    { resources.append("Gemini CLI") }
+        if HookServer.agyHooksInstalled()       { resources.append("Antigravity") }
+        if HookServer.copilotHooksInstalled()   { resources.append("Copilot CLI") }
+        if HookServer.museHooksInstalled()      { resources.append("Muse") }
+        if HookServer.openCodePluginInstalled() { resources.append("OpenCode") }
+        if HookServer.ampPluginInstalled()      { resources.append("Amp") }
+        if HookServer.hermesPluginInstalled()   { resources.append("Hermes") }
+        #endif
+
+        if hasKey("anthropic-api-key") { resources.append("Anthropic API") }
+        if hasKey("openai-api-key")    { resources.append("OpenAI API") }
+        if hasKey("google-api-key")    { resources.append("Google AI API") }
+        if !state.ollamaServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            resources.append("Ollama")
+        }
+        if !state.lmstudioServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            resources.append("LM Studio")
+        }
+
+        return resources
     }
 
     var body: some View {
@@ -4866,11 +4884,21 @@ struct SettingsIslandView: View {
                     }
                 }
 
-                // Connection status
-                HStack(spacing: 14) {
-                    StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
-                    Spacer()
+                // Active agents and chat providers. Keep this row horizontally
+                // scrollable so every configured resource remains visible.
+                HStack(spacing: 8) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            if activeResources.isEmpty {
+                                StatusBadge(label: String(localized: "Not connected"), ok: false)
+                            } else {
+                                ForEach(activeResources, id: \.self) { resource in
+                                    StatusBadge(label: resource, ok: true)
+                                }
+                            }
+                        }
+                    }
+                    .scrollClipDisabled()
                     Button("Settings…") {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
                     }
