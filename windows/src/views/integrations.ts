@@ -10,6 +10,8 @@ import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
+import { calendarAgenda } from "../island/calendar";
+import { isAfterToday, minutesUntil, type CalendarEvent } from "../core/calendar";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard } from "./github";
 import { N_, language, t } from "../i18n/i18n";
@@ -56,6 +58,7 @@ const OPEN_URLS: Record<string, string> = {
   integration_stripe: "https://dashboard.stripe.com/payments",
   integration_notion: "https://notion.so",
   integration_calcom: "https://app.cal.com/bookings",
+  integration_calendar: "https://calendar.google.com",
 };
 
 /** IntegrationCardView.statusLabel on macOS. */
@@ -357,6 +360,63 @@ function calcomCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
 }
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+const CALENDAR_COLOR = "#4F9DF7";
+const CALENDAR_ROWS = 3;
+
+function clockTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString(language(), { hour: "2-digit", minute: "2-digit" });
+}
+
+/** "Now", "in 12 min", "in 2 h 5" or "Tomorrow": the next meeting's countdown. */
+export function countdownLabel(e: CalendarEvent, now: number): string {
+  if (e.start <= now) return t("Now");
+  if (isAfterToday(e, now)) return t("Tomorrow");
+  const m = minutesUntil(e, now);
+  return m < 60 ? t("in {m} min", { m }) : t("in {h} h {m}", { h: Math.floor(m / 60), m: m % 60 });
+}
+
+function calendarCard(): HTMLElement {
+  const now = Date.now();
+  const a = calendarAgenda(now);
+  const rows = h("div", { class: "int-rows tight" });
+  const time = (text: string) => h("span", { class: "int-time", style: `color:${CALENDAR_COLOR}`, text });
+
+  const next = a?.next;
+  if (next) {
+    const cells: Node[] = [
+      time(clockTime(next.start)),
+      h("span", { class: "int-name", text: next.title || t("Meeting") }),
+      h("span", { class: "int-ago", text: countdownLabel(next, now) }),
+    ];
+    const join = next.joinUrl;
+    if (join) {
+      cells.push(h("button", {
+        class: "link-btn",
+        style: `color:${CALENDAR_COLOR}d9`,
+        text: t("Join"),
+        onclick: (ev: Event) => {
+          ev.stopPropagation();
+          void Bridge.openUrl(join);
+        },
+      }));
+    }
+    rows.append(listRow(CALENDAR_COLOR, true, ...cells));
+  }
+  const rest = [
+    ...(a?.later ?? []).map((e) => [clockTime(e.start), e.title] as const),
+    ...(a?.allDay ?? []).map((e) => [t("All day"), e.title] as const),
+  ];
+  for (const [when, title] of rest.slice(0, CALENDAR_ROWS - rows.childElementCount)) {
+    rows.append(listRow(CALENDAR_COLOR, false, time(when), h("span", { class: "int-name", text: title || t("Meeting") })));
+  }
+  if (rows.childElementCount === 0) {
+    rows.append(h("div", { class: "int-empty", text: t("No more meetings today") }));
+  }
+  return h("div", { class: "int-card" }, header(CALENDAR_COLOR, "Calendar", t("Today")), rows);
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 function n8nCard(task: AgentTask, onDetail: () => void, openSettings: () => void): HTMLElement {
@@ -440,6 +500,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_calendar":
+      return calendarAgenda() != null;
     default:
       return false;
   }
@@ -479,6 +541,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_calendar":
+      return calendarCard();
     default:
       return idleCard(task, hooks.openSettings);
   }

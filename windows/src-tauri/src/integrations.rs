@@ -71,7 +71,8 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app, "integration_calendar", 10, 300, poll_calendar);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -120,6 +121,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_calendar" => poll_calendar(app).await,
         _ => {}
     }
 }
@@ -846,6 +848,49 @@ async fn poll_calcom(app: AppHandle) {
     });
 }
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
+//
+// The secret iCal address (Google Calendar or any other) stays here; the island
+// gets the feed's text and reads it itself (src/core/calendar.ts), where Intl
+// knows every time zone.
+
+/// The feed address as pasted: `webcal://` (iCloud, Outlook) is https.
+fn calendar_url(raw: &str) -> Option<reqwest::Url> {
+    let raw = raw.trim();
+    let raw = match raw.strip_prefix("webcal://") {
+        Some(rest) => format!("https://{rest}"),
+        None => raw.to_string(),
+    };
+    let url = reqwest::Url::parse(&raw).ok()?;
+    (matches!(url.scheme(), "https" | "http") && url.host_str().is_some_and(|h| !h.is_empty())).then_some(url)
+}
+
+async fn poll_calendar(app: AppHandle) {
+    let Some(raw) = secrets::get("calendar-ical-url") else { return };
+    let fail = |error: String| {
+        emit(&app, IntegrationUpdate { id: "integration_calendar", data: json!({}), error: Some(error), event: None });
+    };
+    let Some(url) = calendar_url(&raw) else {
+        fail(crate::i18n::t("Only http:// and https:// URLs are accepted."));
+        return;
+    };
+    let Ok(response) = client().get(url).send().await else { return };
+    if !response.status().is_success() {
+        fail(status_error(response.status().as_u16(), &crate::i18n::t("Key lacks access")));
+        return;
+    }
+    let body = match crate::net::read_capped(response, crate::net::MAX_BODY).await {
+        Ok(body) => body,
+        Err(error) => return fail(error),
+    };
+    emit(&app, IntegrationUpdate {
+        id: "integration_calendar",
+        data: json!({ "ics": String::from_utf8_lossy(&body) }),
+        error: None,
+        event: None,
+    });
+}
+
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
 async fn poll_n8n(app: AppHandle) {
@@ -1020,5 +1065,17 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn calendar_url_takes_https_and_webcal_only() {
+        let google = "https://calendar.google.com/calendar/ical/x%40gmail.com/private-abc/basic.ics";
+        assert_eq!(calendar_url(google).unwrap().as_str(), google);
+        assert_eq!(
+            calendar_url(" webcal://p01-caldav.icloud.com/published/2/abc ").unwrap().as_str(),
+            "https://p01-caldav.icloud.com/published/2/abc"
+        );
+        assert!(calendar_url("file:///etc/passwd").is_none());
+        assert!(calendar_url("not a url").is_none());
     }
 }

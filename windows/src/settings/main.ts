@@ -773,6 +773,10 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
+  { id: "integration_calendar", name: "Calendar", color: "#4F9DF7",
+    fields: [{ key: "calendar-ical-url", label: N_("Secret address in iCal format"),
+      placeholder: "https://calendar.google.com/calendar/ical/…/basic.ics", secret: true }],
+    hint: N_("Google Calendar → Settings → your calendar → Integrate calendar. Any iCal link works: Outlook, iCloud, Fastmail.") },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
@@ -1326,7 +1330,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key", "calendar-ical-url",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

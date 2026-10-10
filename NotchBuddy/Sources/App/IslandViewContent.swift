@@ -223,6 +223,9 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case CalendarWatcher.pillId:
+            let next = CalendarAgenda(state.calendarMeetings, now: Date()).next
+            NSWorkspace.shared.open(next?.joinURL ?? URL(fileURLWithPath: "/System/Applications/Calendar.app"))
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -1831,6 +1834,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        case CalendarWatcher.pillId: return CalendarWatcher.hasAccess
         default: return false
         }
     }
@@ -1847,6 +1851,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case CalendarWatcher.pillId: return URL(fileURLWithPath: "/System/Applications/Calendar.app")
         default: return nil
         }
     }
@@ -1892,6 +1897,11 @@ struct IntegrationCardView: View {
     // Cal.com: show calendar as soon as first poll completes
     private var calcomHasData: Bool {
         task.id == "integration_calcom" && appState.calcomLoaded
+    }
+
+    // Calendar: show the agenda once EventKit has been read
+    private var calendarHasData: Bool {
+        task.id == CalendarWatcher.pillId && appState.calendarLoaded
     }
 
     // Notion: show pages as soon as first poll completes
@@ -1978,6 +1988,7 @@ struct IntegrationCardView: View {
             return String(localized: "Connected · loading…")
         } else {
             if isHooks { return String(localized: "Hooks not installed") }
+            if task.id == CalendarWatcher.pillId { return String(localized: "Calendar access not allowed") }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
                 return provider.isLocal ? String(localized: "Not connected") : String(localized: "Key not configured")
@@ -2035,6 +2046,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if calcomHasData {
             CalcomCardView()
+                .transition(.opacity)
+        } else if calendarHasData {
+            CalendarCardView()
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
@@ -2212,6 +2226,12 @@ struct IntegrationCardView: View {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
+                            .buttonStyle(.plain)
+                    }
+                    if task.id == CalendarWatcher.pillId && isConfigured {
+                        Button("Refresh") { CalendarWatcher.shared.refresh() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     // Settings button: shown when not configured, except cursor/codex and music
@@ -3522,6 +3542,96 @@ private struct CalcomDetailRow: View {
             Text(text).font(.system(size: size)).foregroundColor(Color(hex: "#9398A1"))
                 .lineLimit(lines).truncationMode(truncate ? .middle : .tail)
         }
+    }
+}
+
+// MARK: - Calendar Card View
+
+struct CalendarCardView: View {
+    @ObservedObject private var appState = AppState.shared
+    private static let accent = "#4F9DF7"
+    private static let maxRows = 3
+
+    var body: some View {
+        // Ticks only while on screen: the countdown stays right, nothing runs when hidden.
+        TimelineView(.periodic(from: .now, by: 30)) { ctx in
+            content(now: ctx.date)
+        }
+        .transition(.opacity)
+    }
+
+    private func content(now: Date) -> some View {
+        let agenda = CalendarAgenda(appState.calendarMeetings, now: now)
+        let rest = agenda.later.map { (Self.clock($0.start), $0.title) }
+                 + agenda.allDay.map { (String(localized: "All day"), $0.title) }
+        let shown = Array(rest.prefix(Self.maxRows - (agenda.next == nil ? 0 : 1)))
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: Self.accent)).frame(width: 7, height: 7)
+                Text(verbatim: "Calendar").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
+                Text("Today").font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
+            }
+            .padding(.top, 6).padding(.leading, 108).padding(.trailing, 36)
+
+            VStack(alignment: .leading, spacing: 3) {
+                if let next = agenda.next {
+                    nextRow(next, now: now)
+                }
+                ForEach(shown.indices, id: \.self) { i in
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: Self.accent)).frame(width: 4, height: 4)
+                        Text(shown[i].0)
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundColor(Color(hex: Self.accent)).fixedSize()
+                        Text(shown[i].1).font(.system(size: 11)).foregroundColor(Color(hex: "#9398A1"))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                }
+                if agenda.next == nil && rest.isEmpty {
+                    Text("No more meetings today").font(.system(size: 11)).foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.leading, 6)
+                }
+            }
+            .padding(.leading, 108).padding(.trailing, 12).padding(.top, 5)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading).padding(.top, 4)
+    }
+
+    private func nextRow(_ meeting: CalendarMeeting, now: Date) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(Color(hex: Self.accent)).frame(width: 4, height: 4)
+            Text(Self.clock(meeting.start))
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundColor(Color(hex: Self.accent)).fixedSize()
+            Text(meeting.title).font(.system(size: 11)).foregroundColor(Color(hex: "#C5C8CD"))
+                .lineLimit(1).truncationMode(.tail).layoutPriority(1)
+            Spacer(minLength: 2)
+            Text(countdown(meeting, now: now)).font(.system(size: 10)).foregroundColor(Color(hex: "#8E939C")).fixedSize()
+            if let url = meeting.joinURL {
+                Button("Join") { NSWorkspace.shared.open(url) }
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Color(hex: Self.accent))
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 6).padding(.vertical, 3)
+        .background(Color(hex: Self.accent).opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private static func clock(_ date: Date) -> String {
+        date.formatted(date: .omitted, time: .shortened)
+    }
+
+    /// "Now", "in 12 min", "in 2 h 5" or "Tomorrow".
+    private func countdown(_ meeting: CalendarMeeting, now: Date) -> String {
+        if meeting.start <= now { return String(localized: "Now") }
+        if !Calendar.current.isDate(meeting.start, inSameDayAs: now) { return String(localized: "Tomorrow") }
+        let mins = Int((meeting.start.timeIntervalSince(now) / 60).rounded(.up))
+        if mins < 60 { return String(format: String(localized: "plan.reset-in-m %lld"), Int64(mins)) }
+        return String(format: String(localized: "plan.reset-in-hm %lld %lld"), Int64(mins / 60), Int64(mins % 60))
     }
 }
 

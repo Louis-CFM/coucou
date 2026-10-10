@@ -219,6 +219,21 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 2bis. Calendrier (pill `integration_calendar`)
+
+- **Mac : EventKit**, aucune clé, aucun appel réseau de Coucou. Tous les calendriers de l'app Calendrier, y compris les comptes Google ajoutés dans Réglages Système → Comptes internet. `CalendarWatcher.swift`.
+  - Accès demandé au clic sur « Allow calendar access » (Réglages → Integrations), jamais au lancement : `requestFullAccessToEvents` (macOS 14+). `Info.plist` : `NSCalendarsFullAccessUsageDescription`. Entitlement `com.apple.security.personal-information.calendars` dans les cinq fichiers `.entitlements` du Mac (Hardened Runtime et sandbox App Store).
+  - Accès refusé ou « écriture seule » : bouton « Open Settings… » vers Confidentialité → Calendriers. Accès retiré plus tard : la carte se vide.
+  - Filtre « Calendars » (liste à cocher, tous par défaut) : `calendarFilter` dans les préférences, libellé « Titre (Compte) ».
+  - Lecture d'aujourd'hui et de demain : au lancement, à chaque `EKEventStoreChanged`, toutes les 5 min, à l'activation de la pill. Rien si la pill n'est pas déclarée.
+- **Windows et Linux : adresse iCal secrète.** Google Agenda → Paramètres → (le calendrier, colonne de gauche) → *Intégrer l'agenda* → **Adresse secrète au format iCal**. N'importe quel lien iCal marche (Outlook, iCloud en `webcal://`, Fastmail).
+  - L'adresse est un secret : Credential Manager / Secret Service (`calendar-ical-url`), jamais dans le front. Rust (`poll_calendar`) la télécharge toutes les 5 min (8 Mo max) et n'envoie à l'island que le texte du flux.
+  - L'island lit le flux (`windows/src/core/calendar.ts`) : fuseaux par `Intl` (tous les fuseaux IANA, `TZID` façon Mozilla compris), journées entières, `RRULE` (DAILY/WEEKLY/MONTHLY/YEARLY, INTERVAL, COUNT, UNTIL, BYDAY avec rang, BYMONTHDAY, BYMONTH, WKST), `EXDATE`, occurrences déplacées ou annulées (`RECURRENCE-ID`). Heure sautée au passage à l'heure d'été : décalage d'avant le saut ; heure doublée : première occurrence (RFC 5545). Tests : `windows/tests/calendar.test.mjs`.
+- Carte : prochaine réunion (en cours ou à venir, aujourd'hui ou demain) avec heure, titre, compte à rebours (« Now », « in 12 min », « in 2 h 5 », « Tomorrow ») et bouton **Join** si un lien Meet, Zoom ou Teams est trouvé (`X-GOOGLE-CONFERENCE`, URL, lieu, description). En dessous, le reste de la journée puis les événements « All day », 3 lignes au plus. Le compte à rebours ne tourne que quand la carte est affichée.
+- Rappel : un seul minuteur, réarmé à chaque changement, **5 min avant** la prochaine réunion : pill en `question` (le Mochi du bureau rentre), badge `approval` si la pill n'est pas au premier plan, son `question`, island révélée. Effacé 1 min après le début. Le ↗ ouvre le lien de la réunion, sinon Calendrier (Mac) ou Google Agenda.
+
+---
+
 ## 3. Fichiers déposés
 
 - Glisser-déposer natif sur la panel (types `fileURL`). Copier les fichiers dans `~/Library/Application Support/NotchBuddy/inbox/` (c'est la phase `uploading`).
@@ -329,6 +344,7 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 | Automatisation → Terminal / iTerm / navigateur | sauter au bon onglet, lire l'URL | première utilisation |
 | Automatisation → Musique *(GitHub only)* | contrôler la lecture Apple Music | première commande depuis le notch |
 | Automatisation → Spotify *(GitHub only)* | lire la position, le shuffle, le volume ; piloter la lecture | activation de la pill Spotify, ou première ouverture de sa carte |
+| Calendriers (accès complet) | prochaine réunion et rappel (pill Calendrier) | clic sur « Allow calendar access » |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 

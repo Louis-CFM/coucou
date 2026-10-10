@@ -903,6 +903,17 @@
    "ru": "Перейти к ожидающему разрешению или вопросу",
    "id": "Buka izin atau pertanyaan yang menunggu"
   },
+  "Google Calendar → Settings → your calendar → Integrate calendar. Any iCal link works: Outlook, iCloud, Fastmail.": {
+   "zh-Hans": "Google 日历 → 设置 → 你的日历 → 集成日历。任何 iCal 链接都可以：Outlook、iCloud、Fastmail。",
+   "hi": "Google Calendar → सेटिंग्स → आपका कैलेंडर → कैलेंडर इंटीग्रेट करें। कोई भी iCal लिंक चलेगा: Outlook, iCloud, Fastmail।",
+   "es": "Google Calendar → Configuración → tu calendario → Integrar el calendario. Sirve cualquier enlace iCal: Outlook, iCloud, Fastmail.",
+   "ar": "تقويم Google ← الإعدادات ← تقويمك ← دمج التقويم. يصلح أي رابط iCal: Outlook وiCloud وFastmail.",
+   "fr": "Google Agenda → Paramètres → votre agenda → Intégrer l'agenda. Tout lien iCal convient : Outlook, iCloud, Fastmail.",
+   "bn": "Google Calendar → সেটিংস → আপনার ক্যালেন্ডার → ক্যালেন্ডার ইন্টিগ্রেট করুন। যেকোনো iCal লিংক চলবে: Outlook, iCloud, Fastmail।",
+   "pt-BR": "Google Agenda → Configurações → sua agenda → Integrar agenda. Qualquer link iCal funciona: Outlook, iCloud, Fastmail.",
+   "ru": "Google Календарь → Настройки → ваш календарь → Интеграция календаря. Подойдёт любая ссылка iCal: Outlook, iCloud, Fastmail.",
+   "id": "Google Kalender → Setelan → kalender Anda → Integrasikan kalender. Tautan iCal apa pun bisa: Outlook, iCloud, Fastmail."
+  },
   "Hide project names": {
    "zh-Hans": "隐藏项目名称",
    "hi": "प्रोजेक्ट के नाम छिपाएँ",
@@ -1629,17 +1640,6 @@
    "ru": "Платёж",
    "id": "Pembayaran"
   },
-  "Permissions": {
-   "zh-Hans": "权限",
-   "hi": "अनुमतियाँ",
-   "es": "Permisos",
-   "ar": "الأذونات",
-   "fr": "Permissions",
-   "bn": "অনুমতি",
-   "pt-BR": "Permissões",
-   "ru": "Разрешения",
-   "id": "Izin"
-  },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
    "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",
@@ -1958,6 +1958,17 @@
    "pt-BR": "Cachecol",
    "ru": "Шарф",
    "id": "Syal"
+  },
+  "Secret address in iCal format": {
+   "zh-Hans": "iCal 格式的私密地址",
+   "hi": "iCal फ़ॉर्मेट में गुप्त पता",
+   "es": "Dirección secreta en formato iCal",
+   "ar": "العنوان السري بتنسيق iCal",
+   "fr": "Adresse secrète au format iCal",
+   "bn": "iCal ফরম্যাটে গোপন ঠিকানা",
+   "pt-BR": "Endereço secreto no formato iCal",
+   "ru": "Секретный адрес в формате iCal",
+   "id": "Alamat rahasia dalam format iCal"
   },
   "Secret key": {
    "zh-Hans": "私密密钥",
