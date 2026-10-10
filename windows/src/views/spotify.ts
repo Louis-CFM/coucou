@@ -312,8 +312,9 @@ export function buildSpotifyCard(): SpotifyCardHost {
   const idleAction = h("button", { class: "link-btn", style: `color:${green}d9` });
   idleAction.addEventListener("click", () => void Bridge.spotifyOpen());
   const idleSub = h("span");
+  const idleName = h("b", { text: "Media" });
   const idleEl = h("div", { class: "int-card" },
-    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: "Spotify" }), idleSub),
+    h("div", { class: "int-head" }, dot(green, 7), idleName, idleSub),
     h("div", { class: "int-status" }, idleDot, idleText),
     h("div", { class: "int-actions" }, idleAction),
   );
@@ -408,6 +409,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
     idleDot.style.background = installed ? "#22C55E" : "#F4505E";
     idleText.textContent = installed ? t("Not playing") : t("Spotify not installed");
     idleAction.textContent = installed ? t("Open Spotify") : t("Get Spotify");
+    idleName.textContent = Spotify.state.player || "Media";
     idleSub.textContent = t(pillDefinition(SPOTIFY_ID)?.subtitle ?? N_("Integration"));
   }
 

@@ -24,7 +24,7 @@ export interface SpotifyTrack {
 }
 
 export interface SpotifyState {
-  /** Spotify is running. */
+  /** A media player is running (Spotify, a browser, VLC…): the one shown. */
   running: boolean;
   /** There is a Spotify to launch. */
   installed: boolean;
@@ -37,11 +37,13 @@ export interface SpotifyState {
   repeat: boolean;
   /** 0…100. */
   volume: number;
+  /** The player's own name ("Spotify", "Firefox"…); empty when none runs. */
+  player: string;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
   running: false, installed: false, track: null, playing: false,
-  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50,
+  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50, player: "",
 };
 
 /** The page's copy of the player, and the cover of the track that has one. */

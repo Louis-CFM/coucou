@@ -118,6 +118,8 @@ pub struct PlayerState {
     pub repeat: bool,
     /// 0…100.
     pub volume: i32,
+    /// Who is playing: the player's own name ("Spotify", "Firefox"…).
+    pub player: String,
 }
 
 impl Default for PlayerState {
@@ -132,6 +134,7 @@ impl Default for PlayerState {
             shuffle: false,
             repeat: false,
             volume: 50,
+            player: String::new(),
         }
     }
 }
@@ -500,7 +503,9 @@ mod linux {
     use dbus::Message;
     use tauri::Emitter;
 
-    const BUS: &str = "org.mpris.MediaPlayer2.spotify";
+    /// Every MPRIS player owns a name that starts like this.
+    const PREFIX: &str = "org.mpris.MediaPlayer2.";
+    const SPOTIFY_BUS: &str = "org.mpris.MediaPlayer2.spotify";
     const PATH: &str = "/org/mpris/MediaPlayer2";
     const ROOT: &str = "org.mpris.MediaPlayer2";
     const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
@@ -512,10 +517,11 @@ mod linux {
     const IDLE_WAIT: Duration = Duration::from_secs(3600);
     const FLATPAK_ID: &str = "com.spotify.Client";
 
+    /// Every player's news arrives; `handle` keeps what the chosen one says.
     const RULES: [&str; 3] = [
-        "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0='org.mpris.MediaPlayer2.spotify'",
-        "type='signal',sender='org.mpris.MediaPlayer2.spotify',path='/org/mpris/MediaPlayer2',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'",
-        "type='signal',sender='org.mpris.MediaPlayer2.spotify',path='/org/mpris/MediaPlayer2',interface='org.mpris.MediaPlayer2.Player',member='Seeked'",
+        "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0namespace='org.mpris.MediaPlayer2'",
+        "type='signal',path='/org/mpris/MediaPlayer2',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'",
+        "type='signal',path='/org/mpris/MediaPlayer2',interface='org.mpris.MediaPlayer2.Player',member='Seeked'",
     ];
 
     struct Shared {
@@ -524,13 +530,15 @@ mod linux {
         active: bool,
         /// The listener's unique name, to wake it when it has to stop.
         listener: Option<String>,
-        /// Spotify's unique name while it runs: signals from anyone else are ignored.
+        /// The chosen player's unique name while it runs: signals from the others are ignored.
         owner: Option<String>,
+        /// Its well-known name (`org.mpris.MediaPlayer2.firefox.instance123`).
+        bus: Option<String>,
         state: PlayerState,
     }
 
     static SHARED: LazyLock<Mutex<Shared>> = LazyLock::new(|| {
-        Mutex::new(Shared { generation: 0, active: false, listener: None, owner: None, state: PlayerState::default() })
+        Mutex::new(Shared { generation: 0, active: false, listener: None, owner: None, bus: None, state: PlayerState::default() })
     });
 
     /// The connection the controls and reads go through, made on first use.
@@ -627,6 +635,7 @@ mod linux {
             s.active = on;
             s.generation += 1;
             s.owner = None;
+            s.bus = None;
             s.state = PlayerState { installed: installed(), ..PlayerState::default() };
             s.listener.take()
         };
@@ -721,33 +730,28 @@ mod linux {
 
         match (interface.as_str(), member.as_str()) {
             (DBUS, "NameOwnerChanged") => {
-                let Ok((name, _old, new)) = msg.read3::<String, String, String>() else { return };
-                if name != BUS {
-                    return;
-                }
-                if new.is_empty() {
-                    // Spotify quit: nothing is playing anymore.
-                    let state = {
-                        let mut s = SHARED.lock().unwrap();
-                        s.owner = None;
-                        s.state.running = false;
-                        s.state.clear(now_ms());
-                        s.state.clone()
-                    };
-                    out.state(&state);
-                } else {
+                let Ok((name, _old, _new)) = msg.read3::<String, String, String>() else { return };
+                if name.starts_with(PREFIX) {
+                    // A player came or went: who is playing is chosen again.
                     read_everything(conn, out, generation);
                 }
             }
             (PROPERTIES, "PropertiesChanged") => {
-                if !from_owner(sender.as_deref()) {
-                    return;
-                }
                 let Ok((iface, changed, invalidated)) = msg.read3::<String, PropMap, Vec<String>>() else { return };
                 if iface != PLAYER {
                     return;
                 }
                 let mut props = props_of(&changed);
+                if !from_owner(sender.as_deref()) {
+                    // Another player started playing: it takes over.
+                    let started = props
+                        .iter()
+                        .any(|(k, v)| k == "PlaybackStatus" && matches!(v, Value::Str(s) if s == "Playing"));
+                    if started {
+                        read_everything(conn, out, generation);
+                    }
+                    return;
+                }
                 // Properties that changed without their value: read them.
                 for name in invalidated {
                     if let Some(v) = get_property(conn, &name) {
@@ -771,8 +775,6 @@ mod linux {
         let s = SHARED.lock().unwrap();
         match (&s.owner, sender) {
             (Some(owner), Some(sender)) => owner == sender,
-            // The owner isn't known yet: the bus only routes Spotify's to us.
-            (None, _) => true,
             _ => false,
         }
     }
@@ -791,39 +793,120 @@ mod linux {
     }
 
     fn get_property(conn: &Connection, name: &str) -> Option<Value> {
-        let proxy = conn.with_proxy(BUS, PATH, CALL);
+        let bus = bus()?;
+        let proxy = conn.with_proxy(bus.as_str(), PATH, CALL);
         let v: Box<dyn RefArg> = proxy.get(PLAYER, name).ok()?;
         Some(value_of(&v))
     }
 
-    fn name_owner(conn: &Connection) -> Option<String> {
-        let proxy = conn.with_proxy(DBUS, "/org/freedesktop/DBus", CALL);
-        let (owner,): (String,) = proxy.method_call(DBUS, "GetNameOwner", (BUS,)).ok()?;
-        Some(owner)
+    fn bus() -> Option<String> {
+        SHARED.lock().unwrap().bus.clone()
     }
 
-    /// Whom Spotify is, and all of its Player properties.
+    /// An MPRIS player found on the bus.
+    #[derive(Clone, Debug, PartialEq)]
+    struct Found {
+        bus: String,
+        owner: String,
+        playing: bool,
+    }
+
+    /// Who plays: the one already chosen while it plays, else one that plays
+    /// (Spotify first), else the one already chosen, else Spotify, else any.
+    fn pick_player(found: &[Found], current: Option<&str>) -> Option<usize> {
+        let at = |bus: &str| found.iter().position(|f| f.bus == bus);
+        if let Some(i) = current.and_then(at).filter(|&i| found[i].playing) {
+            return Some(i);
+        }
+        let playing = |f: &Found| f.playing;
+        if let Some(i) = found.iter().position(|f| playing(f) && f.bus == SPOTIFY_BUS) {
+            return Some(i);
+        }
+        if let Some(i) = found.iter().position(playing) {
+            return Some(i);
+        }
+        current.and_then(at).or_else(|| at(SPOTIFY_BUS)).or(if found.is_empty() { None } else { Some(0) })
+    }
+
+    fn players(conn: &Connection) -> Vec<Found> {
+        let proxy = conn.with_proxy(DBUS, "/org/freedesktop/DBus", CALL);
+        let Ok((names,)) = proxy.method_call::<(Vec<String>,), _, _, _>(DBUS, "ListNames", ()) else { return Vec::new() };
+        names
+            .into_iter()
+            // playerctld only repeats another player.
+            .filter(|n| n.starts_with(PREFIX) && !n.ends_with(".playerctld"))
+            .filter_map(|bus| {
+                let (owner,): (String,) = proxy.method_call(DBUS, "GetNameOwner", (bus.as_str(),)).ok()?;
+                let status: String = conn.with_proxy(bus.as_str(), PATH, CALL).get(PLAYER, "PlaybackStatus").unwrap_or_default();
+                Some(Found { bus, owner, playing: status == "Playing" })
+            })
+            .collect()
+    }
+
+    /// "org.mpris.MediaPlayer2.firefox.instance123" → "Firefox".
+    fn name_from_bus(bus: &str) -> String {
+        let rest = bus.strip_prefix(PREFIX).unwrap_or(bus);
+        let word = rest.split('.').next().unwrap_or(rest);
+        let mut chars = word.chars();
+        match chars.next() {
+            Some(first) => first.to_uppercase().chain(chars).collect(),
+            None => "Media".into(),
+        }
+    }
+
+    /// The chosen player: who it is, and all of its Player properties.
+    struct Chosen {
+        bus: String,
+        owner: String,
+        identity: String,
+        props: Vec<(String, Value)>,
+    }
+
+    fn choose(conn: &Connection, current: Option<&str>) -> Option<Chosen> {
+        let found = players(conn);
+        let f = &found[pick_player(&found, current)?];
+        let proxy = conn.with_proxy(f.bus.as_str(), PATH, CALL);
+        let props = props_of(&proxy.get_all(PLAYER).ok()?);
+        let identity: String = proxy.get(ROOT, "Identity").unwrap_or_else(|_| name_from_bus(&f.bus));
+        Some(Chosen { bus: f.bus.clone(), owner: f.owner.clone(), identity, props })
+    }
+
+    /// Makes `chosen` the player the state describes (None: nobody plays).
+    fn adopt(s: &mut Shared, chosen: Option<Chosen>) {
+        let now = now_ms();
+        match chosen {
+            Some(c) => {
+                if s.bus.as_deref() != Some(c.bus.as_str()) {
+                    // Another player: nothing of the last one carries over.
+                    s.state.clear(now);
+                }
+                s.bus = Some(c.bus);
+                s.owner = Some(c.owner);
+                s.state.running = true;
+                s.state.installed = true;
+                s.state.player = c.identity;
+                s.state.apply(&c.props, now);
+            }
+            None => {
+                s.bus = None;
+                s.owner = None;
+                s.state.running = false;
+                s.state.installed = installed();
+                s.state.player.clear();
+                s.state.clear(now);
+            }
+        }
+    }
+
+    /// Who plays, and all of its Player properties.
     fn read_everything(conn: &Connection, out: &Out, generation: u64) {
-        let owner = name_owner(conn);
-        let props = owner.as_ref().and_then(|_| {
-            let proxy = conn.with_proxy(BUS, PATH, CALL);
-            proxy.get_all(PLAYER).ok().map(|m| props_of(&m))
-        });
+        let chosen = choose(conn, bus().as_deref());
         let state = {
             let mut s = SHARED.lock().unwrap();
             if !(s.active && s.generation == generation) {
                 return;
             }
-            s.owner = owner.clone();
-            s.state.running = owner.is_some();
-            s.state.installed = owner.is_some() || installed();
-            let now = now_ms();
-            match props {
-                Some(props) => {
-                    s.state.apply(&props, now);
-                }
-                None => s.state.clear(now),
-            }
+            adopt(&mut s, chosen);
             s.state.clone()
         };
         out.state(&state);
@@ -847,30 +930,15 @@ mod linux {
             }
             s.generation
         };
-        let read = with_control(|c| {
-            let owner = name_owner(c);
-            let props = match owner {
-                Some(_) => Some(props_of(&c.with_proxy(BUS, PATH, CALL).get_all(PLAYER)?)),
-                None => None,
-            };
-            Ok((owner, props))
-        });
+        let current = bus();
+        let read = with_control(|c| Ok(choose(c, current.as_deref())));
         let state = {
             let mut s = SHARED.lock().unwrap();
             if !(s.active && s.generation == generation) {
                 return None;
             }
-            if let Some((owner, props)) = read {
-                s.owner = owner.clone();
-                s.state.running = owner.is_some();
-                s.state.installed = owner.is_some() || installed();
-                let now = now_ms();
-                match props {
-                    Some(props) => {
-                        s.state.apply(&props, now);
-                    }
-                    None => s.state.clear(now),
-                }
+            if let Some(chosen) = read {
+                adopt(&mut s, chosen);
             }
             s.state.clone()
         };
@@ -879,17 +947,15 @@ mod linux {
     }
 
     pub fn control(out: &Out, action: &str, value: Option<f64>) -> bool {
-        let (active, state) = {
+        let (active, state, bus) = {
             let s = SHARED.lock().unwrap();
-            (s.active && s.owner.is_some(), s.state.clone())
+            (s.active && s.owner.is_some(), s.state.clone(), s.bus.clone())
         };
-        if !active {
-            return false;
-        }
+        let Some(bus) = bus.filter(|_| active) else { return false };
         let v = value.unwrap_or(0.0);
         let now = now_ms();
         let done = with_control(|c| {
-            let p = c.with_proxy(BUS, PATH, CALL);
+            let p = c.with_proxy(bus.as_str(), PATH, CALL);
             match action {
                 "playPause" => p.method_call(PLAYER, "PlayPause", ()),
                 "next" => p.method_call(PLAYER, "Next", ()),
@@ -969,11 +1035,10 @@ mod linux {
 
     pub fn open() -> bool {
         // Running: bring it forward when it says it can.
+        let bus = bus();
         let raised = with_control(|c| {
-            if name_owner(c).is_none() {
-                return Ok(false);
-            }
-            let p = c.with_proxy(BUS, PATH, CALL);
+            let Some(bus) = bus.as_deref() else { return Ok(false) };
+            let p = c.with_proxy(bus, PATH, CALL);
             let can: bool = p.get(ROOT, "CanRaise").unwrap_or(false);
             if can {
                 p.method_call::<(), _, _, _>(ROOT, "Raise", ())?;
@@ -1158,6 +1223,39 @@ mod linux {
             assert_eq!(state.position_at, 1_000.0);
         }
 
+        fn found(bus: &str, playing: bool) -> Found {
+            Found { bus: format!("org.mpris.MediaPlayer2.{bus}"), owner: format!(":1.{}", bus.len()), playing }
+        }
+
+        #[test]
+        fn the_player_that_plays_is_the_one_shown() {
+            let spotify = found("spotify", false);
+            let firefox = found("firefox.instance9", false);
+            let vlc = found("vlc", false);
+            assert_eq!(pick_player(&[], None), None);
+            // Nobody plays: Spotify, as before, else the first.
+            assert_eq!(pick_player(&[firefox.clone(), spotify.clone()], None), Some(1));
+            assert_eq!(pick_player(&[firefox.clone(), vlc.clone()], None), Some(0));
+            // One plays: it wins, whoever was chosen.
+            let playing = Found { playing: true, ..vlc.clone() };
+            assert_eq!(pick_player(&[spotify.clone(), playing.clone()], Some(&spotify.bus)), Some(1));
+            // The chosen one keeps its place while it plays, even beside another that plays.
+            let both = [Found { playing: true, ..firefox.clone() }, playing.clone()];
+            assert_eq!(pick_player(&both, Some(&vlc.bus)), Some(1));
+            // Paused: the chosen one stays shown, so a pause does not make it vanish.
+            assert_eq!(pick_player(&[spotify.clone(), firefox.clone()], Some(&firefox.bus)), Some(1));
+            // Two play and none was chosen: Spotify first.
+            let both = [Found { playing: true, ..firefox }, Found { playing: true, ..spotify }];
+            assert_eq!(pick_player(&both, None), Some(1));
+        }
+
+        #[test]
+        fn a_player_is_named_from_its_bus_name() {
+            assert_eq!(name_from_bus("org.mpris.MediaPlayer2.firefox.instance123"), "Firefox");
+            assert_eq!(name_from_bus("org.mpris.MediaPlayer2.vlc"), "Vlc");
+            assert_eq!(name_from_bus("org.mpris.MediaPlayer2."), "Media");
+        }
+
         /// End to end against a fake Spotify on a private session bus:
         /// `dbus-run-session -- cargo test -p coucou --lib spotify -- --ignored`
         #[test]
@@ -1231,7 +1329,7 @@ mod linux {
         /// signalling its status like Spotify. Releases its name when told to stop.
         fn fake_spotify(calls: Arc<Mutex<Vec<String>>>, stop: Arc<AtomicBool>) {
             let conn = Connection::new_session().unwrap();
-            conn.request_name(BUS, false, true, true).unwrap();
+            conn.request_name(SPOTIFY_BUS, false, true, true).unwrap();
             let mut playing = true;
             let mut position: i64 = 30_000_000;
             let player = |playing: bool, position: i64| {
@@ -1306,7 +1404,7 @@ mod linux {
                     let _ = conn.channel().send(signal);
                 }
             }
-            let _ = conn.release_name(BUS);
+            let _ = conn.release_name(SPOTIFY_BUS);
             conn.channel().flush();
         }
 
