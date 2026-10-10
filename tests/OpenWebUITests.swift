@@ -92,9 +92,10 @@ enum OpenWebUITests {
         ])
         checkTrue("only template variables go to the server", Array(kept.keys) == ["{{CURRENT_TIMEZONE}}"])
         let date = Date(timeIntervalSince1970: 1_791_655_500)   // 10.10.2026 18:05 UTC
-        let vars = OpenWebUI.promptVariables(now: date, timeZone: TimeZone(identifier: "UTC")!, language: "fi-FI")
-        checkTrue("date, time and timezone", vars["{{CURRENT_DATETIME}}"] == "2026-10-10 18:05:00"
-                  && vars["{{CURRENT_WEEKDAY}}"] == "Saturday" && vars["{{CURRENT_TIMEZONE}}"] == "UTC")
+        // Not UTC: macOS Foundation reports its identifier as "GMT"
+        let vars = OpenWebUI.promptVariables(now: date, timeZone: TimeZone(identifier: "Europe/Helsinki")!, language: "fi-FI")
+        checkTrue("date, time and timezone", vars["{{CURRENT_DATETIME}}"] == "2026-10-10 21:05:00"
+                  && vars["{{CURRENT_WEEKDAY}}"] == "Saturday" && vars["{{CURRENT_TIMEZONE}}"] == "Europe/Helsinki")
 
         if failures > 0 {
             print("\n\(failures) failure(s)")
