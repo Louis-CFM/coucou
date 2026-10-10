@@ -134,6 +134,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // Windows has nothing to read it from yet.
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
+  // ── Not on the Mac ─────────────────────────────────────────────────────────
+  // Read over GitLab's REST API with a read_api token (src-tauri/src/integrations.rs).
+  { id: "integration_gitlab", name: "GitLab", color: "#FC6D26", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("gitlab-token") },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

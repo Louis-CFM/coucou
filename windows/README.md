@@ -397,6 +397,20 @@ own window.
 
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
+- GitLab, which the Mac doesn't have, on gitlab.com or your own instance
+  (Settings… → Integrations, token with the `read_api` scope): your To-Do list (review
+  requests, assignments, mentions, failed pipelines on your merge requests…),
+  your merge requests being approved or merged, someone else commenting on or
+  updating a merge request you authored, are assigned or review, and every
+  pipeline you started finishing, in any project you were active in over the
+  last week (ten at most). Everything new in a minute arrives as one
+  notification; the pill lists your to-dos and those merge requests, five at a
+  time. The notification's Details, and a click on a piece of news in the pill,
+  unfold what happened: the comment or what was done on an MR (commits pushed,
+  approval, title changed…), what a mention said, who merged or approved, what
+  started a pipeline, how long it took and which jobs failed.
+  The pill keeps the last ten pieces of news, details included, through a
+  restart too (in `news-gitlab.json`, next to the log).
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

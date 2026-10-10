@@ -775,6 +775,11 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_gitlab", name: "GitLab", color: "#FC6D26",
+    fields: [
+      { key: "gitlab-url", label: N_("Instance URL"), placeholder: "https://gitlab.com", secret: false },
+      { key: "gitlab-token", label: N_("Token (read_api)"), placeholder: "glpat-…", secret: true },
+    ] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -1327,6 +1332,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "gitlab-url", "gitlab-token",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

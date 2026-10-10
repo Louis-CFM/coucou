@@ -530,6 +530,16 @@ fn open_n8n() {
     }
 }
 
+/// Opens the configured GitLab instance, or a page on it (`path` starts with
+/// `/`). The base URL lives in the Credential Manager, like n8n's.
+#[tauri::command]
+fn open_gitlab(path: Option<String>) {
+    if let Ok(base) = integrations::gitlab_base() {
+        let path = path.filter(|p| p.starts_with('/')).unwrap_or_default();
+        open_url(format!("{base}{path}"));
+    }
+}
+
 /// Refresh buttons in the integration cards.
 #[tauri::command]
 async fn refresh_integration(app: AppHandle, id: String) {
@@ -709,6 +719,7 @@ pub fn run() {
             refresh_integration,
             github_refresh,
             open_n8n,
+            open_gitlab,
             open_settings_window,
             set_paused,
             shortcuts_status,

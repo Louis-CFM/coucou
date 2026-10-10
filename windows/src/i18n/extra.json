@@ -3360,6 +3360,671 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Token (read_api)": {
+   "zh-Hans": "令牌（read_api）",
+   "hi": "टोकन (read_api)",
+   "es": "Token (read_api)",
+   "ar": "رمز (read_api)",
+   "fr": "Jeton (read_api)",
+   "bn": "টোকেন (read_api)",
+   "pt-BR": "Token (read_api)",
+   "ru": "Токен (read_api)",
+   "id": "Token (read_api)"
+  },
+  "The GitLab URL must start with https://": {
+   "zh-Hans": "GitLab 地址必须以 https:// 开头",
+   "hi": "GitLab URL https:// से शुरू होना चाहिए",
+   "es": "La URL de GitLab debe empezar por https://",
+   "ar": "يجب أن يبدأ عنوان GitLab بـ https://",
+   "fr": "L'URL GitLab doit commencer par https://",
+   "bn": "GitLab URL অবশ্যই https:// দিয়ে শুরু হতে হবে",
+   "pt-BR": "A URL do GitLab deve começar com https://",
+   "ru": "URL GitLab должен начинаться с https://",
+   "id": "URL GitLab harus diawali https://"
+  },
+  "Token lacks the read_api scope": {
+   "zh-Hans": "令牌缺少 read_api 权限",
+   "hi": "टोकन में read_api स्कोप नहीं है",
+   "es": "Al token le falta el permiso read_api",
+   "ar": "الرمز يفتقد صلاحية read_api",
+   "fr": "Le jeton n'a pas la portée read_api",
+   "bn": "টোকেনে read_api স্কোপ নেই",
+   "pt-BR": "O token não tem o escopo read_api",
+   "ru": "У токена нет области read_api",
+   "id": "Token tidak punya cakupan read_api"
+  },
+  "Unexpected answer from GitLab — check the URL": {
+   "zh-Hans": "GitLab 返回了意外的响应 — 请检查地址",
+   "hi": "GitLab से अनपेक्षित जवाब — URL जाँचें",
+   "es": "Respuesta inesperada de GitLab — revisa la URL",
+   "ar": "رد غير متوقع من GitLab — تحقق من العنوان",
+   "fr": "Réponse inattendue de GitLab — vérifiez l'URL",
+   "bn": "GitLab থেকে অপ্রত্যাশিত উত্তর — URL দেখুন",
+   "pt-BR": "Resposta inesperada do GitLab — verifique a URL",
+   "ru": "Неожиданный ответ GitLab — проверьте URL",
+   "id": "Jawaban tak terduga dari GitLab — periksa URL-nya"
+  },
+  "Your GitLab To-Do list": {
+   "zh-Hans": "你的 GitLab 待办列表",
+   "hi": "आपकी GitLab To-Do सूची",
+   "es": "Tu lista de tareas de GitLab",
+   "ar": "قائمة مهامك في GitLab",
+   "fr": "Votre liste To-Do GitLab",
+   "bn": "আপনার GitLab To-Do তালিকা",
+   "pt-BR": "Sua lista de tarefas do GitLab",
+   "ru": "Ваш список задач GitLab",
+   "id": "Daftar To-Do GitLab Anda"
+  },
+  "{count} to do": {
+   "zh-Hans": "{count} 项待办",
+   "hi": "{count} करने को",
+   "es": "{count} por hacer",
+   "ar": "{count} للقيام",
+   "fr": "{count} à faire",
+   "bn": "{count}টি করণীয়",
+   "pt-BR": "{count} a fazer",
+   "ru": "{count} к выполнению",
+   "id": "{count} untuk dikerjakan"
+  },
+  "by {name}": {
+   "zh-Hans": "作者 {name}",
+   "hi": "{name} द्वारा",
+   "es": "de {name}",
+   "ar": "بواسطة {name}",
+   "fr": "par {name}",
+   "bn": "{name}-এর",
+   "pt-BR": "por {name}",
+   "ru": "от {name}",
+   "id": "oleh {name}"
+  },
+  "Nothing new on GitLab": {
+   "zh-Hans": "GitLab 上没有新动态",
+   "hi": "GitLab पर कुछ नया नहीं",
+   "es": "Nada nuevo en GitLab",
+   "ar": "لا جديد على GitLab",
+   "fr": "Rien de neuf sur GitLab",
+   "bn": "GitLab-এ নতুন কিছু নেই",
+   "pt-BR": "Nada de novo no GitLab",
+   "ru": "В GitLab ничего нового",
+   "id": "Tidak ada yang baru di GitLab"
+  },
+  "Inbox": {
+   "zh-Hans": "收件箱",
+   "hi": "इनबॉक्स",
+   "es": "Bandeja",
+   "ar": "الوارد",
+   "fr": "Boîte de réception",
+   "bn": "ইনবক্স",
+   "pt-BR": "Caixa de entrada",
+   "ru": "Входящие",
+   "id": "Kotak masuk"
+  },
+  "Yours": {
+   "zh-Hans": "你的",
+   "hi": "आपका",
+   "es": "Tuya",
+   "ar": "لك",
+   "fr": "La vôtre",
+   "bn": "আপনার",
+   "pt-BR": "Sua",
+   "ru": "Ваш",
+   "id": "Milik Anda"
+  },
+  "Assigned": {
+   "zh-Hans": "已指派",
+   "hi": "सौंपा गया",
+   "es": "Asignada",
+   "ar": "مُسند",
+   "fr": "Assignée",
+   "bn": "নির্ধারিত",
+   "pt-BR": "Atribuída",
+   "ru": "Назначен",
+   "id": "Ditugaskan"
+  },
+  "Review": {
+   "zh-Hans": "评审",
+   "hi": "समीक्षा",
+   "es": "Revisión",
+   "ar": "مراجعة",
+   "fr": "Relecture",
+   "bn": "রিভিউ",
+   "pt-BR": "Revisão",
+   "ru": "Ревью",
+   "id": "Tinjauan"
+  },
+  "{count} details — click to show": {
+   "zh-Hans": {
+    "other": "{count} 条详情 — 点击查看"
+   },
+   "hi": {
+    "one": "{count} विवरण — देखने के लिए क्लिक करें",
+    "other": "{count} विवरण — देखने के लिए क्लिक करें"
+   },
+   "es": {
+    "one": "{count} detalle — haz clic para verlo",
+    "other": "{count} detalles — haz clic para verlos"
+   },
+   "ar": {
+    "zero": "{count} تفاصيل — انقر للعرض",
+    "one": "تفصيل واحد — انقر للعرض",
+    "two": "تفصيلان — انقر للعرض",
+    "few": "{count} تفاصيل — انقر للعرض",
+    "many": "{count} تفصيلًا — انقر للعرض",
+    "other": "{count} تفصيل — انقر للعرض"
+   },
+   "fr": {
+    "one": "{count} détail — cliquez pour l'afficher",
+    "other": "{count} détails — cliquez pour les afficher"
+   },
+   "bn": {
+    "one": "{count}টি বিবরণ — দেখতে ক্লিক করুন",
+    "other": "{count}টি বিবরণ — দেখতে ক্লিক করুন"
+   },
+   "pt-BR": {
+    "one": "{count} detalhe — clique para ver",
+    "other": "{count} detalhes — clique para ver"
+   },
+   "ru": {
+    "one": "{count} подробность — нажмите, чтобы показать",
+    "few": "{count} подробности — нажмите, чтобы показать",
+    "many": "{count} подробностей — нажмите, чтобы показать",
+    "other": "{count} подробности — нажмите, чтобы показать"
+   },
+   "id": {
+    "other": "{count} detail — klik untuk melihat"
+   }
+  },
+  "{count} updates": {
+   "zh-Hans": {
+    "other": "{count} 条更新"
+   },
+   "hi": {
+    "one": "{count} अपडेट",
+    "other": "{count} अपडेट"
+   },
+   "es": {
+    "one": "{count} novedad",
+    "other": "{count} novedades"
+   },
+   "ar": {
+    "zero": "{count} تحديثات",
+    "one": "تحديث واحد",
+    "two": "تحديثان",
+    "few": "{count} تحديثات",
+    "many": "{count} تحديثًا",
+    "other": "{count} تحديث"
+   },
+   "fr": {
+    "one": "{count} nouveauté",
+    "other": "{count} nouveautés"
+   },
+   "bn": {
+    "one": "{count}টি আপডেট",
+    "other": "{count}টি আপডেট"
+   },
+   "pt-BR": {
+    "one": "{count} novidade",
+    "other": "{count} novidades"
+   },
+   "ru": {
+    "one": "{count} обновление",
+    "few": "{count} обновления",
+    "many": "{count} обновлений",
+    "other": "{count} обновления"
+   },
+   "id": {
+    "other": "{count} pembaruan"
+   }
+  },
+  "{name} update": {
+   "zh-Hans": "{name} 更新",
+   "hi": "{name} अपडेट",
+   "es": "Novedad en {name}",
+   "ar": "تحديث من {name}",
+   "fr": "Nouveauté {name}",
+   "bn": "{name} আপডেট",
+   "pt-BR": "Novidade no {name}",
+   "ru": "Обновление {name}",
+   "id": "Pembaruan {name}"
+  },
+  "Nothing new": {
+   "zh-Hans": "没有新动态",
+   "hi": "कुछ नया नहीं",
+   "es": "Nada nuevo",
+   "ar": "لا جديد",
+   "fr": "Rien de neuf",
+   "bn": "নতুন কিছু নেই",
+   "pt-BR": "Nada de novo",
+   "ru": "Ничего нового",
+   "id": "Tidak ada yang baru"
+  },
+  "Latest update": {
+   "zh-Hans": "最新动态",
+   "hi": "ताज़ा अपडेट",
+   "es": "Última novedad",
+   "ar": "آخر تحديث",
+   "fr": "Dernière nouveauté",
+   "bn": "সর্বশেষ আপডেট",
+   "pt-BR": "Última novidade",
+   "ru": "Последнее обновление",
+   "id": "Pembaruan terbaru"
+  },
+  "{count} GitLab updates": {
+   "zh-Hans": {
+    "other": "{count} 条 GitLab 更新"
+   },
+   "hi": {
+    "one": "{count} GitLab अपडेट",
+    "other": "{count} GitLab अपडेट"
+   },
+   "es": {
+    "one": "{count} novedad de GitLab",
+    "other": "{count} novedades de GitLab"
+   },
+   "ar": {
+    "zero": "{count} تحديثات من GitLab",
+    "one": "تحديث واحد من GitLab",
+    "two": "تحديثان من GitLab",
+    "few": "{count} تحديثات من GitLab",
+    "many": "{count} تحديثًا من GitLab",
+    "other": "{count} تحديث من GitLab"
+   },
+   "fr": {
+    "one": "{count} nouveauté GitLab",
+    "other": "{count} nouveautés GitLab"
+   },
+   "bn": {
+    "one": "{count}টি GitLab আপডেট",
+    "other": "{count}টি GitLab আপডেট"
+   },
+   "pt-BR": {
+    "one": "{count} novidade do GitLab",
+    "other": "{count} novidades do GitLab"
+   },
+   "ru": {
+    "one": "{count} обновление GitLab",
+    "few": "{count} обновления GitLab",
+    "many": "{count} обновлений GitLab",
+    "other": "{count} обновления GitLab"
+   },
+   "id": {
+    "other": "{count} pembaruan GitLab"
+   }
+  },
+  "Review requested": {
+   "zh-Hans": "请求评审",
+   "hi": "समीक्षा का अनुरोध",
+   "es": "Revisión solicitada",
+   "ar": "طُلبت مراجعة",
+   "fr": "Relecture demandée",
+   "bn": "রিভিউয়ের অনুরোধ",
+   "pt-BR": "Revisão solicitada",
+   "ru": "Запрошено ревью",
+   "id": "Tinjauan diminta"
+  },
+  "Assigned to you": {
+   "zh-Hans": "指派给你",
+   "hi": "आपको सौंपा गया",
+   "es": "Asignada a ti",
+   "ar": "أُسند إليك",
+   "fr": "Assignée à vous",
+   "bn": "আপনাকে দেওয়া হয়েছে",
+   "pt-BR": "Atribuída a você",
+   "ru": "Назначено вам",
+   "id": "Ditugaskan kepada Anda"
+  },
+  "Mentioned": {
+   "zh-Hans": "提到了你",
+   "hi": "आपका उल्लेख",
+   "es": "Te mencionaron",
+   "ar": "تمت الإشارة إليك",
+   "fr": "Mentionné",
+   "bn": "আপনাকে উল্লেখ করা হয়েছে",
+   "pt-BR": "Mencionado",
+   "ru": "Вас упомянули",
+   "id": "Disebut"
+  },
+  "Pipeline failed": {
+   "zh-Hans": "流水线失败",
+   "hi": "पाइपलाइन विफल",
+   "es": "Pipeline fallido",
+   "ar": "فشل خط المعالجة",
+   "fr": "Pipeline en échec",
+   "bn": "পাইপলাইন ব্যর্থ",
+   "pt-BR": "Pipeline falhou",
+   "ru": "Пайплайн упал",
+   "id": "Pipeline gagal"
+  },
+  "Out of the merge train": {
+   "zh-Hans": "已移出合并队列",
+   "hi": "मर्ज ट्रेन से बाहर",
+   "es": "Fuera del merge train",
+   "ar": "خارج قطار الدمج",
+   "fr": "Sorti du merge train",
+   "bn": "মার্জ ট্রেন থেকে বাদ",
+   "pt-BR": "Fora do merge train",
+   "ru": "Убран из merge train",
+   "id": "Keluar dari merge train"
+  },
+  "Approval needed": {
+   "zh-Hans": "需要批准",
+   "hi": "स्वीकृति चाहिए",
+   "es": "Falta aprobación",
+   "ar": "مطلوب موافقة",
+   "fr": "Approbation requise",
+   "bn": "অনুমোদন প্রয়োজন",
+   "pt-BR": "Aprovação necessária",
+   "ru": "Нужно одобрение",
+   "id": "Perlu persetujuan"
+  },
+  "Reviewed": {
+   "zh-Hans": "已评审",
+   "hi": "समीक्षा हुई",
+   "es": "Revisada",
+   "ar": "تمت المراجعة",
+   "fr": "Relue",
+   "bn": "রিভিউ হয়েছে",
+   "pt-BR": "Revisada",
+   "ru": "Проверено",
+   "id": "Ditinjau"
+  },
+  "Access requested": {
+   "zh-Hans": "请求访问",
+   "hi": "पहुँच का अनुरोध",
+   "es": "Acceso solicitado",
+   "ar": "طُلب الوصول",
+   "fr": "Accès demandé",
+   "bn": "অ্যাক্সেসের অনুরোধ",
+   "pt-BR": "Acesso solicitado",
+   "ru": "Запрошен доступ",
+   "id": "Akses diminta"
+  },
+  "To-do": {
+   "zh-Hans": "待办",
+   "hi": "करने योग्य",
+   "es": "Tarea",
+   "ar": "مهمة",
+   "fr": "À faire",
+   "bn": "করণীয়",
+   "pt-BR": "Tarefa",
+   "ru": "Задача",
+   "id": "Tugas"
+  },
+  "Comment: “{text}”": {
+   "zh-Hans": "评论：“{text}”",
+   "hi": "टिप्पणी: “{text}”",
+   "es": "Comentario: «{text}»",
+   "ar": "تعليق: «{text}»",
+   "fr": "Commentaire : « {text} »",
+   "bn": "মন্তব্য: “{text}”",
+   "pt-BR": "Comentário: “{text}”",
+   "ru": "Комментарий: «{text}»",
+   "id": "Komentar: “{text}”"
+  },
+  "{name} failed": {
+   "zh-Hans": "{name} 失败",
+   "hi": "{name} विफल",
+   "es": "{name} falló",
+   "ar": "فشل {name}",
+   "fr": "{name} en échec",
+   "bn": "{name} ব্যর্থ",
+   "pt-BR": "{name} falhou",
+   "ru": "{name}: ошибка",
+   "id": "{name} gagal"
+  },
+  "{stage}: {name} failed": {
+   "zh-Hans": "{stage}：{name} 失败",
+   "hi": "{stage}: {name} विफल",
+   "es": "{stage}: {name} falló",
+   "ar": "{stage}: فشل {name}",
+   "fr": "{stage} : {name} en échec",
+   "bn": "{stage}: {name} ব্যর্থ",
+   "pt-BR": "{stage}: {name} falhou",
+   "ru": "{stage}: {name} — ошибка",
+   "id": "{stage}: {name} gagal"
+  },
+  "Push": {
+   "zh-Hans": "推送",
+   "hi": "पुश",
+   "es": "Push",
+   "ar": "دفع",
+   "fr": "Push",
+   "bn": "পুশ",
+   "pt-BR": "Push",
+   "ru": "Push",
+   "id": "Push"
+  },
+  "Run from GitLab": {
+   "zh-Hans": "从 GitLab 运行",
+   "hi": "GitLab से चलाया गया",
+   "es": "Lanzado desde GitLab",
+   "ar": "تشغيل من GitLab",
+   "fr": "Lancé depuis GitLab",
+   "bn": "GitLab থেকে চালানো",
+   "pt-BR": "Executado no GitLab",
+   "ru": "Запуск из GitLab",
+   "id": "Dijalankan dari GitLab"
+  },
+  "Merge request": {
+   "zh-Hans": "合并请求",
+   "hi": "मर्ज रिक्वेस्ट",
+   "es": "Merge request",
+   "ar": "طلب دمج",
+   "fr": "Merge request",
+   "bn": "মার্জ রিকোয়েস্ট",
+   "pt-BR": "Merge request",
+   "ru": "Merge request",
+   "id": "Merge request"
+  },
+  "Scheduled": {
+   "zh-Hans": "定时",
+   "hi": "निर्धारित",
+   "es": "Programado",
+   "ar": "مجدول",
+   "fr": "Planifié",
+   "bn": "নির্ধারিত সময়ে",
+   "pt-BR": "Agendado",
+   "ru": "По расписанию",
+   "id": "Terjadwal"
+  },
+  "Trigger": {
+   "zh-Hans": "触发器",
+   "hi": "ट्रिगर",
+   "es": "Disparador",
+   "ar": "مُشغِّل",
+   "fr": "Déclencheur",
+   "bn": "ট্রিগার",
+   "pt-BR": "Gatilho",
+   "ru": "Триггер",
+   "id": "Pemicu"
+  },
+  "Parent pipeline": {
+   "zh-Hans": "父流水线",
+   "hi": "पैरेंट पाइपलाइन",
+   "es": "Pipeline padre",
+   "ar": "خط المعالجة الأصل",
+   "fr": "Pipeline parent",
+   "bn": "প্যারেন্ট পাইপলাইন",
+   "pt-BR": "Pipeline pai",
+   "ru": "Родительский пайплайн",
+   "id": "Pipeline induk"
+  },
+  "Pipeline": {
+   "zh-Hans": "流水线",
+   "hi": "पाइपलाइन",
+   "es": "Pipeline",
+   "ar": "خط المعالجة",
+   "fr": "Pipeline",
+   "bn": "পাইপলাইন",
+   "pt-BR": "Pipeline",
+   "ru": "Пайплайн",
+   "id": "Pipeline"
+  },
+  "{seconds} s": {
+   "zh-Hans": "{seconds} 秒",
+   "hi": "{seconds} से.",
+   "es": "{seconds} s",
+   "ar": "{seconds} ث",
+   "fr": "{seconds} s",
+   "bn": "{seconds} সে.",
+   "pt-BR": "{seconds} s",
+   "ru": "{seconds} с",
+   "id": "{seconds} dtk"
+  },
+  "{minutes} min {seconds} s": {
+   "zh-Hans": "{minutes} 分 {seconds} 秒",
+   "hi": "{minutes} मि. {seconds} से.",
+   "es": "{minutes} min {seconds} s",
+   "ar": "{minutes} د {seconds} ث",
+   "fr": "{minutes} min {seconds} s",
+   "bn": "{minutes} মি. {seconds} সে.",
+   "pt-BR": "{minutes} min {seconds} s",
+   "ru": "{minutes} мин {seconds} с",
+   "id": "{minutes} mnt {seconds} dtk"
+  },
+  "{hours} h {minutes} min": {
+   "zh-Hans": "{hours} 小时 {minutes} 分",
+   "hi": "{hours} घं. {minutes} मि.",
+   "es": "{hours} h {minutes} min",
+   "ar": "{hours} س {minutes} د",
+   "fr": "{hours} h {minutes} min",
+   "bn": "{hours} ঘ. {minutes} মি.",
+   "pt-BR": "{hours} h {minutes} min",
+   "ru": "{hours} ч {minutes} мин",
+   "id": "{hours} j {minutes} mnt"
+  },
+  "Pipeline passed: {project} · {ref}": {
+   "zh-Hans": "流水线通过：{project} · {ref}",
+   "hi": "पाइपलाइन सफल: {project} · {ref}",
+   "es": "Pipeline superado: {project} · {ref}",
+   "ar": "نجح خط المعالجة: {project} · {ref}",
+   "fr": "Pipeline réussi : {project} · {ref}",
+   "bn": "পাইপলাইন সফল: {project} · {ref}",
+   "pt-BR": "Pipeline passou: {project} · {ref}",
+   "ru": "Пайплайн прошёл: {project} · {ref}",
+   "id": "Pipeline lolos: {project} · {ref}"
+  },
+  "Pipeline failed: {project} · {ref}": {
+   "zh-Hans": "流水线失败：{project} · {ref}",
+   "hi": "पाइपलाइन विफल: {project} · {ref}",
+   "es": "Pipeline fallido: {project} · {ref}",
+   "ar": "فشل خط المعالجة: {project} · {ref}",
+   "fr": "Pipeline en échec : {project} · {ref}",
+   "bn": "পাইপলাইন ব্যর্থ: {project} · {ref}",
+   "pt-BR": "Pipeline falhou: {project} · {ref}",
+   "ru": "Пайплайн упал: {project} · {ref}",
+   "id": "Pipeline gagal: {project} · {ref}"
+  },
+  "{source} on {ref}": {
+   "zh-Hans": "{source}，分支 {ref}",
+   "hi": "{ref} पर {source}",
+   "es": "{source} en {ref}",
+   "ar": "{source} على {ref}",
+   "fr": "{source} sur {ref}",
+   "bn": "{ref}-এ {source}",
+   "pt-BR": "{source} em {ref}",
+   "ru": "{source} в {ref}",
+   "id": "{source} di {ref}"
+  },
+  "from {name}": {
+   "zh-Hans": "来自 {name}",
+   "hi": "{name} से",
+   "es": "de {name}",
+   "ar": "من {name}",
+   "fr": "de {name}",
+   "bn": "{name}-এর কাছ থেকে",
+   "pt-BR": "de {name}",
+   "ru": "от {name}",
+   "id": "dari {name}"
+  },
+  "Merged: {title}": {
+   "zh-Hans": "已合并：{title}",
+   "hi": "मर्ज हुआ: {title}",
+   "es": "Fusionada: {title}",
+   "ar": "تم الدمج: {title}",
+   "fr": "Mergée : {title}",
+   "bn": "মার্জ হয়েছে: {title}",
+   "pt-BR": "Mesclada: {title}",
+   "ru": "Слит: {title}",
+   "id": "Digabung: {title}"
+  },
+  "Merged by {name} · {branches}": {
+   "zh-Hans": "由 {name} 合并 · {branches}",
+   "hi": "{name} ने मर्ज किया · {branches}",
+   "es": "Fusionada por {name} · {branches}",
+   "ar": "دمجه {name} · {branches}",
+   "fr": "Mergée par {name} · {branches}",
+   "bn": "{name} মার্জ করেছেন · {branches}",
+   "pt-BR": "Mesclada por {name} · {branches}",
+   "ru": "Слил {name} · {branches}",
+   "id": "Digabung oleh {name} · {branches}"
+  },
+  "Approved by {name}: {title}": {
+   "zh-Hans": "{name} 已批准：{title}",
+   "hi": "{name} ने स्वीकृत किया: {title}",
+   "es": "Aprobada por {name}: {title}",
+   "ar": "وافق {name}: {title}",
+   "fr": "Approuvée par {name} : {title}",
+   "bn": "{name} অনুমোদন করেছেন: {title}",
+   "pt-BR": "Aprovada por {name}: {title}",
+   "ru": "{name} одобрил: {title}",
+   "id": "Disetujui oleh {name}: {title}"
+  },
+  "Approvals so far: {names}": {
+   "zh-Hans": "目前已批准：{names}",
+   "hi": "अब तक की स्वीकृतियाँ: {names}",
+   "es": "Aprobaciones hasta ahora: {names}",
+   "ar": "الموافقات حتى الآن: {names}",
+   "fr": "Approbations à ce jour : {names}",
+   "bn": "এখন পর্যন্ত অনুমোদন: {names}",
+   "pt-BR": "Aprovações até agora: {names}",
+   "ru": "Одобрили: {names}",
+   "id": "Persetujuan sejauh ini: {names}"
+  },
+  "Comment by {name}: {title}": {
+   "zh-Hans": "{name} 评论了：{title}",
+   "hi": "{name} की टिप्पणी: {title}",
+   "es": "Comentario de {name}: {title}",
+   "ar": "تعليق من {name}: {title}",
+   "fr": "Commentaire de {name} : {title}",
+   "bn": "{name}-এর মন্তব্য: {title}",
+   "pt-BR": "Comentário de {name}: {title}",
+   "ru": "Комментарий от {name}: {title}",
+   "id": "Komentar dari {name}: {title}"
+  },
+  "Updated by {name}: {title}": {
+   "zh-Hans": "{name} 更新了：{title}",
+   "hi": "{name} ने अपडेट किया: {title}",
+   "es": "Actualizada por {name}: {title}",
+   "ar": "حدّثه {name}: {title}",
+   "fr": "Mise à jour par {name} : {title}",
+   "bn": "{name} আপডেট করেছেন: {title}",
+   "pt-BR": "Atualizada por {name}: {title}",
+   "ru": "Обновил {name}: {title}",
+   "id": "Diperbarui oleh {name}: {title}"
+  },
+  "Took {duration}": {
+   "zh-Hans": "耗时 {duration}",
+   "hi": "{duration} लगे",
+   "es": "Tardó {duration}",
+   "ar": "استغرق {duration}",
+   "fr": "Durée : {duration}",
+   "bn": "{duration} লেগেছে",
+   "pt-BR": "Levou {duration}",
+   "ru": "Заняло {duration}",
+   "id": "Butuh {duration}"
+  },
+  "Can't be merged": {
+   "zh-Hans": "无法合并",
+   "hi": "मर्ज नहीं हो सकता",
+   "es": "No se puede fusionar",
+   "ar": "لا يمكن الدمج",
+   "fr": "Impossible à merger",
+   "bn": "মার্জ করা যাবে না",
+   "pt-BR": "Não pode ser mesclada",
+   "ru": "Нельзя слить",
+   "id": "Tidak bisa digabung"
   }
  }
 }

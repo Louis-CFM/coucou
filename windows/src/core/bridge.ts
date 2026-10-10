@@ -167,6 +167,8 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** The configured GitLab instance, or `path` on it (e.g. "/dashboard/merge_requests"). */
+  openGitlab: (path: string | null = null) => call<void>("open_gitlab", { path }),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
