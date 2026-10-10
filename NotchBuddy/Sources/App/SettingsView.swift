@@ -1255,7 +1255,7 @@ struct SettingsView: View {
                     }
                     SecureField("User token  (xoxp-…)", text: $slackToken)
                         .textFieldStyle(.roundedBorder)
-                    Text("From your own Slack app, with the user scopes im:read, users:read and search:read.")
+                    Text("A user token from a Slack app with the scopes im:read, users:read and search:read.")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }

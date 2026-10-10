@@ -775,7 +775,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   { id: "integration_slack", name: "Slack", color: "#E01E5A",
     fields: [{ key: "slack-token", label: N_("Token"), placeholder: "xoxp-…", secret: true }],
-    hint: N_("From your own Slack app, with the user scopes im:read, users:read and search:read.") },
+    hint: N_("A user token from a Slack app with the scopes im:read, users:read and search:read.") },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
