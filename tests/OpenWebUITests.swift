@@ -25,6 +25,14 @@ enum OpenWebUITests {
         checkTrue("https carries a key", OpenWebUI.mayCarryKey("https://chat.example.com"))
         checkTrue("loopback http carries a key", OpenWebUI.mayCarryKey("http://localhost:8080"))
         checkTrue("plain http elsewhere does not", !OpenWebUI.mayCarryKey("http://192.168.1.5:8080"))
+        checkTrue("127.x and ::1 are loopback", OpenWebUI.mayCarryKey("http://127.0.0.2:3000")
+                  && OpenWebUI.mayCarryKey("http://[::1]:8080"))
+        checkTrue("a name starting with 127. is not", !OpenWebUI.mayCarryKey("http://127.attacker.example:8080")
+                  && !OpenWebUI.mayCarryKey("http://127.0.0.1.attacker.example"))
+        checkTrue("only localhost itself is", !OpenWebUI.mayCarryKey("http://localhost.attacker.example"))
+        checkTrue("mapped and unspecified addresses as net.rs", OpenWebUI.isLoopback("::ffff:127.0.0.1")
+                  && OpenWebUI.isLoopback("0.0.0.0") && !OpenWebUI.isLoopback("::ffff:10.0.0.1")
+                  && !OpenWebUI.isLoopback("127.1"))
 
         print("OpenWebUI models")
         let models = OpenWebUI.parseModels(json(#"{"data":[{"id":"llama3","name":"Llama 3"},{"id":"bare"}]}"#)) ?? []
