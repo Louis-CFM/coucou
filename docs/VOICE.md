@@ -66,6 +66,18 @@ avec ses tests comme les autres transitions.
 | 9 | **Minuteurs et rappels** | « rappelle-moi dans 20 minutes de sortir le linge », « minuteur 5 minutes » | Rappel local, Mochi l'annonce dans le notch (+ notification) | Non |
 | 10 | **Questions** | « est-ce que la CI est verte ? », « combien j'ai vendu aujourd'hui ? », « il me reste combien sur mon plan Claude ? », « c'est quoi la commande pour annuler un commit ? » | État de Coucou et des services déjà lus (GitHub, Vercel, Stripe, Resend, n8n, usage Claude) ; questions générales par `VoiceBrain` sur l'appareil | Non. Réponse en texte dans l'île |
 
+**E-mail guidé (fonction 4, version actuelle).** « Envoie un mail » → Coucou demande à qui (nom de contact ou
+adresse épelée), l'objet, le texte (ou « écris-lui que… » : le modèle local rédige), puis « une pièce jointe ? » : on glisse
+le fichier sur le notch (ou « non »). Les étapes déjà dites dans la première phrase sont sautées ; « annule » arrête tout.
+La carte mail de l'île s'ouvre remplie et reste ouverte jusqu'au clic : Envoyer passe par Apple Mail (AppleScript),
+Annuler ferme. Rien ne part sans ce clic.
+
+**Recherche web (opt-in).** Réglages → Voix → « Répondre aux questions avec une recherche web », visible avec une clé
+Anthropic. Une question que ni les pilules ni les services ne couvrent (« qui a gagné hier ? », « c'est quoi… ») ou une
+demande explicite (« cherche sur internet… », « search the web for… ») part chez Claude (Haiku, outil `web_search`)
+avec les derniers échanges de la conversation, en mémoire seulement, oubliés après 90 s. Réponse courte lue à voix haute ;
+quand il y a plus à dire, elle finit par une question et Coucou réécoute : on peut continuer le sujet.
+
 Bonus (après les 10) : Mochi et l'app à la voix (« mets-toi en pirate », « coupe les sons », « ne pas déranger »),
 routines (« mode focus » = playlist + ne pas déranger + pilules de travail).
 

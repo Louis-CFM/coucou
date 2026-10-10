@@ -15,7 +15,7 @@ final class GithubPoller: @unchecked Sendable {
         guard timer == nil else { return }
         // Stats poll: every 5 minutes, starting 7 s after launch
         let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 7, repeating: 300)
+        t.schedule(deadline: .now() + 7, repeating: 300, leeway: .seconds(30))
         t.setEventHandler { [weak self] in self?.pollStats() }
         t.resume()
         timer = t

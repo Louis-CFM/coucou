@@ -32,7 +32,7 @@ final class CloudProbe {
     private var changeToken: CKServerChangeToken?
     private var seenPongs = Set<String>()
     private var fetching = false
-    private var lastPushAt: Date?
+    private(set) var lastPushAt: Date?
     private var started = false
     private var pingTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
@@ -186,6 +186,10 @@ final class CloudProbe {
         lastPushAt = Date()
         // A request from the iPhone (a service to read, an action) may be waiting.
         Task { await ServiceDetailRunner.shared.checkNow() }
+        #if !APPSTORE
+        // An instruction from the iPhone may be waiting too: no need to wait for the poll.
+        Task { await InstructionRunner.shared.checkNow() }
+        #endif
         guard pingTask != nil else { return }   // the Pong fetch is only for the ping test
         log("push received")
         Task { await fetchChanges(source: "push") }
