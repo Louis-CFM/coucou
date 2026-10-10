@@ -310,6 +310,17 @@
    "ru": "Спроси меня о чём угодно…",
    "id": "Tanyakan apa saja…"
   },
+  "Assigned to you": {
+   "zh-Hans": "分配给你",
+   "hi": "आपको सौंपे गए",
+   "es": "Asignadas a ti",
+   "ar": "مُسندة إليك",
+   "fr": "Assignées à vous",
+   "bn": "আপনাকে বরাদ্দ",
+   "pt-BR": "Atribuídas a você",
+   "ru": "Назначены вам",
+   "id": "Ditugaskan kepada Anda"
+  },
   "Attach front window": {
    "zh-Hans": "附加前端窗口",
    "hi": "फ्रंट विंडो अटैच करें",
@@ -1234,6 +1245,17 @@
    "ru": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым.",
    "id": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
   },
+  "Inbox": {
+   "zh-Hans": "收件箱",
+   "hi": "इनबॉक्स",
+   "es": "Bandeja de entrada",
+   "ar": "صندوق الوارد",
+   "fr": "Boîte de réception",
+   "bn": "ইনবক্স",
+   "pt-BR": "Caixa de entrada",
+   "ru": "Входящие",
+   "id": "Kotak masuk"
+  },
   "Install": {
    "zh-Hans": "安装",
    "hi": "इंस्टॉल करें",
@@ -2069,6 +2091,17 @@
    "pt-BR": "Pagamentos",
    "ru": "Платежи",
    "id": "Pembayaran"
+  },
+  "Personal API key from Linear: Settings → Account → Security & access.": {
+   "zh-Hans": "Linear 个人 API 密钥：Settings → Account → Security & access。",
+   "hi": "Linear की निजी API कुंजी: Settings → Account → Security & access.",
+   "es": "Clave API personal de Linear: Settings → Account → Security & access.",
+   "ar": "مفتاح API شخصي من Linear: Settings → Account → Security & access.",
+   "fr": "Clé API personnelle de Linear : Settings → Account → Security & access.",
+   "bn": "Linear-এর ব্যক্তিগত API কী: Settings → Account → Security & access.",
+   "pt-BR": "Chave de API pessoal do Linear: Settings → Account → Security & access.",
+   "ru": "Личный API-ключ Linear: Settings → Account → Security & access.",
+   "id": "Kunci API pribadi dari Linear: Settings → Account → Security & access."
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -3301,6 +3334,17 @@
    "pt-BR": "{0} — abrir o Spotify",
    "ru": "{0} — открыть Spotify",
    "id": "{0} — buka Spotify"
+  },
+  "{count} unread": {
+   "zh-Hans": "{count} 条未读",
+   "hi": "{count} अपठित",
+   "es": "{count} sin leer",
+   "ar": "{count} غير مقروءة",
+   "fr": "{count} non lues",
+   "bn": "{count} অপঠিত",
+   "pt-BR": "{count} não lidas",
+   "ru": "Непрочитанных: {count}",
+   "id": "{count} belum dibaca"
   },
   "{count}/4 slots used": {
    "zh-Hans": "已用 {count}/4 个插槽",

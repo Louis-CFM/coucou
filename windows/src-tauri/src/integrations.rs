@@ -1,5 +1,6 @@
 // Integration pollers — the Rust side of StripePoller / GithubPoller /
-// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller.
+// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller /
+// LinearPoller.
 //
 // Same endpoints, same first-run delays and intervals as the Swift pollers. Each
 // one emits an `integration` event; the island owns the badge, the sound and the
@@ -71,7 +72,8 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app, "integration_linear", 11, 60, poll_linear);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -120,6 +122,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_linear" => poll_linear(app).await,
         _ => {}
     }
 }
@@ -844,6 +847,56 @@ async fn poll_calcom(app: AppHandle) {
         error: None,
         event: None,
     });
+}
+
+// ── Linear ────────────────────────────────────────────────────────────────────
+
+/// Inbox ids the last poll saw unread; None until the first poll, which is silent.
+static LINEAR_SEEN: Mutex<Option<std::collections::HashSet<String>>> = Mutex::new(None);
+
+/// A new key starts silently, like the first poll.
+pub fn forget_linear() {
+    *LINEAR_SEEN.lock().unwrap() = None;
+}
+
+async fn poll_linear(app: AppHandle) {
+    let Some(key) = secrets::get("linear-api-key") else { return };
+    // Personal API keys go in the header as-is, without "Bearer".
+    let response = client()
+        .post(crate::linear::ENDPOINT)
+        .header("Authorization", key)
+        .json(&crate::linear::request_body())
+        .send()
+        .await;
+    let Ok(response) = response else { return };
+    let code = response.status().as_u16();
+    let json: Value = response.json().await.unwrap_or(json!({}));
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let Some(inbox) = (code == 200).then(|| crate::linear::parse(&json, now)).flatten() else {
+        let error = match code {
+            200 => crate::i18n::t("Unexpected response"),
+            _ => status_error(code, &crate::i18n::t("Key lacks access")),
+        };
+        emit(&app, IntegrationUpdate { id: "integration_linear", data: json!({}), error: Some(error), event: None });
+        return;
+    };
+
+    let unread = inbox["unread"].as_array().cloned().unwrap_or_default();
+    let event = {
+        let mut seen = LINEAR_SEEN.lock().unwrap();
+        let newest = crate::linear::fresh(&unread, seen.as_ref()).first().map(|n| IntegrationEvent {
+            success: true,
+            label: [n["key"].as_str(), n["title"].as_str()].into_iter().flatten().collect::<Vec<_>>().join(" "),
+            detail: None,
+        });
+        *seen = Some(unread.iter().filter_map(|n| n["id"].as_str().map(str::to_string)).collect());
+        newest
+    };
+
+    emit(&app, IntegrationUpdate { id: "integration_linear", data: inbox, error: None, event });
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────

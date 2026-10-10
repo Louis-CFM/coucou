@@ -1742,6 +1742,12 @@ input[type="range"]::-webkit-slider-thumb {
   font-style: normal;
 }
 
+.int-key {
+  font: 500 10px var(--font);
+  color: #8e939c;
+  flex: 0 0 auto;
+}
+
 .int-empty {
   font: 400 11px var(--font);
   color: var(--dim-3);
