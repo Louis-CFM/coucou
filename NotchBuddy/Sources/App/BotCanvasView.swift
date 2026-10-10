@@ -20,8 +20,12 @@ struct BotCanvasView: View {
         // 0.05 step per display frame (MochiFrameClock), so the motion is the same as at
         // the display rate, with half to a quarter of the drawing.
         TimelineView(.animation(minimumInterval: state.mode == .expanded ? 1.0 / 60.0 : 1.0 / 30.0,
-                                paused: state.mode == .hidden || paused)) { _ in
+                                paused: state.mode == .hidden || paused)) { timeline in
+            // The Canvas must capture the frame's date: a closure that doesn't change from
+            // one tick to the next is not redrawn, and Mochi froze.
+            let frame = timeline.date
             Canvas { context, size in
+                _ = frame
                 let look = lookXY(state: state)
                 engine.lookX = look.x
                 engine.lookY = look.y
@@ -238,8 +242,10 @@ struct MiniBotCanvasView: View {
     var body: some View {
         // A 12–20 pt Mochi: 30 fps looks the same as the display rate and costs a quarter
         // on ProMotion. Paused in island views that are not shown.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !viewActive)) { _ in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !viewActive)) { timeline in
+            let frame = timeline.date   // see BotCanvasView: redraw on every tick
             Canvas { context, size in
+                _ = frame
                 engine.setDancing(isDancing)
                 MochiFrameClock.advance(engine)
                 var ctx = context
