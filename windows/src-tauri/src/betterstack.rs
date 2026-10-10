@@ -11,6 +11,18 @@ use serde_json::{json, Value};
 pub const INCIDENTS_URL: &str = "https://incidents.betterstack.com/api/v3/incidents?resolved=false&per_page=50";
 pub const MONITORS_URL: &str = "https://incidents.betterstack.com/api/v2/monitors?per_page=250";
 
+/// "t5969" from what was typed in Settings: the team ID, its number, or a dashboard link.
+/// The API never returns it, and a page link without it is a 404.
+pub fn team(raw: &str) -> Option<String> {
+    let text = raw.trim();
+    let id = match text.find("/team/") {
+        Some(i) => text[i + "/team/".len()..].split('/').next().unwrap_or(""),
+        None => text,
+    };
+    let digits = id.strip_prefix('t').unwrap_or(id);
+    (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then(|| format!("t{digits}"))
+}
+
 /// What changed between two polls of the open incidents.
 #[derive(Debug, PartialEq)]
 pub enum Change {
@@ -123,6 +135,16 @@ pub fn seen(current: &[Value]) -> HashMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn team_comes_from_the_id_its_number_or_a_link() {
+        assert_eq!(team("t5969").as_deref(), Some("t5969"));
+        assert_eq!(team(" 5969 ").as_deref(), Some("t5969"));
+        assert_eq!(team("https://incidents.betterstack.com/team/t5969/incidents/1").as_deref(), Some("t5969"));
+        for bad in ["", "t59x", "../t1", "t"] {
+            assert_eq!(team(bad), None, "{bad}");
+        }
+    }
 
     fn incidents_body() -> Value {
         json!({ "data": [

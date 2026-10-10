@@ -224,7 +224,7 @@ struct OverviewView: View {
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
         case "integration_betterstack":
-            NSWorkspace.shared.open(BetterStackAPI.dashboardURL)
+            if let url = BetterStackAPI.page("incidents", team: BetterStackPoller.team) { NSWorkspace.shared.open(url) }
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -1850,7 +1850,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
-        case "integration_betterstack": return BetterStackAPI.dashboardURL
+        case "integration_betterstack": return BetterStackAPI.page("incidents", team: BetterStackPoller.team)
         default: return nil
         }
     }
@@ -3611,15 +3611,16 @@ struct BetterStackCardView: View {
 
     /// Incidents first; then down monitors that no open incident already names.
     private var rows: [Row] {
+        let team = BetterStackPoller.team
         let incidents = appState.betterstackIncidents.map {
             Row(id: "i\($0.id)", accent: $0.acknowledged ? Self.amber : Self.red, name: $0.name,
                 detail: $0.acknowledged ? String(localized: "Acknowledged") : ($0.cause ?? ""),
-                trailing: $0.timeAgo, url: $0.webURL)
+                trailing: $0.timeAgo, url: $0.webURL(team: team))
         }
         let named = Set(appState.betterstackIncidents.map(\.name))
         let monitors = appState.betterstackDownMonitors.filter { !named.contains($0.name) }.map {
             Row(id: "m\($0.id)", accent: Self.red, name: $0.name, detail: String(localized: "Down"),
-                trailing: "", url: $0.webURL)
+                trailing: "", url: $0.webURL(team: team))
         }
         return Array((incidents + monitors).prefix(3))
     }

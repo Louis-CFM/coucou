@@ -47,7 +47,7 @@ struct BetterStackTests {
         check(incidents.last?.cause == "Status 502", "cause kept")
         check(incidents.last?.startedAt != nil, "fractional-second timestamps parse")
         check(incidents.first?.startedAt != nil, "plain timestamps parse")
-        check(incidents.first?.webURL?.absoluteString == "https://uptime.betterstack.com/incidents/102", "web link")
+        check(incidents.first?.webURL(team: "t1")?.absoluteString == "https://incidents.betterstack.com/team/t1/incidents/102", "web link")
 
         check(BetterStackAPI.incidents(from: Data("{\"errors\":\"Unauthorized\"}".utf8)) == nil,
               "non-list body → nil")
@@ -67,6 +67,19 @@ struct BetterStackTests {
               "incident gone → resolved")
         check(BetterStackAPI.change(previous: [a.id: a.name], current: [b]) == .opened(b),
               "opened wins over resolved in the same poll")
+
+        // Links: the team's own pages; without a team, the incident list.
+        check(BetterStackAPI.team(from: "t5969") == "t5969", "team ID as Better Stack shows it")
+        check(BetterStackAPI.team(from: " 5969 ") == "t5969", "team number alone")
+        check(BetterStackAPI.team(from: "https://incidents.betterstack.com/team/t5969/incidents/1030114436") == "t5969",
+              "team from a pasted dashboard link")
+        check(BetterStackAPI.team(from: "") == nil && BetterStackAPI.team(from: "t59x") == nil
+              && BetterStackAPI.team(from: "../t1") == nil, "anything else is no team")
+        check(a.webURL(team: "t5969")?.absoluteString == "https://incidents.betterstack.com/team/t5969/incidents/101",
+              "incident link with the team")
+        check(a.webURL(team: nil) == BetterStackAPI.dashboardURL, "no team: the incident list, not a 404")
+        check(down[0].webURL(team: "t5969")?.absoluteString == "https://incidents.betterstack.com/team/t5969/monitors/2",
+              "monitor link with the team")
 
         print(failures == 0 ? "All Better Stack tests passed." : "\(failures) failure(s).")
         exit(failures == 0 ? 0 : 1)

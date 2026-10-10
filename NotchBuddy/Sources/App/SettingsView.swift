@@ -104,6 +104,7 @@ struct SettingsView: View {
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
     @State private var betterstackToken: String = KeychainStore.shared.get("betterstack-token") ?? ""
+    @State private var betterstackTeam: String = KeychainStore.shared.get("betterstack-team") ?? ""
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1255,6 +1256,8 @@ struct SettingsView: View {
                     }
                     SecureField("Uptime API token", text: $betterstackToken)
                         .textFieldStyle(.roundedBorder)
+                    TextField(String(localized: "Team ID (optional)"), text: $betterstackTeam)
+                        .textFieldStyle(.roundedBorder)
                     Text(String(localized: "integrations.betterstack.token-hint"))
                         .font(.system(size: 10))
                         .foregroundColor(Color(hex: "#8E939C"))
@@ -2025,6 +2028,7 @@ struct SettingsView: View {
 
         let prevBetterstack = KeychainStore.shared.get("betterstack-token")
         saveKey("betterstack-token", value: betterstackToken)
+        saveKey("betterstack-team", value: BetterStackAPI.team(from: betterstackTeam) ?? "")
         if KeychainStore.shared.get("betterstack-token") != prevBetterstack {
             BetterStackPoller.shared.reset()
             BetterStackPoller.shared.pollNow()

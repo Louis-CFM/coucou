@@ -54,8 +54,20 @@ test("incidents first, then the down monitors no incident names, three rows at m
   assert.match(rows[1].textContent, /api\.example\.com.*Status 502/);
   assert.match(rows[2].textContent, /cdn\.example\.com.*Down/);
 
+  // No team ID saved: the incident list, since a link without the team is a 404.
   rows[1].fire("click");
-  assert.deepEqual(sent("open_url").at(-1), { url: "https://uptime.betterstack.com/incidents/101" });
-  rows[2].fire("click");
-  assert.deepEqual(sent("open_url").at(-1), { url: "https://uptime.betterstack.com/monitors/8" });
+  assert.deepEqual(sent("open_url").at(-1), { url: "https://uptime.betterstack.com/incidents" });
+});
+
+test("with the team ID, a row opens its own incident or monitor", () => {
+  load({
+    team: "t5969",
+    incidents: [{ id: "101", name: "api.example.com", cause: "Status 502", startedAt: null, acknowledged: false }],
+    down: [{ id: "8", name: "cdn.example.com" }],
+  });
+  const rows = renderIntegrationCard(task, hooks).find("BUTTON");
+  rows[0].fire("click");
+  assert.deepEqual(sent("open_url").at(-1), { url: "https://incidents.betterstack.com/team/t5969/incidents/101" });
+  rows[1].fire("click");
+  assert.deepEqual(sent("open_url").at(-1), { url: "https://incidents.betterstack.com/team/t5969/monitors/8" });
 });

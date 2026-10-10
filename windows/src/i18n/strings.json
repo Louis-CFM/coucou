@@ -3445,6 +3445,17 @@
    "ru": "Задачи",
    "id": "Tugas"
   },
+  "Team ID (optional)": {
+   "zh-Hans": "团队 ID（可选）",
+   "hi": "टीम आईडी (वैकल्पिक)",
+   "es": "ID del equipo (opcional)",
+   "ar": "معرّف الفريق (اختياري)",
+   "fr": "ID de l'équipe (facultatif)",
+   "bn": "টিম আইডি (ঐচ্ছিক)",
+   "pt-BR": "ID da equipe (opcional)",
+   "ru": "ID команды (необязательно)",
+   "id": "ID tim (opsional)"
+  },
   "Test the voice": {
    "zh-Hans": "试听声音",
    "hi": "आवाज़ आज़माएँ",

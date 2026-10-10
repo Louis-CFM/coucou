@@ -72,6 +72,7 @@ final class KeychainStore: @unchecked Sendable {
         "calcom-api-key",
         "notion-api-key",
         "betterstack-token",
+        "betterstack-team",
         "elevenlabs-api-key",
     ]
 

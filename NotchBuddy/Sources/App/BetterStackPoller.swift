@@ -39,6 +39,9 @@ final class BetterStackPoller: @unchecked Sendable {
         AppState.shared.activeIntegrations.contains(pillId)
     }
 
+    /// The team ID from Settings, for links to Better Stack's pages.
+    static var team: String? { BetterStackAPI.team(from: KeychainStore.shared.get("betterstack-team") ?? "") }
+
     // MARK: - Poll
 
     private func poll() {

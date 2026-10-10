@@ -702,7 +702,11 @@ async fn poll_betterstack(app: AppHandle) {
 
     emit(&app, IntegrationUpdate {
         id: "integration_betterstack",
-        data: json!({ "incidents": open, "down": down }),
+        data: json!({
+            "incidents": open,
+            "down": down,
+            "team": secrets::get("betterstack-team").and_then(|raw| betterstack::team(&raw)),
+        }),
         error: None,
         event,
     });

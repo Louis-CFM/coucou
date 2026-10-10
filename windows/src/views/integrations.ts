@@ -363,6 +363,10 @@ function calcomCard(): HTMLElement {
 /** Incidents first; then down monitors that no open incident already names. */
 function betterstackCard(): HTMLElement {
   const incidents = arr("integration_betterstack", "incidents");
+  const team = String(get("integration_betterstack").team ?? "");
+  // Without the team, a page link is a 404: the incident list instead.
+  const page = (path: string) =>
+    team ? `https://incidents.betterstack.com/team/${encodeURIComponent(team)}/${path}` : OPEN_URLS.integration_betterstack;
   const named = new Set(incidents.map((i) => String(i.name ?? "")));
   const items = [
     ...incidents.map((i) => ({
@@ -370,7 +374,7 @@ function betterstackCard(): HTMLElement {
       name: String(i.name ?? ""),
       detail: i.acknowledged ? t("Acknowledged") : String(i.cause ?? ""),
       ago: i.startedAt ? timeAgo(i.startedAt) : "",
-      url: `https://uptime.betterstack.com/incidents/${encodeURIComponent(String(i.id))}`,
+      url: page(`incidents/${encodeURIComponent(String(i.id))}`),
     })),
     ...arr("integration_betterstack", "down")
       .filter((m) => !named.has(String(m.name ?? "")))
@@ -379,7 +383,7 @@ function betterstackCard(): HTMLElement {
         name: String(m.name ?? ""),
         detail: t("Down"),
         ago: "",
-        url: `https://uptime.betterstack.com/monitors/${encodeURIComponent(String(m.id))}`,
+        url: page(`monitors/${encodeURIComponent(String(m.id))}`),
       })),
   ];
 

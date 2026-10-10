@@ -12,7 +12,7 @@ struct BetterStackIncident: Identifiable, Equatable {
     let startedAt: Date?
     let acknowledged: Bool
 
-    var webURL: URL? { URL(string: "https://uptime.betterstack.com/incidents/\(id)") }
+    func webURL(team: String?) -> URL? { BetterStackAPI.page("incidents/\(id)", team: team) }
 
     var timeAgo: String {
         guard let startedAt else { return "" }
@@ -28,7 +28,7 @@ struct BetterStackMonitor: Identifiable, Equatable {
     let id: String
     let name: String
 
-    var webURL: URL? { URL(string: "https://uptime.betterstack.com/monitors/\(id)") }
+    func webURL(team: String?) -> URL? { BetterStackAPI.page("monitors/\(id)", team: team) }
 }
 
 /// What changed between two polls of the open incidents.
@@ -42,6 +42,22 @@ enum BetterStackAPI {
     static let incidentsURL = URL(string: "https://incidents.betterstack.com/api/v3/incidents?resolved=false&per_page=50")!
     static let monitorsURL  = URL(string: "https://incidents.betterstack.com/api/v2/monitors?per_page=250")!
     static let dashboardURL = URL(string: "https://uptime.betterstack.com/incidents")!
+
+    /// "t5969" from what was typed in Settings: the team ID, its number, or a dashboard link.
+    /// The API never returns it, and a page link without it is a 404.
+    static func team(from raw: String) -> String? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let id = text.range(of: #"/team/t?[0-9]+(/|$)"#, options: .regularExpression)
+            .map { String(text[$0]).replacingOccurrences(of: "/team/", with: "").trimmingCharacters(in: ["/"]) } ?? text
+        guard id.range(of: #"^t?[0-9]+$"#, options: .regularExpression) != nil else { return nil }
+        return id.hasPrefix("t") ? id : "t" + id
+    }
+
+    /// One of the team's pages; the incident list when no team is set.
+    static func page(_ path: String, team: String?) -> URL? {
+        guard let team else { return dashboardURL }
+        return URL(string: "https://incidents.betterstack.com/team/\(team)/\(path)")
+    }
 
     /// Open incidents, newest first. Nil when the body isn't a JSON:API list.
     static func incidents(from data: Data) -> [BetterStackIncident]? {
