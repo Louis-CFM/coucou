@@ -533,6 +533,11 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
     unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
+/// True when the island is a layer surface (layer-shell), not a plain window.
+pub fn layer_surface_in_use() -> bool {
+    LAYER_SURFACE.load(Ordering::Relaxed)
+}
+
 /// How far below the top of the display (logical px) a regular window starts
 /// without covering the desktop's own top bar: the display's work area, which
 /// the shell shrinks by its panel. A layer surface goes over the panel on

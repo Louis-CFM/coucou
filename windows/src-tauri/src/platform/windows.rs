@@ -350,6 +350,9 @@ pub fn set_pointer_watch(_active: bool) {}
 /// `set_position` already places a Win32 window on the right display.
 pub fn pin_to_monitor(_win: &WebviewWindow, _x: i32, _y: i32) {}
 
+/// Windows has nothing to step aside for here.
+pub fn watch_fullscreen(_app: tauri::AppHandle) {}
+
 /// The island sits on the very top edge of the display.
 pub fn top_inset(_win: &WebviewWindow, _x: i32, _y: i32) -> i32 {
     0

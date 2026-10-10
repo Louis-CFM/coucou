@@ -16,6 +16,10 @@ mod linux;
 pub use self::linux::*;
 // "Open terminal" on Linux: the process tree from /proc, then KWin, EWMH, kitty.
 #[cfg(target_os = "linux")]
+mod linux_fullscreen;
+#[cfg(target_os = "linux")]
+pub use self::linux_fullscreen::watch_fullscreen;
+#[cfg(target_os = "linux")]
 mod linux_focus;
 #[cfg(target_os = "linux")]
 pub use self::linux_focus::{focus_session_window, process_ancestors, window_owners};

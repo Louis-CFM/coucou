@@ -631,6 +631,7 @@ Plasma, COSMIC, Hyprland, Sway) run Coucou natively on Wayland.
 | Island window | dock window, top centre | the same, through XWayland | layer surface over everything |
 | Below the top bar | yes: starts at the work area the shell leaves free | *not tested*: XWayland may report no top bar, so it can sit over it | no: it goes over the bar on purpose, like the Mac's notch |
 | Global shortcuts | X11 key grabs | XDG GlobalShortcuts portal (GNOME 48+) | the portal, or commands to bind (`coucou --shortcut …`) |
+| A fullscreen window | the island hides while the focused window is fullscreen on its screen | only for X11 clients (XWayland): a native Wayland client's fullscreen is not visible to Coucou | the island lives in its own layer and is left alone |
 | Mochi's eyes | follow the pointer over the island only | the same | the same |
 | Mochi on the desktop | an ordinary window that goes anywhere | cannot leave the island | layer surface on the island's display |
 | Beat sync, Media pill, Claude Code chat | the same everywhere: PipeWire (`pw-record`), the session D-Bus and the `claude` CLI do not care about the display server | | |
@@ -643,6 +644,10 @@ Notes:
   bar, or too far from it, set `COUCOU_TOP_INSET=<px>` (a GNOME bar is about
   32 px; `0` puts it back on the edge). A layer-shell compositor always gets
   `0`.
+- **Fullscreen**: on X11 the island is a dock window, which stays above a
+  fullscreen video or game, so it hides itself while the focused window is
+  fullscreen on its screen and comes back after. `COUCOU_FULLSCREEN_HIDE=0`
+  keeps it showing.
 - **Beat sync** needs PipeWire with `pw-record` on the `PATH`. It listens to the
   default output, never the microphone, and only while a player plays and
   *Settings → General → Dance to the beat* is on.
