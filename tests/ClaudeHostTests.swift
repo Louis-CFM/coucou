@@ -20,6 +20,8 @@ enum ClaudeHostTests {
         check("cmux: bundle id wins over TERM_PROGRAM=ghostty",
               ClaudeHost.terminal(termProgram: "ghostty", bundleId: "com.cmuxterm.app")?.name == "cmux")
         check("Orca by bundle id", ClaudeHost.terminal(termProgram: "", bundleId: "com.stablyai.orca")?.name == "Orca")
+        check("Claude desktop app by bundle id",
+              ClaudeHost.terminal(termProgram: "", bundleId: "com.anthropic.claudefordesktop")?.name == "Claude")
         check("VS Code → nil", ClaudeHost.terminal(termProgram: "vscode", bundleId: "com.microsoft.VSCode") == nil)
         check("Cursor → nil", ClaudeHost.terminal(termProgram: "vscode", bundleId: "com.todesktop.230313mzl4w4u92") == nil)
         check("unknown → nil", ClaudeHost.terminal(termProgram: "", bundleId: "com.example.app") == nil)
@@ -27,6 +29,7 @@ enum ClaudeHostTests {
         print("ClaudeHost.name / pillName")
         check("nil host = VS Code", ClaudeHost.name(for: nil) == "VS Code")
         check("Warp host", ClaudeHost.name(for: "dev.warp.Warp-Stable") == "Warp")
+        check("Claude desktop host", ClaudeHost.name(for: "com.anthropic.claudefordesktop") == "Claude")
         check("unknown host = VS Code", ClaudeHost.name(for: "com.example.app") == "VS Code")
         check("editor session → VS Code", ClaudeHost.pillName(hostApp: nil) == "VS Code")
         check("terminal session → Claude Code", ClaudeHost.pillName(hostApp: "dev.warp.Warp-Stable") == "Claude Code")
