@@ -27,6 +27,7 @@ mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod snippet;
 mod sounds;
 mod spotify;
 mod tray;
@@ -191,6 +192,12 @@ fn open_url(url: String) {
         return;
     }
     platform::open_url(&url);
+}
+
+/// The lines around an edit, for the code view (see snippet.rs).
+#[tauri::command]
+fn file_snippet(cwd: String, path: String, find: String, context: usize) -> Option<snippet::Snippet> {
+    snippet::around(&cwd, &path, &find, context)
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
@@ -678,6 +685,7 @@ pub fn run() {
             list_monitors,
             open_url,
             open_in_vscode,
+            file_snippet,
             open_session,
             open_claude_desktop,
             open_file_in_vscode,

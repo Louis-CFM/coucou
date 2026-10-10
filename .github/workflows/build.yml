@@ -68,6 +68,9 @@ jobs:
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
 
+      - name: Test code view
+        run: bash scripts/test-code-view.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 

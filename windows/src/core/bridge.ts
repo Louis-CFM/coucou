@@ -22,6 +22,16 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T |
   }
 }
 
+/** The lines around an edit, read from the file itself (see snippet.rs). */
+export interface Snippet {
+  /** Line number (1-based) of `lines[0]`. */
+  start: number;
+  lines: string[];
+  /** Where the edited block begins in `lines`, and how many lines it spans. */
+  at: number;
+  len: number;
+}
+
 export interface BootInfo {
   settings: Settings;
   /** Logical screen rect of the monitor the island lives on. */
@@ -76,6 +86,10 @@ export const Bridge = {
    */
   openSession: (sessionId: string | null, path: string | null) =>
     call<boolean>("open_session", { sessionId, path }),
+
+  /** The lines around an edit, read from the file (null: unreadable, outside the session folder, not found). */
+  fileSnippet: (cwd: string, path: string, find: string, context: number) =>
+    call<Snippet>("file_snippet", { cwd, path, find, context }),
 
   /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
   openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
