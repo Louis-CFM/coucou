@@ -218,6 +218,12 @@ final class AppState: ObservableObject {
             case .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
+            // Ignore an in-flight catalogue from a key replaced in Settings.
+            guard KeychainStore.shared.get(provider.keychainKey) == apiKey else {
+                fetchedProviderModels[provider] = nil
+                fetchModelsIfNeeded(for: provider)
+                return
+            }
             if models.isEmpty {
                 providerModelFetchError[provider] = provider == .openrouter
                     ? "No free text models are available. Try refreshing later."

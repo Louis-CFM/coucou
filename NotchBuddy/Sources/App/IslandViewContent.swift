@@ -1505,18 +1505,14 @@ struct ModelPickerView: View {
         .padding(14)
         .background(Color(hex: "#16171B"))
         .onAppear {
-            // Force-refresh local providers and OpenRouter every time the picker opens
-            if state.chatProvider.isLocal || state.chatProvider == .openrouter {
-                state.fetchedProviderModels[state.chatProvider] = nil
-                state.providerModelFetchError[state.chatProvider] = nil
-            }
+            // Refresh cloud catalogues too: models and account access can change.
+            state.fetchedProviderModels[state.chatProvider] = nil
+            state.providerModelFetchError[state.chatProvider] = nil
             state.fetchModelsIfNeeded(for: state.chatProvider)
         }
         .onChange(of: state.chatProvider) { _, provider in
-            if provider.isLocal || provider == .openrouter {
-                state.fetchedProviderModels[provider] = nil
-                state.providerModelFetchError[provider] = nil
-            }
+            state.fetchedProviderModels[provider] = nil
+            state.providerModelFetchError[provider] = nil
             state.fetchModelsIfNeeded(for: provider)
         }
     }

@@ -998,7 +998,11 @@ struct SettingsView: View {
                 SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
+                    apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
                     KeychainStore.shared.set("anthropic-api-key", value: apiKey)
+                    state.fetchedProviderModels[.anthropic] = nil
+                    state.providerModelFetchError[.anthropic] = nil
+                    state.fetchModelsIfNeeded(for: .anthropic)
                     statusMessage = String(localized: "status.key-saved")
                 }
                 .buttonStyle(.borderedProminent)
@@ -1045,7 +1049,11 @@ struct SettingsView: View {
                 SecureField(String(localized: "chat.api-key.google"), text: $googleKey)
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
+                    googleKey = googleKey.trimmingCharacters(in: .whitespacesAndNewlines)
                     KeychainStore.shared.set("google-api-key", value: googleKey)
+                    state.fetchedProviderModels[.google] = nil
+                    state.providerModelFetchError[.google] = nil
+                    state.fetchModelsIfNeeded(for: .google)
                     statusMessage = String(localized: "status.google-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
@@ -1059,7 +1067,11 @@ struct SettingsView: View {
                 SecureField(String(localized: "chat.api-key.openai"), text: $openAIKey)
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
+                    openAIKey = openAIKey.trimmingCharacters(in: .whitespacesAndNewlines)
                     KeychainStore.shared.set("openai-api-key", value: openAIKey)
+                    state.fetchedProviderModels[.openai] = nil
+                    state.providerModelFetchError[.openai] = nil
+                    state.fetchModelsIfNeeded(for: .openai)
                     statusMessage = String(localized: "status.openai-key-saved")
                 }
                 .buttonStyle(.borderedProminent)

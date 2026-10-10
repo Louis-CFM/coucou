@@ -443,15 +443,11 @@ final class ClaudeService {
             // Non-streaming (Google, OpenAI, OpenRouter)
             do {
                 let (data, response) = try await URLSession.shared.data(for: req)
-                if provider == .openrouter {
-                    try OpenRouterChat.checkResponse(response)
-                }
-                guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let err = (json["error"] as? [String: Any])?["message"] as? String {
-                        throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: err])
-                    }
-                    throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)"])
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                guard status == 200 else {
+                    if status == 404 { state.fetchedProviderModels[provider] = nil }
+                    throw ChatAPIError(status: status, provider: provider.displayName,
+                                       model: selectedModel, data: data)
                 }
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let choices = json["choices"] as? [[String: Any]],
@@ -537,23 +533,11 @@ final class ClaudeService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            // Parse Anthropic error format: {"type":"error","error":{"type":"…","message":"…"}}
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let err = json["error"] as? [String: Any],
-               let errType = err["type"] as? String,
-               let errMsg = err["message"] as? String {
-                if errType == "not_found_error" {
-                    let id = AppState.shared.claudeModel
-                    throw NSError(domain: "Claude", code: 0,
-                        userInfo: [NSLocalizedDescriptionKey:
-                            "Model not found: \(id). Pick another one in Settings."])
-                }
-                throw NSError(domain: "Claude", code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: errMsg])
-            }
-            let msg = String(data: data, encoding: .utf8) ?? "unknown error"
-            throw NSError(domain: "Claude", code: 0, userInfo: [NSLocalizedDescriptionKey: msg])
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200 else {
+            if status == 404 { AppState.shared.fetchedProviderModels[.anthropic] = nil }
+            throw ChatAPIError(status: status, provider: "Anthropic",
+                               model: body["model"] as? String ?? "unknown", data: data)
         }
         return data
     }
