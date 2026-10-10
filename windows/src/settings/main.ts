@@ -870,9 +870,10 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
 }
 
-// ── General section ───────────────────────────────────────────────────────────
+// ── General tab ───────────────────────────────────────────────────────────────
 
-function generalSection(): HTMLElement {
+/** The general preferences, in the Mac's groups: General, Behavior, Sound, Weekly recap. */
+function generalSections(): HTMLElement[] {
   const volume = h("input", {
     type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
@@ -933,38 +934,47 @@ function generalSection(): HTMLElement {
     void save();
   });
 
-  return h(
-    "section",
-    {},
-    h("h2", {}, h("span", { text: t("General") })),
-    h("div", { class: "row" },
-      h("label", { text: t("Sound") }),
-      toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
-      volume,
+  return [
+    h("section", {},
+      h("h2", {}, h("span", { text: t("General") })),
+      languageRow(),
+      h("div", { class: "row" },
+        h("label", { text: t("Launch at startup") }),
+        toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
+      ),
     ),
-    h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
-    h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
-    h("div", { class: "row" },
-      h("label", { text: t("Open on hover") }),
-      toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
+    h("section", {},
+      h("h2", {}, h("span", { text: t("Behavior") })),
+      h("div", { class: "row" },
+        h("label", { text: t("Open on hover") }),
+        toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
+      ),
+      h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
+      h("div", { class: "row" },
+        h("label", { text: t("Auto-close") }),
+        autoClose,
+        h("span", { class: "hint", text: t("seconds after you leave the island") }),
+      ),
+      h("div", { class: "row" },
+        h("label", { text: t("Island lives on") }),
+        screen,
+      ),
     ),
-    h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
-    h("div", { class: "row" },
-      h("label", { text: t("Auto-close") }),
-      autoClose,
-      h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    h("section", {},
+      h("h2", {}, h("span", { text: t("Sound") })),
+      h("div", { class: "row" },
+        h("label", { text: t("Sound") }),
+        toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
+        volume,
+      ),
+      h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
+      h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
     ),
-    h("div", { class: "row" },
-      h("label", { text: t("Island lives on") }),
-      screen,
+    h("section", {},
+      h("h2", {}, h("span", { text: t("Weekly recap") })),
+      ...recapRows(),
     ),
-    h("div", { class: "row" },
-      h("label", { text: t("Launch at startup") }),
-      toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
-    ),
-    ...recapRows(),
-    languageRow(),
-  );
+  ];
 }
 
 /**
@@ -1245,6 +1255,82 @@ function recapRows(): HTMLElement[] {
   ];
 }
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+type TabId = "general" | "agents" | "chat" | "integrations";
+const TAB_IDS: readonly TabId[] = ["general", "agents", "chat", "integrations"];
+
+/** The last tab open, for the next time — a convenience, so it may be lost. */
+const TAB_KEY = "coucou.settings.tab";
+
+function storedTab(): TabId | null {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    return TAB_IDS.find((id) => id === v) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The tab on screen, kept while the window redraws (a language change, a key saved…). */
+let currentTab: TabId = storedTab() ?? "general";
+
+/** A tab bar over one panel per tab, opened on `currentTab`. */
+function tabbed(defs: { id: TabId; label: string; content: HTMLElement[] }[]) {
+  const bar = h("div", { class: "tabs", role: "tablist" });
+  const panels = h("div", {});
+  const buttons = new Map<TabId, HTMLButtonElement>();
+  const bodies = new Map<TabId, HTMLElement>();
+
+  function show(id: TabId) {
+    for (const [key, button] of buttons) {
+      const on = key === id;
+      button.setAttribute("aria-selected", String(on));
+      button.tabIndex = on ? 0 : -1;
+      bodies.get(key)!.hidden = !on;
+    }
+  }
+
+  function select(id: TabId) {
+    if (id === currentTab) return;
+    currentTab = id;
+    show(id);
+    try {
+      localStorage.setItem(TAB_KEY, id);
+    } catch {
+      // Remembering the tab is a nicety; nothing depends on it.
+    }
+    window.scrollTo(0, 0);
+  }
+
+  for (const d of defs) {
+    const button = h("button", {
+      role: "tab", id: `tab-${d.id}`, "aria-controls": `panel-${d.id}`, text: d.label,
+    }) as HTMLButtonElement;
+    button.addEventListener("click", () => select(d.id));
+    bar.append(button);
+    buttons.set(d.id, button);
+    const body = h("div", { class: "panel", role: "tabpanel", id: `panel-${d.id}`, "aria-labelledby": `tab-${d.id}` },
+      ...d.content);
+    panels.append(body);
+    bodies.set(d.id, body);
+  }
+
+  // Arrow keys move between tabs, as in any tab bar — the other way round in
+  // a right-to-left language.
+  bar.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    const forward = (e.key === "ArrowRight") !== isRtl();
+    const ids = defs.map((d) => d.id);
+    const next = ids[(ids.indexOf(currentTab) + (forward ? 1 : ids.length - 1)) % ids.length];
+    select(next);
+    buttons.get(next)!.focus();
+  });
+
+  show(currentTab);
+  return { bar, panels };
+}
+
 // ── Language ──────────────────────────────────────────────────────────────────
 
 /** The shortcuts section on screen, told about the events listened to once in main. */
@@ -1357,18 +1443,20 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
+  const tabs = tabbed([
+    { id: "general", label: t("General"),
+      content: [...generalSections(), activePillsSection(connected), shortcutsSection(shortcutReport)] },
+    { id: "agents", label: t("Agents"), content: [claudeSection(status), agentsSection(agents), planSection(status)] },
+    { id: "chat", label: t("Chat"),
+      content: [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)] },
+    { id: "integrations", label: t("Integrations"), content: [integrationsSection(present)] },
+  ]);
   root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
-    agentsSection(agents),
-    planSection(status),
-    apiSection(hasKey),
-    chatProvidersSection(chatKeys, keyChanged),
-    localSection(customKey),
-    activePillsSection(connected),
-    integrationsSection(present),
-    generalSection(),
-    shortcutsSection(shortcutReport),
+    h("header", { class: "settings-head" },
+      h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
+      tabs.bar,
+    ),
+    tabs.panels,
     h("div", {
       class: "hint",
       text: t("No telemetry. Network requests only go to the services you configure yourself."),
