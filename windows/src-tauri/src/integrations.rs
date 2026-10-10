@@ -20,6 +20,7 @@ use tokio::sync::Notify;
 use crate::github::{self, GitHubActivity, GitHubPulse};
 use crate::island::WINDOW_LABEL;
 use crate::log;
+use crate::net;
 use crate::secrets;
 
 const TIMEOUT: Duration = Duration::from_secs(10);
@@ -848,12 +849,67 @@ async fn poll_calcom(app: AppHandle) {
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
 
+/// True while the n8n card shows an error set here, so that it is cleared once
+/// the address is fixed, without emitting again on every poll.
+static N8N_ERROR_SHOWN: AtomicBool = AtomicBool::new(false);
+
+/// The instance's address, if the key may go there: https, or plain http to
+/// this machine only, as net::is_loopback_host has it (localhost, *.localhost,
+/// 127.0.0.0/8, ::1, 0.0.0.0, ::, an IPv4 loopback written as IPv6). Otherwise
+/// the card's error text. Credentials in the address stay allowed: a
+/// self-hosted instance behind basic auth needs them.
+fn n8n_base(raw: &str) -> Result<reqwest::Url, String> {
+    let invalid = || crate::i18n::t("Not a valid http:// or https:// address.");
+    let mut url = reqwest::Url::parse(raw.trim()).map_err(|_| invalid())?;
+    match url.scheme() {
+        "https" => {}
+        "http" if net::is_loopback_url(&url) => {}
+        "http" => return Err(crate::i18n::t("A key is only sent over https, or to a server on this computer.")),
+        _ => return Err(invalid()),
+    }
+    url.set_query(None);
+    url.set_fragment(None);
+    Ok(url)
+}
+
+/// `log_line` is written when the error is set, not on every poll (every 15 s):
+/// repeated, it would rotate the log and lose the useful lines. It never names
+/// the address, which can carry credentials.
+fn show_n8n_error(app: &AppHandle, error: String, log_line: &str) {
+    if !N8N_ERROR_SHOWN.swap(true, Ordering::Relaxed) {
+        log::line(log_line);
+    }
+    emit(app, IntegrationUpdate { id: "integration_n8n", data: json!({}), error: Some(error), event: None });
+}
+
+fn clear_n8n_error(app: &AppHandle) {
+    if N8N_ERROR_SHOWN.swap(false, Ordering::Relaxed) {
+        emit(app, IntegrationUpdate { id: "integration_n8n", data: json!({}), error: None, event: None });
+    }
+}
+
+/// Capped like the chat providers' answers: whatever listens at the configured
+/// address must not be able to fill the memory.
+async fn n8n_json(response: reqwest::Response) -> Option<Value> {
+    let bytes = net::read_capped(response, net::MAX_BODY).await.ok()?;
+    serde_json::from_slice(&bytes).ok()
+}
+
 async fn poll_n8n(app: AppHandle) {
     let (Some(key), Some(raw_base)) = (secrets::get("n8n-api-key"), secrets::get("n8n-url")) else {
+        // Address or key removed: the card must not keep the previous error.
+        clear_n8n_error(&app);
         return;
     };
-    let base = raw_base.trim_end_matches('/').to_string();
-    let http = client();
+    let base_url = match n8n_base(&raw_base) {
+        Ok(url) => url,
+        Err(error) => {
+            show_n8n_error(&app, error, "n8n: address refused, key not sent");
+            return;
+        }
+    };
+    let Ok(http) = net::client_without_redirects(&base_url, TIMEOUT) else { return };
+    let base = base_url.as_str().trim_end_matches('/').to_string();
 
     // Same two shapes as the Swift poller: the public API first, then /rest.
     let list_urls = [
@@ -862,17 +918,23 @@ async fn poll_n8n(app: AppHandle) {
     ];
 
     let mut items: Option<Vec<Value>> = None;
+    let mut redirected = false;
     for url in &list_urls {
         let Ok(response) = http.get(url).header("X-N8N-API-KEY", &key).header("Accept", "application/json").send().await
         else {
             continue;
         };
+        if response.status().is_redirection() {
+            // Logged once, along with the card's error (show_n8n_error).
+            redirected = true;
+            continue;
+        }
         if !response.status().is_success() {
             // Only the status: a self-hosted base URL can carry credentials.
             log::line(format!("n8n list HTTP {}", response.status()));
             continue;
         }
-        let Ok(json) = response.json::<Value>().await else { continue };
+        let Some(json) = n8n_json(response).await else { continue };
         items = match &json {
             Value::Object(o) => o.get("data").and_then(Value::as_array).cloned(),
             Value::Array(a) => Some(a.clone()),
@@ -882,6 +944,17 @@ async fn poll_n8n(app: AppHandle) {
             break;
         }
     }
+
+    if items.is_none() && redirected {
+        show_n8n_error(
+            &app,
+            crate::i18n::t("The server redirects elsewhere, and the key is not sent on. Enter the final address."),
+            "n8n: redirected, key not sent on",
+        );
+        return;
+    }
+    // Address accepted and no redirect: an error set earlier no longer applies.
+    clear_n8n_error(&app);
 
     let Some(first) = items.and_then(|list| list.into_iter().next()) else { return };
     let id = match first.get("id") {
@@ -915,7 +988,9 @@ async fn poll_n8n(app: AppHandle) {
         if !response.status().is_success() {
             continue;
         }
-        let Ok(json) = response.json::<Value>().await else { continue };
+        // A detail too large to read (includeData=true) falls through to the
+        // next address, which does not ask for the data.
+        let Some(json) = n8n_json(response).await else { continue };
         name = json
             .get("workflowData")
             .and_then(|w| w.get("name"))
@@ -1020,5 +1095,58 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    fn base(raw: &str) -> Result<String, String> {
+        n8n_base(raw).map(|u| u.as_str().trim_end_matches('/').to_string())
+    }
+
+    #[test]
+    fn the_n8n_key_goes_over_https() {
+        assert_eq!(base("https://n8n.example.com").unwrap(), "https://n8n.example.com");
+        assert_eq!(base("  https://n8n.example.com/  ").unwrap(), "https://n8n.example.com");
+        assert_eq!(base("https://example.com/n8n/").unwrap(), "https://example.com/n8n");
+        assert_eq!(base("https://n8n.example.com:8443?x=1#y").unwrap(), "https://n8n.example.com:8443");
+        // An instance behind basic auth keeps its credentials.
+        assert_eq!(base("https://me:pw@n8n.example.com").unwrap(), "https://me:pw@n8n.example.com");
+    }
+
+    #[test]
+    fn the_n8n_key_goes_over_plain_http_only_to_this_computer() {
+        for local in [
+            "http://localhost:5678",
+            "http://LOCALHOST:5678/",
+            "http://127.0.0.1:5678",
+            "http://[::1]:5678",
+            "http://n8n.localhost",
+        ] {
+            assert!(n8n_base(local).is_ok(), "{local}");
+        }
+        let refused = crate::i18n::t("A key is only sent over https, or to a server on this computer.");
+        for remote in [
+            "http://n8n.example.com",
+            "http://192.168.1.20:5678",
+            "http://localhost.example.com",
+            "http://[2001:db8::1]:5678",
+        ] {
+            assert_eq!(n8n_base(remote).unwrap_err(), refused, "{remote}");
+        }
+    }
+
+    #[test]
+    fn an_n8n_address_that_is_not_http_or_https_is_refused() {
+        let invalid = crate::i18n::t("Not a valid http:// or https:// address.");
+        for bad in [
+            "",
+            "n8n.example.com",
+            "localhost:5678",
+            "ftp://n8n.example.com",
+            "file:///C:/n8n",
+            "ws://localhost:5678",
+            "javascript:alert(1)",
+            "https://",
+        ] {
+            assert_eq!(n8n_base(bad).unwrap_err(), invalid, "{bad:?}");
+        }
     }
 }

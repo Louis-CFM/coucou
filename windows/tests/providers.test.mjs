@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  PROVIDERS, activeModel, isLoopbackHost, pickModel, providerDef, urlExposure, visibleProviders, withModel,
+  PROVIDERS, activeModel, isLoopbackHost, keyAddress, pickModel, providerDef, urlExposure, visibleProviders, withModel,
 } from "../src/core/providers.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 
@@ -58,6 +58,15 @@ test("loopback hosts match net.rs", () => {
   for (const host of ["example.com", "192.168.1.2", "localhost.example.com", "128.0.0.1", "[2001:db8::1]"]) {
     assert.ok(!isLoopbackHost(host), host);
   }
+  // An IPv4 loopback written as IPv6, as the URL parser normalises it (net.rs accepts it too).
+  for (const host of ["[::ffff:7f00:1]", "[::ffff:7f00:2]", "[::ffff:7f01:203]", "::ffff:127.0.0.2"]) {
+    assert.ok(isLoopbackHost(host), host);
+  }
+  for (const host of ["[::ffff:c0a8:102]", "[::ffff:8000:1]", "[::ffff:0:0]"]) {
+    assert.ok(!isLoopbackHost(host), host);
+  }
+  assert.equal(new URL("http://[::ffff:127.0.0.2]:5678").hostname, "[::ffff:7f00:2]");
+  assert.equal(keyAddress("http://[::ffff:127.0.0.2]:5678"), "ok");
 });
 
 test("an address says whether what you type leaves this computer", () => {
@@ -71,4 +80,20 @@ test("an address says whether what you type leaves this computer", () => {
   assert.equal(urlExposure("ftp://example.com"), "invalid");
   assert.equal(urlExposure("http://user:pw@example.com"), "invalid");
   assert.equal(urlExposure("http://"), "invalid");
+});
+
+test("a key address is https, or plain http to this computer only (n8n_base in integrations.rs)", () => {
+  for (const ok of [
+    "https://n8n.example.com", " https://n8n.example.com/ ", "https://me:pw@n8n.example.com",
+    "http://localhost:5678", "http://127.0.0.1:5678", "http://[::1]:5678", "http://n8n.localhost",
+  ]) {
+    assert.equal(keyAddress(ok), "ok", ok);
+  }
+  for (const remote of ["http://n8n.example.com", "http://192.168.1.20:5678", "http://localhost.example.com"]) {
+    assert.equal(keyAddress(remote), "remote-http", remote);
+  }
+  // No scheme added for you, unlike urlExposure: the Rust side refuses these.
+  for (const bad of ["", "n8n.example.com", "localhost:5678", "ftp://n8n.example.com", "ws://localhost:5678", "https://"]) {
+    assert.equal(keyAddress(bad), "invalid", bad);
+  }
 });
