@@ -226,9 +226,43 @@ enum VoiceQuery {
     /// "c'est Tana", "à tana arobase gmail point com", "send it to Paul" → "Tana" / "tana@gmail.com" / "Paul".
     static func recipientAnswer(_ raw: String) -> String {
         var t = stripLead(raw, ["envoie le à", "envoie-le à", "envoie la à", "envoie-la à", "send it to", "it's for",
+                                "il s'appelle", "elle s'appelle", "ils s'appellent", "elles s'appellent", "s'appelle",
+                                "son nom c'est", "son nom est", "son prénom c'est", "son prénom est", "son mail c'est",
+                                "son adresse c'est", "son adresse mail c'est", "son email c'est", "mon ami", "mon amie",
+                                "mon pote", "ma pote", "mon frère", "ma sœur", "ma soeur",
+                                "his name is", "her name is", "their name is", "the name is", "name is",
+                                "his email is", "her email is", "it's called", "called",
                                 "c'est pour", "c'est", "c est", "it's", "its", "to", "à", "a", "pour", "for", "the", "le", "la"])
         t = t.trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!?"))
         return spokenEmail(t) ?? t
+    }
+
+    /// "image image" → "image", "Paul Dupont Paul Dupont" → "Paul Dupont": an answer said
+    /// twice in the same turn (the first time looked unheard) counts once.
+    static func collapseRepeat(_ raw: String) -> String {
+        let words = raw.split(separator: " ").map(String.init)
+        guard words.count >= 2, words.count % 2 == 0 else { return raw }
+        let half = words.count / 2
+        let a = IntentParser.normalise(words[..<half].joined(separator: " "))
+        let b = IntentParser.normalise(words[half...].joined(separator: " "))
+        return a == b && !a.isEmpty ? words[..<half].joined(separator: " ") : raw
+    }
+
+    /// Names to try in the contacts for a spoken recipient: the whole of it, then its
+    /// capitalised words, then each word ("le pote Enzo" → "Enzo").
+    static func contactCandidates(_ raw: String) -> [String] {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        guard !trimmed.isEmpty else { return [] }
+        let words = trimmed.split(separator: " ").map(String.init)
+        let stop: Set<String> = ["le", "la", "les", "l", "de", "du", "des", "mon", "ma", "mes", "ami", "amie", "pote",
+                                 "c", "est", "il", "elle", "s", "appelle", "the", "my", "friend", "is", "name", "his",
+                                 "her", "a", "à", "et", "and"]
+        var out = [trimmed]
+        let caps = words.filter { $0.first?.isUppercase == true && !stop.contains(IntentParser.normalise($0)) }
+        if !caps.isEmpty { out.append(caps.joined(separator: " ")) }
+        for w in words.reversed() where w.count >= 2 && !stop.contains(IntentParser.normalise(w)) { out.append(w) }
+        var seen = Set<String>()
+        return out.filter { seen.insert($0.lowercased()).inserted }
     }
 
     /// "l'objet c'est Voilà votre image" → "Voilà votre image"; "pas d'objet" / "no subject" → "".
