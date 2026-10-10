@@ -635,6 +635,10 @@ final class BotEngine: ObservableObject {
     private var voicePrevPermanentEmote: BotEmote? = nil
     private(set) var isInVoiceCompact = false
 
+    /// Current voice sub-state — set per frame by BotCanvasView from IslandWindowController signals.
+    var voiceSubState: BotVoiceSubState = .none
+    private var prevVoiceSubState: BotVoiceSubState = .none
+
     /// Voice session while the island stays compact (wake → answer spoken).
     /// One calm attentive pose for the whole exchange: wide eyes eased in, a slight
     /// tilt, no jump, no hands, no mic-driven motion — in the notch every extra
@@ -642,6 +646,8 @@ final class BotEngine: ObservableObject {
     func enterVoiceCompact() {
         guard !isInVoiceCompact else { return }
         isInVoiceCompact = true
+        voiceSubState = .none
+        prevVoiceSubState = .none
         voicePrevPermanentEmote = permanentEmote
         setPermanentEmote(.listening)
         anim("es",   keys: [TweenKey(target: 1.06, duration: 260, ease: Ease.inOut)])
@@ -652,10 +658,36 @@ final class BotEngine: ObservableObject {
     func exitVoiceCompact() {
         guard isInVoiceCompact else { return }
         isInVoiceCompact = false
+        voiceSubState = .none
+        prevVoiceSubState = .none
         setPermanentEmote(voicePrevPermanentEmote)
         voicePrevPermanentEmote = nil
         anim("es",   keys: [TweenKey(target: 1, duration: 260, ease: Ease.inOut)])
         anim("tilt", keys: [TweenKey(target: 0, duration: 260, ease: Ease.inOut)])
+    }
+
+    /// Handle a voice sub-state transition: triggers the matching one-shot animations.
+    /// Called from update() when voiceSubState changes.
+    private func _applyVoiceSubStateTransition(_ sub: BotVoiceSubState) {
+        switch sub {
+        case .listening:
+            // Back to attentive: gentle open eyes, tilt held
+            anim("es",    keys: [TweenKey(target: 1.06, duration: 220, ease: Ease.inOut)])
+            nextBlink = CACurrentMediaTime() + 2.0 + Double.random(in: 0...0.8)
+
+        case .thinking:
+            // Eyes glance up-right, squint slightly — "hmm"
+            anim("es",    keys: [TweenKey(target: 0.86, duration: 280, ease: Ease.inOut)])
+            nextBlink = CACurrentMediaTime() + 3.5 + Double.random(in: 0...1.0)
+
+        case .speaking:
+            // Joy squint, look forward, quick blink to mark the transition
+            anim("es",    keys: [TweenKey(target: 0.72, duration: 200, ease: Ease.inOut)])
+            nextBlink = CACurrentMediaTime() + 0.12  // blink right away (joy marker)
+
+        case .none:
+            break
+        }
     }
 
     /// Call when the island leaves listening state.
@@ -895,6 +927,38 @@ final class BotEngine: ObservableObject {
                 tgEs = max(tgEs, 1.0 + lvl * 0.15)
                 if !locks.contains("sy") { tgSy = max(tgSy, 1.0 + lvl * 0.04) }
                 if !locks.contains("sx") { tgSx = min(tgSx, 1.0 - lvl * 0.02) }
+            }
+        }
+
+        // Voice compact sub-state: per-frame look and body targets
+        if isInVoiceCompact {
+            // Detect sub-state transitions and fire one-shot animations
+            if voiceSubState != prevVoiceSubState {
+                prevVoiceSubState = voiceSubState
+                _applyVoiceSubStateTransition(voiceSubState)
+            }
+
+            switch voiceSubState {
+            case .listening:
+                // Mic-reactive eye pulse
+                if listeningLevel > 0.01 {
+                    let lvl = listeningLevel
+                    tgEs = max(tgEs, 1.06 + lvl * 0.16)
+                    if !locks.contains("sy") { tgSy = max(tgSy, 1.0 + lvl * 0.04) }
+                }
+            case .thinking:
+                // Eyes drift slightly up-right (corner glance = "thinking")
+                tgYaw   = ty + 0.12
+                tgPitch = tp + 0.10
+            case .speaking:
+                // Gentle rhythmic bounce at ~3.5 Hz while speaking
+                if !locks.contains("oy") {
+                    let spkT = CGFloat(now - t0)
+                    let bounce = sin(spkT * CGFloat.pi * 2 * 3.5) * 0.018
+                    oy += (bounce - oy) * 0.25
+                }
+            case .none:
+                break
             }
         }
 

@@ -31,6 +31,17 @@ enum BotEmote: String, CaseIterable {
     case listening   // attentive: head tilt + wide-open eyes
 }
 
+// MARK: - Voice sub-state
+
+/// What Mochi is doing during a voice exchange (compact island or expanded).
+/// Driven by IslandWindowController; read by BotEngine each frame.
+enum BotVoiceSubState: Equatable {
+    case none       // voice not active
+    case listening  // mic open, waiting for words
+    case thinking   // command received, waiting for AI / TTS queue to drain
+    case speaking   // TTS audio playing
+}
+
 // MARK: - Approval info (pending PermissionRequest from Claude Code)
 
 struct ApprovalInfo: Sendable {
