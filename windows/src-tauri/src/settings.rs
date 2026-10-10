@@ -69,6 +69,43 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// What the Windows build adds to the island (sysevents.rs).
+    pub plus: PlusPrefs,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PlusPrefs {
+    /// The island shows the volume and takes the volume keys from Windows' popup.
+    pub volume_hud: bool,
+    /// The island shows the brightness when it changes.
+    pub brightness_hud: bool,
+    /// Plugged in, unplugged, 20 % and 10 % left.
+    pub battery_alerts: bool,
+    /// The texts copied lately, kept in memory only — never on disk.
+    pub clipboard_history: bool,
+    /// The compact island never hides on its own.
+    pub always_visible: bool,
+    /// Links and text from the iPhone through iCloud Drive (phone.rs).
+    pub icloud_bridge: bool,
+    /// What is copied here goes to the iPhone too (iCloud Drive).
+    pub share_copies_to_iphone: bool,
+    /// ntfy alerts only when nobody has touched the PC for a minute.
+    pub push_only_when_away: bool,
+    /// Other apps' notifications (Phone Link's calls and messages) in the island.
+    pub notifications: bool,
+}
+
+impl Default for PlusPrefs {
+    fn default() -> Self {
+        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true,
+            always_visible: false,
+            icloud_bridge: false,
+            share_copies_to_iphone: false,
+            push_only_when_away: true,
+            notifications: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -124,6 +161,7 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            plus: PlusPrefs::default(),
         }
     }
 }
@@ -400,7 +438,8 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
-  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
+  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true }
 }"##;
 
     fn custom() -> Value {
@@ -804,6 +843,7 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "plus",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

@@ -151,7 +151,34 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** What the Windows build adds to the island (src-tauri/src/sysevents.rs). */
+  plus: PlusPrefs;
 }
+
+export interface PlusPrefs {
+  /** The island shows the volume and takes the volume keys from Windows' popup. */
+  volumeHud: boolean;
+  brightnessHud: boolean;
+  /** Plugged in, unplugged, 20 % and 10 % left. */
+  batteryAlerts: boolean;
+  /** Texts copied lately, in memory only. */
+  clipboardHistory: boolean;
+  /** The compact island never hides on its own. */
+  alwaysVisible: boolean;
+  /** Links and text from the iPhone through iCloud Drive. */
+  icloudBridge: boolean;
+  /** What is copied here goes to the iPhone too. */
+  shareCopiesToIphone: boolean;
+  /** Phone alerts only when the PC has been idle for a minute. */
+  pushOnlyWhenAway: boolean;
+  /** Other apps' notifications (Phone Link's calls and messages) in the island. */
+  notifications: boolean;
+}
+
+export const DEFAULT_PLUS: PlusPrefs = {
+  volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: false,
+  icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true, notifications: false,
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
@@ -179,6 +206,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  plus: { ...DEFAULT_PLUS },
 };
 
 type Listener = () => void;

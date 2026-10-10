@@ -6,7 +6,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct, effectivePct,
-  parseClaudePlan, parseCodexPlan, pillLabel, planColor, resetLabel, restorePlanUsage,
+  parseClaudePlan, parseCodexPlan, parseUsageText, pillLabel, planColor, resetLabel, restorePlanUsage,
 } from "../src/core/plan.ts";
 import { emit } from "./tauri.mjs";
 import { registerHookHandlers } from "../src/island/hooks.ts";
@@ -258,4 +258,22 @@ test("a status line call updates the numbers and nothing else, even when paused"
   // Without limits (API-key users) the last numbers stay.
   emit("hook", { hook_event_name: "StatusLine", session_id: "s1" });
   assert.equal(State.planUsage.fiveHour.usedPct, 42);
+});
+
+test("Claude Code's /usage text gives both windows, read as local times", () => {
+  const now = new Date(2026, 9, 10, 11, 0).getTime();
+  const text = `You are currently using your subscription
+
+Current session: 13% used · resets Oct 10, 2:39pm (Asia/Kolkata)
+Current week (all models): 66% used · resets Oct 15, 4:29am (Asia/Kolkata)
+`;
+  const u = parseUsageText(text, now);
+  assert.equal(u.fiveHour.usedPct, 13);
+  assert.equal(u.fiveHour.resetsAt, new Date(2026, 9, 10, 14, 39).getTime());
+  assert.equal(u.sevenDay.usedPct, 66);
+  assert.equal(u.sevenDay.resetsAt, new Date(2026, 9, 15, 4, 29).getTime());
+  // A time alone is today, or tomorrow once it has passed.
+  const late = parseUsageText("Current session: 90% used · resets 9am", now);
+  assert.equal(late.fiveHour.resetsAt, new Date(2026, 9, 11, 9, 0).getTime());
+  assert.equal(parseUsageText("nothing here", now), null);
 });

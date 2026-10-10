@@ -9,16 +9,17 @@
 // Mochi wears the plan's colour while it is open. It closes when the view, the
 // mode or the focused pill changes.
 
+import { planUsageAlert, scheduleResetAlerts } from "./extras";
 import { Bridge } from "../core/bridge";
 import {
   PLAN_TEXT, claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct,
-  effectivePct, parseCodexPlan, pillLabel, planColor, resetLabel,
+  effectivePct, parseCodexPlan, parseUsageText, pillLabel, planColor, resetLabel,
   type CodexPlanUsage, type PlanUsage, type PlanWindow,
 } from "../core/plan";
 import { State } from "../core/state";
 import { clear, dot, h, svg } from "./dom";
 import { ICONS } from "./icons";
-import { language, tl } from "../i18n/i18n";
+import { language, t, tl } from "../i18n/i18n";
 
 /** The Claude pill is in the header: overview, turned on, relay in. */
 export function claudePillVisible(): boolean {
@@ -59,6 +60,9 @@ export function setClaudePlanUsage(usage: PlanUsage): void {
   const prev = State.planUsage;
   const same = JSON.stringify([prev?.fiveHour, prev?.sevenDay]) === JSON.stringify([usage.fiveHour, usage.sevenDay]);
   State.planUsage = usage;
+  const five = usage.fiveHour;
+  if (five) planUsageAlert(five.usedPct, five.resetsAt);
+  scheduleResetAlerts(usage);
   if (!same) {
     try {
       window.localStorage?.setItem(STORE_KEY, JSON.stringify(usage));
@@ -89,6 +93,25 @@ let codexInFlight = false;
  * from the pill (shown or clicked), never on a timer, and never while paused:
  * `codex app-server` talks to Codex's own service.
  */
+let claudeRefreshing = false;
+
+/** The ↻ on the Claude plan card: Claude Code's /usage, read and applied. */
+export function refreshClaudePlanUsage(): void {
+  if (claudeRefreshing) return;
+  claudeRefreshing = true;
+  State.notify();
+  void Bridge.claudeUsageText()
+    .then((text) => {
+      const usage = text ? parseUsageText(text) : null;
+      if (usage) setClaudePlanUsage(usage);
+    })
+    .catch(() => {})
+    .finally(() => {
+      claudeRefreshing = false;
+      State.notify();
+    });
+}
+
 export function refreshCodexPlanUsage(): void {
   if (codexInFlight || State.paused || !codexIsStale(State.codexPlanUsage)) return;
   codexInFlight = true;
@@ -189,8 +212,17 @@ export class PlanCard {
   }
 
   private drawClaude(u: PlanUsage | null, now: number) {
+    const top = head(claudeColor(now), PLAN_TEXT.claudeTitle, claudeSubtitle(u, now));
+    // ↻ asks Claude Code's /usage now (no tokens) instead of waiting for a session.
+    const refresh = h("button", { class: `plan-refresh${claudeRefreshing ? " spin" : ""}`, title: t("Refresh") },
+      svg(ICONS.arrowClockwise, 11, { stroke: 2 }));
+    refresh.addEventListener("click", (e) => {
+      e.stopPropagation();
+      refreshClaudePlanUsage();
+    });
+    top.append(refresh);
     this.el.append(
-      head(claudeColor(now), PLAN_TEXT.claudeTitle, claudeSubtitle(u, now)),
+      top,
       h("div", { class: "plan-rows" },
         gaugeRow(PLAN_TEXT.fiveHours, u?.fiveHour, false, now),
         gaugeRow(PLAN_TEXT.week, u?.sevenDay, true, now),

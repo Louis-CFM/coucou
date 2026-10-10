@@ -249,13 +249,13 @@ test("the idle card: not playing, or not installed with a way to get it", () => 
   assert.ok(card.el.textContent.includes(lookup("Get Spotify", "fr")));
 });
 
-test("the playing card: title, artist · album, times, and the controls", () => {
+test("the playing card: title, artist, times, and the controls", () => {
   const card = buildSpotifyCard();
   Spotify.state = playing({ playing: false, shuffle: true });
   card.sync();
   const text = card.el.textContent;
   assert.ok(text.includes("Get Lucky"));
-  assert.ok(text.includes("Daft Punk · Random Access Memories"));
+  assert.ok(text.includes("Daft Punk") && !text.includes("Random Access Memories"));
   assert.ok(text.includes("0:10") && text.includes("-2:50"));
 
   const [shuffle, prev, play, next, repeat] = card.el.querySelector("np-buttons").children;

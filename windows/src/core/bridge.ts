@@ -211,7 +211,7 @@ export const Bridge = {
   /** Asleep, the cursor poll stops. */
   desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
 
-  // ── Spotify (src-tauri/src/spotify.rs, Linux) ─────────────────────────────
+  // ── Music (src-tauri/src/spotify.rs: Linux MPRIS, Windows media controls) ──
   /** Reads the player again (the card came on screen) and reports it. */
   spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
   /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
@@ -219,8 +219,19 @@ export const Bridge = {
     call<boolean>("spotify_control", { action, value: value ?? null }),
   /** Brings Spotify forward or starts it; without it, its download page. */
   spotifyOpen: () => call<boolean>("spotify_open"),
-  /** Whether there is a Spotify to launch (Settings). */
-  spotifyInstalled: () => call<boolean>("spotify_installed"),
+  /** Whether there is a player to launch for this music pill (Settings). */
+  /** iCloud Drive bridge and phone alerts (src-tauri/src/phone.rs). */
+  phoneStatus: () => call<{ icloud: boolean; folder: string } | null>("phone_status"),
+  phonePush: (title: string, body: string, urgent: boolean, force = false) =>
+    call<boolean>("phone_push", { title, body, urgent, force }),
+  phoneSend: (text: string) => call<boolean>("phone_send", { text }),
+  /** Phone Link in front, where a call is answered or declined (notify.rs). */
+  openPhoneLink: () => call<boolean>("open_phone_link"),
+  /** Claude Code's `/usage` text: the plan's numbers, fetched on demand (claude_cli.rs). */
+  claudeUsageText: () => call<string>("claude_usage_text"),
+  /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */
+  callAction: (answer: boolean) => call<boolean>("call_action", { answer }),
+  spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

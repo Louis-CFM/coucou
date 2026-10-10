@@ -58,6 +58,45 @@ export const PLAN_TEXT = {
 };
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/**
+ * Claude Code's `/usage` text → the plan's numbers:
+ *   Current session: 13% used · resets Oct 10, 2:39pm (Asia/Kolkata)
+ *   Current week (all models): 66% used · resets Oct 15, 4:29am (Asia/Kolkata)
+ * Times are local. A reset without a date is today (tomorrow once past).
+ */
+export function parseUsageText(text: string, now = Date.now()): PlanUsage | null {
+  const when = (raw: string): number | null => {
+    const s = raw.replace(/\(.*?\)/g, "").trim();
+    const m = /^(?:([A-Za-z]{3,9})\s+(\d{1,2}),?\s*)?(\d{1,2})(?::(\d{2}))?\s*([ap]m)$/i.exec(s);
+    if (!m) return null;
+    const [, mon, day, hh, mm, ap] = m;
+    let h = Number(hh) % 12;
+    if (ap.toLowerCase() === "pm") h += 12;
+    const base = new Date(now);
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, Number(mm ?? 0));
+    if (mon) {
+      const month = new Date(`${mon} 1, 2000`).getMonth();
+      if (Number.isNaN(month)) return null;
+      d.setMonth(month, Number(day));
+      // December's reading of a January reset.
+      if (d.getTime() < now - 86_400_000) d.setFullYear(d.getFullYear() + 1);
+    } else if (d.getTime() < now) {
+      d.setDate(d.getDate() + 1);
+    }
+    return d.getTime();
+  };
+  const read = (label: RegExp): PlanWindow | undefined => {
+    const m = new RegExp(label.source + /[^:\n]*:\s*(\d{1,3})%\s*used(?:\s*·\s*resets\s*([^\n]+))?/.source, "i").exec(text);
+    if (!m) return undefined;
+    const resetsAt = m[2] ? when(m[2]) : null;
+    return { usedPct: Math.min(100, Number(m[1])), resetsAt: resetsAt ?? now };
+  };
+  const fiveHour = read(/Current session/);
+  const sevenDay = read(/Current week/);
+  if (!fiveHour && !sevenDay) return null;
+  return { fiveHour, sevenDay, updatedAt: now };
+}
 const asObj = (v: unknown): Record<string, unknown> | null =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 

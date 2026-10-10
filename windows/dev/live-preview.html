@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coucou — live activities preview</title>
+    <style>
+      html, body { overflow: auto !important; height: auto !important; }
+      body { margin: 0; background: #3a4a63; font: 12px system-ui; color: #ddd; }
+      #root { position: relative !important; width: 720px; height: 200px; margin: 0 auto; }
+      #buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 12px; }
+      button { font: 12px system-ui; padding: 6px 10px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="buttons"></div>
+    <script type="module" src="./live-preview.ts"></script>
+  </body>
+</html>

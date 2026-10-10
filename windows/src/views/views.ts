@@ -22,9 +22,11 @@ import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
-import { SPOTIFY_ID } from "../core/spotify";
+import { isMusicPill } from "../core/spotify";
+import { Focus, Inbox } from "../core/extras";
+import { buildExtraView } from "./extras";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
-import { language, t, tl, type Msg } from "../i18n/i18n";
+import { N_, language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
@@ -110,6 +112,14 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  // The island's own tabs (views/extras.ts): Focus, To-do, Inbox.
+  const extraTab = (view: IslandViewName, title: string, icon: string, stroke = 0) =>
+    h("button", { class: "tab", title: tl(title), onclick: () => go(view) }, svg(icon, 13, stroke ? { stroke } : {}));
+  const tabFocus = extraTab("focus", N_("Focus"), ICONS.timer);
+  const tabTodo = extraTab("todo", N_("To-do"), ICONS.check, 2.4);
+  const tabInbox = extraTab("inbox", N_("Inbox"), ICONS.phone, 2);
+  const inboxDot = h("i", { class: "tab-dot" });
+  tabInbox.append(inboxDot);
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
@@ -127,7 +137,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, h("span", { class: "tab-sep" }), tabFocus, tabTodo, tabInbox),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -139,6 +149,12 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabFocus.classList.toggle("on", v === "focus");
+      tabTodo.classList.toggle("on", v === "todo");
+      tabInbox.classList.toggle("on", v === "inbox");
+      // A running timer and unread calls show on their buttons.
+      tabFocus.classList.toggle("live", Focus.active);
+      inboxDot.style.display = Inbox.unseen > 0 ? "" : "none";
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
@@ -190,15 +206,57 @@ function buildOverview(actions: ViewActions): ViewHost {
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
-  const pills = h("div", { class: "pills" });
+  // The pills in pages of four, side by side on a track that slides.
+  const pillTrack = h("div", { class: "pill-track" });
+  const pillDots = h("div", { class: "pill-dots" });
+  const pills = h("div", { class: "pill-pages" }, pillTrack, pillDots);
   const right = card(null, pills);
+  let page = 0;
+  let pageCount = 1;
+  const goPage = (p: number) => {
+    page = Math.max(0, Math.min(pageCount - 1, p));
+    pillTrack.style.transform = `translateX(${-page * 100}%)`;
+    pillDots.querySelectorAll("i").forEach((d, i) => d.classList.toggle("on", i === page));
+  };
+  // A wheel turn or a swipe slides to the other page.
+  let wheelAt = 0;
+  pills.addEventListener("wheel", (e) => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (pageCount < 2 || Math.abs(d) < 4) return;
+    e.preventDefault();
+    const now = performance.now();
+    if (now - wheelAt < 380) return;
+    wheelAt = now;
+    goPage(page + Math.sign(d));
+  }, { passive: false });
+  let swipeX: number | null = null;
+  let swiped = false;
+  pills.addEventListener("pointerdown", (e) => { swipeX = e.clientX; swiped = false; });
+  pills.addEventListener("pointerup", (e) => {
+    if (swipeX == null) return;
+    const dx = e.clientX - swipeX;
+    swipeX = null;
+    if (pageCount > 1 && Math.abs(dx) > 28) {
+      swiped = true;
+      goPage(page - Math.sign(dx));
+    }
+  });
+  // A swipe that ends on a pill doesn't also open it.
+  pills.addEventListener("click", (e) => {
+    if (swiped) {
+      e.stopPropagation();
+      e.preventDefault();
+      swiped = false;
+    }
+  }, true);
+
   // Opened from a plan pill in the header: stands in for the left card.
   const plan = new PlanCard();
   let planTimer: number | null = null;
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
   const spotifyCard = buildSpotifyCard();
-  let spotifyPill: SpotifyPillHost | null = null;
+  let musicPills: SpotifyPillHost[] = [];
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -356,7 +414,7 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
-      } else if (task && task.id === SPOTIFY_ID) {
+      } else if (task && isMusicPill(task.id)) {
         // Its own card for every state: playing, idle, not installed.
         if (mode !== "spotify") {
           clear(leftBody);
@@ -389,23 +447,36 @@ function buildOverview(actions: ViewActions): ViewHost {
       highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
       shownSelection = State.cardSelection;
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks.slice(0, 8);
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
-        clear(pills);
-        spotifyPill = null;
-        for (const t of others) {
-          if (t.id === SPOTIFY_ID) {
-            spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
-            pills.append(spotifyPill.el);
-          } else {
-            pills.append(buildPill(t, actions));
+        clear(pillTrack);
+        clear(pillDots);
+        musicPills = [];
+        pageCount = Math.max(1, Math.ceil(others.length / 4));
+        for (let p = 0; p < pageCount; p++) {
+          const grid = h("div", { class: "pills" });
+          for (const t of others.slice(p * 4, p * 4 + 4)) {
+            if (isMusicPill(t.id)) {
+              const mp = buildSpotifyPill(t, () => actions.setFocus(t.id));
+              musicPills.push(mp);
+              grid.append(mp.el);
+            } else {
+              grid.append(buildPill(t, actions));
+            }
+          }
+          pillTrack.append(grid);
+          if (pageCount > 1) {
+            const d = h("i");
+            d.addEventListener("click", () => goPage(p));
+            pillDots.append(d);
           }
         }
+        goPage(page);
         pruneMiniBots();
       }
-      spotifyPill?.sync();
+      for (const mp of musicPills) mp.sync();
     },
   };
 }
@@ -732,7 +803,7 @@ function buildSettings(actions: ViewActions): ViewHost {
     oninput: (e: Event) => actions.setVolume(Number((e.target as HTMLInputElement).value)),
   }) as HTMLInputElement;
   const autoLabel = h("span", {});
-  const segButtons = [10, 15, 30].map((s) =>
+  const segButtons = [5, 10, 15, 30].map((s) =>
     h("button", { onclick: () => actions.setAutoClose(s) }, `${s}s`),
   );
   const claudeBadge = h("span", { class: "status-badge" });
@@ -775,7 +846,7 @@ function buildSettings(actions: ViewActions): ViewHost {
       volume.value = String(s.soundVolume);
       volume.style.opacity = s.soundEnabled ? "1" : "0.4";
       autoLabel.textContent = t("Auto-close · {seconds}s", { seconds: Math.round(s.autoCloseInterval) });
-      segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
+      segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [5, 10, 15, 30][i]));
       clear(claudeBadge);
       claudeBadge.append(
         dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
@@ -821,6 +892,9 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
+  map.set("focus", buildExtraView("focus"));
+  map.set("todo", buildExtraView("todo"));
+  map.set("inbox", buildExtraView("inbox"));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

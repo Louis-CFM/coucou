@@ -9,10 +9,10 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_PLUS, DEFAULT_SETTINGS, type PlusPrefs, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  HOST_OS, MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
@@ -773,8 +773,15 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
+  { id: "integration_calendar", name: "iCal", color: "#4F9DF7",
+    fields: [{ key: "calendar-ics-url", label: N_("iCal link"), placeholder: "https://…/basic.ics", secret: true }],
+    hint: N_("Google Calendar: Settings → your calendar → Secret address in iCal format. Outlook: Settings → Shared calendars → Publish → ICS.") },
+  // Nothing to enter: the music pills read the player (D-Bus on Linux, the
+  // media controls on Windows — see core/pills.ts).
+  { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_media", name: "Now Playing", color: "#A78BFA", fields: [],
+    hint: N_("Any app that plays: a browser tab, VLC, Media Player…") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -845,11 +852,11 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
-    if (def.id === "integration_spotify") {
-      // As on the Mac's row: said only when there is no Spotify to launch.
+    if (def.id === "integration_spotify" || def.id === "integration_music") {
+      // As on the Mac's row: said only when there is no player to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
       rows.append(hint);
-      void Bridge.spotifyInstalled().then((ok) => {
+      void Bridge.spotifyInstalled(def.id).then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }
@@ -859,7 +866,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
           colorDot(def, "", () => settings.pillColors, pickColor),
-          h("span", { style: "font-size:12.5px", text: def.name }),
+          h("span", { style: "font-size:12.5px", text: t(def.name) }),
         ),
         rows,
       ),
@@ -964,6 +971,91 @@ function generalSection(): HTMLElement {
     ),
     ...recapRows(),
     languageRow(),
+  );
+}
+
+/** Settings → Island extras (Windows): the live activities and the clipboard. */
+function islandExtrasSection(): HTMLElement {
+  const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
+  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+    h("div", { class: "row" },
+      h("label", { text: t(label) }),
+      toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t(hint) }),
+  ];
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Island extras") })),
+    ...item("alwaysVisible", N_("Always show the island"), N_("The compact island stays at the top of the screen instead of hiding after a minute.")),
+    ...item("volumeHud", N_("Volume"), N_("The volume keys show the level in the island instead of Windows' popup.")),
+    ...item("brightnessHud", N_("Brightness"), N_("The island shows the brightness when it changes.")),
+    ...item("batteryAlerts", N_("Battery"), N_("Plugged in, unplugged, and a word at 20 % and 10 % left.")),
+    ...item("clipboardHistory", N_("Clipboard history"), N_("The last texts you copied, on the Shelf pill. Kept in memory only, never on disk; what password managers copy is never kept.")),
+  );
+}
+
+/**
+ * Settings → iPhone (Windows): links both ways through iCloud Drive, and
+ * alerts on the phone through ntfy. No Mac and no Apple account here.
+ */
+function iphoneSection(): HTMLElement {
+  const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
+  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+    h("div", { class: "row" },
+      h("label", { text: t(label) }),
+      toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t(hint) }),
+  ];
+  const status = h("div", { class: "hint" });
+  void Bridge.phoneStatus().then((s) => {
+    status.textContent = !s ? "" : s.icloud
+      ? t("iCloud Drive found. Shared folder: {0}", { 0: s.folder })
+      : t("iCloud Drive not found. Install iCloud for Windows from the Microsoft Store and sign in.");
+  });
+  const steps = h("ol", { class: "hint", style: "margin:4px 0 8px 18px;padding:0;line-height:1.6" },
+    ...[
+      N_("On the iPhone, open Shortcuts → + → name it “Send to laptop”, and turn on “Show in Share Sheet”."),
+      N_("Add “Receive URLs and Text from Share Sheet”, then “Save File” → iCloud Drive/Coucou/to-laptop, with “Ask Where to Save” off."),
+      N_("For the other way, a second Shortcut: “Get File” from iCloud Drive/Coucou/to-iphone.txt, then “Copy to Clipboard” (or “Open URLs”)."),
+    ].map((s) => h("li", { text: t(s) })),
+  );
+
+  const topic = h("input", {
+    type: "password", placeholder: t("ntfy topic, e.g. mithun-coucou-7x9q2"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const dotEl = statusDot(false);
+  void Bridge.secretPresent("ntfy-topic").then((ok) => { dotEl.style.background = ok ? "#22c55e" : "#f4505e"; });
+  const saveBtn = h("button", { text: t("Save") });
+  saveBtn.addEventListener("click", async () => {
+    const value = topic.value.trim();
+    await Bridge.secretSet("ntfy-topic", value);
+    topic.value = "";
+    dotEl.style.background = value ? "#22c55e" : "#f4505e";
+  });
+  const testBtn = h("button", { text: t("Send a test") });
+  const testNote = h("span", { class: "hint" });
+  testBtn.addEventListener("click", async () => {
+    const ok = await Bridge.phonePush("Coucou", t("Mochi says hi from your laptop 👋"), false, true);
+    testNote.textContent = ok ? t("Sent — check your iPhone.") : t("Not sent: check the topic.");
+  });
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("iPhone") })),
+    ...item("icloudBridge", N_("Links from iPhone"), N_("Share a link or text from the iPhone and it lands on the laptop's clipboard, with a card in the island. Goes through your own iCloud Drive.")),
+    status,
+    steps,
+    ...item("shareCopiesToIphone", N_("Copies to iPhone"), N_("What you copy on the laptop is saved for the iPhone's “Get from laptop” Shortcut. Off by default: it puts your copies in iCloud Drive.")),
+    h("div", { class: "row" }, h("label", { text: t("Phone alerts") }), topic, saveBtn, dotEl),
+    h("div", { class: "hint", text: t("Install the free ntfy app on the iPhone, subscribe to a long, hard-to-guess topic, and paste the same topic here. Anyone who knows the topic can read the alerts.") }),
+    h("div", { class: "row" }, testBtn, testNote),
+    ...item("pushOnlyWhenAway", N_("Only when I'm away"), N_("Alerts go to the phone only after a minute without keyboard or mouse: an agent finished, failed, or needs your answer.")),
+    ...item("notifications", N_("Notifications in the island"), N_("Your iPhone's calls and messages (through Microsoft Phone Link) and other apps' notifications, shown in the island and never stored. Windows asks once to allow it.")),
   );
 }
 
@@ -1326,7 +1418,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key", "calendar-ics-url",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -1368,6 +1460,7 @@ async function render() {
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
+    ...(HOST_OS === "windows" ? [islandExtrasSection(), iphoneSection()] : []),
     shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",
