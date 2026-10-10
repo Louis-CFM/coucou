@@ -670,6 +670,14 @@ body {
   padding: 0 8px;
 }
 
+/* More than four other pills: rows from the top, the rest by scrolling. */
+.pills.many {
+  align-content: start;
+  padding-top: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
 .pill {
   position: relative;
   height: 28px;
@@ -697,7 +705,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  padding: 0 8px 0 34px;
   pointer-events: none;
 }
 
