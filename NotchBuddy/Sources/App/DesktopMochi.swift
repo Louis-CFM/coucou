@@ -28,7 +28,7 @@ struct DesktopBotView: View {
 
     var body: some View {
         TimelineView(.animation(
-            minimumInterval: viewState.isSleeping ? 1.0 / 10.0 : 1.0 / 30.0,
+            minimumInterval: viewState.isSleeping ? 0.9 / 10.0 : 0.9 / 30.0,   // 10 % short: see MochiFrameClock.interval
             paused: viewState.paused
         )) { timeline in
             Canvas { ctx, size in
