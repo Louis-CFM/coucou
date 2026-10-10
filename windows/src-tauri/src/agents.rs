@@ -195,7 +195,14 @@ impl Agent {
                     .collect();
                 Box::new(move |v| gemini_install(v, &commands).map(Some))
             }
-            (Agent::Antigravity, false) => Box::new(|v| antigravity_uninstall(v).map(Some)),
+            (Agent::Antigravity, false) => Box::new(|v| {
+                let after = antigravity_uninstall(v)?;
+                if after.as_object().is_some_and(|m| m.is_empty()) {
+                    Ok(None)
+                } else {
+                    Ok(Some(after))
+                }
+            }),
             (Agent::Antigravity, true) => {
                 let block = antigravity_block(relay);
                 Box::new(move |v| antigravity_install(v, &block).map(Some))
@@ -364,6 +371,26 @@ fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint
         }
     }
     Ok(backups.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"))
+}
+
+/// Uninstalls all agent hooks that Coucou currently routes to.
+pub fn uninstall_all() -> Vec<String> {
+    uninstall_all_in(&platform::home_dir())
+}
+
+pub fn uninstall_all_in(home: &Path) -> Vec<String> {
+    let relay = Relay::current();
+    let mut cleaned = Vec::new();
+    for &agent in Agent::ALL {
+        if agent.installed(home) {
+            if let Ok(plan) = config_file::preview(&agent.edits(home, &relay, false)) {
+                if apply_in(agent, home, &relay, false, &plan.fingerprint).is_ok() {
+                    cleaned.push(agent.id().to_string());
+                }
+            }
+        }
+    }
+    cleaned
 }
 
 // ── Shared JSON helpers ───────────────────────────────────────────────────────
@@ -1073,6 +1100,30 @@ mod tests {
             assert!(ours[event][0]["command"].as_str().unwrap().contains(MARKER));
         }
         assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn antigravity_file_is_removed_when_nothing_else_was_in_it() {
+        let (home, _installed, removed) = round_trip(Agent::Antigravity, None);
+        assert!(removed.is_none(), "the file should be gone when Coucou was its only content");
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn uninstall_all_removes_every_configured_agent_hooks() {
+        let home = scratch("uninstall-all-agents");
+        let relay = linux();
+        for agent in [Agent::Antigravity, Agent::Cursor] {
+            let plan = config_file::preview(&agent.edits(&home, &relay, true)).unwrap();
+            apply_in(agent, &home, &relay, true, &plan.fingerprint).unwrap();
+            assert!(agent.installed(&home));
+        }
+        let cleaned = uninstall_all_in(&home);
+        assert!(cleaned.contains(&"antigravity".to_string()));
+        assert!(cleaned.contains(&"cursor".to_string()));
+        assert!(!Agent::Antigravity.installed(&home));
+        assert!(!Agent::Cursor.installed(&home));
         let _ = std::fs::remove_dir_all(home);
     }
 
