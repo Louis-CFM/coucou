@@ -862,7 +862,8 @@ fn calendar_url(raw: &str) -> Option<reqwest::Url> {
         None => raw.to_string(),
     };
     let url = reqwest::Url::parse(&raw).ok()?;
-    (matches!(url.scheme(), "https" | "http") && url.host_str().is_some_and(|h| !h.is_empty())).then_some(url)
+    // The address is the key to the calendar: https only.
+    (url.scheme() == "https" && url.host_str().is_some_and(|h| !h.is_empty())).then_some(url)
 }
 
 async fn poll_calendar(app: AppHandle) {
@@ -871,7 +872,7 @@ async fn poll_calendar(app: AppHandle) {
         emit(&app, IntegrationUpdate { id: "integration_calendar", data: json!({}), error: Some(error), event: None });
     };
     let Some(url) = calendar_url(&raw) else {
-        fail(crate::i18n::t("Only http:// and https:// URLs are accepted."));
+        fail(crate::i18n::t("The calendar address must start with https:// or webcal://."));
         return;
     };
     let Ok(response) = client().get(url).send().await else { return };
@@ -1077,5 +1078,7 @@ mod tests {
         );
         assert!(calendar_url("file:///etc/passwd").is_none());
         assert!(calendar_url("not a url").is_none());
+        // The address is the key: never in cleartext.
+        assert!(calendar_url("http://calendar.google.com/calendar/ical/x/private-abc/basic.ics").is_none());
     }
 }

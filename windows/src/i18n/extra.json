@@ -3371,6 +3371,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "The calendar address must start with https:// or webcal://.": {
+   "zh-Hans": "日历地址必须以 https:// 或 webcal:// 开头。",
+   "hi": "कैलेंडर का पता https:// या webcal:// से शुरू होना चाहिए।",
+   "es": "La dirección del calendario debe empezar por https:// o webcal://.",
+   "ar": "يجب أن يبدأ عنوان التقويم بـ https:// أو webcal://.",
+   "fr": "L'adresse du calendrier doit commencer par https:// ou webcal://.",
+   "bn": "ক্যালেন্ডারের ঠিকানা https:// অথবা webcal:// দিয়ে শুরু হতে হবে।",
+   "pt-BR": "O endereço do calendário deve começar com https:// ou webcal://.",
+   "ru": "Адрес календаря должен начинаться с https:// или webcal://.",
+   "id": "Alamat kalender harus diawali https:// atau webcal://."
   }
  }
 }
