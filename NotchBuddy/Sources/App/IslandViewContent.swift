@@ -1442,6 +1442,7 @@ struct ModelPickerView: View {
             let visibleProviders = ChatProvider.allCases.filter { p in
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                if p == .openwebui { return !AppState.shared.openWebUIServerURL.isEmpty || state.chatProvider == .openwebui }
                 return true
             }
             ChipFlowLayout(spacing: 6) {
@@ -1521,7 +1522,15 @@ struct ModelPickerView: View {
         } else if let models = state.fetchedProviderModels[state.chatProvider] {
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
-                    ForEach(models, id: \.id) { model in
+                    ForEach(Array(models.enumerated()), id: \.element.id) { index, model in
+                        if let title = sectionTitle(at: index, in: models) {
+                            Text(title.uppercased())
+                                .font(.system(size: 10, weight: .semibold))
+                                .tracking(0.4)
+                                .foregroundColor(Color(hex: "#7B8089"))
+                                .padding(.horizontal, 8)
+                                .padding(.top, index == 0 ? 2 : 8)
+                        }
                         Button {
                             switch state.chatProvider {
                             case .anthropic: state.claudeModel = model.id
@@ -1529,6 +1538,7 @@ struct ModelPickerView: View {
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
+                            case .openwebui: state.openWebUIChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1557,6 +1567,20 @@ struct ModelPickerView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Open WebUI's sections, above the first model of each: its most used
+    /// models, its workspace models, then the rest.
+    private func sectionTitle(at index: Int, in models: [(id: String, label: String)]) -> String? {
+        let groups = state.openWebUIModelGroups
+        guard state.chatProvider == .openwebui, !groups.isEmpty else { return nil }
+        let group = groups[models[index].id]
+        if index > 0, groups[models[index - 1].id] == group { return nil }
+        switch group {
+        case .used?:   return String(localized: "Most used")
+        case .custom?: return String(localized: "Workspace models")
+        case nil:      return String(localized: "All models")
         }
     }
 }

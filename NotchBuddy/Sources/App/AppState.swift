@@ -141,6 +141,18 @@ final class AppState: ObservableObject {
     @Published var lmstudioServerURL: String = "" {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
+    @Published var openWebUIChatModel: String = "" {
+        didSet { UserDefaults.standard.set(openWebUIChatModel, forKey: "openWebUIChatModel") }
+    }
+    @Published var openWebUIServerURL: String = "" {
+        didSet { UserDefaults.standard.set(openWebUIServerURL, forKey: "openWebUIServerURL") }
+    }
+    /// Open WebUI searches the web for each question, where its admin has web search on.
+    @Published var openWebUIWebSearch: Bool = true {
+        didSet { UserDefaults.standard.set(openWebUIWebSearch, forKey: "openWebUIWebSearch") }
+    }
+    /// The picker's sections for Open WebUI's models, by model id.
+    @Published var openWebUIModelGroups: [String: OpenWebUI.Group] = [:]
 
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
@@ -157,6 +169,10 @@ final class AppState: ObservableObject {
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
+        if provider == .openwebui {
+            fetchOpenWebUIModels()
+            return
+        }
         // Local providers: fetch from server URL (no API key needed)
         if provider.isLocal {
             let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
@@ -204,7 +220,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
+            case .ollama, .lmstudio, .openwebui: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
             if models.isEmpty {
@@ -224,7 +240,7 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
-                case .ollama, .lmstudio: break
+                case .ollama, .lmstudio, .openwebui: break
                 }
             }
         }
@@ -238,6 +254,41 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .openwebui: return openWebUIChatModel
+        }
+    }
+
+    /// Open WebUI's models, ranked: its most used, its workspace models, the rest.
+    private func fetchOpenWebUIModels() {
+        let provider = ChatProvider.openwebui
+        let baseURL = LocalChat.normaliseURL(openWebUIServerURL)
+        guard !baseURL.isEmpty else {
+            providerModelFetchError[provider] = "Connect Open WebUI in Settings → Chat first."
+            return
+        }
+        guard let key = OpenWebUI.key(stored: KeychainStore.shared.get(OpenWebUI.keychainKey), url: baseURL) else {
+            providerModelFetchError[provider] = String(localized: "Add an Open WebUI API key in Settings → Local models first.")
+            return
+        }
+        loadingProviderModels.insert(provider)
+        providerModelFetchError.removeValue(forKey: provider)
+        Task {
+            do {
+                let models = try await OpenWebUI.rankedModels(baseURL: baseURL, key: key)
+                loadingProviderModels.remove(provider)
+                fetchedProviderModels[provider] = models.map { (id: $0.id, label: $0.label) }
+                openWebUIModelGroups = Dictionary(models.compactMap { m in m.group.map { (m.id, $0) } },
+                                                  uniquingKeysWith: { first, _ in first })
+                if let first = models.first, !models.contains(where: { $0.id == openWebUIChatModel }) {
+                    openWebUIChatModel = first.id
+                }
+            } catch let e as LocalChatError {
+                loadingProviderModels.remove(provider)
+                providerModelFetchError[provider] = e.localizedDescription
+            } catch {
+                loadingProviderModels.remove(provider)
+                providerModelFetchError[provider] = error.localizedDescription
+            }
         }
     }
 
@@ -490,6 +541,9 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
+        if let v = ud.string(forKey: "openWebUIChatModel"), !v.isEmpty { openWebUIChatModel = v }
+        if let v = ud.string(forKey: "openWebUIServerURL"), !v.isEmpty { openWebUIServerURL = v }
+        if let v = ud.object(forKey: "openWebUIWebSearch") as? Bool { openWebUIWebSearch = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {

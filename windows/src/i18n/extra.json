@@ -67,17 +67,6 @@
    "ru": "Ошибка API {code}",
    "id": "Galat API {code}"
   },
-  "API key": {
-   "zh-Hans": "API 密钥",
-   "hi": "API कुंजी",
-   "es": "Clave de API",
-   "ar": "مفتاح API",
-   "fr": "Clé d'API",
-   "bn": "API কী",
-   "pt-BR": "Chave de API",
-   "ru": "API-ключ",
-   "id": "Kunci API"
-  },
   "API key (optional)": {
    "zh-Hans": "API 密钥（可选）",
    "hi": "API कुंजी (वैकल्पिक)",
@@ -1387,17 +1376,6 @@
    "ru": "Моделей пока нет. Сначала загрузите модель в {name}.",
    "id": "Belum ada model. Unduh satu di {name} terlebih dahulu."
   },
-  "No response text.": {
-   "zh-Hans": "没有回复内容。",
-   "hi": "जवाब में कोई टेक्स्ट नहीं।",
-   "es": "La respuesta no tiene texto.",
-   "ar": "لا يوجد نص في الرد.",
-   "fr": "La réponse ne contient pas de texte.",
-   "bn": "উত্তরে কোনো লেখা নেই।",
-   "pt-BR": "A resposta não tem texto.",
-   "ru": "В ответе нет текста.",
-   "id": "Tidak ada teks balasan."
-  },
   "No settings.json yet — nothing to back up.": {
    "zh-Hans": "还没有 settings.json — 无需备份。",
    "hi": "अभी कोई settings.json नहीं — बैकअप के लिए कुछ नहीं।",
@@ -1628,28 +1606,6 @@
    "pt-BR": "Pagamento",
    "ru": "Платёж",
    "id": "Pembayaran"
-  },
-  "Permissions": {
-   "zh-Hans": "权限",
-   "hi": "अनुमतियाँ",
-   "es": "Permisos",
-   "ar": "الأذونات",
-   "fr": "Permissions",
-   "bn": "অনুমতি",
-   "pt-BR": "Permissões",
-   "ru": "Разрешения",
-   "id": "Izin"
-  },
-  "Pick a model above the chat box first.": {
-   "zh-Hans": "请先在聊天框上方选择一个模型。",
-   "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",
-   "es": "Elige primero un modelo encima del cuadro de chat.",
-   "ar": "اختر نموذجًا فوق مربع الدردشة أولًا.",
-   "fr": "Choisis d'abord un modèle au-dessus de la zone de chat.",
-   "bn": "আগে চ্যাট বক্সের উপরে একটি মডেল বেছে নিন।",
-   "pt-BR": "Escolha primeiro um modelo acima da caixa de chat.",
-   "ru": "Сначала выберите модель над полем чата.",
-   "id": "Pilih model di atas kotak obrolan terlebih dahulu."
   },
   "Pick a {name} model above the chat box.": {
    "zh-Hans": "请在聊天框上方选择一个 {name} 模型。",
@@ -2299,17 +2255,6 @@
    "pt-BR": "O relay ainda não está instalado. Reinicie o Coucou.",
    "ru": "Ретранслятор ещё не установлен. Перезапустите Coucou.",
    "id": "Relay belum terpasang. Mulai ulang Coucou."
-  },
-  "The server refused the key. Check it, then connect again.": {
-   "zh-Hans": "服务器拒绝了该密钥。请检查后重新连接。",
-   "hi": "सर्वर ने कुंजी अस्वीकार कर दी। उसे जाँचें, फिर दोबारा कनेक्ट करें।",
-   "es": "El servidor rechazó la clave. Revísala y vuelve a conectar.",
-   "ar": "رفض الخادم المفتاح. تحقّق منه ثم اتصل مجددًا.",
-   "fr": "Le serveur a refusé la clé. Vérifie-la, puis reconnecte-toi.",
-   "bn": "সার্ভার কী প্রত্যাখ্যান করেছে। যাচাই করে আবার সংযুক্ত করুন।",
-   "pt-BR": "O servidor recusou a chave. Verifique-a e conecte de novo.",
-   "ru": "Сервер отклонил ключ. Проверьте его и подключитесь снова.",
-   "id": "Server menolak kunci. Periksa, lalu hubungkan lagi."
   },
   "The server's answer is too large.": {
    "zh-Hans": "服务器的回复过大。",
@@ -3339,17 +3284,6 @@
    "ru": "⚠ ошибка",
    "id": "⚠ gagal"
   },
-  "A key is only sent over https, or to a server on this computer.": {
-   "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
-   "hi": "कुंजी केवल https पर, या इसी कंप्यूटर के सर्वर को भेजी जाती है।",
-   "es": "La clave solo se envía por https o a un servidor de este ordenador.",
-   "ar": "لا يُرسَل المفتاح إلا عبر https، أو إلى خادم على هذا الحاسوب.",
-   "fr": "La clé n'est envoyée qu'en https, ou à un serveur sur cet ordinateur.",
-   "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
-   "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
-   "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
-   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
-  },
   "Only a file dropped on the island can be sent with a question.": {
    "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
    "hi": "सवाल के साथ केवल वही फ़ाइल भेजी जा सकती है जो island पर छोड़ी गई हो।",
@@ -3360,6 +3294,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Permissions": {
+   "zh-Hans": "权限",
+   "hi": "अनुमतियाँ",
+   "es": "Permisos",
+   "ar": "الأذونات",
+   "fr": "Permissions",
+   "bn": "অনুমতি",
+   "pt-BR": "Permissões",
+   "ru": "Разрешения",
+   "id": "Izin"
   }
  }
 }

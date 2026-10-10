@@ -21,7 +21,7 @@ use crate::chat::{self, Chat, ChatContext, ChatReply, ModelInfo};
 use crate::island::WINDOW_LABEL;
 use crate::settings::Settings;
 use crate::i18n::{t, tf};
-use crate::{net, secrets};
+use crate::{net, open_webui, secrets};
 
 /// Credential store entry of the key of the user's own OpenAI-compatible server.
 pub const CUSTOM_KEY: &str = "openai-compatible-key";
@@ -56,20 +56,30 @@ fn may_carry_key(url: &Url) -> bool {
     url.scheme() == "https" || net::is_loopback_url(url)
 }
 
+/// Credential store entry of a server's key: the custom server and Open WebUI have one.
+pub fn key_entry(id: &str) -> Option<&'static str> {
+    match id {
+        "custom" => Some(CUSTOM_KEY),
+        open_webui::ID => Some(open_webui::KEY),
+        _ => None,
+    }
+}
+
 /// Settings → Local models: stores the key for the address typed next to it.
-pub fn set_custom_key(typed_url: &str, key: &str) -> Result<(), String> {
+pub fn set_key(id: &str, typed_url: &str, key: &str) -> Result<(), String> {
+    let entry = key_entry(id).ok_or_else(|| format!("No key for {id}"))?;
     let url = net::normalise_server_url(typed_url)?;
     if !may_carry_key(&url) {
         return Err(t("A key is only sent over https, or to a server on this computer."));
     }
     let bound = BoundKey { url: url.as_str().trim_end_matches('/').to_string(), key: key.trim().to_string() };
     let value = serde_json::to_string(&bound).map_err(|e| e.to_string())?;
-    secrets::set(CUSTOM_KEY, &value)
+    secrets::set(entry, &value)
 }
 
-/// The key, if it was entered for exactly this address.
-fn custom_key_for(url: &Url) -> Option<String> {
-    let stored = secrets::get(CUSTOM_KEY)?;
+/// The key stored under `entry`, if it was entered for exactly this address.
+pub fn bound_key(entry: &str, url: &Url) -> Option<String> {
+    let stored = secrets::get(entry)?;
     key_for(&stored, url)
 }
 
@@ -88,14 +98,19 @@ pub struct Server {
     pub key: Option<String>,
 }
 
-/// Ollama, LM Studio or "custom", from the settings; None for any other id.
+/// Ollama, LM Studio, "custom" or Open WebUI, from the settings; None for any other id.
 pub fn server(settings: &Settings, id: &str) -> Option<Server> {
+    let keyed = |url: &str, entry| net::normalise_server_url(url).ok().and_then(|u| bound_key(entry, &u));
     let (id, name, url, key) = match id {
         "ollama" => ("ollama", "Ollama", &settings.ollama_url, None),
         "lmstudio" => ("lmstudio", "LM Studio", &settings.lmstudio_url, None),
         "custom" => {
-            let key = net::normalise_server_url(&settings.custom_url).ok().and_then(|u| custom_key_for(&u));
+            let key = keyed(&settings.custom_url, CUSTOM_KEY);
             ("custom", crate::i18n::n_("OpenAI-compatible server"), &settings.custom_url, key)
+        }
+        open_webui::ID => {
+            let key = keyed(&settings.open_webui_url, open_webui::KEY);
+            (open_webui::ID, "Open WebUI", &settings.open_webui_url, key)
         }
         _ => return None,
     };
@@ -117,15 +132,15 @@ fn usual_address(id: &str) -> Option<String> {
     }
 }
 
-fn bearer(key: Option<&str>) -> String {
+pub(crate) fn bearer(key: Option<&str>) -> String {
     format!("Bearer {}", key.filter(|k| !k.is_empty()).unwrap_or(NO_KEY))
 }
 
-fn unreachable(url: &Url) -> String {
+pub(crate) fn unreachable(url: &Url) -> String {
     tf("Cannot reach {url}. Is the server running?", &[("url", url.as_str().trim_end_matches('/'))])
 }
 
-fn base_url(server: &Server) -> Result<Url, String> {
+pub(crate) fn base_url(server: &Server) -> Result<Url, String> {
     if server.url.trim().is_empty() {
         return Err(tf("Connect {name} in Settings → Local models first.", &[("name", &t(server.name))]));
     }
@@ -147,8 +162,12 @@ pub struct Connected {
 pub async fn connect(id: &str, typed: &str) -> Result<Connected, String> {
     let raw = if typed.trim().is_empty() { usual_address(id).unwrap_or_default() } else { typed.to_string() };
     let url = net::normalise_server_url(&raw)?;
-    let key = if id == "custom" { custom_key_for(&url) } else { None };
-    let models = list(&url, key.as_deref()).await?;
+    let key = key_entry(id).and_then(|entry| bound_key(entry, &url));
+    let models = if id == open_webui::ID {
+        open_webui::list(&url, key.as_deref()).await?.into_iter().map(|m| m.id).collect()
+    } else {
+        list(&url, key.as_deref()).await?
+    };
     Ok(Connected {
         url: url.as_str().trim_end_matches('/').to_string(),
         models,
@@ -163,7 +182,7 @@ pub async fn models(server: &Server) -> Result<Vec<ModelInfo>, String> {
     if models.is_empty() {
         return Err(tf("No models yet. Download one in {name} first.", &[("name", &t(server.name))]));
     }
-    Ok(models.into_iter().map(|id| ModelInfo { label: id.clone(), id }).collect())
+    Ok(models.into_iter().map(|id| ModelInfo { label: id.clone(), id, group: None }).collect())
 }
 
 /// `GET /v1/models`, chat models only, or why the server can't be reached.
@@ -236,7 +255,7 @@ fn read_prefix(path: &str, limit: usize) -> Option<String> {
     }
 }
 
-fn user_text(first: bool, context: Option<&ChatContext>, query: &str) -> String {
+pub(crate) fn user_text(first: bool, context: Option<&ChatContext>, query: &str) -> String {
     match context.filter(|_| first) {
         Some(ChatContext::File { name, path }) => format!("{}\n\n{query}", file_note(name, path)),
         Some(ChatContext::Window { app_name, title, url }) => {
@@ -300,7 +319,7 @@ fn parse_sse_line(line: &str) -> Option<Result<String, String>> {
 }
 
 /// Removes finished `<think>…</think>` blocks (reasoning models such as DeepSeek-R1).
-fn filter_thinking_blocks(text: &str) -> String {
+pub(crate) fn filter_thinking_blocks(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(start) = rest.find("<think>") {

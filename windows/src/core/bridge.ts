@@ -140,8 +140,8 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, variables: Record<string, string> = {}) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, variables }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
@@ -149,10 +149,11 @@ export const Bridge = {
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
-  /** The custom server's key, bound to the address it is entered for. */
-  localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
+  /** A server's key (custom, Open WebUI), bound to the address it is entered for. */
+  localSetKey: (provider: "custom" | "openwebui", url: string, key: string) =>
+    call<void>("local_set_key", { provider, url, key }),
 
-  localConnect: (provider: "ollama" | "lmstudio" | "custom", url: string) =>
+  localConnect: (provider: "ollama" | "lmstudio" | "custom" | "openwebui", url: string) =>
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
@@ -275,6 +276,8 @@ export type ChatContext =
 export interface ModelInfo {
   id: string;
   label: string;
+  /** The picker's section (Open WebUI): its most used models, its workspace models. */
+  group?: "used" | "custom";
 }
 
 export interface LocalServer {

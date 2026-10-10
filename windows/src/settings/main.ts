@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { SERVER_KEYS, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -497,6 +497,10 @@ const CHAT_STRINGS = {
   get useInChat() { return t("Use in chat"); },
   get inUse() { return t("In use"); },
   get keyOptional() { return t("API key (optional)"); },
+  get apiKey() { return t("API key"); },
+  get webSearch() { return t("Web search"); },
+  get webSearchHint() { return t("Open WebUI searches the web before answering, where its admin has turned web search on."); },
+  get openWebuiHint() { return t("Chats you have here also show up in Open WebUI. For the key, an admin turns on Admin Panel → Settings → Authentication → API Keys; then Settings → Account → API keys → Secrets → Show creates one."); },
   get localOnly() { return t("Nothing leaves your PC: the server runs on this computer."); },
   get remote() { return t("This address is another machine: what you ask is sent to it."); },
   get remoteHttp() { return t("This address is another machine, over plain http: what you ask travels unencrypted."); },
@@ -590,7 +594,7 @@ function chatProvidersSection(
 
 // ── Local models section ──────────────────────────────────────────────────────
 
-type LocalId = "ollama" | "lmstudio" | "custom";
+type LocalId = "ollama" | "lmstudio" | "custom" | "openwebui";
 
 /** Redraws the local models section after a change made elsewhere (the island). */
 let localRedraw: (() => void) | null = null;
@@ -600,6 +604,7 @@ const LOCAL: Record<LocalId, { name: string; usual: string }> = {
   lmstudio: { name: "LM Studio", usual: "http://127.0.0.1:1234" },
   // No usual address: any server that speaks the OpenAI API.
   custom: { name: N_("OpenAI-compatible"), usual: "" },
+  openwebui: { name: "Open WebUI", usual: "" },
 };
 
 /** What an address means for the user's data, as a hint line. */
@@ -618,7 +623,10 @@ function exposureNotice(url: string, withKey: boolean): HTMLElement | null {
   }
 }
 
-function localSection(customKey: boolean): HTMLElement {
+/** Whether each keyed server has its key in the credential store. */
+type StoredKeys = Partial<Record<LocalId, boolean>>;
+
+function localSection(stored: StoredKeys): HTMLElement {
   const body = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
   const section = h(
     "section",
@@ -635,6 +643,8 @@ function localSection(customKey: boolean): HTMLElement {
   function serverBlock(id: LocalId): HTMLElement {
     const def = LOCAL[id];
     const p = providerDef(id);
+    const keyEntry = SERVER_KEYS[id];
+    const hasKey = stored[id] ?? false;
     const field = p.urlField!;
     const connected = settings[field] !== "";
     const status = h("div", {});
@@ -657,9 +667,9 @@ function localSection(customKey: boolean): HTMLElement {
       disconnect.addEventListener("click", async () => {
         settings[field] = "";
         if (settings.chatProvider === id) settings.chatProvider = "anthropic";
-        if (id === "custom") {
-          await Bridge.secretClear(CUSTOM_SERVER_KEY).catch(() => {});
-          customKey = false;
+        if (keyEntry) {
+          await Bridge.secretClear(keyEntry).catch(() => {});
+          stored[id] = false;
         }
         await save();
         redraw();
@@ -668,7 +678,16 @@ function localSection(customKey: boolean): HTMLElement {
         h("div", { class: "row" }, label, h("span", { class: "path", text: settings[field] }), statusDot(true), use, disconnect),
         status,
       );
-      exposure.append(exposureNotice(settings[field], id === "custom" && customKey) ?? "");
+      if (id === "openwebui") {
+        block.append(
+          h("div", { class: "row" },
+            h("label", { text: CHAT_STRINGS.webSearch }),
+            toggle(settings.openWebuiWebSearch, (v) => { settings.openWebuiWebSearch = v; void save(); }),
+          ),
+          h("div", { class: "hint", text: CHAT_STRINGS.webSearchHint }),
+        );
+      }
+      exposure.append(exposureNotice(settings[field], hasKey) ?? "");
       block.append(exposure);
       return block;
     }
@@ -680,10 +699,11 @@ function localSection(customKey: boolean): HTMLElement {
       spellcheck: "false",
       autocomplete: "off",
     }) as HTMLInputElement;
-    // A custom server may want a key; it goes to the keychain, never to settings.json.
+    // A custom server may want a key and Open WebUI needs one; it goes to the
+    // keychain, never to settings.json.
     const key = h("input", {
       type: "password",
-      placeholder: customKey ? CHAT_STRINGS.stored : CHAT_STRINGS.keyOptional,
+      placeholder: hasKey ? CHAT_STRINGS.stored : id === "openwebui" ? CHAT_STRINGS.apiKey : CHAT_STRINGS.keyOptional,
       style: "flex:1 1 auto;min-width:0",
       autocomplete: "off",
       spellcheck: "false",
@@ -692,7 +712,7 @@ function localSection(customKey: boolean): HTMLElement {
 
     const showExposure = () => {
       clear(exposure);
-      const withKey = id === "custom" && (customKey || key.value.trim() !== "");
+      const withKey = keyEntry !== undefined && (hasKey || key.value.trim() !== "");
       const notice = exposureNotice(input.value || def.usual, withKey);
       if (notice) exposure.append(notice);
     };
@@ -704,11 +724,11 @@ function localSection(customKey: boolean): HTMLElement {
       clear(status);
       status.append(h("div", { class: "hint", text: CHAT_STRINGS.connecting }));
       try {
-        if (id === "custom" && key.value.trim()) {
+        if ((id === "custom" || id === "openwebui") && key.value.trim()) {
           // Stored with this address: the key is only ever sent there.
-          await Bridge.localSetKey(input.value || def.usual, key.value.trim());
+          await Bridge.localSetKey(id, input.value || def.usual, key.value.trim());
           key.value = "";
-          customKey = true;
+          stored[id] = true;
         }
         const server = await Bridge.localConnect(id, input.value);
         if (!server.models.length) {
@@ -731,7 +751,8 @@ function localSection(customKey: boolean): HTMLElement {
     });
 
     block.append(h("div", { class: "row" }, label, input, connect));
-    if (id === "custom") block.append(h("div", { class: "row" }, h("label", { text: "" }), key));
+    if (keyEntry) block.append(h("div", { class: "row" }, h("label", { text: "" }), key));
+    if (id === "openwebui") block.append(h("div", { class: "hint", text: CHAT_STRINGS.openWebuiHint }));
     block.append(status, exposure);
     showExposure();
     return block;
@@ -1304,11 +1325,11 @@ async function main() {
 
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
   void onEvent<Settings>("settings-changed", (s) => {
-    const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
+    const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}|${settings.openWebuiUrl}`;
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
-    const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
+    const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}|${settings.openWebuiUrl}`;
     if (before !== after) localRedraw?.();
     applyLanguage();
   });
@@ -1351,7 +1372,10 @@ async function render() {
     const key = providerDef(def.id).key!;
     chatKeys[key] = (await Bridge.secretPresent(key)) ?? false;
   }
-  const customKey = (await Bridge.secretPresent(CUSTOM_SERVER_KEY)) ?? false;
+  const serverKeys: StoredKeys = {};
+  for (const [id, entry] of Object.entries(SERVER_KEYS)) {
+    serverKeys[id as LocalId] = (await Bridge.secretPresent(entry)) ?? false;
+  }
 
   declaredViews.length = 0;
   localRedraw = null;
@@ -1364,7 +1388,7 @@ async function render() {
     planSection(status),
     apiSection(hasKey),
     chatProvidersSection(chatKeys, keyChanged),
-    localSection(customKey),
+    localSection(serverKeys),
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),

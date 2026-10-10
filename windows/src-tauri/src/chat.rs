@@ -1,7 +1,8 @@
 // The chat, whoever answers it: the conversation, the system prompt, and which
 // provider a turn goes to. Each provider's own wire format lives in its module:
-// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter) and
-// local_chat.rs (Ollama, LM Studio, any OpenAI-compatible server).
+// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter),
+// local_chat.rs (Ollama, LM Studio, any OpenAI-compatible server) and
+// open_webui.rs (Open WebUI, which keeps the conversation in its own history).
 //
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
@@ -13,7 +14,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{claude, local_chat, open_webui, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -30,12 +31,20 @@ pub struct ChatReply {
     pub text: String,
 }
 
+/// What the user's machine knows that a server can't: local date, time and
+/// timezone, as Open WebUI's own page sends them (`{{CURRENT_TIMEZONE}}`…).
+/// Only Open WebUI is given them; its filters and prompt templates read them.
+pub type PromptVariables = std::collections::BTreeMap<String, String>;
+
 /// A model a provider offers, for the picker in the chat view.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelInfo {
     pub id: String,
     pub label: String,
+    /// The picker's section: "used" or "custom" (Open WebUI only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<&'static str>,
 }
 
 // ── Conversation ──────────────────────────────────────────────────────────────
@@ -59,6 +68,15 @@ struct Conversation {
     native: Vec<Value>,
     /// `{"role", "content": text}` turns, the same whoever answered.
     plain: Vec<Value>,
+    /// The record `owner` keeps of this conversation on its side, if any.
+    thread: Option<Thread>,
+}
+
+/// A conversation as a provider stores it (Open WebUI's chat and its latest message).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Thread {
+    pub id: String,
+    pub last: Option<String>,
 }
 
 /// What a provider needs to build one turn.
@@ -69,6 +87,7 @@ pub struct Turn {
     pub first: bool,
     /// The earlier turns, in this provider's format.
     pub history: Vec<Value>,
+    pub thread: Option<Thread>,
 }
 
 impl Chat {
@@ -85,12 +104,23 @@ impl Chat {
         if c.owner.as_deref() != Some(provider) {
             c.native = c.plain.clone();
             c.owner = Some(provider.to_string());
+            c.thread = None;
         }
         Turn {
             epoch: c.epoch,
             provider: provider.to_string(),
             first: c.plain.is_empty(),
             history: c.native.clone(),
+            thread: c.thread.clone(),
+        }
+    }
+
+    /// Records where the provider keeps this conversation, unless it was reset
+    /// or another provider took over since `turn` began.
+    pub fn set_thread(&self, turn: &Turn, thread: Option<Thread>) {
+        let mut c = self.inner.lock().unwrap();
+        if c.epoch == turn.epoch && c.owner.as_deref() == Some(turn.provider.as_str()) {
+            c.thread = thread;
         }
     }
 
@@ -203,6 +233,7 @@ pub async fn send(
     settings: &Settings,
     query: String,
     context: Option<ChatContext>,
+    variables: PromptVariables,
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
@@ -214,6 +245,10 @@ pub async fn send(
         return openai_compat::send(chat, p, &model, query, context).await;
     }
     if let Some(server) = local_chat::server(settings, provider) {
+        if server.id == open_webui::ID {
+            let web_search = settings.open_webui_web_search;
+            return open_webui::send(app, chat, &server, &model, query, context, variables, web_search).await;
+        }
         return local_chat::send(app, chat, &server, &model, query, context).await;
     }
     Err(format!("Unknown chat provider: {provider}"))
@@ -233,6 +268,9 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
         return openai_compat::models(p, &key).await;
     }
     if let Some(server) = local_chat::server(settings, provider) {
+        if server.id == open_webui::ID {
+            return open_webui::models(&server).await;
+        }
         return local_chat::models(&server).await;
     }
     Err(format!("Unknown chat provider: {provider}"))
@@ -305,6 +343,25 @@ mod tests {
         let _other = chat.begin("google");
         chat.commit(&t, json!({"role":"user","content":"q"}), json!({"role":"assistant","content":"a"}), "q", "a");
         assert!(chat.begin("google").first);
+    }
+
+    #[test]
+    fn a_thread_belongs_to_one_provider_and_one_conversation() {
+        let chat = Chat::default();
+        let t = chat.begin("openwebui");
+        let thread = Thread { id: "c1".into(), last: Some("m2".into()) };
+        chat.set_thread(&t, Some(thread.clone()));
+        assert_eq!(chat.begin("openwebui").thread, Some(thread));
+        // Another provider answering drops it; so does a reset.
+        let _ = chat.begin("openai");
+        assert_eq!(chat.begin("openwebui").thread, None);
+        let t = chat.begin("openwebui");
+        chat.set_thread(&t, Some(Thread { id: "c2".into(), last: None }));
+        chat.reset();
+        assert_eq!(chat.begin("openwebui").thread, None);
+        // A turn from before the reset cannot bring it back.
+        chat.set_thread(&t, Some(Thread { id: "c2".into(), last: None }));
+        assert_eq!(chat.begin("openwebui").thread, None);
     }
 
     #[test]

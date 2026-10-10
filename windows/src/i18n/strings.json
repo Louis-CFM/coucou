@@ -35,6 +35,28 @@
    "ru": "5 часов",
    "id": "5 jam"
   },
+  "A key is only sent over https, or to a server on this computer.": {
+   "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
+   "hi": "कुंजी केवल https पर, या इसी कंप्यूटर के सर्वर को भेजी जाती है।",
+   "es": "La clave solo se envía por https o a un servidor de este ordenador.",
+   "ar": "لا يُرسَل المفتاح إلا عبر https، أو إلى خادم على هذا الحاسوب.",
+   "fr": "La clé n'est envoyée qu'en https, ou à un serveur sur cet ordinateur.",
+   "bn": "কী কেবল https-এর মাধ্যমে, অথবা এই কম্পিউটারের কোনো সার্ভারে পাঠানো হয়।",
+   "pt-BR": "A chave só é enviada por https ou para um servidor neste computador.",
+   "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
+   "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini."
+  },
+  "API key": {
+   "zh-Hans": "API 密钥",
+   "hi": "API कुंजी",
+   "es": "Clave de API",
+   "ar": "مفتاح API",
+   "fr": "Clé d'API",
+   "bn": "API কী",
+   "pt-BR": "Chave de API",
+   "ru": "API-ключ",
+   "id": "Kunci API"
+  },
   "API key (AI Studio)": {
    "zh-Hans": "API 密钥 (AI Studio)",
    "hi": "API कुंजी (AI Studio)",
@@ -101,6 +123,17 @@
    "ru": "Активность",
    "id": "Aktivitas"
   },
+  "Add an Open WebUI API key in Settings → Local models first.": {
+   "zh-Hans": "请先在 设置 → 本地模型 中添加 Open WebUI API 密钥。",
+   "hi": "पहले सेटिंग्स → स्थानीय मॉडल में Open WebUI API कुंजी जोड़ें।",
+   "es": "Añade primero una clave API de Open WebUI en Configuración → Modelos locales.",
+   "ar": "أضف أولًا مفتاح Open WebUI API في الإعدادات ← النماذج المحلية.",
+   "fr": "Ajoute d'abord une clé API Open WebUI dans Réglages → Modèles locaux.",
+   "bn": "আগে সেটিংস → স্থানীয় মডেলে একটি Open WebUI API কী যোগ করুন।",
+   "pt-BR": "Adicione primeiro uma chave de API do Open WebUI em Configurações → Modelos locais.",
+   "ru": "Сначала добавьте API-ключ Open WebUI в Настройки → Локальные модели.",
+   "id": "Tambahkan kunci API Open WebUI di Pengaturan → Model lokal terlebih dahulu."
+  },
   "Advertisement": {
    "zh-Hans": "广告",
    "hi": "विज्ञापन",
@@ -133,6 +166,17 @@
    "pt-BR": "Agentes",
    "ru": "Агенты",
    "id": "Agen"
+  },
+  "All models": {
+   "zh-Hans": "所有模型",
+   "hi": "सभी मॉडल",
+   "es": "Todos los modelos",
+   "ar": "كل النماذج",
+   "fr": "Tous les modèles",
+   "bn": "সব মডেল",
+   "pt-BR": "Todos os modelos",
+   "ru": "Все модели",
+   "id": "Semua model"
   },
   "Allow": {
    "zh-Hans": "允许",
@@ -430,6 +474,17 @@
    "pt-BR": "Chat — outros provedores",
    "ru": "Чат — другие провайдеры",
    "id": "Chat — penyedia lain"
+  },
+  "Chats you have here also show up in Open WebUI. For the key, an admin turns on Admin Panel → Settings → Authentication → API Keys; then Settings → Account → API keys → Secrets → Show creates one.": {
+   "zh-Hans": "你在这里的对话也会出现在 Open WebUI 中。获取密钥：管理员先打开 Admin Panel → Settings → Authentication → API Keys，然后在 Settings → Account → API keys → Secrets → Show 中创建。",
+   "hi": "यहाँ की आपकी चैट Open WebUI में भी दिखती हैं। कुंजी के लिए, एक एडमिन Admin Panel → Settings → Authentication → API Keys चालू करता है; फिर Settings → Account → API keys → Secrets → Show से एक बनती है।",
+   "es": "Los chats que tengas aquí también aparecen en Open WebUI. Para la clave, un administrador activa Admin Panel → Settings → Authentication → API Keys; después Settings → Account → API keys → Secrets → Show crea una.",
+   "ar": "تظهر دردشاتك هنا في Open WebUI أيضًا. للحصول على المفتاح، يفعّل المسؤول Admin Panel → Settings → Authentication → API Keys؛ ثم تنشئه من Settings → Account → API keys → Secrets → Show.",
+   "fr": "Les chats que tu as ici apparaissent aussi dans Open WebUI. Pour la clé, un administrateur active Admin Panel → Settings → Authentication → API Keys ; ensuite Settings → Account → API keys → Secrets → Show en crée une.",
+   "bn": "এখানকার আপনার চ্যাটগুলো Open WebUI-তেও দেখা যায়। কী পেতে, একজন অ্যাডমিন Admin Panel → Settings → Authentication → API Keys চালু করেন; তারপর Settings → Account → API keys → Secrets → Show থেকে একটি তৈরি হয়।",
+   "pt-BR": "Os chats que você tem aqui também aparecem no Open WebUI. Para a chave, um administrador ativa Admin Panel → Settings → Authentication → API Keys; depois Settings → Account → API keys → Secrets → Show cria uma.",
+   "ru": "Ваши чаты здесь также появляются в Open WebUI. Для ключа администратор включает Admin Panel → Settings → Authentication → API Keys; затем Settings → Account → API keys → Secrets → Show создаёт его.",
+   "id": "Obrolan Anda di sini juga muncul di Open WebUI. Untuk kunci, admin menyalakan Admin Panel → Settings → Authentication → API Keys; lalu Settings → Account → API keys → Secrets → Show membuatnya."
   },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
@@ -1509,6 +1564,17 @@
    "ru": "ID модели (напр. claude-sonnet-4-6)",
    "id": "ID model (mis. claude-sonnet-4-6)"
   },
+  "Most used": {
+   "zh-Hans": "最常用",
+   "hi": "सबसे ज़्यादा इस्तेमाल",
+   "es": "Más usados",
+   "ar": "الأكثر استخدامًا",
+   "fr": "Les plus utilisés",
+   "bn": "সবচেয়ে বেশি ব্যবহৃত",
+   "pt-BR": "Mais usados",
+   "ru": "Часто используемые",
+   "id": "Paling sering dipakai"
+  },
   "Move Mochi to my iPhone's Dynamic Island when my Mac is locked": {
    "zh-Hans": "Mac 锁定时将 Mochi 移至我 iPhone 的灵动岛",
    "hi": "Mac लॉक होने पर Mochi को मेरे iPhone की Dynamic Island पर ले जाएं",
@@ -1684,6 +1750,17 @@
    "pt-BR": "Nenhum modelo ainda — baixe um no {name} primeiro.",
    "ru": "Нет моделей — скачай одну в {name} сначала.",
    "id": "Belum ada model — unduh satu di {name} terlebih dahulu."
+  },
+  "No response text.": {
+   "zh-Hans": "没有回复内容。",
+   "hi": "जवाब में कोई टेक्स्ट नहीं।",
+   "es": "La respuesta no tiene texto.",
+   "ar": "لا يوجد نص في الرد.",
+   "fr": "La réponse ne contient pas de texte.",
+   "bn": "উত্তরে কোনো লেখা নেই।",
+   "pt-BR": "A resposta não tem texto.",
+   "ru": "В ответе нет текста.",
+   "id": "Tidak ada teks balasan."
   },
   "Not connected": {
    "zh-Hans": "未连接",
@@ -1916,6 +1993,28 @@
    "ru": "Открыть Visual Studio Code",
    "id": "Buka Visual Studio Code"
   },
+  "Open WebUI has no models for this account.": {
+   "zh-Hans": "Open WebUI 没有可供此账户使用的模型。",
+   "hi": "Open WebUI में इस खाते के लिए कोई मॉडल नहीं है।",
+   "es": "Open WebUI no tiene modelos para esta cuenta.",
+   "ar": "لا توجد في Open WebUI نماذج لهذا الحساب.",
+   "fr": "Open WebUI n'a aucun modèle pour ce compte.",
+   "bn": "Open WebUI-তে এই অ্যাকাউন্টের জন্য কোনো মডেল নেই।",
+   "pt-BR": "O Open WebUI não tem modelos para esta conta.",
+   "ru": "В Open WebUI нет моделей для этой учётной записи.",
+   "id": "Open WebUI tidak punya model untuk akun ini."
+  },
+  "Open WebUI searches the web before answering, where its admin has turned web search on.": {
+   "zh-Hans": "在管理员已开启网页搜索的情况下，Open WebUI 会先搜索网页再回答。",
+   "hi": "जहाँ एडमिन ने वेब खोज चालू की है, वहाँ Open WebUI जवाब देने से पहले वेब खोजता है।",
+   "es": "Open WebUI busca en la web antes de responder, donde su administrador haya activado la búsqueda web.",
+   "ar": "يبحث Open WebUI في الويب قبل الإجابة حيث فعّل المسؤول البحث في الويب.",
+   "fr": "Open WebUI cherche sur le web avant de répondre, là où son administrateur a activé la recherche web.",
+   "bn": "অ্যাডমিন ওয়েব অনুসন্ধান চালু করে থাকলে Open WebUI উত্তর দেওয়ার আগে ওয়েবে খোঁজে।",
+   "pt-BR": "O Open WebUI pesquisa na web antes de responder, onde o administrador ativou a busca na web.",
+   "ru": "Open WebUI ищет в интернете перед ответом там, где администратор включил поиск.",
+   "id": "Open WebUI mencari di web sebelum menjawab, jika admin telah mengaktifkan pencarian web."
+  },
   "Open chat": {
    "zh-Hans": "打开聊天",
    "hi": "चैट खोलें",
@@ -2069,6 +2168,17 @@
    "pt-BR": "Pagamentos",
    "ru": "Платежи",
    "id": "Pembayaran"
+  },
+  "Pick a model above the chat box first.": {
+   "zh-Hans": "请先在聊天框上方选择一个模型。",
+   "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",
+   "es": "Elige primero un modelo encima del cuadro de chat.",
+   "ar": "اختر نموذجًا فوق مربع الدردشة أولًا.",
+   "fr": "Choisis d'abord un modèle au-dessus de la zone de chat.",
+   "bn": "আগে চ্যাট বক্সের উপরে একটি মডেল বেছে নিন।",
+   "pt-BR": "Escolha primeiro um modelo acima da caixa de chat.",
+   "ru": "Сначала выберите модель над полем чата.",
+   "id": "Pilih model di atas kotak obrolan terlebih dahulu."
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -2829,6 +2939,28 @@
    "ru": "Тестирует",
    "id": "Menguji"
   },
+  "The server refused the key. Check it, then connect again.": {
+   "zh-Hans": "服务器拒绝了该密钥。请检查后重新连接。",
+   "hi": "सर्वर ने कुंजी अस्वीकार कर दी। उसे जाँचें, फिर दोबारा कनेक्ट करें।",
+   "es": "El servidor rechazó la clave. Revísala y vuelve a conectar.",
+   "ar": "رفض الخادم المفتاح. تحقّق منه ثم اتصل مجددًا.",
+   "fr": "Le serveur a refusé la clé. Vérifie-la, puis reconnecte-toi.",
+   "bn": "সার্ভার কী প্রত্যাখ্যান করেছে। যাচাই করে আবার সংযুক্ত করুন।",
+   "pt-BR": "O servidor recusou a chave. Verifique-a e conecte de novo.",
+   "ru": "Сервер отклонил ключ. Проверьте его и подключитесь снова.",
+   "id": "Server menolak kunci. Periksa, lalu hubungkan lagi."
+  },
+  "This chat was deleted in Open WebUI. Send again to start a new one.": {
+   "zh-Hans": "此对话已在 Open WebUI 中删除。再次发送即可开始新对话。",
+   "hi": "यह चैट Open WebUI में हटा दी गई है। नई शुरू करने के लिए फिर से भेजें।",
+   "es": "Este chat se eliminó en Open WebUI. Envía de nuevo para empezar uno nuevo.",
+   "ar": "حُذفت هذه الدردشة في Open WebUI. أرسل مجددًا لبدء دردشة جديدة.",
+   "fr": "Ce chat a été supprimé dans Open WebUI. Renvoie pour en commencer un nouveau.",
+   "bn": "এই চ্যাটটি Open WebUI-তে মুছে ফেলা হয়েছে। নতুন শুরু করতে আবার পাঠান।",
+   "pt-BR": "Este chat foi excluído no Open WebUI. Envie de novo para começar outro.",
+   "ru": "Этот чат удалён в Open WebUI. Отправьте снова, чтобы начать новый.",
+   "id": "Obrolan ini dihapus di Open WebUI. Kirim lagi untuk memulai yang baru."
+  },
   "To": {
    "zh-Hans": "收件人",
    "hi": "प्रति",
@@ -3027,6 +3159,17 @@
    "ru": "Наблюдение: {count} из {total}",
    "id": "Melihat {count} dari {total}"
   },
+  "Web search": {
+   "zh-Hans": "网页搜索",
+   "hi": "वेब खोज",
+   "es": "Búsqueda web",
+   "ar": "البحث في الويب",
+   "fr": "Recherche web",
+   "bn": "ওয়েব অনুসন্ধান",
+   "pt-BR": "Busca na web",
+   "ru": "Поиск в интернете",
+   "id": "Pencarian web"
+  },
   "Week": {
    "zh-Hans": "一周",
    "hi": "सप्ताह",
@@ -3081,6 +3224,17 @@
    "pt-BR": "Workflows",
    "ru": "Рабочие процессы",
    "id": "Alur kerja"
+  },
+  "Workspace models": {
+   "zh-Hans": "工作区模型",
+   "hi": "वर्कस्पेस मॉडल",
+   "es": "Modelos del espacio de trabajo",
+   "ar": "نماذج مساحة العمل",
+   "fr": "Modèles de l'espace de travail",
+   "bn": "ওয়ার্কস্পেস মডেল",
+   "pt-BR": "Modelos do espaço de trabalho",
+   "ru": "Модели рабочего пространства",
+   "id": "Model ruang kerja"
   },
   "Writes": {
    "zh-Hans": "写入",
