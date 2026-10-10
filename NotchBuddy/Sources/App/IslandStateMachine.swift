@@ -31,6 +31,8 @@ final class IslandStateMachine {
     }
     /// petit → hidden delay (seconds). Override for debug.
     var petitToHiddenDelay: TimeInterval = 60
+    /// Settings → General → Behavior → Auto-hide. Off: the compact island stays on screen.
+    var autoHide = true
     /// coucou → petit delay after greeting animation ends (no hover). ~0.6s syncs with canvas collapse.
     var greetAutoCollapseDelay: TimeInterval = 0.6
     /// coucou → petit delay when mouse is hovering over the greeting.
@@ -197,6 +199,8 @@ final class IslandStateMachine {
 
     private func schedulePetitHide() {
         petitHideWork?.cancel()
+        petitHideWork = nil
+        guard autoHide else { return }
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.state == .petit, !(self.isHeldOpen?() ?? false) else { return }
             self.transition(to: .hidden)

@@ -108,6 +108,7 @@ export class Island {
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
+  private launched = false;
 
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
@@ -342,6 +343,7 @@ export class Island {
   }
 
   launch() {
+    this.launched = true;
     this.fsm.launch();
   }
 
@@ -1198,7 +1200,18 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.applyAutoHide(State.settings.autoHide);
     State.notify();
+  }
+
+  /** Before launch the greeting shows the island anyway. */
+  private applyAutoHide(on: boolean) {
+    if (on === this.fsm.autoHide) return;
+    this.fsm.autoHide = on;
+    if (!this.launched) return;
+    if (!on && !State.paused) this.fsm.reveal();
+    // Cancels the countdown to hidden, or starts it again once the setting is off.
+    if (this.fsm.state === "petit" && !this.wasInIsland) this.fsm.mouseLeft();
   }
 
   get panelSize() {

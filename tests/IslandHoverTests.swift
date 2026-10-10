@@ -55,7 +55,23 @@ enum IslandHoverTests {
         try await Task.sleep(for: .milliseconds(600))
         precondition(alert.state == .home)
 
-        print("Island open on hover: 6 cases passed")
+        // Auto-hide (on by default): the compact island hides after petitToHiddenDelay.
+        let hides = IslandStateMachine()
+        hides.petitToHiddenDelay = 0.2
+        hides.reveal()
+        try await waitFor(.hidden, hides, timeout: 5)
+
+        // Auto-hide off: it stays compact.
+        let stays = IslandStateMachine()
+        stays.petitToHiddenDelay = 0.2
+        stays.autoHide = false
+        stays.reveal()
+        stays.mouseEntered()
+        stays.mouseLeft()
+        try await Task.sleep(for: .milliseconds(600))
+        precondition(stays.state == .petit)
+
+        print("Island open on hover and auto-hide: 8 cases passed")
     }
 
     @MainActor

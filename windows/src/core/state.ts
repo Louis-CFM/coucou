@@ -103,6 +103,8 @@ export interface Settings {
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
+  /** The compact island hides a minute after the last activity; off, it stays. */
+  autoHide: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -158,6 +160,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   openOnHover: false,
+  autoHide: true,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
