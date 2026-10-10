@@ -24,6 +24,17 @@
    "ru": " готов.",
    "id": " siap."
   },
+  "4 active — remove which?": {
+   "zh-Hans": "4 个激活 — 删除哪个？",
+   "hi": "4 सक्रिय — कौन सा हटाएं?",
+   "es": "4 activas — ¿cuál quitar?",
+   "ar": "4 نشطة — أيها أزيل؟",
+   "fr": "4 actives — laquelle retirer ?",
+   "bn": "4টি সক্রিয় — কোনটি সরাবো?",
+   "pt-BR": "4 ativas — qual remover?",
+   "ru": "4 активно — что удалить?",
+   "id": "4 aktif — mana yang dihapus?"
+  },
   "5 hours": {
    "zh-Hans": "5 小时",
    "hi": "5 घंटे",
@@ -166,6 +177,17 @@
    "pt-BR": "Permitir que o Coucou controle o Spotify",
    "ru": "Разрешить Coucou управлять Spotify",
    "id": "Izinkan Coucou mengontrol Spotify"
+  },
+  "Already active": {
+   "zh-Hans": "已激活",
+   "hi": "पहले से सक्रिय",
+   "es": "Ya activo",
+   "ar": "مفعّل بالفعل",
+   "fr": "Déjà actif",
+   "bn": "ইতিমধ্যে সক্রিয়",
+   "pt-BR": "Já ativo",
+   "ru": "Уже активно",
+   "id": "Sudah aktif"
   },
   "Always": {
    "zh-Hans": "始终允许",
@@ -442,6 +464,17 @@
    "ru": "Выбери инструменты, которые ты используешь. Coucou показывает только то, что ты здесь объявишь.",
    "id": "Pilih alat yang Anda gunakan. Coucou hanya menampilkan yang Anda deklarasikan di sini."
   },
+  "City": {
+   "zh-Hans": "城市",
+   "hi": "शहर",
+   "es": "Ciudad",
+   "ar": "المدينة",
+   "fr": "Ville",
+   "bn": "শহর",
+   "pt-BR": "Cidade",
+   "ru": "Город",
+   "id": "Kota"
+  },
   "Classic token with repo scope, or fine-grained with read access to Pull requests, commit statuses, and Actions.": {
    "zh-Hans": "具有 repo 权限的经典令牌，或具有 Pull requests、Commit statuses 和 Actions 读取权限的细粒度令牌。",
    "hi": "repo स्कोप के साथ क्लासिक टोकन, या Pull requests, Commit statuses और Actions में रीड एक्सेस के साथ फाइन-ग्रेन्ड टोकन।",
@@ -607,6 +640,17 @@
    "ru": "Скоро",
    "id": "Segera hadir"
   },
+  "Command not recognised": {
+   "zh-Hans": "无法识别指令",
+   "hi": "आदेश पहचाना नहीं",
+   "es": "Comando no reconocido",
+   "ar": "الأمر غير مُتعرَّف عليه",
+   "fr": "Commande non reconnue",
+   "bn": "কমান্ড চেনা যায়নি",
+   "pt-BR": "Comando não reconhecido",
+   "ru": "Команда не распознана",
+   "id": "Perintah tidak dikenali"
+  },
   "Completed successfully.": {
    "zh-Hans": "已成功完成。",
    "hi": "सफलतापूर्वक पूर्ण हुआ।",
@@ -716,6 +760,28 @@
    "pt-BR": "Copiar",
    "ru": "Скопировать",
    "id": "Salin"
+  },
+  "Coucou reads back results in the spoken language, using a synthesized voice. 100% on-device.": {
+   "zh-Hans": "Coucou 用语音语言朗读结果。完全在设备上处理。",
+   "hi": "Coucou बोली जाने वाली भाषा में परिणाम पढ़ता है। सब कुछ डिवाइस पर।",
+   "es": "Coucou lee los resultados en el idioma hablado con una voz sintetizada. Todo en el dispositivo.",
+   "ar": "يقرأ كوكو النتائج باللغة المنطوقة باستخدام صوت مُركَّب. كل شيء يتم على الجهاز.",
+   "fr": "Coucou lit les résultats dans la langue parlée. Tout se passe sur l'appareil.",
+   "bn": "Coucou কথ্য ভাষায় ফলাফল পড়ে। সবকিছু ডিভাইসেই হয়।",
+   "pt-BR": "Coucou lê os resultados no idioma falado. Tudo no dispositivo.",
+   "ru": "Coucou зачитывает результаты на языке команды. Всё на устройстве.",
+   "id": "Coucou membaca hasil dalam bahasa yang diucapkan. Semuanya di perangkat."
+  },
+  "Coucou responds aloud": {
+   "zh-Hans": "Coucou 大声回应",
+   "hi": "Coucou ज़ोर से जवाब देता है",
+   "es": "Coucou responde en voz alta",
+   "ar": "كوكو يرد بصوت عالٍ",
+   "fr": "Coucou répond à voix haute",
+   "bn": "Coucou জোরে জবাব দেয়",
+   "pt-BR": "Coucou responde em voz alta",
+   "ru": "Coucou отвечает вслух",
+   "id": "Coucou merespons dengan suara"
   },
   "Custom…": {
    "zh-Hans": "自定义…",
@@ -904,6 +970,17 @@
    "ru": "Включить звуки",
    "id": "Aktifkan suara"
   },
+  "Enable voice command": {
+   "zh-Hans": "启用语音命令",
+   "hi": "वॉइस कमांड सक्षम करें",
+   "es": "Activar comando de voz",
+   "ar": "تفعيل الأوامر الصوتية",
+   "fr": "Activer la commande vocale",
+   "bn": "ভয়েস কমান্ড সক্ষম করুন",
+   "pt-BR": "Ativar comando de voz",
+   "ru": "Включить голосовые команды",
+   "id": "Aktifkan perintah suara"
+  },
   "Explore all features without an API key or Claude Code. Nothing is written to disk.": {
    "zh-Hans": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。",
    "hi": "API कुंजी या Claude Code के बिना सभी सुविधाएँ एक्सप्लोर करें। डिस्क पर कुछ नहीं लिखा जाता।",
@@ -958,6 +1035,17 @@
    "pt-BR": "Busca",
    "ru": "Получает",
    "id": "Mengambil"
+  },
+  "From Open-Meteo for this city, only when you ask.": {
+   "zh-Hans": "仅在你询问时，从 Open-Meteo 获取该城市的天气。",
+   "hi": "इस शहर के लिए Open-Meteo से, सिर्फ़ पूछने पर।",
+   "es": "De Open-Meteo para esta ciudad, solo cuando preguntas.",
+   "ar": "من Open-Meteo لهذه المدينة، فقط عندما تسأل.",
+   "fr": "Open-Meteo pour cette ville, seulement quand tu demandes.",
+   "bn": "এই শহরের জন্য Open-Meteo থেকে, শুধু জিজ্ঞেস করলে।",
+   "pt-BR": "Do Open-Meteo para esta cidade, só quando você pergunta.",
+   "ru": "Из Open-Meteo для этого города, только когда спрашиваешь.",
+   "id": "Dari Open-Meteo untuk kota ini, hanya saat kamu bertanya."
   },
   "Gemini CLI hooks": {
    "zh-Hans": "Gemini CLI 钩子",
@@ -1079,6 +1167,17 @@
    "pt-BR": "Google AI",
    "ru": "Google AI",
    "id": "Google AI"
+  },
+  "Granted": {
+   "zh-Hans": "已授权",
+   "hi": "अनुमत",
+   "es": "Concedido",
+   "ar": "ممنوح",
+   "fr": "Accordé",
+   "bn": "অনুমোদিত",
+   "pt-BR": "Concedido",
+   "ru": "Разрешено",
+   "id": "Diberikan"
   },
   "Hermes Agent": {
    "zh-Hans": "Hermes Agent",
@@ -1388,6 +1487,17 @@
    "ru": "Позволять iPhone отправлять инструкции в Claude Code",
    "id": "Biarkan iPhone saya mengirim instruksi ke Claude Code"
   },
+  "Listening…": {
+   "zh-Hans": "我在听…",
+   "hi": "सुन रहा हूँ…",
+   "es": "Te escucho…",
+   "ar": "أنا أستمع…",
+   "fr": "Je t’écoute…",
+   "bn": "শুনছি…",
+   "pt-BR": "Estou ouvindo…",
+   "ru": "Слушаю…",
+   "id": "Mendengarkan…"
+  },
   "Lists": {
    "zh-Hans": "列出",
    "hi": "सूची",
@@ -1420,6 +1530,50 @@
    "pt-BR": "Carregando…",
    "ru": "Загрузка…",
    "id": "Memuat…"
+  },
+  "Local AI model: Apple Intelligence is off": {
+   "zh-Hans": "本地 AI 模型：Apple Intelligence 已关闭",
+   "hi": "स्थानीय AI मॉडल: Apple Intelligence बंद है",
+   "es": "Modelo de IA local: Apple Intelligence está desactivado",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: Apple Intelligence معطَّل",
+   "fr": "Modèle IA local : Apple Intelligence est désactivée",
+   "bn": "স্থানীয় AI মডেল: Apple Intelligence বন্ধ আছে",
+   "pt-BR": "Modelo de IA local: Apple Intelligence está desativado",
+   "ru": "Локальная модель ИИ: Apple Intelligence отключена",
+   "id": "Model AI lokal: Apple Intelligence dimatikan"
+  },
+  "Local AI model: available": {
+   "zh-Hans": "本地 AI 模型：可用",
+   "hi": "स्थानीय AI मॉडल: उपलब्ध",
+   "es": "Modelo de IA local: disponible",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: متاح",
+   "fr": "Modèle IA local : disponible",
+   "bn": "স্থানীয় AI মডেল: উপলব্ধ",
+   "pt-BR": "Modelo de IA local: disponível",
+   "ru": "Локальная модель ИИ: доступна",
+   "id": "Model AI lokal: tersedia"
+  },
+  "Local AI model: language not supported": {
+   "zh-Hans": "本地 AI 模型：不支持该语言",
+   "hi": "स्थानीय AI मॉडल: भाषा समर्थित नहीं है",
+   "es": "Modelo de IA local: idioma no compatible",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: اللغة غير مدعومة",
+   "fr": "Modèle IA local : langue non prise en charge",
+   "bn": "স্থানীয় AI মডেল: ভাষা সমর্থিত নয়",
+   "pt-BR": "Modelo de IA local: idioma não suportado",
+   "ru": "Локальная модель ИИ: язык не поддерживается",
+   "id": "Model AI lokal: bahasa tidak didukung"
+  },
+  "Local AI model: requires macOS 26 or later": {
+   "zh-Hans": "本地 AI 模型：需要 macOS 26 或更高版本",
+   "hi": "स्थानीय AI मॉडल: macOS 26 या बाद का संस्करण आवश्यक है",
+   "es": "Modelo de IA local: requiere macOS 26 o posterior",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: يتطلب macOS 26 أو أحدث",
+   "fr": "Modèle IA local : nécessite macOS 26 ou plus",
+   "bn": "স্থানীয় AI মডেল: macOS 26 বা তার পরবর্তী প্রয়োজন",
+   "pt-BR": "Modelo de IA local: requer macOS 26 ou posterior",
+   "ru": "Локальная модель ИИ: требуется macOS 26 или новее",
+   "id": "Model AI lokal: membutuhkan macOS 26 atau lebih baru"
   },
   "Local models": {
    "zh-Hans": "本地模型",
@@ -1464,6 +1618,39 @@
    "pt-BR": "Principal",
    "ru": "Главный",
    "id": "Utama"
+  },
+  "Main: {0}": {
+   "zh-Hans": "主要：{0}",
+   "hi": "मुख्य: {0}",
+   "es": "Principal: {0}",
+   "ar": "الرئيسي: {0}",
+   "fr": "Principal : {0}",
+   "bn": "মূল: {0}",
+   "pt-BR": "Principal: {0}",
+   "ru": "Главный: {0}",
+   "id": "Utama: {0}"
+  },
+  "Microphone unavailable": {
+   "zh-Hans": "麦克风不可用",
+   "hi": "माइक्रोफ़ोन अनुपलब्ध",
+   "es": "Micrófono no disponible",
+   "ar": "الميكروفون غير متاح",
+   "fr": "Microphone indisponible",
+   "bn": "মাইক্রোফোন অনুপলব্ধ",
+   "pt-BR": "Microfone indisponível",
+   "ru": "Микрофон недоступен",
+   "id": "Mikrofon tidak tersedia"
+  },
+  "Microphone:": {
+   "zh-Hans": "麦克风：",
+   "hi": "माइक्रोफ़ोन:",
+   "es": "Micrófono:",
+   "ar": "الميكروفون:",
+   "fr": "Microphone :",
+   "bn": "মাইক্রোফোন:",
+   "pt-BR": "Microfone:",
+   "ru": "Микрофон:",
+   "id": "Mikrofon:"
   },
   "Missing recipient.": {
    "zh-Hans": "收件人缺失。",
@@ -1619,6 +1806,17 @@
    "ru": "Следующая вкладка",
    "id": "Tab berikutnya"
   },
+  "Next track": {
+   "zh-Hans": "下一首",
+   "hi": "अगला ट्रैक",
+   "es": "Siguiente pista",
+   "ar": "المقطع التالي",
+   "fr": "Morceau suivant",
+   "bn": "পরবর্তী ট্র্যাক",
+   "pt-BR": "Próxima faixa",
+   "ru": "Следующий трек",
+   "id": "Lagu berikutnya"
+  },
   "No activity last week": {
    "zh-Hans": "上周无活动",
    "hi": "पिछले सप्ताह कोई गतिविधि नहीं",
@@ -1685,6 +1883,39 @@
    "ru": "Нет моделей — скачай одну в {name} сначала.",
    "id": "Belum ada model — unduh satu di {name} terlebih dahulu."
   },
+  "No music app running": {
+   "zh-Hans": "没有音乐应用",
+   "hi": "कोई म्यूज़िक ऐप नहीं",
+   "es": "Sin app de música",
+   "ar": "لا يوجد تطبيق موسيقى",
+   "fr": "Aucune app musicale active",
+   "bn": "কোনো মিউজিক অ্যাপ নেই",
+   "pt-BR": "Nenhum app de música",
+   "ru": "Нет музыкального приложения",
+   "id": "Tidak ada app musik"
+  },
+  "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation.": {
+   "zh-Hans": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。",
+   "hi": "इस डिवाइस पर कोई वाक् पहचान मॉडल उपलब्ध नहीं है। सिस्टम सेटिंग्स → कीबोर्ड → डिक्टेशन में एक इंस्टॉल करें।",
+   "es": "No hay modelo de reconocimiento de voz disponible en este dispositivo. Instala uno en Ajustes del Sistema → Teclado → Dictado.",
+   "ar": "لا يوجد نموذج للتعرف على الكلام متاح على هذا الجهاز. قم بتثبيت واحد في إعدادات النظام → لوحة المفاتيح → الإملاء.",
+   "fr": "Aucun modèle de reconnaissance vocale disponible sur cet appareil. Installez un modèle dans Réglages Système → Clavier → Dictée.",
+   "bn": "এই ডিভাইসে কোনো বক্তৃতা স্বীকৃতি মডেল পাওয়া যায়নি। সিস্টেম সেটিংস → কীবোর্ড → ডিকটেশনে একটি ইনস্টল করুন।",
+   "pt-BR": "Nenhum modelo de reconhecimento de fala disponível neste dispositivo. Instale um em Ajustes do Sistema → Teclado → Ditado.",
+   "ru": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка.",
+   "id": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte."
+  },
+  "Not active": {
+   "zh-Hans": "未激活",
+   "hi": "सक्रिय नहीं",
+   "es": "No activo",
+   "ar": "غير نشط",
+   "fr": "Non actif",
+   "bn": "সক্রিয় নয়",
+   "pt-BR": "Não ativo",
+   "ru": "Не активно",
+   "id": "Tidak aktif"
+  },
   "Not connected": {
    "zh-Hans": "未连接",
    "hi": "कनेक्ट नहीं",
@@ -1695,6 +1926,28 @@
    "pt-BR": "Não conectado",
    "ru": "Не подключено",
    "id": "Tidak terhubung"
+  },
+  "Not found: {0}": {
+   "zh-Hans": "未找到：{0}",
+   "hi": "नहीं मिला: {0}",
+   "es": "No encontrado: {0}",
+   "ar": "غير موجود: {0}",
+   "fr": "Introuvable : {0}",
+   "bn": "পাওয়া যায়নি: {0}",
+   "pt-BR": "Não encontrado: {0}",
+   "ru": "Не найдено: {0}",
+   "id": "Tidak ditemukan: {0}"
+  },
+  "Not in your library, opened search for {0}": {
+   "zh-Hans": "不在你的资料库中，已打开 {0} 的搜索",
+   "hi": "तुम्हारी लाइब्रेरी में नहीं है, {0} के लिए सर्च खोला",
+   "es": "No está en tu biblioteca, abrí la búsqueda de {0}",
+   "ar": "غير موجود في مكتبتك، فتحت البحث عن {0}",
+   "fr": "Introuvable dans ta bibliothèque, j'ai ouvert la recherche pour {0}",
+   "bn": "তোমার লাইব্রেরিতে নেই, {0} এর জন্য সার্চ খুলেছি",
+   "pt-BR": "Não está na sua biblioteca, abri a busca por {0}",
+   "ru": "Нет в библиотеке, открыл поиск для {0}",
+   "id": "Tidak ada di perpustakaan, membuka pencarian untuk {0}"
   },
   "Not installed": {
    "zh-Hans": "未安装",
@@ -1717,6 +1970,28 @@
    "pt-BR": "Não está tocando",
    "ru": "Не воспроизводится",
    "id": "Tidak diputar"
+  },
+  "Not recognised: « {0} »": {
+   "zh-Hans": "无法理解：« {0} »",
+   "hi": "समझ नहीं आया: « {0} »",
+   "es": "No entendido: « {0} »",
+   "ar": "غير مفهوم: « {0} »",
+   "fr": "Pas compris : « {0} »",
+   "bn": "বোঝা যায়নি: « {0} »",
+   "pt-BR": "Não entendido: « {0} »",
+   "ru": "Непонятно: « {0} »",
+   "id": "Tidak dimengerti: « {0} »"
+  },
+  "Not requested": {
+   "zh-Hans": "未请求",
+   "hi": "अनुरोध नहीं किया गया",
+   "es": "No solicitado",
+   "ar": "لم يُطلب",
+   "fr": "Non demandé",
+   "bn": "অনুরোধ করা হয়নি",
+   "pt-BR": "Não solicitado",
+   "ru": "Не запрошено",
+   "id": "Belum diminta"
   },
   "Notch shortcuts — active when the notch is in front": {
    "zh-Hans": "岛快捷键 — 岛获得焦点时有效",
@@ -1773,6 +2048,17 @@
    "ru": "ОК",
    "id": "OK"
   },
+  "OK, leaving it as is": {
+   "zh-Hans": "好的，保持原样",
+   "hi": "ठीक है, जैसा है वैसा छोड़ता हूँ",
+   "es": "De acuerdo, lo dejo como está",
+   "ar": "حسنًا، أتركه كما هو",
+   "fr": "D'accord, je laisse comme ça",
+   "bn": "ঠিক আছে, এটা যেমন আছে রেখে দিচ্ছি",
+   "pt-BR": "Ok, vou deixar como está",
+   "ru": "Хорошо, оставляю как есть",
+   "id": "Baik, biarkan seperti itu"
+  },
   "Ollama disconnected.": {
    "zh-Hans": "Ollama 已断开连接。",
    "hi": "Ollama डिस्कनेक्ट हो गया।",
@@ -1794,6 +2080,17 @@
    "pt-BR": "Apenas URLs com http:// e https:// são suportadas.",
    "ru": "Поддерживаются только URL с http:// и https://.",
    "id": "Hanya URL http:// dan https:// yang didukung."
+  },
+  "Only: {0}": {
+   "zh-Hans": "仅：{0}",
+   "hi": "केवल: {0}",
+   "es": "Solo: {0}",
+   "ar": "فقط: {0}",
+   "fr": "Seulement : {0}",
+   "bn": "শুধুমাত্র: {0}",
+   "pt-BR": "Apenas: {0}",
+   "ru": "Только: {0}",
+   "id": "Hanya: {0}"
   },
   "Open": {
    "zh-Hans": "打开",
@@ -2026,6 +2323,17 @@
    "ru": "Плагин OpenCode",
    "id": "Plugin OpenCode"
   },
+  "Opening Apple Music…": {
+   "zh-Hans": "正在打开 Apple Music…",
+   "hi": "Apple Music खुल रहा है…",
+   "es": "Abriendo Apple Music…",
+   "ar": "فتح Apple Music…",
+   "fr": "Ouverture d'Apple Music…",
+   "bn": "Apple Music খুলছে…",
+   "pt-BR": "Abrindo Apple Music…",
+   "ru": "Открытие Apple Music…",
+   "id": "Membuka Apple Music…"
+  },
   "Other…": {
    "zh-Hans": "其他…",
    "hi": "अन्य…",
@@ -2059,6 +2367,17 @@
    "ru": "Пауза",
    "id": "Jeda"
   },
+  "Paused": {
+   "zh-Hans": "已暂停",
+   "hi": "रुका हुआ",
+   "es": "En pausa",
+   "ar": "متوقف مؤقتاً",
+   "fr": "En pause",
+   "bn": "বিরতি",
+   "pt-BR": "Em pausa",
+   "ru": "Пауза",
+   "id": "Dijeda"
+  },
   "Payments": {
    "zh-Hans": "付款",
    "hi": "भुगतान",
@@ -2069,6 +2388,17 @@
    "pt-BR": "Pagamentos",
    "ru": "Платежи",
    "id": "Pembayaran"
+  },
+  "Permissions": {
+   "zh-Hans": "权限",
+   "hi": "अनुमतियाँ",
+   "es": "Permisos",
+   "ar": "الأذونات",
+   "fr": "Permissions",
+   "bn": "অনুমতি",
+   "pt-BR": "Permissões",
+   "ru": "Разрешения",
+   "id": "Izin"
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -2102,6 +2432,17 @@
    "pt-BR": "Reproduzir",
    "ru": "Воспроизвести",
    "id": "Putar"
+  },
+  "Playing": {
+   "zh-Hans": "正在播放",
+   "hi": "चल रहा है",
+   "es": "Reproduciendo",
+   "ar": "يشغّل",
+   "fr": "Lecture",
+   "bn": "চলছে",
+   "pt-BR": "Reproduzindo",
+   "ru": "Воспроизведение",
+   "id": "Memutar"
   },
   "Playing · {title}": {
    "zh-Hans": "正在播放 · {title}",
@@ -2169,6 +2510,17 @@
    "ru": "Предыдущая вкладка",
    "id": "Tab sebelumnya"
   },
+  "Previous track": {
+   "zh-Hans": "上一首",
+   "hi": "पिछला ट्रैक",
+   "es": "Pista anterior",
+   "ar": "المقطع السابق",
+   "fr": "Morceau précédent",
+   "bn": "আগের ট্র্যাক",
+   "pt-BR": "Faixa anterior",
+   "ru": "Предыдущий трек",
+   "id": "Lagu sebelumnya"
+  },
   "Projects": {
    "zh-Hans": "项目",
    "hi": "प्रोजेक्ट",
@@ -2212,6 +2564,17 @@
    "pt-BR": "Recente",
    "ru": "Недавние",
    "id": "Terbaru"
+  },
+  "Recently heard phrases": {
+   "zh-Hans": "最近听到的语句",
+   "hi": "हाल में सुने गए वाक्य",
+   "es": "Frases escuchadas recientemente",
+   "ar": "العبارات المسموعة مؤخرًا",
+   "fr": "Dernières phrases entendues",
+   "bn": "সম্প্রতি শোনা বাক্য",
+   "pt-BR": "Frases ouvidas recentemente",
+   "ru": "Недавно услышанные фразы",
+   "id": "Kalimat yang baru didengar"
   },
   "Refresh": {
    "zh-Hans": "刷新",
@@ -2322,6 +2685,17 @@
    "pt-BR": "Responder no terminal",
    "ru": "Ответить в терминале",
    "id": "Balas di terminal"
+  },
+  "Request permissions": {
+   "zh-Hans": "请求权限",
+   "hi": "अनुमतियाँ अनुरोध करें",
+   "es": "Solicitar permisos",
+   "ar": "طلب الأذونات",
+   "fr": "Demander les permissions",
+   "bn": "অনুমতি অনুরোধ করুন",
+   "pt-BR": "Solicitar permissões",
+   "ru": "Запросить разрешения",
+   "id": "Minta izin"
   },
   "Resend": {
    "zh-Hans": "重新发送",
@@ -2454,6 +2828,17 @@
    "pt-BR": "Salvar…",
    "ru": "Сохранить…",
    "id": "Simpan…"
+  },
+  "Say your command": {
+   "zh-Hans": "说出您的命令",
+   "hi": "अपना आदेश बोलें",
+   "es": "Di tu comando",
+   "ar": "قل أمرك",
+   "fr": "Dites votre commande",
+   "bn": "আপনার কমান্ড বলুন",
+   "pt-BR": "Diga seu comando",
+   "ru": "Скажите команду",
+   "id": "Katakan perintah Anda"
   },
   "Schedule": {
    "zh-Hans": "日程",
@@ -2697,6 +3082,17 @@
    "ru": "Перемешивание вкл.",
    "id": "Acak aktif"
   },
+  "Sorry, can you say that again?": {
+   "zh-Hans": "抱歉，可以再说一遍吗？",
+   "hi": "माफ़ करना, फिर से बोलोगे?",
+   "es": "Perdona, ¿puedes repetir?",
+   "ar": "عفوًا، هل يمكنك التكرار؟",
+   "fr": "Pardon, tu peux répéter ?",
+   "bn": "দুঃখিত, আবার বলবে?",
+   "pt-BR": "Desculpa, pode repetir?",
+   "ru": "Прости, можешь повторить?",
+   "id": "Maaf, bisa diulang?"
+  },
   "Sound": {
    "zh-Hans": "声音",
    "hi": "ध्वनि",
@@ -2707,6 +3103,17 @@
    "pt-BR": "Som",
    "ru": "Звук",
    "id": "Suara"
+  },
+  "Speech recognition:": {
+   "zh-Hans": "语音识别：",
+   "hi": "वाक् पहचान:",
+   "es": "Reconocimiento de voz:",
+   "ar": "التعرف على الكلام:",
+   "fr": "Reconnaissance vocale :",
+   "bn": "বক্তৃতা স্বীকৃতি:",
+   "pt-BR": "Reconhecimento de fala:",
+   "ru": "Распознавание речи:",
+   "id": "Pengenalan ucapan:"
   },
   "Spotify not installed": {
    "zh-Hans": "未安装 Spotify",
@@ -2763,6 +3170,17 @@
    "ru": "Тема",
    "id": "Subjek"
   },
+  "Subtitles under the notch": {
+   "zh-Hans": "刘海下方显示字幕",
+   "hi": "नॉच के नीचे सबटाइटल",
+   "es": "Subtítulos bajo el notch",
+   "ar": "ترجمة نصية أسفل النوتش",
+   "fr": "Sous-titres sous le notch",
+   "bn": "নচের নিচে সাবটাইটেল",
+   "pt-BR": "Legendas abaixo do notch",
+   "ru": "Субтитры под вырезом",
+   "id": "Subtitel di bawah notch"
+  },
   "Success": {
    "zh-Hans": "成功",
    "hi": "सफलता",
@@ -2806,6 +3224,17 @@
    "pt-BR": "TEMPO PROGRAMANDO",
    "ru": "ВРЕМЯ КОДИНГА",
    "id": "WAKTU PEMROGRAMAN"
+  },
+  "Talk to Coucou": {
+   "zh-Hans": "与 Coucou 对话",
+   "hi": "Coucou से बात करें",
+   "es": "Hablar con Coucou",
+   "ar": "التحدث إلى Coucou",
+   "fr": "Parler à Coucou",
+   "bn": "Coucou-এর সাথে কথা বলুন",
+   "pt-BR": "Falar com Coucou",
+   "ru": "Говорить с Coucou",
+   "id": "Bicara ke Coucou"
   },
   "Tasks": {
    "zh-Hans": "任务",
@@ -2972,6 +3401,17 @@
    "ru": "Используется чатом. Список берётся из твоего аккаунта Anthropic.",
    "id": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda."
   },
+  "Voice": {
+   "zh-Hans": "语音",
+   "hi": "आवाज़",
+   "es": "Voz",
+   "ar": "صوت",
+   "fr": "Voix",
+   "bn": "ভয়েস",
+   "pt-BR": "Voz",
+   "ru": "Голос",
+   "id": "Suara"
+  },
   "Volume": {
    "zh-Hans": "音量",
    "hi": "वॉल्यूम",
@@ -2983,6 +3423,28 @@
    "ru": "Громкость",
    "id": "Volume"
   },
+  "Volume down": {
+   "zh-Hans": "调低音量",
+   "hi": "आवाज़ घटाएं",
+   "es": "Bajar volumen",
+   "ar": "خفض الصوت",
+   "fr": "Volume −",
+   "bn": "ভলিউম কমছে",
+   "pt-BR": "Volume mais baixo",
+   "ru": "Тише",
+   "id": "Volume turun"
+  },
+  "Volume up": {
+   "zh-Hans": "调高音量",
+   "hi": "आवाज़ बढ़ाएं",
+   "es": "Subir volumen",
+   "ar": "رفع الصوت",
+   "fr": "Volume +",
+   "bn": "ভলিউম বাড়ছে",
+   "pt-BR": "Volume mais alto",
+   "ru": "Громче",
+   "id": "Volume naik"
+  },
   "Volume {0}%": {
    "zh-Hans": "音量 {0}%",
    "hi": "वॉल्यूम {0}%",
@@ -2993,6 +3455,17 @@
    "pt-BR": "Volume {0}%",
    "ru": "Громкость {0}%",
    "id": "Volume {0}%"
+  },
+  "Volume: {0}%": {
+   "zh-Hans": "音量：{0}%",
+   "hi": "वॉल्यूम: {0}%",
+   "es": "Volumen: {0}%",
+   "ar": "الصوت: {0}%",
+   "fr": "Volume : {0}%",
+   "bn": "ভলিউম: {0}%",
+   "pt-BR": "Volume: {0}%",
+   "ru": "Громкость: {0}%",
+   "id": "Volume: {0}%"
   },
   "Waiting for a response from Claude Code": {
    "zh-Hans": "等待 Claude Code 回复",
@@ -3027,6 +3500,17 @@
    "ru": "Наблюдение: {count} из {total}",
    "id": "Melihat {count} dari {total}"
   },
+  "Weather by voice": {
+   "zh-Hans": "语音天气",
+   "hi": "आवाज़ से मौसम",
+   "es": "El tiempo por voz",
+   "ar": "الطقس بالصوت",
+   "fr": "Météo à la voix",
+   "bn": "কণ্ঠে আবহাওয়া",
+   "pt-BR": "Clima por voz",
+   "ru": "Погода голосом",
+   "id": "Cuaca lewat suara"
+  },
   "Week": {
    "zh-Hans": "一周",
    "hi": "सप्ताह",
@@ -3059,6 +3543,61 @@
    "pt-BR": "O que você quer fazer com ele?",
    "ru": "Что вы хотите с ним сделать?",
    "id": "Apa yang ingin Anda lakukan dengannya?"
+  },
+  "When enabled, Coucou listens for the wake word « OK Coucou ». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.": {
+   "zh-Hans": "启用后，Coucou 会监听唤醒词« OK Coucou »。语音识别完全在设备上运行—任何音频或文字记录都不会离开您的 Mac。",
+   "hi": "सक्षम होने पर, Coucou वेक शब्द « OK Coucou » सुनता है। वाक् पहचान पूरी तरह डिवाइस पर चलती है — कोई ऑडियो या ट्रांसक्रिप्ट आपके Mac को नहीं छोड़ता।",
+   "es": "Cuando está activado, Coucou escucha la palabra de activación « OK Coucou ». El reconocimiento de voz se ejecuta completamente en el dispositivo — ningún audio ni transcripción sale de tu Mac.",
+   "ar": "عند التفعيل، يستمع Coucou لكلمة التنشيط « OK Coucou ». يعمل التعرف على الكلام بالكامل على الجهاز — لا يغادر أي صوت أو نص جهاز Mac.",
+   "fr": "Quand cette option est activée, Coucou écoute le mot de réveil « OK Coucou ». La reconnaissance vocale se fait entièrement sur l’appareil — aucun audio ni transcription ne quitte votre Mac.",
+   "bn": "সক্ষম হলে, Coucou ওয়েক ওয়ার্ড « OK Coucou » শোনে। ভাষণ স্বীকৃতি সম্পূর্ণ ডিভাইসে চলে — কোনো অডিও বা ট্রান্সক্রিপ্ট আপনার Mac ছেড়ে যায় না।",
+   "pt-BR": "Quando ativado, o Coucou escuta a palavra de ativação « OK Coucou ». O reconhecimento de fala é executado inteiramente no dispositivo — nenhum áudio ou transcrição sai do seu Mac.",
+   "ru": "Когда включено, Coucou слушает слово активации « OK Coucou ». Распознавание речи работает полностью на устройстве — никакие аудиозаписи или транскрипции не покидают ваш Mac.",
+   "id": "Saat diaktifkan, Coucou mendengarkan kata pengaktif « OK Coucou ». Pengenalan ucapan berjalan sepenuhnya di perangkat — tidak ada audio atau transkrip yang meninggalkan Mac Anda."
+  },
+  "Which pill do you want to add?": {
+   "zh-Hans": "要添加哪个胶囊？",
+   "hi": "कौन-सी पिल जोड़नी है?",
+   "es": "¿Qué píldora quieres añadir?",
+   "ar": "أي حبة تريد أن تضيف؟",
+   "fr": "Quelle pilule tu veux ajouter ?",
+   "bn": "কোন পিল যোগ করবে?",
+   "pt-BR": "Qual pílula você quer adicionar?",
+   "ru": "Какую пилюлю добавить?",
+   "id": "Pil mana yang mau ditambahkan?"
+  },
+  "Which pill do you want to remove?": {
+   "zh-Hans": "要移除哪个胶囊？",
+   "hi": "कौन-सी पिल हटानी है?",
+   "es": "¿Qué píldora quieres quitar?",
+   "ar": "أي حبة تريد أن تزيل؟",
+   "fr": "Quelle pilule tu veux retirer ?",
+   "bn": "কোন পিল সরাবে?",
+   "pt-BR": "Qual pílula você quer remover?",
+   "ru": "Какую пилюлю убрать?",
+   "id": "Pil mana yang mau dihapus?"
+  },
+  "Which playlist?": {
+   "zh-Hans": "哪个播放列表？",
+   "hi": "कौन-सी प्लेलिस्ट?",
+   "es": "¿Qué playlist?",
+   "ar": "أي قائمة تشغيل؟",
+   "fr": "Quelle playlist ?",
+   "bn": "কোন প্লেলিস্ট?",
+   "pt-BR": "Qual playlist?",
+   "ru": "Какой плейлист?",
+   "id": "Playlist yang mana?"
+  },
+  "While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour.": {
+   "zh-Hans": "收听时，macOS 会在菜单栏右上角显示橙色麦克风指示灯。这是正常的系统行为。",
+   "hi": "सुनते समय, macOS मेनू बार के ऊपर-दाईं ओर नारंगी माइक्रोफ़ोन बिंदु दिखाता है। यह सामान्य सिस्टम व्यवहार है।",
+   "es": "Durante la escucha, macOS muestra el punto naranja del micrófono en la parte superior derecha de la barra de menús. Este es el comportamiento normal del sistema.",
+   "ar": "أثناء الاستماع، يعرض macOS نقطة الميكروفون البرتقالية في أعلى يمين شريط القوائم. هذا هو السلوك الطبيعي للنظام.",
+   "fr": "Pendant l’écoute, macOS affiche le point orange du microphone en haut à droite de la barre de menus. C’est le comportement normal du système.",
+   "bn": "শোনার সময়, macOS মেনু বারের উপরের-ডানে কমলা মাইক্রোফোন বিন্দু দেখায়। এটি স্বাভাবিক সিস্টেম আচরণ।",
+   "pt-BR": "Durante a escuta, o macOS exibe o ponto laranja do microfone no canto superior direito da barra de menus. Este é o comportamento normal do sistema.",
+   "ru": "Во время прослушивания macOS отображает оранжевую точку микрофона в правом верхнем углу строки меню. Это нормальное поведение системы.",
+   "id": "Saat mendengarkan, macOS menampilkan titik mikrofon oranye di kanan atas bilah menu. Ini adalah perilaku sistem yang normal."
   },
   "Workflow stopped.": {
    "zh-Hans": "工作流已停止。",
@@ -3280,6 +3819,28 @@
    "ru": "с {name}",
    "id": "dengan {name}"
   },
+  "{0} added": {
+   "zh-Hans": "已添加 {0}",
+   "hi": "{0} जोड़ा गया",
+   "es": "{0} añadido",
+   "ar": "تمت إضافة {0}",
+   "fr": "{0} ajouté",
+   "bn": "{0} যোগ হয়েছে",
+   "pt-BR": "{0} adicionado",
+   "ru": "{0} добавлено",
+   "id": "{0} ditambahkan"
+  },
+  "{0} added — hooks not installed": {
+   "zh-Hans": "已添加 {0} — 钩子未安装",
+   "hi": "{0} जोड़ा — hooks इंस्टॉल नहीं",
+   "es": "{0} añadido — hooks no instalados",
+   "ar": "تمت إضافة {0} — الخطافات غير مثبّتة",
+   "fr": "{0} ajouté — hooks non installés",
+   "bn": "{0} যোগ হয়েছে — হুকস ইনস্টল নেই",
+   "pt-BR": "{0} adicionado — hooks não instalados",
+   "ru": "{0} добавлено — хуки не установлены",
+   "id": "{0} ditambahkan — hooks tidak terpasang"
+  },
   "{0} custom": {
    "zh-Hans": "{0} 个自定义",
    "hi": "{0} कस्टम",
@@ -3291,6 +3852,17 @@
    "ru": "своих: {0}",
    "id": "{0} kustom"
   },
+  "{0} removed": {
+   "zh-Hans": "已移除 {0}",
+   "hi": "{0} हटाया गया",
+   "es": "{0} eliminado",
+   "ar": "تمت إزالة {0}",
+   "fr": "{0} retiré",
+   "bn": "{0} সরানো হয়েছে",
+   "pt-BR": "{0} removido",
+   "ru": "{0} удалено",
+   "id": "{0} dihapus"
+  },
   "{0} — open Spotify": {
    "zh-Hans": "{0} — 打开 Spotify",
    "hi": "{0} — Spotify खोलें",
@@ -3301,6 +3873,17 @@
    "pt-BR": "{0} — abrir o Spotify",
    "ru": "{0} — открыть Spotify",
    "id": "{0} — buka Spotify"
+  },
+  "{0} → {1}": {
+   "zh-Hans": "{0} → {1}",
+   "hi": "{0} → {1}",
+   "es": "{0} → {1}",
+   "ar": "{0} → {1}",
+   "fr": "{0} → {1}",
+   "bn": "{0} → {1}",
+   "pt-BR": "{0} → {1}",
+   "ru": "{0} → {1}",
+   "id": "{0} → {1}"
   },
   "{count}/4 slots used": {
    "zh-Hans": "已用 {count}/4 个插槽",
@@ -3345,6 +3928,17 @@
    "pt-BR": "há {n} min",
    "ru": "{n} мин назад",
    "id": "{n} menit lalu"
+  },
+  "« OK Coucou » — voice wake word": {
+   "zh-Hans": "« OK Coucou » — 语音唤醒词",
+   "hi": "« OK Coucou » — वॉइस वेक वर्ड",
+   "es": "« OK Coucou » — palabra de activación de voz",
+   "ar": "« OK Coucou » — كلمة التنشيط الصوتية",
+   "fr": "« OK Coucou » — commande vocale mains libres",
+   "bn": "« OK Coucou » — ভয়েস ওয়েক ওয়ার্ড",
+   "pt-BR": "« OK Coucou » — palavra de ativação de voz",
+   "ru": "« OK Coucou » — голосовая активация",
+   "id": "« OK Coucou » — kata pengaktif suara"
   },
   "✓ Amp plugin installed in ~/.config/amp/plugins/coucou.ts": {
    "zh-Hans": "✓ Amp 插件已安装至 ~/.config/amp/plugins/coucou.ts",
