@@ -242,7 +242,7 @@ pub fn apply(edits: &[FileEdit], expected: &str) -> Result<Vec<PathBuf>, String>
 
 /// Down to the second: installing then uninstalling in the same minute must not
 /// quietly overwrite the first backup.
-fn stamp() -> String {
+pub fn stamp() -> String {
     let t = crate::platform::local_time();
     format!(
         "{:04}{:02}{:02}-{:02}{:02}{:02}",

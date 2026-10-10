@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import { Bridge, onEvent, type HookPreview, type HookStatus, type RemoteStatus, type ShortcutsReport } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -225,6 +225,112 @@ function claudeSection(status: HookStatus): HTMLElement {
   }
 
   draw();
+  return section;
+}
+
+// ── Remote hosts section (Linux) ──────────────────────────────────────────────
+
+/** What `ssh` takes as a destination and never as an option (remote.rs valid_host). */
+const SSH_HOST = /^[A-Za-z0-9@._:[\]/-]{1,255}$/;
+
+/** The hooks change of one host's ~/.claude/settings.json, over SSH. */
+function remoteChange(host: string): Change {
+  return {
+    preview: (install) => Bridge.remotePreview(host, install),
+    apply: (install, fingerprint) => Bridge.remoteApply(host, install, fingerprint),
+    get installText() { return t("This is exactly what will change in settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there. Your own hooks are left untouched.", { host }); },
+    get removeText() { return HOOKS_CHANGE.removeText; },
+    get installButton() { return t("Back up and write"); },
+    get removeButton() { return t("Back up and remove"); },
+    done: HOOKS_CHANGE.done,
+  };
+}
+
+function remoteSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Remote hosts") })),
+    h("div", {
+      class: "hint",
+      text: t("Claude Code sessions on other machines, over your own SSH: Coucou runs ssh with your keys and ~/.ssh/config, and nothing listens on the network. Connect to a host once in a terminal first, so its key is known."),
+    }),
+    body,
+  );
+  let statuses: RemoteStatus[] = [];
+  /** A diff is on screen: status changes wait, or they would wipe it. */
+  let reviewing = false;
+
+  const redraw = () => {
+    reviewing = false;
+    clear(body);
+    for (const host of settings.remoteHosts) body.append(hostBlock(host));
+    body.append(addRow());
+  };
+
+  function hostBlock(host: string): HTMLElement {
+    const status = statuses.find((s) => s.host === host);
+    const state = status?.state ?? "connecting";
+    const block = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+    const words = state === "connected" ? t("Connected") : state === "error" ? t("Not connected") : t("Connecting…");
+    block.append(
+      h("div", { class: "row" },
+        statusDot(state === "connected"),
+        h("label", { text: host }),
+        h("span", { class: "hint", text: words }),
+        h("button", { class: "primary", text: t("Install hooks…"), onclick: () => review(block, host, true) }),
+        h("button", { text: t("Uninstall hooks…"), onclick: () => review(block, host, false) }),
+        h("button", {
+          class: "danger",
+          text: t("Remove"),
+          onclick: () => {
+            settings.remoteHosts = settings.remoteHosts.filter((x) => x !== host);
+            void save().then(redraw);
+          },
+        }),
+      ),
+    );
+    if (state === "error" && status?.error) block.append(h("div", { class: "notice err", text: status.error }));
+    return block;
+  }
+
+  function review(block: HTMLElement, host: string, install: boolean) {
+    reviewing = true;
+    void reviewChange(block, remoteChange(host), install, redraw, redraw);
+  }
+
+  function addRow(): HTMLElement {
+    const input = h("input", {
+      type: "text",
+      placeholder: t("devbox or user@host, as you type it after ssh"),
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+      autocomplete: "off",
+    }) as HTMLInputElement;
+    const add = h("button", { class: "primary", text: t("Add") });
+    const submit = () => {
+      const host = input.value.trim();
+      if (!SSH_HOST.test(host) || host.startsWith("-")) {
+        input.setCustomValidity(t("Not a host name"));
+        input.reportValidity();
+        return;
+      }
+      if (!settings.remoteHosts.includes(host)) settings.remoteHosts = [...settings.remoteHosts, host];
+      void save().then(redraw);
+    };
+    input.addEventListener("input", () => input.setCustomValidity(""));
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+    add.addEventListener("click", submit);
+    return h("div", { class: "row" }, input, add);
+  }
+
+  remoteListener = (s) => {
+    statuses = s;
+    if (!reviewing) redraw();
+  };
+  void Bridge.remoteStatus().then((s) => remoteListener?.(s ?? []));
+  redraw();
   return section;
 }
 
@@ -1248,6 +1354,7 @@ function recapRows(): HTMLElement[] {
 // ── Language ──────────────────────────────────────────────────────────────────
 
 /** The shortcuts section on screen, told about the events listened to once in main. */
+let remoteListener: ((statuses: RemoteStatus[]) => void) | null = null;
 let shortcutsListener: { report(fresh: ShortcutsReport): void; settingsChanged(): void } | null = null;
 
 /**
@@ -1303,6 +1410,7 @@ async function main() {
   await render();
 
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
+  void onEvent<RemoteStatus[]>("remote-status", (s) => remoteListener?.(s));
   void onEvent<Settings>("settings-changed", (s) => {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
@@ -1356,11 +1464,14 @@ async function render() {
   declaredViews.length = 0;
   localRedraw = null;
   shortcutsListener = null;
+  remoteListener = null;
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     agentsSection(agents),
+    // The tunnel is ssh -R to a Unix socket: Linux only for now.
+    ...(navigator.userAgent.includes("Windows") ? [] : [remoteSection()]),
     planSection(status),
     apiSection(hasKey),
     chatProvidersSection(chatKeys, keyChanged),

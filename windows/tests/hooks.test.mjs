@@ -76,6 +76,12 @@ test("a session names the pill after its folder and reveals the island", () => {
   assert.deepEqual(asked, ["reveal"]);
 });
 
+test("a session on a remote host is named with the host and keeps no local folder", () => {
+  hook({ hook_event_name: "SessionStart", session_id: "s-remote", cwd: "/srv/api-server", coucou_remote: "devbox" });
+  assert.equal(task().name, "api-server · devbox");
+  assert.notEqual(task().sessionCwd, "/srv/api-server");
+});
+
 test("known project folders get their display name, and no folder is a Session", () => {
   hook({ hook_event_name: "SessionStart", cwd: "/home/me/notch-buddy" });
   assert.equal(task().name, "Notch Buddy");

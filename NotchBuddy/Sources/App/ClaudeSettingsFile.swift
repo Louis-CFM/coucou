@@ -58,13 +58,19 @@ enum ClaudeSettingsFile {
         guard FileManager.default.fileExists(atPath: url.path) else { return ([:], nil) }
         let name = url.lastPathComponent
         guard let bytes = try? Data(contentsOf: url) else { throw Failure.unreadable(name) }
+        return (try parse(bytes, name: name), bytes)
+    }
+
+    /// The settings object in `bytes` (a file read here, or over SSH). Whitespace
+    /// only is an empty object; anything that is not a JSON object throws.
+    static func parse(_ bytes: Data, name: String) throws -> [String: Any] {
         if bytes.allSatisfy({ $0 == 0x20 || $0 == 0x09 || $0 == 0x0A || $0 == 0x0D }) {
-            return ([:], bytes)
+            return [:]
         }
         guard let object = (try? JSONSerialization.jsonObject(with: bytes)) as? [String: Any] else {
             throw Failure.invalid(name)
         }
-        return (object, bytes)
+        return object
     }
 
     /// Replaces the file with `data`, after a dated backup.

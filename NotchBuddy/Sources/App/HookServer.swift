@@ -209,13 +209,28 @@ final class HookServer: @unchecked Sendable {
         #if !APPSTORE
         installHookScript()
         #endif
-        Thread.detachNewThread { self.serverThread() }
+        Thread.detachNewThread { self.serve(path: Self.socketPath, host: nil) }
     }
 
     // MARK: - Socket server (background thread)
 
-    private func serverThread() {
-        let path = Self.socketPath
+    /// Remote hosts' listening sockets, by host (RemoteHosts.swift).
+    private var remoteFDs: [String: Int32] = [:]
+
+    /// Serves `path` like nb.sock, every event tagged with `host` (an SSH tunnel's end).
+    func serveRemote(path: String, host: String) {
+        Thread.detachNewThread { self.serve(path: path, host: host) }
+    }
+
+    /// Stops a remote host's socket: closing it ends its accept loop.
+    func stopRemote(host: String) {
+        connectionLock.lock()
+        let fd = remoteFDs.removeValue(forKey: host)
+        connectionLock.unlock()
+        if let fd { close(fd) }
+    }
+
+    private func serve(path: String, host: String?) {
         // sun_path on macOS is 104 bytes including the NUL terminator → max 103 usable bytes
         let maxSunPathBytes = MemoryLayout<sockaddr_un>.size - MemoryLayout<sa_family_t>.size - 1
         guard path.utf8.count <= maxSunPathBytes else {
@@ -226,7 +241,11 @@ final class HookServer: @unchecked Sendable {
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { return }
-        serverFD = fd
+        if let host {
+            connectionLock.lock(); remoteFDs[host] = fd; connectionLock.unlock()
+        } else {
+            serverFD = fd
+        }
 
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
@@ -262,13 +281,13 @@ final class HookServer: @unchecked Sendable {
                 close(clientFD)
                 continue
             }
-            Thread.detachNewThread { self.handleClient(fd: clientFD) }
+            Thread.detachNewThread { self.handleClient(fd: clientFD, host: host) }
         }
     }
 
     // MARK: - Client handler (background thread)
 
-    private func handleClient(fd: Int32) {
+    private func handleClient(fd: Int32, host: String? = nil) {
         defer {
             connectionLock.lock(); connectionCount -= 1; connectionLock.unlock()
         }
@@ -290,11 +309,20 @@ final class HookServer: @unchecked Sendable {
         }
 
         guard !raw.isEmpty,
-              let payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+              var parsed = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
             return
         }
+        // Another machine's terminal says nothing about this Mac's windows, and
+        // fields the app adds itself are never taken from it.
+        if let host {
+            for key in ["term_program", "iterm_session_id", "term_session_id", "bundle_id", "coucou_remote"] {
+                parsed.removeValue(forKey: key)
+            }
+            parsed["coucou_remote"] = host
+        }
+        let payload = parsed
 
         let coucouKind = payload["coucou_kind"] as? String ?? ""
 
@@ -344,9 +372,8 @@ final class HookServer: @unchecked Sendable {
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
-        let cwd = payload["cwd"] as? String ?? ""
-        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let (cwd, projectName) = sessionPlace(payload)
+        let isRemote = payload["coucou_remote"] is String
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
@@ -383,6 +410,9 @@ final class HookServer: @unchecked Sendable {
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
+        } else if isRemote {
+            agentId = "integration_claude"
+            isExternalAgent = false
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
@@ -662,9 +692,8 @@ final class HookServer: @unchecked Sendable {
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
-        let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let (cwd, projectName) = sessionPlace(payload)
+        let isRemote = payload["coucou_remote"] is String
 
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"] as? String ?? ""
@@ -720,7 +749,7 @@ final class HookServer: @unchecked Sendable {
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
-        guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
+        guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal || isRemote else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -879,9 +908,8 @@ final class HookServer: @unchecked Sendable {
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
-        let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let (cwd, projectName) = sessionPlace(payload)
+        let isRemote = payload["coucou_remote"] is String
 
         let rawAgent    = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"]  as? String ?? ""
@@ -907,7 +935,7 @@ final class HookServer: @unchecked Sendable {
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal || isRemote else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -1026,6 +1054,16 @@ final class HookServer: @unchecked Sendable {
         state.tasks[idx].steps.append(step)
         if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
         state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
+    }
+
+    /// The session's folder and pill name. A remote host's folder is not on this
+    /// Mac: the name carries the host, and there is no folder to open here.
+    private func sessionPlace(_ payload: [String: Any]) -> (cwd: String, name: String) {
+        let cwd = payload["cwd"] as? String ?? ""
+        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
+        let name = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        guard let host = payload["coucou_remote"] as? String else { return (cwd, name) }
+        return ("", "\(name) · \(host)")
     }
 
     // MARK: - Project name alias mapping
@@ -1283,6 +1321,15 @@ final class HookServer: @unchecked Sendable {
         #else
         let quotedCmd = "\"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
         #endif
+        settings = try Self.withClaudeHooks(settings, command: quotedCmd)
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return (data, snapshot.bytes)
+    }
+
+    /// `settings` with Coucou's hooks for Claude Code, running `quotedCmd`; anybody
+    /// else's hooks untouched. Also used for a remote host's settings.json.
+    static func withClaudeHooks(_ original: [String: Any], command quotedCmd: String) throws -> [String: Any] {
+        var settings = original
         let events: [(String, Int)] = [
             ("SessionStart", 10), ("SessionEnd", 10),
             ("UserPromptSubmit", 10),
@@ -1308,16 +1355,23 @@ final class HookServer: @unchecked Sendable {
         ])
         hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
-        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        return (data, snapshot.bytes)
+        return settings
     }
 
     func uninstallClaudeHooks() throws {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
         let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
-        var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
+        guard snapshot.object["hooks"] is [String: Any] else { return }
+        let settings = Self.withoutClaudeHooks(snapshot.object)
+        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+    }
+
+    /// `settings` without Coucou's entries; nothing else changed.
+    static func withoutClaudeHooks(_ original: [String: Any]) -> [String: Any] {
+        var settings = original
+        guard var hooks = settings["hooks"] as? [String: Any] else { return settings }
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
@@ -1332,8 +1386,7 @@ final class HookServer: @unchecked Sendable {
             }
         }
         settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+        return settings
     }
 
     // MARK: - Claude plan status line installer
@@ -3088,7 +3141,7 @@ exit 0
 
 // MARK: - nb-hook Python relay (GitHub / non-sandboxed version)
 
-private let nbHookPythonGitHub = """
+let nbHookPythonGitHub = """
 #!/usr/bin/env python3
 # nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
 # Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
@@ -3164,7 +3217,8 @@ def main():
         if '--statusline' not in sys.argv[1:]:
             return
 
-    socket_path = os.path.expanduser(
+    # COUCOU_SOCKET: the same relay on a remote host, behind Coucou's SSH tunnel.
+    socket_path = os.environ.get('COUCOU_SOCKET') or os.path.expanduser(
         '~/Library/Application Support/NotchBuddy/nb.sock'
     )
 

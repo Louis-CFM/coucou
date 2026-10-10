@@ -25686,6 +25686,454 @@
           }
         }
       }
+    },
+    "Remote hosts": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأجهزة البعيدة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রিমোট হোস্ট"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote hosts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hosts remotos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôtes distants"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "रिमोट होस्ट"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Host jarak jauh"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hosts remotos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалённые хосты"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程主机"
+          }
+        }
+      }
+    },
+    "Claude Code sessions on other machines, over your own SSH: Coucou runs ssh with your keys and ~/.ssh/config, and nothing listens on the network. Connect to a host once in a terminal first, so its key is known.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جلسات Claude Code على أجهزة أخرى عبر SSH الخاص بك: يشغّل Coucou الأمر ssh بمفاتيحك و‎~/.ssh/config، ولا شيء يستمع على الشبكة. اتصل بالجهاز مرة واحدة من الطرفية أولًا حتى يُعرف مفتاحه."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অন্য মেশিনের Claude Code সেশন, আপনার নিজের SSH দিয়ে: Coucou আপনার কী ও ~/.ssh/config দিয়ে ssh চালায়, নেটওয়ার্কে কিছুই শোনে না। আগে টার্মিনালে হোস্টে একবার যুক্ত হন, যাতে তার কী জানা থাকে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code sessions on other machines, over your own SSH: Coucou runs ssh with your keys and ~/.ssh/config, and nothing listens on the network. Connect to a host once in a terminal first, so its key is known."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesiones de Claude Code en otras máquinas, por tu propio SSH: Coucou ejecuta ssh con tus claves y tu ~/.ssh/config, y nada escucha en la red. Conéctate una vez al host desde un terminal para que su clave quede registrada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les sessions Claude Code d'autres machines, par ton propre SSH : Coucou lance ssh avec tes clés et ton ~/.ssh/config, et rien n'écoute sur le réseau. Connecte-toi d'abord une fois à l'hôte dans un terminal pour que sa clé soit connue."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "दूसरी मशीनों पर चल रहे Claude Code सत्र, आपके अपने SSH से: Coucou आपकी कुंजियों और ~/.ssh/config के साथ ssh चलाता है, और नेटवर्क पर कुछ भी नहीं सुनता। पहले टर्मिनल में होस्ट से एक बार कनेक्ट करें, ताकि उसकी कुंजी पहचानी जाए।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesi Claude Code di mesin lain, lewat SSH Anda sendiri: Coucou menjalankan ssh dengan kunci dan ~/.ssh/config Anda, dan tidak ada yang mendengarkan di jaringan. Sambungkan ke host sekali dulu di terminal agar kuncinya dikenal."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessões do Claude Code em outras máquinas, pelo seu próprio SSH: o Coucou roda o ssh com suas chaves e seu ~/.ssh/config, e nada fica escutando na rede. Conecte-se uma vez ao host pelo terminal antes, para que a chave dele fique conhecida."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сеансы Claude Code на других машинах через ваш собственный SSH: Coucou запускает ssh с вашими ключами и ~/.ssh/config, и ничего не слушает в сети. Сначала один раз подключитесь к хосту в терминале, чтобы его ключ был известен."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过你自己的 SSH 查看其他机器上的 Claude Code 会话：Coucou 使用你的密钥和 ~/.ssh/config 运行 ssh，不会在网络上监听任何端口。请先在终端中连接一次该主机，以便记录其密钥。"
+          }
+        }
+      }
+    },
+    "This is exactly what will change in settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there. Your own hooks are left untouched.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا بالضبط ما سيتغير في settings.json على {host}. ينسخ Coucou أيضًا المرحّل الخاص به إلى ‎~/.local/share/coucou/bin هناك. تبقى hooks الخاصة بك كما هي."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{host}-এ settings.json-এ ঠিক এটুকুই বদলাবে। Coucou তার রিলে সেখানে ~/.local/share/coucou/bin-এ কপি করে। আপনার নিজের hooks যেমন আছে তেমনই থাকে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is exactly what will change in settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there. Your own hooks are left untouched."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto es exactamente lo que cambiará en settings.json en {host}. Coucou también copia allí su relé en ~/.local/share/coucou/bin. Tus propios hooks no se tocan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voici exactement ce qui changera dans settings.json sur {host}. Coucou y copie aussi son relais dans ~/.local/share/coucou/bin. Tes propres hooks ne sont pas touchés."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{host} पर settings.json में ठीक यही बदलेगा। Coucou अपना रिले भी वहाँ ~/.local/share/coucou/bin में कॉपी करता है। आपके अपने hooks जैसे हैं वैसे ही रहते हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inilah persis yang akan berubah di settings.json pada {host}. Coucou juga menyalin relay-nya ke ~/.local/share/coucou/bin di sana. Hooks Anda sendiri tidak disentuh."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isto é exatamente o que vai mudar no settings.json em {host}. O Coucou também copia o relay dele para ~/.local/share/coucou/bin lá. Seus próprios hooks não são alterados."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вот что именно изменится в settings.json на {host}. Coucou также копирует туда свой ретранслятор в ~/.local/share/coucou/bin. Ваши собственные hooks не затрагиваются."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这正是 {host} 上 settings.json 将发生的更改。Coucou 还会把它的中继复制到该主机的 ~/.local/share/coucou/bin。你自己的 hooks 保持不变。"
+          }
+        }
+      }
+    },
+    "devbox or user@host, as you type it after ssh": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox أو user@host، كما تكتبه بعد ssh"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox বা user@host, ssh-এর পরে যেভাবে লেখেন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox or user@host, as you type it after ssh"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox o usuario@host, como lo escribes después de ssh"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox ou utilisateur@hôte, comme tu l'écris après ssh"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox या user@host, जैसा आप ssh के बाद लिखते हैं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox atau user@host, seperti yang Anda ketik setelah ssh"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox ou usuario@host, como você digita depois de ssh"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox или user@host, как вы пишете после ssh"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "devbox 或 user@host，与你在 ssh 后输入的一样"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إضافة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "যোগ করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जोड़ें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambah"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "Not a host name": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ليس اسم جهاز صالحًا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এটি হোস্টের নাম নয়"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not a host name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No es un nombre de host"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce n'est pas un nom d'hôte"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह होस्ट नाम नहीं है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bukan nama host"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é um nome de host"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не имя хоста"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不是有效的主机名"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إزالة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সরান"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "हटाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hapus"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

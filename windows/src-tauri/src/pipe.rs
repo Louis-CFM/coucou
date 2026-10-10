@@ -44,6 +44,8 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+/// The `coucou_` fields coucou-hook itself writes.
+const RELAY_FIELDS: &[&str] = &["coucou_agent", "coucou_diff_truncated"];
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -97,7 +99,7 @@ pub fn start(app: AppHandle) {
             };
             let connected = std::mem::replace(&mut server, next);
             let app = app.clone();
-            tauri::async_runtime::spawn(async move { handle(app, connected).await });
+            tauri::async_runtime::spawn(async move { handle(app, connected, None).await });
         }
     });
 }
@@ -131,24 +133,32 @@ pub fn start(app: AppHandle) {
         };
         // The runtime directory is already 0700; this is belt and braces.
         let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-        let uid = unsafe { libc::getuid() };
-        loop {
-            let stream = match listener.accept().await {
-                Ok((stream, _)) => stream,
-                Err(_) => {
-                    tokio::time::sleep(Duration::from_millis(200)).await;
-                    continue;
-                }
-            };
-            // Only the relay run by our own user may drive the island.
-            if !matches!(stream.peer_cred(), Ok(c) if c.uid() == uid) {
-                log::line("refused a relay connection from another user");
+        serve(app, listener, None).await;
+    });
+}
+
+/// Accepts relay connections forever. `host` is set for a remote host's socket
+/// (remote.rs), whose events are tagged with it.
+#[cfg(target_os = "linux")]
+pub async fn serve(app: AppHandle, listener: tokio::net::UnixListener, host: Option<String>) {
+    let uid = unsafe { libc::getuid() };
+    loop {
+        let stream = match listener.accept().await {
+            Ok((stream, _)) => stream,
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(200)).await;
                 continue;
             }
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move { handle(app, stream).await });
+        };
+        // Only our own user (the relay, or our own ssh for a remote host) may drive the island.
+        if !matches!(stream.peer_cred(), Ok(c) if c.uid() == uid) {
+            log::line("refused a relay connection from another user");
+            continue;
         }
-    });
+        let app = app.clone();
+        let host = host.clone();
+        tauri::async_runtime::spawn(async move { handle(app, stream, host).await });
+    }
 }
 
 /// One accepted relay connection, whatever carries it.
@@ -182,7 +192,7 @@ impl Relay for tokio::net::UnixStream {
     }
 }
 
-async fn handle(app: AppHandle, mut pipe: impl Relay) {
+async fn handle(app: AppHandle, mut pipe: impl Relay, host: Option<String>) {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
@@ -212,7 +222,18 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
-    note_session_window(&pipe, &payload, &event);
+    match host {
+        // The process on our end is ssh, not the session: nothing local to find.
+        Some(host) => {
+            crate::remote::note_session(&payload, &event);
+            // Fields the app adds itself are never taken from another machine.
+            if let Some(fields) = payload.as_object_mut() {
+                fields.retain(|k, _| !k.starts_with("coucou_") || RELAY_FIELDS.contains(&k.as_str()));
+            }
+            payload["coucou_remote"] = json!(host);
+        }
+        None => note_session_window(&pipe, &payload, &event),
+    }
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
