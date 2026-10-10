@@ -5,9 +5,16 @@
 // touching anybody else's hooks, show the diff, and write only after an explicit
 // click. Uninstall removes Coucou's entries and nothing else.
 //
-// The command is only the quoted exe path in forward slashes plus the event name:
-// on Windows Claude Code runs hook commands through Git Bash, and anything with
-// PowerShell or cmd in it breaks.
+// On Windows each hook is written in Claude Code's exec form — `command` is the relay's
+// path and `args` holds the event name — so no shell is involved at all. The
+// shell form it replaces ("\"C:/…/coucou-hook.exe\" Stop") only worked in
+// Git Bash: on a PC without Git Bash, Claude Code runs hooks in PowerShell,
+// which reads a quoted path as a string and fails on the event name
+// ("Unexpected token 'Stop'"). Exec form also makes spaces in the path a
+// non-issue. A Claude Code too old to know `args` still runs the relay, which
+// then reads the event name from the JSON on stdin. On Linux, where Claude
+// Code's shell is `sh`, the shell form stays, with the path single-quoted.
+// The status line has no exec form, so it stays a shell command everywhere.
 //
 // Reading, the diff, the backup and the write itself live in config_file.rs,
 // shared with every other agent's installer (agents.rs).
@@ -77,10 +84,46 @@ fn read_settings_lossy() -> Value {
         .unwrap_or_else(|| json!({}))
 }
 
-/// On Windows Claude Code runs hook commands through Git Bash; on Linux through
-/// `sh`. Either way the relay path is one quoted shell word.
+/// The relay as a shell command: Git Bash on Windows, `sh` on Linux. Either
+/// way the relay path is one quoted shell word. Used for the status line, and
+/// for the hooks on Linux.
 fn hook_command(event: &str) -> String {
     agents::relay_command(Shell::Sh, event)
+}
+
+/// One Coucou hook, in exec form (see the note at the top).
+#[cfg(windows)]
+fn hook_entry(event: &str, timeout: u64) -> Value {
+    json!({
+        "type": "command",
+        "command": settings::hook_exe_path().to_string_lossy(),
+        "args": [event],
+        "timeout": timeout,
+    })
+}
+
+/// One Coucou hook. On Linux Claude Code's shell is `sh`, where the quoted
+/// command is safe, so the shell form stays.
+#[cfg(unix)]
+fn hook_entry(event: &str, timeout: u64) -> Value {
+    json!({ "type": "command", "command": hook_command(event), "timeout": timeout })
+}
+
+/// A Coucou entry written the current way. Older Windows installs used the
+/// shell form; they still count as ours (and are replaced on install), but not
+/// as current.
+#[cfg(windows)]
+fn entry_is_current(entry: &Value) -> bool {
+    entry_is_ours(entry)
+        && entry
+            .get("hooks")
+            .and_then(Value::as_array)
+            .is_some_and(|hooks| hooks.iter().all(|h| h.get("args").is_some_and(Value::is_array)))
+}
+
+#[cfg(unix)]
+fn entry_is_current(entry: &Value) -> bool {
+    entry_is_ours(entry)
 }
 
 fn entry_is_ours(entry: &Value) -> bool {
@@ -122,13 +165,7 @@ fn merged(existing: &Value) -> Result<Value, String> {
             Some(_) => return Err(unexpected(&format!("\"hooks\".\"{event}\""))),
         };
         list.retain(|entry| !entry_is_ours(entry));
-        list.push(json!({
-            "hooks": [{
-                "type": "command",
-                "command": hook_command(event),
-                "timeout": timeout,
-            }]
-        }));
+        list.push(json!({ "hooks": [hook_entry(event, *timeout)] }));
         hooks.insert((*event).to_string(), Value::Array(list));
     }
 
@@ -184,15 +221,19 @@ fn edits(install: bool) -> Vec<FileEdit<'static>> {
 
 pub fn status() -> HookStatus {
     let current = read_settings_lossy();
+    // Installed means every event is hooked the current way: an install made in
+    // the old shell form shows up as "Install hooks…", and its diff shows the
+    // entries being rewritten.
     let installed = current
         .get("hooks")
         .and_then(Value::as_object)
         .map(|hooks| {
-            hooks
-                .values()
-                .filter_map(Value::as_array)
-                .flatten()
-                .any(entry_is_ours)
+            HOOK_EVENTS.iter().all(|(event, _)| {
+                hooks
+                    .get(*event)
+                    .and_then(Value::as_array)
+                    .is_some_and(|list| list.iter().any(entry_is_current))
+            })
         })
         .unwrap_or(false);
     let hook_path = settings::hook_exe_path();
@@ -425,6 +466,43 @@ fn install_relay(src: &Path, dest: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn hooks_are_written_in_exec_form_with_no_shell() {
+        let after = merged(&json!({})).unwrap();
+        for (event, timeout) in HOOK_EVENTS {
+            let hook = &after["hooks"][*event][0]["hooks"][0];
+            assert_eq!(hook["type"], "command");
+            // Just the relay's path: nothing a shell would have to parse.
+            let command = hook["command"].as_str().unwrap();
+            assert!(command.ends_with("coucou-hook.exe"), "got {command}");
+            assert!(!command.contains('"'), "no shell quoting in exec form: {command}");
+            assert_eq!(hook["args"], json!([event]));
+            assert_eq!(hook["timeout"], json!(timeout));
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn an_old_shell_form_install_is_replaced_not_duplicated() {
+        // What Coucou 0.1.1 wrote: fine in Git Bash, a syntax error in PowerShell.
+        let old = json!({ "hooks": { "Stop": [
+            { "hooks": [{ "type": "command", "command": "\"C:/Users/me/AppData/Local/Coucou/bin/coucou-hook.exe\" Stop" }] }
+        ] } });
+        assert!(old["hooks"]["Stop"].as_array().unwrap().iter().all(|e| !entry_is_current(e)));
+        let after = merged(&old).unwrap();
+        let stop = after["hooks"]["Stop"].as_array().unwrap();
+        assert_eq!(stop.len(), 1, "the old entry must be replaced, not kept next to the new one");
+        assert!(entry_is_current(&stop[0]));
+    }
+
+    #[test]
+    fn the_status_line_stays_a_shell_command() {
+        let after = status_line_settings(&json!({}), true, None).unwrap();
+        assert!(after["statusLine"].get("args").is_none());
+        assert!(after["statusLine"]["command"].as_str().unwrap().ends_with(" --statusline"));
+    }
 
     #[test]
     fn the_hooks_leave_the_status_line_alone() {
