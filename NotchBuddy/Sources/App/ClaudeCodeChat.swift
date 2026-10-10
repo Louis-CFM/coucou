@@ -46,6 +46,14 @@ enum ClaudeCodeChat {
         return a
     }
 
+    /// The folder Claude Code may read for a dropped file: the inbox, once the file's
+    /// copy is in it. Never the original's folder, which can be the whole home folder.
+    static func extraDir(file: URL?, inbox: URL) -> String? {
+        guard let file else { return nil }
+        let base = inbox.standardizedFileURL.path
+        return file.standardizedFileURL.path.hasPrefix(base + "/") ? base : nil
+    }
+
     /// The question, with what Claude Code does not know yet: the dropped file or
     /// window on the first turn, or the turns another provider answered before.
     static func question(first: Bool, resuming: Bool, earlier: [(user: Bool, text: String)],

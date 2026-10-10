@@ -53,6 +53,18 @@ struct ClaudeCodeChatTests {
         check(ClaudeCodeChat.label(model: "default", effort: "") == "Claude Code"
               && ClaudeCodeChat.label(model: "opus", effort: "high") == "opus · high", "the model button reads model · effort")
 
+        // Only the inbox copy's folder is opened to Claude Code, as on Linux
+        let inbox = URL(fileURLWithPath: "/app/inbox")
+        check(ClaudeCodeChat.extraDir(file: URL(fileURLWithPath: "/app/inbox/a.txt"), inbox: inbox) == "/app/inbox",
+              "a file copied to the inbox opens the inbox")
+        check(ClaudeCodeChat.extraDir(file: URL(fileURLWithPath: "/Users/me/a.txt"), inbox: inbox) == nil,
+              "the original file's folder is never opened")
+        check(ClaudeCodeChat.extraDir(file: URL(fileURLWithPath: "/app/inbox-other/a.txt"), inbox: inbox) == nil,
+              "a folder that only starts like the inbox is not it")
+        check(ClaudeCodeChat.extraDir(file: URL(fileURLWithPath: "/app/inbox/../secret/a.txt"), inbox: inbox) == nil,
+              "a path that climbs out of the inbox is not in it")
+        check(ClaudeCodeChat.extraDir(file: nil, inbox: inbox) == nil, "no file, no folder")
+
         if failures > 0 { print("\(failures) failure(s)"); exit(1) }
         print("All Claude Code chat tests passed")
     }

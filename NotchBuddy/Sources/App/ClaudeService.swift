@@ -309,7 +309,9 @@ final class ClaudeService {
             case .file(let name, let fileURL):
                 contextLine = "File: \(name)" + (fileURL.map { " (\($0.path))" } ?? "")
                 // Claude Code may only read inside its folder unless told about this one.
-                extraDir = fileURL?.deletingLastPathComponent().path
+                // Before the inbox copy is done, none: reading the original asks first.
+                extraDir = ClaudeCodeChat.extraDir(file: fileURL,
+                                                   inbox: HookServer.supportDir.appendingPathComponent("inbox"))
             }
         }
         // Turns another provider answered, as plain text.
