@@ -62,6 +62,12 @@
             "state": "translated",
             "value": " 已就绪。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " ist bereit."
+          }
         }
       }
     },
@@ -125,6 +131,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — 打开 Spotify"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Spotify öffnen"
           }
         }
       }
@@ -190,6 +202,12 @@
             "state": "translated",
             "value": "%lld 个自定义"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld eigene"
+          }
         }
       }
     },
@@ -253,6 +271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTO"
           }
         }
       }
@@ -318,6 +342,12 @@
             "state": "translated",
             "value": "活跃标签页"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktive Pills"
+          }
         }
       }
     },
@@ -381,6 +411,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "动态"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivität"
           }
         }
       }
@@ -446,6 +482,12 @@
             "state": "translated",
             "value": "广告"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werbung"
+          }
         }
       }
     },
@@ -509,6 +551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "代理"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agenten"
           }
         }
       }
@@ -574,6 +622,12 @@
             "state": "translated",
             "value": "允许"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zulassen"
+          }
         }
       }
     },
@@ -637,6 +691,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "允许 Coucou 控制音乐"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou erlauben, Musik zu steuern"
           }
         }
       }
@@ -702,6 +762,12 @@
             "state": "translated",
             "value": "允许 Coucou 控制 Spotify"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou erlauben, Spotify zu steuern"
+          }
         }
       }
     },
@@ -765,6 +831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "始终允许"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immer"
           }
         }
       }
@@ -830,6 +902,12 @@
             "state": "translated",
             "value": "下次启动时生效"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gilt ab dem nächsten Start"
+          }
         }
       }
     },
@@ -893,6 +971,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "问 Claude"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude fragen"
           }
         }
       }
@@ -958,6 +1042,12 @@
             "state": "translated",
             "value": "提问"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Frage stellen"
+          }
         }
       }
     },
@@ -1021,6 +1111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "提问"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Frage dazu stellen"
           }
         }
       }
@@ -1086,6 +1182,12 @@
             "state": "translated",
             "value": "问我任何事…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frag mich etwas…"
+          }
         }
       }
     },
@@ -1149,6 +1251,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动关闭 · %lld 秒"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch schließen · %lld s"
           }
         }
       }
@@ -1214,6 +1322,12 @@
             "state": "translated",
             "value": "不允许自动化"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automation nicht erlaubt"
+          }
         }
       }
     },
@@ -1277,6 +1391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "行为"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verhalten"
           }
         }
       }
@@ -1342,6 +1462,12 @@
             "state": "translated",
             "value": "取消"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
         }
       }
     },
@@ -1405,6 +1531,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "聊天"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat"
           }
         }
       }
@@ -1470,6 +1602,12 @@
             "state": "translated",
             "value": "与 %@ 聊天"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit %@ chatten"
+          }
         }
       }
     },
@@ -1533,6 +1671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择你使用的工具。Coucou 只显示你在这里声明的内容。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle deine Werkzeuge. Coucou zeigt nur an, was du hier auswählst."
           }
         }
       }
@@ -1598,6 +1742,12 @@
             "state": "translated",
             "value": "Claude Code 已完成"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code ist fertig"
+          }
         }
       }
     },
@@ -1661,6 +1811,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code 正在询问"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code fragt"
           }
         }
       }
@@ -1726,6 +1882,12 @@
             "state": "translated",
             "value": "Claude 正在读取 %@…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude liest %@…"
+          }
         }
       }
     },
@@ -1789,6 +1951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude 正在搜索…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude sucht…"
           }
         }
       }
@@ -1854,6 +2022,12 @@
             "state": "translated",
             "value": "清除"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leeren"
+          }
         }
       }
     },
@@ -1917,6 +2091,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "清除历史记录"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf löschen"
           }
         }
       }
@@ -1982,6 +2162,12 @@
             "state": "translated",
             "value": "关闭"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen"
+          }
         }
       }
     },
@@ -2045,6 +2231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动关闭"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen nach"
           }
         }
       }
@@ -2110,6 +2302,12 @@
             "state": "translated",
             "value": "颜色"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farbe"
+          }
         }
       }
     },
@@ -2173,6 +2371,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "即将推出"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demnächst verfügbar"
           }
         }
       }
@@ -2238,6 +2442,12 @@
             "state": "translated",
             "value": "已成功完成。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erfolgreich abgeschlossen."
+          }
         }
       }
     },
@@ -2301,6 +2511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已连接"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden"
           }
         }
       }
@@ -2366,6 +2582,12 @@
             "state": "translated",
             "value": "已连接 · %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden · %@"
+          }
         }
       }
     },
@@ -2429,6 +2651,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已连接 · 加载中…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden · wird geladen…"
           }
         }
       }
@@ -2494,6 +2722,12 @@
             "state": "translated",
             "value": "继续…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fortfahren…"
+          }
         }
       }
     },
@@ -2558,6 +2792,12 @@
             "state": "translated",
             "value": "复制"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieren"
+          }
         }
       }
     },
@@ -2621,6 +2861,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
           }
         }
       }
@@ -2687,6 +2933,12 @@
             "state": "translated",
             "value": "演示模式"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demomodus"
+          }
         }
       }
     },
@@ -2750,6 +3002,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已拒绝"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgelehnt"
           }
         }
       }
@@ -2815,6 +3073,12 @@
             "state": "translated",
             "value": "拒绝"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ablehnen"
+          }
         }
       }
     },
@@ -2878,6 +3142,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "部署"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereitstellungen"
           }
         }
       }
@@ -2943,6 +3213,12 @@
             "state": "translated",
             "value": "Diff 太大"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff zu groß"
+          }
         }
       }
     },
@@ -3006,6 +3282,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "草稿"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entwurf"
           }
         }
       }
@@ -3071,6 +3353,12 @@
             "state": "translated",
             "value": "在声音文件夹中放入与 Mochi 某个声音同名的文件（finish.wav、approval.mp3、greet.m4a…）即可替换它，然后重新载入。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lege eine Datei mit dem Namen eines Mochi-Klangs (finish.wav, approval.mp3, greet.m4a…) im Klangordner ab, um ihn zu ersetzen. Lade die Klänge anschließend neu."
+          }
         }
       }
     },
@@ -3134,6 +3422,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "拖入文件或窗口，或问我任何问题。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lege eine Datei oder ein Fenster ab oder stell mir eine Frage."
           }
         }
       }
@@ -3199,6 +3493,12 @@
             "state": "translated",
             "value": "把文件拖到这里"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien hier ablegen"
+          }
         }
       }
     },
@@ -3262,6 +3562,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "邮件"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mails"
           }
         }
       }
@@ -3327,6 +3633,12 @@
             "state": "translated",
             "value": "启用声音"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klänge aktivieren"
+          }
         }
       }
     },
@@ -3390,6 +3702,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "启用语音命令"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprachsteuerung aktivieren"
           }
         }
       }
@@ -3455,6 +3773,12 @@
             "state": "translated",
             "value": "失败"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehlgeschlagen"
+          }
         }
       }
     },
@@ -3518,6 +3842,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorit"
           }
         }
       }
@@ -3583,6 +3913,12 @@
             "state": "translated",
             "value": "通用"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allgemein"
+          }
         }
       }
     },
@@ -3646,6 +3982,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "获取 Spotify"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify herunterladen"
           }
         }
       }
@@ -3711,6 +4053,12 @@
             "state": "translated",
             "value": "给我一秒钟——三秒后恢复工作。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einen Moment — in drei Sekunden geht es weiter."
+          }
         }
       }
     },
@@ -3774,6 +4122,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gmail 节点在 30 秒后超时。请重试或打开 n8n。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitüberschreitung beim Gmail-Knoten nach 30 s. Erneut versuchen oder n8n öffnen."
           }
         }
       }
@@ -3839,6 +4193,12 @@
             "state": "translated",
             "value": "已授权"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erlaubt"
+          }
         }
       }
     },
@@ -3902,6 +4262,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "隐藏于"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausblenden nach"
           }
         }
       }
@@ -3967,6 +4333,12 @@
             "state": "translated",
             "value": "在分享图片中隐藏项目名称"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projektnamen in geteilten Bildern ausblenden"
+          }
         }
       }
     },
@@ -4030,6 +4402,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已安装"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installiert"
           }
         }
       }
@@ -4095,6 +4473,12 @@
             "state": "translated",
             "value": "Hooks 未安装"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks nicht installiert"
+          }
         }
       }
     },
@@ -4158,6 +4542,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷键"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastenkombination"
           }
         }
       }
@@ -4223,6 +4613,12 @@
             "state": "translated",
             "value": "将指针悬停在岛上即可打开；指针离开后不久会再次收起。在其中点按可保持打开。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Insel öffnet sich, wenn du den Mauszeiger darüber bewegst, und klappt kurz nach dem Verlassen wieder zu. Klicke hinein, damit sie geöffnet bleibt."
+          }
         }
       }
     },
@@ -4286,6 +4682,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "集成"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrationen"
           }
         }
       }
@@ -4351,6 +4753,12 @@
             "state": "translated",
             "value": "保留我的编程会话历史记录"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf meiner Programmiersitzungen speichern"
+          }
         }
       }
     },
@@ -4414,6 +4822,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "密钥已配置 · %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel eingerichtet · %@"
           }
         }
       }
@@ -4479,6 +4893,12 @@
             "state": "translated",
             "value": "密钥未配置"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel nicht eingerichtet"
+          }
         }
       }
     },
@@ -4542,6 +4962,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "语言"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
           }
         }
       }
@@ -4607,6 +5033,12 @@
             "state": "translated",
             "value": "在 Mac 启动时自动启动"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Start des Mac öffnen"
+          }
         }
       }
     },
@@ -4670,6 +5102,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在收听…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hört zu…"
           }
         }
       }
@@ -4735,6 +5173,12 @@
             "state": "translated",
             "value": "正在加载模型…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelle werden geladen…"
+          }
         }
       }
     },
@@ -4798,6 +5242,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "加载中…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird geladen…"
           }
         }
       }
@@ -4863,6 +5313,12 @@
             "state": "translated",
             "value": "邮件不可用。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail nicht verfügbar."
+          }
         }
       }
     },
@@ -4926,6 +5382,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauptwerkzeug"
           }
         }
       }
@@ -4991,6 +5453,12 @@
             "state": "translated",
             "value": "麦克风不可用"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon nicht verfügbar"
+          }
         }
       }
     },
@@ -5054,6 +5522,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "麦克风："
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon:"
           }
         }
       }
@@ -5119,6 +5593,12 @@
             "state": "translated",
             "value": "收件人缺失。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfänger fehlt."
+          }
         }
       }
     },
@@ -5182,6 +5662,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "我的 PR"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meine PRs"
           }
         }
       }
@@ -5247,6 +5733,12 @@
             "state": "translated",
             "value": "新邮件"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue E-Mail"
+          }
         }
       }
     },
@@ -5310,6 +5802,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一步"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiter"
           }
         }
       }
@@ -5375,6 +5873,12 @@
             "state": "translated",
             "value": "没有计划的通话"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Gespräche geplant"
+          }
         }
       }
     },
@@ -5439,6 +5943,12 @@
             "state": "translated",
             "value": "没有变更"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Änderungen"
+          }
         }
       }
     },
@@ -5502,6 +6012,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "没有贡献"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Beiträge"
           }
         }
       }
@@ -5568,6 +6084,12 @@
             "state": "translated",
             "value": "无错误详情。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Fehlerdetails verfügbar."
+          }
         }
       }
     },
@@ -5631,6 +6153,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Gerät ist kein Spracherkennungsmodell verfügbar. Installiere eines unter Systemeinstellungen → Tastatur → Diktierfunktion."
           }
         }
       }
@@ -5696,6 +6224,12 @@
             "state": "translated",
             "value": "未连接"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht verbunden"
+          }
         }
       }
     },
@@ -5759,6 +6293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未安装"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht installiert"
           }
         }
       }
@@ -5824,6 +6364,12 @@
             "state": "translated",
             "value": "未播放"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Wiedergabe"
+          }
         }
       }
     },
@@ -5887,6 +6433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未请求"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht angefordert"
           }
         }
       }
@@ -5952,6 +6504,12 @@
             "state": "translated",
             "value": "这里没有内容"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Einträge"
+          }
         }
       }
     },
@@ -6015,6 +6573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "当前没有任务。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derzeit läuft nichts."
           }
         }
       }
@@ -6080,6 +6644,12 @@
             "state": "translated",
             "value": "确定"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
         }
       }
     },
@@ -6143,6 +6713,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnen"
           }
         }
       }
@@ -6208,6 +6784,12 @@
             "state": "translated",
             "value": "打开 %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ öffnen"
+          }
         }
       }
     },
@@ -6271,6 +6853,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Codex"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex öffnen"
           }
         }
       }
@@ -6336,6 +6924,12 @@
             "state": "translated",
             "value": "打开 Coucou"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou öffnen"
+          }
         }
       }
     },
@@ -6399,6 +6993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Cursor"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cursor öffnen"
           }
         }
       }
@@ -6464,6 +7064,12 @@
             "state": "translated",
             "value": "打开 Music"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Musik öffnen"
+          }
         }
       }
     },
@@ -6527,6 +7133,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开设置…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen öffnen…"
           }
         }
       }
@@ -6592,6 +7204,12 @@
             "state": "translated",
             "value": "打开 Spotify"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify öffnen"
+          }
         }
       }
     },
@@ -6655,6 +7273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 Visual Studio Code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visual Studio Code öffnen"
           }
         }
       }
@@ -6720,6 +7344,12 @@
             "state": "translated",
             "value": "在 n8n 中打开"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In n8n öffnen"
+          }
         }
       }
     },
@@ -6783,6 +7413,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "悬停时打开"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei Mauszeigerkontakt öffnen"
           }
         }
       }
@@ -6848,6 +7484,12 @@
             "state": "translated",
             "value": "打开声音文件夹"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klangordner öffnen"
+          }
         }
       }
     },
@@ -6911,6 +7553,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开终端"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal öffnen"
           }
         }
       }
@@ -6976,6 +7624,12 @@
             "state": "translated",
             "value": "其他…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere…"
+          }
         }
       }
     },
@@ -7039,6 +7693,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "概览"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersicht"
           }
         }
       }
@@ -7104,6 +7764,12 @@
             "state": "translated",
             "value": "暂停"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
         }
       }
     },
@@ -7167,6 +7833,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "付款"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zahlungen"
           }
         }
       }
@@ -7232,6 +7904,12 @@
             "state": "translated",
             "value": "权限"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berechtigungen"
+          }
         }
       }
     },
@@ -7295,6 +7973,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "播放"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergeben"
           }
         }
       }
@@ -7360,6 +8044,12 @@
             "state": "translated",
             "value": "正在播放 · %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergabe · %@"
+          }
         }
       }
     },
@@ -7423,6 +8113,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件未安装"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin nicht installiert"
           }
         }
       }
@@ -7488,6 +8184,12 @@
             "state": "translated",
             "value": "上一首"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurück"
+          }
         }
       }
     },
@@ -7551,6 +8253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "退出"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beenden"
           }
         }
       }
@@ -7616,6 +8324,12 @@
             "state": "translated",
             "value": "最近"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuletzt"
+          }
         }
       }
     },
@@ -7679,6 +8393,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "刷新"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren"
           }
         }
       }
@@ -7744,6 +8464,12 @@
             "state": "translated",
             "value": "重新载入声音"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klänge neu laden"
+          }
         }
       }
     },
@@ -7807,6 +8533,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "取消收藏"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Favoriten entfernen"
           }
         }
       }
@@ -7872,6 +8604,12 @@
             "state": "translated",
             "value": "全部重复"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle wiederholen"
+          }
         }
       }
     },
@@ -7935,6 +8673,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "重复：关"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholung aus"
           }
         }
       }
@@ -8000,6 +8744,12 @@
             "state": "translated",
             "value": "重复：开"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholung an"
+          }
         }
       }
     },
@@ -8063,6 +8813,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "单曲重复"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einen Titel wiederholen"
           }
         }
       }
@@ -8128,6 +8884,12 @@
             "state": "translated",
             "value": "在终端回复"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Terminal antworten"
+          }
         }
       }
     },
@@ -8191,6 +8953,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "请求权限"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berechtigungen anfordern"
           }
         }
       }
@@ -8256,6 +9024,12 @@
             "state": "translated",
             "value": "重新发送"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut senden"
+          }
         }
       }
     },
@@ -8319,6 +9093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "重启 Coucou"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou neu starten"
           }
         }
       }
@@ -8384,6 +9164,12 @@
             "state": "translated",
             "value": "重试"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versuchen"
+          }
         }
       }
     },
@@ -8447,6 +9233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichern"
           }
         }
       }
@@ -8512,6 +9304,12 @@
             "state": "translated",
             "value": "存储…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichern…"
+          }
         }
       }
     },
@@ -8575,6 +9373,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "说出您的命令"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sag deinen Befehl"
           }
         }
       }
@@ -8640,6 +9444,12 @@
             "state": "translated",
             "value": "日程"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitplan"
+          }
         }
       }
     },
@@ -8703,6 +9513,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senden"
           }
         }
       }
@@ -8768,6 +9584,12 @@
             "state": "translated",
             "value": "通过邮件发送"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per E-Mail senden"
+          }
         }
       }
     },
@@ -8831,6 +9653,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送中…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gesendet…"
           }
         }
       }
@@ -8896,6 +9724,12 @@
             "state": "translated",
             "value": "会话已结束"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sitzung beendet"
+          }
         }
       }
     },
@@ -8959,6 +9793,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen…"
           }
         }
       }
@@ -9024,6 +9864,12 @@
             "state": "translated",
             "value": "分享…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teilen…"
+          }
         }
       }
     },
@@ -9087,6 +9933,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷键"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastenkombination"
           }
         }
       }
@@ -9152,6 +10004,12 @@
             "state": "translated",
             "value": "快捷键"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastenkombinationen"
+          }
         }
       }
     },
@@ -9215,6 +10073,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "用快捷键显示岛"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insel per Tastenkombination anzeigen"
           }
         }
       }
@@ -9280,6 +10144,12 @@
             "state": "translated",
             "value": "随机播放：关"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zufallswiedergabe aus"
+          }
         }
       }
     },
@@ -9343,6 +10213,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "随机播放：开"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zufallswiedergabe an"
           }
         }
       }
@@ -9408,6 +10284,12 @@
             "state": "translated",
             "value": "声音"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klang"
+          }
         }
       }
     },
@@ -9471,6 +10353,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "语音识别："
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spracherkennung:"
           }
         }
       }
@@ -9536,6 +10424,12 @@
             "state": "translated",
             "value": "未安装 Spotify"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify nicht installiert"
+          }
         }
       }
     },
@@ -9599,6 +10493,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "启动"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Startverhalten"
           }
         }
       }
@@ -9664,6 +10564,12 @@
             "state": "translated",
             "value": "储存在 Mac 本地，不会离开你的 Mac，保留 12 周。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal auf deinem Mac gespeichert. Nichts verlässt deinen Mac. Wird 12 Wochen aufbewahrt."
+          }
         }
       }
     },
@@ -9727,6 +10633,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主题"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Betreff"
           }
         }
       }
@@ -9792,6 +10704,12 @@
             "state": "translated",
             "value": "成功"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erfolg"
+          }
         }
       }
     },
@@ -9855,6 +10773,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "系统"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         }
       }
@@ -9920,6 +10844,12 @@
             "state": "translated",
             "value": "收件人"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An"
+          }
         }
       }
     },
@@ -9983,6 +10913,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "待审查"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu prüfen"
           }
         }
       }
@@ -10048,6 +10984,12 @@
             "state": "translated",
             "value": "一次点击太多次了。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu viele Anfragen auf einmal."
+          }
         }
       }
     },
@@ -10111,6 +11053,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未知"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt"
           }
         }
       }
@@ -10176,6 +11124,12 @@
             "state": "translated",
             "value": "正在上传 %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ wird hochgeladen"
+          }
         }
       }
     },
@@ -10239,6 +11193,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "语音"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spracheingabe"
           }
         }
       }
@@ -10304,6 +11264,12 @@
             "state": "translated",
             "value": "音量"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lautstärke"
+          }
         }
       }
     },
@@ -10367,6 +11333,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "音量 %lld%%"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lautstärke %lld%%"
           }
         }
       }
@@ -10432,6 +11404,12 @@
             "state": "translated",
             "value": "衣橱"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garderobe"
+          }
         }
       }
     },
@@ -10495,6 +11473,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "监控 %lld / %lld"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld von %lld werden überwacht"
           }
         }
       }
@@ -10560,6 +11544,12 @@
             "state": "translated",
             "value": "每周回顾"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wochenrückblick"
+          }
         }
       }
     },
@@ -10623,6 +11613,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "您想对它做什么？"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was möchtest du damit machen?"
           }
         }
       }
@@ -10688,6 +11684,12 @@
             "state": "translated",
             "value": "启用后，Coucou 会监听唤醒词« OK Coucou »。语音识别完全在设备上运行—任何音频或文字记录都不会离开您的 Mac。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn aktiviert, wartet Coucou auf das Aktivierungswort « OK Coucou ». Die Spracherkennung läuft vollständig auf dem Gerät — weder Audio noch Transkripte verlassen deinen Mac."
+          }
         }
       }
     },
@@ -10751,6 +11753,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "收听时，macOS 会在菜单栏右上角显示橙色麦克风指示灯。这是正常的系统行为。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Während des Zuhörens zeigt macOS oben rechts in der Menüleiste den orangefarbenen Mikrofonpunkt. Das ist normales Systemverhalten."
           }
         }
       }
@@ -10816,6 +11824,12 @@
             "state": "translated",
             "value": "工作流已停止。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflow angehalten."
+          }
         }
       }
     },
@@ -10879,6 +11893,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "您的答案…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Antwort…"
           }
         }
       }
@@ -10944,6 +11964,12 @@
             "state": "translated",
             "value": "将写入：\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json（先创建备份）"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreibt:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (vorher wird ein Backup erstellt)"
+          }
         }
       }
     },
@@ -11007,6 +12033,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "安装"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installieren"
           }
         }
       }
@@ -11072,6 +12104,12 @@
             "state": "translated",
             "value": "是否将 Coucou Hooks 安装到 ~/.claude？"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-Hooks in ~/.claude installieren?"
+          }
         }
       }
     },
@@ -11132,6 +12170,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Anthropic API"
@@ -11200,6 +12244,12 @@
             "state": "translated",
             "value": "API 密钥 (sk-ant-…)"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-Schlüssel (sk-ant-…)"
+          }
         }
       }
     },
@@ -11263,6 +12313,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API 密钥 (AI Studio)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-Schlüssel (AI Studio)"
           }
         }
       }
@@ -11328,6 +12384,12 @@
             "state": "translated",
             "value": "API 密钥 (sk-…)"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-Schlüssel (sk-…)"
+          }
         }
       }
     },
@@ -11391,6 +12453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "连接"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinden"
           }
         }
       }
@@ -11456,6 +12524,12 @@
             "state": "translated",
             "value": "正在连接…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung wird hergestellt…"
+          }
         }
       }
     },
@@ -11520,6 +12594,12 @@
             "state": "translated",
             "value": "断开连接"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trennen"
+          }
         }
       }
     },
@@ -11580,6 +12660,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google AI"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Google AI"
@@ -11648,6 +12734,12 @@
             "state": "translated",
             "value": "连接到本地模型服务器。无需 API 密钥。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit einem lokalen Modellserver verbinden. Kein API-Schlüssel erforderlich."
+          }
         }
       }
     },
@@ -11711,6 +12803,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "本地模型"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokale Modelle"
           }
         }
       }
@@ -11776,6 +12874,12 @@
             "state": "translated",
             "value": "模型"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modell"
+          }
         }
       }
     },
@@ -11839,6 +12943,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自定义…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benutzerdefiniert…"
           }
         }
       }
@@ -11904,6 +13014,12 @@
             "state": "translated",
             "value": "模型 ID（如 claude-sonnet-4-6）"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modell-ID (z. B. claude-sonnet-4-6)"
+          }
         }
       }
     },
@@ -11968,6 +13084,12 @@
             "state": "translated",
             "value": "由聊天使用。列表来自你的 Anthropic 账户。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird im Chat verwendet. Die Liste stammt aus deinem Anthropic-Konto."
+          }
         }
       }
     },
@@ -12028,6 +13150,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI"
@@ -12096,6 +13224,12 @@
             "state": "translated",
             "value": "用于在聊天中使用 Google Gemini 或 OpenAI。密钥存储在 Keychain 中。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google Gemini oder OpenAI im Chat verwenden. Schlüssel werden im Schlüsselbund gespeichert."
+          }
         }
       }
     },
@@ -12159,6 +13293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "聊天 — 其他服务商"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat — andere Anbieter"
           }
         }
       }
@@ -12225,6 +13365,12 @@
             "state": "translated",
             "value": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entdecke alle Funktionen ohne API-Schlüssel oder Claude Code. Es wird nichts auf die Festplatte geschrieben."
+          }
         }
       }
     },
@@ -12289,6 +13435,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "演示"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
           }
         }
       }
@@ -12355,6 +13507,12 @@
             "state": "translated",
             "value": "试用演示模式"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demomodus ausprobieren"
+          }
         }
       }
     },
@@ -12420,6 +13578,12 @@
             "state": "translated",
             "value": "停止演示"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo beenden"
+          }
         }
       }
     },
@@ -12483,6 +13647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 已就绪。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ist bereit."
           }
         }
       }
@@ -12548,6 +13718,12 @@
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Antigravity 以激活"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installiert — starte Antigravity neu, um sie zu aktivieren"
+          }
         }
       }
     },
@@ -12611,6 +13787,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Antigravity 钩子"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antigravity-Hooks"
           }
         }
       }
@@ -12676,6 +13858,12 @@
             "state": "translated",
             "value": "Claude Code 钩子"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-Hooks"
+          }
         }
       }
     },
@@ -12739,6 +13927,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已安装 — 打开 Codex 并运行 /hooks，或在应用设置中打开 Hooks 以信任它们"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installiert — öffne Codex und führe /hooks aus oder öffne Hooks in den App-Einstellungen, um sie zu genehmigen"
           }
         }
       }
@@ -12804,6 +13998,12 @@
             "state": "translated",
             "value": "Codex 钩子"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex-Hooks"
+          }
         }
       }
     },
@@ -12867,6 +14067,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "确认并写入"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigen und schreiben"
           }
         }
       }
@@ -12932,6 +14138,12 @@
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Copilot CLI 以激活"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installiert — starte Copilot CLI neu, um sie zu aktivieren"
+          }
         }
       }
     },
@@ -12995,6 +14207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "GitHub Copilot CLI 钩子"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub Copilot CLI-Hooks"
           }
         }
       }
@@ -13060,6 +14278,12 @@
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Gemini CLI 以激活"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installiert — starte Gemini CLI neu, um sie zu aktivieren"
+          }
         }
       }
     },
@@ -13123,6 +14347,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gemini CLI 钩子"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini CLI-Hooks"
           }
         }
       }
@@ -13188,6 +14418,12 @@
             "state": "translated",
             "value": "安装 Hooks"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installieren"
+          }
         }
       }
     },
@@ -13251,6 +14487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已安装 — 重启 Muse Code 以激活"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks installiert — starte Muse Code neu, um sie zu aktivieren"
           }
         }
       }
@@ -13316,6 +14558,12 @@
             "state": "translated",
             "value": "Muse Code 钩子"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muse Code-Hooks"
+          }
         }
       }
     },
@@ -13379,6 +14627,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks 已过期 — 请更新以便从刘海处回答 Claude 的问题"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks veraltet — aktualisiere sie, um Claudes Fragen aus der Notch zu beantworten"
           }
         }
       }
@@ -13444,6 +14698,12 @@
             "state": "translated",
             "value": "确认前请检查以下 JSON。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe vor dem Bestätigen das JSON unten."
+          }
         }
       }
     },
@@ -13507,6 +14767,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "卸载"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deinstallieren"
           }
         }
       }
@@ -13572,6 +14838,12 @@
             "state": "translated",
             "value": "更新 Hooks"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks aktualisieren"
+          }
         }
       }
     },
@@ -13635,6 +14907,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "具有 repo 权限的经典令牌，或具有 Pull requests、Commit statuses 和 Actions 读取权限的细粒度令牌。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klassisches Token mit repo-Berechtigung oder ein fein abgestuftes Token mit Lesezugriff auf Pull Requests, Commit-Status und Actions."
           }
         }
       }
@@ -13700,6 +14978,12 @@
             "state": "translated",
             "value": "项目"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekte"
+          }
         }
       }
     },
@@ -13763,6 +15047,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存集成"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrationen speichern"
           }
         }
       }
@@ -13828,6 +15118,12 @@
             "state": "translated",
             "value": "工作流"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflows"
+          }
         }
       }
     },
@@ -13891,6 +15187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "从 iPhone 发送的指令使用聊天中当前打开的模型。系统提示和对话历史适用。Coucou 未运行时发送的指令将排队，并在下次启动时执行。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine vom iPhone gesendete Anweisung verwendet das im Chat geöffnete Modell. System-Prompt und Gesprächsverlauf gelten auch hier. Wird eine Anweisung gesendet, während Coucou nicht läuft, wird sie beim nächsten Start ausgeführt."
           }
         }
       }
@@ -13956,6 +15258,12 @@
             "state": "translated",
             "value": "允许我的 iPhone 向 Claude Code 发送指令"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mein iPhone darf Anweisungen an Claude Code senden"
+          }
         }
       }
     },
@@ -14019,6 +15327,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "通过 Coucou 中继传至 Apple 推送服务。仅发送 Agent 的名称和状态：不含项目名称、命令或路径。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird über den Coucou-Relay an Apples Push-Dienst gesendet. Nur Name und Status des Agenten werden übertragen: keine Projektnamen, Befehle oder Pfade."
           }
         }
       }
@@ -14084,6 +15398,12 @@
             "state": "translated",
             "value": "Mac 锁定时将 Mochi 移至我 iPhone 的灵动岛"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi bei gesperrtem Mac in die Dynamic Island meines iPhone verschieben"
+          }
         }
       }
     },
@@ -14147,6 +15467,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "将你的会话发送到私有 iCloud，供 Coucou iPhone 应用使用。项目名称、命令和问题使用你的 iCloud 密钥加密。关闭后将从 iCloud 中删除。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sendet deine Sitzungen an deine private iCloud für Coucou auf dem iPhone. Projektnamen, Befehle und Fragen werden mit deinen iCloud-Schlüsseln verschlüsselt. Beim Deaktivieren werden die Daten aus iCloud entfernt."
           }
         }
       }
@@ -14212,6 +15538,12 @@
             "state": "translated",
             "value": "在我的 iPhone 上显示我的 Agent 会话"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meine Agentensitzungen auf meinem iPhone anzeigen"
+          }
         }
       }
     },
@@ -14275,6 +15607,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "附件 %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mit %@"
           }
         }
       }
@@ -14340,6 +15678,12 @@
             "state": "translated",
             "value": "分钟无动作"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Min. ohne Bewegung"
+          }
         }
       }
     },
@@ -14403,6 +15747,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "需要权限"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "benötigt eine Berechtigung"
           }
         }
       }
@@ -14468,6 +15818,12 @@
             "state": "translated",
             "value": "5 小时"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 Stunden"
+          }
         }
       }
     },
@@ -14531,6 +15887,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude 计划"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude-Tarif"
           }
         }
       }
@@ -14596,6 +15958,12 @@
             "state": "translated",
             "value": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt deine Claude-Tarifnutzung (5-Stunden- und Wochenlimits) im Notch-Kopfbereich. Coucou ergänzt einen Statuszeilen-Relay in ~/.claude/settings.json. Eine bestehende Statuszeile funktioniert wie bisher. Nur für Pro- und Max-Tarife."
+          }
         }
       }
     },
@@ -14659,6 +16027,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 小时前"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vor %lld Std."
           }
         }
       }
@@ -14724,6 +16098,12 @@
             "state": "translated",
             "value": "刚刚"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gerade eben"
+          }
         }
       }
     },
@@ -14787,6 +16167,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 分钟前"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vor %lld Min."
           }
         }
       }
@@ -14852,6 +16238,12 @@
             "state": "translated",
             "value": "安装中继"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay installieren"
+          }
         }
       }
     },
@@ -14915,6 +16307,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "中继：已安装"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay: installiert"
           }
         }
       }
@@ -14980,6 +16378,12 @@
             "state": "translated",
             "value": "中继：未安装"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay: nicht installiert"
+          }
         }
       }
     },
@@ -15043,6 +16447,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "卸载中继"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay deinstallieren"
           }
         }
       }
@@ -15108,6 +16518,12 @@
             "state": "translated",
             "value": "%lld 小时 %lld 分后"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in %lld Std. %lld"
+          }
         }
       }
     },
@@ -15171,6 +16587,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 分钟后"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in %lld Min."
           }
         }
       }
@@ -15236,6 +16658,12 @@
             "state": "translated",
             "value": "重置中…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird zurückgesetzt…"
+          }
         }
       }
     },
@@ -15299,6 +16727,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在刘海中显示"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In der Notch anzeigen"
           }
         }
       }
@@ -15364,6 +16798,12 @@
             "state": "translated",
             "value": "计划用量"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarifnutzung"
+          }
         }
       }
     },
@@ -15427,6 +16867,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "等待 Claude Code 回复"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf eine Antwort von Claude Code"
           }
         }
       }
@@ -15492,6 +16938,12 @@
             "state": "translated",
             "value": "一周"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Woche"
+          }
         }
       }
     },
@@ -15555,6 +17007,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件已安装 — 重启 Amp 以激活"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin installiert — starte Amp neu, um es zu aktivieren"
           }
         }
       }
@@ -15620,6 +17078,12 @@
             "state": "translated",
             "value": "Amp 插件"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp-Plugin"
+          }
         }
       }
     },
@@ -15683,6 +17147,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在刘海中显示审批请求"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berechtigungsanfragen in der Notch anzeigen"
           }
         }
       }
@@ -15748,6 +17218,12 @@
             "state": "translated",
             "value": "审批请求由 Hermes 处理（终端或网关）。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berechtigungsanfragen werden von Hermes bearbeitet (Terminal oder Gateway)."
+          }
         }
       }
     },
@@ -15811,6 +17287,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "审批请求显示在刘海中。若 Coucou 未运行，Hermes 将回退到其自己的提示。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berechtigungsanfragen erscheinen in der Notch. Wenn Coucou nicht läuft, verwendet Hermes seine eigene Abfrage."
           }
         }
       }
@@ -15876,6 +17358,12 @@
             "state": "translated",
             "value": "✓ Hermes 插件已安装至 ~/.hermes/plugins/coucou/"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes-Plugin in ~/.hermes/plugins/coucou/ installiert"
+          }
         }
       }
     },
@@ -15936,6 +17424,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Hermes Agent"
@@ -16004,6 +17498,12 @@
             "state": "translated",
             "value": "安装插件"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin installieren"
+          }
         }
       }
     },
@@ -16067,6 +17567,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "插件已安装 — 重启 OpenCode 以激活"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin installiert — starte OpenCode neu, um es zu aktivieren"
           }
         }
       }
@@ -16132,6 +17638,12 @@
             "state": "translated",
             "value": "OpenCode 插件"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode-Plugin"
+          }
         }
       }
     },
@@ -16195,6 +17707,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "确认前请检查以下内容。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe vor dem Bestätigen den Inhalt unten."
           }
         }
       }
@@ -16260,6 +17778,12 @@
             "state": "translated",
             "value": "按此键 → 岛打开"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "drücken → Insel öffnet sich"
+          }
         }
       }
     },
@@ -16323,6 +17847,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "编程"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programmieren"
           }
         }
       }
@@ -16388,6 +17918,12 @@
             "state": "translated",
             "value": "条命令"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befehle"
+          }
         }
       }
     },
@@ -16451,6 +17987,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "个文件"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datei"
           }
         }
       }
@@ -16516,6 +18058,12 @@
             "state": "translated",
             "value": "个文件"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien"
+          }
         }
       }
     },
@@ -16579,6 +18127,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已批准"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genehmigt"
           }
         }
       }
@@ -16644,6 +18198,12 @@
             "state": "translated",
             "value": "最忙的一天"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivster Tag"
+          }
         }
       }
     },
@@ -16707,6 +18267,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "命令"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BEFEHLE"
           }
         }
       }
@@ -16772,6 +18338,12 @@
             "state": "translated",
             "value": "已拒绝"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgelehnt"
+          }
         }
       }
     },
@@ -16835,6 +18407,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DATEIEN"
           }
         }
       }
@@ -16900,6 +18478,12 @@
             "state": "translated",
             "value": "最长会话"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Längste Sitzung"
+          }
         }
       }
     },
@@ -16963,6 +18547,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "会话"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SITZUNGEN"
           }
         }
       }
@@ -17028,6 +18618,12 @@
             "state": "translated",
             "value": "编程时长"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PROGRAMMIERZEIT"
+          }
         }
       }
     },
@@ -17091,6 +18687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "最活跃 Agent"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Häufigster Agent"
           }
         }
       }
@@ -17156,6 +18758,12 @@
             "state": "translated",
             "value": "最活跃项目"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Häufigstes Projekt"
+          }
         }
       }
     },
@@ -17219,6 +18827,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上周无活动"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Aktivität letzte Woche"
           }
         }
       }
@@ -17284,6 +18898,12 @@
             "state": "translated",
             "value": "个会话"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sitzung"
+          }
         }
       }
     },
@@ -17347,6 +18967,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "个会话"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sitzungen"
           }
         }
       }
@@ -17412,6 +19038,12 @@
             "state": "translated",
             "value": "分享图片"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild teilen"
+          }
         }
       }
     },
@@ -17475,6 +19107,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "每周回顾"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wochenrückblick"
           }
         }
       }
@@ -17540,6 +19178,12 @@
             "state": "translated",
             "value": "秒无活动"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "s inaktiv"
+          }
         }
       }
     },
@@ -17603,6 +19247,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauptwerkzeug"
           }
         }
       }
@@ -17668,6 +19318,12 @@
             "state": "translated",
             "value": "已用 %lld/4 个插槽"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/4 Plätze belegt"
+          }
         }
       }
     },
@@ -17731,6 +19387,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置 — Coucou"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen — Coucou"
           }
         }
       }
@@ -17796,6 +19458,12 @@
             "state": "translated",
             "value": "附加前端窗口"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorderstes Fenster anhängen"
+          }
         }
       }
     },
@@ -17859,6 +19527,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "重复"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doppelt"
           }
         }
       }
@@ -17924,6 +19598,12 @@
             "state": "translated",
             "value": "系统冲突"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systemkonflikt"
+          }
         }
       }
     },
@@ -17987,6 +19667,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mochi 桌面开/关"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi auf dem Desktop ein/aus"
           }
         }
       }
@@ -18052,6 +19738,12 @@
             "state": "translated",
             "value": "跳转到警告"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zur Meldung wechseln"
+          }
         }
       }
     },
@@ -18115,6 +19807,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "全局快捷键 — 在任何应用中有效"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Globale Tastenkombinationen — in jeder App aktiv"
           }
         }
       }
@@ -18180,6 +19878,12 @@
             "state": "translated",
             "value": "岛快捷键 — 岛获得焦点时有效"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch-Tastenkombinationen — aktiv, wenn die Notch im Vordergrund ist"
+          }
         }
       }
     },
@@ -18243,6 +19947,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "按编号切换标签"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach Nummer zum Tab wechseln"
           }
         }
       }
@@ -18308,6 +20018,12 @@
             "state": "translated",
             "value": "关闭岛（如未固定）"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch schließen (falls nicht angeheftet)"
+          }
         }
       }
     },
@@ -18371,6 +20087,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开/关闭当前差异"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuellen Diff öffnen / schließen"
           }
         }
       }
@@ -18436,6 +20158,12 @@
             "state": "translated",
             "value": "在列表项中导航"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listeneinträge durchlaufen"
+          }
         }
       }
     },
@@ -18499,6 +20227,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "新建对话"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neues Gespräch"
           }
         }
       }
@@ -18564,6 +20298,12 @@
             "state": "translated",
             "value": "下一个/上一个标签"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächster / vorheriger Tab"
+          }
         }
       }
     },
@@ -18627,6 +20367,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开选定项"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgewählten Eintrag öffnen"
           }
         }
       }
@@ -18692,6 +20438,12 @@
             "state": "translated",
             "value": "固定/取消固定岛"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch anheften / lösen"
+          }
         }
       }
     },
@@ -18755,6 +20507,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送聊天消息"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chatnachricht senden"
           }
         }
       }
@@ -18820,6 +20578,12 @@
             "state": "translated",
             "value": "打开设置"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen öffnen"
+          }
         }
       }
     },
@@ -18883,6 +20647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "跳转到终端"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Terminal wechseln"
           }
         }
       }
@@ -18948,6 +20718,12 @@
             "state": "translated",
             "value": "静音/取消静音"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klänge stummschalten / einschalten"
+          }
         }
       }
     },
@@ -19011,6 +20787,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一个标签"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächster Tab"
           }
         }
       }
@@ -19076,6 +20858,12 @@
             "state": "translated",
             "value": "打开聊天"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat öffnen"
+          }
         }
       }
     },
@@ -19139,6 +20927,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开/关闭岛"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch öffnen / schließen"
           }
         }
       }
@@ -19204,6 +20998,12 @@
             "state": "translated",
             "value": "上一个标签"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorheriger Tab"
+          }
         }
       }
     },
@@ -19267,6 +21067,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部重置为默认值"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles auf Standard zurücksetzen"
           }
         }
       }
@@ -19332,6 +21138,12 @@
             "state": "translated",
             "value": "打开/关闭衣橱"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garderobe öffnen / schließen"
+          }
         }
       }
     },
@@ -19395,6 +21207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Antigravity Hooks 已安装至 ~/.gemini/config/hooks.json"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Antigravity-Hooks in ~/.gemini/config/hooks.json installiert"
           }
         }
       }
@@ -19460,6 +21278,12 @@
             "state": "translated",
             "value": "✓ Antigravity Hooks 已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Antigravity-Hooks entfernt."
+          }
         }
       }
     },
@@ -19523,6 +21347,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Amp 插件已安装至 ~/.config/amp/plugins/coucou.ts"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Amp-Plugin in ~/.config/amp/plugins/coucou.ts installiert"
           }
         }
       }
@@ -19588,6 +21418,12 @@
             "state": "translated",
             "value": "✓ Amp 插件已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Amp-Plugin entfernt."
+          }
         }
       }
     },
@@ -19651,6 +21487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Codex Hooks 已安装 — 在 Codex 中运行 /hooks，或在应用设置中打开 Hooks 以信任它们。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Codex-Hooks installiert — führe /hooks in Codex aus oder öffne Hooks in den App-Einstellungen, um sie zu genehmigen."
           }
         }
       }
@@ -19716,6 +21558,12 @@
             "state": "translated",
             "value": "✓ Codex Hooks 已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Codex-Hooks entfernt."
+          }
         }
       }
     },
@@ -19779,6 +21627,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Copilot CLI Hooks 已安装至 ~/.copilot/hooks/coucou.json"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Copilot CLI-Hooks in ~/.copilot/hooks/coucou.json installiert"
           }
         }
       }
@@ -19844,6 +21698,12 @@
             "state": "translated",
             "value": "✓ Copilot CLI Hooks 已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Copilot CLI-Hooks entfernt."
+          }
         }
       }
     },
@@ -19907,6 +21767,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Gemini CLI Hooks 已安装至 ~/.gemini/settings.json"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Gemini CLI-Hooks in ~/.gemini/settings.json installiert"
           }
         }
       }
@@ -19972,6 +21838,12 @@
             "state": "translated",
             "value": "✓ Gemini CLI Hooks 已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Gemini CLI-Hooks entfernt."
+          }
         }
       }
     },
@@ -20035,6 +21907,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Google 密钥已保存。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Google-Schlüssel gespeichert."
           }
         }
       }
@@ -20100,6 +21978,12 @@
             "state": "translated",
             "value": "✓ Hermes 插件已安装"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hermes-Plugin installiert"
+          }
         }
       }
     },
@@ -20163,6 +22047,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hermes 插件已移除。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes-Plugin entfernt"
           }
         }
       }
@@ -20228,6 +22118,12 @@
             "state": "translated",
             "value": "✓ Hooks 已安装 — 重启 VS Code 以激活。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooks installiert — starte VS Code neu, um sie zu aktivieren."
+          }
         }
       }
     },
@@ -20291,6 +22187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks 已安装至 ~/.claude/settings.json"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooks in ~/.claude/settings.json installiert"
           }
         }
       }
@@ -20356,6 +22258,12 @@
             "state": "translated",
             "value": "✓ Hooks 已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooks entfernt."
+          }
         }
       }
     },
@@ -20420,6 +22328,12 @@
             "state": "translated",
             "value": "✓ 集成密钥已保存。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Integrationsschlüssel gespeichert."
+          }
         }
       }
     },
@@ -20483,6 +22397,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ 密钥已保存。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Schlüssel gespeichert."
           }
         }
       }
@@ -20668,6 +22588,24 @@
               }
             }
           }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Verbunden · %lld Modell"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Verbunden · %lld Modelle"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -20731,6 +22669,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "LM Studio 已断开连接。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung zu LM Studio getrennt."
           }
         }
       }
@@ -20796,6 +22740,12 @@
             "state": "translated",
             "value": "暂无模型 — 请先在 %@ 中下载一个。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Modelle — lade zuerst eines in %@ herunter."
+          }
         }
       }
     },
@@ -20859,6 +22809,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ollama 已断开连接。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung zu Ollama getrennt."
           }
         }
       }
@@ -20924,6 +22880,12 @@
             "state": "translated",
             "value": "无法访问 %1$@（%2$@）。它正在运行吗？"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ unter %2$@ nicht erreichbar. Läuft der Server?"
+          }
         }
       }
     },
@@ -20987,6 +22949,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "仅支持 http:// 和 https:// URL。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur http://- und https://-URLs werden akzeptiert."
           }
         }
       }
@@ -21052,6 +23020,12 @@
             "state": "translated",
             "value": "✓ Muse Code Hooks 已安装至 ~/.config/muse/settings.json"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Muse Code-Hooks in ~/.config/muse/settings.json installiert"
+          }
         }
       }
     },
@@ -21115,6 +23089,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Muse Code Hooks 已移除。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Muse Code-Hooks entfernt."
           }
         }
       }
@@ -21180,6 +23160,12 @@
             "state": "translated",
             "value": "✓ OpenAI 密钥已保存。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenAI-Schlüssel gespeichert."
+          }
         }
       }
     },
@@ -21243,6 +23229,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ OpenCode 插件已安装至 ~/.config/opencode/plugins/coucou.js"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenCode-Plugin in ~/.config/opencode/plugins/coucou.js installiert"
           }
         }
       }
@@ -21308,6 +23300,12 @@
             "state": "translated",
             "value": "✓ OpenCode 插件已移除。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ OpenCode-Plugin entfernt."
+          }
         }
       }
     },
@@ -21371,6 +23369,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "❌ 请选择 .claude 文件夹（隐藏，在你的 Home 目录中）。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Wähle den Ordner .claude (versteckt in deinem Benutzerordner)."
           }
         }
       }
@@ -21436,6 +23440,12 @@
             "state": "translated",
             "value": "✓ 状态栏已安装。"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Statuszeile installiert."
+          }
         }
       }
     },
@@ -21499,6 +23509,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ 状态栏已移除。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Statuszeile entfernt."
           }
         }
       }
@@ -21564,6 +23580,12 @@
             "state": "translated",
             "value": "代理"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
+          }
         }
       }
     },
@@ -21627,6 +23649,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "编辑"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bearbeitet"
           }
         }
       }
@@ -21692,6 +23720,12 @@
             "state": "translated",
             "value": "获取"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruft ab"
+          }
         }
       }
     },
@@ -21756,6 +23790,12 @@
             "state": "translated",
             "value": "列出"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listet auf"
+          }
         }
       }
     },
@@ -21816,6 +23856,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notebook"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Notebook"
@@ -21884,6 +23930,12 @@
             "state": "translated",
             "value": "读取"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liest"
+          }
         }
       }
     },
@@ -21947,6 +23999,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "执行"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Führt aus"
           }
         }
       }
@@ -22012,6 +24070,12 @@
             "state": "translated",
             "value": "搜索"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sucht"
+          }
         }
       }
     },
@@ -22075,6 +24139,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "任务"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgaben"
           }
         }
       }
@@ -22140,6 +24210,12 @@
             "state": "translated",
             "value": "测试"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testet"
+          }
         }
       }
     },
@@ -22203,6 +24279,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "搜索网络"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durchsucht das Web"
           }
         }
       }
@@ -22268,6 +24350,12 @@
             "state": "translated",
             "value": "写入"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreibt"
+          }
         }
       }
     },
@@ -22332,6 +24420,12 @@
             "state": "translated",
             "value": "附带"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mit"
+          }
         }
       }
     },
@@ -22395,6 +24489,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "« OK Coucou » — 语音唤醒词"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — Aktivierungswort"
           }
         }
       }
@@ -22461,6 +24561,12 @@
             "state": "translated",
             "value": "与 Coucou 对话"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Coucou sprechen"
+          }
         }
       }
     },
@@ -22524,6 +24630,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "4 个激活 — 删除哪个？"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 aktiv — welche entfernen?"
           }
         }
       }
@@ -22589,6 +24701,12 @@
             "state": "translated",
             "value": "未找到：%@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gefunden: %@"
+          }
         }
       }
     },
@@ -22653,6 +24771,12 @@
             "state": "translated",
             "value": "正在打开 Apple Music…"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Music wird geöffnet…"
+          }
         }
       }
     },
@@ -22716,6 +24840,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一首"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächster Titel"
           }
         }
       }
@@ -22782,6 +24912,12 @@
             "state": "translated",
             "value": "没有音乐应用"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Musik-App geöffnet"
+          }
         }
       }
     },
@@ -22845,6 +24981,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已暂停"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausiert"
           }
         }
       }
@@ -22910,6 +25052,12 @@
             "state": "translated",
             "value": "正在播放"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergabe"
+          }
         }
       }
     },
@@ -22973,6 +25121,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一首"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorheriger Titel"
           }
         }
       }
@@ -23038,6 +25192,12 @@
             "state": "translated",
             "value": "调低音量"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leiser"
+          }
         }
       }
     },
@@ -23101,6 +25261,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "音量：%d%%"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lautstärke: %d%%"
           }
         }
       }
@@ -23166,6 +25332,12 @@
             "state": "translated",
             "value": "调高音量"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lauter"
+          }
         }
       }
     },
@@ -23229,6 +25401,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已添加 %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hinzugefügt"
           }
         }
       }
@@ -23294,6 +25472,12 @@
             "state": "translated",
             "value": "已激活"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereits aktiv"
+          }
         }
       }
     },
@@ -23357,6 +25541,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "主要：%@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauptwerkzeug: %@"
           }
         }
       }
@@ -23423,6 +25613,12 @@
             "state": "translated",
             "value": "已添加 %@ — 钩子未安装"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hinzugefügt — Hooks nicht installiert"
+          }
         }
       }
     },
@@ -23486,6 +25682,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未激活"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht aktiv"
           }
         }
       }
@@ -23551,6 +25753,12 @@
             "state": "translated",
             "value": "仅：%@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur: %@"
+          }
         }
       }
     },
@@ -23615,6 +25823,12 @@
             "state": "translated",
             "value": "已移除 %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ entfernt"
+          }
         }
       }
     },
@@ -23675,6 +25889,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ → %@"
@@ -23743,6 +25963,12 @@
             "state": "translated",
             "value": "好的，保持原样"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK, bleibt unverändert"
+          }
         }
       }
     },
@@ -23807,6 +26033,12 @@
             "state": "translated",
             "value": "无法识别指令"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befehl nicht erkannt"
+          }
         }
       }
     },
@@ -23870,6 +26102,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法理解：« %@ »"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht erkannt: « %@ »"
           }
         }
       }
