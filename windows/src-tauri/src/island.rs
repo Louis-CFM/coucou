@@ -433,6 +433,16 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let _ = win.emit("cursor", CursorPayload { x, y });
             }
+
+            // Parked: the window is (or is about to be) the wake strip, which must
+            // take the mouse. The tick that was running when the island collapsed
+            // may just have made it click-through, and setters from this thread are
+            // queued to the event loop — so clear the flag from here, behind it.
+            // Otherwise the hidden island can only be woken by Claude Code events.
+            if let Some(win) = window(&app) {
+                let _ = win.set_ignore_cursor_events(false);
+            }
+            gate.forget_ignore_state();
         }
     });
 }
