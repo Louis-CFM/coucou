@@ -6,6 +6,7 @@ swiftc -o /tmp/voice-entity-tests \
   tests/PillFixture.swift \
   NotchBuddy/Sources/App/Voice/VoiceIntent.swift \
   NotchBuddy/Sources/App/Voice/IntentParser.swift \
+  NotchBuddy/Sources/App/Voice/VoiceQuery.swift \
   NotchBuddy/Sources/App/Voice/EntityResolver.swift \
   tests/EntityResolverTests.swift
 /tmp/voice-entity-tests
