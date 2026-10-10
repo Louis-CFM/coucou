@@ -19,6 +19,16 @@ import { N_, t } from "../i18n/i18n";
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
 
+/** The pill's name, for an alert on the phone. */
+function pillName(agentId: string): string {
+  return State.tasks.find((x) => x.id === agentId)?.name ?? "Claude";
+}
+
+/** An alert for the iPhone (ntfy). Rust sends it only when set up and the PC is idle. */
+function pushToPhone(_agentId: string, title: string, body: string, urgent: boolean) {
+  void Bridge.phonePush(title, body || title, urgent);
+}
+
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
 
@@ -398,6 +408,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (t) t.finalLine = finalText;
       }
       Sound.play("finish");
+      pushToPhone(agentId, t("{0} finished", { 0: pillName(agentId) }), finalText, false);
       // A card waiting for an answer is never covered by another alert.
       if (focused && !State.pendingApproval) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
@@ -428,6 +439,7 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");
+      pushToPhone(agentId, t("{0} hit an error", { 0: pillName(agentId) }), "", true);
       if (focused && !State.pendingApproval) surface("error", true);
       else State.setPillBadge(agentId, "error");
       break;
@@ -496,6 +508,7 @@ function handleHook(island: Island, payload: HookPayload) {
       if (requestId) void Bridge.approvalAck(requestId);
       State.updateTask(agentId, view);
       Sound.play(view);
+      pushToPhone(agentId, t("{0} needs your answer", { 0: pillName(agentId) }), approvalTarget(tool, input), true);
       // Any agent's card (Claude Code, Codex, Copilot CLI, Muse Code) comes up
       // the same way: beginApproval brought its pill to the front.
       island.alert(view);

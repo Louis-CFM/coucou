@@ -36,6 +36,8 @@ mod media_win;
 mod audio;
 #[cfg(windows)]
 mod sysevents;
+#[cfg(windows)]
+mod phone;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -121,6 +123,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     spotify::sync(&app, &settings.active_integrations);
     #[cfg(windows)]
     sysevents::apply(&settings.plus);
+    #[cfg(windows)]
+    phone::apply(&settings.plus);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -756,6 +760,12 @@ pub fn run() {
             sysevents::clipboard_clear,
             #[cfg(windows)]
             sysevents::clipboard_copy,
+            #[cfg(windows)]
+            phone::phone_send,
+            #[cfg(windows)]
+            phone::phone_status,
+            #[cfg(windows)]
+            phone::phone_push,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -795,6 +805,8 @@ pub fn run() {
             spotify::sync(&handle, &loaded.active_integrations);
             #[cfg(windows)]
             sysevents::start(&handle, &loaded.plus);
+            #[cfg(windows)]
+            phone::start(&handle, &loaded.plus);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

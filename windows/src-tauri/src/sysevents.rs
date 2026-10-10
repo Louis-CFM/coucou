@@ -315,7 +315,8 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
             LRESULT(1)
         }
         WM_CLIPBOARDUPDATE => {
-            if PREFS.lock().unwrap().clipboard_history {
+            let p = PREFS.lock().unwrap().clone();
+            if p.clipboard_history || (p.icloud_bridge && p.share_copies_to_iphone) {
                 read_clipboard(hwnd);
             }
             LRESULT(0)
@@ -422,7 +423,10 @@ fn read_clipboard(hwnd: HWND) {
         let text = if excluded { None } else { GetClipboardData(CF_UNICODETEXT.0 as u32).ok().and_then(|h| read_wide(h)) };
         let _ = CloseClipboard();
         if let Some(text) = text {
-            remember(text);
+            crate::phone::laptop_copied(&text);
+            if PREFS.lock().unwrap().clipboard_history {
+                remember(text);
+            }
         }
     }
 }

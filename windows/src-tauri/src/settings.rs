@@ -86,11 +86,22 @@ pub struct PlusPrefs {
     pub clipboard_history: bool,
     /// The compact island never hides on its own.
     pub always_visible: bool,
+    /// Links and text from the iPhone through iCloud Drive (phone.rs).
+    pub icloud_bridge: bool,
+    /// What is copied here goes to the iPhone too (iCloud Drive).
+    pub share_copies_to_iphone: bool,
+    /// ntfy alerts only when nobody has touched the PC for a minute.
+    pub push_only_when_away: bool,
 }
 
 impl Default for PlusPrefs {
     fn default() -> Self {
-        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true, always_visible: true }
+        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true,
+            always_visible: true,
+            icloud_bridge: false,
+            share_copies_to_iphone: false,
+            push_only_when_away: true,
+        }
     }
 }
 
@@ -425,7 +436,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false }
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false }
 }"##;
 
     fn custom() -> Value {

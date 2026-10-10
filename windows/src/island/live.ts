@@ -8,7 +8,7 @@
 // over its header. Everything moves with transforms and opacity, so the
 // compositor does the work and nothing is laid out again per frame.
 
-import { onEvent } from "../core/bridge";
+import { Bridge, onEvent } from "../core/bridge";
 import { State } from "../core/state";
 import { ICONS } from "../views/icons";
 import { h, svg, clear } from "../views/dom";
@@ -18,7 +18,7 @@ import { N_, t } from "../i18n/i18n";
 export const LIVE_TEXTS = [N_("Charging"), N_("On battery"), N_("Low battery")];
 
 export interface LiveEvent {
-  kind: "volume" | "brightness" | "battery";
+  kind: "volume" | "brightness" | "battery" | "phone";
   /** 0…1. */
   level: number | null;
   muted: boolean;
@@ -27,7 +27,7 @@ export interface LiveEvent {
 }
 
 /** How long each kind stays, ms. */
-const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600 };
+const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000 };
 
 /** The compact island's width while a live activity shows. */
 export const LIVE_W = 336;
@@ -72,6 +72,8 @@ export function registerLiveHandlers(host: LiveHost) {
 
 function iconFor(e: LiveEvent): { path: string; stroke: number } {
   switch (e.kind) {
+    case "phone":
+      return { path: ICONS.phone, stroke: 2 };
     case "brightness":
       return { path: ICONS.sun, stroke: 2 };
     case "battery":
@@ -90,6 +92,7 @@ function colorFor(e: LiveEvent): string {
     return (e.level ?? 1) <= 0.2 ? "#F4505E" : "#F5F6F8";
   }
   if (e.kind === "brightness") return "#FACC15";
+  if (e.kind === "phone") return "#60A5FA";
   return e.muted ? "#6B7079" : "#F5F6F8";
 }
 
@@ -118,6 +121,16 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
         icon.append(svg(path, 15, stroke ? { stroke } : {}));
         icon.style.color = color;
       }
+      el.classList.toggle("phone", e.kind === "phone");
+      if (e.kind === "phone") {
+        // The iPhone's link or text, already on the clipboard; a link opens on click.
+        const url = /^https?:\/\/\S+$/i.test(e.text) ? e.text : null;
+        label.textContent = url ? url.replace(/^https?:\/\/(www\.)?/i, "") : e.text.replace(/\s+/g, " ");
+        el.title = url ? t("From iPhone — click to open") : t("From iPhone — copied");
+        el.onclick = url ? () => void Bridge.openUrl(url) : null;
+        return;
+      }
+      el.onclick = null;
       const level = e.muted ? 0 : Math.max(0, Math.min(1, e.level ?? 0));
       // scaleX, not width: the compositor animates it without a layout.
       fill.style.transform = `scaleX(${level})`;

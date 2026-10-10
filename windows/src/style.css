@@ -235,6 +235,21 @@ body {
 #live.has-text .live-label {
   min-width: 0;
 }
+/* A share from the iPhone: its text instead of a bar, and a link takes a click. */
+#live.phone .live-bar {
+  display: none;
+}
+#live.phone .live-label {
+  flex: 1 1 auto;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#live.phone.on {
+  pointer-events: auto;
+  cursor: pointer;
+}
 
 /* Compact 2×2 mini grid, to the right of the notch. */
 #mini-grid {

@@ -997,6 +997,68 @@ function islandExtrasSection(): HTMLElement {
 }
 
 /**
+ * Settings → iPhone (Windows): links both ways through iCloud Drive, and
+ * alerts on the phone through ntfy. No Mac and no Apple account here.
+ */
+function iphoneSection(): HTMLElement {
+  const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
+  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+    h("div", { class: "row" },
+      h("label", { text: t(label) }),
+      toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t(hint) }),
+  ];
+  const status = h("div", { class: "hint" });
+  void Bridge.phoneStatus().then((s) => {
+    status.textContent = !s ? "" : s.icloud
+      ? t("iCloud Drive found. Shared folder: {0}", { 0: s.folder })
+      : t("iCloud Drive not found. Install iCloud for Windows from the Microsoft Store and sign in.");
+  });
+  const steps = h("ol", { class: "hint", style: "margin:4px 0 8px 18px;padding:0;line-height:1.6" },
+    ...[
+      N_("On the iPhone, open Shortcuts → + → name it “Send to laptop”, and turn on “Show in Share Sheet”."),
+      N_("Add “Receive URLs and Text from Share Sheet”, then “Save File” → iCloud Drive/Coucou/to-laptop, with “Ask Where to Save” off."),
+      N_("For the other way, a second Shortcut: “Get File” from iCloud Drive/Coucou/to-iphone.txt, then “Copy to Clipboard” (or “Open URLs”)."),
+    ].map((s) => h("li", { text: t(s) })),
+  );
+
+  const topic = h("input", {
+    type: "password", placeholder: t("ntfy topic, e.g. mithun-coucou-7x9q2"), autocomplete: "off", spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+  const dotEl = statusDot(false);
+  void Bridge.secretPresent("ntfy-topic").then((ok) => { dotEl.style.background = ok ? "#22c55e" : "#f4505e"; });
+  const saveBtn = h("button", { text: t("Save") });
+  saveBtn.addEventListener("click", async () => {
+    const value = topic.value.trim();
+    await Bridge.secretSet("ntfy-topic", value);
+    topic.value = "";
+    dotEl.style.background = value ? "#22c55e" : "#f4505e";
+  });
+  const testBtn = h("button", { text: t("Send a test") });
+  const testNote = h("span", { class: "hint" });
+  testBtn.addEventListener("click", async () => {
+    const ok = await Bridge.phonePush("Coucou", t("Mochi says hi from your laptop 👋"), false, true);
+    testNote.textContent = ok ? t("Sent — check your iPhone.") : t("Not sent: check the topic.");
+  });
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("iPhone") })),
+    ...item("icloudBridge", N_("Links from iPhone"), N_("Share a link or text from the iPhone and it lands on the laptop's clipboard, with a card in the island. Goes through your own iCloud Drive.")),
+    status,
+    steps,
+    ...item("shareCopiesToIphone", N_("Copies to iPhone"), N_("What you copy on the laptop is saved for the iPhone's “Get from laptop” Shortcut. Off by default: it puts your copies in iCloud Drive.")),
+    h("div", { class: "row" }, h("label", { text: t("Phone alerts") }), topic, saveBtn, dotEl),
+    h("div", { class: "hint", text: t("Install the free ntfy app on the iPhone, subscribe to a long, hard-to-guess topic, and paste the same topic here. Anyone who knows the topic can read the alerts.") }),
+    h("div", { class: "row" }, testBtn, testNote),
+    ...item("pushOnlyWhenAway", N_("Only when I'm away"), N_("Alerts go to the phone only after a minute without keyboard or mouse: an agent finished, failed, or needs your answer.")),
+  );
+}
+
+/**
  * Settings → General → Language, as on the Mac: "System" follows the
  * system's language when Coucou has it (else English), or one of the ten.
  * Both windows and the tray switch in place, without a restart.
@@ -1397,7 +1459,7 @@ async function render() {
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
-    ...(HOST_OS === "windows" ? [islandExtrasSection()] : []),
+    ...(HOST_OS === "windows" ? [islandExtrasSection(), iphoneSection()] : []),
     shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",

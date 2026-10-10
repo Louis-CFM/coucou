@@ -165,10 +165,17 @@ export interface PlusPrefs {
   clipboardHistory: boolean;
   /** The compact island never hides on its own. */
   alwaysVisible: boolean;
+  /** Links and text from the iPhone through iCloud Drive. */
+  icloudBridge: boolean;
+  /** What is copied here goes to the iPhone too. */
+  shareCopiesToIphone: boolean;
+  /** Phone alerts only when the PC has been idle for a minute. */
+  pushOnlyWhenAway: boolean;
 }
 
 export const DEFAULT_PLUS: PlusPrefs = {
   volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: true,
+  icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true,
 };
 
 export const DEFAULT_SETTINGS: Settings = {

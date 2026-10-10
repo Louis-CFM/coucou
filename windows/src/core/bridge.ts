@@ -220,6 +220,11 @@ export const Bridge = {
   /** Brings Spotify forward or starts it; without it, its download page. */
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a player to launch for this music pill (Settings). */
+  /** iCloud Drive bridge and phone alerts (src-tauri/src/phone.rs). */
+  phoneStatus: () => call<{ icloud: boolean; folder: string } | null>("phone_status"),
+  phonePush: (title: string, body: string, urgent: boolean, force = false) =>
+    call<boolean>("phone_push", { title, body, urgent, force }),
+  phoneSend: (text: string) => call<boolean>("phone_send", { text }),
   spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),
 };
 
