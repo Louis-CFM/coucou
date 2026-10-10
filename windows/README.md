@@ -411,8 +411,29 @@ own window.
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
-  nothing to read it from yet.
+  is left out.
+- **Spotify** (Settings → Integrations) is read through Windows' own media
+  session (System Media Transport Controls), which Spotify reports its track
+  to: no account, no key and no network call. The pill, the card and Mochi's
+  dance are the Mac's. What differs: the cover is the one Spotify gives
+  Windows, read from the session; the session carries no Spotify link, so an
+  ad is shown under the name Spotify gives it instead of "Advertisement"; and
+  it has no volume, so the card's slider moves Spotify's level in the Windows
+  volume mixer rather than Spotify's own slider. Shuffle and repeat are left
+  out of the card: Spotify tells Windows it changed them and changes nothing.
+  Nothing is polled: one thread
+  sleeps until Windows says a session or Spotify's state changed, while the
+  pill is declared. Other players (a browser, another music app) are not
+  shown. For Linux see [Linux](#linux).
+- **A new song** can open the island on Spotify's card for three seconds and
+  fold it back, the pill that was in front getting its place again (Settings →
+  Integrations → Spotify → **Announce new songs**, off by default; Windows and
+  Linux, the Mac does not do this). A light in Mochi's colour breathes behind
+  him, the cover glows and a sheen crosses it, so it reads as news and not as
+  an island that opened by accident. No sound. Never over an island that is
+  open, under the mouse, pinned or waiting for an answer; the mouse coming, a
+  key or an alert makes it an open island like any other. Not for the first
+  song after Spotify starts, the same one going on after a pause, or an ad.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
@@ -475,8 +496,7 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop dances only on Linux, to Spotify; on Windows there is
-  no music integration to dance to yet. While he dances he stays awake (the
+- Mochi on the desktop dances to Spotify. While he dances he stays awake (the
   Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
   to the chat. While he
   sleeps, the transparent square around him (120 px) takes the first mouse

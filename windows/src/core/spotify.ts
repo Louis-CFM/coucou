@@ -1,10 +1,8 @@
-// The Spotify pill on the page: what src-tauri/src/spotify.rs reports (Linux,
-// through MPRIS), and the pure rules the views and Mochi follow — ports of
-// SpotifyController.swift, NowPlayingViews.swift and the Mac's dance rules
-// (BotCanvasView, DesktopMochi.swift).
-//
-// Windows has no music source yet: nothing ever reports a track there, so
-// nothing plays and Mochi never dances, through the same code.
+// The Spotify pill on the page: what src-tauri/src/spotify.rs reports (over
+// MPRIS on Linux, through the system's media session on Windows), and the pure
+// rules the views and Mochi follow — ports of SpotifyController.swift,
+// NowPlayingViews.swift and the Mac's dance rules (BotCanvasView,
+// DesktopMochi.swift).
 
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 
@@ -37,18 +35,38 @@ export interface SpotifyState {
   repeat: boolean;
   /** 0…100. */
   volume: number;
+  /**
+   * Shuffle and repeat can be read and set. Not on Windows: Spotify tells the
+   * system it changed them and changes nothing, so the card leaves them out.
+   */
+  modes: boolean;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
   running: false, installed: false, track: null, playing: false,
-  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50,
+  position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50, modes: true,
 };
 
 /** The page's copy of the player, and the cover of the track that has one. */
 export const Spotify = {
   state: { ...IDLE_SPOTIFY } as SpotifyState,
   artwork: null as { artUrl: string; dataUrl: string } | null,
+  /** The id of the last track heard playing, to tell a new song from the same one going on. */
+  heard: null as string | null,
+  /** A new song is being announced (island/spotify.ts): 0, or a number of its own for each. */
+  announcing: 0,
 };
+
+/** How long the island stays open on a song that just started, seconds. */
+export const ANNOUNCE_SECONDS = 3;
+
+/**
+ * A song starts after another one. Not the first heard since Spotify started,
+ * not the same one going on after a pause or a seek, and never an ad.
+ */
+export function isNewSong(heard: string | null, s: SpotifyState): boolean {
+  return s.playing && s.track != null && heard != null && heard !== s.track.id && !isAd(s.track);
+}
 
 /** The cover to show for the current track, if it has arrived. */
 export function currentArtwork(s: SpotifyState = Spotify.state): string | null {

@@ -66,6 +66,10 @@ pub struct Settings {
     /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
     /// code this build doesn't know reads as "".
     pub language: String,
+    /// A new song opens the island on Spotify's card for a moment, then it
+    /// folds back (src/island/spotify.ts). Off by default: the island
+    /// otherwise never opens for news that asks nothing.
+    pub announce_songs: bool,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
@@ -123,6 +127,7 @@ impl Default for Settings {
             mochi_outfit: "auto".into(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
+            announce_songs: false,
             desktop_mochi: DesktopMochiPref::default(),
         }
     }
@@ -400,6 +405,7 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
+  "announceSongs": true,
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
 }"##;
 
@@ -549,6 +555,13 @@ mod tests {
         // The language too: "" (follow the system) when absent, as it comes otherwise.
         assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
         assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
+    }
+
+    #[test]
+    fn a_file_from_before_new_songs_were_announced_keeps_the_island_shut() {
+        assert!(parse(CUSTOM.as_bytes()).unwrap().announce_songs);
+        assert!(!parse(&custom_with("announceSongs", None)).unwrap().announce_songs);
+        assert!(!Settings::default().announce_songs);
     }
 
     #[test]
@@ -803,6 +816,7 @@ mod tests {
                 "mochiOutfit",
                 "pillColors",
                 "language",
+                "announceSongs",
                 "desktopMochi",
             ]
         );

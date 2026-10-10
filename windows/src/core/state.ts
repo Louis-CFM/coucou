@@ -146,6 +146,12 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /**
+   * A new song opens the island on Spotify's card for a moment (Settings →
+   * Integrations → Spotify). Off by default: the island otherwise never opens
+   * for news that asks nothing.
+   */
+  announceSongs: boolean;
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -179,6 +185,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  announceSongs: false,
 };
 
 type Listener = () => void;
@@ -273,7 +280,7 @@ class AppState {
     return this.stateOverride ?? this.focusTask?.state ?? "idle";
   }
 
-  /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
+  /** Spotify plays on a declared pill: Mochi dances. */
   get spotifyPlaying(): boolean {
     return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
   }

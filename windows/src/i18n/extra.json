@@ -3360,6 +3360,28 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Announce new songs": {
+   "zh-Hans": "播报新歌曲",
+   "hi": "नए गानों की सूचना दें",
+   "es": "Anunciar canciones nuevas",
+   "ar": "الإعلان عن الأغاني الجديدة",
+   "fr": "Annoncer les nouveaux morceaux",
+   "bn": "নতুন গানের ঘোষণা",
+   "pt-BR": "Anunciar novas músicas",
+   "ru": "Объявлять новые треки",
+   "id": "Umumkan lagu baru"
+  },
+  "The island opens on each new song for a few seconds, then folds back.": {
+   "zh-Hans": "每首新歌开始时，岛会展开几秒，然后收起。",
+   "hi": "हर नए गाने पर आइलैंड कुछ सेकंड के लिए खुलता है, फिर सिमट जाता है।",
+   "es": "La isla se abre unos segundos con cada canción nueva y luego se pliega.",
+   "ar": "تنفتح الجزيرة لبضع ثوانٍ مع كل أغنية جديدة ثم تنطوي.",
+   "fr": "L'île s'ouvre quelques secondes à chaque nouveau morceau, puis se replie.",
+   "bn": "প্রতিটি নতুন গানে আইল্যান্ড কয়েক সেকেন্ডের জন্য খোলে, তারপর আবার গুটিয়ে যায়।",
+   "pt-BR": "A ilha abre por alguns segundos a cada nova música e depois se fecha.",
+   "ru": "Остров открывается на несколько секунд при каждом новом треке, затем сворачивается.",
+   "id": "Pulau terbuka beberapa detik setiap ada lagu baru, lalu menutup kembali."
   }
  }
 }
