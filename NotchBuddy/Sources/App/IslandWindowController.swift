@@ -1586,7 +1586,8 @@ extension IslandWindowController {
         }
 
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence) with streaming TTS.
-        if case .unknown = intent, !askedBack {
+        // (Not when Claude is the brain and just couldn't be reached: no local model then.)
+        if case .unknown = intent, !askedBack, !ClaudeVoiceBrain.isActive {
             let tBrain0  = Date()
             let brainWarm = VoiceBrain.shared.isSessionReady
             var brainUsed = false
@@ -1793,7 +1794,7 @@ extension IslandWindowController {
     private func finishVoiceTurn(expectAnswer: Bool) {
         // First time I speak one language and Coucou answers in another: offer once to
         // answer in mine ("You're speaking French. Want me to answer in French?").
-        if !expectAnswer, !VoiceSettings.languageOfferDone,
+        if !expectAnswer, !ClaudeVoiceBrain.isActive, !VoiceSettings.languageOfferDone,
            let spoken = VoiceEngine.shared.speechLocale?.language.languageCode?.identifier,
            ["fr", "en"].contains(spoken), spoken != VoiceSettings.language,
            VoiceEngine.shared.isEnabled {
@@ -1815,7 +1816,7 @@ extension IslandWindowController {
         // (unless that reply leads to another question, e.g. "which one do I remove?").
         if expectAnswer && VoiceEngine.shared.isEnabled {
             isInConversation = true
-            VoiceBrain.shared.beginConversation()
+            if !ClaudeVoiceBrain.isActive { VoiceBrain.shared.beginConversation() }
             if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
             VoiceEngine.shared.startConversationTurn(firstWordTimeout: Self.answerWait(8.0))
         } else {
