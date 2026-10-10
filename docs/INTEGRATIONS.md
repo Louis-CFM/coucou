@@ -202,6 +202,45 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 1quinquies. Linear (boîte de réception)
+
+**Plateforme** : macOS, Windows et Linux
+
+**Clé** : clé API personnelle, créée dans Linear → Settings → Account → Security & access. Stockée dans le Trousseau, le Gestionnaire d'identification ou le Secret Service (`linear-api-key`). Envoyée telle quelle dans l'en-tête `Authorization`, **sans** `Bearer`. Une clé invalide répond HTTP 401 avec `AUTHENTICATION_ERROR` (vérifié).
+
+### Données récupérées
+
+Une requête GraphQL (POST `https://api.linear.app/graphql`), validée contre le schéma publié par Linear (`packages/sdk/src/schema.graphql`) :
+- **Boîte de réception** : `notifications(first: 100)` créées depuis 14 jours (`createdAt: { gt: "-P14D" }`) : `id`, `category`, `readAt`, `snoozedUntilAt`, `createdAt`, `actor.name`, et selon le type `issue { identifier title url }` ou `project { name url }`.
+- **Mes tickets** : `viewer.assignedIssues(first: 50)` mis à jour depuis 30 jours, hors états `completed`, `canceled`, `duplicate` : identifiant, titre, URL, `state { name color }`.
+- **Espace** : `viewer.organization.urlKey`, pour ouvrir `https://linear.app/{urlKey}/inbox`.
+
+Les champs `title`, `subtitle`, `url` et `inboxUrl` de `Notification` sont marqués `[Internal]` dans le schéma : non utilisés. La doc ne dit pas dans quel sens `first` compte, d'où les fenêtres de dates ; le tri se fait côté app.
+
+Non lu = `readAt` nul et pas reporté (`snoozedUntilAt` absent ou passé). Une entrée archivée n'est pas renvoyée (`includeArchived` faux par défaut).
+
+**Cadence** : 60 s, première requête 11 s après le lancement, seulement si la pastille Linear est déclarée (Réglages → Pastilles actives).
+
+### Carte
+
+En-tête « Linear · N unread » (ou « Assigned to you » sans non-lu). Trois lignes au plus : les entrées non lues d'abord (les plus récentes), les tickets assignés complètent. Clic sur une ligne → le ticket ou le projet dans le navigateur.
+
+| `category`           | Icône (Mac)          |
+|----------------------|----------------------|
+| `mentions`           | `at`                 |
+| `assignments`        | `person.crop.circle` |
+| `commentsAndReplies` | `bubble.left`        |
+| `statusChanges`      | `circle.dashed`      |
+| `reactions`          | `face.smiling`       |
+| `reminders`          | `bell`               |
+| autre                | `tray`               |
+
+### Alertes
+
+Premier poll : silencieux (il mémorise les identifiants non lus). Ensuite, une entrée non lue absente du poll précédent → pastille `finished`, badge vert si la pastille n'a pas le focus, son `finish`, île compacte révélée ; retour à `idle` après 60 s. Une nouvelle clé repart en silence.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.
