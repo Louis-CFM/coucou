@@ -3360,6 +3360,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app.": {
+   "zh-Hans": "数据来自 Claude Code 命令行工具。Claude 桌面应用不会提供这些数据，因此如果你只使用桌面应用，仪表会一直为空。",
+   "hi": "ये आँकड़े Claude Code कमांड-लाइन टूल से आते हैं। Claude डेस्कटॉप ऐप इन्हें नहीं भेजता, इसलिए अगर आप सिर्फ़ डेस्कटॉप ऐप इस्तेमाल करते हैं तो गेज खाली रहेगा।",
+   "es": "Los datos vienen de la herramienta de línea de comandos de Claude Code. La app de escritorio de Claude no los envía, así que el indicador queda vacío si solo usas la app de escritorio.",
+   "ar": "تأتي الأرقام من أداة سطر الأوامر Claude Code. لا يرسلها تطبيق Claude لسطح المكتب، لذلك يبقى المؤشر فارغًا إذا كنت تستخدم تطبيق سطح المكتب فقط.",
+   "fr": "Les chiffres viennent de l'outil en ligne de commande Claude Code. L'app de bureau Claude ne les transmet pas : la jauge reste donc vide si vous n'utilisez que l'app de bureau.",
+   "bn": "এই সংখ্যাগুলো Claude Code কমান্ড-লাইন টুল থেকে আসে। Claude ডেস্কটপ অ্যাপ এগুলো পাঠায় না, তাই শুধু ডেস্কটপ অ্যাপ ব্যবহার করলে গেজ খালি থাকবে।",
+   "pt-BR": "Os números vêm da ferramenta de linha de comando do Claude Code. O app Claude para desktop não os envia, então o medidor fica vazio se você usa só o app para desktop.",
+   "ru": "Данные приходят из консольного инструмента Claude Code. Настольное приложение Claude их не передаёт, поэтому индикатор останется пустым, если вы пользуетесь только им.",
+   "id": "Angka-angka ini berasal dari alat baris perintah Claude Code. Aplikasi desktop Claude tidak mengirimkannya, jadi pengukur tetap kosong jika Anda hanya memakai aplikasi desktop."
   }
  }
 }

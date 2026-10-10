@@ -238,6 +238,7 @@ function claudeSection(status: HookStatus): HTMLElement {
  */
 const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
+  get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
   get showClaude() { return t("Show in notch"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
@@ -283,6 +284,7 @@ function planSection(status: HookStatus): HTMLElement {
         class: "hint",
         text: PLAN_SETTINGS_TEXT.claude,
       }),
+      h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
