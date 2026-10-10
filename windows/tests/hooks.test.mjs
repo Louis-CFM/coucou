@@ -242,7 +242,7 @@ test("an agent's pill goes away when its session ends, or 5.2 s after it stops",
 });
 
 test("an agent's permission request is declined, never shown as Claude Code's", () => {
-  for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
+  for (const agent of ["gemini", "antigravity", "cursor", "amp", "hermes", "my-tool"]) {
     calls.length = 0;
     hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: agent, tool_name: "Bash" });
     assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], agent);
@@ -251,8 +251,28 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   }
 });
 
-test("Codex, Copilot CLI and Muse Code get the card on their own pill", () => {
-  for (const agent of ["codex", "copilot", "muse"]) {
+test("a third-party agent that opted in gets the card on its own pill", () => {
+  State.pendingApproval = null;
+  State.focusId = CLAUDE;
+  calls.length = 0;
+  asked = [];
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r-opt", session_id: "s1",
+    coucou_agent: "my-tool", coucou_approval: true, tool_name: "Bash",
+    tool_input: { command: "npm publish" },
+  });
+  assert.deepEqual(State.pendingApproval, {
+    requestId: "r-opt", sessionId: "s1", pillId: "agent_my-tool", tool: "Bash", command: "Bash · npm publish",
+  });
+  assert.deepEqual(sent("approval_ack"), [{ requestId: "r-opt" }]);
+  assert.deepEqual(sent("approval_decline"), []);
+  assert.equal(task("agent_my-tool").state, "approval");
+  assert.equal(State.focusId, "agent_my-tool");
+  State.endApproval();
+});
+
+test("Codex, Copilot CLI, Muse Code and OpenCode get the card on their own pill", () => {
+  for (const agent of ["codex", "copilot", "muse", "opencode"]) {
     State.pendingApproval = null;
     State.focusId = CLAUDE;
     calls.length = 0;
@@ -493,6 +513,28 @@ test("a question is what the island reopens on while it waits", () => {
     tool_input: { questions: [{ question: "Which?", options: [{ label: "A" }, { label: "B" }] }] },
   });
   assert.equal(State.defaultView(), "question");
+});
+
+test("questions the island cannot answer safely stay a permission card", () => {
+  const q = (question) => ({ question, options: [{ label: "A" }, { label: "B" }] });
+  // Two with the same text would share one answer; more than four is not Claude Code.
+  for (const questions of [[q("Which?"), q("Which?")], [q("1"), q("2"), q("3"), q("4"), q("5")]]) {
+    State.pendingApproval = null;
+    ask("r1", { tool_name: "AskUserQuestion", tool_input: { questions } });
+    assert.equal(State.pendingApproval.questions, undefined);
+  }
+  State.pendingApproval = null;
+  ask("r1", { tool_name: "AskUserQuestion", tool_input: { questions: [q("1"), q("2"), q("3"), q("4")] } });
+  assert.equal(State.pendingApproval.questions.length, 4);
+});
+
+test("a question dismissed in the terminal takes its card down", () => {
+  ask("r1", {
+    tool_name: "AskUserQuestion",
+    tool_input: { questions: [{ question: "Which?", options: [{ label: "A" }, { label: "B" }] }] },
+  });
+  hook({ hook_event_name: "PostToolUseFailure", session_id: "s1", tool_name: "AskUserQuestion" });
+  assert.equal(State.pendingApproval, null);
 });
 
 test("a finished or failed session behind a waiting card only badges its pill", () => {

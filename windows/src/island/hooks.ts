@@ -63,6 +63,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Third-party opt-in: a blocking Allow / Deny card instead of an instant re-ask. */
+  coucou_approval?: boolean;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -172,11 +174,14 @@ function askedQuestions(tool: string, input: Record<string, unknown>): AskedQues
         label: o.label as string,
         description: typeof o.description === "string" ? o.description : "",
       }));
-    // A question cut short by the relay would be answered under the wrong text.
+    // A question cut short by the relay would be answered under the wrong text,
+    // and two with the same text would share one answer.
     if (!question || question.endsWith("…") || options.length < 2) return null;
+    if (out.some((q) => q.question === question)) return null;
     out.push({ question, options, multiSelect: raw.multiSelect === true });
   }
-  return out.length > 0 ? out : null;
+  // Claude Code asks one to four at a time; anything else is not ours to guess.
+  return out.length > 0 && out.length <= 4 ? out : null;
 }
 
 /** The Claude Code session's pill, named after its project for the session. */
@@ -349,8 +354,10 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "PostToolUse":
+    case "PostToolUseFailure":
       supersedeStop();
-      // The question was answered in the terminal: the card would be lying.
+      // The question was answered (or dismissed) in the terminal: the card
+      // would be lying.
       if (
         payload.tool_name === "AskUserQuestion" &&
         State.pendingApproval?.questions &&
@@ -361,12 +368,10 @@ function handleHook(island: Island, payload: HookPayload) {
         dropPendingCard(island);
       }
       State.updateTask(agentId, "working");
-      recordDiff(agentId, payload);
-      break;
-
-    case "PostToolUseFailure":
-      supersedeStop();
-      State.updateTask(agentId, "working");
+      if (name === "PostToolUse") {
+        recordDiff(agentId, payload);
+        break;
+      }
       State.appendStep(agentId, t("⚠ failed"));
       break;
 
@@ -455,9 +460,11 @@ function handleHook(island: Island, payload: HookPayload) {
 
     case "PermissionRequest": {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
-      // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
+      // CLI, Muse Code, OpenCode — same as the Mac) get a card, plus any agent
+      // that sent "coucou_approval": true — it opted into the wait and reads
+      // the permissionDecision the relay then prints. Anyone else's request is
       // declined at once, so the agent asks in its own terminal.
-      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
+      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!) && payload.coucou_approval !== true) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }

@@ -27,7 +27,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
  * earns its place differently — its sessions come through Claude Code's own
  * hooks (no --agent), so the relay answers them in Claude Code's format.
  */
-export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "claude-desktop"]);
+export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "opencode", "claude-desktop"]);
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {

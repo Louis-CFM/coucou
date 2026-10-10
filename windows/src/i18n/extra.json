@@ -2989,6 +2989,18 @@
    "id": "Aktifkan sekali dengan `hermes plugins enable coucou`, lalu mulai sesi Hermes baru.",
    "cs": "Zapněte ho jednou pomocí `hermes plugins enable coucou` a pak spusťte novou relaci Hermes."
   },
+  "Type your answer…": {
+   "zh-Hans": "输入你的回答…",
+   "hi": "अपना जवाब लिखें…",
+   "es": "Escribe tu respuesta…",
+   "ar": "اكتب إجابتك…",
+   "fr": "Tape ta réponse…",
+   "bn": "আপনার উত্তর লিখুন…",
+   "pt-BR": "Digite sua resposta…",
+   "ru": "Введите ответ…",
+   "id": "Ketik jawabanmu…",
+   "cs": "Napište svou odpověď…"
+  },
   "Types “{char}”": {
    "zh-Hans": "输入“{char}”",
    "hi": "“{char}” टाइप करता है",

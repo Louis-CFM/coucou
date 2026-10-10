@@ -73,11 +73,10 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+All standard Claude Code hook events are supported, `PermissionRequest` included for the
+agents the island can answer for: Claude Code, Codex, Copilot CLI, Muse Code and OpenCode.
+A `PermissionRequest` from any other agent is answered immediately with no decision, so the
+relay writes nothing and the agent re-asks in its terminal.
 
 The pill lifecycle:
 
@@ -180,7 +179,7 @@ Muse uses PascalCase event names. Coucou shows a real Allow / Deny card for Muse
 
 Coucou supports OpenCode via **Settings → OpenCode Plugin → Install plugin**.
 The installer writes a JS plugin to `~/.config/opencode/plugins/coucou.js`.
-The plugin maps OpenCode event types to canonical Coucou names and forwards them fire-and-forget; OpenCode is never blocked.
+The plugin maps OpenCode event types to canonical Coucou names and forwards the session and tool ones fire-and-forget, so OpenCode is never blocked by them. `permission.ask` is the one exception: OpenCode holds that hook open, so it is where Allow / Deny comes back. Nothing is allowed without a click — with no answer the status stays on "ask" and OpenCode prompts in its own window.
 
 | OpenCode event | Canonical event |
 |---|---|
@@ -251,3 +250,22 @@ echo '{"hook_event_name":"UserPromptSubmit","session_id":"t1","prompt":"hello","
 ```
 
 A "demo" pill should appear in the island.
+
+## Approval cards for third-party agents (opt-in)
+
+Any agent that sends `coucou_agent` gets its own pill. By default those pills are
+fire-and-forget: a `PermissionRequest` is declined at once so the agent re-asks in its
+own terminal.
+
+An agent that can wait for a blocking answer opts in by adding `"coucou_approval": true` to
+its `PermissionRequest` payload. Coucou then shows the same Allow / Deny card as
+Claude Code and Codex, and the relay prints the decision on the hook's stdout as
+`{"permissionDecision": "allow" | "deny"}`. Nothing is ever allowed without a click:
+when nobody answers, the line is `{"permissionDecision": "ask"}` and the agent prompts
+in its own window. The hook should keep its process alive while the user decides
+(Coucou waits up to ~110 s, like Claude Code does).
+
+```json
+{"hook_event_name": "PermissionRequest", "coucou_agent": "my-agent", "coucou_approval": true,
+ "tool_name": "Bash", "tool_input": {"command": "rm -rf ./build"}}
+```

@@ -110,6 +110,8 @@ export class Island {
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
+  /** A view other than the chat has the keyboard for its text field. */
+  private fieldKeyboard = false;
 
   /** The launch greeting ended, or the island came out of hidden — two of the
    *  moments the Monday recap may open (see src/recap/recap.ts). */
@@ -236,11 +238,11 @@ export class Island {
         void Bridge.approvalDecision(req.requestId, d);
         this.closeApproval();
       },
-      answer: (answers) => {
+      answer: (answers, other) => {
         const req = State.pendingApproval;
         if (!req) return;
         Sound.play("approve");
-        void Bridge.approvalAnswer(req.requestId, answers);
+        void Bridge.approvalAnswer(req.requestId, answers, other);
         this.closeApproval();
       },
       answerInTerminal: () => {
@@ -1323,6 +1325,20 @@ export class Island {
       if (on) view.sync();
     }
 
+    // A question's "Other…" field takes the keyboard the same way while it is
+    // open, and gives it back once it is sent, left, or the card goes. Released
+    // before the field views grab it, so a card closing onto the chat or the
+    // mail sheet does not undo their take.
+    const field =
+      State.mode === "expanded" &&
+      State.view !== "prompt" &&
+      (this.views.get(State.view)?.wantsKeyboard?.() ?? false);
+    if (field !== this.fieldKeyboard) {
+      this.fieldKeyboard = field;
+      void Bridge.focusWindow(field);
+      if (field) window.setTimeout(() => this.views.get(State.view)?.focus?.(), 120);
+    }
+
     // The chat and the mail sheet are the only views with text fields, so they
     // are the only times the island is allowed to take keyboard focus.
     if (this.lastSyncedView !== State.view) {
@@ -1336,7 +1352,6 @@ export class Island {
         void Bridge.focusWindow(false);
       }
     }
-
     // Compact mini grid
     this.syncClock();
 
