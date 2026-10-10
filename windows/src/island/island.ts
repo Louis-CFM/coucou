@@ -446,7 +446,21 @@ export class Island {
     // The greeting and the drop sequence draw a Mochi of their own.
     if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
     if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
-    else this.setView("wardrobe");
+    else {
+      this.focusDressedPill();
+      this.setView("wardrobe");
+    }
+  }
+
+  /**
+   * The wardrobe dresses the main Mochi and no other. Opened on another pill it
+   * used to show that pill's Mochi in the outfit, which then jumped to the main
+   * one on the way out: the main pill is selected first, so the Mochi being
+   * dressed is the one that keeps the clothes.
+   */
+  private focusDressedPill() {
+    const main = State.mainPillId;
+    if (State.focusId !== main && State.tasks.some((t) => t.id === main)) State.setFocus(main);
   }
 
   /**
@@ -468,6 +482,7 @@ export class Island {
       return;
     }
     if (State.paused) return;
+    this.focusDressedPill();
     this.alert("wardrobe");
   }
 
