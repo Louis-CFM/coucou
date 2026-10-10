@@ -53,6 +53,19 @@ final class HookServer: @unchecked Sendable {
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
 
+    /// A turn that ended (Stop) while background work was still in flight.
+    private struct BackgroundWait {
+        let pillId: String
+        var subagents: Int
+        var others: Int
+        var total: Int { subagents + others }
+    }
+    /// Keyed by session id. While set, the pill stays "working" and events fired inside
+    /// background subagents (they carry agent_id) no longer overwrite the finished turn.
+    private var backgroundWaits: [String: BackgroundWait] = [:]
+    /// Bumped whenever a pill gets busy again, so a pending "finished → idle" reset is skipped.
+    private var idleResetGeneration: [String: Int] = [:]
+
     private init() {}
 
     // MARK: - Approval fd helpers
@@ -446,6 +459,23 @@ final class HookServer: @unchecked Sendable {
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
+        // Events fired inside a subagent carry agent_id. Once the turn has ended with
+        // background work in flight, they must not replace the turn's state or final line.
+        let isSubagentEvent = !(payload["agent_id"] as? String ?? "").isEmpty
+        if isSubagentEvent, backgroundWaits[sessionId] != nil, name != "Notification" {
+            if name == "PreToolUse" {
+                RecapStore.shared.preToolUse(sessionId: recapSessionId, tool: payload["tool_name"] as? String ?? "Tool")
+            } else if name == "SubagentStop", !(payload["agent_type"] as? String ?? "").isEmpty {
+                // Internal agents (prompt suggestions, /btw) also send SubagentStop, with an empty agent_type.
+                subagentFinishedInBackground(sessionId: sessionId)
+            }
+            return
+        }
+        if !isSubagentEvent, name != "Notification", backgroundWaits.removeValue(forKey: sessionId) != nil {
+            nbLog("Background wait ended by \(name) (\(sessionId.prefix(8)))")
+        }
+        if name != "Stop", name != "Notification" { cancelIdleReset(id: agentId) }
+
         switch name {
 
         case "SessionStart":
@@ -511,13 +541,18 @@ final class HookServer: @unchecked Sendable {
             if lower.contains("rate limit") || lower.contains("limite d") {
                 state.updateTask(id: agentId, state: .ratelimit)
                 SoundEngine.shared.play("rate")
-            } else if message.hasSuffix("?") {
+            } else if payload["notification_type"] as? String == "permission_prompt" {
+                // No approval card for this session (terminal cards off, Claude desktop app…):
+                // it is blocked on the user, not working.
+                state.updateTask(id: agentId, state: .approval)
+                appendStep(id: agentId, step: message)
+                SoundEngine.shared.play("approval")
+            } else if payload["notification_type"] as? String == "elicitation_dialog" || message.hasSuffix("?") {
                 state.updateTask(id: agentId, state: .question)
                 appendStep(id: agentId, step: message)
             }
 
         case "Stop":
-            state.updateTask(id: agentId, state: .finished)
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
@@ -528,13 +563,29 @@ final class HookServer: @unchecked Sendable {
                 }
             }
             RecapStore.shared.stop(sessionId: recapSessionId)
+            // Subagents, shells or monitors still running: the session is paused, not done.
+            // Claude Code wakes the main agent when they finish, and its next Stop ends the turn.
+            let inFlight = payload["background_tasks"] as? [[String: Any]] ?? []
+            if !inFlight.isEmpty {
+                let subagents = inFlight.filter { $0["type"] as? String == "subagent" }.count
+                backgroundWaits[sessionId] = BackgroundWait(pillId: agentId, subagents: subagents,
+                                                            others: inFlight.count - subagents)
+                state.updateTask(id: agentId, state: .working)
+                appendStep(id: agentId, step: backgroundStep(inFlight.count))
+                nbLog("Stop with \(inFlight.count) background task(s) (\(sessionId.prefix(8)))")
+                break
+            }
+            state.updateTask(id: agentId, state: .finished)
             SoundEngine.shared.play("finish")
             if focused {
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
             }
+            let generation = idleResetGeneration[agentId, default: 0]
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                // Skip if the pill got busy again (another turn or session started meanwhile).
+                guard self.idleResetGeneration[agentId, default: 0] == generation else { return }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
@@ -1010,6 +1061,34 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
         state.tasks[idx].pillBadge = badge
+    }
+
+    @MainActor
+    private func cancelIdleReset(id: String) {
+        idleResetGeneration[id, default: 0] += 1
+    }
+
+    /// "⏳ In background: 3" — the ticker line while a finished turn waits on background work.
+    private func backgroundStep(_ count: Int) -> String {
+        "⏳ " + String(format: String(localized: "step.background %lld"), Int64(count))
+    }
+
+    @MainActor
+    private func subagentFinishedInBackground(sessionId: String) {
+        guard var wait = backgroundWaits[sessionId], wait.subagents > 0 else { return }
+        wait.subagents -= 1
+        backgroundWaits[sessionId] = wait
+        if wait.total > 0 {
+            appendStep(id: wait.pillId, step: backgroundStep(wait.total))
+            return
+        }
+        // All done. The main agent normally resumes on its own; if it never does, end quietly.
+        let pillId = wait.pillId
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+            guard self.backgroundWaits[sessionId]?.total == 0 else { return }
+            self.backgroundWaits[sessionId] = nil
+            AppState.shared.updateTask(id: pillId, state: .idle)
+        }
     }
 
     @MainActor
