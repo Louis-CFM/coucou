@@ -46,7 +46,10 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     [...mac,
       ["integration_media", "Now Playing", "#A78BFA", "service", "Integration"],
-      ["integration_calendar", "Calendar", "#4F9DF7", "service", "Integration"]],
+      ["integration_calendar", "Calendar", "#4F9DF7", "service", "Integration"],
+      ["integration_focus", "Focus", "#F97316", "service", "Integration"],
+      ["integration_todo", "To-do", "#22D3EE", "service", "Integration"],
+      ["integration_inbox", "Inbox", "#60A5FA", "service", "Integration"]],
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
@@ -95,7 +98,7 @@ test("each build offers what it can read: Claude Desktop and the media controls 
   // Spotify: MPRIS on Linux, the media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  const windowsOnly = new Set(["agent_claude-desktop", "integration_music", "integration_media"]);
+  const windowsOnly = new Set(["agent_claude-desktop", "integration_music", "integration_media", "integration_inbox"]);
   assert.deepEqual(linux, windows.filter((id) => !windowsOnly.has(id)));
 });
 
@@ -175,14 +178,16 @@ test("a declaration from an older or edited settings file is made usable", () =>
     "integration_claude");
 });
 
-test("up to four pills next to the main one, never the main one itself", () => {
+test("up to eight pills (two pages of four) next to the main one, never the main one itself", () => {
   const d = {
     mainPill: "integration_claude",
     activeIntegrations: ["integration_n8n", "integration_github", "integration_stripe"],
   };
-  const four = toggleDeclared(d, "agent_gemini", "linux");
-  assert.equal(four.length, MAX_DECLARED);
-  assert.equal(toggleDeclared({ ...d, activeIntegrations: four }, "ai_anthropic", "linux"), null);
+  const full = { ...d, activeIntegrations: [...d.activeIntegrations, "agent_gemini", "integration_vercel", "integration_notion", "integration_resend"] };
+  const eight = toggleDeclared(full, "integration_focus", "linux");
+  assert.equal(eight.length, MAX_DECLARED);
+  assert.equal(MAX_DECLARED, 8);
+  assert.equal(toggleDeclared({ ...d, activeIntegrations: eight }, "ai_anthropic", "linux"), null);
   assert.equal(toggleDeclared(d, "integration_claude", "linux"), null);
   assert.equal(toggleDeclared(d, "integration_music", "linux"), null);
   assert.equal(toggleDeclared(d, "agent_claude-desktop", "linux"), null);
@@ -290,15 +295,13 @@ test("a Claude Code session gets its pill even when it is not loaded", () => {
   assert.equal(State.upsertWorkspacePill("not_a_pill", "x", ""), null);
 });
 
-test("toggling declares up to four pills and never the main one", () => {
+test("toggling declares up to eight pills and never the main one", () => {
   State.settings.activeIntegrations = [];
   State.loadIntegrationTasks();
-  for (const id of ["integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github"]) {
-    State.toggleIntegration(id);
-  }
-  assert.deepEqual(State.settings.activeIntegrations, [
-    "integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe",
-  ]);
+  const nine = ["integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github",
+    "integration_vercel", "integration_notion", "integration_resend", "integration_calcom"];
+  for (const id of nine) State.toggleIntegration(id);
+  assert.deepEqual(State.settings.activeIntegrations, nine.slice(0, 8));
   State.toggleIntegration("integration_claude");
   assert.ok(ids().includes("integration_claude"));
   State.setFocus("agent_gemini");

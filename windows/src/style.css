@@ -746,6 +746,124 @@ body {
 
 /* ── Agent pills ────────────────────────────────────────────────────────── */
 
+/* Pages of four pills on a sliding track, with dots to jump between them. */
+.pill-pages {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+.pill-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.25, 1);
+  will-change: transform;
+}
+.pill-track > .pills {
+  flex: 0 0 100%;
+}
+.pill-dots {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+.pill-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.pill-dots i.on {
+  width: 12px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* Focus, To-do and Inbox cards (views/extras.ts). */
+.x-clock {
+  font: 600 26px var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  margin: 2px 0 2px 2px;
+}
+.x-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 48px;
+  overflow-y: auto;
+  margin: 3px 0;
+}
+.x-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 11px var(--font);
+  color: var(--ink);
+  min-height: 16px;
+}
+.x-row.done .x-text {
+  color: var(--dim-2);
+  text-decoration: line-through;
+}
+.x-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.x-check {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.x-check.on {
+  background: #22d3ee;
+  border-color: #22d3ee;
+}
+.x-del {
+  flex: none;
+  background: none;
+  border: 0;
+  color: var(--dim-2);
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.x-row:hover .x-del {
+  opacity: 1;
+}
+.x-kind {
+  flex: none;
+  font-size: 10px;
+}
+.x-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--ink);
+  font: 400 11px var(--font);
+  padding: 3px 7px;
+  outline: none;
+}
+.x-input:focus {
+  border-color: rgba(34, 211, 238, 0.6);
+}
+
 .pills {
   position: relative;
   z-index: 1;

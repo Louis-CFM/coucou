@@ -11,6 +11,7 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { State } from "../core/state";
 import { Sound } from "../core/sound";
+import { Focus, Inbox } from "../core/extras";
 import { ICONS } from "../views/icons";
 import { h, svg, clear } from "../views/dom";
 import { N_, t } from "../i18n/i18n";
@@ -19,7 +20,7 @@ import { N_, t } from "../i18n/i18n";
 export const LIVE_TEXTS = [N_("Charging"), N_("On battery"), N_("Low battery")];
 
 export interface LiveEvent {
-  kind: "volume" | "brightness" | "battery" | "phone" | "call" | "message" | "app";
+  kind: "volume" | "brightness" | "battery" | "phone" | "call" | "message" | "app" | "focus";
   /** 0…1. */
   level: number | null;
   muted: boolean;
@@ -28,7 +29,7 @@ export interface LiveEvent {
 }
 
 /** How long each kind stays, ms. */
-const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000, call: 12000, message: 5000, app: 4500 };
+const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000, call: 12000, message: 5000, app: 4500, focus: 1500 };
 
 /** The compact island's width while a live activity shows. */
 export const LIVE_W = 336;
@@ -102,6 +103,7 @@ export function registerLiveHandlers(host: LiveHost) {
   // Another app's notification (notify.rs): who, and the first line.
   void onEvent<ToastEvent>("toast", (n) => {
     const who = n.who || n.title || n.app;
+    if (n.kind !== "app") Inbox.add({ kind: n.kind, who, body: n.kind === "call" ? "" : n.body, at: Date.now() });
     if (n.kind === "call") {
       // Stays while it rings: Phone Link takes the toast away when it ends.
       ringing = n.id;
@@ -111,8 +113,11 @@ export function registerLiveHandlers(host: LiveHost) {
       showLive(host, { kind: "call", level: null, muted: false, charging: false, text: t("{0} is calling", { 0: who }) }, CALL_MAX_MS);
       return;
     }
-    // A message never covers a ringing call.
-    if (ringing != null) return;
+    // A message never covers a ringing call, and Focus holds them (calls still ring).
+    if (ringing != null || Focus.running) {
+      State.notify();
+      return;
+    }
     const text = [who, n.body].filter((x) => x).join(" · ");
     Sound.play("pop");
     showLive(host, { kind: n.kind, level: null, muted: false, charging: false, text });
@@ -132,6 +137,8 @@ function iconFor(e: LiveEvent): { path: string; stroke: number } {
       return { path: ICONS.bubble, stroke: 0 };
     case "brightness":
       return { path: ICONS.sun, stroke: 2 };
+    case "focus":
+      return { path: ICONS.timer, stroke: 0 };
     case "battery":
       return e.charging ? { path: ICONS.bolt, stroke: 0 } : { path: ICONS.battery, stroke: 2 };
     default: {
@@ -150,6 +157,7 @@ function colorFor(e: LiveEvent): string {
   if (e.kind === "brightness") return "#FACC15";
   if (e.kind === "phone") return "#60A5FA";
   if (e.kind === "call") return "#34D399";
+  if (e.kind === "focus") return "#F97316";
   if (e.kind === "message") return "#60A5FA";
   if (e.kind === "app") return "#C5C8CD";
   return e.muted ? "#6B7079" : "#F5F6F8";
@@ -202,6 +210,12 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
       // scaleX, not width: the compositor animates it without a layout.
       fill.style.transform = `scaleX(${level})`;
       fill.style.background = e.kind === "battery" ? color : e.kind === "brightness" ? "#FACC15" : "#F5F6F8";
+      if (e.kind === "focus") {
+        fill.style.background = "#F97316";
+        label.textContent = e.text;
+        el.classList.add("has-text");
+        return;
+      }
       const pct = `${Math.round(level * 100)}`;
       label.textContent = e.text ? `${t(e.text)} · ${pct}%` : e.muted ? t("Muted") : pct;
       el.classList.toggle("has-text", !!e.text || e.muted);

@@ -23,6 +23,8 @@ import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { isMusicPill } from "../core/spotify";
+import { isExtraPill } from "../core/extras";
+import { buildExtraCard, type ExtraCard } from "./extras";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -190,8 +192,50 @@ function buildOverview(actions: ViewActions): ViewHost {
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
-  const pills = h("div", { class: "pills" });
+  // The pills in pages of four, side by side on a track that slides.
+  const pillTrack = h("div", { class: "pill-track" });
+  const pillDots = h("div", { class: "pill-dots" });
+  const pills = h("div", { class: "pill-pages" }, pillTrack, pillDots);
   const right = card(null, pills);
+  let page = 0;
+  let pageCount = 1;
+  const goPage = (p: number) => {
+    page = Math.max(0, Math.min(pageCount - 1, p));
+    pillTrack.style.transform = `translateX(${-page * 100}%)`;
+    pillDots.querySelectorAll("i").forEach((d, i) => d.classList.toggle("on", i === page));
+  };
+  // A wheel turn or a swipe slides to the other page.
+  let wheelAt = 0;
+  pills.addEventListener("wheel", (e) => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (pageCount < 2 || Math.abs(d) < 4) return;
+    e.preventDefault();
+    const now = performance.now();
+    if (now - wheelAt < 380) return;
+    wheelAt = now;
+    goPage(page + Math.sign(d));
+  }, { passive: false });
+  let swipeX: number | null = null;
+  let swiped = false;
+  pills.addEventListener("pointerdown", (e) => { swipeX = e.clientX; swiped = false; });
+  pills.addEventListener("pointerup", (e) => {
+    if (swipeX == null) return;
+    const dx = e.clientX - swipeX;
+    swipeX = null;
+    if (pageCount > 1 && Math.abs(dx) > 28) {
+      swiped = true;
+      goPage(page - Math.sign(dx));
+    }
+  });
+  // A swipe that ends on a pill doesn't also open it.
+  pills.addEventListener("click", (e) => {
+    if (swiped) {
+      e.stopPropagation();
+      e.preventDefault();
+      swiped = false;
+    }
+  }, true);
+  const extraCards = new Map<string, ExtraCard>();
   // Opened from a plan pill in the header: stands in for the left card.
   const plan = new PlanCard();
   let planTimer: number | null = null;
@@ -208,7 +252,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | `extra:${string}` | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -356,6 +400,19 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
+      } else if (task && isExtraPill(task.id)) {
+        let c = extraCards.get(task.id);
+        if (!c) {
+          c = buildExtraCard(task.id)!;
+          extraCards.set(task.id, c);
+        }
+        if (mode !== `extra:${task.id}`) {
+          clear(leftBody);
+          leftBody.append(c.el);
+          mode = `extra:${task.id}`;
+          cardKey = "";
+        }
+        c.sync();
       } else if (task && isMusicPill(task.id)) {
         // Its own card for every state: playing, idle, not installed.
         if (mode !== "spotify") {
@@ -389,21 +446,33 @@ function buildOverview(actions: ViewActions): ViewHost {
       highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
       shownSelection = State.cardSelection;
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks.slice(0, 8);
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
-        clear(pills);
+        clear(pillTrack);
+        clear(pillDots);
         musicPills = [];
-        for (const t of others) {
-          if (isMusicPill(t.id)) {
-            const mp = buildSpotifyPill(t, () => actions.setFocus(t.id));
-            musicPills.push(mp);
-            pills.append(mp.el);
-          } else {
-            pills.append(buildPill(t, actions));
+        pageCount = Math.max(1, Math.ceil(others.length / 4));
+        for (let p = 0; p < pageCount; p++) {
+          const grid = h("div", { class: "pills" });
+          for (const t of others.slice(p * 4, p * 4 + 4)) {
+            if (isMusicPill(t.id)) {
+              const mp = buildSpotifyPill(t, () => actions.setFocus(t.id));
+              musicPills.push(mp);
+              grid.append(mp.el);
+            } else {
+              grid.append(buildPill(t, actions));
+            }
+          }
+          pillTrack.append(grid);
+          if (pageCount > 1) {
+            const d = h("i");
+            d.addEventListener("click", () => goPage(p));
+            pillDots.append(d);
           }
         }
+        goPage(page);
         pruneMiniBots();
       }
       for (const mp of musicPills) mp.sync();

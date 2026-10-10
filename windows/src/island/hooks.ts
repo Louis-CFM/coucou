@@ -25,8 +25,8 @@ function pillName(agentId: string): string {
 }
 
 /** An alert for the iPhone (ntfy). Rust sends it only when set up and the PC is idle. */
-function pushToPhone(_agentId: string, title: string, body: string, urgent: boolean) {
-  void Bridge.phonePush(title, body || title, urgent);
+function pushToPhone(_agentId: string, title: string, body: string, urgent: boolean, always = false) {
+  void Bridge.phonePush(title, body || title, urgent, always);
 }
 
 /** Clears the approval card if no decision was made before the hook gave up. */
@@ -408,7 +408,7 @@ function handleHook(island: Island, payload: HookPayload) {
         if (t) t.finalLine = finalText;
       }
       Sound.play("finish");
-      pushToPhone(agentId, t("{0} finished", { 0: pillName(agentId) }), finalText, false);
+      pushToPhone(agentId, t("{0} finished", { 0: pillName(agentId) }), finalText, false, true);
       // A card waiting for an answer is never covered by another alert.
       if (focused && !State.pendingApproval) surface("finished", true);
       else State.setPillBadge(agentId, "finished");

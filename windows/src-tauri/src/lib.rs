@@ -664,6 +664,12 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // `coucou --shortcut <action>`: what a desktop's own keyboard
             // settings run where we can't listen for keys ourselves (Wayland).
+            // `coucou --notify "Build done"`: to the phone, from any script.
+            #[cfg(windows)]
+            if let Some(message) = notify_arg(&argv) {
+                tauri::async_runtime::spawn(phone::phone_push("Coucou".into(), message, false, Some(true)));
+                return;
+            }
             match shortcuts::from_args(&argv) {
                 Some(action) => shortcuts::dispatch(app, action),
                 None => {
@@ -815,6 +821,11 @@ pub fn run() {
             phone::start(&handle, &loaded.plus);
             #[cfg(windows)]
             notify::start(&handle, loaded.plus.notifications);
+            // Started by `coucou --notify "…"` itself: send it too.
+            #[cfg(windows)]
+            if let Some(message) = notify_arg(&std::env::args().collect::<Vec<_>>()) {
+                tauri::async_runtime::spawn(phone::phone_push("Coucou".into(), message, false, Some(true)));
+            }
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })
@@ -822,9 +833,24 @@ pub fn run() {
         .expect("error while running Coucou");
 }
 
+/// The message after `--notify`, if the command line has one.
+fn notify_arg(argv: &[String]) -> Option<String> {
+    let i = argv.iter().position(|a| a == "--notify")?;
+    let msg = argv.get(i + 1).map(|s| s.trim().to_string()).unwrap_or_default();
+    Some(if msg.is_empty() { "Done".to_string() } else { msg.chars().take(500).collect() })
+}
+
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+
+    #[test]
+    fn notify_takes_the_next_argument() {
+        let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(super::notify_arg(&a(&["coucou.exe", "--notify", "Build done"])).as_deref(), Some("Build done"));
+        assert_eq!(super::notify_arg(&a(&["coucou.exe", "--notify"])).as_deref(), Some("Done"));
+        assert_eq!(super::notify_arg(&a(&["coucou.exe"])), None);
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {

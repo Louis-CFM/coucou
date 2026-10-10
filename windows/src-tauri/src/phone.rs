@@ -204,7 +204,7 @@ pub fn phone_status() -> serde_json::Value {
 // ── Push alerts (ntfy) ────────────────────────────────────────────────────────
 
 /// Seconds since the last keyboard or mouse input on this PC.
-fn idle_secs() -> u64 {
+pub fn idle_secs() -> u64 {
     use windows::Win32::System::SystemInformation::GetTickCount;
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
     let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };

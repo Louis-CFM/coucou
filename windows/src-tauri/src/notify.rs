@@ -97,6 +97,8 @@ fn run() -> windows::core::Result<()> {
     // (answered, declined, missed).
     let mut calls: HashSet<u32> = HashSet::new();
     let mut first = true;
+    // Away for two minutes or more, then back: the island sums up the Inbox.
+    let mut away_for: u64 = 0;
     while ON.load(Ordering::Relaxed) {
         if let Ok(list) = listener.GetNotificationsAsync(NotificationKinds::Toast).and_then(|op| op.get()) {
             let present: HashSet<u32> = list.clone().into_iter().filter_map(|n| n.Id().ok()).collect();
@@ -138,6 +140,15 @@ fn run() -> windows::core::Result<()> {
                 }
             }
             first = false;
+        }
+        let idle = crate::phone::idle_secs();
+        if idle >= 120 {
+            away_for = idle;
+        } else if away_for > 0 && idle < 5 {
+            if let Some(h) = APP.get() {
+                let _ = h.emit_to(crate::island::WINDOW_LABEL, "user-back", away_for);
+            }
+            away_for = 0;
         }
         std::thread::sleep(EVERY);
     }
