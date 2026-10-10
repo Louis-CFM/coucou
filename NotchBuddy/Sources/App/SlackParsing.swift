@@ -48,6 +48,14 @@ struct SlackMessage: Identifiable, Equatable {
 enum SlackParsing {
     /// Mentions older than this are not "recent" any more.
     static let mentionWindow: TimeInterval = 24 * 3600
+    static let defaultRetry: TimeInterval = 60
+    static let maxRetry: TimeInterval = 3600
+
+    /// Seconds to wait after a 429: Retry-After, bounded so no value stops the poller for good.
+    static func retryAfter(_ header: String?) -> TimeInterval {
+        guard let wait = header.flatMap(Double.init), wait.isFinite else { return defaultRetry }
+        return min(max(wait, 0), maxRetry)
+    }
 
     /// The Web API answers HTTP 200 with `ok: false` and an error code.
     static func error(_ json: [String: Any]) -> String? {

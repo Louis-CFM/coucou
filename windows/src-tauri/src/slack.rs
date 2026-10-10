@@ -291,6 +291,14 @@ fn is_slack_id(id: &str) -> bool {
 
 struct Failure(String);
 
+const DEFAULT_RETRY: Duration = Duration::from_secs(60);
+const MAX_RETRY: Duration = Duration::from_secs(3600);
+
+/// The wait after a 429: Retry-After, bounded so no value stops the poller for good.
+fn retry_after(header: Option<&str>) -> Duration {
+    header.and_then(|v| v.trim().parse().ok()).map_or(DEFAULT_RETRY, |s| Duration::from_secs(s).min(MAX_RETRY))
+}
+
 async fn call(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Value, Failure> {
     let response = client()
         .get(format!("https://slack.com/api/{method}"))
@@ -301,13 +309,8 @@ async fn call(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Valu
         .map_err(|e| Failure(e.to_string()))?;
     let status = response.status().as_u16();
     if status == 429 {
-        let wait = response
-            .headers()
-            .get("Retry-After")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(60);
-        CACHE.lock().unwrap().quiet_until = Some(Instant::now() + Duration::from_secs(wait));
+        let wait = retry_after(response.headers().get("Retry-After").and_then(|v| v.to_str().ok()));
+        CACHE.lock().unwrap().quiet_until = Some(Instant::now() + wait);
         return Err(Failure("Slack error: ratelimited".into()));
     }
     if status != 200 {
@@ -512,6 +515,16 @@ pub async fn slack_open_workspace() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retry_after_is_bounded() {
+        assert_eq!(retry_after(Some("30")), Duration::from_secs(30));
+        assert_eq!(retry_after(None), Duration::from_secs(60));
+        assert_eq!(retry_after(Some("soon")), Duration::from_secs(60));
+        // A huge value would overflow Instant and end the poller for good.
+        assert_eq!(retry_after(Some("18446744073709551615")), Duration::from_secs(3600));
+        assert!(Instant::now().checked_add(retry_after(Some("9223372036854775807"))).is_some());
+    }
 
     #[test]
     fn errors_name_the_problem() {

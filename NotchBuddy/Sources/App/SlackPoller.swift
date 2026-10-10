@@ -206,8 +206,7 @@ final class SlackPoller {
         let (data, response) = try await URLSession.shared.data(for: req)
         let http = response as? HTTPURLResponse
         if http?.statusCode == 429 {
-            let wait = Double(http?.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 60
-            quietUntil = Date().addingTimeInterval(wait)
+            quietUntil = Date().addingTimeInterval(SlackParsing.retryAfter(http?.value(forHTTPHeaderField: "Retry-After")))
             throw SlackError(message: "Slack error: ratelimited")
         }
         guard http?.statusCode == 200,

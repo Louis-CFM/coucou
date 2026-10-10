@@ -109,6 +109,15 @@ enum SlackParsingTests {
         precondition(SlackLinks.web(team: "T1", channel: "D1", permalink: "javascript:alert(1)")?.absoluteString
                      == "https://slack.com/app_redirect?channel=D1&team=T1")
 
-        print("Slack parsing: 31 cases passed")
+        // Retry-After: a wait, never forever
+        precondition(SlackParsing.retryAfter("30") == 30)
+        precondition(SlackParsing.retryAfter(nil) == 60)
+        precondition(SlackParsing.retryAfter("soon") == 60)
+        precondition(SlackParsing.retryAfter("1e300") == 3600)
+        precondition(SlackParsing.retryAfter("inf") == 60)
+        precondition(SlackParsing.retryAfter("nan") == 60)
+        precondition(SlackParsing.retryAfter("-5") == 0)
+
+        print("Slack parsing: 38 cases passed")
     }
 }
