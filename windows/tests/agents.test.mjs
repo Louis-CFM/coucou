@@ -34,5 +34,5 @@ test("the agent tag is checked the Mac's way, and claude is reserved", () => {
 
 test("approval cards are for the agents the relay answers, no one else", () => {
   // Must match takes_decisions() in hook/src/reply.rs.
-  assert.deepEqual([...APPROVAL_AGENTS].sort(), ["codex", "copilot", "muse"]);
+  assert.deepEqual([...APPROVAL_AGENTS].sort(), ["claude-desktop", "codex", "copilot", "muse"]);
 });
