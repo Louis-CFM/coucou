@@ -103,6 +103,7 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var slackToken: String   = KeychainStore.shared.get("slack-token")     ?? ""
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1246,6 +1247,19 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // Slack
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#E01E5A")).frame(width: 8, height: 8)
+                        Text("Slack").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("User token  (xoxp-…)", text: $slackToken)
+                        .textFieldStyle(.roundedBorder)
+                    Text("From your own Slack app, with the user scopes im:read, users:read and search:read.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+
                 Button(String(localized: "integrations.save")) { saveIntegrations() }
                     .buttonStyle(.borderedProminent)
             }
@@ -2008,6 +2022,8 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+        saveKey("slack-token",     value: slackToken)
+        SlackPoller.shared.pollNow()
         statusMessage = String(localized: "status.integrations-saved")
     }
 

@@ -92,6 +92,9 @@ jobs:
       - name: GitHub activity tests
         run: bash scripts/test-github-activity.sh
 
+      - name: Slack parsing tests
+        run: bash scripts/test-slack.sh
+
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
