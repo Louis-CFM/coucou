@@ -115,6 +115,21 @@ export const Inbox = {
   },
 };
 
+// ── Claude plan reset ─────────────────────────────────────────────────────────
+
+const RESET_KEY = "coucou.planResetSeen";
+
+/**
+ * Whether the window that resets at `resetsAt` has been announced; marks it
+ * announced. Each window (5-hour, weekly) is announced once.
+ */
+export function firstResetNotice(kind: "fiveHour" | "sevenDay", resetsAt: number): boolean {
+  const seen = load<Record<string, number>>(RESET_KEY, {});
+  if (seen[kind] === resetsAt) return false;
+  store(RESET_KEY, { ...seen, [kind]: resetsAt });
+  return true;
+}
+
 // ── Claude plan alert ─────────────────────────────────────────────────────────
 
 const ALERT_KEY = "coucou.planAlert";

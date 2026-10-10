@@ -9,7 +9,7 @@
 // Mochi wears the plan's colour while it is open. It closes when the view, the
 // mode or the focused pill changes.
 
-import { planUsageAlert } from "./extras";
+import { planUsageAlert, scheduleResetAlerts } from "./extras";
 import { Bridge } from "../core/bridge";
 import {
   PLAN_TEXT, claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct,
@@ -62,6 +62,7 @@ export function setClaudePlanUsage(usage: PlanUsage): void {
   State.planUsage = usage;
   const five = usage.fiveHour;
   if (five) planUsageAlert(five.usedPct, five.resetsAt);
+  scheduleResetAlerts(usage);
   if (!same) {
     try {
       window.localStorage?.setItem(STORE_KEY, JSON.stringify(usage));

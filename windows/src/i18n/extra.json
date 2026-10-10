@@ -4284,6 +4284,39 @@
    "pt-BR": "Em chamada · {0}",
    "ru": "Идёт звонок · {0}",
    "id": "Sedang menelepon · {0}"
+  },
+  "Claude's 5-hour limit has reset": {
+   "zh-Hans": "Claude 的 5 小时额度已重置",
+   "hi": "Claude की 5 घंटे की सीमा रीसेट हो गई",
+   "es": "El límite de 5 horas de Claude se reinició",
+   "ar": "تمت إعادة تعيين حد Claude لخمس ساعات",
+   "fr": "La limite de 5 heures de Claude est réinitialisée",
+   "bn": "Claude-এর ৫ ঘণ্টার সীমা রিসেট হয়েছে",
+   "pt-BR": "O limite de 5 horas do Claude foi renovado",
+   "ru": "Лимит Claude на 5 часов сброшен",
+   "id": "Batas 5 jam Claude sudah direset"
+  },
+  "Claude's weekly limit has reset": {
+   "zh-Hans": "Claude 的每周额度已重置",
+   "hi": "Claude की साप्ताहिक सीमा रीसेट हो गई",
+   "es": "El límite semanal de Claude se reinició",
+   "ar": "تمت إعادة تعيين الحد الأسبوعي لـ Claude",
+   "fr": "La limite hebdomadaire de Claude est réinitialisée",
+   "bn": "Claude-এর সাপ্তাহিক সীমা রিসেট হয়েছে",
+   "pt-BR": "O limite semanal do Claude foi renovado",
+   "ru": "Недельный лимит Claude сброшен",
+   "id": "Batas mingguan Claude sudah direset"
+  },
+  "Fresh credits — back to work.": {
+   "zh-Hans": "额度已恢复 — 继续工作吧。",
+   "hi": "नए क्रेडिट — फिर से काम पर।",
+   "es": "Créditos renovados — a trabajar.",
+   "ar": "رصيد جديد — عُد إلى العمل.",
+   "fr": "Crédits tout neufs — au travail.",
+   "bn": "নতুন ক্রেডিট — আবার কাজে।",
+   "pt-BR": "Créditos renovados — de volta ao trabalho.",
+   "ru": "Лимит обновлён — за работу.",
+   "id": "Kredit baru — kembali bekerja."
   }
  }
 }

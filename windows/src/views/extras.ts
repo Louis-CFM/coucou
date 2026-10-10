@@ -6,7 +6,7 @@ import { h, clear, dot } from "./dom";
 import { Bridge, onEvent } from "../core/bridge";
 import { State } from "../core/state";
 import { Sound } from "../core/sound";
-import { Focus, Inbox, Todos, clock, planAlert, type ExtraView } from "../core/extras";
+import { Focus, Inbox, Todos, clock, firstResetNotice, planAlert, type ExtraView } from "../core/extras";
 import { Live, showLive, type LiveHost } from "../island/live";
 import { t } from "../i18n/i18n";
 
@@ -221,6 +221,30 @@ export function planUsageAlert(usedPct: number, resetsAt: number) {
   const text = t("Claude plan at {p}% — resets in {m} min", { p: Math.round(usedPct), m: mins });
   if (host) showLive(host, { kind: "battery", level: usedPct / 100, muted: false, charging: false, text }, 6000);
   void Bridge.phonePush(t("Claude usage {p}%", { p: mark }), text, mark >= 95, true);
+}
+
+/** A timer per window (5-hour, weekly): when it resets, a card and the phone. */
+const resetTimers: Partial<Record<"fiveHour" | "sevenDay", { at: number; id: number }>> = {};
+
+export function scheduleResetAlerts(windows: { fiveHour?: { usedPct: number; resetsAt: number }; sevenDay?: { usedPct: number; resetsAt: number } }) {
+  for (const kind of ["fiveHour", "sevenDay"] as const) {
+    const w = windows[kind];
+    if (!w || !(w.resetsAt > Date.now())) continue;
+    const prev = resetTimers[kind];
+    if (prev?.at === w.resetsAt) continue;
+    if (prev) window.clearTimeout(prev.id);
+    // ponytail: a timer while Coucou runs; a reset that passes while it's closed isn't announced.
+    const id = window.setTimeout(() => {
+      delete resetTimers[kind];
+      if (!firstResetNotice(kind, w.resetsAt)) return;
+      const text = kind === "fiveHour" ? t("Claude's 5-hour limit has reset") : t("Claude's weekly limit has reset");
+      if (host) showLive(host, { kind: "battery", level: 1, muted: false, charging: true, text }, 6000);
+      void Bridge.phonePush(text, t("Fresh credits — back to work."), false, true);
+    }, Math.min(w.resetsAt - Date.now() + 1000, 2_147_000_000));
+    // Under Node (the tests) a timer hours away must not keep the process alive.
+    (id as unknown as { unref?: () => void }).unref?.();
+    resetTimers[kind] = { at: w.resetsAt, id };
+  }
 }
 
 /** Back at the keyboard after a while: what came meanwhile (notify.rs). */
