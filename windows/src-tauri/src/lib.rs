@@ -53,6 +53,13 @@ pub struct Shared {
     pub gate: Arc<PollGate>,
 }
 
+/// Uninstalls Coucou hooks across all supported agents (Claude Code, Antigravity,
+/// Cursor, Codex, Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes).
+pub fn uninstall_all_hooks() {
+    hooks::uninstall_all();
+    agents::uninstall_all();
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BootInfo {

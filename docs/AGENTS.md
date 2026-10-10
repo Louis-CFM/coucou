@@ -132,6 +132,12 @@ The installer writes to `~/.gemini/config/hooks.json` (timeouts in seconds) and 
 `--agent antigravity`. The relay translates `toolCall.name` / `conversationId` to the
 island's `tool_name` / `session_id`.
 
+Coucou uninstalls its hooks cleanly via **Settings → Antigravity → Uninstall hooks**, automatically
+during Windows uninstallation, or via `Coucou.exe --uninstall-hooks`. If Coucou was uninstalled
+previously while hooks were active, Antigravity fails closed on missing hook binaries (`Tool call denied by pre-tool hook`).
+Removing the `"coucou"` section from `~/.gemini/config/hooks.json` (or deleting the file if only Coucou was configured)
+immediately restores normal operation.
+
 | Antigravity event | Canonical event |
 |---|---|
 | `PreInvocation` | `UserPromptSubmit` |

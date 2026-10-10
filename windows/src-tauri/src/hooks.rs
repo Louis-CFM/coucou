@@ -330,6 +330,27 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
+/// Uninstalls Claude Code hooks and plan relay if installed.
+pub fn uninstall_all() -> bool {
+    let mut uninstalled = false;
+    let s = status();
+    if s.installed {
+        if let Ok(preview) = preview(false) {
+            if write(false, &preview.fingerprint).is_ok() {
+                uninstalled = true;
+            }
+        }
+    }
+    if s.plan_relay_installed {
+        if let Ok(preview) = status_line_preview(false) {
+            if status_line_write(false, &preview.fingerprint).is_ok() {
+                uninstalled = true;
+            }
+        }
+    }
+    uninstalled
+}
+
 fn save_status_line_previous(status_line: &Value) -> std::io::Result<()> {
     let path = status_line_previous_path();
     if let Some(dir) = path.parent() {
@@ -560,6 +581,14 @@ mod tests {
         let pre = after["hooks"]["PreToolUse"].as_array().unwrap();
         assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
         assert!(status().installed);
+
+        // uninstall_all cleans up and reports true
+        assert!(uninstall_all());
+        assert!(!status().installed);
+
+        // Reinstall so the stale preview test below has something to uninstall
+        let plan = preview(true).unwrap();
+        write(true, &plan.fingerprint).unwrap();
 
         // A file that moved since the preview is refused, and left alone.
         let stale = preview(false).unwrap();

@@ -349,7 +349,7 @@ you click, and uninstalling removes only Coucou's entries. A config Coucou canno
 read, or where it finds something it does not expect, is left alone and the
 reason is shown. Each agent gets its own pill (`agent_<name>`, the Mac's ids and
 colours). The files are the Mac's, under `%USERPROFILE%` on Windows and `~` on
-Linux.
+Linux. Uninstalling Coucou cleans up its hook entries automatically (and `Coucou.exe --uninstall-hooks` can be run headlessly).
 
 | Agent | Installs | Permissions |
 |---|---|---|
