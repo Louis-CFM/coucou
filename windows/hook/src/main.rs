@@ -205,6 +205,11 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     truncate_payload(&mut payload, &name);
 
     let mut line = payload.to_string();
+    if line.len() > MAX_LINE && name == "PermissionRequest" {
+        // The card could only show the tool name, and Allow would run the whole
+        // call: the terminal asks instead.
+        return None;
+    }
     if line.len() > MAX_LINE {
         // Keys and field count escape truncate_strings, so the line can still
         // be too long. Send what the island needs rather than bytes the app
@@ -451,7 +456,7 @@ mod tests {
         // Keys escape truncate_strings: a giant key name still forwards —
         // as a minimal, well-formed event rather than a line the app drops.
         let mut payload = Map::new();
-        payload.insert("hook_event_name".into(), serde_json::json!("PermissionRequest"));
+        payload.insert("hook_event_name".into(), serde_json::json!("PreToolUse"));
         payload.insert("session_id".into(), serde_json::json!("s1"));
         payload.insert("tool_name".into(), serde_json::json!("Bash"));
         payload.insert("k".repeat(MAX_LINE).into(), serde_json::json!("v"));
@@ -460,9 +465,24 @@ mod tests {
         let ev = prepare(&raw, &args, &|_| None, "/tmp").expect("forwarded");
         assert!(ev.line.len() < MAX_LINE);
         let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
-        assert_eq!(v["hook_event_name"], "PermissionRequest");
+        assert_eq!(v["hook_event_name"], "PreToolUse");
         assert_eq!(v["tool_name"], "Bash");
         assert_eq!(v["coucou_truncated"], true);
+    }
+
+    #[test]
+    fn a_permission_request_too_long_to_show_is_left_to_the_terminal() {
+        // The island could only show the tool name, and Allow would run the whole call.
+        let mut payload = Map::new();
+        payload.insert("hook_event_name".into(), serde_json::json!("PermissionRequest"));
+        payload.insert("tool_name".into(), serde_json::json!("MultiEdit"));
+        let edits: Vec<Value> = (0..2000)
+            .map(|i| serde_json::json!({ "old_string": format!("{i}{}", "a".repeat(400)), "new_string": "b".repeat(400) }))
+            .collect();
+        payload.insert("tool_input".into(), serde_json::json!({ "file_path": "/p/a.rs", "edits": edits }));
+        let raw = serde_json::to_vec(&payload).unwrap();
+        let args = Args { agent: String::new(), event: String::new() };
+        assert!(prepare(&raw, &args, &|_| None, "/tmp").is_none());
     }
 
     #[test]
