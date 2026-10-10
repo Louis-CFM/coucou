@@ -620,6 +620,10 @@ final class ClaudeService {
 
     private func readFileAsBlock(url: URL) -> [String: Any]? {
         guard let data = try? Data(contentsOf: url) else { return nil }
+        // Anthropic refuses requests past ~32 MB, and base64 costs a third more
+        // memory than the file — a multi-hundred-MB drop would only be read,
+        // encoded and then rejected. 10 MB is generous for a notch assistant.
+        guard data.count <= 10_485_760 else { return nil }
         let ext = url.pathExtension.lowercased()
         let base64 = data.base64EncodedString()
 

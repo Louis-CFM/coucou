@@ -414,14 +414,24 @@ struct CountdownBar: View {
                 .cornerRadius(2)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .onAppear { startTimer() }
+        .onAppear { startTimer(); syncTimer() }
         .onDisappear { timer?.invalidate() }
+        // The bar only counts down while the island is expanded — paused, the
+        // 10 Hz tick costs nothing while it is collapsed or hidden. (isPinned
+        // is not @Published; updateBar still guards on it inside.)
+        .onChange(of: state.mode) { _, _ in syncTimer() }
     }
 
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             updateBar()
         }
+    }
+
+    private func syncTimer() {
+        let active = state.mode == .expanded
+        timer?.isPaused = !active
+        if !active { barWidth = 0 }
     }
 
     private func updateBar() {

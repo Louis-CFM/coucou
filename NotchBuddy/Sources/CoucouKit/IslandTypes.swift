@@ -223,7 +223,10 @@ enum IslandConst {
         if let c = projectColors[key] { return c }
         // partial match (e.g. "korus-api" → "korus")
         for (k, c) in projectColors where key.hasPrefix(k) || key.contains(k) { return c }
-        return fallbackColors[abs(name.hashValue) % fallbackColors.count]
+        // hashValue is seeded per process — a stable fold keeps the same
+        // project on the same colour across launches.
+        let h = key.unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
+        return fallbackColors[abs(h) % fallbackColors.count]
     }
 
     // State card wash colors (radial gradient from bottom)

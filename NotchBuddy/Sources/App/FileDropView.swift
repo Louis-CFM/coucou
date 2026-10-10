@@ -58,9 +58,19 @@ enum FileDropHandler {
         let dur = 2.4
         UploadSequenceEngine.shared.performDrop(uploadDuration: dur)
 
-        // Copy to inbox in background — update state when done
+        // Copy to inbox in background — update state when done. A huge drop is
+        // referenced in place instead: duplicating it would double its disk cost
+        // and readFileAsBlock caps the upload at 10 MB anyway.
         let inbox = HookServer.supportDir.appendingPathComponent("inbox")
         Task.detached {
+            let size = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int ?? 0
+            if size > 52_428_800 {
+                await MainActor.run {
+                    state.droppedFile = DroppedFile(url: url, name: name)
+                    state.promptContext = .file(name: name, fileURL: url)
+                }
+                return
+            }
             try? FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
             let dest = inbox.appendingPathComponent(name)
             try? FileManager.default.removeItem(at: dest)
