@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 11] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -243,8 +243,8 @@ mod tests {
         assert_eq!(resolve("", &sys(&["fr_FR.UTF-8"])), "fr");
         assert_eq!(resolve("", &sys(&["pt-PT"])), "pt-BR");
         assert_eq!(resolve("", &sys(&["zh-CN"])), "zh-Hans");
-        assert_eq!(resolve("", &sys(&["zh-TW", "de", "es-MX"])), "es");
-        assert_eq!(resolve("", &sys(&["de-DE"])), "en");
+        assert_eq!(resolve("", &sys(&["zh-TW", "it", "es-MX"])), "es");
+        assert_eq!(resolve("", &sys(&["it-IT"])), "en");
         assert_eq!(resolve("xx", &[]), "en");
     }
 
@@ -286,5 +286,29 @@ mod tests {
                 assert!(entry.get(*lang).is_some(), "{key:?} has no {lang}");
             }
         }
+    }
+
+    #[test]
+    fn german_resolves_translates_and_selects_singular_only_for_one() {
+        for tag in ["de", "de-DE", "de-AT", "de-CH", "de_DE.UTF-8"] {
+            assert_eq!(resolve("", &[tag.to_string()]), "de");
+        }
+        assert_eq!(resolve("de", &["fr-FR".to_string()]), "de");
+        assert_eq!(resolve("fr", &["de-DE".to_string()]), "fr");
+        set_for_test("de");
+        assert_eq!(t("Allow"), "Zulassen");
+        assert_eq!(t("Deny"), "Ablehnen");
+        assert_eq!(t("Open the chat"), "Chat öffnen");
+        assert_eq!(tf("Uploading {name}", &[("name", "Grüße.pdf")]), "Grüße.pdf wird hochgeladen");
+        assert_eq!(t("A string nobody translated"), "A string nobody translated");
+        for count in [0, 1, 2, 21] {
+            assert_eq!(plural_category("de", count), if count == 1 { "one" } else { "other" });
+            let repo = if count == 1 { "Repository" } else { "Repositorys" };
+            let model = if count == 1 { "Modell" } else { "Modelle" };
+            assert_eq!(tn("{count} repo", "{count} repos", count, &[]), format!("{count} {repo}"));
+            assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", count, &[]),
+                format!("✓ Verbunden · {count} {model}"));
+        }
+        set_for_test("en");
     }
 }

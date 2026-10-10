@@ -146,6 +146,7 @@ targets:
           - en
           - ar
           - bn
+          - de
           - es
           - fr
           - hi
@@ -223,6 +224,7 @@ targets:
           - en
           - ar
           - bn
+          - de
           - es
           - fr
           - hi
