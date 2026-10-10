@@ -26,7 +26,7 @@ const STRINGS = {
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
-  noAnswer: N_("No answer came within two minutes — try again."),
+  noAnswer: N_("No answer came within two minutes. Try again."),
   openSettings: N_("Open Settings"),
 };
 
