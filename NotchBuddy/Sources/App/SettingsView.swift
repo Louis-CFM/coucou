@@ -74,6 +74,11 @@ struct SettingsView: View {
     @State private var pendingAmpContent: String = ""
     @State private var ampPendingInstall: Bool = true
 
+    @State private var piExtensionInstalled: Bool = HookServer.piExtensionInstalled()
+    @State private var showPiDiff: Bool = false
+    @State private var pendingPiContent: String = ""
+    @State private var piPendingInstall: Bool = true
+
     @State private var hermesPluginInstalled: Bool = HookServer.hermesPluginInstalled()
     @State private var showHermesPluginDiff: Bool = false
     @State private var pendingHermesPluginContent: String = ""
@@ -834,6 +839,39 @@ struct SettingsView: View {
                         Button(String(localized: "hooks.confirm-write")) { confirmAmpOp() }
                             .buttonStyle(.borderedProminent)
                         Button(String(localized: "Cancel")) { showAmpDiff = false; pendingAmpContent = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "plugin.pi.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(piExtensionInstalled
+                     ? String(localized: "plugin.pi.installed")
+                     : "~/.pi/agent/extensions/coucou.ts")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button(String(localized: "plugin.install")) { triggerPiPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "hooks.uninstall")) { triggerPiPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showPiDiff {
+                    ScrollView {
+                        Text(pendingPiContent)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmPiOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showPiDiff = false; pendingPiContent = "" }
                             .buttonStyle(.bordered)
                     }
                 }
@@ -1691,6 +1729,37 @@ struct SettingsView: View {
         }
     }
 
+    private func triggerPiPreview(install: Bool) {
+        do {
+            piPendingInstall = install
+            pendingPiContent = try HookServer.shared.previewPiExtension(install: install)
+            showPiDiff = true
+            statusMessage = String(localized: "plugin.review-content")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmPiOp() {
+        do {
+            if piPendingInstall {
+                try HookServer.shared.writePiExtension()
+            } else {
+                try HookServer.shared.removePiExtension()
+            }
+            showPiDiff = false
+            pendingPiContent = ""
+            piExtensionInstalled = piPendingInstall
+            statusMessage = piPendingInstall
+                ? String(localized: "status.pi-extension-installed")
+                : String(localized: "status.pi-extension-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
     private func triggerHermesPluginPreview(install: Bool) {
         do {
             hermesPluginPendingInstall = install
@@ -1908,6 +1977,7 @@ struct SettingsView: View {
             if def.id == "agent_muse"          && !HookServer.museHooksInstalled()       { return String(localized: "Hooks not installed") }
             if def.id == "agent_opencode"      && !HookServer.openCodePluginInstalled()  { return String(localized: "Plugin not installed") }
             if def.id == "agent_amp"           && !HookServer.ampPluginInstalled()       { return String(localized: "Plugin not installed") }
+            if def.id == "agent_pi"            && !HookServer.piExtensionInstalled()     { return String(localized: "Plugin not installed") }
             if def.id == SpotifyController.pillId && !SpotifyController.shared.isInstalled { return String(localized: "Not installed") }
             #endif
             if def.category == .ai {

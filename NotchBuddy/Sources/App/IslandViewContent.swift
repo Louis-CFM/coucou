@@ -240,7 +240,7 @@ struct OverviewView: View {
         case "agent_claude-desktop":
             openClaudeDesktopApp()
         case "agent_gemini", "agent_antigravity",
-             "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
+             "agent_copilot", "agent_muse", "agent_opencode", "agent_amp", "agent_pi":
             #if !APPSTORE
             TerminalTarget.activate(sessionBundleId: nil)
             #endif
@@ -1766,6 +1766,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "agent_pi":
+            #if !APPSTORE
+            return HookServer.piExtensionInstalled()
+            #else
+            return false
+            #endif
         case "agent_hermes":
             #if !APPSTORE
             return HookServer.hermesPluginInstalled()
@@ -1916,6 +1922,7 @@ struct IntegrationCardView: View {
                    || task.id == "agent_codex"        || task.id == "agent_copilot"
                    || task.id == "agent_muse"         || task.id == "agent_opencode"
                    || task.id == "agent_amp"          || task.id == "agent_hermes"
+                   || task.id == "agent_pi"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return String(localized: "Hooks installed") }

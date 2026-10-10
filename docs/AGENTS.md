@@ -101,7 +101,7 @@ A catalog pill that is not checked in Settings behaves like any other agent: it 
 
 The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigravity`),
 GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
-Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
+Amp (`agent_amp`), Pi (`agent_pi`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
 the main pill; session support is coming in a future version.
 
@@ -205,6 +205,22 @@ The `tool.call` handler returns `{ action: 'allow' }` so Amp always proceeds; al
 | `tool.call` | `PreToolUse` |
 | `tool.result` | `PostToolUse` |
 | `agent.end` | `Stop` |
+
+### Pi (macOS)
+
+Coucou supports Pi (`@earendil-works/pi-coding-agent`) via **Settings → Pi Plugin → Install plugin**.
+The installer writes a TypeScript extension to `~/.pi/agent/extensions/coucou.ts`.
+Pi auto-discovers all extensions in this directory. Events are forwarded fire-and-forget to the notch; Pi is never blocked.
+
+| Pi event | Canonical event |
+|---|---|
+| `session_start` | `SessionStart` |
+| `before_agent_start` | `UserPromptSubmit` |
+| `tool_execution_start` | `PreToolUse` |
+| `tool_execution_end` | `PostToolUse` |
+| `message_end` | `last_assistant_message` capture |
+| `agent_end` | `Stop` |
+| `session_shutdown` | `SessionEnd` |
 
 ### Hermes Agent (macOS)
 

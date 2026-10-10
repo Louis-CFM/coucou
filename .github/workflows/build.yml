@@ -90,6 +90,9 @@ jobs:
       - name: Claude settings file tests
         run: bash scripts/test-claude-settings.sh
 
+      - name: Test Pi extension
+        run: bash scripts/test-pi-extension.sh
+
       - name: Build
         run: |
           xcodebuild \
