@@ -1196,7 +1196,7 @@ final class IslandWindowController: NSWindowController {
         let panelH = window?.frame.height ?? 320
         let panelW = window?.frame.width  ?? 720
         let (islandW, fixedH) = islandSize(mode: s.mode, view: s.view,
-                                            progress: s.uploadProgress, nw: notchW, nh: notchH)
+                                            progress: s.uploadProgress, nw: notchW, nh: notchH, pad: s.compactPadding)
         // Chat view resizes dynamically — must match IslandContainer.chatPromptHeight
         let islandH: CGFloat
         if s.mode == .expanded && s.view == .prompt {
@@ -1209,7 +1209,8 @@ final class IslandWindowController: NSWindowController {
         let islandMinX = (panelW - islandW) / 2
         let (cx, cy, diameter, _) = botPosition(mode: s.mode, view: s.view,
                                                   islandW: islandW, islandH: islandH,
-                                                  uploadProgress: s.uploadProgress, hasNotch: s.hasNotch)
+                                                  uploadProgress: s.uploadProgress, hasNotch: s.hasNotch,
+                                                  compactPadding: s.compactPadding)
         let radius = (diameter / 0.6) / 2
         // botPosition cy is from island TOP; panel AppKit coords have y=0 at bottom
         // island top in AppKit coords = panelH (island glued to top of panel/screen)
@@ -1294,7 +1295,7 @@ final class IslandPanel: NSPanel {
     func currentIslandFrame(nw: CGFloat, nh: CGFloat) -> CGRect {
         let s = AppState.shared
         let (w, fixedH) = islandSize(mode: s.mode, view: s.view,
-                                      progress: s.uploadProgress, nw: nw, nh: nh)
+                                      progress: s.uploadProgress, nw: nw, nh: nh, pad: s.compactPadding)
         let h: CGFloat
         if s.mode == .expanded && s.view == .prompt {
             let base: CGFloat = 240
@@ -1670,10 +1671,11 @@ extension Notification.Name {
 func islandSize(mode: IslandMode, view: IslandView,
                 progress: Double = 0,
                 nw: CGFloat = IslandConst.notchWidth,
-                nh: CGFloat = IslandConst.notchHeight) -> (CGFloat, CGFloat) {
+                nh: CGFloat = IslandConst.notchHeight,
+                pad: CompactPadding = .standard) -> (CGFloat, CGFloat) {
     switch mode {
     case .hidden:   return (nw, nh)
-    case .compact:  return (nw + 160, nh)
+    case .compact:  return (nw + 160, max(nh, pad.top + IslandConst.compactRow + pad.bottom))
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         if view == .question, let h = QuestionLayout.height {

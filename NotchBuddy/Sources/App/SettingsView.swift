@@ -338,6 +338,14 @@ struct SettingsView: View {
                         .frame(width: 48)
                     Text("min without movement")
                 }
+                HStack(spacing: 8) {
+                    Text("Padding")
+                    paddingField("Top", $state.compactPaddingTop)
+                    paddingField("Right", $state.compactPaddingRight)
+                    paddingField("Bottom", $state.compactPaddingBottom)
+                    paddingField("Left", $state.compactPaddingLeft)
+                }
+                .help("pixels between the folded island's edges and Mochi or the pills")
             }
             .padding(6)
         }
@@ -1966,6 +1974,15 @@ struct SettingsView: View {
                 if names.isEmpty { self.statusMessage = "❌ No n8n workflows found." }
             }
         }.resume()
+    }
+
+    private func paddingField(_ label: LocalizedStringKey, _ value: Binding<Double>) -> some View {
+        HStack(spacing: 4) {
+            Text(label).foregroundColor(.secondary)
+            TextField("", value: value, format: .number)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 44)
+        }
     }
 
     @ViewBuilder

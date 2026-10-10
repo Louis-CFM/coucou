@@ -9,6 +9,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
+import { COMPACT_PADDING, COMPACT_PADDING_MAX, type CompactPadding } from "../core/layout";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
@@ -907,6 +908,24 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const paddingField = (side: keyof CompactPadding, label: string) => {
+    const input = h("input", {
+      type: "number", min: "0", max: String(COMPACT_PADDING_MAX), step: "1",
+      value: String(Math.round(settings.compactPadding[side])),
+      title: label,
+    }) as HTMLInputElement;
+    input.addEventListener("change", () => {
+      const v = Number(input.value);
+      const value = Number.isFinite(v) && input.value !== ""
+        ? Math.max(0, Math.min(COMPACT_PADDING_MAX, Math.round(v)))
+        : COMPACT_PADDING[side];
+      settings.compactPadding = { ...settings.compactPadding, [side]: value };
+      input.value = String(value);
+      void save();
+    });
+    return [h("span", { class: "hint", text: label }), input];
+  };
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -954,6 +973,16 @@ function generalSection(): HTMLElement {
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: t("Padding") }),
+      h("div", { class: "padding-grid" },
+        ...paddingField("top", t("Top")),
+        ...paddingField("bottom", t("Bottom")),
+        ...paddingField("left", t("Left")),
+        ...paddingField("right", t("Right")),
+      ),
+    ),
+    h("div", { class: "hint", text: t("pixels between the folded island's edges and Mochi or the pills") }),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,

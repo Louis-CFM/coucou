@@ -270,6 +270,28 @@ final class AppState: ObservableObject {
     @Published var openOnHover: Bool = false {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
+    // Folded island: space between each edge and Mochi or the pills — persisted
+    @Published var compactPaddingTop: Double = Double(CompactPadding.standard.top) {
+        didSet { compactPaddingTop = Self.clampedPadding(compactPaddingTop, key: "compactPaddingTop") }
+    }
+    @Published var compactPaddingRight: Double = Double(CompactPadding.standard.right) {
+        didSet { compactPaddingRight = Self.clampedPadding(compactPaddingRight, key: "compactPaddingRight") }
+    }
+    @Published var compactPaddingBottom: Double = Double(CompactPadding.standard.bottom) {
+        didSet { compactPaddingBottom = Self.clampedPadding(compactPaddingBottom, key: "compactPaddingBottom") }
+    }
+    @Published var compactPaddingLeft: Double = Double(CompactPadding.standard.left) {
+        didSet { compactPaddingLeft = Self.clampedPadding(compactPaddingLeft, key: "compactPaddingLeft") }
+    }
+    var compactPadding: CompactPadding {
+        CompactPadding(top: CGFloat(compactPaddingTop), right: CGFloat(compactPaddingRight),
+                       bottom: CGFloat(compactPaddingBottom), left: CGFloat(compactPaddingLeft))
+    }
+    private static func clampedPadding(_ value: Double, key: String) -> Double {
+        let v = min(IslandConst.compactPaddingMax, max(0, value))
+        UserDefaults.standard.set(v, forKey: key)
+        return v
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -489,6 +511,10 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
+        if let v = ud.object(forKey: "compactPaddingTop") as? Double { compactPaddingTop = v }
+        if let v = ud.object(forKey: "compactPaddingRight") as? Double { compactPaddingRight = v }
+        if let v = ud.object(forKey: "compactPaddingBottom") as? Double { compactPaddingBottom = v }
+        if let v = ud.object(forKey: "compactPaddingLeft") as? Double { compactPaddingLeft = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }

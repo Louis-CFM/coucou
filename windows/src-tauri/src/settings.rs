@@ -19,6 +19,9 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    /// Space between the folded island's edges and Mochi or the pills, in
+    /// logical px.
+    pub compact_padding: CompactPadding,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -71,6 +74,22 @@ pub struct Settings {
     pub desktop_mochi: DesktopMochiPref,
 }
 
+/// Defaults keep the shipped 32 px compact island (src/core/layout.ts).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CompactPadding {
+    pub top: f64,
+    pub right: f64,
+    pub bottom: f64,
+    pub left: f64,
+}
+
+impl Default for CompactPadding {
+    fn default() -> Self {
+        Self { top: 6.0, right: 28.0, bottom: 6.0, left: 28.0 }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DesktopMochiPref {
@@ -99,6 +118,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            compact_padding: CompactPadding::default(),
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -381,6 +401,7 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "compactPadding": { "top": 2.0, "right": 6.0, "bottom": 4.0, "left": 6.0 },
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -784,6 +805,7 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "compactPadding",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
