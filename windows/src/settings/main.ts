@@ -237,7 +237,7 @@ function remoteChange(host: string): Change {
   return {
     preview: (install) => Bridge.remotePreview(host, install),
     apply: (install, fingerprint) => Bridge.remoteApply(host, install, fingerprint),
-    get installText() { return t("This is exactly what will change in settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there. Your own hooks are left untouched.", { host }); },
+    get installText() { return t("The changes to settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there.", { host }); },
     get removeText() { return HOOKS_CHANGE.removeText; },
     get installButton() { return t("Back up and write"); },
     get removeButton() { return t("Back up and remove"); },
@@ -253,7 +253,7 @@ function remoteSection(): HTMLElement {
     h("h2", {}, h("span", { text: t("Remote hosts") })),
     h("div", {
       class: "hint",
-      text: t("Claude Code sessions on other machines, over your own SSH: Coucou runs ssh with your keys and ~/.ssh/config, and nothing listens on the network. Connect to a host once in a terminal first, so its key is known."),
+      text: t("Claude Code sessions on other machines, over SSH with your keys and ~/.ssh/config. Connect to each host once in a terminal first so its host key is known."),
     }),
     body,
   );

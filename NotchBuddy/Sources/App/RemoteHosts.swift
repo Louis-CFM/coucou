@@ -380,7 +380,7 @@ struct RemoteHostsSection: View {
     var body: some View {
         GroupBox(String(localized: "Remote hosts")) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(String(localized: "Claude Code sessions on other machines, over your own SSH: Coucou runs ssh with your keys and ~/.ssh/config, and nothing listens on the network. Connect to a host once in a terminal first, so its key is known."))
+                Text(String(localized: "Claude Code sessions on other machines, over SSH with your keys and ~/.ssh/config. Connect to each host once in a terminal first so its host key is known."))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -402,7 +402,7 @@ struct RemoteHostsSection: View {
                 }
                 if let review = remote.review {
                     Text(review.install
-                         ? String(localized: "This is exactly what will change in settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there. Your own hooks are left untouched.").replacingOccurrences(of: "{host}", with: review.host)
+                         ? String(localized: "The changes to settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there.").replacingOccurrences(of: "{host}", with: review.host)
                          : review.host)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
