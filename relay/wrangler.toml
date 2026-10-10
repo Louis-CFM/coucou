@@ -20,7 +20,7 @@ class_name = "PhoneBox"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["PhoneBox"]
+new_sqlite_classes = ["PhoneBox"]
 
 [observability]
 enabled = false

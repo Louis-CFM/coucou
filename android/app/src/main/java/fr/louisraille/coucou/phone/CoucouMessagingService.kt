@@ -1,5 +1,6 @@
 package fr.louisraille.coucou.phone
 
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -21,13 +22,18 @@ class CoucouMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val p = Prefs.load(this) ?: return
+        Log.w("CoucouPush", "onMessageReceived data=${message.data}")
+        val p = Prefs.load(this)
+        if (p == null) { Log.w("CoucouPush", "no prefs"); return }
         Thread {
             try {
                 val f = Relay.fetch(p)
                 val card = f.pending
+                Log.w("CoucouPush", "fetch ok card=${card?.requestId}")
                 if (card != null) Notifier.showCard(this, card) else Notifier.cancelCard(this)
-            } catch (_: Exception) { /* offline — the next push retries */ }
+            } catch (e: Exception) {
+                Log.w("CoucouPush", "fetch failed: $e")
+            }
         }.start()
     }
 }
