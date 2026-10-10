@@ -22,9 +22,9 @@ final class ClaudeVoiceBrain {
         let failed: Bool      // nothing usable came back
     }
 
-    /// On when the setting is on and an Anthropic key is saved.
+    /// Claude is Coucou's brain whenever an Anthropic key is saved (Settings → Chat).
     static var isActive: Bool {
-        VoiceSettings.claudeBrainEnabled && !(ClaudeService.shared.apiKey ?? "").isEmpty
+        !(ClaudeService.shared.apiKey ?? "").isEmpty
     }
 
     private var messages: [[String: Any]] = []
@@ -125,8 +125,8 @@ final class ClaudeVoiceBrain {
         in one or two short sentences, no markdown, no lists, no emojis, no links.
         Act with the tools instead of describing: pills, music, service_info for the user's own data \
         (Stripe sales, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agent sessions like Claude Code, \
-        plan usage, music, weather), open_app, prepare_email, and web_search for anything current \
-        (news, scores, prices, facts you are not sure of). Never invent the user's data.
+        plan usage, music), open_app, prepare_email, and web_search for anything current \
+        (weather, news, scores, prices, facts you are not sure of). Never invent the user's data.
         Email: gather the recipient, the subject and what to say (write the text yourself from what \
         the user wants to say, in the language they used), asking for what is missing one short \
         question at a time, then call prepare_email. The email is never sent by you: the user checks \
@@ -171,11 +171,12 @@ final class ClaudeVoiceBrain {
         ],
         [
             "name": "service_info",
-            "description": "Read the user's real data that Coucou already has: Stripe sales and balance, GitHub stars/PRs/CI, Vercel deployments, Resend emails, n8n runs, Notion pages, Cal.com bookings, agent sessions (Claude Code, Codex…), Claude or Codex plan usage, music now playing, active pills, weather today or tomorrow.",
+            "description": "Read the user's real data that Coucou already has: Stripe sales and balance, GitHub stars/PRs/CI, Vercel deployments, Resend emails, n8n runs, Notion pages, Cal.com bookings, agent sessions (Claude Code, Codex…), Claude or Codex plan usage, music now playing, active pills.",
             "input_schema": [
                 "type": "object",
                 "properties": [
-                    "topic": ["type": "string", "enum": VoiceTopic.allCases.map(\.rawValue)],
+                    "topic": ["type": "string", "enum": VoiceTopic.allCases.map(\.rawValue)
+                        .filter { !$0.hasPrefix("weather") }],   // weather: web_search
                 ],
                 "required": ["topic"],
             ],
