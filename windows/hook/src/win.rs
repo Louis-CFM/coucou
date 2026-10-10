@@ -23,6 +23,15 @@ use crate::CONNECT_TIMEOUT;
 /// the one error worth retrying: the server exists and a slot will free up.
 const ERROR_PIPE_BUSY: i32 = 231;
 
+/// `SECURITY_IDENTIFICATION` (winbase.h), spelled out so the
+/// `Win32_Storage_FileSystem` feature is not needed. Without this quality of
+/// service, whoever serves the pipe may impersonate us at the full
+/// SecurityImpersonation level: a service account holding SeImpersonatePrivilege
+/// that took the name before Coucou could then act as us. This backs up
+/// `pipe_server_is_same_user`; Coucou never impersonates the hook, so it loses
+/// nothing.
+const SECURITY_IDENTIFICATION: u32 = 1 << 16;
+
 /// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.
@@ -35,11 +44,15 @@ fn pipe_path() -> String {
 /// Opens the pipe. Retries only while the server is busy: any other error means
 /// there is nothing to talk to, and waiting would only delay Claude Code.
 pub fn connect() -> Option<std::fs::File> {
+    use std::os::windows::fs::OpenOptionsExt;
     use std::os::windows::io::AsRawHandle;
     let path = pipe_path();
+    let mut options = std::fs::OpenOptions::new();
+    // security_qos_flags adds SECURITY_SQOS_PRESENT by itself.
+    options.read(true).write(true).security_qos_flags(SECURITY_IDENTIFICATION);
     let deadline = Instant::now() + CONNECT_TIMEOUT;
     loop {
-        match std::fs::OpenOptions::new().read(true).write(true).open(&path) {
+        match options.open(&path) {
             Ok(file) => {
                 let handle = HANDLE(file.as_raw_handle());
                 // Somebody else's server on our pipe name gets nothing from us.

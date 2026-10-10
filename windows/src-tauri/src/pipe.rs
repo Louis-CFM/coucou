@@ -34,6 +34,8 @@ use tokio::sync::mpsc;
 
 use crate::island::WINDOW_LABEL;
 use crate::log;
+#[cfg(windows)]
+use crate::platform::PipeSecurity;
 use crate::session_window;
 
 /// Slightly under coucou-hook's own 110 s wait, so we always answer first.
@@ -44,6 +46,18 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+/// Cap on reading a client's request. coucou-hook writes it in one go as soon
+/// as it connects, and its whole run fits in 2 s when nobody waits for an
+/// answer: a silent connection, or one that trickles bytes in, must not hold a
+/// pipe instance. Only the read is bounded here; waiting for a decision has its
+/// own timeouts (ACK_TIMEOUT, DECISION_TIMEOUT).
+const REQUEST_READ_TIMEOUT: Duration = Duration::from_secs(5);
+/// Pause after an accept error before listening again, so a lasting failure
+/// does not spin.
+const ACCEPT_RETRY: Duration = Duration::from_millis(200);
+/// Pause between two attempts to take the pipe name (see first_instance).
+#[cfg(windows)]
+const FIRST_INSTANCE_RETRY: Duration = Duration::from_secs(2);
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -73,33 +87,94 @@ pub fn pipe_name() -> String {
 pub fn start(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let name = pipe_name();
-        // first_pipe_instance also means we refuse to join a pipe somebody else
-        // already owns under our name, rather than serving on top of it.
-        let mut server = match ServerOptions::new().first_pipe_instance(true).create(&name) {
-            Ok(s) => s,
-            Err(err) => {
-                log::line(format!("cannot open the relay pipe: {err}"));
-                return;
-            }
+        // Never fall back to the default security descriptor. Without a SID,
+        // coucou-hook refuses to talk to a server it cannot check anyway.
+        let Some(security) =
+            crate::platform::current_user_sid().and_then(|sid| PipeSecurity::for_user(&sid))
+        else {
+            log::line("relay pipe not opened: cannot restrict it to the current user");
+            return;
         };
+        let mut server = first_instance(&name, &security).await;
+        // An error is logged once per streak: repeated every 200 ms, it would
+        // fill the log.
+        let mut failing = false;
         loop {
-            if server.connect().await.is_err() {
-                tokio::time::sleep(Duration::from_millis(200)).await;
-                continue;
-            }
-            // Hand the connected instance to a task and listen on a fresh one.
-            let next = match ServerOptions::new().create(&name) {
-                Ok(s) => s,
+            let accepted = server.connect().await;
+            // The next instance is created before this one is handed off, so the
+            // pipe name is never free, not even for a moment.
+            let next = match create_instance(&name, &security, false) {
+                Ok(next) => next,
                 Err(err) => {
-                    log::line(format!("cannot reopen the relay pipe: {err}"));
-                    return;
+                    if !std::mem::replace(&mut failing, true) {
+                        log::line(format!("relay pipe: cannot create a new instance ({err}), retrying"));
+                    }
+                    tokio::time::sleep(ACCEPT_RETRY).await;
+                    continue;
                 }
             };
-            let connected = std::mem::replace(&mut server, next);
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move { handle(app, connected).await });
+            // Hand the connected instance to a task and listen on a fresh one.
+            let instance = std::mem::replace(&mut server, next);
+            match accepted {
+                Ok(()) => {
+                    failing = false;
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move { handle(app, instance).await });
+                }
+                // Rare: mio already returns Ok for a client that left before the
+                // accept (ERROR_NO_DATA). Any other error discards the instance,
+                // and listening resumes on the fresh one.
+                Err(err) => {
+                    if !std::mem::replace(&mut failing, true) {
+                        log::line(format!("relay pipe: a connection failed ({err}), listening again"));
+                    }
+                    drop(instance);
+                    tokio::time::sleep(ACCEPT_RETRY).await;
+                }
+            }
         }
     });
+}
+
+/// The first instance, with FILE_FLAG_FIRST_PIPE_INSTANCE: we refuse to join a
+/// pipe somebody else already owns under our name, rather than serving on top
+/// of it. The name may also still be held by a Coucou that is shutting down
+/// (restart, update): we retry instead of giving up the relay for the whole
+/// session.
+#[cfg(windows)]
+async fn first_instance(name: &str, security: &PipeSecurity) -> NamedPipeServer {
+    let mut waited = false;
+    loop {
+        match create_instance(name, security, true) {
+            Ok(server) => {
+                if waited {
+                    log::line("relay pipe opened");
+                }
+                return server;
+            }
+            Err(err) => {
+                if !std::mem::replace(&mut waited, true) {
+                    // Not necessarily a name already taken: any CreateNamedPipeW error ends up here.
+                    log::line(format!("relay pipe: first instance failed ({err}), retrying every 2 s"));
+                }
+                tokio::time::sleep(FIRST_INSTANCE_RETRY).await;
+            }
+        }
+    }
+}
+
+/// One instance of the pipe, open to the current user and SYSTEM only.
+#[cfg(windows)]
+fn create_instance(name: &str, security: &PipeSecurity, first: bool) -> std::io::Result<NamedPipeServer> {
+    let mut options = ServerOptions::new();
+    // reject_remote_clients is already tokio's default; set here so we do not
+    // depend on it: a client from another machine (SMB) has no business here.
+    options.first_pipe_instance(first).reject_remote_clients(true);
+    // SAFETY: the pointer refers to a valid SECURITY_ATTRIBUTES for the whole
+    // call, and CreateNamedPipeW does not keep it afterwards.
+    security.with_attributes(|attributes| unsafe {
+        options.create_with_security_attributes_raw(name, attributes)
+    })
 }
 
 #[cfg(target_os = "linux")]
@@ -136,7 +211,7 @@ pub fn start(app: AppHandle) {
             let stream = match listener.accept().await {
                 Ok((stream, _)) => stream,
                 Err(_) => {
-                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    tokio::time::sleep(ACCEPT_RETRY).await;
                     continue;
                 }
             };
@@ -183,25 +258,8 @@ impl Relay for tokio::net::UnixStream {
 }
 
 async fn handle(app: AppHandle, mut pipe: impl Relay) {
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        match pipe.read(&mut chunk).await {
-            Ok(0) => break,
-            Ok(n) => {
-                buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
-                    break;
-                }
-            }
-            Err(_) => return,
-        }
-    }
-    let line = match buf.iter().position(|b| *b == b'\n') {
-        Some(i) => &buf[..i],
-        None => &buf[..],
-    };
-    let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
+    let Some(line) = read_request(&mut pipe, REQUEST_READ_TIMEOUT).await else { return };
+    let Ok(mut payload) = serde_json::from_slice::<Value>(&line) else { return };
     if !payload.is_object() {
         return;
     }
@@ -247,6 +305,34 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         let _ = pipe.flush().await;
     }
     pipe.finish();
+}
+
+/// The client's first line without its newline, or everything it sent before
+/// closing. Reading stops past MAX_PAYLOAD, and a request cut there does not
+/// parse. None on a read error, or if nothing complete arrived within `limit`.
+async fn read_request(pipe: &mut (impl AsyncRead + Unpin), limit: Duration) -> Option<Vec<u8>> {
+    let read = async {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            match pipe.read(&mut chunk).await {
+                Ok(0) => break,
+                Ok(n) => {
+                    buf.extend_from_slice(&chunk[..n]);
+                    if chunk[..n].contains(&b'\n') || buf.len() > MAX_PAYLOAD {
+                        break;
+                    }
+                }
+                Err(_) => return None,
+            }
+        }
+        Some(buf)
+    };
+    let Ok(Some(mut buf)) = tokio::time::timeout(limit, read).await else { return None };
+    if let Some(end) = buf.iter().position(|b| *b == b'\n') {
+        buf.truncate(end);
+    }
+    Some(buf)
 }
 
 /// Finds, once per session, the window it runs in — see session_window.rs.
@@ -358,4 +444,113 @@ pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<Stri
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Instant;
+
+    fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    #[test]
+    fn the_request_is_the_first_line() {
+        block_on(async {
+            let (mut client, mut server) = tokio::io::duplex(64);
+            client.write_all(b"{\"a\":1}\n{\"b\":2}\n").await.unwrap();
+            let line = read_request(&mut server, Duration::from_secs(1)).await;
+            assert_eq!(line.as_deref(), Some(&b"{\"a\":1}"[..]));
+        });
+    }
+
+    #[test]
+    fn a_client_that_closes_without_a_newline_is_still_read() {
+        block_on(async {
+            let (mut client, mut server) = tokio::io::duplex(64);
+            client.write_all(b"{\"a\":1}").await.unwrap();
+            drop(client);
+            let line = read_request(&mut server, Duration::from_secs(1)).await;
+            assert_eq!(line.as_deref(), Some(&b"{\"a\":1}"[..]));
+        });
+    }
+
+    #[test]
+    fn a_silent_client_is_dropped_after_the_limit() {
+        block_on(async {
+            let (_client, mut server) = tokio::io::duplex(64);
+            let started = Instant::now();
+            assert_eq!(read_request(&mut server, Duration::from_millis(100)).await, None);
+            assert!(started.elapsed() < Duration::from_secs(2));
+        });
+    }
+
+    #[test]
+    fn a_client_that_never_ends_its_line_is_dropped_after_the_limit() {
+        block_on(async {
+            let (mut client, mut server) = tokio::io::duplex(64);
+            // One byte every 10 ms, never a newline.
+            let drip = tokio::spawn(async move {
+                while client.write_all(b"x").await.is_ok() {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            });
+            let started = Instant::now();
+            assert_eq!(read_request(&mut server, Duration::from_millis(150)).await, None);
+            assert!(started.elapsed() < Duration::from_secs(2));
+            drop(server);
+            let _ = drip.await;
+        });
+    }
+
+    /// A pipe created the way the relay creates it: a DACL holding only the user
+    /// and SYSTEM, the name taken exclusively, and the same user's relay still
+    /// gets through.
+    #[cfg(windows)]
+    #[test]
+    fn the_relay_pipe_is_reserved_to_the_user_and_still_serves_them() {
+        use std::io::Write;
+        use std::os::windows::io::AsRawHandle;
+
+        let sid = crate::platform::current_user_sid().expect("the current user's SID");
+        let security = PipeSecurity::for_user(&sid).expect("a security descriptor");
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        // A name of its own, never the live relay's.
+        let name = format!(r"\\.\pipe\coucou-test-{}-{nanos}", std::process::id());
+
+        block_on(async {
+            let mut server = create_instance(&name, &security, true).expect("first instance");
+
+            let dacl = crate::platform::dacl_sddl(server.as_raw_handle()).expect("the pipe's DACL");
+            assert!(dacl.starts_with("D:P"), "{dacl}");
+            // Not `sid` as is: Windows writes some accounts as an alias (`LA` for
+            // the built-in Administrator, `SY` for SYSTEM).
+            let me = crate::platform::sddl_trustee(&sid).expect("the SID as SDDL writes it");
+            assert!(dacl.contains(&format!(";;;{me})")), "{dacl}");
+            assert!(dacl.contains(";;;SY)"), "{dacl}");
+            assert_eq!(dacl.matches("(A;").count(), 2, "{dacl}");
+            for nobody in [";;;WD)", ";;;AN)", ";;;BA)"] {
+                assert!(!dacl.contains(nobody), "{dacl}");
+            }
+
+            // Like coucou-hook: opened for reading and writing, one line. Before
+            // any other instance exists, so that `server` is the one that gets it.
+            let mut client =
+                std::fs::OpenOptions::new().read(true).write(true).open(&name).expect("client");
+            client.write_all(b"{\"hook_event_name\":\"Stop\"}\n").unwrap();
+
+            // The name is ours: another "first" instance is refused, a further
+            // instance is accepted.
+            assert!(create_instance(&name, &security, true).is_err());
+            let _next = create_instance(&name, &security, false).expect("next instance");
+
+            server.connect().await.expect("connect");
+            let line = read_request(&mut server, Duration::from_secs(1)).await;
+            assert_eq!(line.as_deref(), Some(&b"{\"hook_event_name\":\"Stop\"}"[..]));
+        });
+    }
 }
