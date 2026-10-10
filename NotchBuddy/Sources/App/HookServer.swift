@@ -693,6 +693,25 @@ final class HookServer: @unchecked Sendable {
         let isMuseRequest    = false
         let isHermesRequest  = false
         #endif
+
+        #if !APPSTORE
+        if isCodexRequest {
+            let permissionMode = payload["permission_mode"] as? String ?? "default"
+            let codexOwnsApproval = !state.codexApprovalsInCoucou
+                || permissionMode == "dontAsk"
+                || permissionMode == "bypassPermissions"
+            if codexOwnsApproval {
+                // Returning "ask" makes the relay emit no hook decision, so Codex can
+                // apply its native prompt, auto-review, or permission-mode policy.
+                Task.detached { [weak self] in
+                    self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                    close(fd)
+                }
+                return
+            }
+        }
+        #endif
+
         if !isCodexRequest && !isCopilotRequest && !isMuseRequest && !isHermesRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)

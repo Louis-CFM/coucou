@@ -689,6 +689,10 @@ struct SettingsView: View {
                     Button(String(localized: "hooks.uninstall")) { triggerCodexPreview(install: false) }
                         .buttonStyle(.bordered)
                 }
+                Toggle(String(localized: "hooks.codex.approvals"), isOn: $state.codexApprovalsInCoucou)
+                Text(String(localized: "hooks.codex.approvals.description"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
                 if showCodexDiff {
                     ScrollView {
                         Text(pendingCodexJSON)

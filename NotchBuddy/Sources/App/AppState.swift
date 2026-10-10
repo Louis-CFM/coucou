@@ -456,6 +456,10 @@ final class AppState: ObservableObject {
     @Published var showCodexPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showCodexPlanInNotch, forKey: "showCodexPlanInNotch") }
     }
+    /// When off, Codex keeps ownership of its native approval and auto-review flow.
+    @Published var codexApprovalsInCoucou: Bool = false {
+        didSet { UserDefaults.standard.set(codexApprovalsInCoucou, forKey: "codexApprovalsInCoucou") }
+    }
     @Published var codexPlanUsage: CodexPlanUsage? = nil
     // Which card showingPlanDetail opens
     @Published var planDetailIsCodex: Bool = false
@@ -516,6 +520,7 @@ final class AppState: ObservableObject {
         #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
+        if let v = ud.object(forKey: "codexApprovalsInCoucou") as? Bool { codexApprovalsInCoucou = v }
         planRelayInstalled = HookServer.statusLineInstalled()
         #endif
 
