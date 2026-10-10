@@ -103,6 +103,7 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var betterstackToken: String = KeychainStore.shared.get("betterstack-token") ?? ""
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1246,6 +1247,19 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // Better Stack
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#5B5FEF")).frame(width: 8, height: 8)
+                        Text("Better Stack").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Uptime API token", text: $betterstackToken)
+                        .textFieldStyle(.roundedBorder)
+                    Text(String(localized: "integrations.betterstack.token-hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+
                 Button(String(localized: "integrations.save")) { saveIntegrations() }
                     .buttonStyle(.borderedProminent)
             }
@@ -2008,6 +2022,13 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+
+        let prevBetterstack = KeychainStore.shared.get("betterstack-token")
+        saveKey("betterstack-token", value: betterstackToken)
+        if KeychainStore.shared.get("betterstack-token") != prevBetterstack {
+            BetterStackPoller.shared.reset()
+            BetterStackPoller.shared.pollNow()
+        }
         statusMessage = String(localized: "status.integrations-saved")
     }
 

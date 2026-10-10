@@ -223,6 +223,8 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "integration_betterstack":
+            NSWorkspace.shared.open(BetterStackAPI.dashboardURL)
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -1831,6 +1833,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        case "integration_betterstack": return KeychainStore.shared.get("betterstack-token") != nil
         default: return false
         }
     }
@@ -1847,6 +1850,7 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case "integration_betterstack": return BetterStackAPI.dashboardURL
         default: return nil
         }
     }
@@ -1899,6 +1903,11 @@ struct IntegrationCardView: View {
         task.id == "integration_notion" && appState.notionLoaded
     }
 
+    // Better Stack: show incidents as soon as first poll completes
+    private var betterstackHasData: Bool {
+        task.id == "integration_betterstack" && appState.betterstackLoaded
+    }
+
     // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
     private var musicIsActive: Bool {
         #if !APPSTORE
@@ -1929,6 +1938,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_betterstack" ? appState.betterstackError
                    : nil
         if svcErr != nil { return Color(hex: "#F4505E") }
         return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
@@ -1945,6 +1955,7 @@ struct IntegrationCardView: View {
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
+                   : task.id == "integration_betterstack" ? appState.betterstackError
                    : nil
         if let err = svcErr { return err }
         // Pills driven by hooks, never by a key: the idle card reports whether the
@@ -2038,6 +2049,9 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if notionHasData {
             NotionCardView()
+                .transition(.opacity)
+        } else if betterstackHasData {
+            BetterStackCardView()
                 .transition(.opacity)
         } else if musicIsActive {
             #if !APPSTORE
@@ -2212,6 +2226,12 @@ struct IntegrationCardView: View {
                         Button("Refresh") { Task { @MainActor in CalcomPoller.shared.pollNow() } }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
+                            .buttonStyle(.plain)
+                    }
+                    if task.id == "integration_betterstack" && isConfigured {
+                        Button("Refresh") { BetterStackPoller.shared.pollNow() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                     }
                     // Settings button: shown when not configured, except cursor/codex and music
@@ -3556,6 +3576,86 @@ struct NotionCardView: View {
                                 .lineLimit(1).truncationMode(.tail).layoutPriority(1)
                             Spacer(minLength: 4)
                             Text(page.timeAgo).font(.system(size: 9))
+                                .foregroundColor(Color(hex: "#4B5563"))
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.leading, 102).padding(.trailing, 12).padding(.top, 5)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading).padding(.top, 4)
+        .transition(.opacity)
+    }
+}
+
+// MARK: - Better Stack Card View
+
+struct BetterStackCardView: View {
+    @ObservedObject private var appState = AppState.shared
+
+    private static let red   = "#F4505E"
+    private static let amber = "#F29B38"
+    private static let green = "#22C55E"
+
+    private struct Row: Identifiable {
+        let id: String
+        let accent: String
+        let name: String
+        let detail: String
+        let trailing: String
+        let url: URL?
+    }
+
+    /// Incidents first; then down monitors that no open incident already names.
+    private var rows: [Row] {
+        let incidents = appState.betterstackIncidents.map {
+            Row(id: "i\($0.id)", accent: $0.acknowledged ? Self.amber : Self.red, name: $0.name,
+                detail: $0.acknowledged ? String(localized: "Acknowledged") : ($0.cause ?? ""),
+                trailing: $0.timeAgo, url: $0.webURL)
+        }
+        let named = Set(appState.betterstackIncidents.map(\.name))
+        let monitors = appState.betterstackDownMonitors.filter { !named.contains($0.name) }.map {
+            Row(id: "m\($0.id)", accent: Self.red, name: $0.name, detail: String(localized: "Down"),
+                trailing: "", url: $0.webURL)
+        }
+        return Array((incidents + monitors).prefix(3))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: "#5B5FEF")).frame(width: 7, height: 7)
+                Text("Better Stack").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
+                Text("Incidents").font(.system(size: 11)).foregroundColor(Color(hex: "#8E939C"))
+            }
+            .padding(.top, 6).padding(.leading, 108).padding(.trailing, 36)
+
+            VStack(alignment: .leading, spacing: 2) {
+                if rows.isEmpty {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: Self.green)).frame(width: 5, height: 5)
+                        Text("All monitors up").font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#C5C8CD"))
+                    }
+                    .padding(.horizontal, 6).padding(.vertical, 4)
+                }
+                ForEach(rows) { row in
+                    Button {
+                        if let url = row.url { NSWorkspace.shared.open(url) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle().fill(Color(hex: row.accent)).frame(width: 5, height: 5)
+                            Text(row.name).font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color(hex: "#C5C8CD"))
+                                .lineLimit(1).truncationMode(.tail).layoutPriority(1)
+                            Text(row.detail).font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .lineLimit(1).truncationMode(.tail)
+                            Spacer(minLength: 4)
+                            Text(row.trailing).font(.system(size: 9))
                                 .foregroundColor(Color(hex: "#4B5563"))
                         }
                         .padding(.horizontal, 6).padding(.vertical, 4)

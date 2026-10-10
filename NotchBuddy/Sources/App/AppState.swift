@@ -364,6 +364,12 @@ final class AppState: ObservableObject {
     @Published var calcomLoaded: Bool = false
     @Published var calcomError: String? = nil
 
+    // Better Stack (populated by BetterStackPoller)
+    @Published var betterstackIncidents: [BetterStackIncident] = []
+    @Published var betterstackDownMonitors: [BetterStackMonitor] = []
+    @Published var betterstackLoaded: Bool = false
+    @Published var betterstackError: String? = nil
+
     // Notion (populated by NotionPoller)
     @Published var notionPages: [NotionPage] = []
     @Published var notionLoaded: Bool = false

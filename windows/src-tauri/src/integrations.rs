@@ -71,7 +71,8 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app, "integration_betterstack", 10, 60, poll_betterstack);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -120,6 +121,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_betterstack" => poll_betterstack(app).await,
         _ => {}
     }
 }
@@ -631,6 +633,76 @@ async fn poll_vercel(app: AppHandle) {
     emit(&app, IntegrationUpdate {
         id: "integration_vercel",
         data: json!({ "deployments": deployments }),
+        error: None,
+        event,
+    });
+}
+
+// ── Better Stack ──────────────────────────────────────────────────────────────
+
+/// Open incidents seen on the last poll (id → name); None until the first one.
+static BETTERSTACK_SEEN: Mutex<Option<std::collections::HashMap<String, String>>> = Mutex::new(None);
+
+/// A new token is a new account: alert on none of its existing incidents.
+pub fn reset_betterstack() {
+    *BETTERSTACK_SEEN.lock().unwrap() = None;
+}
+
+async fn poll_betterstack(app: AppHandle) {
+    use crate::betterstack::{self, Change};
+
+    let Some(token) = secrets::get("betterstack-token") else { return };
+    let http = client();
+    let auth = format!("Bearer {token}");
+    let get = |url: &'static str| {
+        http.get(url)
+            .header("Authorization", &auth)
+            .header("Accept", "application/json")
+            .send()
+    };
+    let Ok(incidents) = get(betterstack::INCIDENTS_URL).await else { return };
+    if !incidents.status().is_success() {
+        emit(&app, IntegrationUpdate {
+            id: "integration_betterstack",
+            data: json!({}),
+            error: Some(status_error(incidents.status().as_u16(), &crate::i18n::t("Token lacks access"))),
+            event: None,
+        });
+        return;
+    }
+    let body: Value = incidents.json().await.unwrap_or(json!({}));
+    let Some(open) = betterstack::incidents(&body) else { return };
+
+    // Monitors are extra: without them the card still lists the incidents.
+    let down = match get(betterstack::MONITORS_URL).await {
+        Ok(r) if r.status().is_success() => {
+            let body: Value = r.json().await.unwrap_or(json!({}));
+            betterstack::down_monitors(&body).unwrap_or_default()
+        }
+        _ => Vec::new(),
+    };
+
+    let change = {
+        let mut seen = BETTERSTACK_SEEN.lock().unwrap();
+        let change = betterstack::change(seen.as_ref(), &open);
+        *seen = Some(betterstack::seen(&open));
+        change
+    };
+    let event = match change {
+        Change::None => None,
+        Change::Opened { name, cause } => Some(IntegrationEvent { success: false, label: name, detail: cause }),
+        // Only all-clear is good news; one of two incidents resolving isn't.
+        Change::Resolved { name } if open.is_empty() => Some(IntegrationEvent {
+            success: true,
+            label: name,
+            detail: Some(crate::i18n::t("Resolved")),
+        }),
+        Change::Resolved { .. } => None,
+    };
+
+    emit(&app, IntegrationUpdate {
+        id: "integration_betterstack",
+        data: json!({ "incidents": open, "down": down }),
         error: None,
         event,
     });

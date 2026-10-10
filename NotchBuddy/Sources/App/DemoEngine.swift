@@ -67,6 +67,10 @@ final class DemoEngine: ObservableObject {
         var n8nRuns: [N8nRun]
         var notionPages: [NotionPage]
         var notionLoaded: Bool
+        var betterstackIncidents: [BetterStackIncident]
+        var betterstackDownMonitors: [BetterStackMonitor]
+        var betterstackLoaded: Bool
+        var betterstackError: String?
         // NOTE: pendingApproval and pendingQuestion are intentionally NOT snapshotted.
         // HookServer's file descriptors are authoritative for real requests.
         var mode: IslandMode
@@ -113,6 +117,10 @@ final class DemoEngine: ObservableObject {
             n8nRuns:             s.n8nRuns,
             notionPages:         s.notionPages,
             notionLoaded:        s.notionLoaded,
+            betterstackIncidents: s.betterstackIncidents,
+            betterstackDownMonitors: s.betterstackDownMonitors,
+            betterstackLoaded:   s.betterstackLoaded,
+            betterstackError:    s.betterstackError,
             mode:                s.mode,
             view:                s.view
         )
@@ -222,6 +230,10 @@ final class DemoEngine: ObservableObject {
         s.n8nRuns              = snap.n8nRuns
         s.notionPages          = snap.notionPages
         s.notionLoaded         = snap.notionLoaded
+        s.betterstackIncidents = snap.betterstackIncidents
+        s.betterstackDownMonitors = snap.betterstackDownMonitors
+        s.betterstackLoaded    = snap.betterstackLoaded
+        s.betterstackError     = snap.betterstackError
 
         // Restore tasks: keep real tasks that arrived during the demo, discard demo-only ones.
         // For tasks that existed before the demo (realTaskIdsAtStart), use the CURRENT version
@@ -382,6 +394,15 @@ final class DemoEngine: ObservableObject {
                        url: "https://notion.so/demo/auth-notes"),
         ]
         s.notionLoaded = true
+
+        // Better Stack
+        s.betterstackIncidents = [
+            BetterStackIncident(id: "demo_inc1", name: "api.my-app.com", cause: "Status 502",
+                                startedAt: now.addingTimeInterval(-420), acknowledged: false),
+        ]
+        s.betterstackDownMonitors = []
+        s.betterstackLoaded = true
+        s.betterstackError = nil
 
         // Inject GitHub pill only — rotating 4th integration added per cycle.
         var injected: [String] = []

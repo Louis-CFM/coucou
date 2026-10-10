@@ -2,6 +2,7 @@
 
 mod agent_hooks;
 mod agents;
+mod betterstack;
 mod chat;
 mod claude;
 mod codex_plan;
@@ -502,11 +503,15 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     if key == local_chat::CUSTOM_KEY {
         return Err("use local_set_key".into());
     }
-    let before = (key == "github-token").then(|| secrets::get(&key));
+    let before = (key == "github-token" || key == "betterstack-token").then(|| secrets::get(&key));
     secrets::set(&key, &value)?;
     if let Some(before) = before {
         if secrets::get(&key) != before {
-            integrations::github_token_changed(&app);
+            if key == "github-token" {
+                integrations::github_token_changed(&app);
+            } else {
+                integrations::reset_betterstack();
+            }
         }
     }
     Ok(())
