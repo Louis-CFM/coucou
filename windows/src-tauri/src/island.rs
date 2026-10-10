@@ -114,6 +114,20 @@ fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
         && y < (p.y + s.height as i32) as f64
 }
 
+fn physical_geometry(
+    monitor_pos: PhysicalPosition<i32>,
+    monitor_size: PhysicalSize<u32>,
+    scale: f64,
+    logical_w: f64,
+    logical_h: f64,
+) -> (u32, u32, i32, i32) {
+    let pw = (logical_w * scale).round().max(1.0) as u32;
+    let ph = (logical_h * scale).round().max(1.0) as u32;
+    let x = monitor_pos.x + (monitor_size.width as i32 - pw as i32) / 2;
+    let y = monitor_pos.y;
+    (pw, ph, x, y)
+}
+
 /// A display's logical origin, the key `at:<x>,<y>` preferences are matched on.
 /// Names are no good for that: two monitors of the same model share one.
 fn logical_origin(m: &Monitor) -> (i32, i32) {
@@ -278,6 +292,29 @@ mod display_tests {
         assert_eq!(pick_display("primary", &[lap, ext]), None);
         assert_eq!(pick_display("at:nonsense", &[]), None);
     }
+
+    #[test]
+    fn physical_geometry_scales_and_centres() {
+        let monitor_pos = PhysicalPosition::new(1920, 0);
+        let monitor_size = PhysicalSize::new(2560, 1440);
+        let (pw, ph, x, y) = physical_geometry(monitor_pos, monitor_size, 1.5, PANEL_W, PANEL_H);
+        assert_eq!((pw, ph), (1080, 480));
+        assert_eq!(x, 2660);
+        assert_eq!(y, 0);
+    }
+
+    #[test]
+    fn physical_geometry_never_shrinks_to_zero() {
+        let (pw, ph, x, y) = physical_geometry(
+            PhysicalPosition::new(0, 0),
+            PhysicalSize::new(100, 100),
+            1.0,
+            0.0,
+            0.0,
+        );
+        assert_eq!((pw, ph), (1, 1));
+        assert_eq!((x, y), (49, 0));
+    }
 }
 
 pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
@@ -308,10 +345,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let ms = *m.size();
 
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
-    let pw = (lw * scale).round().max(1.0) as u32;
-    let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let (pw, ph, x, y) = physical_geometry(mp, ms, scale, lw, lh);
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
