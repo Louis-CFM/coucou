@@ -705,7 +705,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  padding: 0 8px 0 34px;
   pointer-events: none;
 }
 
