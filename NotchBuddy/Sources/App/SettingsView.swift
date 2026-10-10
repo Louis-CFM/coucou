@@ -430,6 +430,7 @@ struct SettingsView: View {
                     Text("العربية").tag("ar")
                     Text("Français").tag("fr")
                     Text("বাংলা").tag("bn")
+                    Text("Polski").tag("pl")
                     Text("Português (Brasil)").tag("pt-BR")
                     Text("Русский").tag("ru")
                     Text("Bahasa Indonesia").tag("id")

@@ -45,6 +45,12 @@
             "value": " siap."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " jest gotowy."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -107,6 +113,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — buka Spotify"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — otwórz Spotify"
           }
         },
         "pt-BR": {
@@ -173,6 +185,12 @@
             "value": "%lld kustom"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Własne: %lld"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -232,6 +250,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTO"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "AUTO"
@@ -301,6 +325,12 @@
             "value": "Tab aktif"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktywne zakładki"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -363,6 +393,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aktivitas"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktywność"
           }
         },
         "pt-BR": {
@@ -429,6 +465,12 @@
             "value": "Iklan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reklama"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -491,6 +533,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agenci"
           }
         },
         "pt-BR": {
@@ -557,6 +605,12 @@
             "value": "Izinkan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zezwól"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -619,6 +673,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izinkan Coucou mengontrol Music"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozwól Coucou sterować Muzyką"
           }
         },
         "pt-BR": {
@@ -685,6 +745,12 @@
             "value": "Izinkan Coucou mengontrol Spotify"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozwól Coucou sterować Spotify"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -747,6 +813,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Selalu"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zawsze"
           }
         },
         "pt-BR": {
@@ -813,6 +885,12 @@
             "value": "Berlaku saat peluncuran berikutnya"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zadziała po ponownym uruchomieniu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -875,6 +953,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tanya Claude"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj Claude'a"
           }
         },
         "pt-BR": {
@@ -941,6 +1025,12 @@
             "value": "Ajukan pertanyaan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zadaj pytanie"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1003,6 +1093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajukan pertanyaan tentang ini"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj o to"
           }
         },
         "pt-BR": {
@@ -1069,6 +1165,12 @@
             "value": "Tanyakan apa saja…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj mnie o cokolwiek…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1131,6 +1233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tutup otomatis · %llddt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto-zamykanie · %lld s"
           }
         },
         "pt-BR": {
@@ -1197,6 +1305,12 @@
             "value": "Otomatisasi tidak diizinkan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak zgody na automatyzację"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1259,6 +1373,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Perilaku"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowanie"
           }
         },
         "pt-BR": {
@@ -1325,6 +1445,12 @@
             "value": "Batal"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuluj"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1387,6 +1513,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Obrolan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czat"
           }
         },
         "pt-BR": {
@@ -1453,6 +1585,12 @@
             "value": "Chat dengan %@"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czat z %@"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1515,6 +1653,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pilih alat yang Anda gunakan. Coucou hanya menampilkan yang Anda deklarasikan di sini."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz narzędzia, których używasz. Coucou pokazuje tylko to, co tu zaznaczysz."
           }
         },
         "pt-BR": {
@@ -1581,6 +1725,12 @@
             "value": "Claude Code selesai"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code skończył"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1643,6 +1793,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code bertanya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code pyta"
           }
         },
         "pt-BR": {
@@ -1709,6 +1865,12 @@
             "value": "Claude sedang membaca %@…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude czyta %@…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1771,6 +1933,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude sedang mencari…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude szuka…"
           }
         },
         "pt-BR": {
@@ -1837,6 +2005,12 @@
             "value": "Hapus"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -1899,6 +2073,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hapus riwayat"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść historię"
           }
         },
         "pt-BR": {
@@ -1965,6 +2145,12 @@
             "value": "Tutup"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2027,6 +2213,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tutup setelah"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij po"
           }
         },
         "pt-BR": {
@@ -2093,6 +2285,12 @@
             "value": "Warna"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolor"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2155,6 +2353,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Segera hadir"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wkrótce"
           }
         },
         "pt-BR": {
@@ -2221,6 +2425,12 @@
             "value": "Selesai dengan berhasil."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zakończono pomyślnie."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2283,6 +2493,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terhubung"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączono"
           }
         },
         "pt-BR": {
@@ -2349,6 +2565,12 @@
             "value": "Terhubung · %@"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączono · %@"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2411,6 +2633,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terhubung · memuat…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączono · wczytywanie…"
           }
         },
         "pt-BR": {
@@ -2477,6 +2705,12 @@
             "value": "Lanjutkan…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontynuuj…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2541,6 +2775,12 @@
             "value": "Salin"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2603,6 +2843,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bawaan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domyślne"
           }
         },
         "pt-BR": {
@@ -2670,6 +2916,12 @@
             "value": "Mode demo"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tryb demo"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2732,6 +2984,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ditolak"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odrzucono"
           }
         },
         "pt-BR": {
@@ -2798,6 +3056,12 @@
             "value": "Tolak"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odmów"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2860,6 +3124,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Penerapan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wdrożenia"
           }
         },
         "pt-BR": {
@@ -2926,6 +3196,12 @@
             "value": "Diff terlalu besar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmiany są za duże do pokazania"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -2988,6 +3264,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Draf"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szkic"
           }
         },
         "pt-BR": {
@@ -3054,6 +3336,12 @@
             "value": "Taruh file bernama seperti salah satu suara Mochi (finish.wav, approval.mp3, greet.m4a…) di folder suara untuk menggantinya, lalu muat ulang."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrzuć do folderu dźwięków plik nazwany jak jeden z dźwięków Mochi (finish.wav, approval.mp3, greet.m4a…), żeby go podmienić, potem kliknij Wczytaj ponownie."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3116,6 +3404,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Seret file atau jendela, atau tanya apa saja."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upuść plik lub okno albo zapytaj mnie o cokolwiek."
           }
         },
         "pt-BR": {
@@ -3182,6 +3476,12 @@
             "value": "Letakkan file Anda di sini"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upuść tu swoje pliki"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3244,6 +3544,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Email"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-maile"
           }
         },
         "pt-BR": {
@@ -3310,6 +3616,12 @@
             "value": "Aktifkan suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Włącz dźwięki"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3372,6 +3684,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aktifkan perintah suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Włącz komendy głosowe"
           }
         },
         "pt-BR": {
@@ -3438,6 +3756,12 @@
             "value": "Gagal"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niepowodzenie"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3500,6 +3824,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tambahkan ke favorit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulubione"
           }
         },
         "pt-BR": {
@@ -3566,6 +3896,12 @@
             "value": "Umum"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogólne"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3628,6 +3964,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dapatkan Spotify"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobierz Spotify"
           }
         },
         "pt-BR": {
@@ -3694,6 +4036,12 @@
             "value": "Satu detik — kembali bekerja dalam tiga detik."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daj mi chwilę — wracam do pracy za trzy sekundy."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3756,6 +4104,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Node Gmail habis waktu setelah 30 detik. Coba lagi atau buka n8n."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Węzeł Gmaila nie odpowiedział w ciągu 30 s. Spróbuj ponownie albo otwórz n8n."
           }
         },
         "pt-BR": {
@@ -3822,6 +4176,12 @@
             "value": "Diberikan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przyznano"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -3884,6 +4244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sembunyikan setelah"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukryj po"
           }
         },
         "pt-BR": {
@@ -3950,6 +4316,12 @@
             "value": "Sembunyikan nama proyek di gambar yang dibagikan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukrywaj nazwy projektów na udostępnianych obrazkach"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4012,6 +4384,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks terpasang"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki zainstalowane"
           }
         },
         "pt-BR": {
@@ -4078,6 +4456,12 @@
             "value": "Hooks belum terpasang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki niezainstalowane"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4140,6 +4524,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tombol pintas"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrót klawiszowy"
           }
         },
         "pt-BR": {
@@ -4206,6 +4596,12 @@
             "value": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najechanie kursorem na wyspę ją otwiera; zwija się chwilę po zabraniu kursora. Kliknij w środku, żeby została otwarta."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4268,6 +4664,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Integrasi"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integracje"
           }
         },
         "pt-BR": {
@@ -4334,6 +4736,12 @@
             "value": "Simpan riwayat sesi kode saya"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuj historię moich sesji programowania"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4396,6 +4804,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kunci dikonfigurasi · %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz skonfigurowany · %@"
           }
         },
         "pt-BR": {
@@ -4462,6 +4876,12 @@
             "value": "Kunci belum dikonfigurasi"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz nieskonfigurowany"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4524,6 +4944,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bahasa"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Język"
           }
         },
         "pt-BR": {
@@ -4590,6 +5016,12 @@
             "value": "Jalankan saat Mac startup"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uruchamiaj przy starcie Maca"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4652,6 +5084,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mendengarkan…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Słucham…"
           }
         },
         "pt-BR": {
@@ -4718,6 +5156,12 @@
             "value": "Memuat model…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytywanie modeli…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4780,6 +5224,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Memuat…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytywanie…"
           }
         },
         "pt-BR": {
@@ -4846,6 +5296,12 @@
             "value": "Mail tidak tersedia."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poczta niedostępna."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -4908,6 +5364,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Utama"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Główna"
           }
         },
         "pt-BR": {
@@ -4974,6 +5436,12 @@
             "value": "Mikrofon tidak tersedia"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon niedostępny"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5033,6 +5501,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon:"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Mikrofon:"
@@ -5102,6 +5576,12 @@
             "value": "Penerima tidak ada."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak odbiorcy."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5164,6 +5644,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "PR saya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moje PR-y"
           }
         },
         "pt-BR": {
@@ -5230,6 +5716,12 @@
             "value": "Email baru"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowy e-mail"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5292,6 +5784,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Berikutnya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dalej"
           }
         },
         "pt-BR": {
@@ -5358,6 +5856,12 @@
             "value": "Tidak ada panggilan terjadwal"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak zaplanowanych rozmów"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5422,6 +5926,12 @@
             "value": "Tidak ada perubahan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak zmian"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5484,6 +5994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tidak ada kontribusi"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak aktywności"
           }
         },
         "pt-BR": {
@@ -5551,6 +6067,12 @@
             "value": "Tidak ada detail kesalahan yang tersedia."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak szczegółów błędu."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5613,6 +6135,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak modelu rozpoznawania mowy na tym urządzeniu. Zainstaluj go w Ustawieniach systemowych → Klawiatura → Dyktowanie."
           }
         },
         "pt-BR": {
@@ -5679,6 +6207,12 @@
             "value": "Tidak terhubung"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie połączono"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5741,6 +6275,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Belum terpasang"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie zainstalowano"
           }
         },
         "pt-BR": {
@@ -5807,6 +6347,12 @@
             "value": "Tidak diputar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic nie gra"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5869,6 +6415,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Belum diminta"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie poproszono"
           }
         },
         "pt-BR": {
@@ -5935,6 +6487,12 @@
             "value": "Tidak ada apa-apa"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic tu nie ma"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -5999,6 +6557,12 @@
             "value": "Tidak ada yang berjalan sekarang."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tej chwili nic nie działa."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6058,6 +6622,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "OK"
@@ -6127,6 +6697,12 @@
             "value": "Buka"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6189,6 +6765,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz %@"
           }
         },
         "pt-BR": {
@@ -6255,6 +6837,12 @@
             "value": "Buka Codex"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Codex"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6317,6 +6905,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka Coucou"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Coucou"
           }
         },
         "pt-BR": {
@@ -6383,6 +6977,12 @@
             "value": "Buka Cursor"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Cursor"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6445,6 +7045,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka Music"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Muzykę"
           }
         },
         "pt-BR": {
@@ -6511,6 +7117,12 @@
             "value": "Buka Pengaturan…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz ustawienia…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6573,6 +7185,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka Spotify"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Spotify"
           }
         },
         "pt-BR": {
@@ -6639,6 +7257,12 @@
             "value": "Buka Visual Studio Code"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Visual Studio Code"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6701,6 +7325,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka di n8n"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz w n8n"
           }
         },
         "pt-BR": {
@@ -6767,6 +7397,12 @@
             "value": "Buka saat kursor di atasnya"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwieraj po najechaniu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6829,6 +7465,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka folder suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz folder dźwięków"
           }
         },
         "pt-BR": {
@@ -6895,6 +7537,12 @@
             "value": "Buka terminal"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz terminal"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -6957,6 +7605,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lainnya…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inne…"
           }
         },
         "pt-BR": {
@@ -7023,6 +7677,12 @@
             "value": "Ikhtisar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przegląd"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7085,6 +7745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jeda"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pauza"
           }
         },
         "pt-BR": {
@@ -7151,6 +7817,12 @@
             "value": "Pembayaran"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Płatności"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7213,6 +7885,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izin"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uprawnienia"
           }
         },
         "pt-BR": {
@@ -7279,6 +7957,12 @@
             "value": "Putar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odtwórz"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7341,6 +8025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Memutar · %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gra · %@"
           }
         },
         "pt-BR": {
@@ -7407,6 +8097,12 @@
             "value": "Plugin tidak terpasang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wtyczka niezainstalowana"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7469,6 +8165,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sebelumnya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poprzedni"
           }
         },
         "pt-BR": {
@@ -7535,6 +8237,12 @@
             "value": "Keluar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zakończ"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7597,6 +8305,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terbaru"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostatnie"
           }
         },
         "pt-BR": {
@@ -7663,6 +8377,12 @@
             "value": "Muat ulang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odśwież"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7725,6 +8445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Muat ulang suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytaj dźwięki ponownie"
           }
         },
         "pt-BR": {
@@ -7791,6 +8517,12 @@
             "value": "Hapus dari favorit"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń z ulubionych"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7853,6 +8585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ulangi semua"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powtarzaj wszystko"
           }
         },
         "pt-BR": {
@@ -7919,6 +8657,12 @@
             "value": "Ulangi nonaktif"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powtarzanie wyłączone"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -7981,6 +8725,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ulangi aktif"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powtarzanie włączone"
           }
         },
         "pt-BR": {
@@ -8047,6 +8797,12 @@
             "value": "Ulangi satu"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powtarzaj jeden"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8109,6 +8865,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Balas di terminal"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpowiedz w terminalu"
           }
         },
         "pt-BR": {
@@ -8175,6 +8937,12 @@
             "value": "Minta izin"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poproś o uprawnienia"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8237,6 +9005,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kirim ulang"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij ponownie"
           }
         },
         "pt-BR": {
@@ -8303,6 +9077,12 @@
             "value": "Mulai ulang Coucou"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uruchom Coucou ponownie"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8365,6 +9145,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coba lagi"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj ponownie"
           }
         },
         "pt-BR": {
@@ -8431,6 +9217,12 @@
             "value": "Simpan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisz"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8493,6 +9285,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Simpan…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisz…"
           }
         },
         "pt-BR": {
@@ -8559,6 +9357,12 @@
             "value": "Katakan perintah Anda"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powiedz komendę"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8621,6 +9425,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jadwal"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harmonogram"
           }
         },
         "pt-BR": {
@@ -8687,6 +9497,12 @@
             "value": "Kirim"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8749,6 +9565,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kirim via email"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij e-mailem"
           }
         },
         "pt-BR": {
@@ -8815,6 +9637,12 @@
             "value": "Mengirim…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysyłanie…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -8877,6 +9705,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sesi selesai"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesja zakończona"
           }
         },
         "pt-BR": {
@@ -8943,6 +9777,12 @@
             "value": "Pengaturan…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ustawienia…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9005,6 +9845,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bagikan…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udostępnij…"
           }
         },
         "pt-BR": {
@@ -9071,6 +9917,12 @@
             "value": "Pintasan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrót"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9133,6 +9985,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pintasan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skróty"
           }
         },
         "pt-BR": {
@@ -9199,6 +10057,12 @@
             "value": "Tampilkan island dengan pintasan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuj wyspę skrótem"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9261,6 +10125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Acak nonaktif"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losowo wyłączone"
           }
         },
         "pt-BR": {
@@ -9327,6 +10197,12 @@
             "value": "Acak aktif"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losowo włączone"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9389,6 +10265,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dźwięk"
           }
         },
         "pt-BR": {
@@ -9455,6 +10337,12 @@
             "value": "Pengenalan ucapan:"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozpoznawanie mowy:"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9517,6 +10405,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotify belum terpasang"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotify niezainstalowane"
           }
         },
         "pt-BR": {
@@ -9583,6 +10477,12 @@
             "value": "Mulai"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uruchamianie"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9645,6 +10545,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Disimpan secara lokal di Mac. Tidak ada yang keluar dari Mac Anda. Disimpan selama 12 minggu."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisane lokalnie na Twoim Macu. Nic nie opuszcza Maca. Przechowywane przez 12 tygodni."
           }
         },
         "pt-BR": {
@@ -9711,6 +10617,12 @@
             "value": "Subjek"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temat"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9773,6 +10685,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Berhasil"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sukces"
           }
         },
         "pt-BR": {
@@ -9839,6 +10757,12 @@
             "value": "Sistem"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systemowy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -9901,6 +10825,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kepada"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do"
           }
         },
         "pt-BR": {
@@ -9967,6 +10897,12 @@
             "value": "Untuk ditinjau"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do przeglądu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10029,6 +10965,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terlalu banyak ketukan sekaligus."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Za dużo kuksańców naraz."
           }
         },
         "pt-BR": {
@@ -10095,6 +11037,12 @@
             "value": "Tidak diketahui"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieznany"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10157,6 +11105,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mengunggah %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysyłanie %@"
           }
         },
         "pt-BR": {
@@ -10223,6 +11177,12 @@
             "value": "Suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głos"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10285,6 +11245,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volume"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głośność"
           }
         },
         "pt-BR": {
@@ -10351,6 +11317,12 @@
             "value": "Volume %lld%%"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głośność %lld%%"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10413,6 +11385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lemari"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garderoba"
           }
         },
         "pt-BR": {
@@ -10479,6 +11457,12 @@
             "value": "Melihat %lld dari %lld"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwowane: %lld z %lld"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10541,6 +11525,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rekap mingguan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podsumowanie tygodnia"
           }
         },
         "pt-BR": {
@@ -10607,6 +11597,12 @@
             "value": "Apa yang ingin Anda lakukan dengannya?"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co chcesz z tym zrobić?"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10669,6 +11665,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saat diaktifkan, Coucou mendengarkan kata pengaktif « OK Coucou ». Pengenalan ucapan berjalan sepenuhnya di perangkat — tidak ada audio atau transkrip yang meninggalkan Mac Anda."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po włączeniu Coucou nasłuchuje słowa wybudzającego „OK Coucou”. Rozpoznawanie mowy działa w całości na urządzeniu — żaden dźwięk ani transkrypcja nie opuszcza Twojego Maca."
           }
         },
         "pt-BR": {
@@ -10735,6 +11737,12 @@
             "value": "Saat mendengarkan, macOS menampilkan titik mikrofon oranye di kanan atas bilah menu. Ini adalah perilaku sistem yang normal."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podczas nasłuchiwania macOS pokazuje pomarańczową kropkę mikrofonu w prawym górnym rogu paska menu. To normalne zachowanie systemu."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10797,6 +11805,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alur kerja dihentikan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflow zatrzymany."
           }
         },
         "pt-BR": {
@@ -10863,6 +11877,12 @@
             "value": "Jawaban Anda…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja odpowiedź…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -10925,6 +11945,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Akan menulis:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup dibuat terlebih dahulu)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuje:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (najpierw tworzy kopię zapasową)"
           }
         },
         "pt-BR": {
@@ -10991,6 +12017,12 @@
             "value": "Pasang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zainstaluj"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11053,6 +12085,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pasang hooks Coucou di ~/.claude?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zainstalować hooki Coucou w ~/.claude?"
           }
         },
         "pt-BR": {
@@ -11119,6 +12157,12 @@
             "value": "API Anthropic"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11181,6 +12225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kunci API (sk-ant-…)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz API (sk-ant-…)"
           }
         },
         "pt-BR": {
@@ -11247,6 +12297,12 @@
             "value": "Kunci API (AI Studio)"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz API (AI Studio)"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11309,6 +12365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kunci API (sk-…)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz API (sk-…)"
           }
         },
         "pt-BR": {
@@ -11375,6 +12437,12 @@
             "value": "Hubungkan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11437,6 +12505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Menghubungkan…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łączenie…"
           }
         },
         "pt-BR": {
@@ -11503,6 +12577,12 @@
             "value": "Putuskan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozłącz"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11562,6 +12642,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google AI"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Google AI"
@@ -11631,6 +12717,12 @@
             "value": "Hubungkan ke server model lokal. Tidak perlu kunci API."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz się z lokalnym serwerem modeli. Klucz API nie jest potrzebny."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11695,6 +12787,12 @@
             "value": "Model lokal"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modele lokalne"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11754,6 +12852,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Model"
@@ -11823,6 +12927,12 @@
             "value": "Kustom…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Własny…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -11885,6 +12995,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID model (mis. claude-sonnet-4-6)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID modelu (np. claude-sonnet-4-6)"
           }
         },
         "pt-BR": {
@@ -11951,6 +13067,12 @@
             "value": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Używany przez czat. Lista pochodzi z Twojego konta Anthropic."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12010,6 +13132,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI"
@@ -12079,6 +13207,12 @@
             "value": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do korzystania z Google Gemini lub OpenAI w czacie. Klucze są przechowywane w pęku kluczy."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12141,6 +13275,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chat — penyedia lain"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czat — inni dostawcy"
           }
         },
         "pt-BR": {
@@ -12208,6 +13348,12 @@
             "value": "Jelajahi semua fitur tanpa kunci API atau Claude Code. Tidak ada yang ditulis ke disk."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poznaj wszystkie funkcje bez klucza API i bez Claude Code. Nic nie jest zapisywane na dysku."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12268,6 +13414,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Demo"
@@ -12338,6 +13490,12 @@
             "value": "Coba mode demo"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wypróbuj tryb demo"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12401,6 +13559,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hentikan demo"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatrzymaj demo"
           }
         },
         "pt-BR": {
@@ -12467,6 +13631,12 @@
             "value": "%@ siap."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ jest gotowy."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12529,6 +13699,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks terpasang — mulai ulang Antigravity untuk mengaktifkan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki zainstalowane — uruchom ponownie Antigravity, żeby je włączyć"
           }
         },
         "pt-BR": {
@@ -12595,6 +13771,12 @@
             "value": "Hooks Antigravity"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki Antigravity"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12657,6 +13839,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks Claude Code"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki Claude Code"
           }
         },
         "pt-BR": {
@@ -12723,6 +13911,12 @@
             "value": "Hooks terpasang — buka Codex dan jalankan /hooks atau buka Hooks di pengaturan aplikasi untuk mempercayainya"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki zainstalowane — otwórz Codex i wpisz /hooks albo otwórz Hooks w ustawieniach aplikacji, żeby je zatwierdzić"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12785,6 +13979,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks Codex"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki Codex"
           }
         },
         "pt-BR": {
@@ -12851,6 +14051,12 @@
             "value": "Konfirmasi & tulis"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Potwierdź i zapisz"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -12913,6 +14119,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks terpasang — mulai ulang Copilot CLI untuk mengaktifkan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki zainstalowane — uruchom ponownie Copilot CLI, żeby je włączyć"
           }
         },
         "pt-BR": {
@@ -12979,6 +14191,12 @@
             "value": "Hooks GitHub Copilot CLI"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki GitHub Copilot CLI"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13041,6 +14259,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks terpasang — mulai ulang Gemini CLI untuk mengaktifkan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki zainstalowane — uruchom ponownie Gemini CLI, żeby je włączyć"
           }
         },
         "pt-BR": {
@@ -13107,6 +14331,12 @@
             "value": "Hooks Gemini CLI"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki Gemini CLI"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13169,6 +14399,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pasang hooks"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zainstaluj hooki"
           }
         },
         "pt-BR": {
@@ -13235,6 +14471,12 @@
             "value": "Hooks terpasang — mulai ulang Muse Code untuk mengaktifkan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki zainstalowane — uruchom ponownie Muse Code, żeby je włączyć"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13297,6 +14539,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hooks Muse Code"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki Muse Code"
           }
         },
         "pt-BR": {
@@ -13363,6 +14611,12 @@
             "value": "Hooks usang — perbarui untuk menjawab pertanyaan Claude dari notch"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooki są nieaktualne — zaktualizuj je, żeby odpowiadać na pytania Claude'a z notcha"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13425,6 +14679,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tinjau JSON di bawah sebelum mengonfirmasi."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przejrzyj poniższy JSON przed potwierdzeniem."
           }
         },
         "pt-BR": {
@@ -13491,6 +14751,12 @@
             "value": "Hapus"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstaluj"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13553,6 +14819,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Perbarui hooks"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaktualizuj hooki"
           }
         },
         "pt-BR": {
@@ -13619,6 +14891,12 @@
             "value": "Token klasik dengan scope repo, atau token fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasyczny token z zakresem repo albo fine-grained z dostępem do odczytu Pull requests, commit statuses i Actions."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13681,6 +14959,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Proyek"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekty"
           }
         },
         "pt-BR": {
@@ -13747,6 +15031,12 @@
             "value": "Simpan integrasi"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisz integracje"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13809,6 +15099,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alur kerja"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflowy"
           }
         },
         "pt-BR": {
@@ -13875,6 +15171,12 @@
             "value": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polecenie wysłane z iPhone'a używa modelu otwartego w czacie. Obowiązują prompt systemowy i historia rozmowy. Polecenia wysłane, gdy Coucou nie działa, trafiają do kolejki i wykonują się przy następnym uruchomieniu."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13937,6 +15239,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Biarkan iPhone saya mengirim instruksi ke Claude Code"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozwól mojemu iPhone'owi wysyłać polecenia do Claude Code"
           }
         },
         "pt-BR": {
@@ -14003,6 +15311,12 @@
             "value": "Melewati relay Coucou ke layanan push Apple. Hanya nama dan status agen yang dikirim: tanpa nama proyek, perintah, atau jalur."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przechodzi przez przekaźnik Coucou do usługi powiadomień push Apple. Wysyłane są tylko nazwa agenta i jego stan: bez nazwy projektu, komendy ani ścieżki."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14065,6 +15379,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pindahkan Mochi ke Dynamic Island iPhone saya saat Mac terkunci"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenoś Mochi do Dynamic Island na iPhonie, gdy Mac jest zablokowany"
           }
         },
         "pt-BR": {
@@ -14131,6 +15451,12 @@
             "value": "Mengirim sesi Anda ke iCloud pribadi Anda untuk aplikasi Coucou iPhone. Nama proyek, perintah, dan pertanyaan dienkripsi dengan kunci iCloud Anda. Mematikannya menghapusnya dari iCloud."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysyła Twoje sesje do prywatnego iCloud dla aplikacji Coucou na iPhonie. Nazwy projektów, komendy i pytania są szyfrowane Twoimi kluczami iCloud. Wyłączenie usuwa dane z iCloud."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14193,6 +15519,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tampilkan sesi agen saya di iPhone saya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuj sesje moich agentów na iPhonie"
           }
         },
         "pt-BR": {
@@ -14259,6 +15591,12 @@
             "value": "dengan %@"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "z %@"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14321,6 +15659,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "mnt tanpa gerakan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min bez ruchu"
           }
         },
         "pt-BR": {
@@ -14387,6 +15731,12 @@
             "value": "butuh izin"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "czeka na zgodę"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14449,6 +15799,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "5 jam"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 godzin"
           }
         },
         "pt-BR": {
@@ -14515,6 +15871,12 @@
             "value": "Paket Claude"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan Claude"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14577,6 +15939,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Menampilkan penggunaan paket Claude (batas 5 jam dan mingguan) di header notch. Coucou menambahkan relay baris status ke ~/.claude/settings.json. Jika Anda sudah memiliki baris status, tetap berjalan seperti sebelumnya. Hanya untuk paket Pro dan Max."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuje zużycie Twojego planu Claude (limity 5-godzinny i tygodniowy) w nagłówku notcha. Coucou dodaje przekaźnik status line w ~/.claude/settings.json. Jeśli masz już własną status line, działa dalej jak wcześniej. Tylko plany Pro i Max."
           }
         },
         "pt-BR": {
@@ -14643,6 +16011,12 @@
             "value": "%lld jam lalu"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld godz. temu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14705,6 +16079,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "baru saja"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przed chwilą"
           }
         },
         "pt-BR": {
@@ -14771,6 +16151,12 @@
             "value": "%lld menit lalu"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min temu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14833,6 +16219,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pasang relay"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zainstaluj przekaźnik"
           }
         },
         "pt-BR": {
@@ -14899,6 +16291,12 @@
             "value": "Relay: terpasang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przekaźnik: zainstalowany"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -14961,6 +16359,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Relay: belum terpasang"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przekaźnik: niezainstalowany"
           }
         },
         "pt-BR": {
@@ -15027,6 +16431,12 @@
             "value": "Hapus relay"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstaluj przekaźnik"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15089,6 +16499,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "dalam %lld j %lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "za %lld h %lld min"
           }
         },
         "pt-BR": {
@@ -15155,6 +16571,12 @@
             "value": "dalam %lld menit"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "za %lld min"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15217,6 +16639,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mereset…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resetowanie…"
           }
         },
         "pt-BR": {
@@ -15283,6 +16711,12 @@
             "value": "Tampilkan di notch"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuj w notchu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15345,6 +16779,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Penggunaan paket"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zużycie planu"
           }
         },
         "pt-BR": {
@@ -15411,6 +16851,12 @@
             "value": "Menunggu balasan Claude Code"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czekam na odpowiedź od Claude Code"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15473,6 +16919,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Minggu"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tydzień"
           }
         },
         "pt-BR": {
@@ -15539,6 +16991,12 @@
             "value": "Plugin terpasang — mulai ulang Amp untuk mengaktifkan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wtyczka zainstalowana — uruchom ponownie Amp, żeby ją włączyć"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15601,6 +17059,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plugin Amp"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wtyczka Amp"
           }
         },
         "pt-BR": {
@@ -15667,6 +17131,12 @@
             "value": "Tampilkan permintaan persetujuan di notch"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuj prośby o zgodę w notchu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15729,6 +17199,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Permintaan persetujuan ditangani oleh Hermes (terminal atau gateway)."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prośby o zgodę obsługuje Hermes (terminal lub gateway)."
           }
         },
         "pt-BR": {
@@ -15795,6 +17271,12 @@
             "value": "Permintaan persetujuan muncul di notch. Jika Coucou tidak berjalan, Hermes menggunakan promptnya sendiri."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prośby o zgodę pojawiają się w notchu. Gdy Coucou nie działa, Hermes wraca do własnego okna z pytaniem."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15859,6 +17341,12 @@
             "value": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/coucou/"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Wtyczka Hermes zainstalowana w ~/.hermes/plugins/coucou/"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -15918,6 +17406,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Hermes Agent"
@@ -15987,6 +17481,12 @@
             "value": "Pasang plugin"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zainstaluj wtyczkę"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16049,6 +17549,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plugin terpasang — mulai ulang OpenCode untuk mengaktifkan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wtyczka zainstalowana — uruchom ponownie OpenCode, żeby ją włączyć"
           }
         },
         "pt-BR": {
@@ -16115,6 +17621,12 @@
             "value": "Plugin OpenCode"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wtyczka OpenCode"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16177,6 +17689,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tinjau konten di bawah sebelum mengonfirmasi."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przejrzyj poniższą treść przed potwierdzeniem."
           }
         },
         "pt-BR": {
@@ -16243,6 +17761,12 @@
             "value": "tekan ini → island terbuka"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "naciśnij to → wyspa się otworzy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16305,6 +17829,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "pemrograman"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "programowanie"
           }
         },
         "pt-BR": {
@@ -16371,6 +17901,12 @@
             "value": "perintah"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "komendy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16433,6 +17969,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "berkas"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "plik"
           }
         },
         "pt-BR": {
@@ -16499,6 +18041,12 @@
             "value": "berkas"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pliki"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16561,6 +18109,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Disetujui"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatwierdzone"
           }
         },
         "pt-BR": {
@@ -16627,6 +18181,12 @@
             "value": "Hari tersibuk"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najbardziej pracowity dzień"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16689,6 +18249,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "PERINTAH"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KOMENDY"
           }
         },
         "pt-BR": {
@@ -16755,6 +18321,12 @@
             "value": "Ditolak"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odrzucone"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16817,6 +18389,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "BERKAS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PLIKI"
           }
         },
         "pt-BR": {
@@ -16883,6 +18461,12 @@
             "value": "Sesi terpanjang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najdłuższa sesja"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -16945,6 +18529,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "SESI"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SESJE"
           }
         },
         "pt-BR": {
@@ -17011,6 +18601,12 @@
             "value": "WAKTU PEMROGRAMAN"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CZAS PROGRAMOWANIA"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17073,6 +18669,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agen teratas"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najczęstszy agent"
           }
         },
         "pt-BR": {
@@ -17139,6 +18741,12 @@
             "value": "Proyek teratas"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najczęstszy projekt"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17201,6 +18809,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tidak ada aktivitas minggu lalu"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak aktywności w zeszłym tygodniu"
           }
         },
         "pt-BR": {
@@ -17267,6 +18881,12 @@
             "value": "sesi"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sesja"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17329,6 +18949,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "sesi"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sesje"
           }
         },
         "pt-BR": {
@@ -17395,6 +19021,12 @@
             "value": "Bagikan gambar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udostępnij obrazek"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17457,6 +19089,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rekap mingguan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podsumowanie tygodnia"
           }
         },
         "pt-BR": {
@@ -17523,6 +19161,12 @@
             "value": "dtk tidak aktif"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "s bezczynności"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17585,6 +19229,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Utama"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Główna"
           }
         },
         "pt-BR": {
@@ -17651,6 +19301,12 @@
             "value": "%lld/4 slot digunakan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zajęte miejsca: %lld/4"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17713,6 +19369,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pengaturan — Coucou"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ustawienia — Coucou"
           }
         },
         "pt-BR": {
@@ -17779,6 +19441,12 @@
             "value": "Lampirkan jendela depan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dołącz okno na wierzchu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17838,6 +19506,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplikat"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Duplikat"
@@ -17907,6 +19581,12 @@
             "value": "Konflik sistem"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konflikt z systemem"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -17969,6 +19649,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mochi di desktop ya / tidak"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mochi na biurku wł./wył."
           }
         },
         "pt-BR": {
@@ -18035,6 +19721,12 @@
             "value": "Ke notifikasi"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przejdź do alertu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18097,6 +19789,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pintasan global — bekerja dari app mana pun"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skróty globalne — działają w każdej aplikacji"
           }
         },
         "pt-BR": {
@@ -18163,6 +19861,12 @@
             "value": "Pintasan island — aktif saat island difokuskan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skróty notcha — działają, gdy notch jest na wierzchu"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18225,6 +19929,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pindah ke tab berdasarkan nomor"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przejdź do zakładki o numerze"
           }
         },
         "pt-BR": {
@@ -18291,6 +20001,12 @@
             "value": "Tutup island (jika tidak disematkan)"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij notch (jeśli nie jest przypięty)"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18353,6 +20069,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka / tutup diff saat ini"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz / zamknij bieżące zmiany"
           }
         },
         "pt-BR": {
@@ -18419,6 +20141,12 @@
             "value": "Navigasi item daftar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poruszanie się po liście"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18481,6 +20209,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Percakapan baru"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowa rozmowa"
           }
         },
         "pt-BR": {
@@ -18547,6 +20281,12 @@
             "value": "Tab berikutnya / sebelumnya"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Następna / poprzednia zakładka"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18609,6 +20349,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka item yang dipilih"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz zaznaczony element"
           }
         },
         "pt-BR": {
@@ -18675,6 +20421,12 @@
             "value": "Sematkan / lepas island"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przypnij / odepnij notch"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18737,6 +20489,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kirim pesan chat"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij wiadomość na czacie"
           }
         },
         "pt-BR": {
@@ -18803,6 +20561,12 @@
             "value": "Buka Pengaturan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz ustawienia"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18865,6 +20629,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lompat ke terminal"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przejdź do terminala"
           }
         },
         "pt-BR": {
@@ -18931,6 +20701,12 @@
             "value": "Bisukan / aktifkan suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wycisz / włącz dźwięki"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -18993,6 +20769,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tab berikutnya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Następna zakładka"
           }
         },
         "pt-BR": {
@@ -19059,6 +20841,12 @@
             "value": "Buka chat"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz czat"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19121,6 +20909,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buka / tutup island"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz / zamknij notch"
           }
         },
         "pt-BR": {
@@ -19187,6 +20981,12 @@
             "value": "Tab sebelumnya"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poprzednia zakładka"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19249,6 +21049,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reset semua ke default"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywróć wszystkie domyślne"
           }
         },
         "pt-BR": {
@@ -19315,6 +21121,12 @@
             "value": "Buka / tutup lemari"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz / zamknij garderobę"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19377,6 +21189,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks Antigravity terpasang di ~/.gemini/config/hooks.json"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Antigravity zainstalowane w ~/.gemini/config/hooks.json"
           }
         },
         "pt-BR": {
@@ -19443,6 +21261,12 @@
             "value": "✓ Hooks Antigravity dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Antigravity usunięte."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19505,6 +21329,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Plugin Amp terpasang di ~/.config/amp/plugins/coucou.ts"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Wtyczka Amp zainstalowana w ~/.config/amp/plugins/coucou.ts"
           }
         },
         "pt-BR": {
@@ -19571,6 +21401,12 @@
             "value": "✓ Plugin Amp dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Wtyczka Amp usunięta."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19633,6 +21469,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks Codex terpasang — jalankan /hooks di Codex atau buka Hooks di pengaturan aplikasi untuk mempercayainya."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Codex zainstalowane — wpisz /hooks w Codex albo otwórz Hooks w ustawieniach aplikacji, żeby je zatwierdzić."
           }
         },
         "pt-BR": {
@@ -19699,6 +21541,12 @@
             "value": "✓ Hooks Codex dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Codex usunięte."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19761,6 +21609,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks Copilot CLI terpasang di ~/.copilot/hooks/coucou.json"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Copilot CLI zainstalowane w ~/.copilot/hooks/coucou.json"
           }
         },
         "pt-BR": {
@@ -19827,6 +21681,12 @@
             "value": "✓ Hooks Copilot CLI dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Copilot CLI usunięte."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -19889,6 +21749,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks Gemini CLI terpasang di ~/.gemini/settings.json"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Gemini CLI zainstalowane w ~/.gemini/settings.json"
           }
         },
         "pt-BR": {
@@ -19955,6 +21821,12 @@
             "value": "✓ Hooks Gemini CLI dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Gemini CLI usunięte."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20017,6 +21889,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Kunci Google tersimpan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klucz Google zapisany."
           }
         },
         "pt-BR": {
@@ -20083,6 +21961,12 @@
             "value": "✓ Plugin Hermes terpasang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Wtyczka Hermes zainstalowana"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20145,6 +22029,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Plugin Hermes dihapus."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wtyczka Hermes usunięta"
           }
         },
         "pt-BR": {
@@ -20211,6 +22101,12 @@
             "value": "✓ Hooks terpasang — mulai ulang VS Code untuk mengaktifkan."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki zainstalowane — uruchom ponownie VS Code, żeby je włączyć."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20273,6 +22169,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks terpasang di ~/.claude/settings.json"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki zainstalowane w ~/.claude/settings.json"
           }
         },
         "pt-BR": {
@@ -20339,6 +22241,12 @@
             "value": "✓ Hooks dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki usunięte."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20403,6 +22311,12 @@
             "value": "✓ Kunci integrasi tersimpan."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klucze integracji zapisane."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20465,6 +22379,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Kunci tersimpan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klucz zapisany."
           }
         },
         "pt-BR": {
@@ -20615,6 +22535,36 @@
             }
           }
         },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Połączono · %lld model"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Połączono · %lld modele"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Połączono · %lld modeli"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Połączono · %lld modelu"
+                }
+              }
+            }
+          }
+        },
         "pt-BR": {
           "variations": {
             "plural": {
@@ -20715,6 +22665,12 @@
             "value": "LM Studio terputus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio rozłączone."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20777,6 +22733,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Belum ada model — unduh satu di %@ terlebih dahulu."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie masz jeszcze modeli — najpierw pobierz jakiś w %@."
           }
         },
         "pt-BR": {
@@ -20843,6 +22805,12 @@
             "value": "Ollama terputus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama rozłączona."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -20905,6 +22873,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tidak dapat menjangkau %1$@ di %2$@. Apakah sedang berjalan?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie mogę połączyć się z %1$@ pod adresem %2$@. Czy na pewno działa?"
           }
         },
         "pt-BR": {
@@ -20971,6 +22945,12 @@
             "value": "Hanya URL http:// dan https:// yang didukung."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akceptowane są tylko adresy http:// i https://."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21033,6 +23013,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Hooks Muse Code terpasang di ~/.config/muse/settings.json"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Muse Code zainstalowane w ~/.config/muse/settings.json"
           }
         },
         "pt-BR": {
@@ -21099,6 +23085,12 @@
             "value": "✓ Hooks Muse Code dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Hooki Muse Code usunięte."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21161,6 +23153,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Kunci OpenAI tersimpan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Klucz OpenAI zapisany."
           }
         },
         "pt-BR": {
@@ -21227,6 +23225,12 @@
             "value": "✓ Plugin OpenCode terpasang di ~/.config/opencode/plugins/coucou.js"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Wtyczka OpenCode zainstalowana w ~/.config/opencode/plugins/coucou.js"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21289,6 +23293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Plugin OpenCode dihapus."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Wtyczka OpenCode usunięta."
           }
         },
         "pt-BR": {
@@ -21355,6 +23365,12 @@
             "value": "❌ Pilih folder .claude (tersembunyi, di direktori Home Anda)."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Wybierz folder .claude (ukryty, w Twoim katalogu domowym)."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21417,6 +23433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Baris status terpasang."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Status line zainstalowana."
           }
         },
         "pt-BR": {
@@ -21483,6 +23505,12 @@
             "value": "✓ Baris status dihapus."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Status line usunięta."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21545,6 +23573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
           }
         },
         "pt-BR": {
@@ -21611,6 +23645,12 @@
             "value": "Mengedit"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuje"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21673,6 +23713,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mengambil"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobiera"
           }
         },
         "pt-BR": {
@@ -21739,6 +23785,12 @@
             "value": "Daftar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przegląda"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21801,6 +23853,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notebook"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notatnik"
           }
         },
         "pt-BR": {
@@ -21867,6 +23925,12 @@
             "value": "Membaca"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czyta"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -21929,6 +23993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Menjalankan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uruchamia"
           }
         },
         "pt-BR": {
@@ -21995,6 +24065,12 @@
             "value": "Mencari"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szuka"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22057,6 +24133,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tugas"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zadania"
           }
         },
         "pt-BR": {
@@ -22123,6 +24205,12 @@
             "value": "Menguji"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22185,6 +24273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mencari web"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szuka w sieci"
           }
         },
         "pt-BR": {
@@ -22251,6 +24345,12 @@
             "value": "Menulis"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuje"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22315,6 +24415,12 @@
             "value": "dengan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "z"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22377,6 +24483,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "« OK Coucou » — kata pengaktif suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„OK Coucou” — słowo wybudzające"
           }
         },
         "pt-BR": {
@@ -22444,6 +24556,12 @@
             "value": "Bicara ke Coucou"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porozmawiaj z Coucou"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22506,6 +24624,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "4 aktif — mana yang dihapus?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 aktywne — którą usunąć?"
           }
         },
         "pt-BR": {
@@ -22572,6 +24696,12 @@
             "value": "Tidak ditemukan: %@"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znaleziono: %@"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22636,6 +24766,12 @@
             "value": "Membuka Apple Music…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwieram Apple Music…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22698,6 +24834,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lagu berikutnya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Następny utwór"
           }
         },
         "pt-BR": {
@@ -22765,6 +24907,12 @@
             "value": "Tidak ada app musik"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadna aplikacja muzyczna nie działa"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22827,6 +24975,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dijeda"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wstrzymano"
           }
         },
         "pt-BR": {
@@ -22893,6 +25047,12 @@
             "value": "Memutar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gra"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -22955,6 +25115,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lagu sebelumnya"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poprzedni utwór"
           }
         },
         "pt-BR": {
@@ -23021,6 +25187,12 @@
             "value": "Volume turun"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciszej"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23083,6 +25255,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volume: %d%%"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głośność: %d%%"
           }
         },
         "pt-BR": {
@@ -23149,6 +25327,12 @@
             "value": "Volume naik"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głośniej"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23211,6 +25395,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ ditambahkan"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodano %@"
           }
         },
         "pt-BR": {
@@ -23277,6 +25467,12 @@
             "value": "Sudah aktif"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Już aktywna"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23339,6 +25535,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Utama: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Główna: %@"
           }
         },
         "pt-BR": {
@@ -23406,6 +25608,12 @@
             "value": "%@ ditambahkan — hooks tidak terpasang"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodano %@ — hooki niezainstalowane"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23468,6 +25676,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tidak aktif"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieaktywna"
           }
         },
         "pt-BR": {
@@ -23534,6 +25748,12 @@
             "value": "Hanya: %@"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko: %@"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23598,6 +25818,12 @@
             "value": "%@ dihapus"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunięto %@"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23657,6 +25883,12 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ → %@"
@@ -23726,6 +25958,12 @@
             "value": "Baik, biarkan seperti itu"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK, zostawiam bez zmian"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23788,6 +26026,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Perintah tidak dikenali"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie rozpoznano komendy"
           }
         },
         "pt-BR": {
@@ -23854,6 +26098,12 @@
             "value": "Tidak dimengerti: « %@ »"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie rozpoznano: „%@”"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -23916,6 +26166,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coucou merespons dengan suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou odpowiada na głos"
           }
         },
         "pt-BR": {
@@ -23982,6 +26238,12 @@
             "value": "Coucou membaca hasil dalam bahasa yang diucapkan. Semuanya di perangkat."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou odczytuje wyniki w języku, w którym mówisz, syntezowanym głosem. W 100% na urządzeniu."
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24044,6 +26306,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tidak ada di perpustakaan, membuka pencarian untuk %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie ma w Twojej bibliotece, otworzyłem wyszukiwanie: %@"
           }
         },
         "pt-BR": {
@@ -24110,6 +26378,12 @@
             "value": "Model AI lokal: tersedia"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokalny model AI: dostępny"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24172,6 +26446,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Model AI lokal: membutuhkan macOS 26 atau lebih baru"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokalny model AI: wymaga macOS 26 lub nowszego"
           }
         },
         "pt-BR": {
@@ -24238,6 +26518,12 @@
             "value": "Model AI lokal: Apple Intelligence dimatikan"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokalny model AI: Apple Intelligence jest wyłączone"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24300,6 +26586,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Model AI lokal: bahasa tidak didukung"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokalny model AI: język nieobsługiwany"
           }
         },
         "pt-BR": {
@@ -24367,6 +26659,12 @@
             "value": "Kalimat yang baru didengar"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostatnio usłyszane frazy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24430,6 +26728,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Subtitel di bawah notch"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Napisy pod notchem"
           }
         },
         "pt-BR": {
@@ -24497,6 +26801,12 @@
             "value": "Mendengarkan…"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Słucham…"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24560,6 +26870,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Maaf, bisa diulang?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przepraszam, możesz powtórzyć?"
           }
         },
         "pt-BR": {
@@ -24627,6 +26943,12 @@
             "value": "Pil mana yang mau ditambahkan?"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Którą zakładkę dodać?"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24690,6 +27012,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pil mana yang mau dihapus?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Którą zakładkę usunąć?"
           }
         },
         "pt-BR": {
@@ -24757,6 +27085,12 @@
             "value": "Playlist yang mana?"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Która playlista?"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24820,6 +27154,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cuaca lewat suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pogoda na głos"
           }
         },
         "pt-BR": {
@@ -24887,6 +27227,12 @@
             "value": "Kota"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miasto"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -24950,6 +27296,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dari Open-Meteo untuk kota ini, hanya saat kamu bertanya."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z Open-Meteo dla tego miasta, tylko gdy zapytasz."
           }
         },
         "pt-BR": {
@@ -25017,6 +27369,12 @@
             "value": "Coucou menjawab dalam"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou odpowiada po"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -25080,6 +27438,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głos"
           }
         },
         "pt-BR": {
@@ -25147,6 +27511,12 @@
             "value": "Suara Mac"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Głos Maca"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -25210,6 +27580,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kunci API ElevenLabs"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz API ElevenLabs"
           }
         },
         "pt-BR": {
@@ -25277,6 +27653,12 @@
             "value": "Kunci tersimpan di Keychain"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz zapisany w pęku kluczy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -25340,6 +27722,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jenis suara"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rodzaj głosu"
           }
         },
         "pt-BR": {
@@ -25407,6 +27795,12 @@
             "value": "Wanita"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kobiecy"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -25470,6 +27864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pria"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Męski"
           }
         },
         "pt-BR": {
@@ -25537,6 +27937,12 @@
             "value": "Coba suara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przetestuj głos"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -25602,6 +28008,12 @@
             "value": "Kamu berbicara"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mówisz po"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -25665,6 +28077,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otomatis (bahasa dikte Mac)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatycznie (język dyktowania Twojego Maca)"
           }
         },
         "pt-BR": {
