@@ -358,6 +358,7 @@ export class Island {
   private setMode(mode: IslandMode) {
     const prev = State.mode;
     if (mode === prev) return;
+    void Bridge.log(`island ${prev} -> ${mode}`);
     State.mode = mode;
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
@@ -667,7 +668,8 @@ export class Island {
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
     if (State.mode === "compact" && Live.current) w = Live.current.kind === "call" ? LIVE_W + 64 : LIVE_W;
-    else if (State.mode === "compact" && miniPlayerWanted()) w = LIVE_W;
+    // The player, then the agents' mini Mochis on the right: room for both.
+    else if (State.mode === "compact" && miniPlayerWanted()) w = LIVE_W + 44;
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1209,7 +1211,9 @@ export class Island {
         this.animateGeometry(false);
       }
     }
-    const showGrid = State.mode === "compact" && !Live.current && !showMini;
+    // The agents' mini Mochis stay beside the player: an agent at work (the
+    // orange Claude Desktop one included) must still be seen while music plays.
+    const showGrid = State.mode === "compact" && !Live.current;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);

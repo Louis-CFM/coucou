@@ -163,6 +163,7 @@ fn language_changed(app: &AppHandle) {
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
+    log::line(format!("window {}", if collapsed { "collapsed to the wake strip" } else { "full size" }));
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
