@@ -27,13 +27,9 @@ struct DesktopBotView: View {
     @ObservedObject var viewState: DesktopBotViewState
 
     var body: some View {
-        TimelineView(.animation(
-            minimumInterval: viewState.isSleeping ? 0.9 / 10.0 : 0.9 / 30.0,   // 10 % short: see MochiFrameClock.interval
-            paused: viewState.paused
-        )) { timeline in
+        TimelineView(.animation(paused: viewState.paused)) { timeline in
             Canvas { ctx, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                let dt  = min(0.05, now - engine.lastTime)
+                _ = timeline.date   // force redraw every tick (see BotCanvasView)
 
                 // Eye tracking based on the panel's own screen position
                 engine.lookX = tanh((appState.mousePosition.x - viewState.lookOrigin.x) / 260)
@@ -56,7 +52,7 @@ struct DesktopBotView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
-                engine.update(dt: dt)
+                MochiFrameClock.advance(engine)
 
                 var c = ctx
                 engine.applyDance(&c, size: size)
