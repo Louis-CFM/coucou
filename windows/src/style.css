@@ -756,6 +756,76 @@ body {
   color: var(--red-text);
 }
 
+/* GitLab's news card: one title line, then the rest of the news. */
+.news-title {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-more {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font: 400 12px var(--font);
+  color: var(--dim);
+  min-width: 0;
+}
+
+.news-more > div {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The news card unfolded: each piece of news, what changed under it. The list
+   takes the card's height between the title row and the buttons, and scrolls. */
+.news-details {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 4px;
+}
+
+.news-item {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.news-item-title {
+  border: 0;
+  padding: 0;
+  background: none;
+  text-align: left;
+  font: 600 12px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.news-change {
+  font: 400 11px var(--font);
+  color: var(--dim);
+  padding-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 .who-row {
   display: flex;
   align-items: center;
@@ -1548,6 +1618,13 @@ input[type="range"]::-webkit-slider-thumb {
   margin-left: 2px;
 }
 
+.int-review {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 .int-total span {
   font: 500 11px var(--font);
   color: #c5c8cd;
@@ -1593,6 +1670,79 @@ input[type="range"]::-webkit-slider-thumb {
 .int-rows.tight {
   gap: 2px;
   padding-top: 4px;
+}
+
+/* GitLab's and YouTrack's cards: five rows on screen, the rest a scroll away.
+   Fixed rows so the five fill the window exactly. */
+.int-rows.scroll {
+  max-height: 117px; /* 5 × 21 px rows + 4 × 3 px gaps */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.int-rows.scroll > .int-row {
+  flex: 0 0 21px;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+/* News that unfolds into what changed: a chevron that turns, the changes
+   indented under it, and a small ↗ that opens the page. */
+.int-chevron {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--dim-3);
+  transition: transform 0.15s ease-out;
+}
+
+.int-row.open .int-chevron {
+  transform: rotate(90deg);
+}
+
+.int-open {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.int-changes {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 1px 8px 3px 25px;
+}
+
+.int-changes[hidden] {
+  display: none;
+}
+
+.int-change {
+  font: 400 10.5px var(--font);
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A label with nothing more to say unfolds whole. */
+.int-change.whole {
+  white-space: normal;
+}
+
+/* A saved search's name can be long: it gives way, the issue count doesn't. */
+.int-card.youtrack .int-head > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.int-card.youtrack .int-total {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .int-row {

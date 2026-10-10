@@ -3360,6 +3360,1151 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "Token (read_api)": {
+   "zh-Hans": "令牌（read_api）",
+   "hi": "टोकन (read_api)",
+   "es": "Token (read_api)",
+   "ar": "رمز (read_api)",
+   "fr": "Jeton (read_api)",
+   "bn": "টোকেন (read_api)",
+   "pt-BR": "Token (read_api)",
+   "ru": "Токен (read_api)",
+   "id": "Token (read_api)"
+  },
+  "The GitLab URL must start with https://": {
+   "zh-Hans": "GitLab 地址必须以 https:// 开头",
+   "hi": "GitLab URL https:// से शुरू होना चाहिए",
+   "es": "La URL de GitLab debe empezar por https://",
+   "ar": "يجب أن يبدأ عنوان GitLab بـ https://",
+   "fr": "L'URL GitLab doit commencer par https://",
+   "bn": "GitLab URL অবশ্যই https:// দিয়ে শুরু হতে হবে",
+   "pt-BR": "A URL do GitLab deve começar com https://",
+   "ru": "URL GitLab должен начинаться с https://",
+   "id": "URL GitLab harus diawali https://"
+  },
+  "Token lacks the read_api scope": {
+   "zh-Hans": "令牌缺少 read_api 权限",
+   "hi": "टोकन में read_api स्कोप नहीं है",
+   "es": "Al token le falta el permiso read_api",
+   "ar": "الرمز يفتقد صلاحية read_api",
+   "fr": "Le jeton n'a pas la portée read_api",
+   "bn": "টোকেনে read_api স্কোপ নেই",
+   "pt-BR": "O token não tem o escopo read_api",
+   "ru": "У токена нет области read_api",
+   "id": "Token tidak punya cakupan read_api"
+  },
+  "Unexpected answer from GitLab — check the URL": {
+   "zh-Hans": "GitLab 返回了意外的响应 — 请检查地址",
+   "hi": "GitLab से अनपेक्षित जवाब — URL जाँचें",
+   "es": "Respuesta inesperada de GitLab — revisa la URL",
+   "ar": "رد غير متوقع من GitLab — تحقق من العنوان",
+   "fr": "Réponse inattendue de GitLab — vérifiez l'URL",
+   "bn": "GitLab থেকে অপ্রত্যাশিত উত্তর — URL দেখুন",
+   "pt-BR": "Resposta inesperada do GitLab — verifique a URL",
+   "ru": "Неожиданный ответ GitLab — проверьте URL",
+   "id": "Jawaban tak terduga dari GitLab — periksa URL-nya"
+  },
+  "Your GitLab To-Do list": {
+   "zh-Hans": "你的 GitLab 待办列表",
+   "hi": "आपकी GitLab To-Do सूची",
+   "es": "Tu lista de tareas de GitLab",
+   "ar": "قائمة مهامك في GitLab",
+   "fr": "Votre liste To-Do GitLab",
+   "bn": "আপনার GitLab To-Do তালিকা",
+   "pt-BR": "Sua lista de tarefas do GitLab",
+   "ru": "Ваш список задач GitLab",
+   "id": "Daftar To-Do GitLab Anda"
+  },
+  "{count} to do": {
+   "zh-Hans": "{count} 项待办",
+   "hi": "{count} करने को",
+   "es": "{count} por hacer",
+   "ar": "{count} للقيام",
+   "fr": "{count} à faire",
+   "bn": "{count}টি করণীয়",
+   "pt-BR": "{count} a fazer",
+   "ru": "{count} к выполнению",
+   "id": "{count} untuk dikerjakan"
+  },
+  "by {name}": {
+   "zh-Hans": "作者 {name}",
+   "hi": "{name} द्वारा",
+   "es": "de {name}",
+   "ar": "بواسطة {name}",
+   "fr": "par {name}",
+   "bn": "{name}-এর",
+   "pt-BR": "por {name}",
+   "ru": "от {name}",
+   "id": "oleh {name}"
+  },
+  "Nothing new on GitLab": {
+   "zh-Hans": "GitLab 上没有新动态",
+   "hi": "GitLab पर कुछ नया नहीं",
+   "es": "Nada nuevo en GitLab",
+   "ar": "لا جديد على GitLab",
+   "fr": "Rien de neuf sur GitLab",
+   "bn": "GitLab-এ নতুন কিছু নেই",
+   "pt-BR": "Nada de novo no GitLab",
+   "ru": "В GitLab ничего нового",
+   "id": "Tidak ada yang baru di GitLab"
+  },
+  "Inbox": {
+   "zh-Hans": "收件箱",
+   "hi": "इनबॉक्स",
+   "es": "Bandeja",
+   "ar": "الوارد",
+   "fr": "Boîte de réception",
+   "bn": "ইনবক্স",
+   "pt-BR": "Caixa de entrada",
+   "ru": "Входящие",
+   "id": "Kotak masuk"
+  },
+  "Yours": {
+   "zh-Hans": "你的",
+   "hi": "आपका",
+   "es": "Tuya",
+   "ar": "لك",
+   "fr": "La vôtre",
+   "bn": "আপনার",
+   "pt-BR": "Sua",
+   "ru": "Ваш",
+   "id": "Milik Anda"
+  },
+  "Assigned": {
+   "zh-Hans": "已指派",
+   "hi": "सौंपा गया",
+   "es": "Asignada",
+   "ar": "مُسند",
+   "fr": "Assignée",
+   "bn": "নির্ধারিত",
+   "pt-BR": "Atribuída",
+   "ru": "Назначен",
+   "id": "Ditugaskan"
+  },
+  "Review": {
+   "zh-Hans": "评审",
+   "hi": "समीक्षा",
+   "es": "Revisión",
+   "ar": "مراجعة",
+   "fr": "Relecture",
+   "bn": "রিভিউ",
+   "pt-BR": "Revisão",
+   "ru": "Ревью",
+   "id": "Tinjauan"
+  },
+  "{count} details — click to show": {
+   "zh-Hans": {
+    "other": "{count} 条详情 — 点击查看"
+   },
+   "hi": {
+    "one": "{count} विवरण — देखने के लिए क्लिक करें",
+    "other": "{count} विवरण — देखने के लिए क्लिक करें"
+   },
+   "es": {
+    "one": "{count} detalle — haz clic para verlo",
+    "other": "{count} detalles — haz clic para verlos"
+   },
+   "ar": {
+    "zero": "{count} تفاصيل — انقر للعرض",
+    "one": "تفصيل واحد — انقر للعرض",
+    "two": "تفصيلان — انقر للعرض",
+    "few": "{count} تفاصيل — انقر للعرض",
+    "many": "{count} تفصيلًا — انقر للعرض",
+    "other": "{count} تفصيل — انقر للعرض"
+   },
+   "fr": {
+    "one": "{count} détail — cliquez pour l'afficher",
+    "other": "{count} détails — cliquez pour les afficher"
+   },
+   "bn": {
+    "one": "{count}টি বিবরণ — দেখতে ক্লিক করুন",
+    "other": "{count}টি বিবরণ — দেখতে ক্লিক করুন"
+   },
+   "pt-BR": {
+    "one": "{count} detalhe — clique para ver",
+    "other": "{count} detalhes — clique para ver"
+   },
+   "ru": {
+    "one": "{count} подробность — нажмите, чтобы показать",
+    "few": "{count} подробности — нажмите, чтобы показать",
+    "many": "{count} подробностей — нажмите, чтобы показать",
+    "other": "{count} подробности — нажмите, чтобы показать"
+   },
+   "id": {
+    "other": "{count} detail — klik untuk melihat"
+   }
+  },
+  "{count} updates": {
+   "zh-Hans": {
+    "other": "{count} 条更新"
+   },
+   "hi": {
+    "one": "{count} अपडेट",
+    "other": "{count} अपडेट"
+   },
+   "es": {
+    "one": "{count} novedad",
+    "other": "{count} novedades"
+   },
+   "ar": {
+    "zero": "{count} تحديثات",
+    "one": "تحديث واحد",
+    "two": "تحديثان",
+    "few": "{count} تحديثات",
+    "many": "{count} تحديثًا",
+    "other": "{count} تحديث"
+   },
+   "fr": {
+    "one": "{count} nouveauté",
+    "other": "{count} nouveautés"
+   },
+   "bn": {
+    "one": "{count}টি আপডেট",
+    "other": "{count}টি আপডেট"
+   },
+   "pt-BR": {
+    "one": "{count} novidade",
+    "other": "{count} novidades"
+   },
+   "ru": {
+    "one": "{count} обновление",
+    "few": "{count} обновления",
+    "many": "{count} обновлений",
+    "other": "{count} обновления"
+   },
+   "id": {
+    "other": "{count} pembaruan"
+   }
+  },
+  "{name} update": {
+   "zh-Hans": "{name} 更新",
+   "hi": "{name} अपडेट",
+   "es": "Novedad en {name}",
+   "ar": "تحديث من {name}",
+   "fr": "Nouveauté {name}",
+   "bn": "{name} আপডেট",
+   "pt-BR": "Novidade no {name}",
+   "ru": "Обновление {name}",
+   "id": "Pembaruan {name}"
+  },
+  "Nothing new": {
+   "zh-Hans": "没有新动态",
+   "hi": "कुछ नया नहीं",
+   "es": "Nada nuevo",
+   "ar": "لا جديد",
+   "fr": "Rien de neuf",
+   "bn": "নতুন কিছু নেই",
+   "pt-BR": "Nada de novo",
+   "ru": "Ничего нового",
+   "id": "Tidak ada yang baru"
+  },
+  "Latest update": {
+   "zh-Hans": "最新动态",
+   "hi": "ताज़ा अपडेट",
+   "es": "Última novedad",
+   "ar": "آخر تحديث",
+   "fr": "Dernière nouveauté",
+   "bn": "সর্বশেষ আপডেট",
+   "pt-BR": "Última novidade",
+   "ru": "Последнее обновление",
+   "id": "Pembaruan terbaru"
+  },
+  "{count} GitLab updates": {
+   "zh-Hans": {
+    "other": "{count} 条 GitLab 更新"
+   },
+   "hi": {
+    "one": "{count} GitLab अपडेट",
+    "other": "{count} GitLab अपडेट"
+   },
+   "es": {
+    "one": "{count} novedad de GitLab",
+    "other": "{count} novedades de GitLab"
+   },
+   "ar": {
+    "zero": "{count} تحديثات من GitLab",
+    "one": "تحديث واحد من GitLab",
+    "two": "تحديثان من GitLab",
+    "few": "{count} تحديثات من GitLab",
+    "many": "{count} تحديثًا من GitLab",
+    "other": "{count} تحديث من GitLab"
+   },
+   "fr": {
+    "one": "{count} nouveauté GitLab",
+    "other": "{count} nouveautés GitLab"
+   },
+   "bn": {
+    "one": "{count}টি GitLab আপডেট",
+    "other": "{count}টি GitLab আপডেট"
+   },
+   "pt-BR": {
+    "one": "{count} novidade do GitLab",
+    "other": "{count} novidades do GitLab"
+   },
+   "ru": {
+    "one": "{count} обновление GitLab",
+    "few": "{count} обновления GitLab",
+    "many": "{count} обновлений GitLab",
+    "other": "{count} обновления GitLab"
+   },
+   "id": {
+    "other": "{count} pembaruan GitLab"
+   }
+  },
+  "Review requested": {
+   "zh-Hans": "请求评审",
+   "hi": "समीक्षा का अनुरोध",
+   "es": "Revisión solicitada",
+   "ar": "طُلبت مراجعة",
+   "fr": "Relecture demandée",
+   "bn": "রিভিউয়ের অনুরোধ",
+   "pt-BR": "Revisão solicitada",
+   "ru": "Запрошено ревью",
+   "id": "Tinjauan diminta"
+  },
+  "Assigned to you": {
+   "zh-Hans": "指派给你",
+   "hi": "आपको सौंपा गया",
+   "es": "Asignada a ti",
+   "ar": "أُسند إليك",
+   "fr": "Assignée à vous",
+   "bn": "আপনাকে দেওয়া হয়েছে",
+   "pt-BR": "Atribuída a você",
+   "ru": "Назначено вам",
+   "id": "Ditugaskan kepada Anda"
+  },
+  "Mentioned": {
+   "zh-Hans": "提到了你",
+   "hi": "आपका उल्लेख",
+   "es": "Te mencionaron",
+   "ar": "تمت الإشارة إليك",
+   "fr": "Mentionné",
+   "bn": "আপনাকে উল্লেখ করা হয়েছে",
+   "pt-BR": "Mencionado",
+   "ru": "Вас упомянули",
+   "id": "Disebut"
+  },
+  "Pipeline failed": {
+   "zh-Hans": "流水线失败",
+   "hi": "पाइपलाइन विफल",
+   "es": "Pipeline fallido",
+   "ar": "فشل خط المعالجة",
+   "fr": "Pipeline en échec",
+   "bn": "পাইপলাইন ব্যর্থ",
+   "pt-BR": "Pipeline falhou",
+   "ru": "Пайплайн упал",
+   "id": "Pipeline gagal"
+  },
+  "Out of the merge train": {
+   "zh-Hans": "已移出合并队列",
+   "hi": "मर्ज ट्रेन से बाहर",
+   "es": "Fuera del merge train",
+   "ar": "خارج قطار الدمج",
+   "fr": "Sorti du merge train",
+   "bn": "মার্জ ট্রেন থেকে বাদ",
+   "pt-BR": "Fora do merge train",
+   "ru": "Убран из merge train",
+   "id": "Keluar dari merge train"
+  },
+  "Approval needed": {
+   "zh-Hans": "需要批准",
+   "hi": "स्वीकृति चाहिए",
+   "es": "Falta aprobación",
+   "ar": "مطلوب موافقة",
+   "fr": "Approbation requise",
+   "bn": "অনুমোদন প্রয়োজন",
+   "pt-BR": "Aprovação necessária",
+   "ru": "Нужно одобрение",
+   "id": "Perlu persetujuan"
+  },
+  "Reviewed": {
+   "zh-Hans": "已评审",
+   "hi": "समीक्षा हुई",
+   "es": "Revisada",
+   "ar": "تمت المراجعة",
+   "fr": "Relue",
+   "bn": "রিভিউ হয়েছে",
+   "pt-BR": "Revisada",
+   "ru": "Проверено",
+   "id": "Ditinjau"
+  },
+  "Access requested": {
+   "zh-Hans": "请求访问",
+   "hi": "पहुँच का अनुरोध",
+   "es": "Acceso solicitado",
+   "ar": "طُلب الوصول",
+   "fr": "Accès demandé",
+   "bn": "অ্যাক্সেসের অনুরোধ",
+   "pt-BR": "Acesso solicitado",
+   "ru": "Запрошен доступ",
+   "id": "Akses diminta"
+  },
+  "To-do": {
+   "zh-Hans": "待办",
+   "hi": "करने योग्य",
+   "es": "Tarea",
+   "ar": "مهمة",
+   "fr": "À faire",
+   "bn": "করণীয়",
+   "pt-BR": "Tarefa",
+   "ru": "Задача",
+   "id": "Tugas"
+  },
+  "Comment: “{text}”": {
+   "zh-Hans": "评论：“{text}”",
+   "hi": "टिप्पणी: “{text}”",
+   "es": "Comentario: «{text}»",
+   "ar": "تعليق: «{text}»",
+   "fr": "Commentaire : « {text} »",
+   "bn": "মন্তব্য: “{text}”",
+   "pt-BR": "Comentário: “{text}”",
+   "ru": "Комментарий: «{text}»",
+   "id": "Komentar: “{text}”"
+  },
+  "{name} failed": {
+   "zh-Hans": "{name} 失败",
+   "hi": "{name} विफल",
+   "es": "{name} falló",
+   "ar": "فشل {name}",
+   "fr": "{name} en échec",
+   "bn": "{name} ব্যর্থ",
+   "pt-BR": "{name} falhou",
+   "ru": "{name}: ошибка",
+   "id": "{name} gagal"
+  },
+  "{stage}: {name} failed": {
+   "zh-Hans": "{stage}：{name} 失败",
+   "hi": "{stage}: {name} विफल",
+   "es": "{stage}: {name} falló",
+   "ar": "{stage}: فشل {name}",
+   "fr": "{stage} : {name} en échec",
+   "bn": "{stage}: {name} ব্যর্থ",
+   "pt-BR": "{stage}: {name} falhou",
+   "ru": "{stage}: {name} — ошибка",
+   "id": "{stage}: {name} gagal"
+  },
+  "Push": {
+   "zh-Hans": "推送",
+   "hi": "पुश",
+   "es": "Push",
+   "ar": "دفع",
+   "fr": "Push",
+   "bn": "পুশ",
+   "pt-BR": "Push",
+   "ru": "Push",
+   "id": "Push"
+  },
+  "Run from GitLab": {
+   "zh-Hans": "从 GitLab 运行",
+   "hi": "GitLab से चलाया गया",
+   "es": "Lanzado desde GitLab",
+   "ar": "تشغيل من GitLab",
+   "fr": "Lancé depuis GitLab",
+   "bn": "GitLab থেকে চালানো",
+   "pt-BR": "Executado no GitLab",
+   "ru": "Запуск из GitLab",
+   "id": "Dijalankan dari GitLab"
+  },
+  "Merge request": {
+   "zh-Hans": "合并请求",
+   "hi": "मर्ज रिक्वेस्ट",
+   "es": "Merge request",
+   "ar": "طلب دمج",
+   "fr": "Merge request",
+   "bn": "মার্জ রিকোয়েস্ট",
+   "pt-BR": "Merge request",
+   "ru": "Merge request",
+   "id": "Merge request"
+  },
+  "Scheduled": {
+   "zh-Hans": "定时",
+   "hi": "निर्धारित",
+   "es": "Programado",
+   "ar": "مجدول",
+   "fr": "Planifié",
+   "bn": "নির্ধারিত সময়ে",
+   "pt-BR": "Agendado",
+   "ru": "По расписанию",
+   "id": "Terjadwal"
+  },
+  "Trigger": {
+   "zh-Hans": "触发器",
+   "hi": "ट्रिगर",
+   "es": "Disparador",
+   "ar": "مُشغِّل",
+   "fr": "Déclencheur",
+   "bn": "ট্রিগার",
+   "pt-BR": "Gatilho",
+   "ru": "Триггер",
+   "id": "Pemicu"
+  },
+  "Parent pipeline": {
+   "zh-Hans": "父流水线",
+   "hi": "पैरेंट पाइपलाइन",
+   "es": "Pipeline padre",
+   "ar": "خط المعالجة الأصل",
+   "fr": "Pipeline parent",
+   "bn": "প্যারেন্ট পাইপলাইন",
+   "pt-BR": "Pipeline pai",
+   "ru": "Родительский пайплайн",
+   "id": "Pipeline induk"
+  },
+  "Pipeline": {
+   "zh-Hans": "流水线",
+   "hi": "पाइपलाइन",
+   "es": "Pipeline",
+   "ar": "خط المعالجة",
+   "fr": "Pipeline",
+   "bn": "পাইপলাইন",
+   "pt-BR": "Pipeline",
+   "ru": "Пайплайн",
+   "id": "Pipeline"
+  },
+  "{seconds} s": {
+   "zh-Hans": "{seconds} 秒",
+   "hi": "{seconds} से.",
+   "es": "{seconds} s",
+   "ar": "{seconds} ث",
+   "fr": "{seconds} s",
+   "bn": "{seconds} সে.",
+   "pt-BR": "{seconds} s",
+   "ru": "{seconds} с",
+   "id": "{seconds} dtk"
+  },
+  "{minutes} min {seconds} s": {
+   "zh-Hans": "{minutes} 分 {seconds} 秒",
+   "hi": "{minutes} मि. {seconds} से.",
+   "es": "{minutes} min {seconds} s",
+   "ar": "{minutes} د {seconds} ث",
+   "fr": "{minutes} min {seconds} s",
+   "bn": "{minutes} মি. {seconds} সে.",
+   "pt-BR": "{minutes} min {seconds} s",
+   "ru": "{minutes} мин {seconds} с",
+   "id": "{minutes} mnt {seconds} dtk"
+  },
+  "{hours} h {minutes} min": {
+   "zh-Hans": "{hours} 小时 {minutes} 分",
+   "hi": "{hours} घं. {minutes} मि.",
+   "es": "{hours} h {minutes} min",
+   "ar": "{hours} س {minutes} د",
+   "fr": "{hours} h {minutes} min",
+   "bn": "{hours} ঘ. {minutes} মি.",
+   "pt-BR": "{hours} h {minutes} min",
+   "ru": "{hours} ч {minutes} мин",
+   "id": "{hours} j {minutes} mnt"
+  },
+  "Pipeline passed: {project} · {ref}": {
+   "zh-Hans": "流水线通过：{project} · {ref}",
+   "hi": "पाइपलाइन सफल: {project} · {ref}",
+   "es": "Pipeline superado: {project} · {ref}",
+   "ar": "نجح خط المعالجة: {project} · {ref}",
+   "fr": "Pipeline réussi : {project} · {ref}",
+   "bn": "পাইপলাইন সফল: {project} · {ref}",
+   "pt-BR": "Pipeline passou: {project} · {ref}",
+   "ru": "Пайплайн прошёл: {project} · {ref}",
+   "id": "Pipeline lolos: {project} · {ref}"
+  },
+  "Pipeline failed: {project} · {ref}": {
+   "zh-Hans": "流水线失败：{project} · {ref}",
+   "hi": "पाइपलाइन विफल: {project} · {ref}",
+   "es": "Pipeline fallido: {project} · {ref}",
+   "ar": "فشل خط المعالجة: {project} · {ref}",
+   "fr": "Pipeline en échec : {project} · {ref}",
+   "bn": "পাইপলাইন ব্যর্থ: {project} · {ref}",
+   "pt-BR": "Pipeline falhou: {project} · {ref}",
+   "ru": "Пайплайн упал: {project} · {ref}",
+   "id": "Pipeline gagal: {project} · {ref}"
+  },
+  "{source} on {ref}": {
+   "zh-Hans": "{source}，分支 {ref}",
+   "hi": "{ref} पर {source}",
+   "es": "{source} en {ref}",
+   "ar": "{source} على {ref}",
+   "fr": "{source} sur {ref}",
+   "bn": "{ref}-এ {source}",
+   "pt-BR": "{source} em {ref}",
+   "ru": "{source} в {ref}",
+   "id": "{source} di {ref}"
+  },
+  "from {name}": {
+   "zh-Hans": "来自 {name}",
+   "hi": "{name} से",
+   "es": "de {name}",
+   "ar": "من {name}",
+   "fr": "de {name}",
+   "bn": "{name}-এর কাছ থেকে",
+   "pt-BR": "de {name}",
+   "ru": "от {name}",
+   "id": "dari {name}"
+  },
+  "Merged: {title}": {
+   "zh-Hans": "已合并：{title}",
+   "hi": "मर्ज हुआ: {title}",
+   "es": "Fusionada: {title}",
+   "ar": "تم الدمج: {title}",
+   "fr": "Mergée : {title}",
+   "bn": "মার্জ হয়েছে: {title}",
+   "pt-BR": "Mesclada: {title}",
+   "ru": "Слит: {title}",
+   "id": "Digabung: {title}"
+  },
+  "Merged by {name} · {branches}": {
+   "zh-Hans": "由 {name} 合并 · {branches}",
+   "hi": "{name} ने मर्ज किया · {branches}",
+   "es": "Fusionada por {name} · {branches}",
+   "ar": "دمجه {name} · {branches}",
+   "fr": "Mergée par {name} · {branches}",
+   "bn": "{name} মার্জ করেছেন · {branches}",
+   "pt-BR": "Mesclada por {name} · {branches}",
+   "ru": "Слил {name} · {branches}",
+   "id": "Digabung oleh {name} · {branches}"
+  },
+  "Approved by {name}: {title}": {
+   "zh-Hans": "{name} 已批准：{title}",
+   "hi": "{name} ने स्वीकृत किया: {title}",
+   "es": "Aprobada por {name}: {title}",
+   "ar": "وافق {name}: {title}",
+   "fr": "Approuvée par {name} : {title}",
+   "bn": "{name} অনুমোদন করেছেন: {title}",
+   "pt-BR": "Aprovada por {name}: {title}",
+   "ru": "{name} одобрил: {title}",
+   "id": "Disetujui oleh {name}: {title}"
+  },
+  "Approvals so far: {names}": {
+   "zh-Hans": "目前已批准：{names}",
+   "hi": "अब तक की स्वीकृतियाँ: {names}",
+   "es": "Aprobaciones hasta ahora: {names}",
+   "ar": "الموافقات حتى الآن: {names}",
+   "fr": "Approbations à ce jour : {names}",
+   "bn": "এখন পর্যন্ত অনুমোদন: {names}",
+   "pt-BR": "Aprovações até agora: {names}",
+   "ru": "Одобрили: {names}",
+   "id": "Persetujuan sejauh ini: {names}"
+  },
+  "Comment by {name}: {title}": {
+   "zh-Hans": "{name} 评论了：{title}",
+   "hi": "{name} की टिप्पणी: {title}",
+   "es": "Comentario de {name}: {title}",
+   "ar": "تعليق من {name}: {title}",
+   "fr": "Commentaire de {name} : {title}",
+   "bn": "{name}-এর মন্তব্য: {title}",
+   "pt-BR": "Comentário de {name}: {title}",
+   "ru": "Комментарий от {name}: {title}",
+   "id": "Komentar dari {name}: {title}"
+  },
+  "Updated by {name}: {title}": {
+   "zh-Hans": "{name} 更新了：{title}",
+   "hi": "{name} ने अपडेट किया: {title}",
+   "es": "Actualizada por {name}: {title}",
+   "ar": "حدّثه {name}: {title}",
+   "fr": "Mise à jour par {name} : {title}",
+   "bn": "{name} আপডেট করেছেন: {title}",
+   "pt-BR": "Atualizada por {name}: {title}",
+   "ru": "Обновил {name}: {title}",
+   "id": "Diperbarui oleh {name}: {title}"
+  },
+  "Took {duration}": {
+   "zh-Hans": "耗时 {duration}",
+   "hi": "{duration} लगे",
+   "es": "Tardó {duration}",
+   "ar": "استغرق {duration}",
+   "fr": "Durée : {duration}",
+   "bn": "{duration} লেগেছে",
+   "pt-BR": "Levou {duration}",
+   "ru": "Заняло {duration}",
+   "id": "Butuh {duration}"
+  },
+  "Can't be merged": {
+   "zh-Hans": "无法合并",
+   "hi": "मर्ज नहीं हो सकता",
+   "es": "No se puede fusionar",
+   "ar": "لا يمكن الدمج",
+   "fr": "Impossible à merger",
+   "bn": "মার্জ করা যাবে না",
+   "pt-BR": "Não pode ser mesclada",
+   "ru": "Нельзя слить",
+   "id": "Tidak bisa digabung"
+  },
+  "{count} YouTrack updates": {
+   "zh-Hans": {
+    "other": "{count} 条 YouTrack 更新"
+   },
+   "hi": {
+    "one": "{count} YouTrack अपडेट",
+    "other": "{count} YouTrack अपडेट"
+   },
+   "es": {
+    "one": "{count} novedad de YouTrack",
+    "other": "{count} novedades de YouTrack"
+   },
+   "ar": {
+    "zero": "{count} تحديثات من YouTrack",
+    "one": "تحديث واحد من YouTrack",
+    "two": "تحديثان من YouTrack",
+    "few": "{count} تحديثات من YouTrack",
+    "many": "{count} تحديثًا من YouTrack",
+    "other": "{count} تحديث من YouTrack"
+   },
+   "fr": {
+    "one": "{count} nouveauté YouTrack",
+    "other": "{count} nouveautés YouTrack"
+   },
+   "bn": {
+    "one": "{count}টি YouTrack আপডেট",
+    "other": "{count}টি YouTrack আপডেট"
+   },
+   "pt-BR": {
+    "one": "{count} novidade do YouTrack",
+    "other": "{count} novidades do YouTrack"
+   },
+   "ru": {
+    "one": "{count} обновление YouTrack",
+    "few": "{count} обновления YouTrack",
+    "many": "{count} обновлений YouTrack",
+    "other": "{count} обновления YouTrack"
+   },
+   "id": {
+    "other": "{count} pembaruan YouTrack"
+   }
+  },
+  "Permanent token": {
+   "zh-Hans": "永久令牌",
+   "hi": "स्थायी टोकन",
+   "es": "Token permanente",
+   "ar": "رمز دائم",
+   "fr": "Jeton permanent",
+   "bn": "স্থায়ী টোকেন",
+   "pt-BR": "Token permanente",
+   "ru": "Постоянный токен",
+   "id": "Token permanen"
+  },
+  "Reload": {
+   "zh-Hans": "重新加载",
+   "hi": "फिर से लोड करें",
+   "es": "Recargar",
+   "ar": "إعادة التحميل",
+   "fr": "Recharger",
+   "bn": "আবার লোড করুন",
+   "pt-BR": "Recarregar",
+   "ru": "Обновить",
+   "id": "Muat ulang"
+  },
+  "Save the URL and the token first": {
+   "zh-Hans": "请先保存地址和令牌",
+   "hi": "पहले URL और टोकन सहेजें",
+   "es": "Guarda primero la URL y el token",
+   "ar": "احفظ العنوان والرمز أولًا",
+   "fr": "Enregistrez d'abord l'URL et le jeton",
+   "bn": "আগে URL আর টোকেন সংরক্ষণ করুন",
+   "pt-BR": "Salve primeiro a URL e o token",
+   "ru": "Сначала сохраните URL и токен",
+   "id": "Simpan URL dan token dulu"
+  },
+  "Choose a saved search…": {
+   "zh-Hans": "选择一个已保存的搜索…",
+   "hi": "कोई सहेजी गई खोज चुनें…",
+   "es": "Elige una búsqueda guardada…",
+   "ar": "اختر بحثًا محفوظًا…",
+   "fr": "Choisissez une recherche enregistrée…",
+   "bn": "একটি সংরক্ষিত খোঁজ বেছে নিন…",
+   "pt-BR": "Escolha uma busca salva…",
+   "ru": "Выберите сохранённый поиск…",
+   "id": "Pilih pencarian tersimpan…"
+  },
+  "No saved search yet": {
+   "zh-Hans": "还没有已保存的搜索",
+   "hi": "अभी कोई सहेजी गई खोज नहीं",
+   "es": "Aún no hay búsquedas guardadas",
+   "ar": "لا يوجد بحث محفوظ بعد",
+   "fr": "Aucune recherche enregistrée pour l'instant",
+   "bn": "এখনও কোনো সংরক্ষিত খোঁজ নেই",
+   "pt-BR": "Nenhuma busca salva ainda",
+   "ru": "Сохранённых поисков пока нет",
+   "id": "Belum ada pencarian tersimpan"
+  },
+  "Shared with you": {
+   "zh-Hans": "与你共享",
+   "hi": "आपके साथ साझा",
+   "es": "Compartidas contigo",
+   "ar": "مشتركة معك",
+   "fr": "Partagées avec vous",
+   "bn": "আপনার সাথে শেয়ার করা",
+   "pt-BR": "Compartilhadas com você",
+   "ru": "Доступные вам",
+   "id": "Dibagikan dengan Anda"
+  },
+  "The saved search Coucou followed is gone. Choose another one.": {
+   "zh-Hans": "Coucou 关注的已保存搜索不存在了，请另选一个。",
+   "hi": "Coucou जिस सहेजी गई खोज को देख रहा था वह नहीं रही। कोई दूसरी चुनें।",
+   "es": "La búsqueda guardada que seguía Coucou ya no existe. Elige otra.",
+   "ar": "البحث المحفوظ الذي كان Coucou يتابعه لم يعد موجودًا. اختر بحثًا آخر.",
+   "fr": "La recherche enregistrée que suivait Coucou n'existe plus. Choisissez-en une autre.",
+   "bn": "Coucou যে সংরক্ষিত খোঁজটি অনুসরণ করছিল সেটি আর নেই। অন্য একটি বেছে নিন।",
+   "pt-BR": "A busca salva que o Coucou seguia não existe mais. Escolha outra.",
+   "ru": "Сохранённого поиска, за которым следил Coucou, больше нет. Выберите другой.",
+   "id": "Pencarian tersimpan yang diikuti Coucou sudah tidak ada. Pilih yang lain."
+  },
+  "Couldn't load the saved searches": {
+   "zh-Hans": "无法加载已保存的搜索",
+   "hi": "सहेजी गई खोजें लोड नहीं हो सकीं",
+   "es": "No se pudieron cargar las búsquedas guardadas",
+   "ar": "تعذّر تحميل عمليات البحث المحفوظة",
+   "fr": "Impossible de charger les recherches enregistrées",
+   "bn": "সংরক্ষিত খোঁজগুলো লোড করা যায়নি",
+   "pt-BR": "Não foi possível carregar as buscas salvas",
+   "ru": "Не удалось загрузить сохранённые поиски",
+   "id": "Tidak bisa memuat pencarian tersimpan"
+  },
+  "Saved search": {
+   "zh-Hans": "已保存的搜索",
+   "hi": "सहेजी गई खोज",
+   "es": "Búsqueda guardada",
+   "ar": "بحث محفوظ",
+   "fr": "Recherche enregistrée",
+   "bn": "সংরক্ষিত খোঁজ",
+   "pt-BR": "Busca salva",
+   "ru": "Сохранённый поиск",
+   "id": "Pencarian tersimpan"
+  },
+  "Open the search in YouTrack": {
+   "zh-Hans": "在 YouTrack 中打开此搜索",
+   "hi": "खोज को YouTrack में खोलें",
+   "es": "Abrir la búsqueda en YouTrack",
+   "ar": "افتح البحث في YouTrack",
+   "fr": "Ouvrir la recherche dans YouTrack",
+   "bn": "খোঁজটি YouTrack-এ খুলুন",
+   "pt-BR": "Abrir a busca no YouTrack",
+   "ru": "Открыть поиск в YouTrack",
+   "id": "Buka pencarian di YouTrack"
+  },
+  "{count}+ issues": {
+   "zh-Hans": "{count}+ 个问题",
+   "hi": "{count}+ इश्यू",
+   "es": "{count}+ incidencias",
+   "ar": "{count}+ مشكلة",
+   "fr": "{count}+ tickets",
+   "bn": "{count}+ ইস্যু",
+   "pt-BR": "{count}+ issues",
+   "ru": "{count}+ задач",
+   "id": "{count}+ isu"
+  },
+  "{count} issues": {
+   "zh-Hans": {
+    "other": "{count} 个问题"
+   },
+   "hi": {
+    "one": "{count} इश्यू",
+    "other": "{count} इश्यू"
+   },
+   "es": {
+    "one": "{count} incidencia",
+    "other": "{count} incidencias"
+   },
+   "ar": {
+    "zero": "{count} مشكلات",
+    "one": "مشكلة واحدة",
+    "two": "مشكلتان",
+    "few": "{count} مشكلات",
+    "many": "{count} مشكلة",
+    "other": "{count} مشكلة"
+   },
+   "fr": {
+    "one": "{count} ticket",
+    "other": "{count} tickets"
+   },
+   "bn": {
+    "one": "{count}টি ইস্যু",
+    "other": "{count}টি ইস্যু"
+   },
+   "pt-BR": {
+    "one": "{count} issue",
+    "other": "{count} issues"
+   },
+   "ru": {
+    "one": "{count} задача",
+    "few": "{count} задачи",
+    "many": "{count} задач",
+    "other": "{count} задачи"
+   },
+   "id": {
+    "other": "{count} isu"
+   }
+  },
+  "updated by {name}": {
+   "zh-Hans": "由 {name} 更新",
+   "hi": "{name} ने अपडेट किया",
+   "es": "actualizada por {name}",
+   "ar": "حدّثه {name}",
+   "fr": "mis à jour par {name}",
+   "bn": "{name} আপডেট করেছেন",
+   "pt-BR": "atualizada por {name}",
+   "ru": "обновил {name}",
+   "id": "diperbarui oleh {name}"
+  },
+  "Nothing in this search": {
+   "zh-Hans": "此搜索中没有内容",
+   "hi": "इस खोज में कुछ नहीं",
+   "es": "Nada en esta búsqueda",
+   "ar": "لا شيء في هذا البحث",
+   "fr": "Rien dans cette recherche",
+   "bn": "এই খোঁজে কিছু নেই",
+   "pt-BR": "Nada nesta busca",
+   "ru": "В этом поиске пусто",
+   "id": "Tidak ada apa pun di pencarian ini"
+  },
+  "Set the YouTrack URL in Settings → Integrations": {
+   "zh-Hans": "请在 设置 → 集成 中填写 YouTrack 地址",
+   "hi": "सेटिंग्स → इंटीग्रेशन में YouTrack URL डालें",
+   "es": "Indica la URL de YouTrack en Ajustes → Integraciones",
+   "ar": "اضبط عنوان YouTrack في الإعدادات ← التكاملات",
+   "fr": "Renseignez l'URL YouTrack dans Réglages → Intégrations",
+   "bn": "সেটিংস → ইন্টিগ্রেশনে YouTrack URL দিন",
+   "pt-BR": "Defina a URL do YouTrack em Ajustes → Integrações",
+   "ru": "Укажите URL YouTrack в Настройки → Интеграции",
+   "id": "Atur URL YouTrack di Pengaturan → Integrasi"
+  },
+  "The YouTrack URL must start with https://": {
+   "zh-Hans": "YouTrack 地址必须以 https:// 开头",
+   "hi": "YouTrack URL https:// से शुरू होना चाहिए",
+   "es": "La URL de YouTrack debe empezar por https://",
+   "ar": "يجب أن يبدأ عنوان YouTrack بـ https://",
+   "fr": "L'URL YouTrack doit commencer par https://",
+   "bn": "YouTrack URL অবশ্যই https:// দিয়ে শুরু হতে হবে",
+   "pt-BR": "A URL do YouTrack deve começar com https://",
+   "ru": "URL YouTrack должен начинаться с https://",
+   "id": "URL YouTrack harus diawali https://"
+  },
+  "Created: {title}": {
+   "zh-Hans": "已创建：{title}",
+   "hi": "बनाया गया: {title}",
+   "es": "Creada: {title}",
+   "ar": "أُنشئ: {title}",
+   "fr": "Créé : {title}",
+   "bn": "তৈরি হয়েছে: {title}",
+   "pt-BR": "Criada: {title}",
+   "ru": "Создано: {title}",
+   "id": "Dibuat: {title}"
+  },
+  "Created by {name}: {title}": {
+   "zh-Hans": "{name} 创建了：{title}",
+   "hi": "{name} ने बनाया: {title}",
+   "es": "Creada por {name}: {title}",
+   "ar": "أنشأه {name}: {title}",
+   "fr": "Créé par {name} : {title}",
+   "bn": "{name} তৈরি করেছেন: {title}",
+   "pt-BR": "Criada por {name}: {title}",
+   "ru": "Создал {name}: {title}",
+   "id": "Dibuat oleh {name}: {title}"
+  },
+  "Updated: {title}": {
+   "zh-Hans": "已更新：{title}",
+   "hi": "अपडेट हुआ: {title}",
+   "es": "Actualizada: {title}",
+   "ar": "تم التحديث: {title}",
+   "fr": "Mis à jour : {title}",
+   "bn": "আপডেট হয়েছে: {title}",
+   "pt-BR": "Atualizada: {title}",
+   "ru": "Обновлено: {title}",
+   "id": "Diperbarui: {title}"
+  },
+  "{field}: {old} → none": {
+   "zh-Hans": "{field}：{old} → 无",
+   "hi": "{field}: {old} → कुछ नहीं",
+   "es": "{field}: {old} → ninguno",
+   "ar": "{field}: {old} ← لا شيء",
+   "fr": "{field} : {old} → aucun",
+   "bn": "{field}: {old} → কিছু না",
+   "pt-BR": "{field}: {old} → nenhum",
+   "ru": "{field}: {old} → нет",
+   "id": "{field}: {old} → tidak ada"
+  },
+  "Comment deleted": {
+   "zh-Hans": "评论已删除",
+   "hi": "टिप्पणी हटाई गई",
+   "es": "Comentario eliminado",
+   "ar": "حُذف التعليق",
+   "fr": "Commentaire supprimé",
+   "bn": "মন্তব্য মুছে ফেলা হয়েছে",
+   "pt-BR": "Comentário excluído",
+   "ru": "Комментарий удалён",
+   "id": "Komentar dihapus"
+  },
+  "Comment edited": {
+   "zh-Hans": "评论已编辑",
+   "hi": "टिप्पणी संपादित की गई",
+   "es": "Comentario editado",
+   "ar": "عُدّل التعليق",
+   "fr": "Commentaire modifié",
+   "bn": "মন্তব্য সম্পাদিত",
+   "pt-BR": "Comentário editado",
+   "ru": "Комментарий изменён",
+   "id": "Komentar diedit"
+  },
+  "Title changed": {
+   "zh-Hans": "标题已更改",
+   "hi": "शीर्षक बदला गया",
+   "es": "Título cambiado",
+   "ar": "تغيّر العنوان",
+   "fr": "Titre modifié",
+   "bn": "শিরোনাম বদলানো হয়েছে",
+   "pt-BR": "Título alterado",
+   "ru": "Заголовок изменён",
+   "id": "Judul diubah"
+  },
+  "Description edited": {
+   "zh-Hans": "描述已编辑",
+   "hi": "विवरण संपादित किया गया",
+   "es": "Descripción editada",
+   "ar": "عُدّل الوصف",
+   "fr": "Description modifiée",
+   "bn": "বিবরণ সম্পাদিত",
+   "pt-BR": "Descrição editada",
+   "ru": "Описание изменено",
+   "id": "Deskripsi diedit"
+  },
+  "Attached {name}": {
+   "zh-Hans": "附加了 {name}",
+   "hi": "{name} संलग्न किया",
+   "es": "Adjuntado {name}",
+   "ar": "أُرفق {name}",
+   "fr": "Pièce jointe : {name}",
+   "bn": "{name} সংযুক্ত করা হয়েছে",
+   "pt-BR": "Anexado {name}",
+   "ru": "Прикреплён {name}",
+   "id": "Melampirkan {name}"
+  },
+  "Attachment removed: {name}": {
+   "zh-Hans": "附件已移除：{name}",
+   "hi": "अटैचमेंट हटाया गया: {name}",
+   "es": "Adjunto eliminado: {name}",
+   "ar": "أُزيل المرفق: {name}",
+   "fr": "Pièce jointe retirée : {name}",
+   "bn": "সংযুক্তি সরানো হয়েছে: {name}",
+   "pt-BR": "Anexo removido: {name}",
+   "ru": "Вложение удалено: {name}",
+   "id": "Lampiran dihapus: {name}"
+  },
+  "Linked to {issue}": {
+   "zh-Hans": "已关联到 {issue}",
+   "hi": "{issue} से जोड़ा गया",
+   "es": "Vinculada a {issue}",
+   "ar": "رُبط بـ {issue}",
+   "fr": "Lié à {issue}",
+   "bn": "{issue}-এর সাথে যুক্ত",
+   "pt-BR": "Vinculada a {issue}",
+   "ru": "Связано с {issue}",
+   "id": "Ditautkan ke {issue}"
+  },
+  "Unlinked from {issue}": {
+   "zh-Hans": "已取消与 {issue} 的关联",
+   "hi": "{issue} से अलग किया गया",
+   "es": "Desvinculada de {issue}",
+   "ar": "أُلغي الربط بـ {issue}",
+   "fr": "Délié de {issue}",
+   "bn": "{issue} থেকে বিচ্ছিন্ন",
+   "pt-BR": "Desvinculada de {issue}",
+   "ru": "Связь с {issue} удалена",
+   "id": "Tautan ke {issue} dilepas"
+  },
+  "{minutes} min": {
+   "zh-Hans": "{minutes} 分钟",
+   "hi": "{minutes} मि.",
+   "es": "{minutes} min",
+   "ar": "{minutes} د",
+   "fr": "{minutes} min",
+   "bn": "{minutes} মি.",
+   "pt-BR": "{minutes} min",
+   "ru": "{minutes} мин",
+   "id": "{minutes} mnt"
+  },
+  "{hours} h": {
+   "zh-Hans": "{hours} 小时",
+   "hi": "{hours} घं.",
+   "es": "{hours} h",
+   "ar": "{hours} س",
+   "fr": "{hours} h",
+   "bn": "{hours} ঘ.",
+   "pt-BR": "{hours} h",
+   "ru": "{hours} ч",
+   "id": "{hours} j"
+  },
+  "This token can't read YouTrack (403)": {
+   "zh-Hans": "此令牌无法读取 YouTrack（403）",
+   "hi": "यह टोकन YouTrack नहीं पढ़ सकता (403)",
+   "es": "Este token no puede leer YouTrack (403)",
+   "ar": "لا يستطيع هذا الرمز قراءة YouTrack (403)",
+   "fr": "Ce jeton ne peut pas lire YouTrack (403)",
+   "bn": "এই টোকেন YouTrack পড়তে পারে না (403)",
+   "pt-BR": "Este token não consegue ler o YouTrack (403)",
+   "ru": "Этот токен не может читать YouTrack (403)",
+   "id": "Token ini tidak bisa membaca YouTrack (403)"
+  },
+  "Unexpected answer from YouTrack — check the URL": {
+   "zh-Hans": "YouTrack 返回了意外的响应 — 请检查地址",
+   "hi": "YouTrack से अनपेक्षित जवाब — URL जाँचें",
+   "es": "Respuesta inesperada de YouTrack — revisa la URL",
+   "ar": "رد غير متوقع من YouTrack — تحقق من العنوان",
+   "fr": "Réponse inattendue de YouTrack — vérifiez l'URL",
+   "bn": "YouTrack থেকে অপ্রত্যাশিত উত্তর — URL দেখুন",
+   "pt-BR": "Resposta inesperada do YouTrack — verifique a URL",
+   "ru": "Неожиданный ответ YouTrack — проверьте URL",
+   "id": "Jawaban tak terduga dari YouTrack — periksa URL-nya"
+  },
+  "Not a YouTrack address (404) — check the URL": {
+   "zh-Hans": "不是 YouTrack 地址（404）— 请检查地址",
+   "hi": "यह YouTrack पता नहीं है (404) — URL जाँचें",
+   "es": "No es una dirección de YouTrack (404) — revisa la URL",
+   "ar": "ليس عنوان YouTrack (404) — تحقق من العنوان",
+   "fr": "Ce n'est pas une adresse YouTrack (404) — vérifiez l'URL",
+   "bn": "এটি YouTrack ঠিকানা নয় (404) — URL দেখুন",
+   "pt-BR": "Não é um endereço do YouTrack (404) — verifique a URL",
+   "ru": "Это не адрес YouTrack (404) — проверьте URL",
+   "id": "Bukan alamat YouTrack (404) — periksa URL-nya"
+  },
+  "Choose a saved search in Settings → Integrations": {
+   "zh-Hans": "请在 设置 → 集成 中选择一个已保存的搜索",
+   "hi": "सेटिंग्स → इंटीग्रेशन में कोई सहेजी गई खोज चुनें",
+   "es": "Elige una búsqueda guardada en Ajustes → Integraciones",
+   "ar": "اختر بحثًا محفوظًا في الإعدادات ← التكاملات",
+   "fr": "Choisissez une recherche enregistrée dans Réglages → Intégrations",
+   "bn": "সেটিংস → ইন্টিগ্রেশনে একটি সংরক্ষিত খোঁজ বেছে নিন",
+   "pt-BR": "Escolha uma busca salva em Ajustes → Integrações",
+   "ru": "Выберите сохранённый поиск в Настройки → Интеграции",
+   "id": "Pilih pencarian tersimpan di Pengaturan → Integrasi"
+  },
+  "The saved search is gone — choose another in Settings": {
+   "zh-Hans": "已保存的搜索不存在了 — 请在设置中另选一个",
+   "hi": "सहेजी गई खोज नहीं रही — सेटिंग्स में कोई दूसरी चुनें",
+   "es": "La búsqueda guardada ya no existe — elige otra en Ajustes",
+   "ar": "البحث المحفوظ لم يعد موجودًا — اختر غيره في الإعدادات",
+   "fr": "La recherche enregistrée n'existe plus — choisissez-en une autre dans les Réglages",
+   "bn": "সংরক্ষিত খোঁজটি আর নেই — সেটিংসে অন্য একটি বেছে নিন",
+   "pt-BR": "A busca salva não existe mais — escolha outra em Ajustes",
+   "ru": "Сохранённого поиска больше нет — выберите другой в настройках",
+   "id": "Pencarian tersimpan sudah tidak ada — pilih yang lain di Pengaturan"
+  },
+  "YouTrack can't run this saved search (400)": {
+   "zh-Hans": "YouTrack 无法执行此已保存的搜索（400）",
+   "hi": "YouTrack यह सहेजी गई खोज नहीं चला सकता (400)",
+   "es": "YouTrack no puede ejecutar esta búsqueda guardada (400)",
+   "ar": "لا يستطيع YouTrack تشغيل هذا البحث المحفوظ (400)",
+   "fr": "YouTrack ne peut pas exécuter cette recherche enregistrée (400)",
+   "bn": "YouTrack এই সংরক্ষিত খোঁজ চালাতে পারছে না (400)",
+   "pt-BR": "O YouTrack não consegue executar esta busca salva (400)",
+   "ru": "YouTrack не может выполнить этот сохранённый поиск (400)",
+   "id": "YouTrack tidak bisa menjalankan pencarian tersimpan ini (400)"
+  },
+  "Save the token first": {
+   "zh-Hans": "请先保存令牌",
+   "hi": "पहले टोकन सहेजें",
+   "es": "Guarda primero el token",
+   "ar": "احفظ الرمز أولًا",
+   "fr": "Enregistrez d'abord le jeton",
+   "bn": "আগে টোকেন সংরক্ষণ করুন",
+   "pt-BR": "Salve primeiro o token",
+   "ru": "Сначала сохраните токен",
+   "id": "Simpan token dulu"
   }
  }
 }

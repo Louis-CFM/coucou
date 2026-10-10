@@ -41,9 +41,14 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
+  // Pills only Windows and Linux have, after the Mac's.
+  const notOnMac = [
+    ["integration_gitlab", "GitLab", "#FC6D26", "service", "Integration"],
+    ["integration_youtrack", "YouTrack", "#FF318C", "service", "Integration"],
+  ];
   assert.deepEqual(
     PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
-    mac,
+    [...mac, ...notOnMac],
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
