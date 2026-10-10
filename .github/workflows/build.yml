@@ -110,6 +110,9 @@ jobs:
       - name: Live edits tests
         run: bash scripts/test-live-edits.sh
 
+      - name: Test live edit reveal
+        run: bash scripts/test-live-reveal.sh
+
       - name: Voice spotter generation tests
         run: bash scripts/test-voice-spotter-gen.sh
 

@@ -20,7 +20,8 @@ struct CodeSessionView: View {
                     CodePhasesView(session: session, color: task.color)
                         .frame(width: 104, alignment: .leading)
                         .padding(.top, 66)
-                    CodeEditorView(session: session, maxRows: session.command == nil ? Self.codeRows : Self.codeRows - 4)
+                    CodeEditorView(session: session, live: live,
+                                   maxRows: session.command == nil ? Self.codeRows : Self.codeRows - 4)
                 }
                 .padding(.leading, 14)
                 .padding(.trailing, 10)
@@ -126,17 +127,23 @@ private struct CodePhasesView: View {
 
 private struct CodeEditorView: View {
     let session: CodeSession
+    /// Following the edit live: its added lines are typed in.
+    let live: Bool
     let maxRows: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             tab
             if let edit = session.edit {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(CodeView.fit(CodeView.rows(for: edit), max: maxRows).enumerated()), id: \.offset) { _, row in
-                        CodeRowView(row: row)
-                    }
+                let rows = CodeView.fit(CodeView.rows(for: edit), max: maxRows)
+                LiveRevealHost(
+                    lines: rows.map { LiveReveal.Line(typed: $0.kind == .added, length: $0.text.count) },
+                    animate: live
+                ) { i, shown in
+                    CodeRowView(row: rows[i], shown: shown)
                 }
+                // A new edit starts its own reveal; late context lines alone do not.
+                .id(edit.path + "\n" + edit.added)
                 .padding(.vertical, 4)
             }
             Spacer(minLength: 0)
@@ -194,6 +201,8 @@ private struct CodeEditorView: View {
 
 private struct CodeRowView: View {
     let row: CodeRow
+    /// Set while the row is being revealed (live edits).
+    var shown: LiveReveal.Shown? = nil
 
     var body: some View {
         HStack(spacing: 0) {
@@ -206,7 +215,7 @@ private struct CodeRowView: View {
                 .font(.system(size: 10.5).monospaced())
                 .foregroundColor(row.kind == .added ? Color(hex: "#22C55E") : Color(hex: "#F4505E"))
                 .frame(width: 12, alignment: .leading)
-            Text(CodeHighlight.line(row.text, dimmed: row.kind == .removed))
+            Text(CodeHighlight.line(shown.map { LiveRevealStyle.text(row.text, $0) } ?? row.text, dimmed: row.kind == .removed))
                 .font(.system(size: 10.5).monospaced())
                 .strikethrough(row.kind == .removed, color: Color(hex: "#F4505E").opacity(0.6))
                 .lineLimit(1)

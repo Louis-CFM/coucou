@@ -146,7 +146,8 @@ struct OverviewView: View {
                    let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
                     CardBackground(wash: nil)
                     DiffCardView(diff: diff, live: liveDiffId != nil, onDismiss: { closeDiff() })
-                        .transition(.opacity)
+                        .id(diff.id)
+                        .transition(liveDiffId != nil ? .liveCard : .opacity)
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
@@ -771,10 +772,13 @@ struct DiffCardView: View {
                     .font(.system(size: 10.5))
                     .foregroundColor(Color(hex: "#6B7079"))
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(allLines.enumerated()), id: \.offset) { _, line in
-                            DiffLineRowView(line: line)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LiveRevealHost(
+                            lines: allLines.map { LiveReveal.Line(typed: $0.kind == .added, length: $0.text.count) },
+                            animate: live, scrollProxy: proxy
+                        ) { i, shown in
+                            DiffLineRowView(line: allLines[i], shown: shown)
                         }
                     }
                 }
@@ -807,6 +811,8 @@ struct DiffCardView: View {
 
 struct DiffLineRowView: View {
     let line: DiffLine
+    /// Set while the line is being revealed (live edits): how much of it is shown.
+    var shown: LiveReveal.Shown? = nil
 
     private var bgColor: Color {
         switch line.kind {
@@ -838,7 +844,7 @@ struct DiffLineRowView: View {
                                  line.kind == .removed ? Color(hex: "#F4505E") :
                                  Color(hex: "#454850"))
                 .frame(width: 12, alignment: .leading)
-            Text(line.text)
+            Text(shown.map { LiveRevealStyle.text(line.text, $0) } ?? line.text)
                 .font(.system(size: 10.5).monospaced())
                 .foregroundColor(fgColor)
                 .lineLimit(1)

@@ -642,8 +642,10 @@ final class HookServer: @unchecked Sendable {
             typing: NSApp.keyWindow?.firstResponder is NSTextView,
             followingOther: state.liveDiff.map { $0.pillId != pillId } ?? false)
         guard follow else { return }
-        state.liveDiff = LiveDiff(pillId: pillId, diffId: diffId)
-        state.focusId = pillId
+        withAnimation(.easeOut(duration: 0.22)) {
+            state.liveDiff = LiveDiff(pillId: pillId, diffId: diffId)
+            state.focusId = pillId
+        }
         // Its code view when the session has one; the diff card otherwise (remote hosts, other agents).
         let view: IslandView = state.codeSessions[pillId]?.hasContent == true ? .code : .overview
         if state.mode != .expanded {
