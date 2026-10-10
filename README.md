@@ -256,6 +256,7 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 | Codex | `--agent codex` flag; Settings → Codex → **Install hooks** | No |
 | Copilot CLI | `--agent copilot` flag + camelCase events | No |
 | Muse Code | `--agent muse` flag | No |
+| Devin | `--agent devin` flag; Settings → Agents → Devin → **Install hooks** | No |
 | OpenCode | Plugin — **Settings → OpenCode Plugin → Install** | Mac only |
 | Amp | Plugin — **Settings → Amp Plugin → Install** | Mac only |
 | Hermes | Plugin — **Settings → Agents → Hermes → Install** | Mac only |

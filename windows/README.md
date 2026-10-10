@@ -132,8 +132,8 @@ answer on one line, still, until the next prompt.
 **Settings… → Active pills** lists the tools you use, from the same catalog as
 the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
 which is always there and doesn't take a slot, then declare up to four more:
-agents (Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude
-Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
+agents (Gemini CLI, Copilot CLI, Muse Code, Devin, OpenCode, Amp, Hermes,
+Claude Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
 and the services under **Integrations**. A pill fed by hooks says whether its
 hooks are installed, never asks for a key; a local model server's pill says
 whether the chat is connected to it. A session on a pill you didn't
@@ -357,6 +357,7 @@ Linux.
 | Codex | `.codex\hooks.json` — then trust the hooks once with `/hooks` in Codex | Allow / Deny in the island |
 | GitHub Copilot CLI | `.copilot\hooks\coucou.json` | Allow / Deny in the island |
 | Muse Code | `.config\muse\settings.json` | Allow / Deny in the island |
+| Devin | `%APPDATA%\devin\config.json` (a `hooks` key next to Devin's own settings) | Allow / Deny in the island |
 | Gemini CLI | `.gemini\settings.json` | asked in Gemini CLI |
 | Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
@@ -378,20 +379,21 @@ for it. Amp's steps appear as each tool finishes: its "before" hook must return
 a verdict, and Coucou never gives one.
 
 **How each agent runs the relay on Windows.** Hook commands are written for the
-shell that runs them: Git Bash for Claude Code (quoted, forward slashes),
-PowerShell for Gemini CLI and Copilot CLI (`& '…\coucou-hook.exe'`), `cmd /C`
-for Codex. Cursor, Antigravity and Muse Code do not document theirs: the relay
-path is written bare when it has no space or special character — which works in
-cmd, PowerShell and when started directly — and in double quotes otherwise.
-These three are untested on Windows.
+shell that runs them: Git Bash for Claude Code and Devin (quoted, forward
+slashes — a bare `C:\…` path dies as `command not found`), PowerShell for
+Gemini CLI and Copilot CLI (`& '…\coucou-hook.exe'`), `cmd /C`
+for Codex. Cursor, Antigravity and Muse Code do not document theirs:
+the relay path is written bare when it has no space or special character —
+which works in cmd, PowerShell and when started directly — and in double
+quotes otherwise. These three are untested on Windows.
 
 A pill is **connected** when Coucou finds its own entries in the files above —
 the same check as Settings → Agents (for Claude Code: a SessionStart hook
 running Coucou's relay; the Cursor pill also counts Claude Code's hooks).
 Coucou only reads these files, each time the island opens. Permission requests
 get the island's card for Claude Code (in any terminal, and in Cursor's),
-Codex, Copilot CLI and Muse Code; other agents and Claude Desktop ask in their
-own window.
+Codex, Copilot CLI, Muse Code and Devin; other agents and Claude Desktop ask
+in their own window.
 
 ## What's different from the Mac version
 

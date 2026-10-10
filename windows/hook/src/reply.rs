@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and Devin. Any decision for
+/// another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "devin")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -49,6 +49,17 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
                 None => None,
             }
         }
+        // Devin reads a bare top-level decision: "approve" or "block" (with an
+        // optional "reason"). Silence means no opinion — Devin asks in its own
+        // interface, exactly as if Coucou were not installed.
+        // See https://docs.devin.ai/cli/extensibility/hooks/overview#output-format
+        "devin" => match decision.map(str::trim) {
+            Some("allow" | "always") => Some(json!({ "decision": "approve" }).to_string()),
+            Some("deny") => {
+                Some(json!({ "decision": "block", "reason": "Denied from Coucou" }).to_string())
+            }
+            _ => None,
+        },
         // Claude Code and Codex share the documented hookSpecificOutput. Only
         // Claude Code asks questions.
         "" => decision.and_then(|d| decision_json(d, question)),
@@ -133,8 +144,8 @@ mod tests {
     use super::*;
 
     const AGENTS: &[&str] = &[
-        "", "gemini", "antigravity", "cursor", "codex", "copilot", "muse", "opencode", "amp",
-        "hermes", "claude-desktop", "my-tool",
+        "", "gemini", "antigravity", "cursor", "codex", "copilot", "muse", "devin", "opencode",
+        "amp", "hermes", "claude-desktop", "my-tool",
     ];
     const EVENTS: &[&str] = &[
         "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure",
@@ -201,6 +212,15 @@ mod tests {
         // Copilot is fail-closed: no decision is an explicit "ask", never silence.
         assert_eq!(stdout("copilot", "PermissionRequest", None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
         assert_eq!(stdout("muse", "PermissionRequest", None, None), None);
+        // Devin reads a bare top-level decision.
+        assert_eq!(stdout("devin", "PermissionRequest", Some("allow"), None).unwrap(), r#"{"decision":"approve"}"#);
+        assert_eq!(stdout("devin", "PermissionRequest", Some("always"), None).unwrap(), r#"{"decision":"approve"}"#);
+        assert_eq!(
+            stdout("devin", "PermissionRequest", Some("deny"), None).unwrap(),
+            r#"{"decision":"block","reason":"Denied from Coucou"}"#
+        );
+        assert_eq!(stdout("devin", "PermissionRequest", None, None), None);
+        assert_eq!(stdout("devin", "PreToolUse", None, None), None);
         // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
         // other lifecycle events receive "{}".
         assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);

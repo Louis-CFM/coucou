@@ -73,11 +73,11 @@ Send newline-terminated JSON to the socket:
 
 ## Supported events
 
-All standard Claude Code hook events are supported, **except `PermissionRequest`**:
-approval cards are not yet implemented for third-party agents (only Claude Code gets
-one). A `PermissionRequest` from an external agent is answered immediately with no
-decision, so the relay writes nothing and the agent re-asks in its terminal.
-Approval support for other agents will be added with Codex support.
+All standard Claude Code hook events are supported. A `PermissionRequest` gets
+the island's approval card only for the agents the relay can answer — Claude
+Code, Codex, Copilot CLI, Muse Code and Devin. Any other agent's request is
+answered immediately with no decision, so the relay writes nothing and the
+agent re-asks in its terminal.
 
 The pill lifecycle:
 
@@ -100,7 +100,7 @@ A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabl
 A catalog pill that is not checked in Settings behaves like any other agent: it gets an automatic pill when a session starts, and that pill is removed when the session ends.
 
 The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigravity`),
-GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
+GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), Devin (`agent_devin`), OpenCode (`agent_opencode`),
 Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
 the main pill; session support is coming in a future version.
@@ -175,6 +175,40 @@ Muse uses PascalCase event names. Coucou shows a real Allow / Deny card for Muse
 | `PostToolUse` | `PostToolUse` |
 | `Stop` | `Stop` |
 | `SessionEnd` | `SessionEnd` |
+
+### Devin (Windows and Linux)
+
+Coucou supports Devin out of the box via **Settings → Agents → Devin → Install hooks**.
+The installer merges a `hooks` key into Devin's own config —
+`%APPDATA%\devin\config.json` on Windows, `~/.config/devin/config.json` on Linux —
+leaving every other setting alone, and uses `--agent devin`. Devin's hooks are
+Claude Code-compatible: the same JSON payload and PascalCase event names, only
+the decision reply differs — the relay answers `{"decision":"approve"}` or
+`{"decision":"block","reason":"Denied from Coucou"}`, and only after a click.
+Coucou shows a real Allow / Deny card for Devin approval requests; on timeout
+the relay stays silent and Devin asks in its own interface.
+
+| Devin event | Canonical event |
+|---|---|
+| `SessionStart` | `SessionStart` |
+| `UserPromptSubmit` | `UserPromptSubmit` |
+| `PreToolUse` | `PreToolUse` |
+| `PermissionRequest` | `PermissionRequest` |
+| `PostToolUse` | `PostToolUse` |
+| `PostToolUse` with `tool_response.success: false` | `PostToolUseFailure` |
+| `Stop` | `Stop` |
+| `SessionEnd` | `SessionEnd` |
+
+Devin's `PostCompaction` event is not installed — the island has nothing to
+show for it.
+
+Devin sets `DEVIN_PROJECT_DIR` in its hook environment, so a Coucou hook Devin
+picked up from `~/.claude/settings.json` (Devin imports Claude Code hooks) is
+still tagged `devin`, not Claude.
+
+On Windows Devin runs hook commands through a POSIX shell (Git Bash, like
+Claude Code), so the installed command is the quoted forward-slash form —
+`"C:/…/coucou-hook.exe" --agent devin`. A bare `C:\…` path fails with exit 127.
 
 ### OpenCode (macOS)
 
