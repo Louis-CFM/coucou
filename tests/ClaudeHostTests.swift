@@ -31,6 +31,15 @@ enum ClaudeHostTests {
         check("editor session → VS Code", ClaudeHost.pillName(hostApp: nil) == "VS Code")
         check("terminal session → Claude Code", ClaudeHost.pillName(hostApp: "dev.warp.Warp-Stable") == "Claude Code")
 
+        print("ClaudeHost.isTTY")
+        check("/dev/ttys004", ClaudeHost.isTTY("/dev/ttys004"))
+        check("/dev/tty12", ClaudeHost.isTTY("/dev/tty12"))
+        check("nil → false", !ClaudeHost.isTTY(nil))
+        check("empty → false", !ClaudeHost.isTTY(""))
+        check("ps without /dev → false", !ClaudeHost.isTTY("ttys004"))
+        check("no terminal (??) → false", !ClaudeHost.isTTY("/dev/??"))
+        check("quote injection → false", !ClaudeHost.isTTY("/dev/ttys004\" then do shell script \"x"))
+
         print("ClaudeHost.terminalCardsEnabled")
         UserDefaults.standard.removeObject(forKey: ClaudeHost.terminalCardsKey)
         check("off by default", ClaudeHost.terminalCardsEnabled == false)

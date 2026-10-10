@@ -65,13 +65,54 @@ struct ClaudeHost: Equatable {
 
     /// Brings the session's terminal forward (launching it if needed). false when not a terminal host.
     @discardableResult
-    static func activate(_ hostBundleId: String?) -> Bool {
+    static func activate(_ hostBundleId: String?, tty: String? = nil) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
-        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
-            running.activate()
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
-            NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+        let running = NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+        if let url = running?.bundleURL ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+            bringForward(url, bundleId: id, tty: tty)
         }
         return true
+    }
+
+    /// True for a tty path the relay can send ("/dev/ttys004"), so it is safe inside AppleScript.
+    static func isTTY(_ tty: String?) -> Bool {
+        tty?.range(of: #"^/dev/ttys?[0-9]+$"#, options: .regularExpression) != nil
+    }
+
+    private static let tabQueue = DispatchQueue(label: "fr.louisraille.coucou.terminal-tab")
+
+    /// Opens the app at `url` through Launch Services: NSRunningApplication.activate() is ignored
+    /// on macOS 14+ unless the caller is the active app, which Coucou never is. For Apple Terminal
+    /// with the session's tty, that tab is selected and its window raised first, so the session's
+    /// own window comes back rather than the last one used.
+    static func bringForward(_ url: URL, bundleId: String, tty: String?) {
+        let open: @Sendable () -> Void = {
+            DispatchQueue.main.async {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+        }
+        #if !APPSTORE
+        if bundleId == "com.apple.Terminal", let tty, isTTY(tty) {
+            tabQueue.async {
+                var error: NSDictionary?
+                NSAppleScript(source: """
+                    tell application id "com.apple.Terminal"
+                        repeat with w in windows
+                            repeat with t in tabs of w
+                                if tty of t is "\(tty)" then
+                                    set selected tab of w to t
+                                    set index of w to 1
+                                    return
+                                end if
+                            end repeat
+                        end repeat
+                    end tell
+                    """)?.executeAndReturnError(&error)
+                open()
+            }
+            return
+        }
+        #endif
+        open()
     }
 }
