@@ -206,6 +206,9 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
+    if provider == "antigravity" || provider == "agy" {
+        return send_agy(&query, context.as_ref()).await;
+    }
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
@@ -219,6 +222,31 @@ pub async fn send(
     Err(format!("Unknown chat provider: {provider}"))
 }
 
+async fn send_agy(query: &str, context: Option<&ChatContext>) -> Result<ChatReply, String> {
+    let mut prompt = query.to_string();
+    if let Some(ChatContext::File { name, path }) = context {
+        prompt = format!("File: {name} ({path})\n\n{query}");
+    }
+    let output = std::process::Command::new("agy")
+        .args(["-p", &prompt])
+        .output()
+        .or_else(|_| {
+            let agy_fallback = format!(
+                "{}\\AppData\\Local\\agy\\bin\\agy.exe",
+                std::env::var("USERPROFILE").unwrap_or_default()
+            );
+            std::process::Command::new(agy_fallback).args(["-p", &prompt]).output()
+        })
+        .map_err(|e| format!("Failed to run agy: {e}"))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("agy error: {err}"));
+    }
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(ChatReply { text })
+}
+
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as
 /// [`send`], with no file or window context and no `AppHandle`. `on_delta` gets the streamed
 /// text so far, which only the model servers produce; the cloud providers answer all at once.
@@ -230,6 +258,9 @@ pub async fn send_for_phone(
     query: String,
     on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
+    if provider == "antigravity" || provider == "agy" {
+        return send_agy(&query, None).await;
+    }
     if provider == ANTHROPIC {
         return claude::send(chat, model, query, None).await;
     }
@@ -246,6 +277,15 @@ pub async fn send_for_phone(
 /// that provider, and only once it has a key (or, for a local server, an
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
+    if provider == "antigravity" || provider == "agy" {
+        return Ok(vec![
+            ModelInfo { id: "gemini-3.8-flash-low".into(), label: "Gemini 3.8 Flash (Low)".into() },
+            ModelInfo { id: "gemini-3.8-flash-medium".into(), label: "Gemini 3.8 Flash (Medium)".into() },
+            ModelInfo { id: "gemini-3.8-flash-high".into(), label: "Gemini 3.8 Flash (High)".into() },
+            ModelInfo { id: "gemini-3.1-pro-high".into(), label: "Gemini 3.1 Pro (High)".into() },
+            ModelInfo { id: "claude-sonnet-4-6".into(), label: "Claude Sonnet 4.6 (Thinking)".into() },
+        ]);
+    }
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
