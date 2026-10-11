@@ -16,7 +16,7 @@ export const SOUND_NAMES = [
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
-class SoundEngine {
+export class SoundEngine {
   enabled = true;
   volume = 0.12;
 
@@ -43,6 +43,10 @@ class SoundEngine {
       master.connect(ctx.destination);
       this.master = master;
       await this.loadAll(ctx);
+      // Decoding needs the context, playback does not until the first sound:
+      // let it rest right away rather than keep an audio thread and its
+      // render quantum alive on a page that may never play (#420).
+      this.settle();
     })();
     return this.loading;
   }
@@ -51,6 +55,7 @@ class SoundEngine {
   async reload(): Promise<void> {
     await this.preload();
     if (this.ctx) await this.loadAll(this.ctx);
+    this.settle();
   }
 
   private async loadAll(ctx: AudioContext) {
@@ -85,6 +90,9 @@ class SoundEngine {
 
   /** WebView2 can hand us a suspended context; call after any user input. */
   resume() {
+    // Nothing to unlock when sound is off: resuming here would reopen the
+    // audio stream the user just muted (#420).
+    if (!this.enabled) return;
     if (this.idleTimer != null) {
       window.clearTimeout(this.idleTimer);
       this.idleTimer = null;
@@ -101,11 +109,31 @@ class SoundEngine {
    * would clip it — and `play()` resumes the context on its own.
    */
   idle() {
+    if (!this.enabled) return this.suspend();
     if (!this.ctx || this.ctx.state !== "running" || this.idleTimer != null) return;
     this.idleTimer = window.setTimeout(() => {
       this.idleTimer = null;
       void this.ctx?.suspend();
     }, 1500);
+  }
+
+  /**
+   * Stops the audio thread now, cancelling any pending `idle()` wait. On Linux
+   * a running context keeps a PipeWire sink input open even in silence, which
+   * floods the log with OVERFLOW and starves the webview's main thread (#420).
+   */
+  private suspend() {
+    if (this.idleTimer != null) {
+      window.clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    if (this.ctx && this.ctx.state === "running") void this.ctx.suspend();
+  }
+
+  /** After loading: rest if muted, else arm the idle wait. */
+  private settle() {
+    if (!this.enabled) this.suspend();
+    else this.idle();
   }
 
   setVolume(v: number) {
@@ -114,7 +142,12 @@ class SoundEngine {
   }
 
   setEnabled(on: boolean) {
+    if (this.enabled === on) return;
     this.enabled = on;
+    // Turning sound off must close the stream at once; turning it on leaves the
+    // context suspended until a sound actually plays (`play()` resumes it).
+    if (on) this.idle();
+    else this.suspend();
   }
 
   play(name: SoundName | string) {
