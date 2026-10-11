@@ -1629,17 +1629,6 @@
    "ru": "Платёж",
    "id": "Pembayaran"
   },
-  "Permissions": {
-   "zh-Hans": "权限",
-   "hi": "अनुमतियाँ",
-   "es": "Permisos",
-   "ar": "الأذونات",
-   "fr": "Permissions",
-   "bn": "অনুমতি",
-   "pt-BR": "Permissões",
-   "ru": "Разрешения",
-   "id": "Izin"
-  },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
    "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",

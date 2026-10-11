@@ -25,7 +25,7 @@ export const PILL_CATEGORIES: { id: PillCategory; title: string }[] = [
  * Whether the pill does anything on this build:
  * - `yes`: works on Windows and Linux;
  * - `windows`: Windows only (the app behind it has no Linux build);
- * - `linux`: Linux only (what drives it is Linux's: Spotify through MPRIS);
+ * - `linux`: Linux only (what drives it is Linux's);
  * - `soon`: can be declared, shows "Coming soon" (macOS has it, this build not yet);
  * - `no`: macOS only, never offered here.
  */
@@ -130,10 +130,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
-  // Spotify's MPRIS interface on the session bus (src-tauri/src/spotify.rs).
-  // Windows has nothing to read it from yet.
+  // Spotify through MPRIS on Linux and the system media controls on Windows
+  // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

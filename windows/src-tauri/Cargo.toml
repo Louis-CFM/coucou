@@ -30,7 +30,17 @@ keyring = { version = "3", features = ["windows-native"] }
 webview2-com = "0.39"
 wv2_core = { package = "windows-core", version = "0.62" }
 windows = { version = "0.61", features = [
+  # The Spotify pill: the system media controls Spotify publishes to.
+  "Foundation",
+  "Media",
+  "Media_Control",
+  "Storage_Streams",
   "Win32_Foundation",
+  # The Spotify pill's volume: Spotify's session in the Windows mixer.
+  "Win32_Media_Audio",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
   "Win32_Security",
   "Win32_Security_Authorization",
   # "Open terminal": the relay's process tree leads to the session's window.
