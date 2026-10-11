@@ -376,6 +376,17 @@
    "ru": "Автозакрытие · {seconds} с",
    "id": "Tutup otomatis · {seconds}dt"
   },
+  "Automatic": {
+   "zh-Hans": "自动",
+   "hi": "स्वचालित",
+   "es": "Automático",
+   "ar": "تلقائي",
+   "fr": "Automatique",
+   "bn": "স্বয়ংক্রিয়",
+   "pt-BR": "Automático",
+   "ru": "Автоматически",
+   "id": "Otomatis"
+  },
   "Automatic (your Mac’s dictation language)": {
    "zh-Hans": "自动（Mac 听写语言）",
    "hi": "स्वचालित (Mac की डिक्टेशन भाषा)",

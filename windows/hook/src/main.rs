@@ -97,6 +97,8 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// Tool call name and input, for agents needing specific overrides (Antigravity).
+    tool_call: Option<Value>,
 }
 
 fn main() {
@@ -113,7 +115,7 @@ fn main() {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
-        print(reply::stdout(&args.agent, name, None, None));
+        print(reply::stdout(&args.agent, name, None, None, None));
         std::process::exit(0);
     };
 
@@ -133,7 +135,7 @@ fn main() {
     });
 
     let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref(), event.tool_call.as_ref()));
     std::process::exit(0);
 }
 
@@ -177,6 +179,36 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let name = normalize::refine(normalize::event(&raw_event), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
+    if map.get("coucou_agent").and_then(Value::as_str) == Some("antigravity") {
+        if !map.contains_key("session_title") {
+            let project = map.get("cwd").and_then(Value::as_str).filter(|s| !s.is_empty())
+                .or_else(|| {
+                    map.get("workspacePaths")
+                        .and_then(Value::as_array)
+                        .and_then(|a| a.first())
+                        .and_then(Value::as_str)
+                })
+                .or_else(|| (!cwd.is_empty()).then_some(cwd));
+            if let Some(p) = project {
+                let name = p.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or_default();
+                if !name.is_empty() {
+                    map.insert("session_title".into(), Value::String(name.to_string()));
+                }
+            }
+        }
+        if name == "Stop" && !map.contains_key("last_assistant_message") {
+            let tpath = map
+                .get("transcriptPath")
+                .or_else(|| map.get("transcript_path"))
+                .and_then(Value::as_str);
+            if let Some(tpath) = tpath {
+                if let Some(msg) = extract_last_message(tpath) {
+                    map.insert("last_assistant_message".into(), Value::String(msg));
+                }
+            }
+        }
+    }
+
     for field in DROPPED_FIELDS {
         map.remove(*field);
     }
@@ -193,13 +225,19 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .then(|| map.get("tool_input").cloned())
         .flatten();
 
+    let tool_call = map.get("toolCall").cloned().or_else(|| {
+        let name = map.get("tool_name").and_then(Value::as_str)?;
+        let input = map.get("tool_input").cloned()?;
+        Some(serde_json::json!({ "name": name, "args": input }))
+    });
+
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
     truncate_payload(&mut payload, &name);
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, tool_call })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -359,6 +397,50 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
     }
     let answer = String::from_utf8_lossy(&buf).trim().to_string();
     (!answer.is_empty()).then_some(answer)
+}
+
+/// Extracts the last model response message from Antigravity's transcript file.
+fn extract_last_message(path: &str) -> Option<String> {
+    let file = std::fs::File::open(path).ok()?;
+    let len = file.metadata().ok()?.len();
+    if len == 0 {
+        return None;
+    }
+
+    use std::io::{BufRead, BufReader, Seek, SeekFrom};
+    let mut reader = BufReader::new(file);
+
+    let chunk_size = 64 * 1024;
+    let seek_pos = if len > chunk_size { len - chunk_size } else { 0 };
+    reader.seek(SeekFrom::Start(seek_pos)).ok()?;
+
+    let mut lines = Vec::new();
+    for line in reader.lines().map_while(Result::ok) {
+        if !line.trim().is_empty() {
+            lines.push(line);
+        }
+    }
+
+    for line in lines.into_iter().rev() {
+        if let Ok(val) = serde_json::from_str::<Value>(&line) {
+            let is_model = val.get("source").and_then(Value::as_str) == Some("MODEL")
+                || val.get("type").and_then(Value::as_str) == Some("PLANNER_RESPONSE");
+            if is_model {
+                if let Some(content) = val.get("content").and_then(Value::as_str) {
+                    let trimmed = content.trim();
+                    if !trimmed.is_empty() {
+                        for raw_line in trimmed.lines() {
+                            let l = raw_line.trim().trim_start_matches('#').trim();
+                            if !l.is_empty() {
+                                return Some(l.chars().take(120).collect());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]
