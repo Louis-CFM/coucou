@@ -181,11 +181,58 @@ enum LocalSSH {
         return out
     }
 
+    /// Hex digits and dashes: a Linux machine-id or a Mac's IOPlatformUUID.
+    static func isMachineId(_ s: String) -> Bool {
+        (1...64).contains(s.count) && s.allSatisfy { $0.isASCII && ($0.isHexDigit || $0 == "-") }
+    }
+
+    /// A remote host's machine id names this machine. Never when this machine has none.
+    static func sameMachine(_ ours: String?, _ theirs: String) -> Bool {
+        guard let ours, isMachineId(ours) else { return false }
+        return ours.caseInsensitiveCompare(theirs) == .orderedSame
+    }
+
+    /// The nearest of `pid` and its ancestors that is ours, past those of other users
+    /// (`su other`): its pid and start time. `read` gives a process's (owner, parent, start).
+    static func firstOwn(from pid: Int32, uid: uid_t,
+                         read: (Int32) -> (uid: uid_t, ppid: Int32, start: UInt64)?) -> (pid: Int32, start: UInt64)? {
+        var current = pid
+        for _ in 0..<32 {
+            guard current > 1, let p = read(current) else { return nil }
+            if p.uid == uid { return (current, p.start) }
+            current = p.ppid
+        }
+        return nil
+    }
+
+    /// Any process, whoever's: its effective owner, parent and start time in microseconds.
+    static func info(_ pid: Int32) -> (uid: uid_t, ppid: Int32, start: UInt64)? {
+        var kp = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        // A pid not found is no error: the struct comes back empty.
+        guard sysctl(&mib, 4, &kp, &size, nil, 0) == 0, size > 0, kp.kp_proc.p_pid == pid else { return nil }
+        let t = kp.kp_proc.p_un.__p_starttime
+        return (kp.kp_eproc.e_ucred.cr_uid, kp.kp_eproc.e_ppid, UInt64(t.tv_sec) * 1_000_000 + UInt64(t.tv_usec))
+    }
+
+    /// Our process `pid` on a terminal, if it still is the one that started at `start`, and all of ours.
+    static func process(pid: Int32, start: UInt64) -> (proc: Proc, all: [Proc])? {
+        guard let p = info(pid), p.uid == getuid(), p.start == start else { return nil }
+        let all = ownProcesses()
+        guard let proc = all.first(where: { $0.pid == pid }) else { return nil }
+        return (proc, all)
+    }
+
+    private static func ownProcesses() -> [Proc] {
+        processes(ps: run("/bin/ps", ["-U", String(getuid()), "-o", "pid=,ppid=,tty=,etime=,ucomm="]))
+    }
+
     /// Our processes, and among them the ssh to `host` on a terminal to bring forward,
     /// Coucou's own left out. nil when there is none.
     static func find(host: String, tmux: String) -> (ssh: Proc, all: [Proc])? {
         guard let want = destination(host) else { return nil }
-        let all = processes(ps: run("/bin/ps", ["-U", String(getuid()), "-o", "pid=,ppid=,tty=,etime=,ucomm="]))
+        let all = ownProcesses()
         let me = ProcessInfo.processInfo.processIdentifier
         let found: [(Proc, String)] = all.compactMap { p in
             guard p.name == "ssh", !ancestors(of: p.pid, in: all).contains(me),

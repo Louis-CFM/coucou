@@ -73,6 +73,49 @@ pub fn process_ancestors(pid: u32) -> Vec<u32> {
     session_window::ancestors(&procs, pid)
 }
 
+/// Any process, whoever's: (owner, parent, start time). /proc/<pid>/stat is readable for all.
+fn read_any(pid: u32) -> Option<(u32, u32, u64)> {
+    let dir = format!("/proc/{pid}");
+    let owner = std::fs::metadata(&dir).ok()?.uid();
+    let stat = std::fs::read_to_string(format!("{dir}/stat")).ok()?;
+    let (_, parent) = session_window::parse_stat(&stat)?;
+    let (_, start) = tty_and_start(&stat)?;
+    Some((owner, parent, start))
+}
+
+/// The nearest of `pid` and its ancestors that is ours, past those of other
+/// users (`sudo su other`): (pid, start time).
+pub fn own_ancestor(pid: u32) -> Option<(u32, u64)> {
+    first_own(pid, my_uid(), read_any)
+}
+
+fn first_own(pid: u32, uid: u32, read: impl Fn(u32) -> Option<(u32, u32, u64)>) -> Option<(u32, u64)> {
+    let mut current = pid;
+    for _ in 0..=session_window::MAX_DEPTH {
+        if current <= 1 {
+            return None;
+        }
+        let (owner, parent, start) = read(current)?;
+        if owner == uid {
+            return Some((current, start));
+        }
+        current = parent;
+    }
+    None
+}
+
+/// Whether `pid` is still ours and the very process that started at `start`, not a reuse of its ID.
+pub fn same_process(pid: u32, start: u64) -> bool {
+    read_any(pid).is_some_and(|(owner, _, s)| owner == my_uid() && s == start)
+}
+
+/// This machine's id, to tell a remote host that is this same machine.
+pub fn machine_id() -> Option<String> {
+    ["/etc/machine-id", "/var/lib/dbus/machine-id"]
+        .iter()
+        .find_map(|path| std::fs::read_to_string(path).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()))
+}
+
 /// What a session remembers: every ancestor. Which one owns a window is asked
 /// when the button is clicked.
 pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
@@ -795,6 +838,36 @@ mod kitty {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_first_own_process_is_found_past_other_users() {
+        // claude (mastodon) ← bash (mastodon) ← su (root) ← sudo (root) ← -bash (us) ← tmux (us)
+        let table: HashMap<u32, (u32, u32, u64)> = [
+            (50, (1001, 40, 9)),
+            (40, (1001, 30, 8)),
+            (30, (0, 20, 7)),
+            (20, (0, 10, 6)),
+            (10, (1000, 5, 5)),
+            (5, (1000, 1, 1)),
+        ]
+        .into();
+        let read = |pid: u32| table.get(&pid).copied();
+        assert_eq!(first_own(50, 1000, read), Some((10, 5)));
+        assert_eq!(first_own(10, 1000, read), Some((10, 5)), "already ours");
+        assert_eq!(first_own(50, 4242, read), None, "nobody of ours up to init");
+        assert_eq!(first_own(77, 1000, read), None, "gone");
+        let looped: HashMap<u32, (u32, u32, u64)> = [(8, (0, 9, 1)), (9, (0, 8, 1))].into();
+        assert_eq!(first_own(8, 1000, |p| looped.get(&p).copied()), None, "a loop ends");
+    }
+
+    #[test]
+    fn our_own_process_is_our_own_ancestor() {
+        let me = std::process::id();
+        let (pid, start) = own_ancestor(me).unwrap();
+        assert_eq!(pid, me);
+        assert!(same_process(me, start));
+        assert!(!same_process(me, start + 1), "another start is another process");
+    }
 
     #[test]
     fn the_best_way_comes_first_for_each_desktop() {

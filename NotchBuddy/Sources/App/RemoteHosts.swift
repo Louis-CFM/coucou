@@ -1,6 +1,9 @@
 import AppKit
 import Foundation
 import SwiftUI
+#if !APPSTORE
+import IOKit
+#endif
 
 #if !APPSTORE
 
@@ -62,6 +65,7 @@ enum RemoteSSH {
     #!/bin/sh
     # Coucou hook relay on a remote host: forwards to Coucou on the Mac through its SSH tunnel.
     COUCOU_SOCKET="$HOME/.coucou/nb.sock"; export COUCOU_SOCKET
+    COUCOU_HOOK_PPID=$PPID; export COUCOU_HOOK_PPID
     out=$(python3 "$(dirname "$0")/nb-hook.py" "$@" 2>/dev/null)
     if [ -n "$out" ]; then echo "$out"; fi
     exit 0
@@ -476,18 +480,43 @@ struct RemoteHostsSection: View {
 }
 #endif
 
-/// Open terminal for a remote session: a local terminal running ssh to it.
+/// Open terminal for a remote session: on this same Mac, the terminal it runs in; else a
+/// local terminal running ssh to it.
 @MainActor
 enum RemoteTerminal {
-    struct Place { var host: String; var cwd = ""; var tmux = "" }
+    struct Place {
+        var host: String; var cwd = ""; var tmux = ""; var machineId = ""
+        /// On this same Mac: our process the session runs under, and its start time.
+        var local: (pid: Int32, start: UInt64)?
+    }
     private static var places: [String: Place] = [:]
+    private static let thisMac = platformUUID()
 
     static func remember(pillId: String, host: String, payload: [String: Any]) {
         var place = places[pillId] ?? Place(host: host)
         place.host = host
         if let cwd = payload["cwd"] as? String, cwd.hasPrefix("/") { place.cwd = cwd }
         if let tmux = payload["tmux_session"] as? String, isTmuxName(tmux) { place.tmux = tmux }
+        if let id = payload["machine_id"] as? String, LocalSSH.isMachineId(id) { place.machineId = id }
+        // Walked as the event arrives, while the hook's parent still runs; the start time tells a later reuse of the pid apart.
+        if place.local == nil, let ppid = payload["hook_ppid"] as? Int, (2...Int(Int32.max)).contains(ppid),
+           LocalSSH.sameMachine(thisMac, place.machineId) {
+            place.local = LocalSSH.firstOwn(from: Int32(ppid), uid: getuid(), read: LocalSSH.info)
+        }
         places[pillId] = place
+    }
+
+    /// This Mac's IOPlatformUUID. Remote hosts are not in the App Store build.
+    nonisolated static func platformUUID() -> String? {
+        #if APPSTORE
+        return nil
+        #else
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        guard service != 0 else { return nil }
+        defer { IOObjectRelease(service) }
+        return IORegistryEntryCreateCFProperty(service, "IOPlatformUUID" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? String
+        #endif
     }
 
     static func forget(pillId: String) { places[pillId] = nil }
@@ -513,16 +542,20 @@ enum RemoteTerminal {
         "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }
 
-    /// False when the pill shows no remote session. The local terminal already ssh'd into
-    /// its host comes forward; else a new one opens, in iTerm2 when it runs, else Terminal.
+    /// False when the pill shows no remote session. On this same Mac its own terminal comes
+    /// forward; else the local terminal already ssh'd into its host; else a new one opens,
+    /// in iTerm2 when it runs, else Terminal.
     @discardableResult
     static func open(pillId: String) -> Bool {
         guard let place = places[pillId],
               let cmd = command(host: place.host, cwd: place.cwd, tmux: place.tmux) else { return false }
-        let (host, tmux) = (place.host, place.tmux)
+        let (host, tmux, local) = (place.host, place.tmux, place.local)
         Task.detached {
+            let here = local.flatMap { LocalSSH.process(pid: $0.pid, start: $0.start) }
+                .map { (tty: $0.proc.tty, owners: owners(of: $0.proc, in: $0.all)) }
             let found = LocalSSH.find(host: host, tmux: tmux).map { (tty: $0.ssh.tty, owners: owners(of: $0.ssh, in: $0.all)) }
             await MainActor.run {
+                if let here, bringForward(here.owners, tty: here.tty) { return }
                 if let found, bringForward(found.owners, tty: found.tty) { return }
                 openNew(cmd)
             }

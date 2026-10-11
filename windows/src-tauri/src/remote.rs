@@ -61,6 +61,9 @@ struct Place {
     host: String,
     cwd: String,
     tmux: String,
+    machine_id: String,
+    /// On this same machine: our process the session runs under, and its start time.
+    local: Option<(u32, u64)>,
 }
 
 /// Kept for the sessions REMOTE_SESSIONS admits, so it is bounded the same way.
@@ -79,6 +82,46 @@ fn remember(places: &mut HashMap<String, Place>, id: &str, event: &str, host: &s
     if let Some(tmux) = payload.get("tmux_session").and_then(Value::as_str).filter(|t| is_tmux_name(t)) {
         place.tmux = tmux.to_string();
     }
+    if let Some(id) = payload.get("machine_id").and_then(Value::as_str).filter(|m| is_machine_id(m)) {
+        place.machine_id = id.to_string();
+    }
+    let ppid = payload.get("hook_ppid").and_then(Value::as_u64).and_then(|p| u32::try_from(p).ok());
+    if let Some(ppid) = ppid.filter(|_| place.local.is_none() && is_this_machine(&place.machine_id)) {
+        place.local = own_ancestor(ppid);
+    }
+}
+
+/// Hex digits and dashes: a Linux machine-id or a Mac's IOPlatformUUID.
+fn is_machine_id(s: &str) -> bool {
+    (1..=64).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
+}
+
+#[cfg(target_os = "linux")]
+fn is_this_machine(id: &str) -> bool {
+    static OURS: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    OURS.get_or_init(crate::platform::machine_id).as_deref().is_some_and(|ours| same_machine(ours, id))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn is_this_machine(_id: &str) -> bool {
+    false
+}
+
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn same_machine(ours: &str, theirs: &str) -> bool {
+    is_machine_id(ours) && ours.eq_ignore_ascii_case(theirs)
+}
+
+/// Walked as the event arrives, while the relay's parent still runs; the start time kept
+/// with it tells a later reuse of the pid apart.
+#[cfg(target_os = "linux")]
+fn own_ancestor(pid: u32) -> Option<(u32, u64)> {
+    crate::platform::own_ancestor(pid)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn own_ancestor(_pid: u32) -> Option<(u32, u64)> {
+    None
 }
 
 fn is_tmux_name(s: &str) -> bool {
@@ -253,11 +296,18 @@ fn focus_open_ssh(place: &Place) -> bool {
     crate::platform::focus_process_window(pid, &names)
 }
 
-/// Open terminal for a remote session: the local terminal already ssh'd into
-/// its host, else a new one attached to it over ssh.
+/// Open terminal for a remote session: on this same machine, the terminal it
+/// runs in (`sudo su other` in our own tmux); else the local terminal already
+/// ssh'd into its host; else a new one attached to it over ssh.
 #[cfg(target_os = "linux")]
 pub fn open_terminal(id: &str) -> bool {
     let Some(place) = PLACES.lock().unwrap().as_ref().and_then(|p| p.get(id).cloned()) else { return false };
+    if let Some((pid, _)) = place.local.filter(|(pid, start)| crate::platform::same_process(*pid, *start)) {
+        let folder = crate::session_window::folder_name(&place.cwd);
+        if crate::platform::focus_process_window(pid, &[folder]) {
+            return true;
+        }
+    }
     let Some(command) = ssh_argv(&place) else { return false };
     if focus_open_ssh(&place) {
         return true;
@@ -655,6 +705,30 @@ mod tests {
         assert!(ssh_argv(&no_tmux).is_none());
         remember(&mut places, "s1", "SessionEnd", "devbox", &serde_json::json!({}));
         assert!(places.is_empty());
+    }
+
+    #[test]
+    fn only_this_machine_finds_the_sessions_process_here() {
+        assert!(same_machine("0123abcdef", "0123ABCDEF"));
+        assert!(!same_machine("0123abcdef", "0123abcdee"));
+        assert!(!same_machine("", ""), "no id here matches nothing");
+        for bad in ["", "xyz", "12 34", "../etc", &"a".repeat(65)] {
+            assert!(!is_machine_id(bad), "{bad:?}");
+        }
+        let mut places = HashMap::new();
+        let me = u64::from(std::process::id());
+        remember(&mut places, "s1", "SessionStart", "devbox", &json!({"machine_id": "0123abcdef", "hook_ppid": me}));
+        assert_eq!(places["s1"].machine_id, "0123abcdef");
+        assert_eq!(places["s1"].local, None, "another machine's pid is never read here");
+        remember(&mut places, "s1", "PreToolUse", "devbox", &json!({"machine_id": "a;b", "hook_ppid": "12"}));
+        assert_eq!(places["s1"].machine_id, "0123abcdef", "an invalid id never replaces a good one");
+        #[cfg(target_os = "linux")]
+        if let Some(here) = crate::platform::machine_id() {
+            remember(&mut places, "s2", "SessionStart", "localhost", &json!({"machine_id": here, "hook_ppid": me}));
+            assert_eq!(places["s2"].local.map(|(pid, _)| pid), Some(std::process::id()), "our own process, found here");
+            remember(&mut places, "s3", "SessionStart", "localhost", &json!({"machine_id": here, "hook_ppid": u64::MAX}));
+            assert_eq!(places["s3"].local, None, "not a pid");
+        }
     }
 
     fn argv(line: &str) -> Vec<String> {

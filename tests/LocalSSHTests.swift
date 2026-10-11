@@ -75,6 +75,27 @@ struct LocalSSHTests {
         check(LocalSSH.argv(procArgs: args) == ["ssh", "-t", "host"], "argv from a KERN_PROCARGS2 buffer")
         check(LocalSSH.argv(procArgs: [1, 0]) == [], "a short buffer")
 
+        check(LocalSSH.sameMachine("A1B2-C3", "a1b2-c3"), "the same machine id, any case")
+        check(!LocalSSH.sameMachine("a1b2c3", "a1b2c4") && !LocalSSH.sameMachine(nil, "") && !LocalSSH.sameMachine("", ""),
+              "another machine, or none here")
+        check(["", "xyz", "12 34", "../etc", String(repeating: "a", count: 65), "１２"].allSatisfy { !LocalSSH.isMachineId($0) },
+              "a machine id is hex digits and dashes")
+
+        // claude (other user) ← zsh (other) ← su (root) ← zsh (us) ← login (root) ← Terminal (us)
+        let table: [Int32: (uid: uid_t, ppid: Int32, start: UInt64)] = [
+            50: (502, 40, 9), 40: (502, 30, 8), 30: (0, 20, 7), 20: (501, 10, 6), 10: (0, 5, 5), 5: (501, 1, 1),
+        ]
+        let read = { (pid: Int32) in table[pid] }
+        check(LocalSSH.firstOwn(from: 50, uid: 501, read: read).map { $0.pid == 20 && $0.start == 6 } == true,
+              "the first of our processes above another user's session")
+        check(LocalSSH.firstOwn(from: 20, uid: 501, read: read)?.pid == 20, "already ours")
+        check(LocalSSH.firstOwn(from: 50, uid: 777, read: read) == nil, "none of ours up to launchd")
+        check(LocalSSH.firstOwn(from: 99, uid: 501, read: read) == nil, "a process gone")
+        let me = getpid()
+        check(LocalSSH.info(me).map { $0.uid == geteuid() && $0.ppid == getppid() && $0.start > 0 } == true,
+              "our own process from sysctl")
+        check(LocalSSH.firstOwn(from: me, uid: geteuid(), read: LocalSSH.info)?.pid == me, "we are our own")
+
         if failures > 0 { print("\(failures) failure(s)"); exit(1) }
         print("All local ssh tests passed")
     }

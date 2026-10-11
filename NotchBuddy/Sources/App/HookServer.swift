@@ -3191,6 +3191,25 @@ def session_tty():
         pid = int(out[1])
     return ''
 
+def machine_id():
+    # Only for Coucou to tell whether it runs on this same machine: Linux's machine-id, else the Mac's IOPlatformUUID.
+    import re
+    for path in ('/etc/machine-id', '/var/lib/dbus/machine-id'):
+        try:
+            with open(path) as f:
+                mid = f.read().strip()
+            if re.fullmatch(r'[0-9A-Fa-f-]{1,64}', mid):
+                return mid
+        except Exception:
+            pass
+    try:
+        out = subprocess.run(['/usr/sbin/ioreg', '-rd1', '-c', 'IOPlatformExpertDevice'],
+                             capture_output=True, text=True, timeout=1).stdout
+        m = re.search(r'"IOPlatformUUID" = "([0-9A-Fa-f-]{1,64})"', out)
+        return m.group(1) if m else ''
+    except Exception:
+        return ''
+
 def normalize_event(name):
     mapping = {
         'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
@@ -3396,6 +3415,17 @@ def main():
                 payload['tmux_session'] = name
         except Exception:
             pass
+
+    # On a remote host: who ran the hook, and the machine, so Coucou on this same machine finds its terminal
+    if env.get('COUCOU_SOCKET'):
+        try:
+            payload['hook_ppid'] = int(env.get('COUCOU_HOOK_PPID', ''))
+        except ValueError:
+            payload['hook_ppid'] = os.getppid()
+        if payload.get('hook_event_name') in ('SessionStart', 'UserPromptSubmit'):
+            mid = machine_id()
+            if mid:
+                payload['machine_id'] = mid
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
