@@ -391,12 +391,44 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   clearBtn.style.display = hasKey ? "" : "none";
 
+  // An Anthropic-compatible gateway; checked by Rust before it is kept.
+  const baseUrl = h("input", {
+    type: "text",
+    placeholder: "https://api.anthropic.com",
+    value: settings.anthropicBaseUrl ?? "",
+    style: "flex:1 1 auto;min-width:0",
+    autocomplete: "off",
+    spellcheck: "false",
+  }) as HTMLInputElement;
+  baseUrl.addEventListener("change", async () => {
+    const value = baseUrl.value.trim();
+    baseUrl.value = value;
+    clear(feedback);
+    if (value) {
+      try {
+        await Bridge.checkAnthropicBaseUrl(value);
+      } catch (err) {
+        feedback.append(h("div", { class: "notice err", text: String(err) }));
+        return;
+      }
+    }
+    settings.anthropicBaseUrl = value;
+    void save();
+    feedback.append(h("div", {
+      class: "notice ok",
+      text: value
+        ? t("Base URL saved: {url}", { url: value })
+        : t("Base URL cleared — using the official Anthropic API."),
+    }));
+  });
+
   return h(
     "section",
     {},
     h("h2", {}, dot, h("span", { text: "Claude" })),
     state,
     h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
+    h("div", { class: "row" }, h("label", { text: t("Base URL") }), baseUrl),
     h("div", { class: "row" }, h("label", { text: t("Model") }), model),
     feedback,
   );

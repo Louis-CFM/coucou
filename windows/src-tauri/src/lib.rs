@@ -502,6 +502,13 @@ fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
 }
 
+/// The Messages endpoint a base URL typed in Settings → Claude stands for, or
+/// why it can't be used. Nothing is sent anywhere.
+#[tauri::command]
+fn check_anthropic_base_url(url: String) -> Result<String, String> {
+    claude::setting_endpoint(&url).map(|u| u.to_string())
+}
+
 /// The island may only ask whether a key exists — never read it.
 #[tauri::command]
 fn secret_present(key: String) -> bool {
@@ -715,6 +722,7 @@ pub fn run() {
             local_set_key,
             chat_reset,
             ingest_file,
+            check_anthropic_base_url,
             secret_present,
             secret_set,
             secret_clear,

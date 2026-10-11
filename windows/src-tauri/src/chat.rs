@@ -208,7 +208,7 @@ pub async fn send(
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
-        return claude::send(chat, &model, query, context).await;
+        return claude::send(chat, &settings.anthropic_base_url, &model, query, context).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, &model, query, context).await;
@@ -231,7 +231,7 @@ pub async fn send_for_phone(
     on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
     if provider == ANTHROPIC {
-        return claude::send(chat, model, query, None).await;
+        return claude::send(chat, &settings.anthropic_base_url, model, query, None).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, model, query, None).await;
@@ -249,7 +249,7 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
-        return claude::models(&key).await;
+        return claude::models(&key, &settings.anthropic_base_url).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
         let key = secrets::get(p.key).ok_or_else(no_key)?;

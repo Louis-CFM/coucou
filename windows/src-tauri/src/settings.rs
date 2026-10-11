@@ -29,6 +29,9 @@ pub struct Settings {
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
+    /// An Anthropic-compatible gateway for the chat, typed in Settings → Claude.
+    /// Empty means COUCOU_ANTHROPIC_BASE_URL, then Anthropic's own API.
+    pub anthropic_base_url: String,
     /// Show the Claude plan pill (5 h and weekly limits) in the island's header.
     /// Off until the user turns it on, so the header stays as it shipped.
     pub show_plan_in_notch: bool,
@@ -139,6 +142,7 @@ impl Default for Settings {
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            anthropic_base_url: String::new(),
             show_plan_in_notch: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
@@ -426,6 +430,7 @@ mod tests {
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
+  "anthropicBaseUrl": "https://gw.example.com",
   "showPlanInNotch": true,
   "planRelayInstalled": true,
   "showCodexPlanInNotch": true,
@@ -933,6 +938,7 @@ mod tests {
                 "autostart",
                 "hooksInstalled",
                 "model",
+                "anthropicBaseUrl",
                 "showPlanInNotch",
                 "planRelayInstalled",
                 "showCodexPlanInNotch",

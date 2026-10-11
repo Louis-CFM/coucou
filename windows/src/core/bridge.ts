@@ -343,6 +343,8 @@ export const Bridge = {
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /** The Messages endpoint a base URL in Settings → Claude stands for; throws why it can't be used. */
+  checkAnthropicBaseUrl: (url: string) => callOrThrow<string>("check_anthropic_base_url", { url }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
