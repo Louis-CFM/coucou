@@ -71,9 +71,12 @@ export interface CompactPadding {
   right: number;
   bottom: number;
   left: number;
+  /** The whole island's width; 0 or absent keeps COMPACT_W. */
+  width?: number;
 }
-export const COMPACT_PADDING: CompactPadding = { top: 6, right: 25.5, bottom: 6, left: 30 };
+export const COMPACT_PADDING: CompactPadding = { top: 6, right: 25.5, bottom: 6, left: 30, width: 0 };
 export const COMPACT_PADDING_MAX = 40;
+export const COMPACT_WIDTH_MAX = 700;
 /** Mochi's 20 px body: the compact island's content row. */
 export const COMPACT_ROW = 20;
 export const COMPACT_BOT_HALF = COMPACT_ROW / 2;
@@ -126,6 +129,11 @@ export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);
 }
 
+/** Narrowest compact island that still fits Mochi and the pills. */
+export function compactMinWidth(pad: CompactPadding): number {
+  return pad.left + COMPACT_ROW + pad.right + 2 * MINI_GRID_HALF + 8;
+}
+
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
@@ -137,8 +145,10 @@ export function islandSize(
       // No notch to hide inside on a PC: the island retracts to zero height and
       // slides into the top edge of the screen instead of sitting there as a bar.
       return { w: NOTCH_W, h: 0 };
-    case "compact":
-      return { w: COMPACT_W, h: pad.top + COMPACT_ROW + pad.bottom };
+    case "compact": {
+      const w = pad.width ? Math.max(pad.width, compactMinWidth(pad)) : COMPACT_W;
+      return { w, h: pad.top + COMPACT_ROW + pad.bottom };
+    }
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };

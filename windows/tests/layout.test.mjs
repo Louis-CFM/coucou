@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { COMPACT_PADDING, botPosition, islandSize } from "../src/core/layout.ts";
+import { COMPACT_PADDING, botPosition, compactMinWidth, islandSize } from "../src/core/layout.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 
 test("the default padding stays close to the shipped compact layout", () => {
@@ -10,6 +10,13 @@ test("the default padding stays close to the shipped compact layout", () => {
   assert.deepEqual(islandSize("compact", "overview"), { w: 288, h: 32 });
   const p = botPosition("compact", "overview", 32);
   assert.deepEqual([p.cx, p.cy], [40, 16]);
+});
+
+test("the width setting sizes the compact island, never below its content", () => {
+  assert.equal(islandSize("compact", "overview", 0, { ...COMPACT_PADDING, width: 0 }).w, 288);
+  assert.equal(islandSize("compact", "overview", 0, { ...COMPACT_PADDING, width: 220 }).w, 220);
+  assert.equal(islandSize("compact", "overview", 0, { ...COMPACT_PADDING, width: 40 }).w, compactMinWidth(COMPACT_PADDING));
+  assert.equal(islandSize("compact", "overview", 0, { ...COMPACT_PADDING, width: 220 }).h, 32);
 });
 
 test("each side moves only its own edge", () => {

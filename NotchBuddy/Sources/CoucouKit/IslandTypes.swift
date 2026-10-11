@@ -183,8 +183,15 @@ struct CompactPadding: Equatable, Sendable {
     var right: CGFloat
     var bottom: CGFloat
     var left: CGFloat
+    /// The whole island's width; 0 keeps the notch's width plus 160.
+    var width: CGFloat = 0
 
     static let standard = CompactPadding(top: 6, right: 26, bottom: 6, left: 30)
+
+    /// Narrowest island around a notch of `nw` that still fits Mochi and the pills.
+    func minimumWidth(nw: CGFloat) -> CGFloat {
+        nw + 2 * max(left + IslandConst.compactRow, right + 2 * IslandConst.miniGridHalf) + 8
+    }
 }
 
 enum IslandConst {
@@ -194,6 +201,7 @@ enum IslandConst {
     static let earRadius: CGFloat   = 14
     static let roundedCorner: CGFloat = 14    // hidden/peek/compact
     static let compactPaddingMax: Double = 40
+    static let compactWidthMax: Double = 700
     /// Mochi's 20 pt body: the compact island's content row.
     static let compactRow: CGFloat = 20
     static let compactBotHalf: CGFloat = compactRow / 2

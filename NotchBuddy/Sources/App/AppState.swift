@@ -287,9 +287,18 @@ final class AppState: ObservableObject {
     @Published var compactPaddingLeft: Double = Double(CompactPadding.standard.left) {
         didSet { let v = Self.clampedPadding(compactPaddingLeft, key: "compactPaddingLeft"); if v != compactPaddingLeft { compactPaddingLeft = v } }
     }
+    // Folded island width, 0 for the default — persisted
+    @Published var compactWidth: Double = 0 {
+        didSet {
+            let v = min(IslandConst.compactWidthMax, max(0, compactWidth.rounded()))
+            UserDefaults.standard.set(v, forKey: "compactWidth")
+            if v != compactWidth { compactWidth = v }
+        }
+    }
     var compactPadding: CompactPadding {
         CompactPadding(top: CGFloat(compactPaddingTop), right: CGFloat(compactPaddingRight),
-                       bottom: CGFloat(compactPaddingBottom), left: CGFloat(compactPaddingLeft))
+                       bottom: CGFloat(compactPaddingBottom), left: CGFloat(compactPaddingLeft),
+                       width: CGFloat(compactWidth))
     }
     // Reassign only when clamped: a @Published didSet that always writes back recurses forever
     private static func clampedPadding(_ value: Double, key: String) -> Double {
@@ -535,6 +544,7 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "compactPaddingRight") as? Double { compactPaddingRight = v }
         if let v = ud.object(forKey: "compactPaddingBottom") as? Double { compactPaddingBottom = v }
         if let v = ud.object(forKey: "compactPaddingLeft") as? Double { compactPaddingLeft = v }
+        if let v = ud.object(forKey: "compactWidth") as? Double { compactWidth = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }
