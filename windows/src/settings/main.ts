@@ -1640,58 +1640,6 @@ function realtimeCopilotSection(): HTMLElement {
 
   renderCustomList();
 
-  // Screen recorder button logic
-  let mediaRec: MediaRecorder | null = null;
-  const recordScreenBtn = h("button", {
-    style: "background:rgba(244,63,94,0.18); color:#f43f5e; border:1px solid rgba(244,63,94,0.4); font-size:12px; font-weight:600; cursor:pointer;",
-    text: "[REC] Iniciar Gravação de Tela"
-  });
-
-  recordScreenBtn.addEventListener("click", async () => {
-    if (mediaRec && mediaRec.state === "recording") {
-      mediaRec.stop();
-      recordScreenBtn.textContent = "[REC] Iniciar Gravação de Tela";
-      recordScreenBtn.style.background = "rgba(244,63,94,0.18)";
-      recordScreenBtn.style.color = "#f43f5e";
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        const chunks: Blob[] = [];
-        const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-          ? "video/webm;codecs=vp9,opus"
-          : "video/webm";
-        const recorder = new MediaRecorder(stream, { mimeType });
-        mediaRec = recorder;
-        recorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) chunks.push(e.data);
-        };
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: mimeType });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `Gravacao_Tela_Coucou_${Date.now()}.webm`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          stream.getTracks().forEach((t) => t.stop());
-        };
-        stream.getVideoTracks()[0].onended = () => {
-          if (recorder.state === "recording") recorder.stop();
-          recordScreenBtn.textContent = "[REC] Iniciar Gravação de Tela";
-          recordScreenBtn.style.background = "rgba(244,63,94,0.18)";
-          recordScreenBtn.style.color = "#f43f5e";
-        };
-        recorder.start(1000);
-        recordScreenBtn.textContent = "Parar e Baixar Gravação";
-        recordScreenBtn.style.background = "#f43f5e";
-        recordScreenBtn.style.color = "#fff";
-      } catch (err) {
-        console.error("Falha ao iniciar gravador de tela:", err);
-      }
-    }
-  });
-
   return h(
     "section",
     {},
@@ -1711,7 +1659,7 @@ function realtimeCopilotSection(): HTMLElement {
         modeSelect,
       ),
       h("div", { class: "row", style: "align-items:center; gap:8px" },
-        h("label", { style: "min-width:140px" }, h("span", { text: "Agente Ativo" })),
+        h("label", { style: "min-width:140px" }, h("span", { text: "Agente Padrão" })),
         agentSelect,
         toggleCreateBtn,
       ),
@@ -1722,139 +1670,25 @@ function realtimeCopilotSection(): HTMLElement {
       },
         h("div", { style: "display:flex; flex-direction:column; gap:2px" },
           h("strong", { style: "font-size:12px; color:#f4f4f5", text: "Gravador de Tela & Reuniões" }),
-          h("span", { class: "hint", text: "Captura de vídeo e áudio bidirecional (alto-falantes via WASAPI Loopback + microfone do usuário)." })
+          h("span", { class: "hint", text: "Disponível diretamente na aba dedicada da Ilha e pelo atalho Alt + R (não requer configurações)." })
         ),
-        recordScreenBtn
+        h("span", {
+          style: "font-size:10px; font-family:monospace; padding:3px 8px; border-radius:6px; border:1px solid rgba(244,63,94,0.3); color:#fb7185; background:rgba(244,63,94,0.08)",
+          text: "ABA DEDICADA [ALT+R]"
+        })
       ),
 
-      // Header de Módulos
-      h("div", { style: "display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.06);" },
-        h("strong", { style: "font-size:11px; color:#a1a1aa; text-transform:uppercase; letter-spacing:0.8px;", text: "Módulos de Assistência Ativos" }),
-        h("span", { style: "font-size:10px; font-family:monospace; color:#71717a;", text: "12 MÓDULOS HABILITADOS" })
-      ),
-
-      // Grid de Módulos (Design Clean, Moderno, Sem Emojis)
-      h("div", { style: "display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;" },
-
-        // 1. Modo Sussurro
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Modo Sussurro (Coach em Tempo Real)" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); color:#fbbf24; background:rgba(245,158,11,0.08)", text: "AO VIVO" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Intervenções discretas durante a fala. Alerta sobre hesitação em preço, cadência excessiva ou timing de fechamento." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Detecção contextual de objeções e ritmo de conversa" })
+      h("div", {
+        style: "display:flex; align-items:center; justify-content:space-between; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.2); border-radius:8px; padding:10px 14px;"
+      },
+        h("div", { style: "display:flex; flex-direction:column; gap:2px" },
+          h("strong", { style: "font-size:12px; color:#c7d2fe", text: "Módulos de Produtividade & IA" }),
+          h("span", { class: "hint", text: "Seletor de Persona no Chat, Modo Sussurro, Segundo Cérebro e Conversa Vira Conteúdo integrados na navegação." })
         ),
-
-        // 2. Pós-Reunião Automático
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Pós-Reunião Automático" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(16,185,129,0.3); color:#34d399; background:rgba(16,185,129,0.08)", text: "FOLLOW-UP" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Ao encerrar a call, sintetiza ata executiva, decisões tomadas, tarefas com prazos e minuta de e-mail pronta para envio." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Exportação para Notion, Trello, Google Calendar e SMTP" })
-        ),
-
-        // 3. Memória de Interlocutores
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Memória de Interlocutores (Mini-CRM)" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(147,51,234,0.3); color:#c084fc; background:rgba(147,51,234,0.08)", text: "PERSISTENTE" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Cria ficha de contexto por pessoa: histórico de acordos, objeções anteriores e preferências de negociação." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Recuperação de contexto histórico antes da próxima chamada" })
-        ),
-
-        // 4. Telemetria Vocal & Ritmo
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Telemetria de Fala & Cadência" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(6,182,212,0.3); color:#22d3ee; background:rgba(6,182,212,0.08)", text: "TELEMETRIA" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Medição contínua de velocidade de fala (palavras por minuto), pausas, interrupções e divisão do Talk Ratio." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Monitoramento de segurança emocional e equilíbrio de conversa" })
-        ),
-
-        // 5. RAG Local
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Base de Conhecimento RAG Local" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(59,130,246,0.3); color:#60a5fa; background:rgba(59,130,246,0.08)", text: "OFFLINE 2s" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Indexação vetorial de playbooks, PDFs e propostas. Respostas fundamentadas com citação exata de página e fonte." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Armazenamento em banco vetorial local sem envio para terceiros" })
-        ),
-
-        // 6. Tradução Simultânea
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Tradução de Voz Simultânea" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(236,72,153,0.3); color:#f472b6; background:rgba(236,72,153,0.08)", text: "BILÍNGUE" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Legendas bilíngues instantâneas na tela (PT-BR, EN-US, ES-ES) para reuniões e negociações internacionais." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Exibição em overlay flutuante de baixa latência" })
-        ),
-
-        // 7. Automações IFTTT & MCP
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Automações por Voz & Protocolo MCP" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); color:#fbbf24; background:rgba(245,158,11,0.08)", text: "MCP & WEBHOOK" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Gatilhos executados ao detectar termos como intenção de fechamento, concorrentes ou orçamentos na tela (OCR)." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Conexão com webhooks REST e servidores de contexto MCP" })
-        ),
-
-        // 8. Segundo Cérebro & Grafo
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Segundo Cérebro Autônomo" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(139,92,246,0.3); color:#c4b5fd; background:rgba(139,92,246,0.08)", text: "GRAFO" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Grafo semântico que conecta discussões recentes com dúvidas e anotações gravadas em sessões anteriores." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Cruzamento relacional e detecção de padrões de trabalho" })
-        ),
-
-        // 9. Briefing Semanal em Áudio
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Briefing Semanal em Áudio" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); color:#fbbf24; background:rgba(245,158,11,0.08)", text: "SEXTA 17H" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Resumo em áudio sintetizado com conquistas da semana, evolução de cadência vocal e compromissos seguintes." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Duração aproximada de 2 minutos com reprodução nativa" })
-        ),
-
-        // 10. Jarvis Controle do PC
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Controle por Voz do PC (Jarvis)" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(16,185,129,0.3); color:#34d399; background:rgba(16,185,129,0.08)", text: "HUMAN-IN-THE-LOOP" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Decomposição de ordens faladas em passos encadeados com bloqueio obrigatório de ações sensíveis." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Log de auditoria auditável para conformidade corporativa" })
-        ),
-
-        // 11. Mapa Mental ao Vivo
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Mapa Mental ao Vivo" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(6,182,212,0.3); color:#22d3ee; background:rgba(6,182,212,0.08)", text: "MERMAID / GRAFO" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Estruturação contínua de temas, decisões e responsáveis durante reuniões, aulas e planejamentos." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Exportação direta em formato Mermaid, Markdown ou link público" })
-        ),
-
-        // 12. Conversa Vira Conteúdo
-        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
-          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
-            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Conversa Vira Conteúdo" }),
-            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(244,63,94,0.3); color:#fb7185; background:rgba(244,63,94,0.08)", text: "REPURPOSING" })
-          ),
-          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Conversão de gravações em post para LinkedIn, newsletter, roteiro de vídeo e thread calibrados no seu tom." }),
-          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Opções de estilo: direto, storytelling, analítico ou executivo" })
-        ),
+        h("span", {
+          style: "font-size:10px; font-family:monospace; padding:3px 8px; border-radius:6px; border:1px solid rgba(99,102,241,0.3); color:#818cf8; background:rgba(99,102,241,0.1)",
+          text: "ATIVOS NA NAVEGAÇÃO"
+        })
       ),
 
       // Tabela Limpa de Atalhos Globais

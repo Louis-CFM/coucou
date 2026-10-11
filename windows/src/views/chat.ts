@@ -213,6 +213,39 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const send = h("button", { class: "send-btn", title: tl(STRINGS.send) }, svg(ICONS.arrowUp, 11));
   const bar = h("div", { class: "chat-bar" }, input, send);
 
+const PERSONAS = [
+  { id: "general", name: "Geral", color: "#818cf8", instruction: "" },
+  { id: "exec", name: "Executivo", color: "#38bdf8", instruction: "[PERSONA: Executivo - Responda de forma sucinta, focando em decisões estratégicas, ROI e tópicos diretos.]\n\n" },
+  { id: "dev", name: "Dev & Código", color: "#34d399", instruction: "[PERSONA: Desenvolvedor Sênior - Responda com código limpo, boas práticas, segurança e análise técnica objetiva.]\n\n" },
+  { id: "sales", name: "Comercial / SDR", color: "#fbbf24", instruction: "[PERSONA: Especialista Comercial - Responda com foco em contorno de objeções, valor de negócio e fechamento.]\n\n" },
+  { id: "mentor", name: "Mentor", color: "#f472b6", instruction: "[PERSONA: Mentor Estratégico - Seja reflexivo, didático e ajude a estruturar o raciocínio.]\n\n" },
+];
+
+  let activePersonaIndex = Number(localStorage.getItem("coucou_active_persona_idx") || 0);
+  if (isNaN(activePersonaIndex) || activePersonaIndex < 0 || activePersonaIndex >= PERSONAS.length) {
+    activePersonaIndex = 0;
+  }
+
+  const personaDot = h("i", { class: "model-dot", style: `background:${PERSONAS[activePersonaIndex].color}` });
+  const personaName = h("span", { class: "model-name", text: PERSONAS[activePersonaIndex].name });
+  const personaBtn = h(
+    "button",
+    {
+      class: "model-btn",
+      title: "Alternar Agente / Persona (1 clique)",
+      onclick: () => {
+        activePersonaIndex = (activePersonaIndex + 1) % PERSONAS.length;
+        localStorage.setItem("coucou_active_persona_idx", String(activePersonaIndex));
+        personaDot.style.background = PERSONAS[activePersonaIndex].color;
+        personaName.textContent = PERSONAS[activePersonaIndex].name;
+        Sound.play("tick");
+      },
+    },
+    personaDot,
+    personaName,
+    svg(ICONS.chevronUpDown, 9, { stroke: 2 }),
+  );
+
   const modelDot = h("i", { class: "model-dot" });
   const modelName = h("span", { class: "model-name" });
   const modelBtn = h(
@@ -222,7 +255,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     modelName,
     svg(ICONS.chevronUpDown, 9, { stroke: 2 }),
   );
-  const modelRow = h("div", { class: "model-row" }, modelBtn);
+  const modelRow = h("div", { class: "model-row", style: "display:flex; justify-content:space-between; align-items:center;" }, personaBtn, modelBtn);
 
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
@@ -283,7 +316,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      const persona = PERSONAS[activePersonaIndex];
+      const promptText = persona.instruction ? `${persona.instruction}${query}` : query;
+      const reply = await Bridge.chatSend(promptText, context);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
