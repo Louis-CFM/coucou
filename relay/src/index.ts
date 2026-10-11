@@ -45,16 +45,9 @@ export default {
     if (request.method !== "POST" || url.pathname !== "/v1/live-activity") {
       return text(404, "not found");
     }
-    if (Number(request.headers.get("content-length") ?? "0") > 4096) {
-      return text(413, "too large");
-    }
-
-    let body: RelayRequest;
-    try {
-      body = await request.json();
-    } catch {
-      return text(400, "bad json");
-    }
+    const parsed = await readObject(request, LIVE_ACTIVITY_BODY_MAX);
+    if (parsed instanceof Response) return parsed;
+    const body = parsed as unknown as RelayRequest;
     const problem = validate(body);
     if (problem) return text(400, problem);
 
@@ -215,28 +208,64 @@ const OUTBOX_MAX = 50;
 const OUTBOX_TTL_MS = 10 * 60 * 1000;
 const STATE_TTL_MS = 24 * 3600 * 1000;
 
-function phoneRoute(request: Request, url: URL, env: Env): Promise<Response> | Response {
+/**
+ * The request body as a JSON object, refused past `max` bytes counted as they
+ * arrive — a chunked upload carries no Content-Length to trust — and refused
+ * when it is anything but an object (`null`, a list, a string).
+ */
+async function readObject(request: Request, max: number): Promise<Record<string, unknown> | Response> {
+  if (Number(request.headers.get("content-length") ?? "0") > max) return text(413, "too large");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  if (request.body) {
+    const reader = request.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) {
+        await reader.cancel();
+        return text(413, "too large");
+      }
+      chunks.push(value);
+    }
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return text(400, "bad json");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return text(400, "body");
+  return parsed as Record<string, unknown>;
+}
+
+/** State pushes carry the chat transcript tail — up to ~200 KB with every cleanState bound maxed out. */
+const PHONE_BODY_MAX = 262144;
+const LIVE_ACTIVITY_BODY_MAX = 4096;
+const PHONE_ACTIONS = ["pair", "claim", "claimed", "state", "fetch", "decide", "chat", "select", "take", "unpair"];
+
+async function phoneRoute(request: Request, url: URL, env: Env): Promise<Response> {
   if (!env.PHONE_BOX) return text(501, "android support not deployed on this relay");
   if (request.method !== "POST") return text(404, "not found");
-  // State pushes carry the chat transcript tail — up to ~200 KB once every
-  // cleanState bound is maxed out. Anything past this is junk anyway.
-  if (Number(request.headers.get("content-length") ?? "0") > 262144) {
-    return text(413, "too large");
-  }
   const action = url.pathname.slice("/v1/phone/".length);
-  if (!["pair", "claim", "claimed", "state", "fetch", "decide", "chat", "select", "take", "unpair"].includes(action)) {
-    return text(404, "not found");
-  }
-  return request.json().then((body) => {
-    const id = (body as { id?: unknown }).id;
-    if (typeof id !== "string" || !ID_RE.test(id)) return text(400, "id");
-    const stub = env.PHONE_BOX!.get(env.PHONE_BOX!.idFromName(id));
-    return stub.fetch(new Request(`https://box/${action}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    }));
-  }, () => text(400, "bad json"));
+  if (!PHONE_ACTIONS.includes(action)) return text(404, "not found");
+  const body = await readObject(request, PHONE_BODY_MAX);
+  if (body instanceof Response) return body;
+  const id = body.id;
+  if (typeof id !== "string" || !ID_RE.test(id)) return text(400, "id");
+  const stub = env.PHONE_BOX.get(env.PHONE_BOX.idFromName(id));
+  return stub.fetch(new Request(`https://box/${action}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }));
 }
 
 interface PhoneStateSession {

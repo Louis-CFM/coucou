@@ -75,6 +75,40 @@ test("router: GET, unknown action and bad ids are rejected", async () => {
   );
 });
 
+test("router: bodies are capped by what arrives and must be JSON objects", async () => {
+  const b = box();
+  const ns = { idFromName: () => ({}), get: () => ({ fetch: (r) => b.fetch(r) }) };
+  const post = (body, extra = {}) =>
+    worker.fetch(new Request("https://relay/v1/phone/pair", { method: "POST", body, ...extra }), { PHONE_BOX: ns });
+
+  assert.equal((await post("null")).status, 400);
+  assert.equal((await post("[1,2]")).status, 400);
+  assert.equal((await post('"just a string"')).status, 400);
+
+  // No Content-Length header, as a chunked upload sends it: the size is still counted.
+  const big = new ReadableStream({
+    start(c) {
+      c.enqueue(new TextEncoder().encode(`{"id":"${"a".repeat(300000)}"}`));
+      c.close();
+    },
+  });
+  assert.equal((await post(big, { duplex: "half" })).status, 413);
+});
+
+test("live-activity: an oversized body is refused whatever Content-Length says", async () => {
+  const big = new ReadableStream({
+    start(c) {
+      c.enqueue(new TextEncoder().encode(`{"token":"${"a".repeat(5000)}"}`));
+      c.close();
+    },
+  });
+  const r = await worker.fetch(
+    new Request("https://relay/v1/live-activity", { method: "POST", body: big, duplex: "half" }),
+    {},
+  );
+  assert.equal(r.status, 413);
+});
+
 // ── Pairing and auth ──────────────────────────────────────────────────────────
 
 test("pair creates the box; every action needs the secret", async () => {
