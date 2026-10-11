@@ -624,7 +624,6 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Helpers
 
-    @MainActor
     /// Settings → Follow edits live: the edit just made opens on its diff (LiveEdits.mayFollow).
     @MainActor
     private func followEdit(pillId: String, diffId: Int) {
@@ -645,6 +644,7 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
+    @MainActor
     private func expandIfNeeded(to view: IslandView) {
         let state = AppState.shared
         let isAlert: Bool
