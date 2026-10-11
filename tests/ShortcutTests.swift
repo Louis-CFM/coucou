@@ -181,13 +181,8 @@ enum ShortcutTests {
         precondition(!ShortcutAction.toggleIsland.enabledByDefault,
                      "toggleIsland must be disabled by default")
 
-        // talkToCoucou is OFF by default (user opts in via Settings → Shortcuts)
-        precondition(!ShortcutAction.talkToCoucou.enabledByDefault,
-                     "talkToCoucou must be disabled by default")
-
         // All other global shortcuts are ON by default
-        let offByDefault: Set<ShortcutAction> = [.toggleIsland, .talkToCoucou]
-        for action in ShortcutAction.allCases where !offByDefault.contains(action) {
+        for action in ShortcutAction.allCases where action != .toggleIsland {
             precondition(action.enabledByDefault,
                          "\(action.rawValue) must be enabled by default")
         }

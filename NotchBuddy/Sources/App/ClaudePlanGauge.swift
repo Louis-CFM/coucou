@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Plan window
 
-struct PlanWindow: Codable, Equatable {
+struct PlanWindow: Codable {
     let usedPct: Double   // 0–100, clamped
     let resetsAt: Date
 }

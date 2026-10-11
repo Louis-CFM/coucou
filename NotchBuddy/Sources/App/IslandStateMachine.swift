@@ -6,11 +6,10 @@ import Foundation
 final class IslandStateMachine {
 
     enum State: Equatable {
-        case hidden    // island invisible (notch size)
-        case petit     // compact island (notch + ears)
-        case home      // expanded, overview
-        case coucou    // expanded, greeting animation
-        case listening // expanded, voice listening («OK Coucou» detected)
+        case hidden   // island invisible (notch size)
+        case petit    // compact island (notch + ears)
+        case home     // expanded, overview
+        case coucou   // expanded, greeting animation
     }
 
     private(set) var state: State = .hidden
@@ -47,7 +46,6 @@ final class IslandStateMachine {
     private var petitHideWork: DispatchWorkItem?
     private var homeCollapseWork: DispatchWorkItem?
     private var greetCollapseWork: DispatchWorkItem?
-    private var stateBeforeListening: State = .hidden
 
     // MARK: – Inputs
 
@@ -83,14 +81,6 @@ final class IslandStateMachine {
         case .coucou:
             // Mouse hovering during greeting — cancel short auto-collapse, extend to hover delay
             scheduleGreetCollapse(delay: greetHoverCollapseDelay)
-        case .listening:
-            // Voice is active; if openOnHover, expand to show the overview.
-            if openOnHover {
-                cancelTimers()
-                openedByHover = true
-                transition(to: .home)
-            }
-            // else: no timer, island stays compact — voice keeps running.
         }
     }
 
@@ -109,19 +99,15 @@ final class IslandStateMachine {
                 greetCollapseWork?.cancel(); greetCollapseWork = nil
                 transition(to: .petit)
             }
-        case .listening:
-            break   // never auto-collapse while listening
         }
     }
 
     /// Compact island clicked.
     /// Also accepts `.hidden`: after an alert the island can be on screen while the
     /// FSM never saw the mouse enter (it was already there), and the click must still open it.
-    /// Also accepts `.listening`: the user can open the island while voice is active; voice
-    /// continues uninterrupted and the island expands to the overview.
     func click() {
         openedByHover = false
-        guard state == .petit || state == .hidden || state == .listening else { return }
+        guard state == .petit || state == .hidden else { return }
         cancelTimers()
         transition(to: .home)
     }
@@ -150,27 +136,9 @@ final class IslandStateMachine {
     /// 15 s home timer left the island compact on screen while the FSM still said `.home`.
     func collapse() {
         openedByHover = false
-        guard state == .home || state == .coucou || state == .listening else { return }
+        guard state == .home || state == .coucou else { return }
         cancelTimers()
         transition(to: .petit)
-    }
-
-    // MARK: – Voice inputs
-
-    /// Wake phrase detected: open the island in listening mode from any state.
-    func voiceWoke() {
-        stateBeforeListening = state
-        cancelTimers()
-        openedByHover = false
-        transition(to: .listening)
-    }
-
-    /// Command session ended (silence timeout, cancel phrase, or user dismiss).
-    func voiceFinished() {
-        guard state == .listening else { return }
-        let target: State = stateBeforeListening == .home ? .home : .petit
-        transition(to: target)
-        if target == .home, isHeldOpen?() != true { scheduleHomeCollapse() }
     }
 
     /// Greeting animation finished (called at T.end ≈ 4.60 s).

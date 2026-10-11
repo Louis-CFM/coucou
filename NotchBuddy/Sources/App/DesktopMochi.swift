@@ -27,9 +27,13 @@ struct DesktopBotView: View {
     @ObservedObject var viewState: DesktopBotViewState
 
     var body: some View {
-        TimelineView(.animation(paused: viewState.paused)) { timeline in
+        TimelineView(.animation(
+            minimumInterval: viewState.isSleeping ? 1.0 / 10.0 : 1.0 / 30.0,
+            paused: viewState.paused
+        )) { timeline in
             Canvas { ctx, size in
-                _ = timeline.date   // force redraw every tick (see BotCanvasView)
+                let now = timeline.date.timeIntervalSinceReferenceDate
+                let dt  = min(0.05, now - engine.lastTime)
 
                 // Eye tracking based on the panel's own screen position
                 engine.lookX = tanh((appState.mousePosition.x - viewState.lookOrigin.x) / 260)
@@ -52,7 +56,7 @@ struct DesktopBotView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
-                MochiFrameClock.advance(engine)
+                engine.update(dt: dt)
 
                 var c = ctx
                 engine.applyDance(&c, size: size)
@@ -483,42 +487,20 @@ final class DesktopMochiController {
         }
     }
 
-    // MARK: - 30 Hz polling (only while panel is live and the screen is on)
-    // Mochi is drawn at 30 fps (10 asleep): polling faster bought nothing. It also feeds
-    // the eye tracking (AppState.mousePosition), so the island poll can idle meanwhile.
-
-    /// True between startPolling and stopPolling, whatever the screen does meanwhile.
-    private var pollingWanted = false
+    // MARK: - 60 Hz polling (only while panel is live)
 
     private func startPolling() {
         frameTimer?.invalidate()
-        frameTimer = nil
-        pollingWanted = true
-        guard !screenSleeping else { return }
-        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            // On the main run loop: already on the main actor, no Task per tick.
-            MainActor.assumeIsolated { self?.pollFrame() }
+        frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in self.pollFrame() }
         }
-        timer.tolerance = 0.005
-        RunLoop.main.add(timer, forMode: .common)
-        frameTimer = timer
+        RunLoop.main.add(frameTimer!, forMode: .common)
     }
 
     private func stopPolling() {
-        pollingWanted = false
         frameTimer?.invalidate()
         frameTimer = nil
-    }
-
-    private func pausePollingForScreen() {
-        frameTimer?.invalidate()
-        frameTimer = nil
-    }
-
-    /// Only when it was polling before the screen went off.
-    private func resumePollingForScreen() {
-        guard pollingWanted, panel != nil, frameTimer == nil else { return }
-        startPolling()
     }
 
     private func pollFrame() {
@@ -537,9 +519,6 @@ final class DesktopMochiController {
 
         // Update eye-tracking origin every frame
         viewState?.lookOrigin = lookOriginFor(panel: p)
-        let pos = DesktopSpace.topDown(mouse, desktopTop: IslandWindowController.desktopTop)
-        let cur = AppState.shared.mousePosition
-        if abs(pos.x - cur.x) > 1 || abs(pos.y - cur.y) > 1 { AppState.shared.mousePosition = pos }
 
         // Sleep detection
         let agentActive = AppState.shared.effectiveState != .idle &&
@@ -682,7 +661,6 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = true
                 self?.viewState?.paused = true
-                self?.pausePollingForScreen()
             }
         }
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -691,7 +669,6 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = false
                 self?.viewState?.paused = false
-                self?.resumePollingForScreen()
             }
         }
     }
@@ -705,7 +682,6 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = true
                 self?.viewState?.paused = true
-                self?.pausePollingForScreen()
             }
         }
         DistributedNotificationCenter.default().addObserver(
@@ -714,7 +690,6 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = false
                 self?.viewState?.paused = false
-                self?.resumePollingForScreen()
             }
         }
     }

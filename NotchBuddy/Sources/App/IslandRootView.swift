@@ -320,15 +320,14 @@ struct BotPlacement: View {
                     let t = min(1.0, max(0, elapsed / state.uploadDuration))
                     // cx = 36 + 526*t: bot center at fill right edge (bar left=36, width=526)
                     let uploadCx = 36 + CGFloat(t * (2 - t)) * 526
-                    BotCanvasView(state: state, particleOverhang: 0, paused: state.mochiOnDesktop)
+                    BotCanvasView(state: state, particleOverhang: 0)
                         .frame(width: canvasSize, height: canvasSize)
                         .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                         .position(x: uploadCx, y: cy)
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             } else {
-                // Invisible while Mochi lives on the desktop: no drawing either.
-                BotCanvasView(state: state, particleOverhang: overhang, paused: state.mochiOnDesktop)
+                BotCanvasView(state: state, particleOverhang: overhang)
                     .frame(width: canvasSize, height: canvasSize + overhang)
                     .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                     .position(x: cx, y: cy - overhang / 2)
@@ -399,21 +398,6 @@ func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: 
     }
 }
 
-// MARK: - Active island view
-
-private struct IslandViewActiveKey: EnvironmentKey {
-    static let defaultValue = true
-}
-
-extension EnvironmentValues {
-    /// False inside the island views that are mounted but not shown (opacity 0):
-    /// TimelineViews in them pause. True everywhere else.
-    var islandViewActive: Bool {
-        get { self[IslandViewActiveKey.self] }
-        set { self[IslandViewActiveKey.self] = newValue }
-    }
-}
-
 // MARK: - Countdown bar
 
 struct CountdownBar: View {
@@ -430,33 +414,19 @@ struct CountdownBar: View {
                 .cornerRadius(2)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        // The bar only exists in the open island: its 10 Hz timer runs only then
-        // (CLAUDE.md: 0 % CPU when the island is hidden).
-        .onAppear { if state.mode == .expanded { startTimer() } }
-        .onChange(of: state.mode) { _, mode in
-            if mode == .expanded { startTimer() } else { stopTimer() }
-        }
-        .onDisappear { stopTimer() }
+        .onAppear { startTimer() }
+        .onDisappear { timer?.invalidate() }
     }
 
     private func startTimer() {
-        guard timer == nil else { return }
-        let t = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            MainActor.assumeIsolated { updateBar() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            updateBar()
         }
-        t.tolerance = 0.02
-        timer = t
-    }
-
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-        if barWidth != 0 { barWidth = 0 }
     }
 
     private func updateBar() {
         guard state.mode == .expanded && !state.isPinned else {
-            if barWidth != 0 { barWidth = 0 }
+            barWidth = 0
             return
         }
         let autoClose = state.autoCloseInterval
@@ -494,9 +464,6 @@ struct IslandContentView: View {
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
                     IslandViewContent(view: v, state: state)
-                        // Views behind the active one stay mounted (for the cross-fade)
-                        // but stop their endless animations: nobody sees them.
-                        .environment(\.islandViewActive, active)
                         .frame(maxWidth: .infinity)
                         .frame(height: isTall ? nil : 98)
                         .frame(minHeight: (isTall && !active) ? 0 : nil, maxHeight: isTall ? .infinity : nil)

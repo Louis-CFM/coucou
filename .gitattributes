@@ -1,6 +1,2 @@
 docs/** linguist-documentation
 design/** linguist-documentation
-
-android/gradlew text eol=lf
-android/**/*.sh text eol=lf
-android/**/*.mjs text eol=lf
