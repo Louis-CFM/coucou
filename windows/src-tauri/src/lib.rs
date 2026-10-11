@@ -686,11 +686,6 @@ pub fn run() {
     }
 
     let mcp_registry = Arc::new(mcp::Registry::default());
-    let mcp_clone = mcp_registry.clone();
-    tokio::spawn(async move {
-        let scanned = mcp::scanner::scan_all();
-        mcp_clone.refresh(scanned).await;
-    });
 
     builder
         .manage(Shared {
@@ -842,6 +837,15 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
+
+            let mcp_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                let scanned = mcp::scanner::scan_all();
+                if let Some(shared) = mcp_handle.try_state::<Shared>() {
+                    shared.mcp.refresh(scanned).await;
+                }
+            });
+
             Ok(())
         })
         .build(tauri::generate_context!())
