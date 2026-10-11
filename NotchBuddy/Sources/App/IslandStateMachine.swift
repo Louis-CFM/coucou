@@ -84,7 +84,13 @@ final class IslandStateMachine {
             // Mouse hovering during greeting — cancel short auto-collapse, extend to hover delay
             scheduleGreetCollapse(delay: greetHoverCollapseDelay)
         case .listening:
-            break   // already open; no action on hover
+            // Voice is active; if openOnHover, expand to show the overview.
+            if openOnHover {
+                cancelTimers()
+                openedByHover = true
+                transition(to: .home)
+            }
+            // else: no timer, island stays compact — voice keeps running.
         }
     }
 
@@ -111,9 +117,11 @@ final class IslandStateMachine {
     /// Compact island clicked.
     /// Also accepts `.hidden`: after an alert the island can be on screen while the
     /// FSM never saw the mouse enter (it was already there), and the click must still open it.
+    /// Also accepts `.listening`: the user can open the island while voice is active; voice
+    /// continues uninterrupted and the island expands to the overview.
     func click() {
         openedByHover = false
-        guard state == .petit || state == .hidden else { return }
+        guard state == .petit || state == .hidden || state == .listening else { return }
         cancelTimers()
         transition(to: .home)
     }

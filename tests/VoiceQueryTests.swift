@@ -107,6 +107,15 @@ struct VoiceQueryTests {
         check("open Safari", VoiceQuery.appToOpen("open Safari"), "Safari")
         check("parse open app", IntentParser.parse("ouvre Figma", pills: pills), .openApp(name: "Figma"))
 
+        // Guided mail: names and repeats
+        check("recipient il s'appelle", VoiceQuery.recipientAnswer("Il s'appelle Enzo"), "Enzo")
+        check("recipient son nom c'est", VoiceQuery.recipientAnswer("son nom c'est Enzo Martin"), "Enzo Martin")
+        check("recipient his name is", VoiceQuery.recipientAnswer("his name is Paul"), "Paul")
+        check("contact candidates", VoiceQuery.contactCandidates("mon pote Enzo"), ["mon pote Enzo", "Enzo"])
+        check("collapse repeat", VoiceQuery.collapseRepeat("image image"), "image")
+        check("collapse repeat two words", VoiceQuery.collapseRepeat("Voilà l'image voilà l'image"), "Voilà l'image")
+        check("no collapse", VoiceQuery.collapseRepeat("bonjour Enzo"), "bonjour Enzo")
+
         // Web search
         check("web fr lead", VoiceQuery.webQuery(of: "cherche sur internet qui a gagné l'Euro"), "qui a gagné l'Euro")
         check("web fr tail", VoiceQuery.webQuery(of: "Cherche les horaires du Louvre sur internet"), "les horaires du Louvre")

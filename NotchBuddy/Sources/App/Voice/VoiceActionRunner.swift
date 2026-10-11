@@ -462,6 +462,16 @@ final class VoiceActionRunner {
         return false
     }
 
+    /// The answer Coucou waits for is free text (who, subject, what the mail says, what to
+    /// look up): the mic gives more time to pause and think before the turn ends.
+    var expectsLongAnswer: Bool {
+        switch pendingQuestion?.kind {
+        case .mailStep(let field)?: return field != .attachment
+        case .webQuery?:            return true
+        default:                    return false
+        }
+    }
+
     /// True while Coucou waits for any answer of the voice email (who, subject, text, file).
     var isMailInProgress: Bool {
         if case .mailStep? = pendingQuestion?.kind { return true }
@@ -548,7 +558,8 @@ final class VoiceActionRunner {
     private func answerMail(_ field: PendingVoiceQuestion.MailField, _ transcript: String,
                             pending: PendingVoiceQuestion) async -> VoiceActionResult {
         guard var m = mail else { return fail("voice.unknown") }
-        let said = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        // "image image": the same answer said twice in one turn counts once.
+        let said = VoiceQuery.collapseRepeat(transcript.trimmingCharacters(in: .whitespacesAndNewlines))
 
         if said.isEmpty {
             // Silence after "any attachment?" means none; anywhere else it cancels the mail.
