@@ -6,7 +6,15 @@ through your computer's AI providers.
 
 The name, the Mochi character, the icon and the sounds are © Louis Raillé and used with permission (see
 [PERMISSION.md](PERMISSION.md)). The Android code is © Rhytam Biswas under the MIT License (see [LICENSE](LICENSE)). The app is free: no ads, no billing, no analytics.
-It is English only and dark only. Not published anywhere: Louis must approve the build and the store listing first.
+It is English only and dark only. Download the signed APK from the [Releases](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) (Android 11 or later; it needs Coucou 0.4.0 or later on Windows or Linux).
+
+## Screenshots
+
+Real screenshots from a Galaxy A12s. The pairing, chat and approval screens are protected on purpose (Android shows them black in a screenshot), so they are not shown here. Other apps’ notifications and the location are blurred.
+
+| Home | The island over other apps | Alert on a locked phone | Allow or Deny |
+|---|---|---|---|
+| <img src="../docs/media/android-home.jpg" width="180" alt="Home: Mochi, the agent list, plan usage and a service"> | <img src="../docs/media/android-island.jpg" width="180" alt="The island over the home screen while an agent works"> | <img src="../docs/media/android-lock-alert.jpg" width="180" alt="The lock screen: Approval needed, the command hidden"> | <img src="../docs/media/android-allow-deny.jpg" width="180" alt="A notification with Deny and Allow"> |
 
 ## Build and test
 
