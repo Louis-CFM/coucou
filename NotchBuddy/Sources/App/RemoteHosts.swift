@@ -1,7 +1,8 @@
-#if !APPSTORE
 import AppKit
 import Foundation
 import SwiftUI
+
+#if !APPSTORE
 
 // MARK: - Remote hosts
 // Claude Code sessions on other machines, over SSH (the same design as the Linux
@@ -501,7 +502,7 @@ enum RemoteTerminal {
 
     /// ssh into the host: onto its tmux session, else a shell in its folder. nil for a bad host.
     nonisolated static func command(host: String, cwd: String, tmux: String) -> String? {
-        guard RemoteSSH.validHost(host) else { return nil }
+        guard SSHDestination.valid(host) else { return nil }
         let remote = !tmux.isEmpty ? "tmux attach -t \(shQuote(tmux))"
             : !cwd.isEmpty ? "cd \(shQuote(cwd)) && exec \"$SHELL\" -l"
             : "exec \"$SHELL\" -l"
