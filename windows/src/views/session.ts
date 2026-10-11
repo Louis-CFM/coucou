@@ -370,7 +370,7 @@ function terminal(c: CommandShown): HTMLElement {
 
 /** Tool names, not translated: they are what Claude Code calls them. */
 const PHASES: { id: Phase; label: string; glyph: string }[] = [
-  { id: "read", label: "Read", glyph: ICONS.doc },
+  { id: "read", label: "Read", glyph: ICONS.docText },
   { id: "edit", label: "Edit", glyph: ICONS.pencil },
   { id: "bash", label: "Bash", glyph: ICONS.terminal },
 ];
@@ -380,7 +380,7 @@ type PhaseState = "done" | "active" | "todo";
 function phaseIcon(state: PhaseState, glyph: string): HTMLElement {
   if (state === "done") return h("span", { class: "ph-icon ok" }, svg(ICONS.check, 8, { stroke: 3 }));
   if (state === "active") return h("span", { class: "ph-icon spin" });
-  return h("span", { class: "ph-icon todo" }, svg(glyph, 11, { stroke: 2 }));
+  return h("span", { class: "ph-icon todo" }, svg(glyph, 12, { stroke: 1.8 }));
 }
 
 function phaseList(d: CodeData): HTMLElement {

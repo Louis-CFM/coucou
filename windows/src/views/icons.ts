@@ -55,6 +55,8 @@ export const ICONS = {
   // doc.text
   doc: "M6.5 2.6h7l4 4v14.8h-11V2.6zm6.6 1.6v3.3h3.3l-3.3-3.3zM8.6 11h6.8v1.5H8.6V11zm0 3.4h6.8v1.5H8.6v-1.5z",
   // ── Code view ──
+  // doc.text (stroked)
+  docText: "M7 3h7l4 4v14H7V3zM14 3v4h4M9.5 12h5M9.5 15.5h5",
   // pencil (stroked)
   pencil: "M4.5 19.5h3.8L19 8.8 15.2 5 4.5 15.7v3.8zM13.4 6.8l3.8 3.8",
   // apple.terminal (stroked)
