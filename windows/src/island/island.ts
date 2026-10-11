@@ -8,6 +8,8 @@ import {
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
+  SCREEN_PICKER_H,
+  SCREEN_PICKER_W,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
@@ -645,7 +647,10 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
-    if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
+    if (State.mode === "expanded" && State.isPickingScreen) {
+      w = SCREEN_PICKER_W;
+      h = SCREEN_PICKER_H;
+    } else if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;

@@ -51,10 +51,14 @@ export interface ViewLayout {
   agentMode: AgentLayoutMode;
 }
 
-// The window is a fixed 720×320 (largest view) like the macOS panel; the island is
+// The window is a fixed panel like the macOS panel; the island is
 // drawn inside it, glued to the top edge and horizontally centred.
-export const PANEL_W = 720;
-export const PANEL_H = 320;
+export const PANEL_W = 760;
+export const PANEL_H = 540;
+
+// Dimensions during screen/window picker dialog so WebView2 has ample space
+export const SCREEN_PICKER_W = 720;
+export const SCREEN_PICKER_H = 480;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
@@ -94,7 +98,7 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // to the shared image.
   recap: { height: 184, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
   wardrobe: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
-  record: { height: 160, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
+  record: { height: 180, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

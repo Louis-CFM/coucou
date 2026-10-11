@@ -880,6 +880,11 @@ function buildRecorderView(actions: ViewActions): ViewHost {
 
   async function startRecording() {
     try {
+      State.isPickingScreen = true;
+      State.notify();
+      // Dá tempo para a animação da ilha expandir para 720x480 antes do diálogo do sistema abrir
+      await new Promise((r) => setTimeout(r, 120));
+
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 30 } },
         audio: true,
@@ -943,6 +948,9 @@ function buildRecorderView(actions: ViewActions): ViewHost {
       }, 1000);
     } catch (err) {
       console.error("Falha ao iniciar gravador de tela:", err);
+    } finally {
+      State.isPickingScreen = false;
+      State.notify();
     }
   }
 
