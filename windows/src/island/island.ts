@@ -823,6 +823,8 @@ export class Island {
 
   onGlobalPointer(x: number, y: number) {
     this.globalPointer = { x, y };
+    // An idle island stops drawing: the eyes only move on a frame.
+    if (State.mode !== "hidden") this.ensureRunning();
   }
 
   setPointerInside(inside: boolean) {
