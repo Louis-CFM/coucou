@@ -823,9 +823,12 @@ extension AppState {
     var compactSideExtra: CGFloat {
         let font = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
         func widest(_ rows: [[CompactStat]]) -> CGFloat {
-            rows.map { $0.enumerated().map { i, s in (i > 0 ? " · " : "") + s.label + " " + s.value }.joined() }
-                .map { ceil(($0 as NSString).size(withAttributes: [.font: font]).width) + 4 }
-                .max() ?? 0
+            var most: CGFloat = 0
+            for row in rows {
+                let text: String = row.map { (s: CompactStat) -> String in s.label + " " + s.value }.joined(separator: " · ")
+                most = max(most, ceil((text as NSString).size(withAttributes: [.font: font]).width) + 4)
+            }
+            return most
         }
         let sides = compactStatSides
         let left = widest(sides.left) + compactBotTaken
