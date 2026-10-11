@@ -168,9 +168,18 @@ export function isHookPill(id: string): boolean {
   return pillDefinition(id)?.connect.kind === "hooks";
 }
 
-/** Workspace tools that can be the main pill. */
+/**
+ * Agents that can also be the main pill: Claude Code sessions from the Claude
+ * desktop app are where some people do all their coding. They stay in the
+ * Agents group, so the catalog keeps the Mac's values.
+ */
+const MAIN_CAPABLE_AGENTS: readonly string[] = ["agent_claude-desktop"];
+
+/** Workspace tools (and MAIN_CAPABLE_AGENTS) that can be the main pill. */
 export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
-  return availablePills(os).filter((p) => p.category === "workspace" && p.support !== "soon");
+  return availablePills(os).filter(
+    (p) => (p.category === "workspace" || MAIN_CAPABLE_AGENTS.includes(p.id)) && p.support !== "soon",
+  );
 }
 
 /** PillDefinition.sessionSubtitle — next to the name in a live session's card. */
