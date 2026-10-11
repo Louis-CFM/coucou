@@ -253,6 +253,8 @@ final class BotEngine: ObservableObject {
 
     // Timing
     var lastTime: Double = CACurrentMediaTime()
+    /// Fractional engine steps owed when drawing slower than the display (Mac mini Mochis).
+    var stepDebt: Double = 0
     var t0: Double = CACurrentMediaTime() - Double.random(in: 0...5)
     var nextBlink: Double = CACurrentMediaTime() + 1.5 + Double.random(in: 0...2)
     var waveUntil: Double = 0

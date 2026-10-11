@@ -149,8 +149,16 @@ final class IslandWindowController: NSWindowController {
                 UploadSequenceEngine.shared.exitZone()
             }
         }
-        dropView.onFilesDropped = { urls in
+        dropView.onFilesDropped = { [weak self] urls in
             Task { @MainActor in
+                #if !APPSTORE
+                // During the voice email (above all after "any attachment?"), a file
+                // dropped on the notch goes into that email.
+                if VoiceActionRunner.shared.isMailInProgress, let url = urls.first {
+                    await self?.attachVoiceMailFile(url)
+                    return
+                }
+                #endif
                 await FileDropHandler.handle(urls: urls, state: AppState.shared)
             }
         }
@@ -160,6 +168,7 @@ final class IslandWindowController: NSWindowController {
         panel.contentView = container
 
         startPolling()
+        observeScreenForPolling()
         startKeyMonitor()
         startLocalKeyMonitor()
         startHotKeys()
@@ -305,7 +314,8 @@ final class IslandWindowController: NSWindowController {
             self?.fsm.greetComplete()
         }
 
-        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+        // An approval, or an email prepared by voice, stays open until I click.
+        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
 
         // Voice: wake phrase detected → open listening island
         #if !APPSTORE
@@ -333,7 +343,15 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if transcript.isEmpty {
-                    if VoiceActionRunner.shared.pendingQuestion != nil {
+                    if VoiceActionRunner.shared.isMailInProgress {
+                        // Silence during the voice email: "no attachment" → the card opens,
+                        // or the mail is cancelled. Say it, like any other answer.
+                        let result = await VoiceActionRunner.shared.handleAnswer(
+                            "", availablePills: PillCatalog.available)
+                        VoiceCaptionManager.shared.appendResponse(result.message)
+                        AppState.shared.voiceResult = result
+                        self.speakAndContinueConversation(result)
+                    } else if VoiceActionRunner.shared.pendingQuestion != nil {
                         // Re-listen timed out with no answer → show cancellation message
                         let result = await VoiceActionRunner.shared.handleAnswer(
                             "", availablePills: PillCatalog.available)
@@ -360,27 +378,43 @@ final class IslandWindowController: NSWindowController {
     // is elsewhere, so a hidden island costs next to nothing (CLAUDE.md: 0 % CPU when hidden).
 
     private static let fastPoll: TimeInterval = 1.0 / 60.0
+    private static let nearPoll: TimeInterval = 1.0 / 20.0
     private static let idlePoll: TimeInterval = 1.0 / 8.0
     private var pollInterval: TimeInterval = 0
 
+    /// Screen asleep or locked: nothing to hover, the poll stops entirely.
+    private var screenOff = false
+
     private func startPolling(interval: TimeInterval = IslandWindowController.fastPoll) {
         frameTimer?.invalidate()
+        frameTimer = nil
         pollInterval = interval
+        guard !screenOff else { return }
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             // Scheduled on the main run loop: already on the main actor, no Task per tick.
             MainActor.assumeIsolated { self?.pollFrame() }
         }
-        timer.tolerance = interval == Self.idlePoll ? 0.04 : 0
+        // A few ms of slack lets macOS group our wakeups with others; hover is unaffected.
+        timer.tolerance = interval == Self.idlePoll ? 0.04 : interval == Self.nearPoll ? 0.01 : 0.004
         RunLoop.main.add(timer, forMode: .common)
         frameTimer = timer
     }
 
     /// Picks the polling rate for the next ticks (see startPolling).
-    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect) {
-        let nearIsland = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
-        let busy = state.mode != .hidden || state.mochiOnDesktop || inAttachDrag || attachDragStart != nil
-            || fsm.state != .hidden || nearIsland
-        let wanted = busy ? Self.fastPoll : Self.idlePoll
+    /// Three rates for a hidden or resting island: 60 Hz close to the island itself, 20 Hz in the
+    /// wide band around the panel (a pointer flicked up still reaches the close zone
+    /// within one tick), 8 Hz elsewhere. Before, the whole band ran at 60 Hz, so a hidden
+    /// island polled at 60 Hz most of the time. Desktop Mochi has its own poll.
+    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect, islandRect: NSRect) {
+        let island = islandRect.offsetBy(dx: panelFrame.minX, dy: panelFrame.minY)
+        let nearIsland = island.insetBy(dx: -200, dy: -160).contains(mouse)
+        let inBand = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
+        // The resting (compact) island is treated like the hidden one: Mochi reads the
+        // pointer itself every frame, so only hover and clicks need this poll, and those
+        // only near the island. 60 Hz while open, dragging or close to it.
+        let busy = state.mode == .expanded || inAttachDrag || attachDragStart != nil
+            || fsm.state == .home || fsm.state == .coucou || fsm.state == .listening || nearIsland
+        let wanted = busy ? Self.fastPoll : inBand ? Self.nearPoll : Self.idlePoll
         if wanted != pollInterval { startPolling(interval: wanted) }
     }
 
@@ -459,10 +493,42 @@ final class IslandWindowController: NSWindowController {
             updateWindowHighlight()
         }
 
-        adjustPollRate(mouse: mouse, panelFrame: pf)
+        adjustPollRate(mouse: mouse, panelFrame: pf, islandRect: islandRect)
+    }
+
+    /// Screen asleep or locked: stop polling; back at the idle rate when it wakes.
+    private func observeScreenForPolling() {
+        let ws = NSWorkspace.shared.notificationCenter
+        let dc = DistributedNotificationCenter.default()
+        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.pausePollingForScreenOff() }
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.resumePollingAfterScreenOff() }
+        }
+        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.pausePollingForScreenOff() }
+        }
+        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.resumePollingAfterScreenOff() }
+        }
+    }
+
+    private func pausePollingForScreenOff() {
+        screenOff = true
+        frameTimer?.invalidate()
+        frameTimer = nil
+    }
+
+    private func resumePollingAfterScreenOff() {
+        guard screenOff else { return }
+        screenOff = false
+        startPolling(interval: Self.idlePoll)
     }
 
     private var lastMouse: CGPoint = .zero
+    private var lastHighlightMouse: CGPoint = .zero
+    private var lastHighlightScan: CFTimeInterval = 0
 
     // MARK: - Bot-head hover (love emote — mirrors prototype botHover())
 
@@ -765,14 +831,14 @@ final class IslandWindowController: NSWindowController {
 
     private func startKeyMonitor() {
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Every key typed anywhere lands here: only Escape goes further (no Task per key).
+            guard event.keyCode == 53 else { return }
             Task { @MainActor in
                 guard let self = self else { return }
-                if event.keyCode == 53 { // Escape
-                    // Escape typed in another app (Claude Code's own interrupt, an editor…)
-                    // never folds a pending approval away: only Escape in the notch does.
-                    if self.state.mode == .expanded && !self.state.isPinned {
-                        self.collapse()
-                    }
+                // Escape typed in another app (Claude Code's own interrupt, an editor…)
+                // never folds a pending approval away: only Escape in the notch does.
+                if self.state.mode == .expanded && !self.state.isPinned {
+                    self.collapse()
                 }
             }
         }
@@ -796,6 +862,13 @@ final class IslandWindowController: NSWindowController {
             self.silentNextReveal = true
             self.fsm.reveal()
             self.silentNextReveal = false
+        }
+
+        // Email prepared by voice: open the mail card, filled in, for me to check and send.
+        NotificationCenter.default.addObserver(forName: .voiceShowMailCard, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.fsm.openedExternally()
+            self.expand(to: .mail)
         }
 
         // Collapse requests from views (OK button, etc.)
@@ -1022,6 +1095,13 @@ final class IslandWindowController: NSWindowController {
 
     private func updateWindowHighlight() {
         let mouse = NSEvent.mouseLocation
+        // Listing every window is costly: skip while the pointer stays put (a window
+        // moving under a still pointer is caught within a quarter second).
+        let now = CACurrentMediaTime()
+        if hypot(mouse.x - lastHighlightMouse.x, mouse.y - lastHighlightMouse.y) < 2,
+           now - lastHighlightScan < 0.25 { return }
+        lastHighlightMouse = mouse
+        lastHighlightScan = now
         guard let (appKitBounds, pid) = windowBoundsAtScreenPoint(mouse) else {
             // Fade out + close if no window under cursor
             if let old = highlightPanel {
@@ -1364,7 +1444,9 @@ extension IslandWindowController {
         // ── Short noise / spurious activation guard (conversation mode only) ────────
         // A transcript shorter than 2 words that isn't a pill name or known command
         // is almost certainly a false activation. Silently re-listen without feedback.
-        if isInConversation {
+        // A one-word reply to Coucou's own question ("Tana", "non", "yes" after "want the
+        // details?") is expected, not noise.
+        if isInConversation && runner.pendingQuestion == nil && !runner.hasWebThread {
             let normWords = normTranscript.split(separator: " ").map(String.init)
             if normWords.count < 2 {
                 let isPillName = pills.contains { IntentParser.normalise($0.name) == normTranscript }
@@ -1383,9 +1465,8 @@ extension IslandWindowController {
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
             VoiceTranscriptHistory.shared.record(transcript: transcript, note: result.message, origin: .answer)
-            if result.outcome != .success {
-                NotificationCenter.default.post(name: .botDizzy, object: nil)
-            }
+            // A question back ("What's the subject?") is not a miss: no reaction.
+            if result.outcome == .failure { voiceMissReaction() }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(result.message)
             AppState.shared.voiceResult = result
@@ -1429,9 +1510,7 @@ extension IslandWindowController {
                 outcome: anyFailure ? .failure : .success,
                 message: parts.joined(separator: " · ")
             )
-            if anyFailure {
-                NotificationCenter.default.post(name: .botDizzy, object: nil)
-            }
+            if anyFailure { voiceMissReaction() }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(combined.message)
             AppState.shared.voiceResult = combined
@@ -1440,7 +1519,7 @@ extension IslandWindowController {
         }
 
         // ── Relative context resolution ────────────────────────────────────────────
-        let intent: VoiceIntent
+        var intent: VoiceIntent
         let transcriptOrigin: TranscriptOrigin
         if conversationContext.lastIntent != nil,
            let resolved = conversationContext.resolveRelative(transcript, pills: pills) {
@@ -1449,6 +1528,20 @@ extension IslandWindowController {
         } else {
             intent = IntentParser.parse(transcript, pills: pills)
             transcriptOrigin = .parser
+        }
+
+        // Web search on (Settings → Voice): a question no pill or service answers goes to
+        // Claude with web search, and so does the reply to its own follow-up question.
+        if case .unknown = intent, runner.info.webSearchEnabled, runner.info.hasWebKey,
+           VoiceQuery.looksLikeQuestion(transcript) || (isInConversation && runner.hasWebThread) {
+            intent = .webSearch(query: transcript)
+        }
+        if case .webSearch(let q) = intent, !q.isEmpty,
+           runner.info.webSearchEnabled, runner.info.hasWebKey, VoiceSettings.speakEnabled {
+            // A web search takes a few seconds: say so instead of going quiet.
+            VoiceSpeaker.shared.onDidFinish = nil
+            let wait = VoiceSettings.language == "fr" ? "Je regarde." : "Let me check."
+            VoiceSpeaker.shared.speak(wait, locale: VoiceSettings.answerLocale)
         }
 
         // ── Single command ─────────────────────────────────────────────────────────
@@ -1578,7 +1671,7 @@ extension IslandWindowController {
             conversationContext.update(effectiveIntent)
             consecutiveFailures = 0
         case .failure:
-            NotificationCenter.default.post(name: .botDizzy, object: nil)
+            voiceMissReaction()
             if isInConversation { consecutiveFailures += 1 }
         case .question:
             break   // Mochi will show listening after re-open
@@ -1604,7 +1697,7 @@ extension IslandWindowController {
                 speaker.onDidFinish = { [weak self] in
                     Task { @MainActor in
                         guard self != nil else { return }
-                        VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                        VoiceEngine.shared.startListeningDirectly(firstWordTimeout: Self.answerWait(5.0))
                     }
                 }
             } else {
@@ -1612,7 +1705,7 @@ extension IslandWindowController {
                 voiceResultWork = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                     guard self != nil else { return }
-                    VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                    VoiceEngine.shared.startListeningDirectly(firstWordTimeout: Self.answerWait(5.0))
                 }
             }
         } else {
@@ -1625,7 +1718,7 @@ extension IslandWindowController {
         if let emote = emote {
             NotificationCenter.default.post(name: .triggerEmote, object: emote)
         } else if result.outcome == .failure {
-            NotificationCenter.default.post(name: .botDizzy, object: nil)
+            voiceMissReaction()
         }
         AppState.shared.voiceResult = result
         expand(to: .voiceResult)
@@ -1706,10 +1799,41 @@ extension IslandWindowController {
             isInConversation = true
             VoiceBrain.shared.beginConversation()
             if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
-            VoiceEngine.shared.startConversationTurn()
+            VoiceEngine.shared.startConversationTurn(firstWordTimeout: Self.answerWait(8.0))
         } else {
             closeVoiceTurn()
         }
+    }
+
+    /// A voice command that failed: a small "huh?" from Mochi. Not .botDizzy, which is the
+    /// slap reaction and opened the "Too many hits at once" card in the middle of a mail.
+    @MainActor
+    func voiceMissReaction() {
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
+    }
+
+    /// Seconds to wait for the first word of a reply: longer while Coucou waits for a
+    /// file, since finding it in Finder and dragging it takes a moment.
+    @MainActor
+    static func answerWait(_ normal: TimeInterval) -> TimeInterval {
+        VoiceActionRunner.shared.isWaitingForAttachment ? 20.0 : normal
+    }
+
+    /// A file dropped on the notch while Coucou asked for an attachment: stop listening,
+    /// a little gulp, then the filled-in mail card and Coucou says so.
+    @MainActor
+    func attachVoiceMailFile(_ url: URL) async {
+        VoiceEngine.shared.cancelListening()
+        let state = AppState.shared
+        state.fileDragOver = false
+        NotificationCenter.default.post(name: .botGulp, object: nil)
+        NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        if state.soundEnabled { SoundEngine.shared.play("approve") }
+        let result = await VoiceActionRunner.shared.attachDroppedFile(url)
+        VoiceCaptionManager.shared.appendResponse(result.message)
+        state.voiceResult = result
+        speakAndContinueConversation(result)
     }
 
     /// Stop listening and let the island settle. The context (last action, model session)
@@ -1726,6 +1850,7 @@ extension IslandWindowController {
         let expiry = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 self?.conversationContext.reset()
+                VoiceActionRunner.shared.resetWebThread()
                 VoiceBrain.shared.endConversation()
             }
         }
@@ -1747,6 +1872,12 @@ extension IslandWindowController {
             guard let self else { return }
             AppState.shared.voiceResult = nil
             AppState.shared.voiceActive = false
+            if AppState.shared.voiceMailDraft != nil {
+                // The voice email card stays open until I click Send or Cancel.
+                self.fsm.openedExternally()
+                self.expand(to: .mail)
+                return
+            }
             // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
             AppState.shared.view = self.defaultView()
             self.fsm.voiceFinished()
@@ -1770,6 +1901,7 @@ extension Notification.Name {
     static let botMorphTo       = Notification.Name("notchBuddy.botMorphTo")
     static let islandAction     = Notification.Name("notchBuddy.islandAction")
     static let islandCollapse      = Notification.Name("notchBuddy.islandCollapse")
+    static let voiceShowMailCard   = Notification.Name("notchBuddy.voiceShowMailCard")
     static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
