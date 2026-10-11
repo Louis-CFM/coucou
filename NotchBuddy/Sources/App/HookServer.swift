@@ -600,6 +600,12 @@ final class HookServer: @unchecked Sendable {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
                 break
             }
+            // The finished card's "Open terminal" goes back to the session that just finished,
+            // even if Coucou started mid-turn or another session spoke in between
+            if agentId == "integration_claude", let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+                state.tasks[idx].hostApp = hostApp
+                state.tasks[idx].hostURL = ClaudeHost.sessionURL(from: payload)
+            }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
