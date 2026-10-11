@@ -24,6 +24,7 @@ mod platform;
 #[cfg(target_os = "linux")]
 mod portal;
 mod recap;
+mod remote;
 mod secrets;
 mod session_window;
 mod settings;
@@ -124,6 +125,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    remote::sync(&app, &settings.remote_hosts);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -243,6 +245,10 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// folder in VS Code, as before.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+    // On another machine: no window or folder here is the session's.
+    if session_id.as_deref().is_some_and(remote::is_remote_session) {
+        return false;
+    }
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
         return open_in_vscode(path);
     };
@@ -328,6 +334,21 @@ fn agent_hooks_status() -> std::collections::HashMap<String, bool> {
 }
 
 /// Returns the diff the user has to look at before anything is written.
+#[tauri::command]
+fn remote_status() -> Vec<remote::HostStatus> {
+    remote::status()
+}
+
+#[tauri::command]
+async fn remote_preview(host: String, install: bool) -> Result<HookPreview, String> {
+    remote::preview(&host, install).await
+}
+
+#[tauri::command]
+async fn remote_apply(host: String, install: bool, fingerprint: String) -> Result<String, String> {
+    remote::apply(&host, install, &fingerprint).await
+}
+
 #[tauri::command]
 fn hooks_preview(install: bool) -> Result<HookPreview, String> {
     hooks::preview(install)
@@ -697,6 +718,9 @@ pub fn run() {
             hooks_status,
             agent_hooks_status,
             hooks_preview,
+            remote_status,
+            remote_preview,
+            remote_apply,
             hooks_apply,
             agent_hooks_list,
             agent_hooks_preview,
@@ -816,6 +840,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            remote::sync(&handle, &loaded.remote_hosts);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

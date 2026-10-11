@@ -162,6 +162,8 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** SSH destinations whose Claude Code sessions show in the island (remote.rs). */
+  remoteHosts: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -190,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  remoteHosts: [],
 };
 
 type Listener = () => void;

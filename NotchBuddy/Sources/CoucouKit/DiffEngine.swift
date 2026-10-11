@@ -24,6 +24,7 @@ struct FileDiff: Equatable {
     var hunks: [DiffHunk]
     var tooLarge: Bool
     var isNewFile: Bool     // true when produced by DiffEngine.fromNew (Write tool)
+    var remote = false      // made on a remote host: its path is not on this Mac
 
     var name: String { URL(fileURLWithPath: path).lastPathComponent }
 

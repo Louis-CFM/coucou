@@ -108,6 +108,17 @@ fn status_line_is_ours(v: &Value) -> bool {
 /// `hooks` (or one of its events) that is not what Claude Code documents is
 /// refused rather than replaced.
 fn merged(existing: &Value) -> Result<Value, String> {
+    merged_with(existing, &hook_command)
+}
+
+/// A remote host's settings.json with Coucou's hooks added or removed; `relay`
+/// is where the relay sits on that host (remote.rs).
+pub fn remote_settings(existing: &Value, install: bool, relay: &str) -> Result<Value, String> {
+    let relay = agents::Relay { exe: relay.to_string(), windows: false };
+    if install { merged_with(existing, &|event| relay.command(Shell::Sh, event)) } else { without_ours(existing) }
+}
+
+fn merged_with(existing: &Value, hook_command: &dyn Fn(&str) -> String) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = match root.get("hooks") {
         None => Map::new(),
