@@ -441,7 +441,7 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
-  "compactPadding": { "top": 2.0, "right": 6.0, "bottom": 4.0, "left": 6.0 },
+  "compactPadding": { "top": 2.0, "right": 6.0, "bottom": 4.0, "left": 6.0, "width": 300.0 },
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
