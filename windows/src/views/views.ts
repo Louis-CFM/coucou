@@ -17,6 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { buildCodeView, hasCode } from "./session";
 import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
@@ -136,7 +137,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "code");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -174,9 +175,14 @@ function buildOverview(actions: ViewActions): ViewHost {
   const closeDiff = () => {
     if (activeDiffId == null) return;
     activeDiffId = null;
+    // Closing a live diff stops following that session until its next prompt.
+    State.stopFollowing();
     State.notify();
   };
+  /** Set by a click on a diff row, so the same click does not also open the code view. */
+  let diffTapped = false;
   const ticker = new Ticker((diffId) => {
+    diffTapped = true;
     actions.blip();
     activeDiffId = diffId;
     State.notify();
@@ -189,7 +195,24 @@ function buildOverview(actions: ViewActions): ViewHost {
     { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 8),
   );
-  const left = card(null, leftBody, jump);
+  // </> next to ↗, as on the Mac; a click anywhere on the card opens it too.
+  const codeBtn = h(
+    "button",
+    { class: "icon-btn code-open", title: tl("Code"), onclick: () => { actions.blip(); actions.setView("code"); } },
+    svg(ICONS.code, 9, { stroke: 2.2 }),
+  );
+  const left = card(null, leftBody, jump, codeBtn);
+  // A Claude Code session that has edited a file or run a command: its card opens
+  // the code view. Only on a click, nothing opens by itself.
+  const codeOpens = () => mode === "ticker" && hasCode(State.focusTask?.id);
+  left.addEventListener("click", (e) => {
+    const tapped = diffTapped;
+    diffTapped = false;
+    if (tapped || !codeOpens()) return;
+    if ((e.target as Element | null)?.closest?.(".jump, .code-open")) return;
+    actions.blip();
+    actions.setView("code");
+  });
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
@@ -309,6 +332,10 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
       syncPlanTimer(planOpen);
 
+      // Following edits live: the focused session's latest edit is the one open.
+      const live = State.liveDiff != null && task?.id === State.liveDiff.pillId;
+      if (live && State.mode === "expanded") activeDiffId = State.liveDiff!.diffId;
+
       // A diff that has since been dropped (cap, expiry, session end) just closes.
       const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
       if (!diff) activeDiffId = null;
@@ -321,7 +348,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
         plan.sync();
       } else if (task && diff) {
-        const key = `diff~${task.id}~${diff.id}`;
+        const key = `diff~${task.id}~${diff.id}~${live}`;
         if (key !== cardKey) {
           cardKey = key;
           mode = "diff";
@@ -332,6 +359,7 @@ function buildOverview(actions: ViewActions): ViewHost {
               closeDiff();
             },
             open: (path) => void Bridge.openFileInVSCode(path),
+            live,
           }));
         }
       } else if (task && sessionActive) {
@@ -381,6 +409,9 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      left.classList.toggle("expandable", codeOpens());
+      codeBtn.style.display = codeOpens() && jump.style.display !== "none" ? "" : "none";
+      who.classList.toggle("with-code", codeBtn.style.display !== "none");
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
@@ -807,6 +838,7 @@ export function buildViews(
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
   map.set("overview", buildOverview(actions));
+  map.set("code", buildCodeView(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
   map.set("question", buildQuestion(actions));

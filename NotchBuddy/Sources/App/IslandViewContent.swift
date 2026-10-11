@@ -27,6 +27,7 @@ struct IslandViewContent: View {
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
         case .wardrobe:  WardrobeView(state: state)
         case .recap:     WeeklyRecapCardView(state: state)
+        case .code:      CodeSessionView(state: state)
         case .listening:
             #if !APPSTORE
             VoiceListeningView(isActive: state.view == .listening)
@@ -51,6 +52,18 @@ struct OverviewView: View {
     @State private var activeDiffId: Int? = nil
 
     var agent: AgentTask? { state.focusTask }
+
+    /// Following edits live: the focused session's latest edit.
+    private var liveDiffId: Int? {
+        guard state.mode == .expanded, let live = state.liveDiff, live.pillId == agent?.id else { return nil }
+        return live.diffId
+    }
+    private var shownDiffId: Int? { liveDiffId ?? activeDiffId }
+
+    private func closeDiff() {
+        activeDiffId = nil
+        if state.liveDiff != nil { state.stopFollowing() }
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -97,7 +110,7 @@ struct OverviewView: View {
                             }
                             .padding(.top, 6)
                             .padding(.leading, 108)
-                            .padding(.trailing, 36)
+                            .padding(.trailing, hasCode ? 56 : 36)
 
                             TickerView(task: agent, onDiffTap: { diffIdx in
                                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
@@ -128,20 +141,35 @@ struct OverviewView: View {
                 #endif
 
                 // Diff overlay — replaces ticker when a diff step is tapped
-                if let diffId = activeDiffId,
+                if let diffId = shownDiffId,
                    let task = agent,
                    let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
                     CardBackground(wash: nil)
-                    DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
+                    DiffCardView(diff: diff, live: liveDiffId != nil, onDismiss: { closeDiff() })
                         .transition(.opacity)
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
                 #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || shownDiffId != nil
                 #else
-                let hideJumpButton = showingN8nDetail || activeDiffId != nil
+                let hideJumpButton = showingN8nDetail || shownDiffId != nil
                 #endif
+                if !hideJumpButton && hasCode {
+                    Button(action: openCode) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .font(.system(size: 7, weight: .semibold))
+                            .foregroundColor(Color(hex: "#5F646D"))
+                            .frame(width: 16, height: 16)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(String(localized: "Code"))
+                    .padding(.top, 8)
+                    .padding(.trailing, 30)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
@@ -158,6 +186,10 @@ struct OverviewView: View {
                 }
             }
             .frame(width: 322)
+            // A click on the card opens the code view too, as on Windows and Linux;
+            // the ticker's diff rows and the buttons keep their own taps.
+            .contentShape(Rectangle())
+            .onTapGesture { if hasCode && !detailOpen { openCode() } }
 
             // Right card: agent pills
             CardBackground(wash: nil) {
@@ -186,14 +218,32 @@ struct OverviewView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
-            if let id = activeDiffId {
-                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = nil }
-                _ = id
+            if shownDiffId != nil {
+                withAnimation(.easeIn(duration: 0.16)) { closeDiff() }
             } else if let task = state.focusTask,
                       let last = state.sessionDiffs[task.id]?.last {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
             }
         }
+    }
+
+    /// A detail (n8n, plan, a diff) stands in for the ticker.
+    private var detailOpen: Bool {
+        #if !APPSTORE
+        return showingN8nDetail || state.showingPlanDetail || shownDiffId != nil
+        #else
+        return showingN8nDetail || shownDiffId != nil
+        #endif
+    }
+
+    /// The focused Claude Code session has an edit or a command for the code view.
+    private var hasCode: Bool {
+        guard let agent else { return false }
+        return state.codeSessions[agent.id]?.hasContent == true
+    }
+
+    private func openCode() {
+        withAnimation(.easeIn(duration: 0.16)) { state.view = .code }
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -657,6 +707,8 @@ struct FinishedView: View {
 
 struct DiffCardView: View {
     let diff: FileDiff
+    /// Following edits as they happen (Settings → Follow edits live).
+    var live = false
     let onDismiss: () -> Void
 
     private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
@@ -676,6 +728,15 @@ struct DiffCardView: View {
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 }
                 .buttonStyle(.plain)
+                if live {
+                    Text(String(localized: "Live").uppercased())
+                        .font(.system(size: 9, weight: .semibold).monospaced())
+                        .foregroundColor(Color(hex: "#22C55E"))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color(hex: "#22C55E").opacity(0.18))
+                        .clipShape(Capsule())
+                }
                 Spacer(minLength: 2)
                 if diff.added > 0 {
                     Text("+\(diff.added)")
@@ -2075,7 +2136,7 @@ struct IntegrationCardView: View {
                 }
                 .padding(.top, 6)
                 .padding(.leading, 108)
-                .padding(.trailing, 36)
+                .padding(.trailing, appState.codeSessions[task.id]?.hasContent == true ? 56 : 36)
 
                 TickerView(task: task, onDiffTap: onDiffTap)
                     .frame(height: 44)

@@ -11,6 +11,7 @@ const STRINGS = {
   open: N_("Open in VS Code"),
   tooLarge: N_("Diff too large"),
   noChanges: N_("No changes"),
+  live: N_("Live"),
 };
 
 const SYMBOLS: Record<DiffKind, string> = { added: "+", removed: "−", context: " " };
@@ -19,6 +20,8 @@ export interface DiffCardHooks {
   dismiss(): void;
   /** ↗ — opens the file in the editor. */
   open(path: string): void;
+  /** Following edits as they happen (Settings → Follow edits live). */
+  live?: boolean;
 }
 
 export function buildDiffCard(diff: FileDiff, hooks: DiffCardHooks): HTMLElement {
@@ -31,6 +34,7 @@ export function buildDiffCard(diff: FileDiff, hooks: DiffCardHooks): HTMLElement
       svg(ICONS.chevronLeft, 9, { stroke: 2.4 }),
       h("b", { text: fileName(diff.path) }),
     ),
+    hooks.live ? h("span", { class: "diff-live", text: tl(STRINGS.live) }) : null,
     h("span", { class: "grow" }),
     diff.added > 0 ? h("span", { class: "tick-count plus", text: `+${diff.added}` }) : null,
     diff.removed > 0 ? h("span", { class: "tick-count minus", text: `−${diff.removed}` }) : null,

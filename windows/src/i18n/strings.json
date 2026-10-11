@@ -398,6 +398,17 @@
    "ru": "Автоматизация не разрешена",
    "id": "Otomatisasi tidak diizinkan"
   },
+  "Back": {
+   "zh-Hans": "返回",
+   "hi": "वापस",
+   "es": "Atrás",
+   "ar": "رجوع",
+   "fr": "Retour",
+   "bn": "ফিরে যান",
+   "pt-BR": "Voltar",
+   "ru": "Назад",
+   "id": "Kembali"
+  },
   "Behavior": {
    "zh-Hans": "行为",
    "hi": "व्यवहार",
@@ -650,6 +661,17 @@
    "pt-BR": "Fechar island (se não fixado)",
    "ru": "Закрыть нотч (если не закреплён)",
    "id": "Tutup island (jika tidak disematkan)"
+  },
+  "Code": {
+   "zh-Hans": "代码",
+   "hi": "कोड",
+   "es": "Código",
+   "ar": "شيفرة",
+   "fr": "Code",
+   "bn": "কোড",
+   "pt-BR": "Código",
+   "ru": "Код",
+   "id": "Kode"
   },
   "Codex hooks": {
    "zh-Hans": "Codex 钩子",
@@ -992,6 +1014,17 @@
    "ru": "Дублирующийся",
    "id": "Duplikat"
   },
+  "Each file Claude Code edits opens in the island as it happens, and the next edit replaces it. Close it to stop following until the next prompt.": {
+   "zh-Hans": "Claude Code 编辑的每个文件都会在岛中实时打开，下一次编辑会替换它。关闭它即可停止跟随，直到下一条提示。",
+   "hi": "Claude Code जो भी फ़ाइल बदलता है, वह उसी समय आइलैंड में खुलती है, और अगला बदलाव उसकी जगह ले लेता है। अगले प्रॉम्प्ट तक फ़ॉलो करना रोकने के लिए इसे बंद करें।",
+   "es": "Cada archivo que Claude Code edita se abre en la isla en el momento, y la siguiente edición lo reemplaza. Ciérralo para dejar de seguirlo hasta el próximo mensaje.",
+   "ar": "كل ملف يعدّله Claude Code يُفتح في الجزيرة لحظة تعديله، ويحل التعديل التالي محله. أغلقه لإيقاف المتابعة حتى الطلب التالي.",
+   "fr": "Chaque fichier que Claude Code modifie s'ouvre dans l'île au moment même, et la modification suivante le remplace. Ferme-le pour arrêter de suivre jusqu'au prochain message.",
+   "bn": "Claude Code যে ফাইলই সম্পাদনা করে, তা সঙ্গে সঙ্গে আইল্যান্ডে খোলে, আর পরের সম্পাদনা সেটির জায়গা নেয়। পরের প্রম্পট পর্যন্ত অনুসরণ বন্ধ রাখতে এটি বন্ধ করুন।",
+   "pt-BR": "Cada arquivo que o Claude Code edita abre na ilha na hora, e a próxima edição o substitui. Feche-o para parar de acompanhar até o próximo prompt.",
+   "ru": "Каждый файл, который правит Claude Code, сразу открывается в острове, а следующая правка его заменяет. Закройте его, чтобы не следить до следующего запроса.",
+   "id": "Setiap file yang disunting Claude Code terbuka di pulau saat itu juga, dan suntingan berikutnya menggantikannya. Tutup untuk berhenti mengikuti sampai prompt berikutnya."
+  },
   "Edits": {
    "zh-Hans": "编辑",
    "hi": "संपादित करता है",
@@ -1101,6 +1134,17 @@
    "pt-BR": "Busca",
    "ru": "Получает",
    "id": "Mengambil"
+  },
+  "Follow edits live": {
+   "zh-Hans": "实时跟随编辑",
+   "hi": "बदलाव लाइव देखें",
+   "es": "Seguir los cambios en vivo",
+   "ar": "متابعة التعديلات مباشرة",
+   "fr": "Suivre les modifications en direct",
+   "bn": "সম্পাদনা লাইভ অনুসরণ করুন",
+   "pt-BR": "Acompanhar as edições ao vivo",
+   "ru": "Следить за правками вживую",
+   "id": "Ikuti suntingan secara langsung"
   },
   "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
    "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
@@ -1596,6 +1640,17 @@
    "pt-BR": "Lista",
    "ru": "Перечисляет",
    "id": "Daftar"
+  },
+  "Live": {
+   "zh-Hans": "实时",
+   "hi": "लाइव",
+   "es": "En vivo",
+   "ar": "مباشر",
+   "fr": "En direct",
+   "bn": "লাইভ",
+   "pt-BR": "Ao vivo",
+   "ru": "Вживую",
+   "id": "Langsung"
   },
   "Loading models…": {
    "zh-Hans": "正在加载模型…",

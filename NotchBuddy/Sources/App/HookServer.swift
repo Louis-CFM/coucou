@@ -446,6 +446,10 @@ final class HookServer: @unchecked Sendable {
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
+        if !isExternalAgent && !isCodexEvent {
+            recordCode(event: name, pillId: agentId, payload: payload, cwd: cwd, project: projectName)
+        }
+
         switch name {
 
         case "SessionStart":
@@ -467,6 +471,7 @@ final class HookServer: @unchecked Sendable {
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
+            state.endFollow(agentId)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
             }
@@ -499,6 +504,7 @@ final class HookServer: @unchecked Sendable {
                 let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
                 appendStep(id: agentId, step: step)
                 RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
+                followEdit(pillId: agentId, diffId: idx)
             }
 
         case "PostToolUseFailure":
@@ -518,6 +524,7 @@ final class HookServer: @unchecked Sendable {
 
         case "Stop":
             state.updateTask(id: agentId, state: .finished)
+            if state.liveDiff?.pillId == agentId { state.liveDiff = nil }
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
@@ -563,6 +570,7 @@ final class HookServer: @unchecked Sendable {
         case "SessionEnd":
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
+            state.endFollow(agentId)
             state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
             RecapStore.shared.sessionEnd(sessionId: recapSessionId)
@@ -619,6 +627,31 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Helpers
+
+    /// Settings → Follow edits live: the edit just made opens on its diff (LiveEdits.mayFollow).
+    @MainActor
+    private func followEdit(pillId: String, diffId: Int) {
+        let state = AppState.shared
+        let follow = LiveEdits.mayFollow(
+            enabled: state.followEdits,
+            stopped: state.liveStopped.contains(pillId),
+            cardPending: state.pendingApproval != nil || state.pendingQuestion != nil,
+            expanded: state.mode == .expanded,
+            // The code view this session is followed in counts as the overview.
+            onOverview: state.view == .overview || (state.view == .code && state.liveDiff?.pillId == pillId),
+            typing: NSApp.keyWindow?.firstResponder is NSTextView,
+            followingOther: state.liveDiff.map { $0.pillId != pillId } ?? false)
+        guard follow else { return }
+        state.liveDiff = LiveDiff(pillId: pillId, diffId: diffId)
+        state.focusId = pillId
+        // Its code view when the session has one; the diff card otherwise (remote hosts, other agents).
+        let view: IslandView = state.codeSessions[pillId]?.hasContent == true ? .code : .overview
+        if state.mode != .expanded {
+            NotificationCenter.default.post(name: .hookExpand, object: view)
+        } else if state.view != view {
+            withAnimation(.easeIn(duration: 0.16)) { state.view = view }
+        }
+    }
 
     @MainActor
     private func expandIfNeeded(to view: IslandView) {
@@ -1030,6 +1063,56 @@ final class HookServer: @unchecked Sendable {
         state.tasks[idx].steps.append(step)
         if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
         state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
+    }
+
+    // MARK: - Code view
+
+    /// Keeps what the code view shows of a Claude Code session: phases, last edit, last command.
+    @MainActor
+    private func recordCode(event: String, pillId: String, payload: [String: Any], cwd: String, project: String) {
+        let state = AppState.shared
+        if event == "SessionEnd" {
+            state.codeSessions[pillId] = nil
+            return
+        }
+        var session = state.codeSessions[pillId] ?? CodeSession(project: project, root: cwd)
+        let tool = payload["tool_name"] as? String ?? ""
+        switch event {
+        case "UserPromptSubmit":
+            session = CodeSession(project: project, root: cwd)
+        case "PreToolUse":
+            session.toolStarted(tool: tool, input: payload["tool_input"] as? [String: Any] ?? [:], cwd: cwd)
+            if readsSnippet(tool, payload, session.edit) { session.awaitSnippet() }
+        case "PostToolUse", "PostToolUseFailure":
+            let failed = event == "PostToolUseFailure"
+            session.toolFinished(tool: tool, response: payload["tool_response"], failed: failed, error: payload["error"] as? String)
+            if !failed, readsSnippet(tool, payload, session.edit), let edit = session.edit {
+                loadSnippet(edit, pillId: pillId, root: session.root, cwd: cwd)
+            }
+        case "Stop":
+            session.endTurn()
+        default:
+            return
+        }
+        state.codeSessions[pillId] = session
+    }
+
+    /// Reads the lines around an edit off the main thread, then adds them if the edit is still the one shown.
+    @MainActor
+    private func loadSnippet(_ edit: CodeEdit, pillId: String, root: String, cwd: String) {
+        let base = edit.path.hasPrefix(root + "/") ? root : cwd
+        DispatchQueue.global(qos: .utility).async {
+            let snippet = CodeView.readSnippet(path: edit.path, root: base, find: edit.added)
+            Task { @MainActor in
+                AppState.shared.codeSessions[pillId]?.snippetRead(snippet, for: edit)
+            }
+        }
+    }
+
+    /// An Edit made on this Mac: the lines around it are read from the file. A remote
+    /// session's files are on its host.
+    private func readsSnippet(_ tool: String, _ payload: [String: Any], _ edit: CodeEdit?) -> Bool {
+        tool == "Edit" && payload["coucou_remote"] == nil && edit?.added.isEmpty == false
     }
 
     // MARK: - Project name alias mapping

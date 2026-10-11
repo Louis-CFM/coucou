@@ -15,6 +15,7 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { beginTurn, dropCode, endTurn, hasCode, toolFinished, toolStarted, type CodeSource } from "../views/session";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -69,6 +70,12 @@ interface HookPayload {
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
+  /** PostToolUse of Bash / PowerShell: the last lines it printed (the relay keeps nothing else of its output). */
+  tool_tail?: unknown;
+  /** PostToolUseFailure: why the tool failed. */
+  error?: string;
+  /** Set when the session runs on another machine: its files cannot be read here. */
+  coucou_remote?: unknown;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -215,13 +222,41 @@ function clearFinalLine(id: string) {
  * exist, so a stray event cannot grow memory. An edit the relay had to cut
  * would give wrong counts: the PreToolUse step ("Edits · file") stands alone.
  */
-function recordDiff(agentId: string, payload: HookPayload) {
-  if (payload.coucou_diff_truncated) return;
-  if (!State.tasks.some((t) => t.id === agentId)) return;
+function recordDiff(agentId: string, payload: HookPayload): number | null {
+  if (payload.coucou_diff_truncated) return null;
+  if (!State.tasks.some((t) => t.id === agentId)) return null;
   const diff = buildFileDiff(payload.tool_name ?? "", payload.tool_input ?? {});
-  if (!diff) return;
+  if (!diff) return null;
   const id = State.appendSessionDiff(agentId, diff);
   State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
+  return id;
+}
+
+/**
+ * Settings → Follow edits live: the edit just made opens on its diff. Never over
+ * a card, the chat or anything else open, nor while you type, nor over another
+ * session's live diff; a pill whose live diff you closed waits for its next prompt.
+ */
+function followEdit(island: Island, pillId: string, diffId: number) {
+  if (!State.settings.followEdits || State.liveStopped.has(pillId) || State.pendingApproval) return;
+  const expanded = State.mode === "expanded";
+  const typing = /^(INPUT|TEXTAREA)$/.test(globalThis.document?.activeElement?.tagName ?? "");
+  // The code view this session is followed in counts as the overview.
+  const onOverview = State.view === "overview" || (State.view === "code" && State.liveDiff?.pillId === pillId);
+  if (expanded && (!onOverview || typing)) return;
+  if (expanded && State.liveDiff && State.liveDiff.pillId !== pillId) return;
+  State.liveDiff = { pillId, diffId };
+  State.setFocus(pillId);
+  // Its code view when the session has one; the diff card otherwise (remote hosts, other agents).
+  const view = hasCode(pillId) ? "code" : "overview";
+  if (expanded) island.setView(view);
+  else island.alert(view);
+}
+
+/** The session's turn is over or starts anew: it stops being followed, or may be again. */
+function endFollow(pillId: string) {
+  if (State.liveDiff?.pillId === pillId) State.liveDiff = null;
+  State.liveStopped.delete(pillId);
 }
 
 export function registerHookHandlers(island: Island) {
@@ -313,6 +348,15 @@ function handleHook(island: Island, payload: HookPayload) {
   // back to the pill you were on.
   const focused = State.focusId === agentId;
 
+  // The code view's data: Claude Code's own pills only. Opening it is the user's click.
+  const code: CodeSource | null = isExternalAgent
+    ? null
+    : { sessionId, cwd, project: projectName, remote: !!payload.coucou_remote };
+  /** Leaves the code view when what it shows of this pill is gone. */
+  const leaveCode = () => {
+    if (focused && State.view === "code") island.setView(State.defaultView());
+  };
+
   switch (name) {
     case "SessionStart":
       ensurePill();
@@ -330,9 +374,14 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       clearFinalLine(agentId);
       State.updateTask(agentId, "thinking");
+      endFollow(agentId);
       // The field is `prompt`; reading `message` meant this step was always blank.
       const asked = payload.prompt ?? payload.message;
       if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      if (code) {
+        beginTurn(agentId, code);
+        leaveCode();
+      }
       surface("overview", false);
       break;
     }
@@ -344,6 +393,7 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
+      if (code) toolStarted(agentId, code, tool, payload.tool_input ?? {});
       surface("overview", false);
       break;
     }
@@ -361,13 +411,27 @@ function handleHook(island: Island, payload: HookPayload) {
         dropPendingCard(island);
       }
       State.updateTask(agentId, "working");
-      recordDiff(agentId, payload);
+      // The code view's data first, so following can open it on this very edit.
+      if (code) {
+        const tail = Array.isArray(payload.tool_tail) ? payload.tool_tail : undefined;
+        toolFinished(agentId, cwd, payload.tool_name ?? "", payload.tool_input ?? {}, { tail });
+      }
+      {
+        const diffId = recordDiff(agentId, payload);
+        if (diffId != null) followEdit(island, agentId, diffId);
+      }
       break;
 
     case "PostToolUseFailure":
       supersedeStop();
       State.updateTask(agentId, "working");
       State.appendStep(agentId, t("⚠ failed"));
+      if (code) {
+        toolFinished(agentId, cwd, payload.tool_name ?? "", payload.tool_input ?? {}, {
+          failed: true,
+          error: payload.error,
+        });
+      }
       break;
 
     case "Notification": {
@@ -386,7 +450,9 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
+      if (code) endTurn(agentId);
       State.updateTask(agentId, "finished");
+      if (State.liveDiff?.pillId === agentId) State.liveDiff = null;
       // Claude Code puts the turn's answer in the Stop payload itself, so there is
       // no transcript to read (the relay does not even forward its path). Other
       // agents report their last words the same way (Hermes, Codex) or as
@@ -436,7 +502,12 @@ function handleHook(island: Island, payload: HookPayload) {
       // Nothing left for the timer to do, and it must not outlive the session: a
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
+      endFollow(agentId);
       State.clearSessionDiffs(agentId);
+      if (code) {
+        dropCode(agentId);
+        leaveCode();
+      }
       if (isExternalAgent) {
         State.removeTask(agentId);
       } else {
