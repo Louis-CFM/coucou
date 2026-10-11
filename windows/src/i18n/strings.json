@@ -3819,17 +3819,6 @@
    "ru": "Во время прослушивания macOS отображает оранжевую точку микрофона в правом верхнем углу строки меню. Это нормальное поведение системы.",
    "id": "Saat mendengarkan, macOS menampilkan titik mikrofon oranye di kanan atas bilah menu. Ini adalah perilaku sistem yang normal."
   },
-  "Width": {
-   "zh-Hans": "宽度",
-   "hi": "चौड़ाई",
-   "es": "Ancho",
-   "ar": "العرض",
-   "fr": "Largeur",
-   "bn": "প্রস্থ",
-   "pt-BR": "Largura",
-   "ru": "Ширина",
-   "id": "Lebar"
-  },
   "Woman": {
    "zh-Hans": "女声",
    "hi": "महिला",
@@ -4060,17 +4049,6 @@
    "pt-BR": "sessões",
    "ru": "сессии",
    "id": "sesi"
-  },
-  "width of the folded island in pixels": {
-   "zh-Hans": "收起的岛的宽度（像素）",
-   "hi": "मुड़े हुए आइलैंड की चौड़ाई, पिक्सेल में",
-   "es": "ancho de la isla plegada en píxeles",
-   "ar": "عرض الشريط المطوي بالبكسل",
-   "fr": "largeur de l'île repliée en pixels",
-   "bn": "ভাঁজ করা আইল্যান্ডের প্রস্থ, পিক্সেলে",
-   "pt-BR": "largura da ilha recolhida em pixels",
-   "ru": "ширина свёрнутого острова в пикселях",
-   "id": "lebar pulau yang terlipat dalam piksel"
   },
   "with": {
    "zh-Hans": "附带",

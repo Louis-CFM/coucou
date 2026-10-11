@@ -356,17 +356,6 @@ struct SettingsView: View {
                     }
                 }
                 .help("pixels between the folded island's edges and Mochi or the pills")
-                HStack(spacing: 12) {
-                    Text("Width")
-                    HStack(spacing: 4) {
-                        TextField("", value: compactWidth, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 52)
-                        Stepper("", value: compactWidth, in: 0...IslandConst.compactWidthMax, step: 2)
-                            .labelsHidden()
-                    }
-                }
-                .help("width of the folded island in pixels")
             }
             .padding(6)
         }
@@ -2037,15 +2026,6 @@ struct SettingsView: View {
                 if names.isEmpty { self.statusMessage = "❌ No n8n workflows found." }
             }
         }.resume()
-    }
-
-    /// Shows the width the island has now, the default included.
-    private var compactWidth: Binding<Double> {
-        Binding(
-            get: { Double(islandSize(mode: .compact, view: .overview, nw: state.notchWidth,
-                                     nh: state.notchHeight, pad: state.compactPadding).0) },
-            set: { state.compactWidth = $0 }
-        )
     }
 
     private func paddingLabel(_ label: LocalizedStringKey) -> some View {

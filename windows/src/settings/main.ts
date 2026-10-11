@@ -9,7 +9,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { COMPACT_PADDING, COMPACT_PADDING_MAX, COMPACT_WIDTH_MAX, islandSize, type CompactPadding } from "../core/layout";
+import { COMPACT_PADDING, COMPACT_PADDING_MAX, type CompactPadding } from "../core/layout";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
@@ -911,7 +911,7 @@ function generalSection(): HTMLElement {
     void save();
   });
 
-  const paddingField = (side: Exclude<keyof CompactPadding, "width">, label: string) => {
+  const paddingField = (side: keyof CompactPadding, label: string) => {
     const input = h("input", {
       type: "number", min: "0", max: String(COMPACT_PADDING_MAX), step: "0.5",
       value: String(Math.round(settings.compactPadding[side])),
@@ -928,20 +928,6 @@ function generalSection(): HTMLElement {
     });
     return [h("span", { class: "hint", text: label }), input];
   };
-
-  // Shows the width the island has now, the default included; 0 or empty restores it.
-  const compactWidth = h("input", {
-    type: "number", min: "0", max: String(COMPACT_WIDTH_MAX), step: "2",
-    value: String(islandSize("compact", "overview", 0, settings.compactPadding).w),
-    style: "width:72px",
-  }) as HTMLInputElement;
-  compactWidth.addEventListener("change", () => {
-    const v = Math.round(Number(compactWidth.value));
-    const width = Number.isFinite(v) ? Math.max(0, Math.min(COMPACT_WIDTH_MAX, v)) : 0;
-    settings.compactPadding = { ...settings.compactPadding, width };
-    compactWidth.value = String(islandSize("compact", "overview", 0, settings.compactPadding).w);
-    void save();
-  });
 
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
@@ -1000,11 +986,6 @@ function generalSection(): HTMLElement {
       ),
     ),
     h("div", { class: "hint", text: t("pixels between the folded island's edges and Mochi or the pills") }),
-    h("div", { class: "row" },
-      h("label", { text: t("Width") }),
-      compactWidth,
-      h("span", { class: "hint", text: t("width of the folded island in pixels") }),
-    ),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,

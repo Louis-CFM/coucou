@@ -2012,9 +2012,7 @@ func islandSize(mode: IslandMode, view: IslandView,
                 pad: CompactPadding = .standard) -> (CGFloat, CGFloat) {
     switch mode {
     case .hidden:   return (nw, nh)
-    case .compact:
-        let w = pad.width > 0 ? max(pad.width, pad.minimumWidth(nw: nw)) : nw + 160
-        return (w, max(nh, pad.top + IslandConst.compactRow + pad.bottom))
+    case .compact:  return (nw + 160, max(nh, pad.top + IslandConst.compactRow + pad.bottom))
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         if view == .question, let h = QuestionLayout.height {
