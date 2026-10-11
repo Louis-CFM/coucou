@@ -31,6 +31,28 @@ enum ClaudeHostTests {
         check("editor session → VS Code", ClaudeHost.pillName(hostApp: nil) == "VS Code")
         check("terminal session → Claude Code", ClaudeHost.pillName(hostApp: "dev.warp.Warp-Stable") == "Claude Code")
 
+        print("ClaudeHost.isTTY")
+        check("/dev/ttys004", ClaudeHost.isTTY("/dev/ttys004"))
+        check("/dev/tty12", ClaudeHost.isTTY("/dev/tty12"))
+        check("nil → false", !ClaudeHost.isTTY(nil))
+        check("empty → false", !ClaudeHost.isTTY(""))
+        check("ps without /dev → false", !ClaudeHost.isTTY("ttys004"))
+        check("no terminal (??) → false", !ClaudeHost.isTTY("/dev/??"))
+        check("quote injection → false", !ClaudeHost.isTTY("/dev/ttys004\" then do shell script \"x"))
+
+        print("ClaudeHost.tabScript")
+        let tty = "/dev/ttys004"
+        check("Terminal → selects its tab by tty",
+              ClaudeHost.tabScript(bundleId: "com.apple.Terminal", tty: tty)?.contains("tty of t is \"\(tty)\"") == true)
+        check("iTerm2 → selects its session by tty",
+              ClaudeHost.tabScript(bundleId: "com.googlecode.iterm2", tty: tty)?.contains("tty of s is \"\(tty)\"") == true)
+        check("iTerm2 script targets iTerm2",
+              ClaudeHost.tabScript(bundleId: "com.googlecode.iterm2", tty: tty)?.contains("com.googlecode.iterm2") == true)
+        check("other terminal → nil", ClaudeHost.tabScript(bundleId: "com.mitchellh.ghostty", tty: tty) == nil)
+        check("no tty → nil", ClaudeHost.tabScript(bundleId: "com.googlecode.iterm2", tty: nil) == nil)
+        check("unsafe tty → nil",
+              ClaudeHost.tabScript(bundleId: "com.googlecode.iterm2", tty: "/dev/ttys004\" then do shell script \"x") == nil)
+
         print("ClaudeHost.terminalCardsEnabled")
         UserDefaults.standard.removeObject(forKey: ClaudeHost.terminalCardsKey)
         check("off by default", ClaudeHost.terminalCardsEnabled == false)
