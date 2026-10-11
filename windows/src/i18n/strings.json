@@ -134,6 +134,17 @@
    "ru": "Реклама",
    "id": "Iklan"
   },
+  "After «OK Coucou», what you say goes to Claude with your Anthropic API key, with what Coucou reads to answer (your pills, your services' data, a contact's address). It acts and searches the web. Never audio.": {
+   "zh-Hans": "说「OK Coucou」后，你说的话会用你的 Anthropic API 密钥发送给 Claude，同时发送 Coucou 为回答而读取的内容（你的药丸、你的服务数据、联系人地址）。它会执行操作并进行网页搜索。从不发送音频。",
+   "hi": "«OK Coucou» के बाद तुम जो कहते हो वह तुम्हारी Anthropic API कुंजी से Claude को जाता है, साथ में वह जो Coucou जवाब देने के लिए पढ़ता है (तुम्हारी पिल्स, तुम्हारी सेवाओं का डेटा, किसी संपर्क का पता)। वह काम करता है और वेब पर खोजता है। ऑडियो कभी नहीं।",
+   "es": "Tras «OK Coucou», lo que dices va a Claude con tu clave de API de Anthropic, junto con lo que Coucou lee para responder (tus píldoras, los datos de tus servicios, la dirección de un contacto). Actúa y busca en la web. Nunca el audio.",
+   "ar": "بعد «OK Coucou»، يُرسل ما تقوله إلى Claude بمفتاح Anthropic API الخاص بك، مع ما يقرؤه Coucou للإجابة (حبوبك، بيانات خدماتك، عنوان جهة اتصال). ينفّذ ويبحث على الويب. لا يُرسل الصوت أبدًا.",
+   "fr": "Après « OK Coucou », ce que tu dis part chez Claude avec ta clé API Anthropic, avec ce que Coucou lit pour répondre (tes pilules, les données de tes services, l'adresse d'un contact). Il agit et cherche sur le web. Jamais l'audio.",
+   "bn": "«OK Coucou»-এর পরে তুমি যা বলো তা তোমার Anthropic API কী দিয়ে Claude-এর কাছে যায়, সঙ্গে Coucou উত্তর দিতে যা পড়ে (তোমার পিল, তোমার সার্ভিসের ডেটা, কোনো কন্টাক্টের ঠিকানা)। সে কাজ করে আর ওয়েবে খোঁজে। অডিও কখনো নয়।",
+   "pt-BR": "Depois de «OK Coucou», o que você diz vai para o Claude com sua chave de API da Anthropic, junto com o que o Coucou lê para responder (suas pílulas, os dados dos seus serviços, o endereço de um contato). Ele age e pesquisa na web. Nunca o áudio.",
+   "ru": "После «OK Coucou» сказанное уходит в Claude по твоему ключу Anthropic API вместе с тем, что Coucou читает для ответа (твои пилюли, данные твоих сервисов, адрес контакта). Он действует и ищет в интернете. Звук — никогда.",
+   "id": "Setelah «OK Coucou», ucapanmu dikirim ke Claude dengan kunci API Anthropic-mu, beserta apa yang dibaca Coucou untuk menjawab (pil-mu, data layananmu, alamat kontak). Ia bertindak dan mencari di web. Tidak pernah audio."
+  },
   "Agent": {
    "zh-Hans": "代理",
    "hi": "एजेंट",
@@ -232,17 +243,6 @@
    "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Coucou não está em execução ficam na fila e são executadas no próximo início.",
    "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске.",
    "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
-  },
-  "Answer questions with a web search": {
-   "zh-Hans": "用网页搜索回答问题",
-   "hi": "वेब खोज से सवालों के जवाब",
-   "es": "Responder preguntas buscando en la web",
-   "ar": "الإجابة عن الأسئلة ببحث على الويب",
-   "fr": "Répondre aux questions avec une recherche web",
-   "bn": "ওয়েবে খুঁজে প্রশ্নের উত্তর দাও",
-   "pt-BR": "Responder perguntas com uma busca na web",
-   "ru": "Отвечать на вопросы с поиском в интернете",
-   "id": "Jawab pertanyaan dengan pencarian web"
   },
   "Anthropic API": {
    "zh-Hans": "Anthropic API",
@@ -551,6 +551,17 @@
    "pt-BR": "Claude Code está perguntando",
    "ru": "Claude Code спрашивает",
    "id": "Claude Code bertanya"
+  },
+  "Claude as Coucou's brain": {
+   "zh-Hans": "由 Claude 担任 Coucou 的大脑",
+   "hi": "Coucou का दिमाग: Claude",
+   "es": "Claude como cerebro de Coucou",
+   "ar": "Claude عقل Coucou",
+   "fr": "Claude comme cerveau de Coucou",
+   "bn": "Coucou-র মস্তিষ্ক: Claude",
+   "pt-BR": "Claude como cérebro do Coucou",
+   "ru": "Claude — мозг Coucou",
+   "id": "Claude sebagai otak Coucou"
   },
   "Claude is reading {name}…": {
    "zh-Hans": "Claude 正在读取 {name}…",
@@ -2685,17 +2696,6 @@
    "pt-BR": "Projetos",
    "ru": "Проекты",
    "id": "Proyek"
-  },
-  "Questions your pills can't answer go to Claude with a web search, using your Anthropic API key. Only the question is sent.": {
-   "zh-Hans": "药丸无法回答的问题会用你的 Anthropic API 密钥发送给 Claude 并进行网页搜索。只发送问题本身。",
-   "hi": "जिन सवालों का जवाब तुम्हारी पिल्स नहीं दे सकतीं, वे तुम्हारी Anthropic API कुंजी से वेब खोज के साथ Claude को जाते हैं। सिर्फ़ सवाल भेजा जाता है।",
-   "es": "Las preguntas que tus píldoras no responden van a Claude con una búsqueda web, con tu clave de API de Anthropic. Solo se envía la pregunta.",
-   "ar": "الأسئلة التي لا تجيب عنها حبوبك تُرسل إلى Claude مع بحث على الويب، بمفتاح Anthropic API الخاص بك. يُرسل السؤال فقط.",
-   "fr": "Les questions auxquelles tes pilules ne répondent pas partent chez Claude avec une recherche web, avec ta clé API Anthropic. Seule la question est envoyée.",
-   "bn": "যে প্রশ্নের উত্তর তোমার পিলগুলো দিতে পারে না, সেগুলো তোমার Anthropic API কী দিয়ে ওয়েব সার্চসহ Claude-এর কাছে যায়। শুধু প্রশ্নটাই পাঠানো হয়।",
-   "pt-BR": "Perguntas que suas pílulas não respondem vão para o Claude com uma busca na web, usando sua chave de API da Anthropic. Só a pergunta é enviada.",
-   "ru": "Вопросы, на которые не отвечают твои пилюли, уходят в Claude с поиском в интернете, по твоему ключу Anthropic API. Отправляется только вопрос.",
-   "id": "Pertanyaan yang tidak bisa dijawab pil-mu dikirim ke Claude dengan pencarian web, memakai kunci API Anthropic-mu. Hanya pertanyaannya yang dikirim."
   },
   "Quit": {
    "zh-Hans": "退出",
