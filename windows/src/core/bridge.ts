@@ -354,6 +354,10 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** A Slack conversation in the Slack app, else in the browser. */
+  slackOpen: (channel: string, permalink: string | null) => call<void>("slack_open", { channel, permalink }),
+  /** The Slack app, else the workspace in the browser. */
+  slackOpenWorkspace: () => call<void>("slack_open_workspace"),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),

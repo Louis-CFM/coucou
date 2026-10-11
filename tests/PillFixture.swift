@@ -32,6 +32,7 @@ enum PillFixture {
         .init(id: "integration_notion",   name: "Notion",        color: "#8C8C8C", category: .service,   subtitle: "Integration", source: .n8n),
         .init(id: "integration_calcom",   name: "Cal.com",       color: "#C9956A", category: .service,   subtitle: "Integration", source: .n8n),
         .init(id: "integration_stripe",   name: "Stripe",        color: "#0570DE", category: .service,   subtitle: "Integration", source: .n8n),
+        .init(id: "integration_slack",    name: "Slack",         color: "#E01E5A", category: .service,   subtitle: "Integration", source: .n8n),
         .init(id: "integration_music",    name: "Apple Music",   color: "#FA2D48", category: .service,   subtitle: "Integration", source: .n8n),
         .init(id: "integration_spotify",  name: "Spotify",       color: "#1DB954", category: .service,   subtitle: "Integration", source: .n8n),
     ]

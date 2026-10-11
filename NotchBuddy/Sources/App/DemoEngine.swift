@@ -34,7 +34,7 @@ final class DemoEngine: ObservableObject {
     private var demoCycleIndex: Int = 0
     private let rotatingIntegrationIds = [
         "integration_stripe", "integration_calcom",
-        "integration_n8n", "integration_notion", "integration_vercel"
+        "integration_n8n", "integration_notion", "integration_vercel", "integration_slack"
     ]
     private var demoDiffIds: [String: [Int]] = [:]   // [pillId: [diffId]]
     private var lastApprovalDecision: String = "allow"
@@ -67,6 +67,11 @@ final class DemoEngine: ObservableObject {
         var n8nRuns: [N8nRun]
         var notionPages: [NotionPage]
         var notionLoaded: Bool
+        var slackMessages: [SlackMessage]
+        var slackUnreadDMs: Int
+        var slackMentionCount: Int
+        var slackLoaded: Bool
+        var slackError: String?
         // NOTE: pendingApproval and pendingQuestion are intentionally NOT snapshotted.
         // HookServer's file descriptors are authoritative for real requests.
         var mode: IslandMode
@@ -113,6 +118,11 @@ final class DemoEngine: ObservableObject {
             n8nRuns:             s.n8nRuns,
             notionPages:         s.notionPages,
             notionLoaded:        s.notionLoaded,
+            slackMessages:       s.slackMessages,
+            slackUnreadDMs:      s.slackUnreadDMs,
+            slackMentionCount:   s.slackMentionCount,
+            slackLoaded:         s.slackLoaded,
+            slackError:          s.slackError,
             mode:                s.mode,
             view:                s.view
         )
@@ -222,6 +232,11 @@ final class DemoEngine: ObservableObject {
         s.n8nRuns              = snap.n8nRuns
         s.notionPages          = snap.notionPages
         s.notionLoaded         = snap.notionLoaded
+        s.slackMessages        = snap.slackMessages
+        s.slackUnreadDMs       = snap.slackUnreadDMs
+        s.slackMentionCount    = snap.slackMentionCount
+        s.slackLoaded          = snap.slackLoaded
+        s.slackError           = snap.slackError
 
         // Restore tasks: keep real tasks that arrived during the demo, discard demo-only ones.
         // For tasks that existed before the demo (realTaskIdsAtStart), use the CURRENT version
@@ -382,6 +397,20 @@ final class DemoEngine: ObservableObject {
                        url: "https://notion.so/demo/auth-notes"),
         ]
         s.notionLoaded = true
+
+        // Slack
+        let ts = { (ago: TimeInterval) in String(format: "%.6f", now.addingTimeInterval(-ago).timeIntervalSince1970) }
+        s.slackMessages = [
+            SlackMessage(kind: .dm, channelId: "D_demo1", channelName: nil, userId: "U_demo1", author: "Alice",
+                         text: "Can you look at the auth PR before standup?", ts: ts(240), unread: 2, permalink: nil),
+            SlackMessage(kind: .mention, channelId: "C_demo1", channelName: "deploys", userId: "U_demo2",
+                         author: "bob", text: "@alex the release build is green, ship it?", ts: ts(1500),
+                         unread: 0, permalink: nil),
+        ]
+        s.slackUnreadDMs = 2
+        s.slackMentionCount = 1
+        s.slackError = nil
+        s.slackLoaded = true
 
         // Inject GitHub pill only — rotating 4th integration added per cycle.
         var injected: [String] = []

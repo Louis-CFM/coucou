@@ -202,6 +202,54 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 1quinquies. Slack (messages directs et mentions)
+
+**Plateforme** : macOS (`SlackPoller.swift`, `SlackParsing.swift`), Windows et Linux (`windows/src-tauri/src/slack.rs`).
+
+**Token** : token utilisateur (`xoxp-…`) d'une app Slack créée par l'utilisateur dans son propre espace de travail. Stocké dans le Trousseau / Gestionnaire d'identifiants / Secret Service (`slack-token`). Aucun serveur, aucun OAuth côté Coucou.
+
+### Créer l'app Slack
+
+1. https://api.slack.com/apps → **Create New App** → **From scratch**, choisir l'espace de travail.
+2. **OAuth & Permissions** → **User Token Scopes**, ajouter exactement :
+   - `im:read` : liste des messages directs et leur nombre de non-lus (`conversations.list`, `conversations.info`) ;
+   - `users:read` : nom des personnes (`users.info`) ;
+   - `search:read` : mentions récentes (`search.messages`).
+3. **Install to Workspace**, autoriser, copier le **User OAuth Token** (`xoxp-…`).
+4. Coucou : Réglages → Integrations → Slack, coller le token, enregistrer. Déclarer la pastille Slack dans Active pills.
+
+Aucun scope `*:history` : le dernier message d'un message direct vient de `conversations.info` (champ `latest`), ce qui évite aussi la limite d'1 requête/minute de `conversations.history` pour les apps distribuées hors Marketplace.
+
+### Appels et limites
+
+Un poll par minute, **uniquement si la pastille Slack est déclarée** (et rien en pause / mode démo). Limites relues sur https://docs.slack.dev/apis/web-api/rate-limits :
+
+| Méthode | Quand | Palier Slack |
+|---|---|---|
+| `auth.test` | une fois par token (identifiant, équipe, URL de l'espace) | spécial, des centaines/min |
+| `conversations.list?types=im` | toutes les 10 min, `limit=200`, sans les archivés | Tier 2 (20+/min) |
+| `conversations.info` | 15 messages directs par poll (les plus proches selon `priority`) + ceux non lus au poll précédent | Tier 3 (50+/min) |
+| `search.messages` `query=<@MOI>`, tri par date | 1 par poll, 20 résultats | Tier 2 (20+/min) |
+| `users.info` | une fois par personne, gardé en cache | Tier 4 (100+/min) |
+
+HTTP 429 : on respecte `Retry-After` (60 s par défaut) avant toute nouvelle requête.
+
+`unread_count_display` n'existe que pour les messages directs (doc de `conversations.info`), et seulement un canal à la fois : d'où la sélection par `priority`. Un message direct avec quelqu'un hors des 15 plus proches n'est vu que si son canal a déjà été vu non lu.
+
+**Non vérifié sans vrai token** : que `search.messages` avec `<@ID>` retrouve bien les mentions. La doc décrit `in:<@UserID>` et `from:<@UserID>`, pas la recherche d'une mention dans le texte.
+
+### Affichage
+
+- Carte : « Slack · Messages », compteurs non-lus (bulle) et mentions (`@`), puis 3 lignes : messages directs non lus d'abord, puis mentions des dernières 24 h, chacun du plus récent au plus ancien. Ligne = auteur (ou `auteur · #canal`), extrait du texte (balises `<@U…>`, `<#C…|nom>`, `<url|texte>` rendues lisibles), âge.
+- Clic sur une ligne : `slack://channel?team=T…&id=C…` si une app gère `slack://` (macOS `urlForApplication(toOpen:)`, Linux `xdg-mime query default x-scheme-handler/slack`, Windows clé `HKCR\slack`), sinon le permalien `https` du message (mentions) ou `https://slack.com/app_redirect?channel=…&team=…` (doc : https://docs.slack.dev/interactivity/deep-linking).
+- Bouton ↗ : `slack://open`, sinon l'URL de l'espace renvoyée par `auth.test`.
+
+### Alertes
+
+Premier poll : silencieux. Ensuite, un message plus récent que le dernier annoncé (comparaison exacte des `ts`) → état `finished`, ligne du défilé = auteur, badge `.finished` si la pastille n'est pas au premier plan, son `finish`, révélation de l'île ; remise à zéro après 60 s, comme Vercel.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

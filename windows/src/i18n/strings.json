@@ -46,6 +46,17 @@
    "ru": "5 часов",
    "id": "5 jam"
   },
+  "A user token from a Slack app with the scopes im:read, users:read and search:read.": {
+   "zh-Hans": "来自 Slack 应用的用户令牌，需具备 im:read、users:read 和 search:read 权限范围。",
+   "hi": "im:read, users:read और search:read स्कोप वाले Slack ऐप का यूज़र टोकन।",
+   "es": "Un token de usuario de una app de Slack con los permisos im:read, users:read y search:read.",
+   "ar": "رمز مستخدم من تطبيق Slack بالنطاقات im:read وusers:read وsearch:read.",
+   "fr": "Un jeton utilisateur d'une app Slack avec les portées im:read, users:read et search:read.",
+   "bn": "im:read, users:read ও search:read স্কোপসহ একটি Slack অ্যাপের ইউজার টোকেন।",
+   "pt-BR": "Um token de usuário de um app do Slack com os escopos im:read, users:read e search:read.",
+   "ru": "Токен пользователя из приложения Slack с правами im:read, users:read и search:read.",
+   "id": "Token pengguna dari aplikasi Slack dengan scope im:read, users:read, dan search:read."
+  },
   "API key (AI Studio)": {
    "zh-Hans": "API 密钥 (AI Studio)",
    "hi": "API कुंजी (AI Studio)",
@@ -1740,6 +1751,17 @@
    "ru": "Мужской",
    "id": "Pria"
   },
+  "Messages": {
+   "zh-Hans": "消息",
+   "hi": "संदेश",
+   "es": "Mensajes",
+   "ar": "الرسائل",
+   "fr": "Messages",
+   "bn": "বার্তা",
+   "pt-BR": "Mensagens",
+   "ru": "Сообщения",
+   "id": "Pesan"
+  },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
    "hi": "माइक्रोफ़ोन अनुपलब्ध",
@@ -2003,6 +2025,17 @@
    "pt-BR": "Nenhum app de música",
    "ru": "Нет музыкального приложения",
    "id": "Tidak ada app musik"
+  },
+  "No new messages": {
+   "zh-Hans": "没有新消息",
+   "hi": "कोई नया संदेश नहीं",
+   "es": "Sin mensajes nuevos",
+   "ar": "لا رسائل جديدة",
+   "fr": "Aucun nouveau message",
+   "bn": "কোনো নতুন বার্তা নেই",
+   "pt-BR": "Nenhuma mensagem nova",
+   "ru": "Нет новых сообщений",
+   "id": "Tidak ada pesan baru"
   },
   "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation.": {
    "zh-Hans": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。",
