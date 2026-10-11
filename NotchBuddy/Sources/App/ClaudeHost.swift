@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 
 // MARK: - ClaudeHost
 //
@@ -65,13 +66,68 @@ struct ClaudeHost: Equatable {
 
     /// Brings the session's terminal forward (launching it if needed). false when not a terminal host.
     @discardableResult
-    static func activate(_ hostBundleId: String?) -> Bool {
+    static func activate(_ hostBundleId: String?, tty: String? = nil) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
-        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
-            running.activate()
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
-            NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+        let running = NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+        if let url = running?.bundleURL ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+            bringForward(url, bundleId: id, tty: tty)
         }
         return true
+    }
+
+    /// True for a tty path the relay can send ("/dev/ttys004"), so it is safe inside AppleScript.
+    static func isTTY(_ tty: String?) -> Bool {
+        tty?.range(of: #"^/dev/ttys?[0-9]+$"#, options: .regularExpression) != nil
+    }
+
+    private static let tabQueue = DispatchQueue(label: "fr.louisraille.coucou.terminal-tab")
+
+    /// Puts the app's window titled `title` in front of its other windows (needs Accessibility).
+    private static func raiseWindow(titled title: String, bundleId: String) {
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { return }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value) == .success,
+              let windows = value as? [AXUIElement] else { return }
+        for window in windows {
+            var titleValue: CFTypeRef?
+            AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
+            if titleValue as? String == title {
+                AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                return
+            }
+        }
+    }
+
+    /// Opens the app at `url` through Launch Services: NSRunningApplication.activate() is ignored
+    /// on macOS 14+ unless the caller is the active app, which Coucou never is. With the session's
+    /// tty, its tmux pane is selected and its Terminal or iTerm2 tab raised first, so the session's
+    /// own window comes back rather than the last one used.
+    static func bringForward(_ url: URL, bundleId: String, tty: String?) {
+        let open: @Sendable () -> Void = {
+            DispatchQueue.main.async {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+        }
+        #if !APPSTORE
+        if let tty, isTTY(tty) {
+            tabQueue.async {
+                for candidate in TerminalTarget.tabTTYs(for: tty) where ClaudeHost.isTTY(candidate) {
+                    if bundleId == TerminalTarget.weztermId {
+                        let cli = url.appendingPathComponent("Contents/MacOS/wezterm").path
+                        guard let title = TerminalTarget.activateWezTermPane(tty: candidate, cli: cli) else { continue }
+                        raiseWindow(titled: title, bundleId: bundleId)
+                        break
+                    }
+                    guard let source = TerminalTarget.tabScript(bundleId: bundleId, tty: candidate) else { break }
+                    var error: NSDictionary?
+                    if NSAppleScript(source: source)?.executeAndReturnError(&error).booleanValue == true { break }
+                }
+                open()
+            }
+            return
+        }
+        #endif
+        open()
     }
 }
