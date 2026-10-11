@@ -1,6 +1,6 @@
 // Cloud providers that speak the OpenAI chat completions API: OpenAI, Google AI
-// (Gemini's OpenAI-compatible endpoint, as ClaudeService.swift uses it) and
-// OpenRouter. One table describes them; one client talks to all three.
+// (Gemini's OpenAI-compatible endpoint, as ClaudeService.swift uses it),
+// OpenRouter and RodiumAi. One table describes them; one client talks to all of them.
 //
 // Same contract as claude.rs: the key never leaves the credential store and
 // file bytes never cross the IPC boundary. Chat only — no tools are sent, so
@@ -63,6 +63,19 @@ pub const PROVIDERS: &[Provider] = &[
         models_path: "models",
         default_model: "openrouter/auto",
         not_chat: &[],
+        max_tokens_field: "max_tokens",
+    },
+    Provider {
+        id: "rodiumai",
+        name: "RodiumAi",
+        base_url: "https://api.rodiumai.io/v1",
+        key: "rodiumai-api-key",
+        models_path: "models",
+        default_model: "openai/gpt-4o",
+        not_chat: &[
+            "embed", "tts", "whisper", "dall-e", "audio", "realtime", "moderat", "image", "sora",
+            "babbage", "davinci", "instruct", "rerank",
+        ],
         max_tokens_field: "max_tokens",
     },
 ];
@@ -306,6 +319,8 @@ mod tests {
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         );
         assert_eq!(url(p("openrouter"), "models").unwrap().as_str(), "https://openrouter.ai/api/v1/models");
+        assert_eq!(url(p("rodiumai"), "chat/completions").unwrap().as_str(), "https://api.rodiumai.io/v1/chat/completions");
+        assert_eq!(p("rodiumai").key, "rodiumai-api-key");
         for prov in PROVIDERS {
             assert!(crate::secrets::KNOWN_KEYS.contains(&prov.key), "{}", prov.key);
             assert!(prov.base_url.starts_with("https://"));

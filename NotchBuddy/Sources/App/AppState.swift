@@ -130,6 +130,9 @@ final class AppState: ObservableObject {
     @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
         didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
     }
+    @Published var rodiumaiChatModel: String = ChatProvider.rodiumai.defaultModel {
+        didSet { UserDefaults.standard.set(rodiumaiChatModel, forKey: "rodiumaiChatModel") }
+    }
     @Published var ollamaChatModel: String = ChatProvider.ollama.defaultModel {
         didSet { UserDefaults.standard.set(ollamaChatModel, forKey: "ollamaChatModel") }
     }
@@ -205,6 +208,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .rodiumai:  models = await ClaudeService.fetchRodiumAIModels(apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
@@ -225,6 +229,12 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
+                case .rodiumai:
+                    if !models.contains(where: { $0.id == rodiumaiChatModel }) {
+                        rodiumaiChatModel = models.first(where: { $0.id.contains("gpt-4o") })?.id
+                            ?? models.first(where: { $0.id.contains("smart") })?.id
+                            ?? models.first!.id
+                    }
                 case .ollama, .lmstudio: break
                 }
             }
@@ -237,6 +247,7 @@ final class AppState: ObservableObject {
         case .anthropic: return claudeModel
         case .google:    return googleChatModel
         case .openai:    return openAIChatModel
+        case .rodiumai:  return rodiumaiChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
         }
@@ -502,6 +513,7 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
+        if let v = ud.string(forKey: "rodiumaiChatModel"), !v.isEmpty { rodiumaiChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }

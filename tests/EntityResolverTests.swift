@@ -23,6 +23,7 @@ enum EntityResolverTests {
         check("Spotify exact",     resolve("Spotify"),      "integration_spotify")
         check("VS Code exact",     resolve("VS Code"),      "integration_claude")
         check("OpenAI exact",      resolve("OpenAI"),       "ai_openai")
+        check("RodiumAi exact",    resolve("RodiumAi"),     "ai_rodiumai")
         check("LM Studio exact",   resolve("LM Studio"),    "ai_lmstudio")
         check("Google AI exact",   resolve("Google AI"),    "ai_google")
 
@@ -32,6 +33,8 @@ enum EntityResolverTests {
         check("gemini alias",      resolve("gemini"),       "agent_gemini")
         check("copilot alias",     resolve("copilot"),      "agent_copilot")
         check("google alias",      resolve("google"),       "ai_google")
+        check("rodium alias",      resolve("rodium"),       "ai_rodiumai")
+        check("rodium ai alias",   resolve("rodium ai"),    "ai_rodiumai")
         check("music alias",       resolve("music"),        "integration_music")
         check("musique alias",     resolve("musique"),      "integration_music")
         check("muse alias",        resolve("muse"),         "agent_muse")

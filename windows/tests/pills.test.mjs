@@ -29,6 +29,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     ["ai_anthropic", "Anthropic", "#E07950", "ai", "Chat"],
     ["ai_google", "Google AI", "#4285F4", "ai", "Chat"],
     ["ai_openai", "OpenAI", "#10A37F", "ai", "Chat"],
+    ["ai_rodiumai", "RodiumAi", "#FF6A3D", "ai", "Chat"],
     ["ai_ollama", "Ollama", "#FACC15", "ai", "Chat"],
     ["ai_lmstudio", "LM Studio", "#A3E635", "ai", "Chat"],
     ["integration_resend", "Resend", "#22C55E", "service", "Integration"],
@@ -82,7 +83,7 @@ test("this build leaves out what only macOS has, Claude Desktop on Linux and Spo
   }
   // Their plugins are written from Settings → Agents, and the chat talks to
   // every provider (port/chat-providers), on both systems.
-  for (const id of ["agent_opencode", "agent_amp", "agent_hermes", "ai_google", "ai_openai", "ai_ollama", "ai_lmstudio"]) {
+  for (const id of ["agent_opencode", "agent_amp", "agent_hermes", "ai_google", "ai_openai", "ai_rodiumai", "ai_ollama", "ai_lmstudio"]) {
     assert.ok(windows.includes(id), id);
     assert.ok(linux.includes(id), id);
   }
@@ -120,13 +121,14 @@ test("a Linux-only pill can be declared on Linux and is dropped on Windows", () 
 });
 
 test("no chat provider that works here says Coming soon", () => {
-  for (const id of ["ai_anthropic", "ai_google", "ai_openai", "ai_ollama", "ai_lmstudio"]) {
+  for (const id of ["ai_anthropic", "ai_google", "ai_openai", "ai_rodiumai", "ai_ollama", "ai_lmstudio"]) {
     assert.ok(!isComingSoon(id), id);
   }
   // The local servers are connected through Settings → Local models, not a key.
   assert.deepEqual(pillDefinition("ai_ollama").connect, { kind: "server", field: "ollamaUrl" });
   assert.deepEqual(pillDefinition("ai_lmstudio").connect, { kind: "server", field: "lmstudioUrl" });
   assert.equal(pillDefinition("ai_google").connect.key, "google-api-key");
+  assert.equal(pillDefinition("ai_rodiumai").connect.key, "rodiumai-api-key");
 });
 
 test("the main pill is a workspace tool that works here", () => {

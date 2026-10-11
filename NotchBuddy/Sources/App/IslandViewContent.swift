@@ -250,6 +250,8 @@ struct OverviewView: View {
             switchChatProvider(.google)
         case "ai_openai":
             switchChatProvider(.openai)
+        case "ai_rodiumai":
+            switchChatProvider(.rodiumai)
         case "ai_ollama":
             switchChatProvider(.ollama)
         case "ai_lmstudio":
@@ -1566,6 +1568,7 @@ struct ModelPickerView: View {
                             case .anthropic: state.claudeModel = model.id
                             case .google:    state.googleChatModel = model.id
                             case .openai:    state.openAIChatModel = model.id
+                            case .rodiumai:  state.rodiumaiChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
                             }
@@ -1822,6 +1825,7 @@ struct IntegrationCardView: View {
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_rodiumai":   return KeychainStore.shared.get("rodiumai-api-key")  != nil
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
@@ -1971,6 +1975,7 @@ struct IntegrationCardView: View {
                 case "ai_anthropic": model = appState.claudeModel
                 case "ai_google":    model = appState.googleChatModel
                 case "ai_openai":    model = appState.openAIChatModel
+                case "ai_rodiumai":  model = appState.rodiumaiChatModel
                 default:             model = ""
                 }
                 return String(localized: "Key configured · \(model)")

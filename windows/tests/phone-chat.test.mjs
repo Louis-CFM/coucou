@@ -9,6 +9,7 @@ test("an id is provider/model and the provider must be one the app knows", () =>
   assert.equal(modelId("openai", "gpt-4o"), "openai/gpt-4o");
   assert.equal(providerOf("openai/gpt-4o"), "openai");
   assert.equal(providerOf("openrouter/openrouter/auto"), "openrouter");
+  assert.equal(providerOf("rodiumai/openai/gpt-4o"), "rodiumai");
   for (const bad of ["", "openai", "openai/", "nope/x", "/x"]) assert.equal(providerOf(bad), null, bad);
 });
 
