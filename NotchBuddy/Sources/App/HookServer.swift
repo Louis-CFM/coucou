@@ -3141,7 +3141,7 @@ let nbHookPythonGitHub = """
 #!/usr/bin/env python3
 # nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
 # Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
-import sys, json, os, socket
+import sys, json, os, re, socket, time
 
 def normalize_event(name):
     mapping = {
@@ -3199,6 +3199,56 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Several Coucous on one host each run a relay for the same call; the one answered marks it
+# here and the others let go. Same files and key as the Linux coucou-hook.
+ANSWERED_DIR = os.path.expanduser('~/.coucou/answered')
+
+def answer_key(payload):
+    tid = payload.get('tool_use_id')
+    if isinstance(tid, str) and 0 < len(tid) <= 128 and re.fullmatch(r'[A-Za-z0-9_-]+', tid):
+        return tid
+    sid, tool = payload.get('session_id'), payload.get('tool_name')
+    text = '%s\\n%s\\n%s' % (sid if isinstance(sid, str) else '', tool if isinstance(tool, str) else '',
+        json.dumps(payload.get('tool_input'), sort_keys=True, separators=(',', ':'), ensure_ascii=False))
+    h = 0xcbf29ce484222325
+    for b in text.encode('utf-8'):
+        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return 'h%016x' % h
+
+def mark_answered(key):
+    try:
+        os.makedirs(ANSWERED_DIR, exist_ok=True)
+        os.chmod(ANSWERED_DIR, 0o700)
+        tmp = os.path.join(ANSWERED_DIR, '.%s.%d' % (key, os.getpid()))
+        open(tmp, 'w').close()
+        os.replace(tmp, os.path.join(ANSWERED_DIR, key))
+        now = time.time()
+        for name in os.listdir(ANSWERED_DIR):
+            p = os.path.join(ANSWERED_DIR, name)
+            if now - os.path.getmtime(p) > 3600:
+                os.remove(p)
+    except OSError:
+        pass
+
+def read_reply(s, key, budget):
+    # The app's reply line, or '' once another relay on this host has answered the call.
+    s.settimeout(0.2)
+    chunks = []
+    deadline = time.monotonic() + budget
+    while time.monotonic() < deadline:
+        try:
+            chunk = s.recv(4096)
+        except socket.timeout:
+            if os.path.exists(os.path.join(ANSWERED_DIR, key)):
+                return ''
+            continue
+        if not chunk:
+            break
+        chunks.append(chunk)
+        if b'\\n' in chunk:
+            break
+    return b''.join(chunks).decode().strip()
+
 def main():
     raw = b''
     payload = {}
@@ -3250,6 +3300,8 @@ def main():
                 pass
         return
 
+    key = answer_key(payload)
+
     # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
     if '--ask' in sys.argv[1:]:
         tool = payload.get('tool_name', '')
@@ -3272,16 +3324,8 @@ def main():
             s.settimeout(125)
             s.connect(socket_path)
             s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
+            response = read_reply(s, key, s.gettimeout())
             s.close()
-            response = b''.join(chunks).decode().strip()
             if response:
                 try:
                     resp_obj = json.loads(response)
@@ -3289,6 +3333,7 @@ def main():
                 except Exception:
                     decision = ''
                 if decision == 'answer':
+                    mark_answered(key)
                     answers = resp_obj.get('answers', {})
                     questions = payload.get('tool_input', {}).get('questions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}
@@ -3354,22 +3399,16 @@ def main():
             s.settimeout(118)
             s.connect(socket_path)
             s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
+            response = read_reply(s, key, s.gettimeout())
             s.close()
-            response = b''.join(chunks).decode().strip()
             if response:
                 try:
                     resp_obj = json.loads(response)
                     decision = resp_obj.get('permissionDecision', '')
                 except Exception:
                     decision = ''
+                if decision in ('allow', 'always', 'deny', 'answer'):
+                    mark_answered(key)
                 if agent == 'hermes':
                     hermes_choice = 'once' if decision == 'allow' else decision
                     if hermes_choice in ('once', 'always', 'deny'):
@@ -3449,7 +3488,7 @@ private let nbHookPythonAppStore = """
 #!/usr/bin/env python3
 # nb-hook.py — Coucou (App Store) hook relay for Claude Code and third-party agents
 # Socket lives inside the sandboxed container; script runs outside the sandbox.
-import sys, json, os, socket
+import sys, json, os, re, socket, time
 
 def normalize_event(name):
     mapping = {
@@ -3507,6 +3546,56 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Several Coucous on one host each run a relay for the same call; the one answered marks it
+# here and the others let go. Same files and key as the Linux coucou-hook.
+ANSWERED_DIR = os.path.expanduser('~/.coucou/answered')
+
+def answer_key(payload):
+    tid = payload.get('tool_use_id')
+    if isinstance(tid, str) and 0 < len(tid) <= 128 and re.fullmatch(r'[A-Za-z0-9_-]+', tid):
+        return tid
+    sid, tool = payload.get('session_id'), payload.get('tool_name')
+    text = '%s\\n%s\\n%s' % (sid if isinstance(sid, str) else '', tool if isinstance(tool, str) else '',
+        json.dumps(payload.get('tool_input'), sort_keys=True, separators=(',', ':'), ensure_ascii=False))
+    h = 0xcbf29ce484222325
+    for b in text.encode('utf-8'):
+        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return 'h%016x' % h
+
+def mark_answered(key):
+    try:
+        os.makedirs(ANSWERED_DIR, exist_ok=True)
+        os.chmod(ANSWERED_DIR, 0o700)
+        tmp = os.path.join(ANSWERED_DIR, '.%s.%d' % (key, os.getpid()))
+        open(tmp, 'w').close()
+        os.replace(tmp, os.path.join(ANSWERED_DIR, key))
+        now = time.time()
+        for name in os.listdir(ANSWERED_DIR):
+            p = os.path.join(ANSWERED_DIR, name)
+            if now - os.path.getmtime(p) > 3600:
+                os.remove(p)
+    except OSError:
+        pass
+
+def read_reply(s, key, budget):
+    # The app's reply line, or '' once another relay on this host has answered the call.
+    s.settimeout(0.2)
+    chunks = []
+    deadline = time.monotonic() + budget
+    while time.monotonic() < deadline:
+        try:
+            chunk = s.recv(4096)
+        except socket.timeout:
+            if os.path.exists(os.path.join(ANSWERED_DIR, key)):
+                return ''
+            continue
+        if not chunk:
+            break
+        chunks.append(chunk)
+        if b'\\n' in chunk:
+            break
+    return b''.join(chunks).decode().strip()
+
 def main():
     raw = b''
     payload = {}
@@ -3557,6 +3646,8 @@ def main():
                 pass
         return
 
+    key = answer_key(payload)
+
     # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
     if '--ask' in sys.argv[1:]:
         tool = payload.get('tool_name', '')
@@ -3579,16 +3670,8 @@ def main():
             s.settimeout(125)
             s.connect(socket_path)
             s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
+            response = read_reply(s, key, s.gettimeout())
             s.close()
-            response = b''.join(chunks).decode().strip()
             if response:
                 try:
                     resp_obj = json.loads(response)
@@ -3596,6 +3679,7 @@ def main():
                 except Exception:
                     decision = ''
                 if decision == 'answer':
+                    mark_answered(key)
                     answers = resp_obj.get('answers', {})
                     questions = payload.get('tool_input', {}).get('questions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}
@@ -3660,22 +3744,16 @@ def main():
             s.settimeout(118)
             s.connect(socket_path)
             s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
+            response = read_reply(s, key, s.gettimeout())
             s.close()
-            response = b''.join(chunks).decode().strip()
             if response:
                 try:
                     resp_obj = json.loads(response)
                     decision = resp_obj.get('permissionDecision', '')
                 except Exception:
                     decision = ''
+                if decision in ('allow', 'always', 'deny', 'answer'):
+                    mark_answered(key)
                 if agent == 'hermes':
                     hermes_choice = 'once' if decision == 'allow' else decision
                     if hermes_choice in ('once', 'always', 'deny'):
