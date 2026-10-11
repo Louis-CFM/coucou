@@ -176,6 +176,37 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
+/* Compact stats: agents and plan usage, two lines right-aligned before the mini grid. */
+#compact-stats {
+  position: absolute;
+  top: 50%;
+  right: 64px;
+  transform: translateY(-50%);
+  color: #8e939c;
+  font: 600 9px var(--font);
+  font-variant-numeric: tabular-nums;
+  line-height: 12px;
+  text-align: right;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+
+#compact-stats b {
+  margin-left: 3px;
+  color: #f5f6f8;
+  font-weight: 700;
+}
+
+#compact-stats b.alone {
+  margin-left: 0;
+}
+
+#compact-stats .cs-sep {
+  margin: 0 4px;
+  color: #454850;
+}
+
 /* A mini Mochi: the slot is the body, the canvas is larger and overflows it so
    hands, badges and particles are not cut off. */
 .mini {

@@ -362,6 +362,13 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Toggle("Show the number of agents in the folded island", isOn: $state.compactShowAgents)
+                Toggle("Show the number only", isOn: $state.compactAgentsNumberOnly)
+                    .disabled(!state.compactShowAgents)
+                    .padding(.leading, 20)
+                #if !APPSTORE
+                Toggle("Show plan usage in the folded island", isOn: $state.compactShowPlan)
+                #endif
             }
             .padding(6)
             .onAppear { refreshConnectedScreens() }

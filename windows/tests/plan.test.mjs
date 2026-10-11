@@ -11,7 +11,7 @@ import {
 import { emit } from "./tauri.mjs";
 import { registerHookHandlers } from "../src/island/hooks.ts";
 import {
-  claudePillVisible, codexPillVisible, openPlanColor, planCardOpen,
+  claudePillVisible, codexPillVisible, compactPlanWindows, openPlanColor, planCardOpen,
 } from "../src/views/usage.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
@@ -236,6 +236,27 @@ test("an open card follows its pill, and Mochi wears that plan's colour", () => 
   assert.equal(planCardOpen(), true);
   State.codexPlanUsage = { sevenDay: win(85, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   assert.equal(openPlanColor(), "#F4505E");
+});
+
+test("the compact plan row follows the header's switches, Claude first, both windows", () => {
+  const pcts = () => compactPlanWindows(NOW).map((w) => [w.label, w.pct]);
+  State.planUsage = { fiveHour: win(42, future), sevenDay: win(12, future), updatedAt: NOW };
+  State.codexPlanUsage = { sevenDay: win(71, future), updatedAt: NOW };
+  assert.deepEqual(pcts(), []);
+  State.settings.showPlanInNotch = true;
+  assert.deepEqual(pcts(), []);
+  State.settings.planRelayInstalled = true;
+  assert.deepEqual(pcts(), [["5 hours", 42], ["Week", 12]]);
+  State.settings.showCodexPlanInNotch = true;
+  assert.deepEqual(pcts(), [["5 hours", 42], ["Week", 12]]);
+  // Unlike the pills, it does not need the overview.
+  State.view = "settings";
+  State.planUsage = null;
+  assert.deepEqual(pcts(), [["Week", 71]]);
+  // Its own switch hides it whatever the header shows.
+  State.settings.compactShowPlan = false;
+  assert.deepEqual(pcts(), []);
+  State.settings.compactShowPlan = true;
 });
 
 test("focusing another pill closes the plan card", () => {

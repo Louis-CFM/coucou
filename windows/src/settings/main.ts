@@ -910,6 +910,14 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const numberOnly = toggle(settings.compactAgentsNumberOnly, (v) => { settings.compactAgentsNumberOnly = v; void save(); }) as HTMLButtonElement;
+  numberOnly.disabled = !settings.compactShowAgents;
+  const showAgents = toggle(settings.compactShowAgents, (v) => {
+    settings.compactShowAgents = v;
+    numberOnly.disabled = !v;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -956,6 +964,18 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Auto-close") }),
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Show the number of agents in the folded island") }),
+      showAgents,
+    ),
+    h("div", { class: "row sub" },
+      h("label", { text: t("Show the number only") }),
+      numberOnly,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Show plan usage in the folded island") }),
+      toggle(settings.compactShowPlan, (v) => { settings.compactShowPlan = v; void save(); }),
     ),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),

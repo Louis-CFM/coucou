@@ -10,8 +10,10 @@ import {
   QUESTION_PICKER_H,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
+import { planColor } from "../core/plan";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { t } from "../i18n/i18n";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -19,7 +21,7 @@ import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from ".
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
-import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
+import { closePlanCard, compactPlanWindows, openPlanColor, planCardOpen, refreshCodexPlanUsage } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
@@ -57,6 +59,10 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
+  private compactStats!: HTMLElement;
+  /** Narrowest compact island that fits the stats beside Mochi and the mini grid; 0 without stats. */
+  private statsMinW = 0;
+  private compactCodexShown = false;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -258,6 +264,7 @@ export class Island {
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
+    this.compactStats = h("div", { id: "compact-stats" });
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
@@ -292,6 +299,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactStats,
       this.countdown,
     );
 
@@ -644,7 +652,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, this.statsMinW);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1188,6 +1196,32 @@ export class Island {
       }
     }
 
+    // Compact stats: agent session count beside Mochi, plan % beside the mini grid
+    // (the last text stays while it fades out).
+    const count = showGrid && State.settings.compactShowAgents ? State.tasks.filter((t) => t.source !== "n8n").length : 0;
+    const windows = showGrid ? compactPlanWindows() : [];
+    if (count || windows.length) {
+      this.compactStats.replaceChildren(
+        ...(count ? [statRow([[State.settings.compactAgentsNumberOnly ? "" : t("Agents"), String(count), null]])] : []),
+        ...(windows.length ? [statRow(windows.map((w) => [w.label, `${Math.round(w.pct)}%`, planColor(w.pct)]))] : []),
+      );
+    }
+    this.compactStats.style.opacity = count || windows.length ? "1" : "0";
+    // Mochi and the mini grid with their gaps: 58 px on the left, the 64 px `right` on the other side.
+    const statsMinW = count || windows.length ? Math.ceil(this.compactStats.offsetWidth) + 58 + 64 : 0;
+    if (statsMinW !== this.statsMinW) {
+      this.statsMinW = statsMinW;
+      if (State.mode === "compact") {
+        this.animateGeometry(false);
+      }
+    }
+    // Codex is asked when the compact island comes into view, as by its pill.
+    const codexShown = showGrid && State.settings.showCodexPlanInNotch;
+    if (codexShown && !this.compactCodexShown) {
+      refreshCodexPlanUsage();
+    }
+    this.compactCodexShown = codexShown;
+
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
   }
@@ -1208,4 +1242,17 @@ export class Island {
   get chatHeight() {
     return chatPromptHeight(State.chatHistory.length);
   }
+}
+
+/** One right-aligned compact stats line: grey labels, each followed by its value. */
+function statRow(items: [label: string, value: string, color: string | null][]): HTMLElement {
+  const row = h("div", { class: "cs-row" });
+  items.forEach(([label, value, color], i) => {
+    if (i) row.append(h("span", { class: "cs-sep", text: "·" }));
+    if (label) {
+      row.append(h("span", { text: label }));
+    }
+    row.append(h("b", { class: label ? "" : "alone", text: value, style: color ? `color:${color}` : "" }));
+  });
+  return row;
 }

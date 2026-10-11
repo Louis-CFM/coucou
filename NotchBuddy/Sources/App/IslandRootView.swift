@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Top-level SwiftUI view rendered inside the 720×320 transparent panel.
@@ -126,6 +127,9 @@ struct IslandContainer: View {
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                    CompactStats(state: state)
+                        .frame(width: islandWidth, height: islandHeight)
+                        .transition(.opacity)
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
@@ -136,7 +140,8 @@ struct IslandContainer: View {
             let anim = shrinking ? closeEase : openSpring
             let (w, h) = islandSize(mode: newMode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    compactMinWidth: state.compactStatsWidth)
             let cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             let tr: CGFloat = 0
             withAnimation(anim) {
@@ -161,6 +166,12 @@ struct IslandContainer: View {
                 islandHeight = newView == .prompt ? chatPromptHeight : h
             }
         }
+        .onChange(of: state.compactStatsWidth) { _, minWidth in
+            guard state.mode == .compact else { return }
+            let (w, _) = islandSize(mode: .compact, view: state.view,
+                                    nw: state.notchWidth, nh: state.notchHeight, compactMinWidth: minWidth)
+            withAnimation(openSpring) { islandWidth = w }
+        }
         .onChange(of: state.chatHistory.count) { _, _ in
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
@@ -168,7 +179,8 @@ struct IslandContainer: View {
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    compactMinWidth: state.compactStatsWidth)
             islandWidth      = w
             islandHeight     = state.view == .prompt ? chatPromptHeight : h
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
@@ -181,7 +193,8 @@ struct IslandContainer: View {
             // New screen, new resting size (notch ↔ bar): snap without animation.
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    compactMinWidth: state.compactStatsWidth)
             islandWidth  = w
             islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
         }
@@ -702,5 +715,131 @@ struct CompactMiniGrid: View {
             }
         }
         .frame(width: 28, height: 28)
+    }
+}
+
+// MARK: - Compact stats (agents beside Mochi or with the plan, plan usage before the mini grid)
+
+struct CompactStat {
+    let label: String
+    let value: String
+    let color: String
+}
+
+struct CompactStats: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        let sides = state.compactStatSides
+        ZStack {
+            column(sides.left, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, state.compactBotTaken)
+            column(sides.right, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, state.compactGridTaken)
+        }
+        .font(.system(size: 9, weight: .semibold).monospacedDigit())
+        .lineLimit(1)
+        .allowsHitTesting(false)
+        .onAppear { refreshCodex() }
+    }
+
+    private func column(_ rows: [[CompactStat]], alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            ForEach(rows.indices, id: \.self) { i in
+                row(rows[i])
+            }
+        }
+        .fixedSize()
+    }
+
+    private func row(_ items: [CompactStat]) -> some View {
+        HStack(spacing: 0) {
+            ForEach(items.indices, id: \.self) { i in
+                if i > 0 {
+                    Text(verbatim: " · ").foregroundColor(Color(hex: "#454850"))
+                }
+                if !items[i].label.isEmpty {
+                    Text(verbatim: items[i].label + " ").foregroundColor(Color(hex: "#8E939C"))
+                }
+                Text(verbatim: items[i].value).fontWeight(.bold).foregroundColor(Color(hex: items[i].color))
+            }
+        }
+    }
+
+    private func refreshCodex() {
+        #if !APPSTORE
+        if state.showCodexPlanInNotch { state.refreshCodexPlanUsage() }
+        #endif
+    }
+}
+
+extension AppState {
+    /// Agents and workspaces; services and chat providers are .n8n.
+    private var compactAgentStat: CompactStat? {
+        let agents = tasks.filter { $0.source != .n8n }.count
+        guard compactShowAgents, agents > 0 else { return nil }
+        let label = compactAgentsNumberOnly ? "" : String(localized: "Agents")
+        return CompactStat(label: label, value: "\(agents)", color: "#F5F6F8")
+    }
+
+    /// The plan's 5-hour and week windows: Claude's when its pill is on and has numbers, else Codex's.
+    private var compactPlanStats: [CompactStat] {
+        #if !APPSTORE
+        guard compactShowPlan else { return [] }
+        let plans: [PlanUsage?] = [
+            showPlanInNotch && planRelayInstalled ? (demoPlanUsageOverride ?? claudePlanUsage) : nil,
+            showCodexPlanInNotch ? codexPlanUsage?.planUsage : nil,
+        ]
+        guard let u = plans.compactMap({ $0 }).first(where: { $0.fiveHour != nil || $0.sevenDay != nil }) else { return [] }
+        let windows: [(String, PlanWindow?)] = [
+            (String(localized: "plan.5hours"), u.fiveHour),
+            (String(localized: "plan.week"), u.sevenDay),
+        ]
+        return windows.compactMap { (label, window) -> CompactStat? in
+            guard let window else { return nil }
+            let pct = ClaudePlanGauge.effectivePct(window)
+            return CompactStat(label: label, value: "\(Int(pct.rounded()))%", color: ClaudePlanGauge.color(for: pct))
+        }
+        #else
+        return []
+        #endif
+    }
+
+    /// Rows beside Mochi and rows before the mini grid. A notch splits the island in two ears,
+    /// so the agents go beside Mochi and the plan windows stack, to keep each ear narrow.
+    var compactStatSides: (left: [[CompactStat]], right: [[CompactStat]]) {
+        let agents = compactAgentStat.map { [[$0]] } ?? []
+        let plan = compactPlanStats
+        if hasNotch {
+            return (agents, plan.map { [$0] })
+        }
+        return ([], agents + (plan.isEmpty ? [] : [plan]))
+    }
+
+    /// Mochi (20 wide at x 40) and its gap to the stats.
+    var compactBotTaken: CGFloat { 58 }
+
+    /// The mini grid (28 wide at width - 40) and its gap to the stats.
+    var compactGridTaken: CGFloat { 64 }
+
+    /// Narrowest compact island that keeps the stats clear of the notch and Mochi; 0 without stats.
+    var compactStatsWidth: CGFloat {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
+        func widest(_ rows: [[CompactStat]]) -> CGFloat {
+            var most: CGFloat = 0
+            for row in rows {
+                let text: String = row.map { (s: CompactStat) -> String in s.label.isEmpty ? s.value : s.label + " " + s.value }.joined(separator: " · ")
+                most = max(most, ceil((text as NSString).size(withAttributes: [.font: font]).width) + 4)
+            }
+            return most
+        }
+        let sides = compactStatSides
+        if sides.left.isEmpty && sides.right.isEmpty { return 0 }
+        let left = widest(sides.left) + compactBotTaken
+        let right = widest(sides.right) + compactGridTaken
+        // With a notch each side holds its own stats; without one the text may cross the middle.
+        return hasNotch ? notchWidth + 2 * max(left, right) : left + right
     }
 }

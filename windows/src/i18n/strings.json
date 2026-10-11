@@ -3181,6 +3181,39 @@
    "ru": "Показывать мои сессии агента на iPhone",
    "id": "Tampilkan sesi agen saya di iPhone saya"
   },
+  "Show plan usage in the folded island": {
+   "zh-Hans": "在收起的岛中显示套餐用量",
+   "hi": "मुड़े हुए आइलैंड में प्लान का उपयोग दिखाएं",
+   "es": "Mostrar el uso del plan en la isla plegada",
+   "ar": "إظهار استخدام الخطة في الشريط المطوي",
+   "fr": "Afficher l'utilisation du forfait dans l'île repliée",
+   "bn": "ভাঁজ করা আইল্যান্ডে প্ল্যানের ব্যবহার দেখান",
+   "pt-BR": "Mostrar o uso do plano na ilha recolhida",
+   "ru": "Показывать расход тарифа в свёрнутом острове",
+   "id": "Tampilkan penggunaan paket di pulau yang terlipat"
+  },
+  "Show the number of agents in the folded island": {
+   "zh-Hans": "在收起的岛中显示代理数量",
+   "hi": "मुड़े हुए आइलैंड में एजेंटों की संख्या दिखाएं",
+   "es": "Mostrar el número de agentes en la isla plegada",
+   "ar": "إظهار عدد الوكلاء في الشريط المطوي",
+   "fr": "Afficher le nombre d'agents dans l'île repliée",
+   "bn": "ভাঁজ করা আইল্যান্ডে এজেন্টের সংখ্যা দেখান",
+   "pt-BR": "Mostrar o número de agentes na ilha recolhida",
+   "ru": "Показывать число агентов в свёрнутом острове",
+   "id": "Tampilkan jumlah agen di pulau yang terlipat"
+  },
+  "Show the number only": {
+   "zh-Hans": "仅显示数字",
+   "hi": "केवल संख्या दिखाएं",
+   "es": "Mostrar solo el número",
+   "ar": "إظهار الرقم فقط",
+   "fr": "Afficher seulement le nombre",
+   "bn": "শুধু সংখ্যাটি দেখান",
+   "pt-BR": "Mostrar só o número",
+   "ru": "Показывать только число",
+   "id": "Tampilkan angkanya saja"
+  },
   "Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。",
    "hi": "नॉच हेडर में आपके Claude प्लान का उपयोग (5 घंटे और साप्ताहिक सीमाएं) दिखाता है। Coucou ~/.claude/settings.json में एक स्टेटस लाइन रिले जोड़ता है। अगर आपके पास पहले से स्टेटस लाइन है, तो वह पहले की तरह काम करती रहेगी। केवल Pro और Max प्लान के लिए।",
