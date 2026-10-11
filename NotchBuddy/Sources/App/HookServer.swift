@@ -621,7 +621,6 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Helpers
 
-    @MainActor
     /// Settings → Follow the latest activity: the pill that just did something takes the card, and with
     /// "Open the island on new activity" the island opens on it. A view you opened stays, and an approval
     /// or a question keeps the front.
@@ -639,6 +638,7 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
+    @MainActor
     private func expandIfNeeded(to view: IslandView) {
         let state = AppState.shared
         let isAlert: Bool
