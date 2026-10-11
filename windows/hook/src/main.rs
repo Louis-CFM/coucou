@@ -577,7 +577,7 @@ mod tests {
     fn python(call: &str, cases: &Value) -> Option<Vec<Value>> {
         use std::process::{Command, Stdio};
         let script = format!(
-            "import importlib.util,json,sys\ns=importlib.util.spec_from_file_location('r',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nprint(json.dumps([{call} for c in json.load(sys.stdin)]))"
+            "import importlib.util,json,sys\ns=importlib.util.spec_from_file_location('r',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nprint(json.dumps([{call} for c in json.loads(sys.stdin.buffer.read())]))"
         );
         let mut child = Command::new("python3")
             .args(["-B", "-c", &script, concat!(env!("CARGO_MANIFEST_DIR"), "/coucou-hook.py")])
