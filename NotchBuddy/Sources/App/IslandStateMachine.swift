@@ -193,6 +193,19 @@ final class IslandStateMachine {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
+    /// Alert that should open the island the same way a click does (a calendar
+    /// reminder): straight to `.home`, so hovering it doesn't fold it back to compact.
+    func forceHome() {
+        cancelTimers()
+        transition(to: .home)
+    }
+
+    /// A file drag that started from the hidden island ended elsewhere: back to hidden.
+    func forceHidden() {
+        cancelTimers()
+        transition(to: .hidden)
+    }
+
     /// Non-alert work event: show compact from hidden (HookServer reveal)
     func reveal() {
         guard state == .hidden else { return }

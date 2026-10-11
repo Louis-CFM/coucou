@@ -77,6 +77,7 @@ rouge `rgba(244,80,94,.55)`, vert `rgba(52,211,153,.5)`, rose `rgba(244,114,182,
 | `question` | 196 | 62, 56 | agent + question (1/N) + options en boutons (single-select ou multi-select) + « Reply in terminal » ; bouton Send/Next pour multi-select ou multi-questions ; « Other… » → saisie libre | 05 |
 | `error` | 190 | 62, 58 | agent + outil, titre, détail en rouge `#FF8D97`, Relancer, Ouvrir dans n8n | 06 |
 | `finished` | 170 | 62, 58 | agent + résumé, Voir le terminal, OK | 07 |
+| `reminder` | 160 | 62, 58 | rappel Google Calendar (voile indigo) : agenda + « dans 30 min », titre, horaire · lieu, Join (visio), Open, OK | — |
 | `confused` | 160 | 76, 66 | « Trop de claques d'un coup. » | 08 |
 | `upload` | 176 | 140, 62 | zone pointillée, « Dépose tes fichiers ici », étiquettes | 09 |
 | `uploading` | 150 | sur la barre, Ø 28 | « Envoi de fichier » + %, barre verte, le bonhomme est le curseur de la barre | 10 |

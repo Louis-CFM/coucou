@@ -362,11 +362,16 @@ final class HookServer: @unchecked Sendable {
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
+        // The Claude desktop app's Code tab runs the same hooks. The relay tags its
+        // sessions `claude-desktop` from CLAUDE_CODE_ENTRYPOINT; the bundle ID catches
+        // the ones that come without it (an older relay), so they reach the same pill.
+        let isClaudeDesktop = bundleId == "com.anthropic.claudefordesktop"
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
+        // • Claude desktop app bundle ID → agent_claude-desktop (its own permission prompt)
         // • VS Code → integration_claude
         // • a known terminal (Warp, Terminal, iTerm…) → integration_claude, host recorded on the task
         #if !APPSTORE
@@ -386,6 +391,9 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
+        } else if isClaudeDesktop {
+            agentId = "agent_claude-desktop"
+            isExternalAgent = true
         } else if isVSCodeEditor {
             agentId = "integration_claude"
             isExternalAgent = false
@@ -397,6 +405,9 @@ final class HookServer: @unchecked Sendable {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
+
+        // The GitHub card follows the branch of whichever shown session spoke last.
+        GithubPoller.shared.noteCwd(cwd)
 
         let focused = state.focusId == agentId
         // For sessions that carry no id, derive a unique key from pill + cwd so that
@@ -731,6 +742,8 @@ final class HookServer: @unchecked Sendable {
             }
             return
         }
+
+        GithubPoller.shared.noteCwd(cwd)
 
         let tool = payload["tool_name"] as? String ?? "Tool"
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
@@ -1075,7 +1088,8 @@ final class HookServer: @unchecked Sendable {
         }
 
         // Bash: infer a more precise verb from the command
-        if tool == "Bash", let cmd = input["command"] as? String {
+        if tool == "Bash", let raw = input["command"] as? String {
+            let cmd = Self.commandSummary(raw)
             return "\(bashVerb(cmd)) · \(oneLine(cmd))"
         }
 
@@ -1093,7 +1107,7 @@ final class HookServer: @unchecked Sendable {
         }
 
         if let cmd = input["command"] as? String {
-            return "\(label) · \(oneLine(cmd))"
+            return "\(label) · \(oneLine(Self.commandSummary(cmd)))"
         } else if let path = input["path"] as? String {
             return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
         } else if let file = input["file_path"] as? String {
@@ -1102,6 +1116,20 @@ final class HookServer: @unchecked Sendable {
             return "\(label) · \(oneLine(query))"
         }
         return label
+    }
+
+    /// The part of a shell command worth reading in one ticker line: whitespace and
+    /// newlines collapsed, and the `cd <project> &&` / `cd <project>;` prefix Claude
+    /// puts in front of most commands dropped, since the card already names the
+    /// project. `oneLine` then caps the length for the ticker.
+    static func commandSummary(_ cmd: String) -> String {
+        var s = cmd.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let prefix = #"^(?:cd|Set-Location|pushd)\s+("[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*"#
+        if let r = s.range(of: prefix, options: [.regularExpression, .caseInsensitive]) {
+            let rest = String(s[r.upperBound...])
+            if !rest.isEmpty { s = rest }
+        }
+        return String(s.prefix(120))
     }
 
     /// Infers a localized verb from a shell command's first word.

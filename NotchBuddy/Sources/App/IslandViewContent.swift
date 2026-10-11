@@ -14,6 +14,7 @@ struct IslandViewContent: View {
         case .question:  QuestionView(state: state)
         case .error:     ErrorView(state: state)
         case .finished:  FinishedView(state: state)
+        case .reminder:  ReminderView(state: state)
         case .confused:  ConfusedView()
         case .upload:    UploadView(state: state)
         case .uploading: UploadingView(state: state)
@@ -223,6 +224,8 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "integration_gcal":
+            NSWorkspace.shared.open(URL(string: "https://calendar.google.com")!)
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -651,6 +654,102 @@ struct FinishedView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+}
+
+// MARK: - Calendar reminder
+
+struct ReminderView: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        ZStack {
+            CardBackground(wash: .indigo)
+            if let r = state.reminder {
+                // Re-reads the clock every minute: "in 30 min" counts down.
+                TimelineView(.everyMinute) { context in
+                    content(r, now: context.date)
+                }
+            }
+        }
+    }
+
+    private func content(_ r: GcalEvent, now: Date) -> some View {
+        let start = r.startSecs.map { Date(timeIntervalSince1970: TimeInterval($0)) } ?? now
+        let end = r.endSecs.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        let time = { (d: Date) in d.formatted(date: .omitted, time: .shortened) }
+        let when = end.map { "\(time(start)) – \(time($0))" } ?? time(start)
+        // The place, up to its first comma: "Casino Zaragoza", not the postcode.
+        let place = r.location
+            .flatMap { $0.hasPrefix("https://") ? nil : $0.components(separatedBy: ",").first }
+            .flatMap { $0.isEmpty ? nil : $0 }
+        let detail = place.map { "\(when) · \($0)" } ?? when
+        let meet = safeWebURL(r.meetURL)
+        let open = safeWebURL(r.url)
+
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 7) {
+                Circle().fill(gcalColor(r.color)).frame(width: 8, height: 8)
+                // Google names your primary calendar after your address: say Calendar.
+                Text(!r.calendar.isEmpty && !r.calendar.contains("@") ? r.calendar : "Calendar")
+                    .font(.system(size: 12, weight: .semibold)).foregroundColor(Color(hex: "#F5F6F8"))
+                    .lineLimit(1)
+                Text(startsIn(start, now: now))
+                    .font(.system(size: 12)).foregroundColor(Color(hex: "#8E939C"))
+                    .lineLimit(1)
+            }
+            Text(r.title)
+                .font(.system(size: 15, weight: .semibold))
+                .lineLimit(1).truncationMode(.tail)
+            Text(detail)
+                .font(.system(size: 12))
+                .foregroundColor(Color(hex: "#9398A1"))
+                .lineLimit(1).truncationMode(.tail)
+            HStack(spacing: 8) {
+                if let meet {
+                    PrimaryButton("Join") { openAndClose(meet) }
+                }
+                if let open {
+                    if meet == nil {
+                        PrimaryButton("Open") { openAndClose(open) }
+                    } else {
+                        SecondaryButton("Open") { openAndClose(open) }
+                    }
+                }
+                SecondaryButton("OK") {
+                    NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                }
+            }
+        }
+        .padding(.leading, 116)
+        .padding(.trailing, 16)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func openAndClose(_ url: URL) {
+        NSWorkspace.shared.open(url)
+        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+    }
+
+    /// "in 30 min", "in 1 h 15 min", "starting now" — from the live clock, not the poll's.
+    private func startsIn(_ start: Date, now: Date) -> String {
+        let minutes = Int((start.timeIntervalSince(now) / 60).rounded(.up))
+        if minutes <= 0 { return "starting now" }
+        if minutes < 60 { return "in \(minutes) min" }
+        if minutes < 1440 {
+            let (h, m) = (minutes / 60, minutes % 60)
+            return m == 0 ? "in \(h) h" : "in \(h) h \(m) min"
+        }
+        let d = minutes / 1440
+        return d == 1 ? "tomorrow" : "in \(d) days"
+    }
+}
+
+/// A calendar's colour as Google Calendar shows it, or Google blue.
+func gcalColor(_ hex: String?) -> Color {
+    guard let hex, hex.count == 7, hex.hasPrefix("#"),
+          hex.dropFirst().allSatisfy(\.isHexDigit) else { return Color(hex: "#4285F4") }
+    return Color(hex: hex)
 }
 
 // MARK: - Diff Card
@@ -1831,6 +1930,8 @@ struct IntegrationCardView: View {
         case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
         case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
         case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        // Connected once Google has handed back a refresh token.
+        case "integration_gcal":    return KeychainStore.shared.get("gcal-refresh-token") != nil
         default: return false
         }
     }
@@ -1843,10 +1944,11 @@ struct IntegrationCardView: View {
             if let s = KeychainStore.shared.get("n8n-url") { return URL(string: s) }
             return nil
         case "integration_vercel":  return URL(string: "https://vercel.com/dashboard")
-        case "integration_github":  return URL(string: "https://github.com")
+        case "integration_github":  return URL(string: "https://github.com/pulls")
         case "integration_stripe":  return URL(string: "https://dashboard.stripe.com/payments")
         case "integration_notion":  return URL(string: "https://notion.so")
         case "integration_calcom":  return URL(string: "https://app.cal.com/bookings")
+        case "integration_gcal":    return URL(string: "https://calendar.google.com")
         default: return nil
         }
     }
@@ -1874,14 +1976,20 @@ struct IntegrationCardView: View {
         task.id == "integration_resend" && !appState.resendEmails.isEmpty
     }
 
-    // GitHub with stats or pulse loaded
+    // GitHub with stats or pulse loaded (an API error shows on the idle card instead)
     private var githubHasData: Bool {
-        task.id == "integration_github" && (appState.githubPulse != nil || appState.githubStats != nil)
+        task.id == "integration_github" && appState.githubError == nil
+            && (appState.githubPulse != nil || appState.githubStats != nil)
     }
 
     // GitHub with pulse loaded (richer card)
     private var githubHasPulse: Bool {
-        task.id == "integration_github" && appState.githubPulse != nil
+        task.id == "integration_github" && appState.githubPulse != nil && appState.githubError == nil
+    }
+
+    // Google Calendar once connected and polled; disconnecting goes back to the idle card
+    private var gcalHasData: Bool {
+        task.id == "integration_gcal" && appState.gcalEvents != nil && appState.gcalError == nil
     }
 
     // Stripe: show card as soon as first poll completes (balance OR payments)
@@ -1910,6 +2018,17 @@ struct IntegrationCardView: View {
         #endif
     }
 
+    /// The last error a service's poller ran into, shown instead of its data.
+    private var serviceError: String? {
+        switch task.id {
+        case "integration_stripe": return appState.stripeError
+        case "integration_calcom": return appState.calcomError
+        case "integration_github": return appState.githubError
+        case "integration_gcal":   return appState.gcalError
+        default:                   return nil
+        }
+    }
+
     // Spotify: its own card for every state (playing, idle, not installed, Automation denied)
     private var isSpotify: Bool {
         #if !APPSTORE
@@ -1927,10 +2046,7 @@ struct IntegrationCardView: View {
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
-        let svcErr = task.id == "integration_stripe" ? appState.stripeError
-                   : task.id == "integration_calcom"  ? appState.calcomError
-                   : nil
-        if svcErr != nil { return Color(hex: "#F4505E") }
+        if serviceError != nil { return Color(hex: "#F4505E") }
         return isConfigured ? Color(hex: "#22C55E") : Color(hex: "#F4505E")
     }
 
@@ -1943,10 +2059,7 @@ struct IntegrationCardView: View {
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
-        let svcErr = task.id == "integration_stripe" ? appState.stripeError
-                   : task.id == "integration_calcom"  ? appState.calcomError
-                   : nil
-        if let err = svcErr { return err }
+        if let err = serviceError { return err }
         // Pills driven by hooks, never by a key: the idle card reports whether the
         // hooks are in place. integration_claude read "Connected · loading…" with
         // nothing left to load — a session replaces this card, it never resolves here.
@@ -1982,6 +2095,7 @@ struct IntegrationCardView: View {
                 let provider = ChatProvider(pillID: task.id)!
                 return provider.isLocal ? String(localized: "Not connected") : String(localized: "Key not configured")
             }
+            if task.id == "integration_gcal" { return String(localized: "Google account not connected") }
             return String(localized: "Key not configured")
         }
     }
@@ -2029,6 +2143,9 @@ struct IntegrationCardView: View {
             .transition(.opacity)
         } else if githubHasData {
             GitHubStatsCardView(stats: appState.githubStats!)
+                .transition(.opacity)
+        } else if gcalHasData {
+            GcalCardView(events: appState.gcalEvents ?? [])
                 .transition(.opacity)
         } else if stripeHasData {
             StripeCardView()
@@ -2213,6 +2330,15 @@ struct IntegrationCardView: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: "#C9956A").opacity(0.85))
                             .buttonStyle(.plain)
+                    }
+                    if (task.id == "integration_github" || task.id == "integration_gcal") && isConfigured {
+                        Button("Refresh") {
+                            if task.id == "integration_github" { GithubPoller.shared.triggerPulseNow() }
+                            else { GcalPoller.shared.pollNow() }
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(hex: task.color).opacity(0.85))
+                        .buttonStyle(.plain)
                     }
                     // Settings button: shown when not configured, except cursor/codex and music
                     if !isConfigured
@@ -2634,25 +2760,44 @@ struct GitHubPulseCardView: View {
                     value: "\(reviewCount)"
                 ) { onTapSection(.toReview) }
 
-                // Default branch CI
-                let mainWorst = mainCIWorst(pulse.mainCI)
-                let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
-                    switch mainWorst {
-                    case .failure:
-                        let n = pulse.mainCI.filter { $0.ci == .failure }.count
-                        return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
-                    case .pending:
-                        return ("checkmark.seal.fill", "#F5A524", "running")
-                    case .success:
-                        return ("checkmark.seal.fill", "#22C55E", "all green")
-                    case .unknown:
-                        return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
-                    }
-                }()
-                GitHubStatRow(
-                    icon: ciIcon, iconColor: ciIconColor,
-                    label: "Default branch CI", value: ciValue
-                ) { onTapSection(.mainCI) }
+                // CI: the branch of the last Claude Code session when there is one
+                // (the detail lists it first, then the default branches), the
+                // default branches otherwise.
+                if let b = pulse.branch {
+                    let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
+                        guard b.pushed else { return ("arrow.triangle.branch", "#6B7079", "not pushed") }
+                        switch b.ci {
+                        case .failure: return ("xmark.octagon.fill", "#F4505E", "failing")
+                        case .pending: return ("checkmark.seal.fill", "#F5A524", "running")
+                        case .success: return ("checkmark.seal.fill", "#22C55E", "passing")
+                        case .unknown: return ("checkmark.seal.fill", "#6B7079", "no checks")
+                        }
+                    }()
+                    GitHubStatRow(
+                        icon: ciIcon, iconColor: ciIconColor,
+                        label: "CI · \(b.branch)", value: ciValue
+                    ) { onTapSection(.mainCI) }
+                    .help(b.failing.isEmpty ? b.repo : "\(b.repo)\nFailing: \(b.failing.joined(separator: ", "))")
+                } else {
+                    let mainWorst = mainCIWorst(pulse.mainCI)
+                    let (ciIcon, ciIconColor, ciValue): (String, String, String) = {
+                        switch mainWorst {
+                        case .failure:
+                            let n = pulse.mainCI.filter { $0.ci == .failure }.count
+                            return ("xmark.octagon.fill", "#F4505E", "\(n) failing")
+                        case .pending:
+                            return ("checkmark.seal.fill", "#F5A524", "running")
+                        case .success:
+                            return ("checkmark.seal.fill", "#22C55E", "all green")
+                        case .unknown:
+                            return ("checkmark.seal.fill", "#6B7079", pulse.mainCI.isEmpty ? "no repos" : "unknown")
+                        }
+                    }()
+                    GitHubStatRow(
+                        icon: ciIcon, iconColor: ciIconColor,
+                        label: "Default branch CI", value: ciValue
+                    ) { onTapSection(.mainCI) }
+                }
             }
             .padding(.top, 6)
             .padding(.leading, 108)
@@ -2686,6 +2831,8 @@ private struct GitHubStatRow: View {
                 Text(label)
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#6B7079"))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 Spacer()
                 Text(value)
                     .font(.system(size: 12, weight: .semibold))
@@ -2712,7 +2859,7 @@ struct GitHubDetailView: View {
         switch section {
         case .myPRs:    return String(localized: "My PRs")
         case .toReview: return String(localized: "To review")
-        case .mainCI:   return "Default branch CI"
+        case .mainCI:   return pulse.branch == nil ? String(localized: "Default branch CI") : "CI"
         case .activity: return String(localized: "Activity")
         }
     }
@@ -2726,7 +2873,12 @@ struct GitHubDetailView: View {
     }
 
     private var repoItems: [GitHubRepoCI] {
-        section == .mainCI ? pulse.mainCI : []
+        guard section == .mainCI else { return [] }
+        // The session's branch first, then the default branches (not the same one twice).
+        guard let b = pulse.branch else { return pulse.mainCI }
+        let branchRow = GitHubRepoCI(repo: b.repo, url: "https://github.com/\(b.repo)", branch: b.branch,
+                                     ci: b.ci, headSha: b.oid, link: b.url)
+        return [branchRow] + pulse.mainCI.filter { !($0.repo == b.repo && $0.branch == b.branch) }
     }
 
     private var totalItems: Int { items.count + repoItems.count }
@@ -2820,8 +2972,7 @@ struct GitHubDetailView: View {
                     let repoIdx = sel - items.count
                     guard repoIdx < repoItems.count else { return }
                     let repo = repoItems[repoIdx]
-                    let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
-                    if let url = safeWebURL(actionsURL), url.host == "github.com" {
+                    if let url = safeWebURL(repo.openURL), url.host == "github.com" {
                         NSWorkspace.shared.open(url)
                     }
                 }
@@ -3034,8 +3185,7 @@ private struct GitHubRepoCIRowView: View {
 
     var body: some View {
         Button(action: {
-            let actionsURL = repo.url.hasSuffix("/") ? repo.url + "actions" : repo.url + "/actions"
-            if let url = safeWebURL(actionsURL), url.host == "github.com" {
+            if let url = safeWebURL(repo.openURL), url.host == "github.com" {
                 NSWorkspace.shared.open(url)
             }
         }) {
@@ -3139,6 +3289,167 @@ private struct StatRow: View {
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Integration list rows (Calendar)
+
+private enum IntegrationColors {
+    static let green = "#22C55E"
+    static let amber = "#F5A524"
+    static let gcal  = "#4285F4"
+}
+
+/// Highlighted first row + plain rows, like the Resend and Vercel lists.
+private struct IntegrationRow<Content: View>: View {
+    let accent: Color
+    let first: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle().fill(accent).frame(width: 5, height: 5)
+            content()
+        }
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(first ? accent.opacity(0.08) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .contentShape(Rectangle())
+    }
+}
+
+private struct IntegrationCardHeader<Extra: View>: View {
+    let color: String
+    let name: String
+    let kind: String
+    @ViewBuilder let extra: () -> Extra
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(Color(hex: color)).frame(width: 7, height: 7)
+            Text(name)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color(hex: "#F5F6F8"))
+            Text(kind)
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8E939C"))
+            extra()
+        }
+        .padding(.top, 6)
+        .padding(.leading, 108)
+        .padding(.trailing, 36)
+    }
+}
+
+// MARK: - Google Calendar Card View
+
+struct GcalCardView: View {
+    let events: [GcalEvent]
+
+    var body: some View {
+        // The rows say "now" and "in 12m": let them move with the clock even when
+        // a poll brings back the same events.
+        TimelineView(.everyMinute) { context in
+            content(now: context.date)
+        }
+    }
+
+    private func content(now: Date) -> some View {
+        typealias C = IntegrationColors
+        // Meetings first; all-day events only fill what's left.
+        let ordered = Array((events.filter { !$0.allDay } + events.filter(\.allDay)).prefix(3))
+        let kind = ordered.first.map { Calendar.current.isDate(Self.start(of: $0), inSameDayAs: now) } == true
+            ? "Today" : "Upcoming"
+
+        return VStack(alignment: .leading, spacing: 0) {
+            IntegrationCardHeader(color: C.gcal, name: "Calendar", kind: kind) { EmptyView() }
+
+            VStack(alignment: .leading, spacing: 3) {
+                if ordered.isEmpty {
+                    Text("Nothing on the calendar this week")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "#6B7079"))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                }
+                ForEach(Array(ordered.enumerated()), id: \.element.key) { i, e in
+                    row(e, index: i, now: now)
+                }
+            }
+            .padding(.top, 5)
+            .padding(.leading, 108)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+    }
+
+    private func row(_ e: GcalEvent, index i: Int, now: Date) -> some View {
+        typealias C = IntegrationColors
+        let nowSecs = Int(now.timeIntervalSince1970)
+        let ongoing = e.startSecs != nil && e.endSecs != nil && e.startSecs! <= nowSecs && nowSecs < e.endSecs!
+        let minutes = e.startSecs.map { Int((Double($0 - nowSecs) / 60).rounded(.up)) }
+        let soon = minutes.map { $0 > 0 && $0 <= 60 } ?? false
+        // Otherwise the calendar's own colour, as in Google Calendar.
+        let accent = ongoing ? Color(hex: C.green)
+            : soon && minutes! <= 5 ? Color(hex: C.amber)
+            : gcalColor(e.color)
+        // Join, for the meeting that is on or about to be: the one click that matters.
+        let join = i == 0 ? safeWebURL(e.meetURL) : nil
+        let showJoin = join != nil && (ongoing || (minutes.map { $0 <= 15 } ?? false))
+
+        return IntegrationRow(accent: accent, first: i == 0) {
+            Text(ongoing ? "now" : Self.when(e, now: now))
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundColor(Color(hex: ongoing ? C.green : "#8AB4F8"))
+                .monospacedDigit()
+                .fixedSize()
+            Text(e.title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color(hex: i == 0 ? "#C5C8CD" : "#9398A1"))
+                .lineLimit(1).truncationMode(.tail)
+                .layoutPriority(1)
+            Spacer(minLength: 4)
+            if showJoin, let join {
+                Button { NSWorkspace.shared.open(join) } label: {
+                    Text("Join")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(accent)
+                        .padding(.horizontal, 7).padding(.vertical, 1)
+                        .background(accent.opacity(0.14))
+                        .clipShape(Capsule())
+                        .fixedSize()
+                }
+                .buttonStyle(.plain)
+            } else if soon && !ongoing, let m = minutes {
+                Text("in \(m)m")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: m <= 5 ? C.amber : "#6B7079"))
+                    .fixedSize()
+            }
+        }
+        .onTapGesture {
+            if let url = safeWebURL(e.url) { NSWorkspace.shared.open(url) }
+        }
+    }
+
+    /// All-day events carry a bare YYYY-MM-DD: that day, at local midnight.
+    static func start(of e: GcalEvent) -> Date {
+        if let s = e.startSecs { return Date(timeIntervalSince1970: TimeInterval(s)) }
+        let parts = e.start.split(separator: "-").compactMap { Int($0) }
+        var c = DateComponents()
+        c.year = parts.first; c.month = parts.count > 1 ? parts[1] : 1; c.day = parts.count > 2 ? parts[2] : 1
+        return Calendar.current.date(from: c) ?? Date.distantFuture
+    }
+
+    /// "14:30" today, "Fri 09:00" later in the week, "All day" / "Fri" for all-day.
+    static func when(_ e: GcalEvent, now: Date) -> String {
+        let start = start(of: e)
+        let today = Calendar.current.isDate(start, inSameDayAs: now)
+        let weekday = start.formatted(.dateTime.weekday(.abbreviated))
+        if e.allDay { return today ? "All day" : weekday }
+        let time = start.formatted(date: .omitted, time: .shortened)
+        return today ? time : "\(weekday) \(time)"
     }
 }
 
@@ -3882,6 +4193,9 @@ struct TickerShimmerText: View {
 struct AgentPillsView: View {
     @ObservedObject var state: AppState
     @State private var swapping = false
+    // Hover lives here, not in each pill: at most one pill is highlighted, and a
+    // pill can't stay lit after the grid reshuffles under a still cursor.
+    @State private var hoveredId: String? = nil
 
     private var others: [AgentTask] {
         state.tasks.filter { $0.id != state.focusId }
@@ -3903,34 +4217,18 @@ struct AgentPillsView: View {
                 ForEach(displayTasks) { task in
                     #if !APPSTORE
                     if task.id == "integration_music" {
-                        MusicPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
+                        MusicPill(task: task, state: state, isHovered: hoveredId == task.id,
+                                  onHover: hover(task.id)) { select(task.id) }
                     } else if task.id == "integration_spotify" {
-                        SpotifyPill(task: task, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
+                        SpotifyPill(task: task, isHovered: hoveredId == task.id,
+                                    onHover: hover(task.id)) { select(task.id) }
                     } else {
-                        AgentPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
+                        AgentPill(task: task, isHovered: hoveredId == task.id,
+                                  onHover: hover(task.id)) { select(task.id) }
                     }
                     #else
-                    AgentPill(task: task, state: state, swapping: $swapping) {
-                        swapping = true
-                        state.setFocus(task.id)
-                        SoundEngine.shared.play("blip")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                    }
+                    AgentPill(task: task, isHovered: hoveredId == task.id,
+                              onHover: hover(task.id)) { select(task.id) }
                     #endif
                 }
             }
@@ -3939,14 +4237,35 @@ struct AgentPillsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    private func hover(_ id: String) -> (Bool) -> Void {
+        { hovering in
+            if hovering {
+                // Ignore enters while the grid reshuffles, so the pill that
+                // slides under the cursor doesn't light up mid-swap.
+                guard !swapping else { return }
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { hoveredId = id }
+            } else if hoveredId == id {
+                // Exits are never dropped, otherwise the pill stays stuck.
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { hoveredId = nil }
+            }
+        }
+    }
+
+    private func select(_ id: String) {
+        swapping = true
+        hoveredId = nil
+        state.setFocus(id)
+        SoundEngine.shared.play("blip")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+    }
 }
 
 struct AgentPill: View {
     let task: AgentTask
-    @ObservedObject var state: AppState
-    @Binding var swapping: Bool
+    let isHovered: Bool
+    let onHover: (Bool) -> Void
     let onTap: () -> Void
-    @State private var isHovered = false
 
     private var effectiveColor: String { task.color }
 
@@ -3995,10 +4314,7 @@ struct AgentPill: View {
         .buttonStyle(.plain)
         .scaleEffect(isHovered ? 1.04 : 1.0)
         .brightness(isHovered ? 0.06 : 0)
-        .onHover { newHover in
-            guard !swapping else { return }
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
-        }
+        .onHover { onHover($0) }
     }
 }
 
@@ -4008,9 +4324,9 @@ struct AgentPill: View {
 struct MusicPill: View {
     let task: AgentTask
     @ObservedObject var state: AppState
-    @Binding var swapping: Bool
+    let isHovered: Bool
+    let onHover: (Bool) -> Void
     let onTap: () -> Void
-    @State private var isHovered = false
 
     private var isPlaying: Bool { AppState.shared.musicPlaying }
     private var showControls: Bool { isHovered && MusicController.shared.trackTitle != nil }
@@ -4075,10 +4391,7 @@ struct MusicPill: View {
         .shadow(color: Color(hex: task.color).opacity(isHovered ? 0.35 : 0), radius: 10, x: 0, y: 2)
         .scaleEffect(isHovered ? 1.04 : 1.0)
         .brightness(isHovered ? 0.06 : 0)
-        .onHover { newHover in
-            guard !swapping else { return }
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = newHover }
-        }
+        .onHover { onHover($0) }
     }
 }
 

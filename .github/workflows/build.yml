@@ -89,11 +89,17 @@ jobs:
       - name: GitHub pulse tests
         run: bash scripts/test-github-pulse.sh
 
+      - name: GitHub branch CI tests
+        run: bash scripts/test-github-branch-ci.sh
+
       - name: GitHub activity tests
         run: bash scripts/test-github-activity.sh
 
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
+
+      - name: Google Calendar tests
+        run: bash scripts/test-google-calendar.sh
 
       - name: Pill colour tests
         run: bash scripts/test-pill-colors.sh

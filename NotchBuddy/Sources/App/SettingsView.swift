@@ -103,6 +103,8 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var gcalClientId: String     = KeychainStore.shared.get("gcal-client-id")     ?? ""
+    @State private var gcalClientSecret: String = KeychainStore.shared.get("gcal-client-secret") ?? ""
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1211,9 +1213,10 @@ struct SettingsView: View {
                     }
                     SecureField("Personal Access Token", text: $githubToken)
                         .textFieldStyle(.roundedBorder)
-                    Text(String(localized: "integrations.github.token-hint"))
+                    Text(String(localized: "integrations.github.token-hint") + " " + Self.githubCIHint)
                         .font(.system(size: 10))
                         .foregroundColor(Color(hex: "#8E939C"))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 // Stripe
@@ -1246,12 +1249,35 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // Google Calendar
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#4285F4")).frame(width: 8, height: 8)
+                        Text("Google Calendar").font(.system(size: 12, weight: .semibold))
+                    }
+                    TextField("Client ID  (….apps.googleusercontent.com)", text: $gcalClientId)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Client secret  (GOCSPX-…)", text: $gcalClientSecret)
+                        .textFieldStyle(.roundedBorder)
+                    GcalConnectRow(clientId: gcalClientId, clientSecret: gcalClientSecret)
+                    Text(String(localized: "integrations.gcal.hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Button(String(localized: "integrations.save")) { saveIntegrations() }
                     .buttonStyle(.borderedProminent)
             }
             .padding(6)
         }
     }
+
+    #if APPSTORE
+    private static var githubCIHint: String { String(localized: "integrations.github.ci-hint.appstore") }
+    #else
+    private static var githubCIHint: String { String(localized: "integrations.github.ci-hint") }
+    #endif
 
     // MARK: - Voice section
 
@@ -1919,6 +1945,7 @@ struct SettingsView: View {
         let nextGithubToken = KeychainStore.shared.get("github-token")
         if nextGithubToken != prevGithubToken {
             AppState.shared.githubPulse = nil
+            AppState.shared.githubError = nil
             AppState.shared.githubActivity = nil
             if nextGithubToken == nil { AppState.shared.githubStats = nil }
             if nextGithubToken != nil {
@@ -1930,6 +1957,8 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+        saveKey("gcal-client-id",     value: gcalClientId.trimmingCharacters(in: .whitespacesAndNewlines))
+        saveKey("gcal-client-secret", value: gcalClientSecret.trimmingCharacters(in: .whitespacesAndNewlines))
         statusMessage = String(localized: "status.integrations-saved")
     }
 
@@ -2167,6 +2196,121 @@ struct SettingsSidebarRow: View {
 }
 
 // MARK: - Integration filter row (reusable for Vercel / n8n)
+
+// MARK: - Google Calendar: Connect / Cancel / Disconnect
+
+struct GcalConnectRow: View {
+    /// What the fields say right now; Connect saves them, so "Save integrations" isn't needed first.
+    let clientId: String
+    let clientSecret: String
+
+    @State private var connected = KeychainStore.shared.get("gcal-refresh-token") != nil
+    @State private var waiting = false
+    /// Which Connect click the screen belongs to: a stale one never redraws it.
+    @State private var attempt = 0
+    @State private var feedback: Feedback? = nil
+
+    struct Feedback {
+        enum Kind { case hint, ok, warn, err }
+        let kind: Kind
+        let text: String
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color(hex: connected ? "#22C55E" : "#F4505E"))
+                    .frame(width: 7, height: 7)
+                Text(connected ? "Connected" : "Not connected")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 8) {
+                Button(waiting ? "Waiting for Google…" : connected ? "Reconnect…" : "Connect Google account…") {
+                    connect()
+                }
+                .disabled(waiting)
+                if waiting {
+                    Button("Cancel") { cancel() }
+                }
+                if connected && !waiting {
+                    Button("Disconnect") { disconnect() }
+                }
+                Button("Google Cloud console") {
+                    if let url = URL(string: "https://console.cloud.google.com/apis/credentials") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.link)
+            }
+            .controlSize(.small)
+            if let feedback {
+                Text(feedback.text)
+                    .font(.system(size: 11))
+                    .foregroundColor(color(feedback.kind))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func color(_ kind: Feedback.Kind) -> Color {
+        switch kind {
+        case .hint: return .secondary
+        case .ok:   return Color(hex: "#22C55E")
+        case .warn: return .orange
+        case .err:  return .red
+        }
+    }
+
+    private func connect() {
+        let id = clientId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let secret = clientSecret.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !id.isEmpty { KeychainStore.shared.set("gcal-client-id", value: id) }
+        if !secret.isEmpty { KeychainStore.shared.set("gcal-client-secret", value: secret) }
+        guard KeychainStore.shared.get("gcal-client-id") != nil,
+              KeychainStore.shared.get("gcal-client-secret") != nil else {
+            feedback = Feedback(kind: .warn, text: "Fill in the client ID and client secret first.")
+            return
+        }
+        attempt += 1
+        let mine = attempt
+        waiting = true
+        // Google's "access blocked" page is a dead end: it never comes back here.
+        feedback = Feedback(kind: .hint, text: "Finish signing in in your browser. If Google says access is blocked, your address isn't a test user of the app yet: fix it in the console's OAuth consent screen, then Cancel and connect again.")
+        Task { @MainActor in
+            let outcome: Feedback
+            do {
+                try await GcalPoller.shared.connect()
+                outcome = Feedback(kind: .ok, text: "Connected. Turn the Calendar pill on (Active pills) to see it next to Mochi.")
+            } catch {
+                outcome = Feedback(kind: .err, text: (error as? GcalProblem)?.message ?? error.localizedDescription)
+            }
+            guard mine == attempt else { return }  // cancelled, or another attempt took over
+            waiting = false
+            feedback = outcome
+            connected = KeychainStore.shared.get("gcal-refresh-token") != nil
+        }
+    }
+
+    /// Takes effect at once here; the listener stops within a second.
+    private func cancel() {
+        attempt += 1
+        waiting = false
+        GcalPoller.shared.cancel()
+        feedback = nil
+    }
+
+    private func disconnect() {
+        feedback = nil
+        Task { @MainActor in
+            await GcalPoller.shared.disconnect()
+            connected = false
+            feedback = Feedback(kind: .ok, text: "Disconnected, and access revoked at Google.")
+        }
+    }
+}
 
 struct IntegrationFilterRow: View {
     let label: String

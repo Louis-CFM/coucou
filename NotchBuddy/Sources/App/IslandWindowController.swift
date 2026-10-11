@@ -58,6 +58,12 @@ final class IslandWindowController: NSWindowController {
     private var highlightPanel: NSPanel? = nil
     private var highlightWindowPid: pid_t = 0
 
+    // File drag: where the island was when a file first reached it, to go back there
+    // when the drag ends somewhere else (dropped elsewhere, or Escape).
+    private var dragOrigin: (state: IslandStateMachine.State, view: IslandView)? = nil
+    private var mouseDown = false
+    private var abandonWork: DispatchWorkItem?
+
     // Notch real dimensions (set on init)
     private var notchW: CGFloat = IslandConst.notchWidth
     private var notchH: CGFloat = IslandConst.notchHeight
@@ -126,6 +132,12 @@ final class IslandWindowController: NSWindowController {
         dropView.autoresizingMask = [.width, .height]
         dropView.onDragEntered = { [weak self] loc in
             Task { @MainActor in
+                if let self {
+                    self.cancelAbandon()
+                    // A drag is a held button, even if the poll hasn't reported it yet.
+                    self.mouseDown = true
+                    if self.dragOrigin == nil { self.dragOrigin = (self.fsm.state, self.state.view) }
+                }
                 let iLoc = self?.windowToIsland(loc) ?? CGPoint(x: 320, y: 88)
                 AppState.shared.fileDragOver = true
                 // The voice mail card stays on screen: the file will be its attachment.
@@ -146,16 +158,21 @@ final class IslandWindowController: NSWindowController {
                 UploadSequenceEngine.shared.updateCursor(x: iLoc.x, y: iLoc.y)
             }
         }
-        dropView.onDragExited = {
+        dropView.onDragExited = { [weak self] in
             Task { @MainActor in
                 AppState.shared.fileDragOver = false
-                // Do NOT collapse — drag session still active; island stays open.
+                // The island stays open while the drag session is alive — the file may
+                // come back. Once the button is up the drag is over, and waiting out
+                // the auto-close for a file that went elsewhere is no good.
                 NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
                 UploadSequenceEngine.shared.exitZone()
+                if let self, !self.mouseDown { self.scheduleAbandon() }
             }
         }
         dropView.onFilesDropped = { [weak self] urls in
             Task { @MainActor in
+                self?.cancelAbandon()
+                self?.dragOrigin = nil
                 #if !APPSTORE
                 // During the voice email (above all after "any attachment?"), a file
                 // dropped on the notch goes into that email.
@@ -170,6 +187,18 @@ final class IslandWindowController: NSWindowController {
                 }
                 #endif
                 await FileDropHandler.handle(urls: urls, state: AppState.shared)
+            }
+        }
+
+        dropView.onDropRejected = { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.cancelAbandon()
+                self.dragOrigin = nil
+                AppState.shared.fileDragOver = false
+                NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+                // Leaving the upload view deactivates the drop sequence (IslandRootView).
+                if self.state.view == .upload { self.state.view = self.defaultView() }
             }
         }
 
@@ -463,6 +492,15 @@ final class IslandWindowController: NSWindowController {
             AppState.shared.mousePosition = newPos
         }
 
+        // Left button pressed or released anywhere. Checked every frame, including
+        // when the cursor stands still: an abandoned drag usually ends that way.
+        let down = NSEvent.pressedMouseButtons & 1 != 0
+        if down != mouseDown {
+            mouseDown = down
+            if down { cancelAbandon() }
+            else if dragOrigin != nil && !state.fileDragOver { scheduleAbandon() }
+        }
+
         // AppState can hide the island by itself (last task ended): keep the FSM in step.
         if state.mode == .hidden && fsm.state == .petit { fsm.hiddenExternally() }
 
@@ -576,6 +614,49 @@ final class IslandWindowController: NSWindowController {
         let item = DispatchWorkItem(block: action)
         hoverTimer = item
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
+    // MARK: - Abandoned file drag
+
+    /// The file went elsewhere (or the drag was cancelled). A short grace lets a
+    /// late drop win, then the island goes back to where it was before the drag.
+    private func scheduleAbandon() {
+        cancelAbandon()
+        let item = DispatchWorkItem { [weak self] in
+            self?.abandonWork = nil
+            self?.abandonDrag()
+        }
+        abandonWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: item)
+    }
+
+    private func cancelAbandon() {
+        abandonWork?.cancel()
+        abandonWork = nil
+    }
+
+    private func abandonDrag() {
+        guard let origin = dragOrigin else { return }
+        dragOrigin = nil
+        guard !mouseDown, !state.fileDragOver else { return }
+        // A drop landed, or the user moved on to something else in the meantime: leave it alone.
+        guard state.mode == .expanded, state.view == .upload else { return }
+        UploadSequenceEngine.shared.deactivate()
+        switch origin.state {
+        case .hidden:
+            // Still under the cursor (an Escape over the island): stay reachable.
+            if wasInIsland {
+                collapse()
+            } else {
+                fsm.forceHidden()
+                setMode(.hidden)
+                window?.resignKey()
+            }
+        case .home:
+            state.view = origin.view
+        case .petit, .coucou, .listening:
+            collapse()
+        }
     }
 
     // MARK: - Mode transitions
@@ -859,6 +940,17 @@ final class IslandWindowController: NSWindowController {
             guard let self, let view = note.object as? IslandView else { return }
             self.fsm.openedExternally()
             self.expand(to: view)
+        }
+
+        // Integration alerts (a calendar reminder): open through the FSM like a click,
+        // then show the alert's view. Auto-closes like any open island once the mouse is away.
+        NotificationCenter.default.addObserver(forName: .islandAlert, object: nil, queue: .main) { [weak self] note in
+            guard let self, let view = note.object as? IslandView else { return }
+            MainActor.assumeIsolated {
+                self.fsm.forceHome()
+                self.expand(to: view)
+                if !self.wasInIsland { self.fsm.mouseLeft() }
+            }
         }
 
         // Hook server compact reveal (non-alert work events: session start, tool use, etc.)
@@ -1991,6 +2083,7 @@ extension Notification.Name {
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
+    static let islandAlert      = Notification.Name("notchBuddy.islandAlert")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
     // Greeting ↔ IslandWindowController
     static let greetComplete    = Notification.Name("notchBuddy.greetComplete")
