@@ -182,28 +182,14 @@ fun HomeScreen(vm: CoucouViewModel) {
                     item { PendingPanel(card = card, sent = sent, vm = vm) }
                 }
 
-                // What's on the PC right now — the island chat sits first.
+                // What's on the PC right now — the island chat sits first,
+                // the live agents card right under it.
                 item {
                     ChatEntryCard(
                         tail = box?.state?.chatTail.orEmpty(),
                         onOpen = { vm.navigate(CoucouViewModel.Screen.CHAT) },
                     )
                 }
-
-                // One section per CLI — each opens its full chat history.
-                box?.state?.chatSessions.orEmpty()
-                    .groupBy { it.agent }
-                    .toSortedMap()
-                    .forEach { (agent, list) ->
-                        item {
-                            AgentSection(
-                                agent = agent,
-                                sessions = list.sortedByDescending { it.at },
-                                onPick = { s -> vm.selectSession(s); vm.navigate(CoucouViewModel.Screen.CHAT) },
-                                onAll = { vm.openPicker(agent) },
-                            )
-                        }
-                    }
 
                 if (sessions.isNotEmpty()) {
                     // The iOS grouped list: one card, rows split by hairlines.
@@ -226,6 +212,21 @@ fun HomeScreen(vm: CoucouViewModel) {
                         }
                     }
                 }
+
+                // One section per CLI — each opens its full chat history.
+                box?.state?.chatSessions.orEmpty()
+                    .groupBy { it.agent }
+                    .toSortedMap()
+                    .forEach { (agent, list) ->
+                        item {
+                            AgentSection(
+                                agent = agent,
+                                sessions = list.sortedByDescending { it.at },
+                                onPick = { s -> vm.selectSession(s); vm.navigate(CoucouViewModel.Screen.CHAT) },
+                                onAll = { vm.openPicker(agent) },
+                            )
+                        }
+                    }
 
                 if (sessions.isEmpty() && card == null) {
                     item { EmptyCard(box != null) }
@@ -345,6 +346,30 @@ private fun agentTitle(agent: String): String = when (agent) {
     "cursor" -> "Cursor"
     "kiro" -> "Kiro"
     else -> agent.replaceFirstChar { it.uppercase() }
+}
+
+/**
+ * Tool-call accent — the iOS look where commands stand out in blue.
+ * shell/exec → blue, edits → orange, reads/searches → green, web → cyan,
+ * plans/todos → purple, everything else falls back to tertiary grey.
+ */
+private fun toolColor(name: String): Color {
+    val n = name.lowercase()
+    return when {
+        n.contains("exec") || n.contains("bash") || n.contains("shell") ||
+            n.contains("cmd") || n.contains("powershell") || n.contains("run") ||
+            n.contains("terminal") -> Color(0xFF0A84FF)
+        n.contains("edit") || n.contains("write") || n.contains("patch") ||
+            n.contains("apply") || n.contains("create") -> Color(0xFFFF9F0A)
+        n.contains("read") || n.contains("view") || n.contains("glob") ||
+            n.contains("grep") || n.contains("find") || n.contains("search") ||
+            n.contains("list") || n == "ls" -> Color(0xFF30D158)
+        n.contains("web") || n.contains("fetch") || n.contains("browse") ||
+            n.contains("http") || n.contains("url") -> Color(0xFF64D2FF)
+        n.contains("think") || n.contains("plan") || n.contains("todo") ||
+            n.contains("task") -> Color(0xFFBF5AF2)
+        else -> Coucou.Tertiary
+    }
 }
 
 /** "now" / "12m" / "3h" / "4d" — the picker rows' right-hand time. */
@@ -837,18 +862,19 @@ fun ChatScreen(vm: CoucouViewModel) {
             }
             items(lines) { line ->
                 if (line.name != null) {
-                    // The iOS "What it did" row — a compact mono card, not a bubble.
+                    // The iOS "What it did" row — tool card tinted by kind.
+                    val tint = toolColor(line.name)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                         Row(
                             Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Coucou.Pill)
+                                .background(tint.copy(alpha = 0.13f))
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 line.name,
-                                color = Coucou.Tertiary,
+                                color = tint,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 fontFamily = FontFamily.Monospace,
@@ -857,7 +883,7 @@ fun ChatScreen(vm: CoucouViewModel) {
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     line.text,
-                                    color = Coucou.Secondary,
+                                    color = Coucou.Ink.copy(alpha = 0.75f),
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
                                     maxLines = 2,
