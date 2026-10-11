@@ -46,15 +46,17 @@ export class VoiceWakeListener {
         }
       };
 
-      this.recognition.onerror = (_e: any) => {
-        // Automatically restart if recognition disconnects or errors
+      this.recognition.onerror = (e: any) => {
+        if (e.error === "not-allowed") {
+          console.warn("Microphone access denied for Voice Wake word.");
+          return;
+        }
         if (this.listening) {
           setTimeout(() => this.start(), 1000);
         }
       };
 
       this.recognition.onend = () => {
-        // Keep listening in background
         if (this.listening) {
           setTimeout(() => this.start(), 500);
         }
