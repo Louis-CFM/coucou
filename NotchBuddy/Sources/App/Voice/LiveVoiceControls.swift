@@ -61,6 +61,17 @@ final class LiveMusicControl: MusicControlling, @unchecked Sendable {
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         if isSpotifyRunning { SpotifyController.shared.play() }
     }
+    @MainActor func openSearch(_ name: String) {
+        guard let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://music.apple.com/search?term=\(encoded)") else { return }
+        // Open in Apple Music app, not the browser
+        if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Music") {
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: config)
+        } else {
+            NSWorkspace.shared.open(url)
+        }
+    }
 }
 
 // MARK: - LivePillControl
@@ -80,6 +91,11 @@ extension VoiceActionRunner {
     func configureLive() {
         music = LiveMusicControl()
         pills = LivePillControl()
+        info  = LiveVoiceInfo.shared
+        onLanguageSwitch = { lang in
+            VoiceSettings.language = lang          // Settings picker follows (same key)
+            VoiceBrain.shared.endConversation()    // next session gets the new instructions
+        }
     }
 }
 #endif

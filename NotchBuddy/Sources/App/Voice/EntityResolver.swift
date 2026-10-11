@@ -16,6 +16,16 @@ enum EntityResolver {
         // VS Code pill is the Claude Code integration
         "claude":               "integration_claude",
         "claude code":          "integration_claude",
+        // How speech recognition writes "VS Code" (FR and EN)
+        "vs code":              "integration_claude",
+        "vscode":               "integration_claude",
+        "v s code":             "integration_claude",
+        "visual studio code":   "integration_claude",
+        "visual studio":        "integration_claude",
+        "ves code":             "integration_claude",
+        "vee s code":           "integration_claude",
+        "vi s code":            "integration_claude",
+        "vsco":                 "integration_claude",
         // Agents
         "gemini":               "agent_gemini",
         "copilot":              "agent_copilot",
@@ -35,6 +45,15 @@ enum EntityResolver {
         "anthropic":            "ai_anthropic",
         // Services
         "github":               "integration_github",
+        // GitHub phonetic variants (speech recognition mishears)
+        "gt":                   "integration_github",
+        "g t":                  "integration_github",
+        "git hub":              "integration_github",
+        "jit hub":              "integration_github",
+        "guitare hub":          "integration_github",
+        "guitar hub":           "integration_github",
+        "gitub":                "integration_github",
+        "guit hub":             "integration_github",
         "vercel":               "integration_vercel",
         "notion":               "integration_notion",
         "stripe":               "integration_stripe",

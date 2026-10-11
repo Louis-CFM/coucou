@@ -37,6 +37,13 @@ enum VoiceIntent: Equatable {
     case pillReplace(old: String, new: String)       // "remplace n8n par github"
     case pillOnly([String])                          // "garde seulement GitHub et Vercel"
 
+    // ── Questions, mail, apps ─────────────────────────────────────────────────
+
+    case query(VoiceTopic)                           // "combien d'étoiles sur GitHub ?"
+    case mail(VoiceQuery.MailRequest)                // "envoie le fichier X à Tana" (Mail opens, I click Send)
+    case openApp(name: String)                       // "ouvre Figma"
+    case webSearch(query: String)                    // "cherche sur internet …" (Claude + web search, opt-in)
+
     // ── Unknown ───────────────────────────────────────────────────────────────
 
     case unknown
@@ -61,8 +68,16 @@ struct VoiceActionResult: Equatable {
 struct PendingVoiceQuestion {
     enum Kind {
         case removeWhich(toAdd: String)   // 4-pill limit: which pill to remove to add X?
+        case whichPill(add: Bool)         // "ajoute…" with no pill named: which one?
+        case whichPlaylist                // "lance ma playlist": which playlist?
+        case switchLanguage(to: String)   // "You're speaking French. Want me to answer in French?"
+        case mailStep(MailField)          // guided email: who, subject, text, attachment
+        case webQuery                     // "cherche sur internet" with nothing after: what?
     }
+    enum MailField: Equatable { case recipient, subject, body, attachment }
     let kind: Kind
     let text: String
+    /// True once Coucou has asked the question a second time (it never asks a third time).
+    var askedAgain: Bool = false
 }
 #endif

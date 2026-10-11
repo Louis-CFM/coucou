@@ -36,22 +36,36 @@ final class WakeSpotter: @unchecked Sendable {
     /// timeout (1110) and cancellations — those do not count as backoff failures.
     var onWakeWindowEnded: ((Bool) -> Void)?
 
+    /// Extra strings to add to the recognizer's contextual hints (e.g. pill names).
+    /// Set before calling `beginWindow`. Thread-safe (read under `lock`).
+    var additionalContextualStrings: [String] = []
+
     // MARK: - State (all guarded by `lock`)
 
     private let lock = NSLock()
     private var recognizer:   SFSpeechRecognizer?
+    /// One recognizer per locale for the life of this spotter (a pipeline rebuild makes a
+    /// new spotter): creating one per window cost a speech-service round trip at each wake.
+    private var cachedRecognizer: (id: String, recognizer: SFSpeechRecognizer)?
     private var request:      SFSpeechAudioBufferRecognitionRequest?
     private var task:         SFSpeechRecognitionTask?
     private var active        = false
     private var phase:        Phase = .wake
     private var partialCount  = 0
+    private var maxWords      = 0       // diagnostics only — never the words themselves
+    private var nearWake      = false   // a partial had a "coucou"-like token
     private var gen           = SpotterGeneration()   // stale-callback filter
+
+    /// What a wake window heard, without any text: lets the log tell "recognizer
+    /// returned nothing" apart from "heard speech but not the wake phrase".
+    struct WindowStats { let partials: Int; let maxWords: Int; let nearWake: Bool }
 
     private enum Phase { case wake, command }
 
     // MARK: - Public API
 
     var isInCommandPhase: Bool { lock.withLock { phase == .command } }
+    var isActive: Bool { lock.withLock { active } }
 
     /// Open a recognition window.
     /// - `startInCommandPhase`: when `true`, skip the wake-phrase gate and start
@@ -68,16 +82,23 @@ final class WakeSpotter: @unchecked Sendable {
         var reqSnap:  SFSpeechAudioBufferRecognitionRequest?
         var taskGen   = 0
 
+        let made: SFSpeechRecognizer? = lock.withLock {
+            if let c = cachedRecognizer, c.id == locale.identifier { return c.recognizer }
+            return nil
+        } ?? SFSpeechRecognizer(locale: locale)
+
         lock.withLock {
             guard !active else { refusal = .alreadyActive; return }
-            guard let r = SFSpeechRecognizer(locale: locale),
+            if let made { cachedRecognizer = (locale.identifier, made) }
+            guard let r = made,
                   r.supportsOnDeviceRecognition,
                   r.isAvailable else { refusal = .unavailable; return }
 
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults  = true
             req.requiresOnDeviceRecognition = true
-            req.contextualStrings = ["Coucou", "OK Coucou", "okay Coucou", "hey Coucou"]
+            let extra = startInCommandPhase ? additionalContextualStrings : [String]()
+            req.contextualStrings = ["Coucou", "OK Coucou", "okay Coucou", "hey Coucou"] + extra
             preroll.forEach { req.append($0) }
 
             recognizer   = r
@@ -117,8 +138,12 @@ final class WakeSpotter: @unchecked Sendable {
 
     /// Close the window. Bumps the generation so any in-flight callbacks from the
     /// cancelled task are ignored even if they arrive after the next `beginWindow`.
-    func endWindow() {
+    @discardableResult
+    func endWindow() -> WindowStats {
         lock.withLock {
+            let stats = WindowStats(partials: partialCount, maxWords: maxWords, nearWake: nearWake)
+            maxWords = 0
+            nearWake = false
             request?.endAudio()
             task?.cancel()
             request      = nil
@@ -128,6 +153,7 @@ final class WakeSpotter: @unchecked Sendable {
             phase        = .wake
             partialCount = 0
             gen.bump()   // invalidate callbacks from the task we just cancelled
+            return stats
         }
     }
 
@@ -158,6 +184,11 @@ final class WakeSpotter: @unchecked Sendable {
                 partialCount += 1
                 switch phase {
                 case .wake:
+                    let words = WakePhrase.normalise(transcript).split(separator: " ")
+                    maxWords = max(maxWords, words.count)
+                    if words.contains(where: { w in
+                        ["cou", "kou", "kuku", "cuck", "koukou", "coco"].contains { w.contains($0) }
+                    }) { nearWake = true }
                     let r = WakePhrase.split(transcript)
                     if r.matched {
                         phase = .command
@@ -179,7 +210,7 @@ final class WakeSpotter: @unchecked Sendable {
                 recognizer   = nil
                 active       = false
                 phase        = .wake
-                partialCount = 0
+                // partialCount kept: endWindow() reports it (WindowStats)
                 if let err = error as NSError? {
                     logMsg = "[Voice] spotter task end: error \(err.domain)/\(err.code), partials \(n)"
                 } else {

@@ -23,6 +23,7 @@ final class MockMusic: MusicControlling, @unchecked Sendable {
     @MainActor func playPlaylist(_ n: String) async -> Bool { calls.append("playlist:\(n)"); return playlistResult }
     @MainActor func launchAndPlay() async      { calls.append("launchAndPlay") }
     @MainActor func launchSpotify() async      { calls.append("launchSpotify") }
+    @MainActor func openSearch(_ n: String)    { calls.append("openSearch:\(n)") }
 }
 
 @MainActor
@@ -124,10 +125,10 @@ enum VoiceActionRunnerTests {
         check("search → search:Daft Punk", music.calls.last, "search:Daft Punk")
         music.calls = []
 
-        // Search not found → failure
+        // Search not found → Apple Music search opened → success
         music.searchResult = false
         let searchFail = await runner.run(.musicPlaySearch(name: "XYZ"), availablePills: pills)
-        check("search not found → failure", searchFail.outcome, .failure)
+        check("search not found → failure", searchFail.outcome, .success)
         music.searchResult = true
         music.calls = []
 
@@ -171,6 +172,146 @@ enum VoiceActionRunnerTests {
         check("question answer → github removed", pills_.calls.contains("toggle:integration_github"), true)
         check("question answer → cursor added",   pills_.calls.contains("toggle:agent_cursor"), true)
         check("pending question cleared after answer", runner.pendingQuestion == nil, true)
+
+        // Answer given as a sentence (real transcript from a test on the Mac)
+        pills_.active = Set(["integration_github","integration_vercel","integration_stripe","integration_resend"])
+        _ = await runner.run(.pillAdd(id: "agent_gemini"), availablePills: pills)
+        pills_.calls = []
+        let sentence = await runner.handleAnswer("Je retire la pilule Stripe", availablePills: pills)
+        check("sentence answer → success", sentence.outcome, .success)
+        check("sentence answer → stripe removed", pills_.calls.contains("toggle:integration_stripe"), true)
+        check("sentence answer → gemini added",   pills_.calls.contains("toggle:agent_gemini"), true)
+
+        // Unclear answer → asked once more, then given up
+        pills_.active = Set(["integration_github","integration_vercel","integration_stripe","integration_resend"])
+        _ = await runner.run(.pillAdd(id: "agent_gemini"), availablePills: pills)
+        let unclear1 = await runner.handleAnswer("on s en fout c est", availablePills: pills)
+        if case .question = unclear1.outcome { print("✓  unclear answer → asked again"); pass += 1 }
+        else { print("✗  unclear answer — got \(unclear1.outcome)"); fail += 1 }
+        check("unclear answer keeps the question", runner.pendingQuestion != nil, true)
+        let unclear2 = await runner.handleAnswer("bof", availablePills: pills)
+        check("second unclear answer → failure", unclear2.outcome, .failure)
+        check("question dropped after second miss", runner.pendingQuestion == nil, true)
+
+        // Incomplete phrase → asks which pill, then uses the answer
+        pills_.active = ["integration_github"]
+        pills_.calls  = []
+        let incomplete = runner.askIfIncomplete("Modifie-moi les piles je veux que tu ajoutes")
+        if case .question = incomplete?.outcome { print("✓  incomplete add → question"); pass += 1 }
+        else { print("✗  incomplete add — got \(String(describing: incomplete))"); fail += 1 }
+        let pick = await runner.handleAnswer("Gemini", availablePills: pills)
+        check("which pill answer → success", pick.outcome, .success)
+        check("which pill answer → gemini added", pills_.calls.contains("toggle:agent_gemini"), true)
+        check("no question for a phrase without verb", runner.askIfIncomplete("ouais ça va") == nil, true)
+        let incompleteRemove = runner.askIfIncomplete("enlève-moi la")
+        if case .question = incompleteRemove?.outcome { print("✓  incomplete remove → question"); pass += 1 }
+        else { print("✗  incomplete remove"); fail += 1 }
+        runner.pendingQuestion = nil
+
+        // Playlist without a name → asks which one
+        let noName = await runner.run(.musicPlayPlaylist(name: ""), availablePills: pills)
+        if case .question = noName.outcome { print("✓  playlist without name → question"); pass += 1 }
+        else { print("✗  playlist without name — got \(noName.outcome)"); fail += 1 }
+        check("playlist question pending", runner.pendingQuestion != nil, true)
+        runner.pendingQuestion = nil
+
+        // Language offer: speak French, answered in English → asked once, "oui" switches
+        var switched: String? = nil
+        runner.onLanguageSwitch = { switched = $0 }
+        runner.commandLocale = Locale(identifier: "en-US")
+        let offer = runner.offerLanguageSwitch(to: "fr")
+        check("offer is in English", offer.contains("Want me to answer in French?"), true)
+        let yes = await runner.handleAnswer("oui vas-y", availablePills: pills)
+        check("oui → switch to fr", switched, "fr")
+        check("oui → answered in French", yes.message.contains("en français"), true)
+        switched = nil
+        runner.commandLocale = Locale(identifier: "en-US")
+        _ = runner.offerLanguageSwitch(to: "fr")
+        let no = await runner.handleAnswer("non c'est bon", availablePills: pills)
+        check("non → no switch", switched == nil, true)
+        check("non → keeps English", no.message.contains("English"), true)
+        check("isYes yeah", VoiceActionRunner.isYes("yeah sure"), true)
+        check("isYes not on non", VoiceActionRunner.isYes("non"), false)
+        runner.pendingQuestion = nil
+        runner.commandLocale = nil
+
+        // ── Guided email: who → subject → text → attachment → card ────────────
+        let info = TestInfo()
+        runner.info = info
+        runner.commandLocale = Locale(identifier: "en-US")
+        var r = await runner.run(.mail(VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil)), availablePills: pills)
+        check("mail asks who", r.message.contains("Who should I send it to"), true)
+        r = await runner.handleAnswer("it's Tana", availablePills: pills)
+        check("mail asks subject", r.message.contains("subject"), true)
+        r = await runner.handleAnswer("the subject is Here is your image", availablePills: pills)
+        check("mail asks text", r.message.contains("What should the email say"), true)
+        r = await runner.handleAnswer("write her that the image is in 1980 by 1080", availablePills: pills)
+        check("mail asks attachment", r.message.contains("Any attachment"), true)
+        check("waiting for a drop", runner.isWaitingForAttachment, true)
+        r = await runner.attachDroppedFile(URL(fileURLWithPath: "/tmp/Goku.png"))
+        check("mail card shown", info.card?.to, "tana@example.com")
+        check("mail card subject", info.card?.subject, "Here is your image")
+        check("mail card drafted body", info.card?.body, "DRAFT: the image is in 1980 by 1080")
+        check("mail card file", info.card?.file?.lastPathComponent, "Goku.png")
+        check("mail done message", r.message.contains("Check it and click Send"), true)
+
+        // Everything in one sentence → straight to the attachment question, "no" → card
+        info.card = nil
+        r = await runner.run(.mail(VoiceQuery.MailRequest(recipient: "tana@gmail.com", file: nil, folder: nil,
+                                                          subject: "Hi", body: "Hello")), availablePills: pills)
+        check("one sentence → attachment question", r.message.contains("Any attachment"), true)
+        r = await runner.handleAnswer("no", availablePills: pills)
+        check("no attachment → card", info.card?.to, "tana@gmail.com")
+
+        // Unknown contact → asks the address
+        info.card = nil
+        r = await runner.run(.mail(VoiceQuery.MailRequest(recipient: "Intel", file: nil, folder: nil)), availablePills: pills)
+        check("unknown contact → asks address", r.message.contains("can't find Intel"), true)
+        r = await runner.handleAnswer("tana at gmail dot com", availablePills: pills)
+        check("spoken address accepted", r.message.contains("subject"), true)
+        check("mail in progress", runner.isMailInProgress, true)
+        check("not waiting for a file yet", runner.isWaitingForAttachment, false)
+        // A file dropped while asked the subject → kept, the subject is asked again
+        r = await runner.attachDroppedFile(URL(fileURLWithPath: "/tmp/Goku.png"))
+        check("early drop → asks subject again", r.message.contains("subject"), true)
+        r = await runner.handleAnswer("Hello", availablePills: pills)
+        r = await runner.handleAnswer("just saying hi", availablePills: pills)
+        check("early drop → no attachment question", info.card?.file?.lastPathComponent, "Goku.png")
+        // "Cancel" stops the mail at any step
+        info.card = nil
+        _ = await runner.run(.mail(VoiceQuery.MailRequest(recipient: "", file: nil, folder: nil)), availablePills: pills)
+        r = await runner.handleAnswer("cancel", availablePills: pills)
+        check("cancel → cancelled", r.message.contains("cancelled"), true)
+        check("cancel → no card", info.card == nil, true)
+        check("cancel → no pending", runner.pendingQuestion == nil, true)
+        check("cancelsMail laisse tomber", VoiceActionRunner.cancelsMail("Laisse tomber"), true)
+        check("cancelsMail not a subject", VoiceActionRunner.cancelsMail("cancel the meeting"), false)
+        runner.pendingQuestion = nil
+
+        // ── Web search: answer, follow-up keeps the history, off / no key ─────
+        runner.resetWebThread()
+        r = await runner.run(.webSearch(query: "who won the Euro"), availablePills: pills)
+        check("web answer", r.message, "Spain won. Want the details?")
+        check("web thread started", runner.hasWebThread, true)
+        r = await runner.run(.webSearch(query: "yes"), availablePills: pills)
+        check("follow-up sends history", info.webCalls.last?.1, 1)
+        r = await runner.run(.webSearch(query: ""), availablePills: pills)
+        check("empty web query asks", r.message, "What should I look up?")
+        r = await runner.handleAnswer("the Louvre opening hours", availablePills: pills)
+        check("answer to 'what should I look up' searched", info.webCalls.last?.0, "the Louvre opening hours")
+        info.webReply = nil
+        r = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("web failure", r.outcome, .failure)
+        info.webReply = "ok"
+        info.webSearchEnabled = false
+        r = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("web off → says how to turn on", r.message.contains("Turn it on in Settings"), true)
+        info.hasWebKey = false
+        r = await runner.run(.webSearch(query: "x"), availablePills: pills)
+        check("no key → asks for key", r.message.contains("Anthropic API key"), true)
+        runner.resetWebThread()
+        check("web thread reset", runner.hasWebThread, false)
+        runner.commandLocale = nil
 
         // ── Pills: add multiple ───────────────────────────────────────────────
         pills_.active = ["integration_github"]
@@ -246,5 +387,29 @@ enum VoiceActionRunnerTests {
     static func check<T: Equatable>(_ label: String, _ got: T, _ want: T) {
         if got == want { print("✓  \(label)"); pass += 1 }
         else { print("✗  \(label) — got \(got), want \(want)"); fail += 1 }
+    }
+}
+
+@MainActor
+final class TestInfo: VoiceInfoProviding {
+    var card: (to: String, subject: String, body: String, file: URL?)?
+    func answer(_ topic: VoiceTopic, locale: Locale?) async -> String { "" }
+    func openApp(_ name: String, locale: Locale?) -> VoiceActionResult { .init(outcome: .failure, message: "") }
+    func resolveEmail(_ recipient: String) async -> String? {
+        if let e = VoiceQuery.spokenEmail(recipient) { return e }
+        return recipient == "Tana" ? "tana@example.com" : nil
+    }
+    func findFile(_ name: String, folder: VoiceQuery.MailRequest.Folder?) -> URL? { nil }
+    func draftBody(to recipient: String, about instruction: String) async -> String? { "DRAFT: " + instruction }
+    func showMailCard(to address: String, subject: String, body: String, file: URL?) {
+        card = (address, subject, body, file)
+    }
+    var webSearchEnabled = true
+    var hasWebKey = true
+    var webCalls: [(String, Int)] = []
+    var webReply: String? = "Spain won. Want the details?"
+    func webAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
+        webCalls.append((question, history.count))
+        return webReply
     }
 }

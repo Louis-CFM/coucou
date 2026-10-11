@@ -67,6 +67,15 @@ enum EntityResolverTests {
         checkNil("GitHub not workspace", resolve("GitHub",  cat: .workspace))
         checkNil("gemini not workspace", resolve("gemini",  cat: .workspace))
 
+        // ── GitHub phonetic aliases ───────────────────────────────────────────
+        check("git hub",               resolve("git hub"),      "integration_github")
+        check("jit hub",               resolve("jit hub"),      "integration_github")
+        check("guitare hub",           resolve("guitare hub"),  "integration_github")
+        check("guitar hub",            resolve("guitar hub"),   "integration_github")
+        check("gitub (typo)",          resolve("gitub"),        "integration_github")
+        check("g t",                   resolve("g t"),          "integration_github")
+        check("gt alias",              resolve("gt"),           "integration_github")
+
         // ── Levenshtein distance ──────────────────────────────────────────────
         let lev = EntityResolver.levenshtein
         checkDist("abc/abc",         lev("abc",    "abc"),    0)

@@ -1296,28 +1296,40 @@ struct SettingsView: View {
     #if !APPSTORE
     @State private var voicePermissionsGranted: Bool = false
     @ObservedObject private var voiceEngine = VoiceEngine.shared
+    @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
+    @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
+    @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
+    @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
+    @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
+    @State private var elevenKeyDraft: String = ""
+    @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
+
+    private func speakVoiceSample() {
+        let en = voiceLanguage != "fr"
+        VoiceSpeaker.shared.speak(en ? "Hi, I'm Coucou. Say OK Coucou whenever you need me."
+                                     : "Salut, c'est Coucou. Dis OK Coucou quand tu as besoin de moi.",
+                                  locale: Locale(identifier: en ? "en-US" : "fr-FR"))
+    }
 
     @ViewBuilder private var voiceSection: some View {
+        // Claude is Coucou's brain: no model, language or feature switches any more,
+        // only the wake word, the Anthropic key it needs, and Coucou's voice.
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
-                Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 HStack(alignment: .top, spacing: 6) {
-                    Circle()
-                        .fill(Color(hex: "#F97316"))
-                        .frame(width: 8, height: 8)
-                        .padding(.top, 2)
-                    Text("While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour.")
+                    Image(systemName: webKeySaved ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .foregroundColor(webKeySaved ? .green : .orange)
+                    Text(webKeySaved ? String(localized: "voice.setting-web-desc")
+                                     : String(localized: "voice.setting-web-nokey"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .onAppear { webKeySaved = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty }
 
                 if voiceEngine.recognizerUnavailable {
                     HStack(spacing: 6) {
@@ -1340,24 +1352,7 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-            }
-            .padding(6)
-        }
 
-        GroupBox(String(localized: "Permissions")) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Image(systemName: micStatusIcon)
-                        .foregroundColor(micStatusColor)
-                    Text("\(String(localized: "Microphone:")) \(micStatusLabel)")
-                        .font(.system(size: 12))
-                }
-                HStack(spacing: 6) {
-                    Image(systemName: speechStatusIcon)
-                        .foregroundColor(speechStatusColor)
-                    Text("\(String(localized: "Speech recognition:")) \(speechStatusLabel)")
-                        .font(.system(size: 12))
-                }
                 if !voicePermissionsGranted {
                     Button(String(localized: "Request permissions")) {
                         Task {
@@ -1373,6 +1368,129 @@ struct SettingsView: View {
         .onAppear {
             voicePermissionsGranted = VoiceSettings.micStatus == .granted
                 && VoiceSettings.speechStatus == .granted
+        }
+
+        GroupBox(String(localized: "voice.tts-engine")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker(String(localized: "voice.tts-engine"), selection: $ttsEngine) {
+                    Text(String(localized: "voice.tts-system")).tag("system")
+                    Text(verbatim: "ElevenLabs").tag("elevenlabs")
+                }
+                .labelsHidden()   // the box is already titled "Voice"
+                .frame(maxWidth: 260)
+
+                if ttsEngine == "elevenlabs" {
+                    HStack(spacing: 6) {
+                        SecureField(elevenKeySaved ? String(localized: "voice.tts-key-saved")
+                                                   : String(localized: "voice.tts-key"),
+                                    text: $elevenKeyDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 220)
+                        Button(String(localized: "Save")) {
+                            let k = elevenKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if k.isEmpty { KeychainStore.shared.remove(ElevenLabsTTS.keyName) }
+                            else { KeychainStore.shared.set(ElevenLabsTTS.keyName, value: k) }
+                            elevenKeyDraft = ""
+                            elevenKeySaved = !k.isEmpty
+                            ElevenLabsTTS.shared.reset()
+                        }
+                    }
+                }
+
+                Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
+                    Text(String(localized: "voice.tts-female")).tag("female")
+                    Text(String(localized: "voice.tts-male")).tag("male")
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 220)
+                .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+
+                if ttsEngine == "system" {
+                    HStack(spacing: 8) {
+                        Text(String(localized: "voice.tts-pitch"))
+                        Slider(value: elevenGender == "male" ? $pitchMale : $pitchFemale,
+                               in: 0.8...1.6, step: 0.05,
+                               onEditingChanged: { editing in
+                                   // Released: hear the new pitch right away.
+                                   if !editing { speakVoiceSample() }
+                               })
+                        .frame(maxWidth: 180)
+                    }
+                    let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
+                                                            gender: elevenGender)
+                    Text(String(format: String(localized: "voice.mac-voice-current %@"), current))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(String(localized: "voice.mac-voices-help"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(String(localized: "voice.mac-voices-open")) {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+
+                Button(String(localized: "voice.tts-test")) { speakVoiceSample() }
+            }
+            .padding(6)
+        }
+    }
+
+    #if !APPSTORE
+    private func localModelStatusLabel(_ status: LocalModelStatus) -> String {
+        switch status {
+        case .available:            return String(localized: "voice.model-available")
+        case .notMacOS26:           return String(localized: "voice.model-not-macos26")
+        case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
+        }
+    }
+    #endif
+
+    // MARK: - Transcript history debug view (in-memory, cleared on close)
+
+    private struct VoiceTranscriptHistoryView: View {
+        @ObservedObject private var history = VoiceTranscriptHistory.shared
+
+        var body: some View {
+            if !history.entries.isEmpty {
+                GroupBox(String(localized: "voice.history-title")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 4) {
+                                ForEach(history.entries) { entry in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(verbatim: entry.transcript)
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundColor(.primary)
+                                        Text(verbatim: "→ \(entry.intent)  [\(entry.origin.rawValue)]")
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 2)
+                                    Divider()
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                        .frame(maxHeight: 200)
+
+                        HStack {
+                            Button(String(localized: "Copy")) {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(history.plainText, forType: .string)
+                            }
+                            Button(String(localized: "Clear")) {
+                                history.clear()
+                            }
+                            .foregroundColor(.red)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(6)
+                }
+            }
         }
     }
 

@@ -15,7 +15,7 @@ final class N8nPoller: @unchecked Sendable {
     func start() {
         guard timer == nil else { return }
         let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 3, repeating: 15)
+        t.schedule(deadline: .now() + 3, repeating: 15, leeway: .seconds(3))
         t.setEventHandler { [weak self] in self?.poll() }
         t.resume()
         timer = t
@@ -27,8 +27,7 @@ final class N8nPoller: @unchecked Sendable {
         guard !DemoEngine.isPollerPaused else { return }
         guard let apiKey  = KeychainStore.shared.get("n8n-api-key"),
               let rawBase = KeychainStore.shared.get("n8n-url") else {
-            n8nLog("No API key or URL configured")
-            return
+            return   // not configured: nothing to do, nothing to log (this runs every 15 s)
         }
         let base = rawBase.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let endpoints = [
@@ -46,7 +45,6 @@ final class N8nPoller: @unchecked Sendable {
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue(apiKey, forHTTPHeaderField: "X-N8N-API-KEY")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        n8nLog("Polling \(url.host ?? "?")\(url.path)")
 
         URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
@@ -60,8 +58,9 @@ final class N8nPoller: @unchecked Sendable {
                 self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
                 return
             }
-            self.n8nLog("HTTP \(code) · \(data.count) bytes")
+            // Only failures and changes are logged: a quiet poll writes nothing to disk.
             guard code == 200 else {
+                self.n8nLog("HTTP \(code) · \(data.count) bytes")
                 self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
                 return
             }
@@ -85,10 +84,7 @@ final class N8nPoller: @unchecked Sendable {
             else if let n = first["id"] as? Int    { id = "\(n)" }
             else { self.n8nLog("No id in execution"); return }
 
-            guard id != self.lastExecutionId else {
-                self.n8nLog("Same id=\(id) — no change")
-                return
-            }
+            guard id != self.lastExecutionId else { return }
 
             // Terminal check: use status field — more reliable than the `finished` bool
             // (published workflows often have finished=false on error)
