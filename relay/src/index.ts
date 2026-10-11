@@ -8,6 +8,8 @@
 // MochiActivityState.swift), and the relay builds the push itself, so it can't
 // be used to send arbitrary notifications.
 
+import { tokenGone } from "./fcm.js";
+
 export interface Env {
   APNS_KEY: string;      // contents of the AuthKey_XXXX.p8 file (secret)
   APNS_KEY_ID: string;   // the key's ID (secret)
@@ -497,7 +499,8 @@ export class PhoneBox {
         const alert = String(body.alert ?? "");
         if ((ALERTS as readonly string[]).includes(alert)) {
           const token = await this.ctx.storage.get<string>("token");
-          if (token) await pushFcm(this.env, token, alert);
+          // A token FCM says is gone is dropped; the phone claims a fresh one when it next opens.
+          if (token && (await pushFcm(this.env, token, alert))) await this.ctx.storage.delete("token");
         }
         return json({ ok: true });
       }
@@ -630,11 +633,12 @@ async function fcmToken(env: Env): Promise<string | null> {
   return token;
 }
 
-async function pushFcm(env: Env, token: string, kind: string): Promise<void> {
+/** Sends the wake-up. True when FCM says the token is gone for good. */
+async function pushFcm(env: Env, token: string, kind: string): Promise<boolean> {
   const sa = serviceAccount(env);
   const bearer = await fcmToken(env);
-  if (!sa || !bearer) return;
-  await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+  if (!sa || !bearer) return false;
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
     method: "POST",
     headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
     body: JSON.stringify({
@@ -646,6 +650,8 @@ async function pushFcm(env: Env, token: string, kind: string): Promise<void> {
       },
     }),
   });
+  if (res.ok) return false;
+  return tokenGone(res.status, await res.text());
 }
 
 function json(body: unknown, status = 200): Response {

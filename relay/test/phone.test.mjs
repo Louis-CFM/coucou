@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import worker, { PhoneBox } from "../.test-dist/index.js";
+import { tokenGone } from "../.test-dist/fcm.js";
 
 const ID = "a1b2c3d4e5f6a1b2c3d4e5f6";
 const SECRET = "f".repeat(64);
@@ -19,6 +20,7 @@ function makeCtx() {
         if (typeof k === "string") store.set(k, v);
         else for (const [kk, vv] of Object.entries(k)) store.set(kk, vv);
       },
+      delete: async (k) => store.delete(k),
       deleteAll: async () => store.clear(),
     },
   };
@@ -267,6 +269,14 @@ test("an empty take writes nothing; a drain writes once", async () => {
   puts = 0;
   assert.equal((await ok(call(b, "take", { id: ID, secret: SECRET }))).out.length, 1);
   assert.equal(puts, 1, "the drain itself is one write");
+});
+
+test("fcm: an unregistered or missing token is gone; other failures are not", () => {
+  assert.equal(tokenGone(404, '{"error":{"status":"NOT_FOUND"}}'), true);
+  assert.equal(tokenGone(400, '{"error":{"details":[{"errorCode":"UNREGISTERED"}]}}'), true);
+  assert.equal(tokenGone(400, '{"error":{"status":"INVALID_ARGUMENT","message":"bad payload"}}'), false);
+  assert.equal(tokenGone(500, ""), false);
+  assert.equal(tokenGone(429, "quota"), false);
 });
 
 test("the outbox caps at 50 pending items", async () => {
