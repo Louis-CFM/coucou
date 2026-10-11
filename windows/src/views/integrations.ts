@@ -86,7 +86,10 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
   const def = pillDefinition(task.id);
-  const status = idleStatus(task.id, info, State.settings.model);
+  // A session found running that has sent nothing since Coucou started: its key is still `pid-<pid>`.
+  const status = task.sessionId?.startsWith("pid-")
+    ? { label: t("No activity since Coucou started"), color: "#6B7079" }
+    : idleStatus(task.id, info, State.settings.model);
 
   const actions = h("div", { class: "int-actions" });
   if (task.id === "integration_claude") {

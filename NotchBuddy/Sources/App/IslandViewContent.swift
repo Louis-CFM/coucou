@@ -1933,7 +1933,9 @@ struct IntegrationCardView: View {
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
         #endif
-        if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
+        if PillCatalog.definition(for: task.id)?.comingSoon == true || appState.quietSessionPills.contains(task.id) {
+            return Color(hex: "#6B7079")
+        }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
@@ -1965,6 +1967,7 @@ struct IntegrationCardView: View {
                    || task.id == "agent_amp"          || task.id == "agent_hermes"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
+            if isHooks && appState.quietSessionPills.contains(task.id) { return String(localized: "No activity since Coucou started") }
             if isHooks { return String(localized: "Hooks installed") }
             // No key or poller behind this pill: it only reflects hook events.
             if task.id == "agent_claude-desktop" { return String(localized: "Ready · no setup needed") }

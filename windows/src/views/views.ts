@@ -368,7 +368,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
-          language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
+          language(), task.id, task.sessionId, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
         ].join("~");

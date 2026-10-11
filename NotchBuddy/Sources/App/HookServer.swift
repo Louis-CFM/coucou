@@ -291,11 +291,17 @@ final class HookServer: @unchecked Sendable {
         }
 
         guard !raw.isEmpty,
-              let payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+              var payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
             return
         }
+        #if !APPSTORE
+        // The session's own process, so its first event takes the pill found for it (as on Linux).
+        if let pid = Self.claudeAncestor(from: payload["hook_ppid"] as? Int, peer: fd) {
+            payload["coucou_claude_pid"] = Int(pid)
+        }
+        #endif
 
         let coucouKind = payload["coucou_kind"] as? String ?? ""
 
@@ -399,9 +405,12 @@ final class HookServer: @unchecked Sendable {
             return
         }
         // Claude Code sessions running at once each get their own pill; agents keep theirs.
-        if !isExternalAgent && !isCodexEvent { adoptProcess(sessionId: sessionId, cwd: cwd) }
+        if !isExternalAgent && !isCodexEvent {
+            adoptProcess(sessionId: sessionId, cwd: cwd, claudePid: payload["coucou_claude_pid"] as? Int)
+        }
         let agentId = isExternalAgent || isCodexEvent ? baseId : claudePill(workspaceId: baseId, sessionId: sessionId)
         let ownSession = agentId.hasPrefix(PillCatalog.sessionPillPrefix)
+        state.quietSessionPills.remove(agentId)
 
         func ensurePill() {
             if ownSession {
@@ -654,6 +663,7 @@ final class HookServer: @unchecked Sendable {
             pidSessions[key] = nil
             pidCwd[key] = nil
         }
+        sessionPids[sessionId] = nil
     }
 
     /// Claude Code in a terminal goes to its own pill when that is the main tool.
@@ -672,6 +682,8 @@ final class HookServer: @unchecked Sendable {
     /// `pid-<pid>` → the session key its pill is under (that same key until adopted).
     private var pidSessions: [String: String] = [:]
     private var pidCwd: [String: String] = [:]
+    /// Session key → the `claude` process its events came from.
+    private var sessionPids: [String: Int] = [:]
 
     private struct FoundSession: Sendable {
         let pid: Int32
@@ -684,14 +696,19 @@ final class HookServer: @unchecked Sendable {
         sessionId.hasPrefix("pid-") || pidSessions.values.contains(sessionId)
     }
 
-    /// The session's first event: a pill made for a found process in the same folder is its.
+    /// The session's first event: the pill made for its process is its. By the process when the
+    /// event names it, else by folder (the session may have moved since it started).
     @MainActor
-    private func adoptProcess(sessionId: String, cwd: String) {
-        guard !sessionId.isEmpty, sessionId != "unknown", !cwd.isEmpty,
+    private func adoptProcess(sessionId: String, cwd: String, claudePid: Int?) {
+        guard !sessionId.isEmpty, sessionId != "unknown",
               sessionPills[sessionId] == nil, !workspaceOwner.values.contains(sessionId),
               !pidSessions.values.contains(sessionId) else { return }
-        // ponytail: matched by folder; two idle sessions in one folder may swap pills (same name).
-        guard let key = pidSessions.first(where: { $0.key == $0.value && pidCwd[$0.key] == cwd })?.key else { return }
+        if let claudePid { sessionPids[sessionId] = claudePid }
+        let byPid = claudePid.map { "pid-\($0)" }.flatMap { pidSessions[$0] == $0 ? $0 : nil }
+        // ponytail: by folder, two idle sessions in one folder may swap pills (same name).
+        let byCwd = cwd.isEmpty ? nil : pidSessions.first(where: { $0.key == $0.value && pidCwd[$0.key] == cwd })?.key
+        guard let key = claudePid == nil ? byCwd : byPid else { return }
+        nbLog("Session \(sessionId.prefix(8)) takes the pill found for \(key)")
         if let own = sessionPills.removeValue(forKey: key) { sessionPills[sessionId] = own }
         for (pill, owner) in workspaceOwner where owner == key { workspaceOwner[pill] = sessionId }
         lastHeard[sessionId] = lastHeard.removeValue(forKey: key)
@@ -718,6 +735,7 @@ final class HookServer: @unchecked Sendable {
             guard let pillId else { continue }
             state.clearSessionDiffs(for: pillId)
             state.removeTask(id: pillId)
+            state.quietSessionPills.remove(pillId)
         }
         for session in found {
             let key = "pid-\(session.pid)"
@@ -725,9 +743,11 @@ final class HookServer: @unchecked Sendable {
             // A session already heard from in this folder is this process's: no second pill.
             let known = Set(sessionPills.keys).union(workspaceOwner.values)
                 .filter { !$0.hasPrefix("pid-") && !pidSessions.values.contains($0) }
-            if let sid = known.first(where: { sid in
-                let pill = sessionPills[sid] ?? workspaceOwner.first(where: { $0.value == sid })?.key
-                return state.tasks.first(where: { $0.id == pill })?.sessionCwd == session.cwd
+            if let sid = known.first(where: { sessionPids[$0] == Int(session.pid) }) ?? known.first(where: { sid in
+                sessionPids[sid] == nil && {
+                    let pill = sessionPills[sid] ?? workspaceOwner.first(where: { $0.value == sid })?.key
+                    return state.tasks.first(where: { $0.id == pill })?.sessionCwd == session.cwd
+                }()
             }) {
                 pidSessions[key] = sid
                 pidCwd[key] = session.cwd
@@ -738,6 +758,7 @@ final class HookServer: @unchecked Sendable {
             let raw = session.name.isEmpty ? URL(fileURLWithPath: session.cwd).lastPathComponent : session.name
             let projectName = aliasProjectName(raw.isEmpty ? "Session" : raw)
             let pillId = claudePill(workspaceId: terminalWorkspace(), sessionId: key)
+            state.quietSessionPills.insert(pillId)
             if pillId.hasPrefix(PillCatalog.sessionPillPrefix) {
                 upsertSessionTask(id: pillId, projectName: projectName, cwd: session.cwd, bundleId: "")
             } else {
@@ -789,6 +810,52 @@ final class HookServer: @unchecked Sendable {
             found.append(FoundSession(pid: pid, cwd: cwd, name: tmux))
         }
         return found.sorted { $0.pid < $1.pid }
+    }
+
+    /// The `claude` process that ran a hook: the farthest one up from the hook's parent, else
+    /// from the relay on the socket (gone already when it sent its event and left).
+    private static func claudeAncestor(from hookParent: Int?, peer fd: Int32) -> Int32? {
+        var pid: pid_t = 0
+        var len = socklen_t(MemoryLayout<pid_t>.size)
+        if let hookParent, (2...Int(Int32.max)).contains(hookParent) {
+            pid = pid_t(hookParent)
+        } else {
+            guard getsockopt(fd, SOL_LOCAL, LOCAL_PEERPID, &pid, &len) == 0, pid > 1 else { return nil }
+        }
+        var found: Int32?
+        var current = pid
+        for _ in 0..<12 {
+            guard let ppid = parentPid(current) else { break }
+            if commandName(current) == "claude" { found = current }
+            guard ppid > 1 else { break }
+            current = ppid
+        }
+        return found
+    }
+
+    private static func parentPid(_ pid: pid_t) -> pid_t? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        return info.kp_eproc.e_ppid
+    }
+
+    /// argv[0]'s last part, as `ps -o comm` shows it: macOS names Claude Code by its version otherwise.
+    private static func commandName(_ pid: pid_t) -> String? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return nil }
+        var buf = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, 3, &buf, &size, nil, 0) == 0 else { return nil }
+        // argc, the executable's path, NUL padding, then argv[0].
+        var i = MemoryLayout<Int32>.size
+        while i < size, buf[i] != 0 { i += 1 }
+        while i < size, buf[i] == 0 { i += 1 }
+        let start = i
+        while i < size, buf[i] != 0 { i += 1 }
+        guard start < i else { return nil }
+        return URL(fileURLWithPath: String(decoding: buf[start..<i], as: UTF8.self)).lastPathComponent
     }
 
     /// The process in each tmux pane → its session's name. Empty without tmux.
@@ -3306,6 +3373,8 @@ private let nbHookShellWrapper = """
 #!/bin/sh
 # Coucou hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
+# The agent that ran the hook, still running after this relay has exited
+COUCOU_HOOK_PPID=$PPID; export COUCOU_HOOK_PPID
 out=""
 if xcode-select -p >/dev/null 2>&1; then
     out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
@@ -3458,6 +3527,8 @@ def main():
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
         payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        if env.get('COUCOU_HOOK_PPID', '').isdigit():
+            payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3525,6 +3596,8 @@ def main():
     # Enrich with terminal context
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    if env.get('COUCOU_HOOK_PPID', '').isdigit():
+        payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3765,6 +3838,8 @@ def main():
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
         payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        if env.get('COUCOU_HOOK_PPID', '').isdigit():
+            payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3831,6 +3906,8 @@ def main():
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    if env.get('COUCOU_HOOK_PPID', '').isdigit():
+        payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
