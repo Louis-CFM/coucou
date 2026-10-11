@@ -128,6 +128,11 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor in
                 let iLoc = self?.windowToIsland(loc) ?? CGPoint(x: 320, y: 88)
                 AppState.shared.fileDragOver = true
+                // The voice mail card stays on screen: the file will be its attachment.
+                if AppState.shared.voiceMailDraft != nil && AppState.shared.view == .mail {
+                    NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(1))
+                    return
+                }
                 // enterZone sets isActive=true BEFORE hookExpand triggers re-render,
                 // so IslandContainer sees isActive=true when state.view becomes .upload.
                 UploadSequenceEngine.shared.enterZone(x: iLoc.x, y: iLoc.y)
@@ -156,6 +161,11 @@ final class IslandWindowController: NSWindowController {
                 // dropped on the notch goes into that email.
                 if VoiceActionRunner.shared.isMailInProgress, let url = urls.first {
                     await self?.attachVoiceMailFile(url)
+                    return
+                }
+                // The mail card prepared by voice (Claude) is open: the file is its attachment.
+                if AppState.shared.voiceMailDraft != nil, AppState.shared.view == .mail, let url = urls.first {
+                    self?.attachToVoiceMailCard(url)
                     return
                 }
                 #endif
@@ -326,6 +336,7 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor [weak self] in
                 // Genuine wake phrase (not programmatic re-listen) → clear any pending question
                 AppState.shared.voiceActive = true
+                AppState.shared.voiceSubState = .listening
                 self?.voiceContextExpiry?.cancel()
                 if !isDirect {
                     VoiceActionRunner.shared.pendingQuestion = nil
@@ -1441,6 +1452,17 @@ extension IslandWindowController {
             return
         }
 
+        // Mochi transitions to "thinking" while we process
+        AppState.shared.voiceSubState = .thinking
+
+        // ── Claude as the brain (Settings → Voice, the user's Anthropic key) ───────
+        // Every phrase goes to Claude, which acts with Coucou's tools. Only when Claude
+        // can't be reached does the phrase parser below take over.
+        if runner.pendingQuestion == nil, ClaudeVoiceBrain.isActive {
+            if await handleWithClaude(transcript) { return }
+            appendAppLog("nb.log", "[Voice] Claude unreachable, phrase parser used")
+        }
+
         // ── Short noise / spurious activation guard (conversation mode only) ────────
         // A transcript shorter than 2 words that isn't a pill name or known command
         // is almost certainly a false activation. Silently re-listen without feedback.
@@ -1568,7 +1590,8 @@ extension IslandWindowController {
         }
 
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence) with streaming TTS.
-        if case .unknown = intent, !askedBack {
+        // (Not when Claude is the brain and just couldn't be reached: no local model then.)
+        if case .unknown = intent, !askedBack, !ClaudeVoiceBrain.isActive {
             let tBrain0  = Date()
             let brainWarm = VoiceBrain.shared.isSessionReady
             var brainUsed = false
@@ -1733,6 +1756,7 @@ extension IslandWindowController {
         let asks = Self.isQuestion(result)
         let speaker = VoiceSpeaker.shared
         if VoiceSettings.speakEnabled {
+            AppState.shared.voiceSubState = .speaking
             speaker.speak(result.message, locale: VoiceSettings.answerLocale)
             speaker.onDidFinish = { [weak self] in
                 Task { @MainActor in self?.finishVoiceTurn(expectAnswer: asks) }
@@ -1775,7 +1799,7 @@ extension IslandWindowController {
     private func finishVoiceTurn(expectAnswer: Bool) {
         // First time I speak one language and Coucou answers in another: offer once to
         // answer in mine ("You're speaking French. Want me to answer in French?").
-        if !expectAnswer, !VoiceSettings.languageOfferDone,
+        if !expectAnswer, !ClaudeVoiceBrain.isActive, !VoiceSettings.languageOfferDone,
            let spoken = VoiceEngine.shared.speechLocale?.language.languageCode?.identifier,
            ["fr", "en"].contains(spoken), spoken != VoiceSettings.language,
            VoiceEngine.shared.isEnabled {
@@ -1797,11 +1821,61 @@ extension IslandWindowController {
         // (unless that reply leads to another question, e.g. "which one do I remove?").
         if expectAnswer && VoiceEngine.shared.isEnabled {
             isInConversation = true
-            VoiceBrain.shared.beginConversation()
+            if !ClaudeVoiceBrain.isActive { VoiceBrain.shared.beginConversation() }
             if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
+            AppState.shared.voiceSubState = .listening
             VoiceEngine.shared.startConversationTurn(firstWordTimeout: Self.answerWait(8.0))
         } else {
             closeVoiceTurn()
+        }
+    }
+
+    /// One turn with Claude: caption, spoken answer, and a re-listen when Claude asked
+    /// something (its answer ends with "?"). False when Claude couldn't be reached.
+    @MainActor
+    private func handleWithClaude(_ transcript: String) async -> Bool {
+        VoiceCaptionManager.shared.setUserLine(transcript)
+        // A stale "finished speaking" handler must not reopen the mic during the wait.
+        VoiceSpeaker.shared.onDidFinish = nil
+        let t0 = Date()
+        guard let reply = await ClaudeVoiceBrain.shared.respond(to: transcript), !reply.failed else {
+            return false
+        }
+        appendAppLog("nb.log", "[Voice] Claude turn \(Int(Date().timeIntervalSince(t0) * 1000)) ms\(reply.acted ? ", acted" : "")")
+        let fr = VoiceSettings.language == "fr"
+        let text = reply.text.isEmpty ? (fr ? "C'est fait." : "Done.") : reply.text
+        VoiceTranscriptHistory.shared.record(transcript: transcript, note: text, origin: .brain)
+        consecutiveFailures = 0
+        if reply.acted { NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy) }
+        VoiceCaptionManager.shared.appendResponse(text)
+        let result = VoiceActionResult(outcome: .success, message: text)
+        AppState.shared.voiceResult = result
+        speakAndContinueConversation(result)
+        return true
+    }
+
+    /// A file dropped on the notch while the voice email card is open: it becomes the
+    /// attachment, and Coucou says so.
+    @MainActor
+    func attachToVoiceMailCard(_ url: URL) {
+        // Not listening any more: Coucou's own "attached" must not come back as a turn.
+        VoiceEngine.shared.cancelListening()
+        if isInConversation || AppState.shared.voiceActive { closeVoiceTurn() }
+        let state = AppState.shared
+        state.fileDragOver = false
+        state.droppedFile = DroppedFile(url: url, name: url.lastPathComponent)
+        NotificationCenter.default.post(name: .botGulp, object: nil)
+        NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        if state.soundEnabled { SoundEngine.shared.play("approve") }
+        fsm.openedExternally()
+        expand(to: .mail)
+        let fr = VoiceSettings.language == "fr"
+        let text = fr ? "\(url.lastPathComponent) est en pièce jointe. Tu n'as plus qu'à cliquer sur Envoyer."
+                      : "\(url.lastPathComponent) is attached. Just click Send."
+        if VoiceSettings.speakEnabled {
+            VoiceSpeaker.shared.onDidFinish = nil
+            VoiceSpeaker.shared.speak(text, locale: VoiceSettings.answerLocale)
         }
     }
 
@@ -1851,6 +1925,7 @@ extension IslandWindowController {
             Task { @MainActor in
                 self?.conversationContext.reset()
                 VoiceActionRunner.shared.resetWebThread()
+                ClaudeVoiceBrain.shared.reset()
                 VoiceBrain.shared.endConversation()
             }
         }
@@ -1870,6 +1945,12 @@ extension IslandWindowController {
         VoiceCaptionManager.shared.hide(after: delay)
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
+            // Mochi winks as the exchange ends — but only when the sub-state is still .speaking
+            // (not if voiceActive was already cleared by a collapse).
+            if AppState.shared.voiceActive {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.wink)
+            }
+            AppState.shared.voiceSubState = .none
             AppState.shared.voiceResult = nil
             AppState.shared.voiceActive = false
             if AppState.shared.voiceMailDraft != nil {
@@ -1878,6 +1959,8 @@ extension IslandWindowController {
                 self.expand(to: .mail)
                 return
             }
+            // If the island is already expanded (user opened it during voice): stay open.
+            guard self.fsm.state != .home else { return }
             // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
             AppState.shared.view = self.defaultView()
             self.fsm.voiceFinished()
