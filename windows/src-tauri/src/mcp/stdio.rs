@@ -44,6 +44,24 @@ impl StdioClient {
 
         let mut cmd = Command::new(command);
         cmd.args(args);
+        // Inherit base PATH and essential system variables, but isolate Coucou's internal secrets
+        let path_var = std::env::var("PATH").unwrap_or_default();
+        cmd.env("PATH", path_var);
+
+        #[cfg(windows)]
+        {
+            if let Ok(systemroot) = std::env::var("SystemRoot") {
+                cmd.env("SystemRoot", systemroot);
+            }
+            if let Ok(temp) = std::env::var("TEMP") {
+                cmd.env("TEMP", temp);
+            }
+            if let Ok(tmp) = std::env::var("TMP") {
+                cmd.env("TMP", tmp);
+            }
+        }
+
+        // Apply explicitly configured environment variables from config
         cmd.envs(env);
         cmd.stdin(Stdio::piped());
         cmd.stdout(Stdio::piped());

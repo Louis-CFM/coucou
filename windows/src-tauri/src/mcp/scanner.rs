@@ -346,4 +346,26 @@ mod tests {
             "8080"
         );
     }
+
+    #[test]
+    fn parse_and_deduplicate() {
+        let raw = br#"{
+            "mcpServers": {
+                "sqlite": {
+                    "command": "uvx",
+                    "args": ["mcp-server-sqlite", "--db-path", "~/test.db"]
+                },
+                "remote": {
+                    "url": "http://127.0.0.1:8000/mcp"
+                }
+            }
+        }"#;
+        let env = HashMap::new();
+        let servers = parse_standard_servers(raw, &MCPServerSource::ClaudeDesktop, "/home/user", &env);
+        assert_eq!(servers.len(), 2);
+        let deduped = deduplicate(servers);
+        assert_eq!(deduped.len(), 2);
+        assert_eq!(deduped[0].id, "remote");
+        assert_eq!(deduped[1].id, "sqlite");
+    }
 }
