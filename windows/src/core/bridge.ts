@@ -330,6 +330,8 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  /** The Claude Code sessions running now (Linux), for their pills before any event. */
+  claudeSessions: () => call<{ pid: number; cwd: string; name: string }[]>("claude_sessions"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
    * the provider only when it has a key (or a server address).

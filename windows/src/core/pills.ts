@@ -81,6 +81,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_codex", name: "Codex", color: "#2DD4BF", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
+  // Claude Code in a plain terminal, as the main tool for those who code there.
+  { id: "workspace_claude", name: "Claude Code", color: "#E07950", category: "workspace",
+    subtitle: N_("Terminal"), source: "claudeCode", support: "yes", connect: hooks },
   // ── Agents ─────────────────────────────────────────────────────────────────
   { id: "agent_gemini", name: "Gemini CLI", color: "#8AB4F8", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
@@ -175,8 +178,11 @@ export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
 
 /** PillDefinition.sessionSubtitle — next to the name in a live session's card. */
 export function sessionSubtitle(id: string): string {
+  // A pill made for one Claude Code session (src/island/hooks.ts).
+  if (id.startsWith("session_")) return "Claude Code";
   switch (id) {
-    case "integration_claude": return "Claude Code";
+    case "integration_claude":
+    case "workspace_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";
     case "agent_codex": return "Codex";
     case "agent_hermes": return "Hermes";

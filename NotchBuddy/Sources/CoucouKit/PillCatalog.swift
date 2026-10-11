@@ -53,7 +53,7 @@ struct PillDefinition {
     /// Label shown in the active-session card header (workspace/agent pills only).
     var sessionSubtitle: String {
         switch id {
-        case "integration_claude": return "Claude Code"
+        case "integration_claude", "workspace_claude": return "Claude Code"
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
         case "agent_hermes":       return "Hermes"
@@ -66,6 +66,9 @@ struct PillDefinition {
 // MARK: - Catalog
 
 enum PillCatalog {
+    /// Prefix of the pill each extra Claude Code session running at once gets (HookServer).
+    static let sessionPillPrefix = "session_"
+
     // All declared pills in display order.
     static let all: [PillDefinition] = [
         // ── Where you code ───────────────────────────────────────────────────
@@ -77,6 +80,9 @@ enum PillCatalog {
               category: .workspace, subtitle: "Integration",  source: .agent,  githubOnly: true),
         .init(id: "agent_codex",         name: "Codex",       color: "#2DD4BF",
               category: .workspace, subtitle: "Integration",  source: .agent,  githubOnly: true),
+        // Claude Code in a plain terminal, as the main tool for those who code there.
+        .init(id: "workspace_claude",    name: "Claude Code", color: "#E07950",
+              category: .workspace, subtitle: "Terminal",     source: .claudeCode),
         // ── Agents ───────────────────────────────────────────────────────────
         .init(id: "agent_gemini",        name: "Gemini CLI",  color: "#8AB4F8",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),

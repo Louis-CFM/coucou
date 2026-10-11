@@ -3379,6 +3379,17 @@
    "ru": "Задачи",
    "id": "Tugas"
   },
+  "Terminal": {
+   "zh-Hans": "终端",
+   "hi": "टर्मिनल",
+   "es": "Terminal",
+   "ar": "الطرفية",
+   "fr": "Terminal",
+   "bn": "টার্মিনাল",
+   "pt-BR": "Terminal",
+   "ru": "Терминал",
+   "id": "Terminal"
+  },
   "Test the voice": {
    "zh-Hans": "试听声音",
    "hi": "आवाज़ आज़माएँ",

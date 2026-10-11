@@ -212,7 +212,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
-    note_session_window(&pipe, &payload, &event);
+    note_session_window(&pipe, &mut payload, &event);
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -255,21 +255,25 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 /// every event. The relay must still be running for its parents to be found:
 /// a permission request always is (it waits for us), a quick event may already
 /// have exited, and then a later event of the session tries again.
-fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
-    let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
+fn note_session_window(pipe: &impl Relay, payload: &mut Value, event: &str) {
+    let Some(session) = payload.get("session_id").and_then(Value::as_str).map(str::to_string) else { return };
     if event == "SessionEnd" {
-        session_window::forget(session);
+        session_window::forget(&session);
         return;
     }
-    if session_window::known(session) {
-        return;
+    if !session_window::known(&session) {
+        let Some(relay) = pipe.client_pid() else { return };
+        let ancestors = crate::platform::process_ancestors(relay);
+        // No ancestors: the relay was already gone, so try again next time. Some,
+        // but none with a window (a classic console): settled, VS Code it is.
+        if !ancestors.is_empty() {
+            session_window::remember(&session, crate::platform::window_owners(&ancestors));
+        }
     }
-    let Some(relay) = pipe.client_pid() else { return };
-    let ancestors = crate::platform::process_ancestors(relay);
-    // No ancestors: the relay was already gone, so try again next time. Some,
-    // but none with a window (a classic console): settled, VS Code it is.
-    if !ancestors.is_empty() {
-        session_window::remember(session, crate::platform::window_owners(&ancestors));
+    // The session's own process, so the page can tie the event to a pill it
+    // made for that process before the session's first event.
+    if let Some(pid) = session_window::lookup(&session).and_then(|owners| crate::platform::farthest_named(&owners, "claude")) {
+        payload["coucou_claude_pid"] = json!(pid);
     }
 }
 

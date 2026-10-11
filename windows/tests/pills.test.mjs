@@ -19,6 +19,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     ["agent_cursor", "Cursor", "#C0C4CC", "workspace", "Integration"],
     ["agent_antigravity", "Antigravity", "#E879F9", "workspace", "Integration"],
     ["agent_codex", "Codex", "#2DD4BF", "workspace", "Integration"],
+    ["workspace_claude", "Claude Code", "#E07950", "workspace", "Terminal"],
     ["agent_gemini", "Gemini CLI", "#8AB4F8", "agent", "Agent"],
     ["agent_copilot", "Copilot CLI", "#818CF8", "agent", "Agent"],
     ["agent_muse", "Muse Code", "#38BDF8", "agent", "Agent"],
@@ -131,9 +132,10 @@ test("no chat provider that works here says Coming soon", () => {
 
 test("the main pill is a workspace tool that works here", () => {
   assert.deepEqual(mainPillChoices("linux").map((p) => p.id), [
-    "integration_claude", "agent_cursor", "agent_antigravity", "agent_codex",
+    "integration_claude", "agent_cursor", "agent_antigravity", "agent_codex", "workspace_claude",
   ]);
   assert.equal(DEFAULT_MAIN_PILL, "integration_claude");
+  assert.equal(sessionSubtitle("workspace_claude"), "Claude Code");
 });
 
 test("hook-driven pills are the workspace tools and the agents with hooks", () => {

@@ -98,6 +98,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
       }),
     );
+  } else if (task.id === "workspace_claude") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}b3`,
+        text: t("Open terminal"),
+        onclick: () => void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null),
+      }),
+    );
   } else if (task.id === "agent_claude-desktop") {
     actions.append(
       h("button", {

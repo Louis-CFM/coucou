@@ -549,3 +549,17 @@ pub fn set_layer_overlay(_win: &WebviewWindow, _on: bool) {}
 pub fn layer_display(_island: &WebviewWindow, _mochi: &WebviewWindow) -> Option<(f64, f64)> {
     None
 }
+
+/// Sessions are only discovered on Linux so far: Windows learns of one at its
+/// first hook event.
+pub fn claude_processes() -> Vec<(u32, String)> {
+    Vec::new()
+}
+
+pub fn farthest_named(_ancestors: &[u32], _name: &str) -> Option<u32> {
+    None
+}
+
+pub fn tmux_session_name(_pid: u32) -> Option<String> {
+    None
+}
