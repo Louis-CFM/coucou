@@ -253,7 +253,7 @@ fn request_body(model: &str, system: &str, history: &[Value], user: &Value) -> V
     json!({ "model": model, "messages": messages, "stream": true, "max_tokens": MAX_TOKENS })
 }
 
-/// One chat turn with a model server.
+/// One chat turn with a model server; the island gets the streamed text as `chat-delta` events.
 pub async fn send(
     app: &AppHandle,
     chat: &Chat,
@@ -261,6 +261,21 @@ pub async fn send(
     model: &str,
     query: String,
     context: Option<ChatContext>,
+) -> Result<ChatReply, String> {
+    send_with(chat, server, model, query, context, |visible| {
+        let _ = app.emit_to(WINDOW_LABEL, "chat-delta", visible);
+    })
+    .await
+}
+
+/// The same turn, with the streamed text handed to `on_delta` instead (the phone link uses this).
+pub async fn send_with(
+    chat: &Chat,
+    server: &Server,
+    model: &str,
+    query: String,
+    context: Option<ChatContext>,
+    on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
     let base = base_url(server)?;
     if model.is_empty() {
@@ -270,10 +285,7 @@ pub async fn send(
     let user = json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
     let body = request_body(model, &chat::system_prompt(false), &turn.history, &user);
 
-    let answer = stream(&base, server.key.as_deref(), model, &body, |visible| {
-        let _ = app.emit_to(WINDOW_LABEL, "chat-delta", visible);
-    })
-    .await?;
+    let answer = stream(&base, server.key.as_deref(), model, &body, on_delta).await?;
     if answer.is_empty() {
         return Err(t("No response text."));
     }
