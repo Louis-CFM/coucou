@@ -348,6 +348,14 @@ test("a card answered elsewhere comes down once its tool has run", () => {
   }
 });
 
+test("a card whose relay hung up comes down at once", () => {
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", tool_name: "Bash" });
+  hook({ hook_event_name: "Released", request_id: "other" });
+  assert.equal(State.pendingApproval?.requestId, "r1");
+  hook({ hook_event_name: "Released", request_id: "r1" });
+  assert.equal(State.pendingApproval, null);
+});
+
 test("Codex's Interrupt puts its pill back to idle", () => {
   hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", coucou_agent: "codex", prompt: "go" });
   assert.equal(task("agent_codex").state, "thinking");

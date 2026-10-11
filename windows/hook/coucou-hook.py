@@ -2,9 +2,11 @@
 # coucou-hook for a macOS host behind a Linux Coucou's SSH tunnel (remote.rs):
 # main.rs, normalize.rs and reply.rs for Claude Code, in Python. Never blocks
 # Claude Code, never prints a decision nobody clicked.
-import json, os, socket, stat, struct, sys, threading
+import json, os, re, socket, stat, struct, sys, threading, time
 
 CONNECT_TIMEOUT = 0.3
+ANSWERED_POLL = 0.2
+ANSWERED_KEEP = 3600
 FIRE_AND_FORGET_BUDGET = 2.0
 DECISION_BUDGET = 110.0
 DROPPED_FIELDS = ("tool_response", "tool_output", "transcript_path")
@@ -60,8 +62,44 @@ def term_editor(env):
     return "cursor" if exe.startswith("cursor") else None
 
 
+def answer_key(payload):
+    """answered.rs key: the tool_use_id, else FNV-1a of session, tool and input."""
+    tid = payload.get("tool_use_id")
+    if isinstance(tid, str) and tid and len(tid) <= 128 and re.fullmatch(r"[A-Za-z0-9_-]+", tid):
+        return tid
+    text = "%s\n%s\n%s" % (
+        payload.get("session_id") if isinstance(payload.get("session_id"), str) else "",
+        payload.get("tool_name") if isinstance(payload.get("tool_name"), str) else "",
+        json.dumps(payload.get("tool_input"), sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+    h = 0xcbf29ce484222325
+    for b in text.encode("utf-8"):
+        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return "h%016x" % h
+
+
+def answered_dir():
+    return os.path.join(os.environ.get("HOME", ""), ".coucou", "answered")
+
+
+def mark_answered(key):
+    d = answered_dir()
+    try:
+        os.makedirs(d, exist_ok=True)
+        os.chmod(d, 0o700)
+        tmp = os.path.join(d, ".%s.%d" % (key, os.getpid()))
+        open(tmp, "w").close()
+        os.replace(tmp, os.path.join(d, key))
+        now = time.time()
+        for name in os.listdir(d):
+            p = os.path.join(d, name)
+            if now - os.path.getmtime(p) > ANSWERED_KEEP:
+                os.remove(p)
+    except OSError:
+        pass
+
+
 def prepare(raw, arg_event, env, cwd):
-    """(line, event name, AskUserQuestion input) to forward, or None."""
+    """(line, event name, AskUserQuestion input, answered key) to forward, or None."""
     if raw.startswith(b"\xef\xbb\xbf"):
         raw = raw[3:]
     try:
@@ -77,15 +115,17 @@ def prepare(raw, arg_event, env, cwd):
     name = payload.get("hook_event_name") or arg_event
     if name == "Stop" and payload.get("status") == "error":
         name = "StopFailure"
-    payload["hook_event_name"] = name
+    key = answer_key(payload)
+    asks = name == "PreToolUse" and payload.get("tool_name") == "AskUserQuestion"
+    payload["hook_event_name"] = "PermissionRequest" if asks else name
     for field in DROPPED_FIELDS:
         payload.pop(field, None)
     if not payload.get("cwd") and cwd:
         payload["cwd"] = cwd
-    for key, var in (("term_program", "TERM_PROGRAM"), ("wt_session", "WT_SESSION"),
+    for field, var in (("term_program", "TERM_PROGRAM"), ("wt_session", "WT_SESSION"),
                      ("term_session_id", "TERM_SESSION_ID"), ("vscode_pid", "VSCODE_PID"),
                      ("session_pid", "CLAUDE_CODE_SSE_PORT")):
-        payload.setdefault(key, env.get(var, ""))
+        payload.setdefault(field, env.get(var, ""))
     question = payload.get("tool_input") if payload.get("tool_name") == "AskUserQuestion" else None
     keeps_diff = name == "PostToolUse" and payload.get("tool_name") in DIFF_TOOLS
     tool_input = payload.pop("tool_input", None) if keeps_diff else None
@@ -95,7 +135,7 @@ def prepare(raw, arg_event, env, cwd):
         payload["tool_input"] = cap_diff(tool_input, state)
         if state["cut"]:
             payload["coucou_diff_truncated"] = True
-    return json.dumps(payload, ensure_ascii=False) + "\n", name, question
+    return json.dumps(payload, ensure_ascii=False) + "\n", name, question, key
 
 
 def answers_fit(question, answers):
@@ -119,15 +159,21 @@ def answers_fit(question, answers):
     return True
 
 
+def answered_input(decision, question):
+    try:
+        answers = json.loads(decision).get("answers")
+    except (ValueError, AttributeError):
+        return None
+    if not isinstance(answers, dict) or not isinstance(question, dict) or not answers_fit(question, answers):
+        return None
+    return dict(question, answers=answers)
+
+
 def decision_json(decision, question):
     if decision.lstrip().startswith("{"):
-        try:
-            answers = json.loads(decision).get("answers")
-        except (ValueError, AttributeError):
+        updated = answered_input(decision, question)
+        if updated is None:
             return None
-        if not isinstance(answers, dict) or not isinstance(question, dict) or not answers_fit(question, answers):
-            return None
-        updated = dict(question, answers=answers)
         return json.dumps({"hookSpecificOutput": {"hookEventName": "PermissionRequest",
                                                   "decision": {"behavior": "allow", "updatedInput": updated}}},
                           separators=(",", ":"), ensure_ascii=False)
@@ -142,8 +188,16 @@ def decision_json(decision, question):
 
 
 def stdout(event, decision, question):
-    """reply::stdout for Claude Code: only a clicked PermissionRequest prints anything."""
-    if event != "PermissionRequest" or decision is None:
+    """reply::stdout for Claude Code: only a clicked decision or picked answers print anything."""
+    if decision is None:
+        return None
+    if event == "PreToolUse":
+        updated = answered_input(decision, question)
+        if updated is None:
+            return None
+        return json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow",
+                                                  "updatedInput": updated}}, separators=(",", ":"), ensure_ascii=False)
+    if event != "PermissionRequest":
         return None
     return decision_json(decision, question)
 
@@ -198,13 +252,20 @@ def main():
     event = prepare(raw, arg_event, os.environ, cwd)
     if event is None:
         return
-    line, name, question = event
-    waits = name == "PermissionRequest"
+    line, name, question, key = event
+    waits = name == "PermissionRequest" or (name == "PreToolUse" and question is not None)
     result = []
     worker = threading.Thread(target=lambda: result.append(talk(line, waits, os.environ.get("COUCOU_SOCKET"))), daemon=True)
     worker.start()
-    worker.join(DECISION_BUDGET if waits else FIRE_AND_FORGET_BUDGET)
+    deadline = time.monotonic() + (DECISION_BUDGET if waits else FIRE_AND_FORGET_BUDGET)
+    # Gives up as soon as another relay on this host has the answer (answered.rs).
+    while worker.is_alive() and time.monotonic() < deadline:
+        worker.join(ANSWERED_POLL)
+        if waits and os.path.exists(os.path.join(answered_dir(), key)):
+            break
     out = stdout(name, result[0] if result else None, question)
+    if waits and out is not None:
+        mark_answered(key)
     if out is not None:
         sys.stdout.write(out + "\n")
         sys.stdout.flush()

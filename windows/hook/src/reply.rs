@@ -25,6 +25,16 @@ fn wants_json(agent: &str) -> bool {
 /// (`None`: nobody clicked) and, for Claude Code's AskUserQuestion, the
 /// question as it was asked.
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
+    // Claude Code asks its questions at PreToolUse: only picked answers go back.
+    if event == "PreToolUse" && agent.is_empty() {
+        let input = answered_input(decision?, question?)?;
+        return Some(
+            json!({ "hookSpecificOutput": {
+                "hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": input,
+            } })
+            .to_string(),
+        );
+    }
     if event != "PermissionRequest" {
         // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
         // (and the user's Always Allow): Coucou never allows a tool by itself.
@@ -66,14 +76,7 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
 /// the island, and no other tool's input can be changed at all.
 pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String> {
     if decision.trim_start().starts_with('{') {
-        let reply = serde_json::from_str::<Value>(decision).ok()?;
-        let answers = reply.get("answers")?.as_object()?;
-        let question = question?;
-        if !answers_fit(question, answers) {
-            return None;
-        }
-        let mut input = question.as_object()?.clone();
-        input.insert("answers".into(), Value::Object(answers.clone()));
+        let input = answered_input(decision, question?)?;
         return Some(
             json!({
                 "hookSpecificOutput": {
@@ -94,6 +97,18 @@ pub fn decision_json(decision: &str, question: Option<&Value>) -> Option<String>
     Some(format!(
         r#"{{"hookSpecificOutput":{{"hookEventName":"PermissionRequest","decision":{behavior}}}}}"#
     ))
+}
+
+/// The question's input with the island's `{"answers": …}` added, when they fit it.
+fn answered_input(decision: &str, question: &Value) -> Option<Map<String, Value>> {
+    let reply = serde_json::from_str::<Value>(decision.trim()).ok()?;
+    let answers = reply.get("answers")?.as_object()?;
+    if !answers_fit(question, answers) {
+        return None;
+    }
+    let mut input = question.as_object()?.clone();
+    input.insert("answers".into(), Value::Object(answers.clone()));
+    Some(input)
 }
 
 /// True when `answers` answers exactly the questions Claude Code asked: one entry

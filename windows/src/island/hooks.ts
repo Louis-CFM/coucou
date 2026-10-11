@@ -243,6 +243,16 @@ function handleHook(island: Island, payload: HookPayload) {
     return;
   }
 
+  // A waiting relay hung up: its request was answered elsewhere.
+  if (payload.hook_event_name === "Released") {
+    if (State.pendingApproval?.requestId === payload.request_id) {
+      if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+      pendingTimeout = null;
+      dropPendingCard(island);
+    }
+    return;
+  }
+
   if (State.paused) {
     // Silence here used to cost Claude Code nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,

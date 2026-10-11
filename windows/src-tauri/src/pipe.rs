@@ -21,6 +21,7 @@
 // one place.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -277,7 +278,22 @@ async fn handle(app: AppHandle, mut pipe: impl Relay, host: Option<String>) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    // The relay hanging up means it was answered elsewhere (another Coucou on the host).
+    let mut byte = [0u8; 1];
+    let outcome = {
+        let mut decided = std::pin::pin!(wait_for_decision(&id, &mut rx));
+        let mut hung_up = std::pin::pin!(pipe.read(&mut byte));
+        std::future::poll_fn(|cx| match decided.as_mut().poll(cx) {
+            std::task::Poll::Ready(d) => std::task::Poll::Ready(Some(d)),
+            std::task::Poll::Pending => hung_up.as_mut().poll(cx).map(|_| None),
+        })
+        .await
+    };
+    let decision = outcome.unwrap_or_else(|| {
+        log::line(format!("hook id={id} released by the relay"));
+        let _ = app.emit_to(WINDOW_LABEL, "hook", json!({ "hook_event_name": "Released", "request_id": id }));
+        None
+    });
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
