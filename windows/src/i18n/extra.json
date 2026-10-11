@@ -903,6 +903,17 @@
    "ru": "Перейти к ожидающему разрешению или вопросу",
    "id": "Buka izin atau pertanyaan yang menunggu"
   },
+  "Google Calendar → Settings → your calendar → Integrate calendar. Any iCal link works: Outlook, iCloud, Fastmail.": {
+   "zh-Hans": "Google 日历 → 设置 → 你的日历 → 集成日历。任何 iCal 链接都可以：Outlook、iCloud、Fastmail。",
+   "hi": "Google Calendar → सेटिंग्स → आपका कैलेंडर → कैलेंडर इंटीग्रेट करें। कोई भी iCal लिंक चलेगा: Outlook, iCloud, Fastmail।",
+   "es": "Google Calendar → Configuración → tu calendario → Integrar el calendario. Sirve cualquier enlace iCal: Outlook, iCloud, Fastmail.",
+   "ar": "تقويم Google ← الإعدادات ← تقويمك ← دمج التقويم. يصلح أي رابط iCal: Outlook وiCloud وFastmail.",
+   "fr": "Google Agenda → Paramètres → votre agenda → Intégrer l'agenda. Tout lien iCal convient : Outlook, iCloud, Fastmail.",
+   "bn": "Google Calendar → সেটিংস → আপনার ক্যালেন্ডার → ক্যালেন্ডার ইন্টিগ্রেট করুন। যেকোনো iCal লিংক চলবে: Outlook, iCloud, Fastmail।",
+   "pt-BR": "Google Agenda → Configurações → sua agenda → Integrar agenda. Qualquer link iCal funciona: Outlook, iCloud, Fastmail.",
+   "ru": "Google Календарь → Настройки → ваш календарь → Интеграция календаря. Подойдёт любая ссылка iCal: Outlook, iCloud, Fastmail.",
+   "id": "Google Kalender → Setelan → kalender Anda → Integrasikan kalender. Tautan iCal apa pun bisa: Outlook, iCloud, Fastmail."
+  },
   "Hide project names": {
    "zh-Hans": "隐藏项目名称",
    "hi": "प्रोजेक्ट के नाम छिपाएँ",
@@ -1947,6 +1958,17 @@
    "pt-BR": "Cachecol",
    "ru": "Шарф",
    "id": "Syal"
+  },
+  "Secret address in iCal format": {
+   "zh-Hans": "iCal 格式的私密地址",
+   "hi": "iCal फ़ॉर्मेट में गुप्त पता",
+   "es": "Dirección secreta en formato iCal",
+   "ar": "العنوان السري بتنسيق iCal",
+   "fr": "Adresse secrète au format iCal",
+   "bn": "iCal ফরম্যাটে গোপন ঠিকানা",
+   "pt-BR": "Endereço secreto no formato iCal",
+   "ru": "Секретный адрес в формате iCal",
+   "id": "Alamat rahasia dalam format iCal"
   },
   "Secret key": {
    "zh-Hans": "私密密钥",
@@ -3349,6 +3371,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "The calendar address must start with https:// or webcal://.": {
+   "zh-Hans": "日历地址必须以 https:// 或 webcal:// 开头。",
+   "hi": "कैलेंडर का पता https:// या webcal:// से शुरू होना चाहिए।",
+   "es": "La dirección del calendario debe empezar por https:// o webcal://.",
+   "ar": "يجب أن يبدأ عنوان التقويم بـ https:// أو webcal://.",
+   "fr": "L'adresse du calendrier doit commencer par https:// ou webcal://.",
+   "bn": "ক্যালেন্ডারের ঠিকানা https:// অথবা webcal:// দিয়ে শুরু হতে হবে।",
+   "pt-BR": "O endereço do calendário deve começar com https:// ou webcal://.",
+   "ru": "Адрес календаря должен начинаться с https:// или webcal://.",
+   "id": "Alamat kalender harus diawali https:// atau webcal://."
   },
   "The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app.": {
    "zh-Hans": "数据来自 Claude Code 命令行工具。Claude 桌面应用不会提供这些数据，因此如果你只使用桌面应用，仪表会一直为空。",

@@ -33,7 +33,7 @@ final class DemoEngine: ObservableObject {
     private var realTaskIdsAtStart: Set<String> = [] // real task IDs that existed before demo
     private var demoCycleIndex: Int = 0
     private let rotatingIntegrationIds = [
-        "integration_stripe", "integration_calcom",
+        "integration_stripe", "integration_calcom", "integration_calendar",
         "integration_n8n", "integration_notion", "integration_vercel"
     ]
     private var demoDiffIds: [String: [Int]] = [:]   // [pillId: [diffId]]
@@ -64,6 +64,8 @@ final class DemoEngine: ObservableObject {
         var stripeError: String?
         var calcomBookings: [CalcomBooking]
         var calcomLoaded: Bool
+        var calendarMeetings: [CalendarMeeting]
+        var calendarLoaded: Bool
         var n8nRuns: [N8nRun]
         var notionPages: [NotionPage]
         var notionLoaded: Bool
@@ -110,6 +112,8 @@ final class DemoEngine: ObservableObject {
             stripeError:         s.stripeError,
             calcomBookings:      s.calcomBookings,
             calcomLoaded:        s.calcomLoaded,
+            calendarMeetings:    s.calendarMeetings,
+            calendarLoaded:      s.calendarLoaded,
             n8nRuns:             s.n8nRuns,
             notionPages:         s.notionPages,
             notionLoaded:        s.notionLoaded,
@@ -219,6 +223,8 @@ final class DemoEngine: ObservableObject {
         s.stripeError          = snap.stripeError
         s.calcomBookings       = snap.calcomBookings
         s.calcomLoaded         = snap.calcomLoaded
+        s.calendarMeetings     = snap.calendarMeetings
+        s.calendarLoaded       = snap.calendarLoaded
         s.n8nRuns              = snap.n8nRuns
         s.notionPages          = snap.notionPages
         s.notionLoaded         = snap.notionLoaded
@@ -365,6 +371,19 @@ final class DemoEngine: ObservableObject {
                           attendeeNotes: nil),
         ]
         s.calcomLoaded = true
+
+        // Calendar
+        let standup = now.addingTimeInterval(12 * 60)
+        let review  = now.addingTimeInterval(3 * 3600)
+        s.calendarMeetings = [
+            CalendarMeeting(id: "demo_standup", title: "Team standup",
+                            start: standup, end: standup.addingTimeInterval(900), isAllDay: false,
+                            joinURL: URL(string: "https://meet.google.com/abc-defg-hij")),
+            CalendarMeeting(id: "demo_review", title: "Design review",
+                            start: review, end: review.addingTimeInterval(3600), isAllDay: false,
+                            joinURL: nil),
+        ]
+        s.calendarLoaded = true
 
         // n8n
         s.n8nRuns = [

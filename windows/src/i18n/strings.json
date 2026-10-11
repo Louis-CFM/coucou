@@ -167,6 +167,17 @@
    "ru": "Агенты",
    "id": "Agen"
   },
+  "All day": {
+   "zh-Hans": "全天",
+   "hi": "पूरे दिन",
+   "es": "Todo el día",
+   "ar": "طوال اليوم",
+   "fr": "Toute la journée",
+   "bn": "সারাদিন",
+   "pt-BR": "Dia inteiro",
+   "ru": "Весь день",
+   "id": "Sepanjang hari"
+  },
   "Allow": {
    "zh-Hans": "允许",
    "hi": "अनुमति दें",
@@ -199,6 +210,17 @@
    "pt-BR": "Permitir que o Coucou controle o Spotify",
    "ru": "Разрешить Coucou управлять Spotify",
    "id": "Izinkan Coucou mengontrol Spotify"
+  },
+  "Allow calendar access": {
+   "zh-Hans": "允许访问日历",
+   "hi": "कैलेंडर एक्सेस की अनुमति दें",
+   "es": "Permitir acceso al calendario",
+   "ar": "السماح بالوصول إلى التقويم",
+   "fr": "Autoriser l'accès au calendrier",
+   "bn": "ক্যালেন্ডারে অ্যাক্সেসের অনুমতি দিন",
+   "pt-BR": "Permitir acesso ao calendário",
+   "ru": "Разрешить доступ к календарю",
+   "id": "Izinkan akses kalender"
   },
   "Already active": {
    "zh-Hans": "已激活",
@@ -430,6 +452,28 @@
    "pt-BR": "COMANDOS",
    "ru": "КОМАНДЫ",
    "id": "PERINTAH"
+  },
+  "Calendar access not allowed": {
+   "zh-Hans": "未允许访问日历",
+   "hi": "कैलेंडर एक्सेस की अनुमति नहीं है",
+   "es": "Acceso al calendario no permitido",
+   "ar": "الوصول إلى التقويم غير مسموح",
+   "fr": "Accès au calendrier non autorisé",
+   "bn": "ক্যালেন্ডার অ্যাক্সেসের অনুমতি নেই",
+   "pt-BR": "Acesso ao calendário não permitido",
+   "ru": "Доступ к календарю не разрешён",
+   "id": "Akses kalender tidak diizinkan"
+  },
+  "Calendars": {
+   "zh-Hans": "日历",
+   "hi": "कैलेंडर",
+   "es": "Calendarios",
+   "ar": "التقويمات",
+   "fr": "Calendriers",
+   "bn": "ক্যালেন্ডার",
+   "pt-BR": "Calendários",
+   "ru": "Календари",
+   "id": "Kalender"
   },
   "Can't reach {name} at {url}. Is it running?": {
    "zh-Hans": "无法访问 {name}（{url}）。它正在运行吗？",
@@ -1476,6 +1520,17 @@
    "ru": "Интеграции",
    "id": "Integrasi"
   },
+  "Join": {
+   "zh-Hans": "加入",
+   "hi": "जुड़ें",
+   "es": "Unirse",
+   "ar": "انضمام",
+   "fr": "Rejoindre",
+   "bn": "যোগ দিন",
+   "pt-BR": "Entrar",
+   "ru": "Войти",
+   "id": "Gabung"
+  },
   "Jump to terminal": {
    "zh-Hans": "跳转到终端",
    "hi": "टर्मिनल पर जाएं",
@@ -1993,6 +2048,17 @@
    "ru": "Нет моделей — скачай одну в {name} сначала.",
    "id": "Belum ada model — unduh satu di {name} terlebih dahulu."
   },
+  "No more meetings today": {
+   "zh-Hans": "今天没有更多会议",
+   "hi": "आज और कोई मीटिंग नहीं",
+   "es": "No hay más reuniones hoy",
+   "ar": "لا مزيد من الاجتماعات اليوم",
+   "fr": "Plus de réunion aujourd'hui",
+   "bn": "আজ আর কোনো মিটিং নেই",
+   "pt-BR": "Sem mais reuniões hoje",
+   "ru": "Сегодня встреч больше нет",
+   "id": "Tidak ada rapat lagi hari ini"
+  },
   "No music app running": {
    "zh-Hans": "没有音乐应用",
    "hi": "कोई म्यूज़िक ऐप नहीं",
@@ -2146,6 +2212,17 @@
    "pt-BR": "Nada em execução no momento.",
    "ru": "Сейчас ничего не запущено.",
    "id": "Tidak ada yang berjalan sekarang."
+  },
+  "Now": {
+   "zh-Hans": "现在",
+   "hi": "अभी",
+   "es": "Ahora",
+   "ar": "الآن",
+   "fr": "Maintenant",
+   "bn": "এখন",
+   "pt-BR": "Agora",
+   "ru": "Сейчас",
+   "id": "Sekarang"
   },
   "OK": {
    "zh-Hans": "确定",
@@ -2685,6 +2762,17 @@
    "pt-BR": "Lê",
    "ru": "Читает",
    "id": "Membaca"
+  },
+  "Reads the calendars of the Calendar app, Google accounts included.": {
+   "zh-Hans": "读取“日历”App 中的日历，包括 Google 账户。",
+   "hi": "कैलेंडर ऐप के कैलेंडर पढ़ता है, Google खाते भी।",
+   "es": "Lee los calendarios de la app Calendario, incluidas las cuentas de Google.",
+   "ar": "يقرأ تقويمات تطبيق التقويم، بما فيها حسابات Google.",
+   "fr": "Lit les calendriers de l'app Calendrier, comptes Google compris.",
+   "bn": "ক্যালেন্ডার অ্যাপের ক্যালেন্ডারগুলো পড়ে, Google অ্যাকাউন্টসহ।",
+   "pt-BR": "Lê os calendários do app Calendário, incluindo contas Google.",
+   "ru": "Читает календари приложения «Календарь», включая аккаунты Google.",
+   "id": "Membaca kalender di app Kalender, termasuk akun Google."
   },
   "Recent": {
    "zh-Hans": "最近",
@@ -3433,6 +3521,28 @@
    "pt-BR": "Para usar o Google Gemini ou OpenAI pelo chat. As chaves são armazenadas no Keychain.",
    "ru": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain.",
    "id": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
+  },
+  "Today": {
+   "zh-Hans": "今天",
+   "hi": "आज",
+   "es": "Hoy",
+   "ar": "اليوم",
+   "fr": "Aujourd'hui",
+   "bn": "আজ",
+   "pt-BR": "Hoje",
+   "ru": "Сегодня",
+   "id": "Hari ini"
+  },
+  "Tomorrow": {
+   "zh-Hans": "明天",
+   "hi": "कल",
+   "es": "Mañana",
+   "ar": "غدًا",
+   "fr": "Demain",
+   "bn": "আগামীকাল",
+   "pt-BR": "Amanhã",
+   "ru": "Завтра",
+   "id": "Besok"
   },
   "Too many hits at once.": {
    "zh-Hans": "一次点击太多次了。",

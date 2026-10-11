@@ -103,6 +103,8 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var calendarAccess: Bool = CalendarWatcher.hasAccess
+    @State private var calendarNames: [String] = []
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1234,6 +1236,37 @@ struct SettingsView: View {
                     }
                     SecureField("API key  (cal_live_…)", text: $calcomKey)
                         .textFieldStyle(.roundedBorder)
+                }
+
+                // Calendar (EventKit, no key)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#4F9DF7")).frame(width: 8, height: 8)
+                        Text(verbatim: "Calendar").font(.system(size: 12, weight: .semibold))
+                    }
+                    if calendarAccess {
+                        IntegrationFilterRow(
+                            label: String(localized: "Calendars"),
+                            items: calendarNames,
+                            filter: $state.calendarFilter,
+                            loading: false,
+                            onLoad: { calendarNames = CalendarWatcher.shared.calendarLabels() }
+                        )
+                    } else if CalendarWatcher.accessDenied {
+                        Button("Open Settings…") { CalendarWatcher.shared.openPrivacySettings() }
+                            .controlSize(.small)
+                    } else {
+                        Button("Allow calendar access") {
+                            Task {
+                                calendarAccess = await CalendarWatcher.shared.requestAccess()
+                                if calendarAccess { calendarNames = CalendarWatcher.shared.calendarLabels() }
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                    Text("Reads the calendars of the Calendar app, Google accounts included.")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
                 }
 
                 // Notion
