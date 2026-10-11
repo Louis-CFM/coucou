@@ -776,6 +776,13 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
+  // OAuth: the user's own Timely app; timelyRow() below trades its code for tokens.
+  { id: "integration_timely", name: "Timely", color: "#F5A524",
+    fields: [
+      { key: "timely-client-id", label: N_("Client ID"), placeholder: "…", secret: false },
+      { key: "timely-client-secret", label: N_("Client secret"), placeholder: "…", secret: true },
+    ],
+    hint: N_("In Timely, open Settings → Devs and register an app with the redirect URI urn:ietf:wg:oauth:2.0:oob. Enter its client ID and secret, connect, then paste the code Timely shows.") },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
@@ -847,6 +854,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       );
     }
 
+    if (def.id === "integration_timely") rows.append(timelyRow(present));
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
@@ -871,6 +879,51 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
   updateNote();
   return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
+}
+
+/** Timely's sign-in: Connect opens its consent page, which shows a code to paste back. */
+function timelyRow(present: Record<string, boolean>): HTMLElement {
+  const row = h("div", { class: "row" });
+  const status = h("div", { class: "hint" });
+
+  function draw() {
+    clear(row);
+    if (present["timely-access-token"]) {
+      const disconnect = h("button", { text: t("Disconnect") });
+      disconnect.addEventListener("click", async () => {
+        await Bridge.timelyDisconnect();
+        present["timely-access-token"] = false;
+        status.textContent = "";
+        draw();
+      });
+      row.append(h("span", { style: "color:#22c55e;min-width:104px", text: t("Connected") }), disconnect);
+      return;
+    }
+
+    const connect = h("button", { text: t("Connect") });
+    connect.addEventListener("click", () => void Bridge.timelyAuthorize());
+    const code = h("input", {
+      type: "text", placeholder: t("Authorization code"), autocomplete: "off", spellcheck: "false",
+      style: "flex:1 1 auto;min-width:0",
+    }) as HTMLInputElement;
+    const save = h("button", { text: t("Save") });
+    save.addEventListener("click", async () => {
+      const value = code.value.trim();
+      if (!value) return;
+      try {
+        await Bridge.timelyConnect(value);
+        present["timely-access-token"] = true;
+        status.textContent = t("✓ Timely connected.");
+        draw();
+      } catch {
+        status.textContent = t("❌ Timely did not accept the code. Check the client ID and secret, then connect again.");
+      }
+    });
+    row.append(h("span", { style: "min-width:104px" }), connect, code, save);
+  }
+
+  draw();
+  return h("div", { style: "display:flex;flex-direction:column;gap:4px" }, row, status);
 }
 
 // ── General section ───────────────────────────────────────────────────────────
@@ -1330,6 +1383,7 @@ async function render() {
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "timely-client-id", "timely-client-secret", "timely-access-token",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

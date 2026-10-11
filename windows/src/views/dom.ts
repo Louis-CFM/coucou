@@ -136,10 +136,17 @@ export function clear(el: Element) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
 
+const HEX_COLOR = /^#[0-9a-f]{3,8}$/i;
+
+/** `color` if it is a hex colour, else `fallback`: a service's colour never reaches CSS as anything else. */
+export function hexColor(color: unknown, fallback: string): string {
+  return typeof color === "string" && HEX_COLOR.test(color) ? color : fallback;
+}
+
 /** Card dot used in every "who" row. */
 export function dot(color: string, size = 7): HTMLElement {
   return h("i", {
     class: "dot",
-    style: `width:${size}px;height:${size}px;background:${color}`,
+    style: `width:${size}px;height:${size}px;background:${hexColor(color, "#6B7079")}`,
   });
 }

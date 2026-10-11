@@ -103,6 +103,11 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var timelyClientId: String     = KeychainStore.shared.get(TimelyPoller.Key.clientId)     ?? ""
+    @State private var timelyClientSecret: String = KeychainStore.shared.get(TimelyPoller.Key.clientSecret) ?? ""
+    @State private var timelyCode: String = ""
+    @State private var timelyConnected: Bool = KeychainStore.shared.get(TimelyPoller.Key.access) != nil
+    @State private var timelyConnecting: Bool = false
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1246,6 +1251,47 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // Timely
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#F5A524")).frame(width: 8, height: 8)
+                        Text("Timely").font(.system(size: 12, weight: .semibold))
+                    }
+                    TextField(String(localized: "Client ID"), text: $timelyClientId)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField(String(localized: "Client secret"), text: $timelyClientSecret)
+                        .textFieldStyle(.roundedBorder)
+                    if timelyConnected {
+                        HStack(spacing: 8) {
+                            Text(String(localized: "Connected"))
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#22C55E"))
+                            Button(String(localized: "chat.disconnect")) {
+                                TimelyPoller.shared.disconnect()
+                                timelyConnected = false
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            Button(String(localized: "chat.connect")) { openTimelyAuthorization() }
+                                .buttonStyle(.bordered)
+                                .disabled(timelyClientId.isEmpty || timelyClientSecret.isEmpty)
+                            TextField(String(localized: "Authorization code"), text: $timelyCode)
+                                .textFieldStyle(.roundedBorder)
+                            Button(timelyConnecting ? String(localized: "chat.connecting") : String(localized: "Save")) {
+                                finishTimelyAuthorization()
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(timelyCode.isEmpty || timelyConnecting)
+                        }
+                    }
+                    Text(String(localized: "integrations.timely.hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                        .textSelection(.enabled)
+                }
+
                 Button(String(localized: "integrations.save")) { saveIntegrations() }
                     .buttonStyle(.borderedProminent)
             }
@@ -1930,7 +1976,36 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+        saveTimelyClient()
         statusMessage = String(localized: "status.integrations-saved")
+    }
+
+    // MARK: - Timely sign-in
+
+    private func saveTimelyClient() {
+        saveKey(TimelyPoller.Key.clientId,     value: timelyClientId.trimmingCharacters(in: .whitespaces))
+        saveKey(TimelyPoller.Key.clientSecret, value: timelyClientSecret.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// Opens Timely's consent page; Timely then shows a code to paste back here.
+    private func openTimelyAuthorization() {
+        saveTimelyClient()
+        guard let url = TimelyAPI.authorizeURL(clientId: timelyClientId.trimmingCharacters(in: .whitespaces))
+        else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private func finishTimelyAuthorization() {
+        saveTimelyClient()
+        let code = timelyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        timelyConnecting = true
+        Task { @MainActor in
+            let ok = await TimelyPoller.shared.connect(code: code)
+            timelyConnecting = false
+            timelyConnected = ok
+            if ok { timelyCode = "" }
+            statusMessage = ok ? String(localized: "status.timely-connected") : String(localized: "status.timely-failed")
+        }
     }
 
     private func saveKey(_ key: String, value: String) {

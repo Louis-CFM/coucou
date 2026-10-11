@@ -186,6 +186,7 @@ export class Island {
           integration_stripe: "https://dashboard.stripe.com/payments",
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
+          integration_timely: "https://app.timelyapp.com",
         };
         if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else if (task.id === "integration_claude" || task.sessionId) {

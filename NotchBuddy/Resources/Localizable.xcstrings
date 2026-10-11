@@ -26141,6 +26141,518 @@
           }
         }
       }
+    },
+    "Client ID": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معرّف العميل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্লায়েন্ট আইডি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Client ID"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de cliente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID client"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "क्लाइंट ID"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID klien"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID do cliente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID клиента"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "客户端 ID"
+          }
+        }
+      }
+    },
+    "Client secret": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سر العميل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্লায়েন্ট সিক্রেট"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Client secret"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secreto de cliente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secret client"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "क्लाइंट सीक्रेट"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rahasia klien"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segredo do cliente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Секрет клиента"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "客户端密钥"
+          }
+        }
+      }
+    },
+    "Authorization code": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رمز التفويض"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুমোদন কোড"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authorization code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de autorización"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code d'autorisation"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ऑथराइज़ेशन कोड"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kode otorisasi"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de autorização"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Код авторизации"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授权码"
+          }
+        }
+      }
+    },
+    "No timer running": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد مؤقت قيد التشغيل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো টাইমার চলছে না"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No timer running"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún temporizador en marcha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun minuteur en cours"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कोई टाइमर नहीं चल रहा"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada timer berjalan"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum cronômetro rodando"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Таймер не запущен"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有正在计时的条目"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اليوم"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আজ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aujourd'hui"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आज"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hari ini"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoje"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天"
+          }
+        }
+      }
+    },
+    "integrations.timely.hint": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في Timely، افتح Settings ← Devs وسجّل تطبيقًا بعنوان إعادة التوجيه urn:ietf:wg:oauth:2.0:oob. أدخل معرّف العميل والسر ثم اتصل، والصق الرمز الذي يعرضه Timely."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timely-তে Settings → Devs খুলে রিডাইরেক্ট URI urn:ietf:wg:oauth:2.0:oob দিয়ে একটি অ্যাপ নিবন্ধন করুন। এর ক্লায়েন্ট আইডি ও সিক্রেট দিয়ে সংযোগ করুন, তারপর Timely-র দেখানো কোড পেস্ট করুন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Timely, open Settings → Devs and register an app with the redirect URI urn:ietf:wg:oauth:2.0:oob. Enter its client ID and secret, connect, then paste the code Timely shows."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En Timely, abre Settings → Devs y registra una app con la URI de redirección urn:ietf:wg:oauth:2.0:oob. Introduce su ID y secreto de cliente, conecta y pega el código que muestra Timely."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans Timely, ouvrez Settings → Devs et enregistrez une app avec l'URI de redirection urn:ietf:wg:oauth:2.0:oob. Saisissez son ID client et son secret, connectez-vous, puis collez le code affiché par Timely."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timely में Settings → Devs खोलें और रीडायरेक्ट URI urn:ietf:wg:oauth:2.0:oob के साथ एक ऐप रजिस्टर करें। उसका क्लाइंट ID और सीक्रेट डालकर कनेक्ट करें, फिर Timely का दिखाया गया कोड पेस्ट करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di Timely, buka Settings → Devs dan daftarkan aplikasi dengan URI pengalihan urn:ietf:wg:oauth:2.0:oob. Masukkan ID dan rahasia kliennya, hubungkan, lalu tempel kode yang ditampilkan Timely."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Timely, abra Settings → Devs e registre um app com a URI de redirecionamento urn:ietf:wg:oauth:2.0:oob. Informe o ID e o segredo do cliente, conecte e cole o código que o Timely mostrar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В Timely откройте Settings → Devs и зарегистрируйте приложение с URI перенаправления urn:ietf:wg:oauth:2.0:oob. Введите его ID и секрет клиента, подключитесь и вставьте код, который покажет Timely."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Timely 中打开 Settings → Devs，注册一个应用，重定向 URI 填 urn:ietf:wg:oauth:2.0:oob。填入它的客户端 ID 和密钥并连接，然后粘贴 Timely 显示的代码。"
+          }
+        }
+      }
+    },
+    "status.timely-connected": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ تم الاتصال بـ Timely."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely সংযুক্ত হয়েছে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely connected."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely conectado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely connecté."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely कनेक्ट हो गया।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely terhubung."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely conectado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Timely подключён."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 已连接 Timely。"
+          }
+        }
+      }
+    },
+    "status.timely-failed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ لم يقبل Timely الرمز. تحقّق من معرّف العميل والسر ثم اتصل مجددًا."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely কোডটি গ্রহণ করেনি। ক্লায়েন্ট আইডি ও সিক্রেট যাচাই করে আবার সংযোগ করুন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely did not accept the code. Check the client ID and secret, then connect again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely no aceptó el código. Revisa el ID y el secreto de cliente y vuelve a conectar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely a refusé le code. Vérifiez l'ID client et le secret, puis reconnectez-vous."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely ने कोड स्वीकार नहीं किया। क्लाइंट ID और सीक्रेट जाँचें, फिर दोबारा कनेक्ट करें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely tidak menerima kode. Periksa ID dan rahasia klien, lalu hubungkan lagi."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ O Timely não aceitou o código. Confira o ID e o segredo do cliente e conecte de novo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely не принял код. Проверьте ID и секрет клиента и подключитесь снова."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Timely 未接受该代码。请检查客户端 ID 和密钥，然后重新连接。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
