@@ -176,6 +176,29 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
+/* Compact stats: agent count beside Mochi, plan % beside the mini grid. */
+#compact-count,
+#compact-plan {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8e939c;
+  font: 600 10px var(--font);
+  font-variant-numeric: tabular-nums;
+  line-height: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+
+#compact-count {
+  left: 54px;
+}
+
+#compact-plan {
+  right: 60px;
+}
+
 /* A mini Mochi: the slot is the body, the canvas is larger and overflows it so
    hands, badges and particles are not cut off. */
 .mini {

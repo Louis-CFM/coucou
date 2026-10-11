@@ -31,6 +31,16 @@ export function codexPillVisible(): boolean {
   return State.view === "overview" && State.settings.showCodexPlanInNotch;
 }
 
+/** The % beside the compact island's mini grid: the highest of the plans the header shows. */
+export function compactPlanPct(now = Date.now()): number | null {
+  const s = State.settings;
+  const pcts = [
+    s.showPlanInNotch && s.planRelayInstalled ? dominantPct(State.planUsage, now) : null,
+    s.showCodexPlanInNotch ? dominantPct(State.codexPlanUsage, now) : null,
+  ].filter((p): p is number => p != null);
+  return pcts.length ? Math.max(...pcts) : null;
+}
+
 /** A plan card is open and its pill is still there. */
 export function planCardOpen(): boolean {
   if (!State.showingPlanDetail) return false;
