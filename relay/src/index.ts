@@ -505,7 +505,10 @@ export class PhoneBox {
         return text(429, "outbox full");
       }
       case "take": {
-        const out = ((await this.ctx.storage.get<OutboxItem[]>("out")) ?? []).filter((i) => now - i.at < OUTBOX_TTL_MS);
+        const stored = (await this.ctx.storage.get<OutboxItem[]>("out")) ?? [];
+        // The PC asks every few seconds: an empty outbox costs a read, never a write.
+        if (stored.length === 0) return json({ out: [] });
+        const out = stored.filter((i) => now - i.at < OUTBOX_TTL_MS);
         await this.ctx.storage.put("out", []);
         return json({ out });
       }

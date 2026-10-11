@@ -177,6 +177,29 @@ test("decide/chat enqueue; take drains once", async () => {
   assert.deepEqual((await ok(call(b, "take", { id: ID, secret: SECRET }))).out, []); // drained
 });
 
+test("an empty take writes nothing; a drain writes once", async () => {
+  const { ctx } = makeCtx();
+  let puts = 0;
+  const put = ctx.storage.put;
+  ctx.storage.put = async (k, v) => {
+    puts++;
+    return put(k, v);
+  };
+  const b = new PhoneBox(ctx, env);
+  await ok(call(b, "pair", { id: ID, secret: SECRET }));
+
+  puts = 0;
+  for (let i = 0; i < 3; i++) {
+    assert.deepEqual((await ok(call(b, "take", { id: ID, secret: SECRET }))).out, []);
+  }
+  assert.equal(puts, 0, "polling an empty outbox must not write");
+
+  await ok(call(b, "chat", { id: ID, secret: SECRET, text: "hi" }));
+  puts = 0;
+  assert.equal((await ok(call(b, "take", { id: ID, secret: SECRET }))).out.length, 1);
+  assert.equal(puts, 1, "the drain itself is one write");
+});
+
 test("the outbox caps at 50 pending items", async () => {
   const b = await paired();
   for (let i = 0; i < 50; i++) {
