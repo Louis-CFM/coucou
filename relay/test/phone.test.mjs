@@ -217,7 +217,7 @@ test("state is clipped to bounds before it is stored", async () => {
   const aw = state.awaiting;
   assert.equal(aw.title.length, 160);
   assert.equal(aw.detail.length, 600);
-  assert.deepEqual(aw.questions, [{ q: "Pick", options: ["A", "B"] }]);
+  assert.deepEqual(aw.questions, [{ q: "Pick", options: ["A", "B"], multi: false }]);
   assert.equal(state.chatTail[1].role, "user"); // unknown roles fall back
   assert.equal(state.chatTail[1].text.length, 2000);
   assert.equal(card, null);
@@ -285,6 +285,35 @@ test("the outbox caps at 50 pending items", async () => {
     await ok(call(b, "chat", { id: ID, secret: SECRET, text: `m${i}` }));
   }
   assert.equal((await call(b, "chat", { id: ID, secret: SECRET, text: "51st" })).status, 429);
+});
+
+test("a multi-select question keeps its flag and its answer stays a list", async () => {
+  const b = await paired();
+  await ok(call(b, "state", {
+    id: ID,
+    secret: SECRET,
+    state: {
+      sessions: [],
+      awaiting: {
+        requestId: "q1", pillId: "p", agent: "Claude", kind: "question", title: "AskUserQuestion",
+        detail: "", options: [], questions: [{ q: "Extras?", options: ["Tests", "Docs"], multi: true }],
+      },
+    },
+  }));
+  const { state } = await ok(call(b, "fetch", { id: ID, secret: SECRET }));
+  assert.equal(state.awaiting.questions[0].multi, true);
+
+  await ok(call(b, "decide", {
+    id: ID, secret: SECRET, requestId: "q1", decision: "answer",
+    answers: { "Extras?": ["Tests", "Docs", "x".repeat(300), ...Array(10).fill("y")], Single: "A" },
+  }));
+  const { out } = await ok(call(b, "take", { id: ID, secret: SECRET }));
+  const extras = out[0].answers["Extras?"];
+  assert.ok(Array.isArray(extras));
+  assert.equal(extras.length, 6);
+  assert.deepEqual(extras.slice(0, 2), ["Tests", "Docs"]);
+  assert.equal(extras[2].length, 200);
+  assert.equal(out[0].answers.Single, "A");
 });
 
 // ── Unpair ────────────────────────────────────────────────────────────────────

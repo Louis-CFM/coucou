@@ -290,8 +290,8 @@ interface PhoneCard {
   title: string;
   detail: string;
   options: string[];
-  /** Question cards: each question's text and its labels, so answers map back. */
-  questions: { q: string; options: string[] }[];
+  /** Question cards: each question's text, its labels and whether several may be picked. */
+  questions: { q: string; options: string[]; multi: boolean }[];
 }
 
 /** The waiting card, clipped to bounds — used for both `state.awaiting` and `card`. */
@@ -302,6 +302,7 @@ function cleanCard(raw: unknown): PhoneCard {
     return {
       q: clipped(qr.q, 160),
       options: (Array.isArray(qr.options) ? qr.options : []).slice(0, 6).map((o) => clipped(o, 80)),
+      multi: qr.multi === true,
     };
   });
   return {
@@ -321,12 +322,12 @@ interface OutboxItem {
   at: number;
   requestId?: string;
   decision?: string;
-  /** Question answers as question-text → chosen label, the shape AskUserQuestion takes. */
-  answers?: Record<string, string>;
+  /** Question text → the label picked, or the labels picked for a multi-select question. */
+  answers?: Record<string, string | string[]>;
   text?: string;
   /** A chat line into a specific CLI session, or which transcript to push. */
   sessionId?: string;
-  /** Which CLI owns the session — "devin" | "claude". */
+  /** Which CLI owns the session — "devin" | "claude" | "codex" | "opencode". */
   agent?: string;
 }
 
@@ -524,9 +525,12 @@ export class PhoneBox {
         if (decision === "answer") {
           const raw = typeof body.answers === "object" && body.answers !== null
             ? body.answers as Record<string, unknown> : {};
-          const answers: Record<string, string> = {};
+          const answers: Record<string, string | string[]> = {};
           for (const [k, v] of Object.entries(raw).slice(0, 8)) {
-            answers[clipped(k, 160)] = clipped(v, 200);
+            const key = clipped(k, 160);
+            answers[key] = Array.isArray(v)
+              ? v.slice(0, 6).map((x) => clipped(x, 200)).filter((x) => x !== "")
+              : clipped(v, 200);
           }
           item.answers = answers;
         }
