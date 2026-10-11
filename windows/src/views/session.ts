@@ -380,7 +380,7 @@ type PhaseState = "done" | "active" | "todo";
 function phaseIcon(state: PhaseState, glyph: string): HTMLElement {
   if (state === "done") return h("span", { class: "ph-icon ok" }, svg(ICONS.check, 8, { stroke: 3 }));
   if (state === "active") return h("span", { class: "ph-icon spin" });
-  return h("span", { class: "ph-icon todo" }, svg(glyph, 12, { stroke: 1.8 }));
+  return h("span", { class: "ph-icon todo" }, svg(glyph, 14, { stroke: 1.8 }));
 }
 
 function phaseList(d: CodeData): HTMLElement {
