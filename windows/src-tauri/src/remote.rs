@@ -743,7 +743,7 @@ mod tests {
     fn a_destination_is_read_as_ssh_reads_it() {
         assert_eq!(destination("devbox"), Some(dest(None, "devbox", None)));
         assert_eq!(destination("me@Build.Example.org"), Some(dest(Some("me"), "build.example.org", None)));
-        assert_eq!(destination("ssh://mastodon@localhost:23456"), Some(dest(Some("mastodon"), "localhost", Some(23456))));
+        assert_eq!(destination("ssh://deploy@localhost:2222"), Some(dest(Some("deploy"), "localhost", Some(2222))));
         assert_eq!(destination("ssh://[::1]:2222"), Some(dest(None, "::1", Some(2222))));
         assert_eq!(destination("a@b@host"), Some(dest(Some("a@b"), "host", None)));
         assert_eq!(destination("[fe80::1]"), Some(dest(None, "fe80::1", None)));
@@ -780,13 +780,13 @@ mod tests {
 
     #[test]
     fn a_process_matches_the_host_as_it_was_typed() {
-        let host = destination("ssh://mastodon@localhost:23456").unwrap();
+        let host = destination("ssh://deploy@localhost:2222").unwrap();
         let of = |line: &str| ssh_call(&argv(line)).unwrap().0;
-        assert!(same_destination(&of("ssh -p 23456 mastodon@localhost"), &host));
-        assert!(same_destination(&of("ssh -p 23456 LOCALHOST"), &host));
-        assert!(!same_destination(&of("ssh mastodon@localhost"), &host), "another port");
-        assert!(!same_destination(&of("ssh -p 23456 root@localhost"), &host), "another user");
-        assert!(!same_destination(&of("ssh -p 23456 otherhost"), &host));
+        assert!(same_destination(&of("ssh -p 2222 deploy@localhost"), &host));
+        assert!(same_destination(&of("ssh -p 2222 LOCALHOST"), &host));
+        assert!(!same_destination(&of("ssh deploy@localhost"), &host), "another port");
+        assert!(!same_destination(&of("ssh -p 2222 root@localhost"), &host), "another user");
+        assert!(!same_destination(&of("ssh -p 2222 otherhost"), &host));
         let alias = destination("devbox").unwrap();
         assert!(same_destination(&of("ssh -A me@devbox"), &alias));
         assert!(!same_destination(&of("ssh -p 2222 devbox"), &alias));

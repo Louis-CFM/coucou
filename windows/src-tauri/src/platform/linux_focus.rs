@@ -841,7 +841,7 @@ mod tests {
 
     #[test]
     fn the_first_own_process_is_found_past_other_users() {
-        // claude (mastodon) ← bash (mastodon) ← su (root) ← sudo (root) ← -bash (us) ← tmux (us)
+        // claude (them) ← bash (them) ← su (root) ← sudo (root) ← -bash (us) ← tmux (us)
         let table: HashMap<u32, (u32, u32, u64)> = [
             (50, (1001, 40, 9)),
             (40, (1001, 30, 8)),

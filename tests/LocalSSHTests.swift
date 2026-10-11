@@ -16,7 +16,7 @@ struct LocalSSHTests {
 
         check(LocalSSH.destination("devbox") == dest(nil, "devbox", nil), "a plain host")
         check(LocalSSH.destination("me@Build.Example.org") == dest("me", "build.example.org", nil), "user@host, host lower-cased")
-        check(LocalSSH.destination("ssh://mastodon@localhost:23456") == dest("mastodon", "localhost", 23456), "an ssh:// URL")
+        check(LocalSSH.destination("ssh://deploy@localhost:2222") == dest("deploy", "localhost", 2222), "an ssh:// URL")
         check(LocalSSH.destination("ssh://[::1]:2222") == dest(nil, "::1", 2222), "IPv6 in an ssh:// URL")
         check(LocalSSH.destination("a@b@host") == dest("a@b", "host", nil), "the last @ splits the user")
         check(LocalSSH.destination("ssh://host:x") == nil, "a port that is no number")
@@ -36,12 +36,12 @@ struct LocalSSHTests {
             check(call(line) == nil, "no session: \(line)")
         }
 
-        let host = LocalSSH.destination("ssh://mastodon@localhost:23456")!
+        let host = LocalSSH.destination("ssh://deploy@localhost:2222")!
         func same(_ line: String, _ want: LocalSSH.Destination) -> Bool { LocalSSH.same(call(line)!.0, want) }
-        check(same("ssh -p 23456 mastodon@localhost", host), "the host as typed")
-        check(same("ssh -p 23456 LOCALHOST", host), "no user named: any")
-        check(!same("ssh mastodon@localhost", host), "another port")
-        check(!same("ssh -p 23456 root@localhost", host), "another user")
+        check(same("ssh -p 2222 deploy@localhost", host), "the host as typed")
+        check(same("ssh -p 2222 LOCALHOST", host), "no user named: any")
+        check(!same("ssh deploy@localhost", host), "another port")
+        check(!same("ssh -p 2222 root@localhost", host), "another user")
         check(same("ssh -A me@devbox", LocalSSH.destination("devbox")!), "an alias with a user")
         check(!same("ssh -p 2222 devbox", LocalSSH.destination("devbox")!), "an alias on another port")
 
