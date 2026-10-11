@@ -614,4 +614,20 @@ What changes on Linux:
     app's native window forward (an XWayland one, such as VS Code's by default,
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
+- **Remote hosts**: Claude Code sessions on other machines show in the island
+  too. Add a host under **Settings → Remote hosts** as you would type it after
+  `ssh` (an alias from `~/.ssh/config`, `user@host` or `ssh://user@host:port`),
+  then **Install hooks…** copies the relay to `~/.local/share/coucou/bin` there
+  and merges the hooks into its `~/.claude/settings.json`, with the same diff,
+  backup and click as here. Coucou keeps `ssh -R` open to the host, forwarding
+  the relay's socket to a private one on this machine: SSH is the only
+  authentication and nothing listens on the network. The relay is a static
+  binary: it runs on any Linux host with this machine's CPU architecture. Approvals work as for local sessions. Open terminal brings
+  forward the session's own terminal when the host is this same machine (another
+  user through `sudo su`), else a terminal already ssh'd into the host, else a
+  new one attached to it over ssh. Connect to a host once in a
+  terminal first, so its key is known: Coucou never answers ssh's questions.
+  The Mac app has the same section (Settings → Agents → Remote hosts, not in
+  the App Store build); it copies its Python relay (`nb-hook.py`) instead, so
+  the host needs `python3`, and the socket there is `~/.coucou/nb.sock`.
 - No **Claude Desktop** pill: the Claude app has no Linux build.

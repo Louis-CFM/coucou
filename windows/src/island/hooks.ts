@@ -15,6 +15,7 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { sshLabel } from "../core/ssh";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -65,6 +66,8 @@ interface HookPayload {
   coucou_agent?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
+  /** The SSH host the session runs on, set by the app for a remote host's events. */
+  coucou_remote?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
@@ -220,6 +223,7 @@ function recordDiff(agentId: string, payload: HookPayload) {
   if (!State.tasks.some((t) => t.id === agentId)) return;
   const diff = buildFileDiff(payload.tool_name ?? "", payload.tool_input ?? {});
   if (!diff) return;
+  if (payload.coucou_remote) diff.remote = true;
   const id = State.appendSessionDiff(agentId, diff);
   State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
 }
@@ -248,9 +252,13 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
-  const cwd = payload.cwd ?? "";
-  const raw = lastPathComponent(cwd);
-  const projectName = aliasProjectName(raw || "Session");
+  // A remote session's folder is on its host: named after it, never opened here.
+  const remote = payload.coucou_remote ?? "";
+  const cwd = remote ? "" : payload.cwd ?? "";
+  const raw = lastPathComponent(payload.cwd ?? "");
+  const projectName = remote
+    ? `${aliasProjectName(raw || "Session")} · ${sshLabel(remote)}`
+    : aliasProjectName(raw || "Session");
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's

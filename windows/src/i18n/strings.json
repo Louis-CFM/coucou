@@ -112,6 +112,17 @@
    "ru": "Активность",
    "id": "Aktivitas"
   },
+  "Add": {
+   "zh-Hans": "添加",
+   "hi": "जोड़ें",
+   "es": "Añadir",
+   "ar": "إضافة",
+   "fr": "Ajouter",
+   "bn": "যোগ করুন",
+   "pt-BR": "Adicionar",
+   "ru": "Добавить",
+   "id": "Tambah"
+  },
   "Add your Anthropic API key in Settings → Chat first.": {
    "zh-Hans": "请先在设置 → 聊天中添加你的 Anthropic API 密钥。",
    "hi": "पहले सेटिंग्स → चैट में अपनी Anthropic API कुंजी जोड़ो।",
@@ -551,6 +562,17 @@
    "pt-BR": "Claude Code está perguntando",
    "ru": "Claude Code спрашивает",
    "id": "Claude Code bertanya"
+  },
+  "Claude Code sessions on other machines, over SSH with your keys and ~/.ssh/config. Connect to each host once in a terminal first so its host key is known.": {
+   "zh-Hans": "通过 SSH（使用你的密钥和 ~/.ssh/config）查看其他机器上的 Claude Code 会话。请先在终端中连接每台主机一次，让其主机密钥被记录。",
+   "hi": "दूसरी मशीनों पर चल रहे Claude Code सत्र, आपकी कुंजियों और ~/.ssh/config के साथ SSH से। पहले हर होस्ट से टर्मिनल में एक बार जुड़ें ताकि उसकी होस्ट कुंजी पहचानी जाए।",
+   "es": "Sesiones de Claude Code en otras máquinas, por SSH con tus claves y ~/.ssh/config. Conéctate antes una vez a cada host desde una terminal para que su clave sea conocida.",
+   "ar": "جلسات Claude Code على أجهزة أخرى عبر SSH بمفاتيحك و‎~/.ssh/config. اتصل بكل مضيف مرة واحدة في الطرفية أولًا ليُعرف مفتاحه.",
+   "fr": "Les sessions Claude Code d'autres machines, par SSH avec tes clés et ~/.ssh/config. Connecte-toi d'abord une fois à chaque hôte dans un terminal pour que sa clé soit connue.",
+   "bn": "অন্য মেশিনের Claude Code সেশন, আপনার কী আর ~/.ssh/config দিয়ে SSH-এর মাধ্যমে। প্রথমে প্রতিটি হোস্টে টার্মিনাল থেকে একবার যুক্ত হন, যাতে তার হোস্ট কী জানা থাকে।",
+   "pt-BR": "Sessões do Claude Code em outras máquinas, por SSH com suas chaves e ~/.ssh/config. Conecte-se uma vez a cada host em um terminal antes, para que a chave dele seja conhecida.",
+   "ru": "Сеансы Claude Code на других машинах по SSH с вашими ключами и ~/.ssh/config. Сначала подключитесь к каждому хосту один раз в терминале, чтобы его ключ был известен.",
+   "id": "Sesi Claude Code di mesin lain, lewat SSH dengan kunci dan ~/.ssh/config Anda. Sambungkan ke tiap host sekali di terminal dulu agar kunci host-nya dikenal."
   },
   "Claude as Coucou's brain": {
    "zh-Hans": "由 Claude 担任 Coucou 的大脑",
@@ -2015,6 +2037,17 @@
    "ru": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка.",
    "id": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte."
   },
+  "Not a host name": {
+   "zh-Hans": "不是有效的主机名",
+   "hi": "यह होस्ट नाम नहीं है",
+   "es": "No es un nombre de host",
+   "ar": "ليس اسم جهاز صالحًا",
+   "fr": "Ce n'est pas un nom d'hôte",
+   "bn": "এটি হোস্টের নাম নয়",
+   "pt-BR": "Não é um nome de host",
+   "ru": "Это не имя хоста",
+   "id": "Bukan nama host"
+  },
   "Not active": {
    "zh-Hans": "未激活",
    "hi": "सक्रिय नहीं",
@@ -2752,6 +2785,28 @@
    "ru": "Перезагрузить звуки",
    "id": "Muat ulang suara"
   },
+  "Remote hosts": {
+   "zh-Hans": "远程主机",
+   "hi": "रिमोट होस्ट",
+   "es": "Hosts remotos",
+   "ar": "الأجهزة البعيدة",
+   "fr": "Hôtes distants",
+   "bn": "রিমোট হোস্ট",
+   "pt-BR": "Hosts remotos",
+   "ru": "Удалённые хосты",
+   "id": "Host jarak jauh"
+  },
+  "Remove": {
+   "zh-Hans": "移除",
+   "hi": "हटाएँ",
+   "es": "Quitar",
+   "ar": "إزالة",
+   "fr": "Retirer",
+   "bn": "সরান",
+   "pt-BR": "Remover",
+   "ru": "Удалить",
+   "id": "Hapus"
+  },
   "Remove from favorites": {
    "zh-Hans": "取消收藏",
    "hi": "पसंदीदा से हटाएँ",
@@ -3401,6 +3456,17 @@
    "ru": "Тестирует",
    "id": "Menguji"
   },
+  "The changes to settings.json on {host}. Coucou also copies its relay to ~/.local/share/coucou/bin there.": {
+   "zh-Hans": "{host} 上 settings.json 的更改。Coucou 还会把它的中继复制到该主机的 ~/.local/share/coucou/bin。",
+   "hi": "{host} पर settings.json में बदलाव। Coucou वहाँ अपना रिले ~/.local/share/coucou/bin में भी कॉपी करता है।",
+   "es": "Los cambios en settings.json en {host}. Coucou también copia allí su relé a ~/.local/share/coucou/bin.",
+   "ar": "التغييرات على settings.json في {host}. ينسخ Coucou أيضًا المرحِّل الخاص به إلى ‎~/.local/share/coucou/bin هناك.",
+   "fr": "Les modifications de settings.json sur {host}. Coucou y copie aussi son relais dans ~/.local/share/coucou/bin.",
+   "bn": "{host}-এ settings.json-এর পরিবর্তনগুলো। Coucou সেখানে তার রিলে ~/.local/share/coucou/bin-এও কপি করে।",
+   "pt-BR": "As mudanças no settings.json em {host}. O Coucou também copia o relay dele para ~/.local/share/coucou/bin lá.",
+   "ru": "Изменения в settings.json на {host}. Coucou также копирует туда свой ретранслятор в ~/.local/share/coucou/bin.",
+   "id": "Perubahan pada settings.json di {host}. Coucou juga menyalin relay-nya ke ~/.local/share/coucou/bin di sana."
+  },
   "To": {
    "zh-Hans": "收件人",
    "hi": "प्रति",
@@ -3862,6 +3928,17 @@
    "pt-BR": "comandos",
    "ru": "команды",
    "id": "perintah"
+  },
+  "devbox or user@host, as you type it after ssh": {
+   "zh-Hans": "devbox 或 user@host，与你在 ssh 后输入的一样",
+   "hi": "devbox या user@host, जैसा आप ssh के बाद लिखते हैं",
+   "es": "devbox o usuario@host, como lo escribes después de ssh",
+   "ar": "devbox أو user@host، كما تكتبه بعد ssh",
+   "fr": "devbox ou utilisateur@hôte, comme tu l'écris après ssh",
+   "bn": "devbox বা user@host, ssh-এর পরে যেভাবে লেখেন",
+   "pt-BR": "devbox ou usuario@host, como você digita depois de ssh",
+   "ru": "devbox или user@host, как вы пишете после ssh",
+   "id": "devbox atau user@host, seperti yang Anda ketik setelah ssh"
   },
   "file": {
    "zh-Hans": "个文件",

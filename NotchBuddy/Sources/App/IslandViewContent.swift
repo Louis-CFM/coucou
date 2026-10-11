@@ -210,12 +210,13 @@ struct OverviewView: View {
 
     private func openAgentTarget(_ task: AgentTask?) {
         guard let task else { return }
+        if RemoteTerminal.open(pillId: task.id) { return }
         switch task.id {
         case "integration_claude":
-            if ClaudeHost.activate(task.hostApp) { return }
+            if ClaudeHost.activate(task.hostApp, tty: task.sessionTTY) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
+            if let url = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId })?.bundleURL {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
             }
@@ -282,7 +283,7 @@ struct OverviewView: View {
                 }
             } else {
                 #if !APPSTORE
-                TerminalTarget.activate(sessionBundleId: task.sessionBundleId)
+                TerminalTarget.activate(sessionBundleId: task.sessionBundleId, tty: task.sessionTTY)
                 #endif
             }
         }
@@ -644,8 +645,12 @@ struct FinishedView: View {
                         PrimaryButton("Open terminal") {
                             // The app the session runs in (its terminal, or VS Code), then any known terminal
                             let task = state.focusTask
-                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
-                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
+                            if let id = task?.id, RemoteTerminal.open(pillId: id) {
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                                return
+                            }
+                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp, tty: task?.sessionTTY)),
+                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId, tty: task?.sessionTTY) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                             }
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -699,15 +704,18 @@ struct DiffCardView: View {
                         .font(.system(size: 10, weight: .medium).monospaced())
                         .foregroundColor(Color(hex: "#F4505E"))
                 }
-                Button(action: { openInEditor(diff) }) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundColor(Color(hex: "#5F646D"))
-                        .frame(width: 14, height: 14)
-                        .background(Color.white.opacity(0.07))
-                        .clipShape(Circle())
+                // A remote host's file is not on this Mac: nothing to open.
+                if !diff.remote {
+                    Button(action: { openInEditor(diff) }) {
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundColor(Color(hex: "#5F646D"))
+                            .frame(width: 14, height: 14)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.top, 6)
             .padding(.bottom, 3)
@@ -739,7 +747,8 @@ struct DiffCardView: View {
     }
 
     private func openInEditor(_ diff: FileDiff) {
-        let path = diff.path
+        // An absolute path to a real file: never read by `code` as an option.
+        guard !diff.remote, let path = LocalFile.regular(diff.path) else { return }
         #if !APPSTORE
         let codePaths = ["/opt/homebrew/bin/code", "/usr/local/bin/code", "/usr/bin/code",
                          "\(NSHomeDirectory())/.nvm/current/bin/code"]
@@ -752,7 +761,8 @@ struct DiffCardView: View {
             return
         }
         #endif
-        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        // Shown in Finder, not opened: its default app could run it (.command, .app).
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 }
 
@@ -2111,7 +2121,7 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude", task.hostApp != nil {
-                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp, tty: task.sessionTTY) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -2252,11 +2262,11 @@ struct IntegrationCardView: View {
             return
         }
 
-        // No cwd: activate running instance or launch fresh
-        if let running = ids.compactMap({ id in
+        // No cwd: bring the running instance forward or launch fresh
+        if let url = ids.compactMap({ id in
             NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
-        }).first {
-            running.activate(options: .activateIgnoringOtherApps)
+        }).first?.bundleURL {
+            NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             return
         }
         if let appURL = appURL {

@@ -249,6 +249,15 @@ export const Bridge = {
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
+  // ── Remote hosts (Claude Code over SSH, Linux) ────────────────────────────
+  remoteStatus: () => call<RemoteStatus[]>("remote_status"),
+  /** Same rules as hooksPreview, for ~/.claude/settings.json on `host`. */
+  remotePreview: (host: string, install: boolean) =>
+    callOrThrow<HookPreview>("remote_preview", { host, install }),
+  /** Same rules as hooksApply; installing also puts the relay on the host. */
+  remoteApply: (host: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("remote_apply", { host, install, fingerprint }),
+
   // ── Other agents (Gemini CLI, Codex, Cursor…) ─────────────────────────────
   agentHooksList: () => call<AgentHookStatus[]>("agent_hooks_list"),
   /** Diff to show before anything is written. `install: false` previews removal. */
@@ -508,6 +517,13 @@ export interface AgentHookPlan {
   backup: string;
   path: string;
   fingerprint: string;
+}
+
+export interface RemoteStatus {
+  host: string;
+  state: "connecting" | "connected" | "error";
+  /** ssh's own words when it failed. */
+  error: string;
 }
 
 export interface HookPreview {

@@ -34,10 +34,12 @@ final class HookServer: @unchecked Sendable {
     private static let maxPayload = 1_048_576          // 1 MB — reject oversized messages
     private static let receiveTimeoutSeconds: Int = 5   // SO_RCVTIMEO on client sockets
     private static let maxConnections = 32              // concurrent connection ceiling
+    private static let maxRemoteConnections = 8         // all remote hosts together: never starve nb.sock
 
     private var serverFD: Int32 = -1
     private let connectionLock = NSLock()
     private var connectionCount = 0
+    private var remoteConnectionCount = 0
     private var pendingApprovalFD: Int32 = -1         // held open while user decides
     private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
     private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
@@ -209,13 +211,28 @@ final class HookServer: @unchecked Sendable {
         #if !APPSTORE
         installHookScript()
         #endif
-        Thread.detachNewThread { self.serverThread() }
+        Thread.detachNewThread { self.serve(path: Self.socketPath, host: nil) }
     }
 
     // MARK: - Socket server (background thread)
 
-    private func serverThread() {
-        let path = Self.socketPath
+    /// Remote hosts' listening sockets, by host (RemoteHosts.swift).
+    private var remoteFDs: [String: Int32] = [:]
+
+    /// Serves `path` like nb.sock, every event tagged with `host` (an SSH tunnel's end).
+    func serveRemote(path: String, host: String) {
+        Thread.detachNewThread { self.serve(path: path, host: host) }
+    }
+
+    /// Stops a remote host's socket: closing it ends its accept loop.
+    func stopRemote(host: String) {
+        connectionLock.lock()
+        let fd = remoteFDs.removeValue(forKey: host)
+        connectionLock.unlock()
+        if let fd { close(fd) }
+    }
+
+    private func serve(path: String, host: String?) {
         // sun_path on macOS is 104 bytes including the NUL terminator → max 103 usable bytes
         let maxSunPathBytes = MemoryLayout<sockaddr_un>.size - MemoryLayout<sa_family_t>.size - 1
         guard path.utf8.count <= maxSunPathBytes else {
@@ -226,7 +243,11 @@ final class HookServer: @unchecked Sendable {
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { return }
-        serverFD = fd
+        if let host {
+            connectionLock.lock(); remoteFDs[host] = fd; connectionLock.unlock()
+        } else {
+            serverFD = fd
+        }
 
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
@@ -255,22 +276,30 @@ final class HookServer: @unchecked Sendable {
             }
             // Enforce concurrent connection ceiling
             connectionLock.lock()
-            let count = connectionCount
-            if count < Self.maxConnections { connectionCount += 1 }
+            let admitted: Bool
+            if host == nil {
+                admitted = connectionCount < Self.maxConnections
+                if admitted { connectionCount += 1 }
+            } else {
+                admitted = remoteConnectionCount < Self.maxRemoteConnections
+                if admitted { remoteConnectionCount += 1 }
+            }
             connectionLock.unlock()
-            guard count < Self.maxConnections else {
+            guard admitted else {
                 close(clientFD)
                 continue
             }
-            Thread.detachNewThread { self.handleClient(fd: clientFD) }
+            Thread.detachNewThread { self.handleClient(fd: clientFD, host: host) }
         }
     }
 
     // MARK: - Client handler (background thread)
 
-    private func handleClient(fd: Int32) {
+    private func handleClient(fd: Int32, host: String? = nil) {
         defer {
-            connectionLock.lock(); connectionCount -= 1; connectionLock.unlock()
+            connectionLock.lock()
+            if host == nil { connectionCount -= 1 } else { remoteConnectionCount -= 1 }
+            connectionLock.unlock()
         }
         // 5-second receive timeout — unresponsive clients don't hold threads forever
         var tv = timeval(tv_sec: Self.receiveTimeoutSeconds, tv_usec: 0)
@@ -290,7 +319,8 @@ final class HookServer: @unchecked Sendable {
         }
 
         guard !raw.isEmpty,
-              let payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+              let parsed = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+              let payload = host.map({ RemoteEvent.admit(parsed, host: $0) }) ?? parsed else {
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
             return
@@ -344,9 +374,8 @@ final class HookServer: @unchecked Sendable {
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
-        let cwd = payload["cwd"] as? String ?? ""
-        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let (cwd, projectName) = sessionPlace(payload)
+        let isRemote = payload["coucou_remote"] is String
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
@@ -355,6 +384,7 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let tty         = payload["tty"]          as? String ?? ""
 
         // Cursor identified solely by its stable Electron bundle ID.
         // ToDesktop builds other apps too — do not match on "todesktop" alone.
@@ -383,6 +413,9 @@ final class HookServer: @unchecked Sendable {
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
+        } else if isRemote {
+            agentId = "integration_claude"
+            isExternalAgent = false
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
@@ -399,6 +432,11 @@ final class HookServer: @unchecked Sendable {
         }
 
         let focused = state.focusId == agentId
+        if isRemote, let host = payload["coucou_remote"] as? String {
+            RemoteTerminal.remember(pillId: agentId, host: host, payload: payload)
+        } else {
+            RemoteTerminal.forget(pillId: agentId)
+        }
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -406,8 +444,9 @@ final class HookServer: @unchecked Sendable {
             : sessionId
 
         #if PHONE_LINK
-        // The iPhone's "last turn" (prompt, actions, diffs, answer).
-        if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
+        // The iPhone's "last turn" (prompt, actions, diffs, answer). Not a remote host's:
+        // an instruction sent back would run `claude` here, in the host's folder.
+        if !isExternalAgent && !isRemote { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
         #endif
 
         // While a permission request is pending, dismiss when the resolving event arrives,
@@ -446,11 +485,17 @@ final class HookServer: @unchecked Sendable {
             // Approval dismissed — fall through so the resolving event updates state normally.
         }
 
+        // Sessions sharing a pill share its tty: it follows the one that spoke last, so Open
+        // after a Stop brings back the tab of the session that just finished.
+        if !isExternalAgent, !tty.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+            state.tasks[idx].sessionTTY = tty
+        }
+
         switch name {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId, tty: tty) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
@@ -464,7 +509,7 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId, tty: tty) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
@@ -482,7 +527,7 @@ final class HookServer: @unchecked Sendable {
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
             guard tool != "AskUserQuestion" else { break }
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId, tty: tty) }
             state.updateTask(id: agentId, state: .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = localizedStep(tool: tool, input: input)
@@ -494,7 +539,8 @@ final class HookServer: @unchecked Sendable {
             // Live diff for Edit / MultiEdit / Write
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
-            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
+            if var diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
+                diff.remote = isRemote
                 let idx = state.appendSessionDiff(diff, for: agentId)
                 let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
                 appendStep(id: agentId, step: step)
@@ -666,13 +712,13 @@ final class HookServer: @unchecked Sendable {
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
-        let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let (cwd, projectName) = sessionPlace(payload)
+        let isRemote = payload["coucou_remote"] is String
 
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
+        let tty         = payload["tty"]          as? String ?? ""
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
@@ -724,7 +770,7 @@ final class HookServer: @unchecked Sendable {
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
-        guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
+        guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal || isRemote else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -765,7 +811,7 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId, tty: tty)
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
                                               command: command, inputKey: inputKey, pillId: pillId)
@@ -883,13 +929,13 @@ final class HookServer: @unchecked Sendable {
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
-        let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let (cwd, projectName) = sessionPlace(payload)
+        let isRemote = payload["coucou_remote"] is String
 
         let rawAgent    = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"]  as? String ?? ""
         let bundleId    = payload["bundle_id"]     as? String ?? ""
+        let tty         = payload["tty"]           as? String ?? ""
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
@@ -911,7 +957,7 @@ final class HookServer: @unchecked Sendable {
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
-        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
+        guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal || isRemote else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -936,7 +982,7 @@ final class HookServer: @unchecked Sendable {
             ? "\(pillId)+\(cwd)"
             : sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId, tty: tty)
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
         state.isPinned = true
@@ -981,13 +1027,15 @@ final class HookServer: @unchecked Sendable {
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "") {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil,
+                                     bundleId: String = "", tty: String = "") {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
             if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
+            if !tty.isEmpty { state.tasks[idx].sessionTTY = tty }
             return
         }
         // Transient: create and insert after the main pill
@@ -998,6 +1046,7 @@ final class HookServer: @unchecked Sendable {
                              state: .idle, steps: [], source: source, isIntegration: true)
         if id == "integration_claude" { task.hostApp = hostApp }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
+        if !tty.isEmpty { task.sessionTTY = tty }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
         } else {
@@ -1030,6 +1079,16 @@ final class HookServer: @unchecked Sendable {
         state.tasks[idx].steps.append(step)
         if state.tasks[idx].steps.count > 20 { state.tasks[idx].steps.removeFirst() }
         state.tasks[idx].stepIndex = state.tasks[idx].steps.count - 1
+    }
+
+    /// The session's folder and pill name. A remote host's folder is not on this
+    /// Mac: the name carries the host, and there is no folder to open here.
+    private func sessionPlace(_ payload: [String: Any]) -> (cwd: String, name: String) {
+        let cwd = payload["cwd"] as? String ?? ""
+        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
+        let name = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        guard let host = payload["coucou_remote"] as? String else { return (cwd, name) }
+        return ("", "\(name) · \(SSHDestination.label(host))")
     }
 
     // MARK: - Project name alias mapping
@@ -1287,6 +1346,15 @@ final class HookServer: @unchecked Sendable {
         #else
         let quotedCmd = "\"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
         #endif
+        settings = try Self.withClaudeHooks(settings, command: quotedCmd)
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return (data, snapshot.bytes)
+    }
+
+    /// `settings` with Coucou's hooks for Claude Code, running `quotedCmd`; anybody
+    /// else's hooks untouched. Also used for a remote host's settings.json.
+    static func withClaudeHooks(_ original: [String: Any], command quotedCmd: String) throws -> [String: Any] {
+        var settings = original
         let events: [(String, Int)] = [
             ("SessionStart", 10), ("SessionEnd", 10),
             ("UserPromptSubmit", 10),
@@ -1312,16 +1380,23 @@ final class HookServer: @unchecked Sendable {
         ])
         hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
-        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        return (data, snapshot.bytes)
+        return settings
     }
 
     func uninstallClaudeHooks() throws {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
         let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
-        var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
+        guard snapshot.object["hooks"] is [String: Any] else { return }
+        let settings = Self.withoutClaudeHooks(snapshot.object)
+        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+    }
+
+    /// `settings` without Coucou's entries; nothing else changed.
+    static func withoutClaudeHooks(_ original: [String: Any]) -> [String: Any] {
+        var settings = original
+        guard var hooks = settings["hooks"] as? [String: Any] else { return settings }
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
@@ -1336,8 +1411,7 @@ final class HookServer: @unchecked Sendable {
             }
         }
         settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
+        return settings
     }
 
     // MARK: - Claude plan status line installer
@@ -3092,11 +3166,49 @@ exit 0
 
 // MARK: - nb-hook Python relay (GitHub / non-sandboxed version)
 
-private let nbHookPythonGitHub = """
+let nbHookPythonGitHub = """
 #!/usr/bin/env python3
 # nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
 # Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
-import sys, json, os, socket
+import sys, json, os, socket, subprocess
+
+def session_tty():
+    # The session's terminal tab ("/dev/ttys004"), as Terminal.app names its tabs. Hooks run
+    # without a controlling terminal, so walk up to the agent's own process. '' when none has one.
+    pid = os.getpid()
+    for _ in range(8):
+        try:
+            out = subprocess.run(['ps', '-o', 'tty=,ppid=', '-p', str(pid)],
+                                 capture_output=True, text=True, timeout=1).stdout.split()
+        except Exception:
+            return ''
+        if len(out) != 2:
+            return ''
+        if out[0].startswith('tty'):
+            return '/dev/' + out[0]
+        if not out[1].isdigit() or int(out[1]) <= 1:
+            return ''
+        pid = int(out[1])
+    return ''
+
+def machine_id():
+    # Only for Coucou to tell whether it runs on this same machine: Linux's machine-id, else the Mac's IOPlatformUUID.
+    import re
+    for path in ('/etc/machine-id', '/var/lib/dbus/machine-id'):
+        try:
+            with open(path) as f:
+                mid = f.read().strip()
+            if re.fullmatch(r'[0-9A-Fa-f-]{1,64}', mid):
+                return mid
+        except Exception:
+            pass
+    try:
+        out = subprocess.run(['/usr/sbin/ioreg', '-rd1', '-c', 'IOPlatformExpertDevice'],
+                             capture_output=True, text=True, timeout=1).stdout
+        m = re.search(r'"IOPlatformUUID" = "([0-9A-Fa-f-]{1,64})"', out)
+        return m.group(1) if m else ''
+    except Exception:
+        return ''
 
 def normalize_event(name):
     mapping = {
@@ -3168,7 +3280,8 @@ def main():
         if '--statusline' not in sys.argv[1:]:
             return
 
-    socket_path = os.path.expanduser(
+    # COUCOU_SOCKET: the same relay on a remote host, behind Coucou's SSH tunnel.
+    socket_path = os.environ.get('COUCOU_SOCKET') or os.path.expanduser(
         '~/Library/Application Support/NotchBuddy/nb.sock'
     )
 
@@ -3215,6 +3328,7 @@ def main():
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        payload.setdefault('tty', session_tty())
         if 'cwd' not in payload or not payload['cwd']:
             paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
             if isinstance(paths, list) and paths:
@@ -3282,12 +3396,36 @@ def main():
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    payload.setdefault('tty', session_tty())
     if 'cwd' not in payload or not payload['cwd']:
         paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:
             payload['cwd'] = paths[0]
         else:
             payload['cwd'] = os.getcwd()
+
+    # The tmux session, so another machine can attach to it (remote Open terminal)
+    if payload.get('hook_event_name') in ('SessionStart', 'UserPromptSubmit') and env.get('TMUX'):
+        try:
+            import subprocess, re
+            pane = ['-t', env['TMUX_PANE']] if env.get('TMUX_PANE') else []
+            name = subprocess.run(['tmux', 'display-message', '-p'] + pane + ['#S'],
+                                  capture_output=True, text=True, timeout=0.3).stdout.strip()
+            if re.fullmatch(r'[A-Za-z0-9._-]{1,64}', name):
+                payload['tmux_session'] = name
+        except Exception:
+            pass
+
+    # On a remote host: who ran the hook, and the machine, so Coucou on this same machine finds its terminal
+    if env.get('COUCOU_SOCKET'):
+        try:
+            payload['hook_ppid'] = int(env.get('COUCOU_HOOK_PPID', ''))
+        except ValueError:
+            payload['hook_ppid'] = os.getppid()
+        if payload.get('hook_event_name') in ('SessionStart', 'UserPromptSubmit'):
+            mid = machine_id()
+            if mid:
+                payload['machine_id'] = mid
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
@@ -3594,6 +3732,18 @@ def main():
             payload['cwd'] = paths[0]
         else:
             payload['cwd'] = os.getcwd()
+
+    # The tmux session, so another machine can attach to it (remote Open terminal)
+    if payload.get('hook_event_name') in ('SessionStart', 'UserPromptSubmit') and env.get('TMUX'):
+        try:
+            import subprocess, re
+            pane = ['-t', env['TMUX_PANE']] if env.get('TMUX_PANE') else []
+            name = subprocess.run(['tmux', 'display-message', '-p'] + pane + ['#S'],
+                                  capture_output=True, text=True, timeout=0.3).stdout.strip()
+            if re.fullmatch(r'[A-Za-z0-9._-]{1,64}', name):
+                payload['tmux_session'] = name
+        except Exception:
+            pass
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:

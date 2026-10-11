@@ -27,6 +27,12 @@ jobs:
       - name: Test display choice
         run: bash scripts/test-display-choice.sh
 
+      - name: Test tied process
+        run: bash scripts/test-tied-process.sh
+
+      - name: Test remote trust
+        run: bash scripts/test-remote-trust.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 
@@ -67,6 +73,12 @@ jobs:
 
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
+
+      - name: Test SSH destinations
+        run: bash scripts/test-ssh-destination.sh
+
+      - name: Test local ssh lookup
+        run: bash scripts/test-local-ssh.sh
 
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
