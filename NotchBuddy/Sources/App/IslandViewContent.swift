@@ -207,6 +207,11 @@ struct OverviewView: View {
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
             }
+        case "workspace_claude":
+            // The terminal tool: its terminal, never VS Code.
+            #if !APPSTORE
+            if !ClaudeHost.activate(task.hostApp) { TerminalTarget.activate(sessionBundleId: task.sessionBundleId) }
+            #endif
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_vercel":
@@ -632,7 +637,7 @@ struct FinishedView: View {
                         PrimaryButton("Open terminal") {
                             // The app the session runs in (its terminal, or VS Code), then any known terminal
                             let task = state.focusTask
-                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+                            if !((task?.id == "integration_claude" || task?.id == "workspace_claude") && ClaudeHost.activate(task?.hostApp)),
                                !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
                             }
@@ -2120,7 +2125,7 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude", task.hostApp != nil {
+                    if task.id == "integration_claude" || task.id == "workspace_claude", task.hostApp != nil {
                         Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))

@@ -1232,7 +1232,7 @@ final class HookServer: @unchecked Sendable {
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if id == "integration_claude" || id == "workspace_claude" { state.tasks[idx].hostApp = hostApp }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1242,7 +1242,7 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if id == "integration_claude" || id == "workspace_claude" { task.hostApp = hostApp }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
