@@ -199,17 +199,6 @@
    "ru": "Автозакрытие",
    "id": "Tutup otomatis"
   },
-  "Back": {
-   "zh-Hans": "返回",
-   "hi": "वापस",
-   "es": "Atrás",
-   "ar": "رجوع",
-   "fr": "Retour",
-   "bn": "ফিরে যান",
-   "pt-BR": "Voltar",
-   "ru": "Назад",
-   "id": "Kembali"
-  },
   "Back up and remove": {
    "zh-Hans": "备份并移除",
    "hi": "बैकअप लें और हटाएँ",
@@ -451,17 +440,6 @@
    "pt-BR": "Fechar a ilha",
    "ru": "Закрыть остров",
    "id": "Tutup pulau"
-  },
-  "Code": {
-   "zh-Hans": "代码",
-   "hi": "कोड",
-   "es": "Código",
-   "ar": "شيفرة",
-   "fr": "Code",
-   "bn": "কোড",
-   "pt-BR": "Código",
-   "ru": "Код",
-   "id": "Kode"
   },
   "Codex plan": {
    "zh-Hans": "Codex 套餐",

@@ -8,10 +8,18 @@ import { emit } from "./tauri.mjs";
 import { registerHookHandlers } from "../src/island/hooks.ts";
 import { DEFAULT_SETTINGS, DIFF_TTL_MS, MAX_DIFFS_PER_PILL, State } from "../src/core/state.ts";
 import { parseDiffStep } from "../src/core/diff.ts";
+import { dropCode } from "../src/views/session.ts";
 
 const CLAUDE = "integration_claude";
 
-const island = { alert() {}, setView() {}, reveal() {}, dropPin() {} };
+/** What the handler asked the island to do, in order. */
+let asked = [];
+const island = {
+  alert: (view) => asked.push(`alert:${view}`),
+  setView: (view) => asked.push(`setView:${view}`),
+  reveal() {},
+  dropPin() {},
+};
 registerHookHandlers(island);
 
 const hook = (payload) => emit("hook", payload);
@@ -38,7 +46,11 @@ beforeEach(() => {
   State.isPinned = false;
   State.pendingApproval = null;
   State.settings = { ...DEFAULT_SETTINGS };
+  State.liveDiff = null;
+  State.liveStopped.clear();
+  for (const id of [CLAUDE, "agent_gemini"]) dropCode(id);
   State.loadIntegrationTasks();
+  asked = [];
 });
 
 afterEach(() => {
@@ -161,3 +173,103 @@ for (const [what, event] of [
     assert.equal(task().finalLine, null);
   });
 }
+
+// ── Follow edits live ─────────────────────────────────────────────────────────
+
+const following = () => {
+  State.settings = { ...State.settings, followEdits: true };
+};
+
+/** An edit as Claude Code sends it: PreToolUse (the code view's data), then PostToolUse. */
+const codeEdit = () => {
+  hook({
+    hook_event_name: "PreToolUse",
+    cwd: "/p/proj",
+    tool_name: "Edit",
+    tool_input: { file_path: "/p/proj/src/app.ts", old_string: "a\nb\n", new_string: "a\nc\nd\n" },
+  });
+  edit();
+};
+
+test("following off: an edit opens nothing", () => {
+  edit();
+  assert.equal(State.liveDiff, null);
+  assert.deepEqual(asked, []);
+});
+
+test("following on: a Claude Code edit opens its code view, the next one replaces it", () => {
+  following();
+  codeEdit();
+  const first = State.liveDiff;
+  assert.equal(first.pillId, CLAUDE);
+  assert.ok(State.findDiff(CLAUDE, first.diffId));
+  assert.deepEqual(asked, ["alert:code"]);
+  State.mode = "expanded";
+  State.view = "code";
+  codeEdit();
+  assert.ok(State.liveDiff.diffId > first.diffId);
+  assert.deepEqual(asked, ["alert:code", "setView:code"]);
+});
+
+test("a session with no code view (another agent) is followed on its diff card", () => {
+  following();
+  hook({ hook_event_name: "SessionStart", coucou_agent: "gemini", cwd: "/p/other" });
+  hook({
+    hook_event_name: "PostToolUse",
+    coucou_agent: "gemini",
+    tool_name: "Write",
+    tool_input: { file_path: "/p/other/x.md", content: "x\n" },
+  });
+  assert.equal(State.liveDiff.pillId, "agent_gemini");
+  assert.deepEqual(asked, ["alert:overview"]);
+});
+
+test("another session's code view is not taken over", () => {
+  following();
+  State.mode = "expanded";
+  State.view = "code";
+  codeEdit();
+  assert.equal(State.liveDiff, null);
+  assert.deepEqual(asked, []);
+});
+
+test("never over a waiting card, the chat or another view", () => {
+  following();
+  State.pendingApproval = { requestId: "r", pillId: CLAUDE, sessionId: "", tool: "Bash", command: "" };
+  edit();
+  assert.equal(State.liveDiff, null);
+  State.pendingApproval = null;
+  State.mode = "expanded";
+  State.view = "prompt";
+  edit();
+  assert.equal(State.liveDiff, null);
+  assert.deepEqual(asked, []);
+});
+
+test("another session's live diff is not taken over while the island is open", () => {
+  following();
+  hook({ hook_event_name: "SessionStart", coucou_agent: "gemini", cwd: "/p/other" });
+  edit();
+  State.mode = "expanded";
+  hook({
+    hook_event_name: "PostToolUse",
+    coucou_agent: "gemini",
+    tool_name: "Write",
+    tool_input: { file_path: "/p/other/x.md", content: "x\n" },
+  });
+  assert.equal(State.liveDiff.pillId, CLAUDE);
+});
+
+test("closed, it stays closed until the session's next prompt; Stop ends it", () => {
+  following();
+  edit();
+  // What ← and Esc on the diff card or the code view do.
+  State.stopFollowing();
+  edit();
+  assert.equal(State.liveDiff, null);
+  hook({ hook_event_name: "UserPromptSubmit", cwd: "/p/proj", prompt: "next" });
+  edit();
+  assert.equal(State.liveDiff.pillId, CLAUDE);
+  hook({ hook_event_name: "Stop", cwd: "/p/proj", last_assistant_message: "Done." });
+  assert.equal(State.liveDiff, null);
+});

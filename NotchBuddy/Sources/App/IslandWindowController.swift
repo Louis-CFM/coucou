@@ -768,6 +768,11 @@ final class IslandWindowController: NSWindowController {
         }
         // ⎋ Escape — focused views (.onExitCommand) have first crack; fall back to collapse
         if event.keyCode == 53 && raw.isEmpty {
+            // A live diff steps out first, and stops following until the next prompt.
+            if state.liveDiff != nil && state.mode == .expanded && state.view == .overview {
+                state.stopFollowing()
+                return true
+            }
             let consumed = NSApp.sendAction(Selector(("cancelOperation:")), to: nil, from: nil)
             let canCollapse = !state.isPinned || state.pendingApproval != nil
             if !consumed && state.mode == .expanded && canCollapse {

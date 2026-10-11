@@ -88,6 +88,13 @@ class FakeElement {
   }
   append(...nodes) {
     for (const n of nodes) {
+      // A fragment hands over its children, as in a real DOM.
+      if (n instanceof FakeElement && n.tagName === "#FRAGMENT") {
+        const kids = n.childNodes;
+        n.childNodes = [];
+        this.append(...kids);
+        continue;
+      }
       const node = typeof n === "string" ? new FakeText(n) : n;
       node.parentNode = this;
       this.childNodes.push(node);
@@ -134,6 +141,7 @@ export function installFakeDom() {
     createElement: (tag) => new FakeElement(tag),
     createElementNS: (ns, tag) => new FakeElement(tag, ns),
     createTextNode: (text) => new FakeText(text),
+    createDocumentFragment: () => new FakeElement("#fragment"),
     body: new FakeElement("body"),
   };
   return { root: () => new FakeElement("div") };
