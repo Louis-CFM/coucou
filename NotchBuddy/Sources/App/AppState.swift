@@ -274,6 +274,13 @@ final class AppState: ObservableObject {
     @Published var openOnHover: Bool = false {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
+    // The card follows the agent that did something last; with expandOnActivity the island opens on it — persisted, off by default
+    @Published var followActivity: Bool = false {
+        didSet { UserDefaults.standard.set(followActivity, forKey: "followActivity") }
+    }
+    @Published var expandOnActivity: Bool = false {
+        didSet { UserDefaults.standard.set(expandOnActivity, forKey: "expandOnActivity") }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -508,6 +515,8 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
+        if let v = ud.object(forKey: "followActivity") as? Bool { followActivity = v }
+        if let v = ud.object(forKey: "expandOnActivity") as? Bool { expandOnActivity = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }

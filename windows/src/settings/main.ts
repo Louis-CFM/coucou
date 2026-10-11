@@ -910,6 +910,14 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const expandSwitch = toggle(settings.expandOnActivity, (v) => { settings.expandOnActivity = v; void save(); }) as HTMLButtonElement;
+  expandSwitch.disabled = !settings.followActivity;
+  const followSwitch = toggle(settings.followActivity, (v) => {
+    settings.followActivity = v;
+    expandSwitch.disabled = !v;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -952,6 +960,15 @@ function generalSection(): HTMLElement {
       toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Follow the latest activity") }),
+      followSwitch,
+    ),
+    h("div", { class: "hint", text: t("The card shows the agent that did something last") }),
+    h("div", { class: "row sub" },
+      h("label", { text: t("Open the island on new activity") }),
+      expandSwitch,
+    ),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,

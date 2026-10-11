@@ -695,3 +695,50 @@ test("a declined permission request leaves the stop timer running", () => {
   assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }, { requestId: "r2" }]);
   assert.equal(task().state, "idle");
 });
+
+// ── Follow the latest activity ────────────────────────────────────────────────
+
+const gemini = (name = "PreToolUse") =>
+  hook({ hook_event_name: name, cwd: "/p/proj", coucou_agent: "gemini", tool_name: "Bash", tool_input: { command: "ls" } });
+
+test("the card stays where it is unless following is on", () => {
+  gemini("SessionStart");
+  State.setFocus(CLAUDE);
+  gemini();
+  assert.equal(State.focusId, CLAUDE);
+});
+
+test("following, the agent that did something last takes the card", () => {
+  State.settings.followActivity = true;
+  gemini("SessionStart");
+  State.setFocus(CLAUDE);
+  gemini();
+  assert.equal(State.focusId, "agent_gemini");
+  assert.ok(!asked.includes("alert:overview"), "the island opens only with its own switch");
+});
+
+test("with its switch, new activity opens the island on that card", () => {
+  State.settings.followActivity = true;
+  State.settings.expandOnActivity = true;
+  State.mode = "compact";
+  gemini("SessionStart");
+  State.setFocus(CLAUDE);
+  asked = [];
+  gemini();
+  assert.equal(State.focusId, "agent_gemini");
+  assert.deepEqual(asked.filter((a) => a === "alert:overview"), ["alert:overview"]);
+});
+
+test("following never takes a view you opened, or the front from an approval", () => {
+  State.settings.followActivity = true;
+  gemini("SessionStart");
+  State.setFocus(CLAUDE);
+  State.mode = "expanded";
+  State.view = "prompt";
+  gemini();
+  assert.equal(State.focusId, CLAUDE);
+  State.view = "overview";
+  State.pendingApproval = { requestId: "r", sessionId: "s", pillId: CLAUDE };
+  gemini();
+  assert.equal(State.focusId, CLAUDE);
+});

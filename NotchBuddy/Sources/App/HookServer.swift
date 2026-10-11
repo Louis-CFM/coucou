@@ -398,6 +398,7 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        if name != "SessionEnd" { followActivity(pill: agentId) }
         let focused = state.focusId == agentId
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
@@ -621,6 +622,23 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Helpers
 
     @MainActor
+    /// Settings → Follow the latest activity: the pill that just did something takes the card, and with
+    /// "Open the island on new activity" the island opens on it. A view you opened stays, and an approval
+    /// or a question keeps the front.
+    @MainActor
+    private func followActivity(pill id: String) {
+        let state = AppState.shared
+        guard state.followActivity, state.isPresent, state.pendingApproval == nil, state.pendingQuestion == nil,
+              state.tasks.contains(where: { $0.id == id }) else { return }
+        if state.mode == .expanded && state.view != .overview { return }
+        if state.focusId != id {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.setFocus(id) }
+        }
+        if state.expandOnActivity && state.mode != .expanded {
+            NotificationCenter.default.post(name: .hookExpand, object: IslandView.overview)
+        }
+    }
+
     private func expandIfNeeded(to view: IslandView) {
         let state = AppState.shared
         let isAlert: Bool

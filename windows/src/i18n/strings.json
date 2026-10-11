@@ -1102,6 +1102,17 @@
    "ru": "Получает",
    "id": "Mengambil"
   },
+  "Follow the latest activity": {
+   "zh-Hans": "跟随最新活动",
+   "hi": "नवीनतम गतिविधि का अनुसरण करें",
+   "es": "Seguir la última actividad",
+   "ar": "متابعة آخر نشاط",
+   "fr": "Suivre la dernière activité",
+   "bn": "সর্বশেষ কার্যকলাপ অনুসরণ করুন",
+   "pt-BR": "Seguir a atividade mais recente",
+   "ru": "Следить за последней активностью",
+   "id": "Ikuti aktivitas terbaru"
+  },
   "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
    "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
    "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
@@ -2411,6 +2422,17 @@
    "ru": "Открыть терминал",
    "id": "Buka terminal"
   },
+  "Open the island on new activity": {
+   "zh-Hans": "有新活动时打开岛",
+   "hi": "नई गतिविधि पर आइलैंड खोलें",
+   "es": "Abrir la isla con nueva actividad",
+   "ar": "افتح الشريط عند وجود نشاط جديد",
+   "fr": "Ouvrir l'île à chaque nouvelle activité",
+   "bn": "নতুন কার্যকলাপে আইল্যান্ড খুলুন",
+   "pt-BR": "Abrir a ilha com nova atividade",
+   "ru": "Открывать остров при новой активности",
+   "id": "Buka pulau saat ada aktivitas baru"
+  },
   "Open {name}": {
    "zh-Hans": "打开 {name}",
    "hi": "{name} खोलें",
@@ -3400,6 +3422,17 @@
    "pt-BR": "Testa",
    "ru": "Тестирует",
    "id": "Menguji"
+  },
+  "The card shows the agent that did something last": {
+   "zh-Hans": "卡片显示最近有动作的代理",
+   "hi": "कार्ड वह एजेंट दिखाता है जिसने आखिरी बार कुछ किया",
+   "es": "La tarjeta muestra el último agente que hizo algo",
+   "ar": "تعرض البطاقة آخر وكيل قام بشيء",
+   "fr": "La carte montre le dernier agent qui a fait quelque chose",
+   "bn": "কার্ডে সেই এজেন্ট দেখায় যে শেষবার কিছু করেছে",
+   "pt-BR": "O cartão mostra o último agente que fez algo",
+   "ru": "Карточка показывает агента, который последним что-то сделал",
+   "id": "Kartu menampilkan agen yang terakhir melakukan sesuatu"
   },
   "To": {
    "zh-Hans": "收件人",

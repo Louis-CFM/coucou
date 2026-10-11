@@ -19,6 +19,10 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    /// The card follows the agent that did something last ("Follow the latest activity").
+    pub follow_activity: bool,
+    /// While following, new activity opens the island on that agent's card.
+    pub expand_on_activity: bool,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -127,6 +131,8 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            follow_activity: false,
+            expand_on_activity: false,
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -419,6 +425,8 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "followActivity": true,
+  "expandOnActivity": true,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -926,6 +934,8 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "followActivity",
+                "expandOnActivity",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",

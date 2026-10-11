@@ -36,6 +36,20 @@ export function dropPendingCard(island: Island): void {
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
 
+/**
+ * Settings → Follow the latest activity: the pill that just did something takes the card, and
+ * with "Open the island on new activity" the island opens on it. A view you opened stays, and
+ * an approval or a question keeps the front. Same rule as the Mac.
+ */
+function followActivity(island: Island, id: string) {
+  const s = State.settings;
+  if (!s.followActivity || State.paused || State.pendingApproval) return;
+  if (!State.tasks.some((t) => t.id === id)) return;
+  if (State.mode === "expanded" && State.view !== "overview") return;
+  if (State.focusId !== id) State.setFocus(id);
+  if (s.expandOnActivity && State.mode !== "expanded") island.alert("overview");
+}
+
 function cancelStopTimer(id: string): boolean {
   const timer = stopTimers.get(id);
   if (timer == null) return false;
@@ -311,6 +325,7 @@ function handleHook(island: Island, payload: HookPayload) {
 
   // Read after the card above is dropped: its pill may have handed the front
   // back to the pill you were on.
+  if (name !== "SessionEnd") followActivity(island, agentId);
   const focused = State.focusId === agentId;
 
   switch (name) {

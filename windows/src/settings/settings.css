@@ -158,6 +158,15 @@ code,
   padding: 0;
 }
 
+.switch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.row.sub {
+  padding-left: 20px;
+}
+
 .switch.on {
   background: var(--green);
 }
