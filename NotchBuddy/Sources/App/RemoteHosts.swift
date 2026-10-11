@@ -1,4 +1,5 @@
 #if !APPSTORE
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -473,3 +474,67 @@ struct RemoteHostsSection: View {
     }
 }
 #endif
+
+/// Open terminal for a remote session: a local terminal running ssh to it.
+@MainActor
+enum RemoteTerminal {
+    struct Place { var host: String; var cwd = ""; var tmux = "" }
+    private static var places: [String: Place] = [:]
+
+    static func remember(pillId: String, host: String, payload: [String: Any]) {
+        var place = places[pillId] ?? Place(host: host)
+        place.host = host
+        if let cwd = payload["cwd"] as? String, cwd.hasPrefix("/") { place.cwd = cwd }
+        if let tmux = payload["tmux_session"] as? String, isTmuxName(tmux) { place.tmux = tmux }
+        places[pillId] = place
+    }
+
+    static func forget(pillId: String) { places[pillId] = nil }
+
+    nonisolated static func isTmuxName(_ s: String) -> Bool {
+        s.range(of: #"^[A-Za-z0-9._-]{1,64}$"#, options: .regularExpression) != nil
+    }
+
+    nonisolated static func shQuote(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
+    }
+
+    /// ssh into the host: onto its tmux session, else a shell in its folder. nil for a bad host.
+    nonisolated static func command(host: String, cwd: String, tmux: String) -> String? {
+        guard RemoteSSH.validHost(host) else { return nil }
+        let remote = !tmux.isEmpty ? "tmux attach -t \(shQuote(tmux))"
+            : !cwd.isEmpty ? "cd \(shQuote(cwd)) && exec \"$SHELL\" -l"
+            : "exec \"$SHELL\" -l"
+        return "ssh -t -- \(shQuote(host)) \(shQuote(remote))"
+    }
+
+    nonisolated static func appleScriptString(_ s: String) -> String {
+        "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+    }
+
+    /// False when the pill shows no remote session; iTerm2 when it runs, else Terminal.
+    @discardableResult
+    static func open(pillId: String) -> Bool {
+        guard let place = places[pillId],
+              let cmd = command(host: place.host, cwd: place.cwd, tmux: place.tmux) else { return false }
+        let iterm = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.googlecode.iterm2").isEmpty
+        let script = iterm
+            ? """
+              tell application id "com.googlecode.iterm2"
+                  activate
+                  create window with default profile
+                  tell current session of current window to write text \(appleScriptString(cmd))
+              end tell
+              """
+            : """
+              tell application id "com.apple.Terminal"
+                  activate
+                  do script \(appleScriptString(cmd))
+              end tell
+              """
+        var error: NSDictionary?
+        NSAppleScript(source: script)?.executeAndReturnError(&error)
+        if let error { appendAppLog("nb.log", "Open terminal (remote): \(error)") }
+        return true
+    }
+}

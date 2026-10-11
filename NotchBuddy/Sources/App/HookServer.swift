@@ -431,6 +431,11 @@ final class HookServer: @unchecked Sendable {
         }
 
         let focused = state.focusId == agentId
+        if isRemote, let host = payload["coucou_remote"] as? String {
+            RemoteTerminal.remember(pillId: agentId, host: host, payload: payload)
+        } else {
+            RemoteTerminal.forget(pillId: agentId)
+        }
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -3347,6 +3352,18 @@ def main():
         else:
             payload['cwd'] = os.getcwd()
 
+    # The tmux session, so another machine can attach to it (remote Open terminal)
+    if payload.get('hook_event_name') in ('SessionStart', 'UserPromptSubmit') and env.get('TMUX'):
+        try:
+            import subprocess, re
+            pane = ['-t', env['TMUX_PANE']] if env.get('TMUX_PANE') else []
+            name = subprocess.run(['tmux', 'display-message', '-p'] + pane + ['#S'],
+                                  capture_output=True, text=True, timeout=0.3).stdout.strip()
+            if re.fullmatch(r'[A-Za-z0-9._-]{1,64}', name):
+                payload['tmux_session'] = name
+        except Exception:
+            pass
+
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
         raw_event = payload.get('hook_event_name', '') or arg_event
@@ -3652,6 +3669,18 @@ def main():
             payload['cwd'] = paths[0]
         else:
             payload['cwd'] = os.getcwd()
+
+    # The tmux session, so another machine can attach to it (remote Open terminal)
+    if payload.get('hook_event_name') in ('SessionStart', 'UserPromptSubmit') and env.get('TMUX'):
+        try:
+            import subprocess, re
+            pane = ['-t', env['TMUX_PANE']] if env.get('TMUX_PANE') else []
+            name = subprocess.run(['tmux', 'display-message', '-p'] + pane + ['#S'],
+                                  capture_output=True, text=True, timeout=0.3).stdout.strip()
+            if re.fullmatch(r'[A-Za-z0-9._-]{1,64}', name):
+                payload['tmux_session'] = name
+        except Exception:
+            pass
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:

@@ -233,9 +233,9 @@ fn open_in_vscode(path: Option<String>) -> bool {
 /// folder in VS Code, as before.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
-    // On another machine: no window or folder here is the session's.
-    if session_id.as_deref().is_some_and(remote::is_remote_session) {
-        return false;
+    // On another machine: no window here is the session's, so a local terminal attaches to it over ssh.
+    if let Some(id) = session_id.as_deref().filter(|id| remote::is_remote_session(id)) {
+        return remote::open_terminal(id);
     }
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
         return open_in_vscode(path);

@@ -106,7 +106,7 @@ fn main() {
     let args = args();
     let mut raw = Vec::new();
     let _ = std::io::stdin().read_to_end(&mut raw);
-    let env = |key: &str| std::env::var(key).ok();
+    let env = |key: &str| if key == TMUX_SESSION { tmux_session() } else { std::env::var(key).ok() };
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
     let Some(event) = prepare(&raw, &args, &env, &cwd) else {
@@ -186,6 +186,12 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     }
 
     add_terminal_context(map, env);
+    // The tmux session, so another machine can attach to it (remote Open terminal).
+    if matches!(name.as_str(), "SessionStart" | "UserPromptSubmit") {
+        if let Some(session) = env(TMUX_SESSION).filter(|s| is_tmux_name(s)) {
+            map.insert("tmux_session".into(), Value::String(session));
+        }
+    }
 
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
@@ -200,6 +206,38 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let mut line = payload.to_string();
     line.push('\n');
     Some(Event { line, name, question })
+}
+
+/// Not an environment variable: `env` asks tmux for the session under this key.
+const TMUX_SESSION: &str = "coucou:tmux_session";
+
+/// A tmux session name safe to hand to another machine's command line.
+fn is_tmux_name(s: &str) -> bool {
+    (1..=64).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+}
+
+/// The tmux session this pane belongs to, asked with a short deadline.
+fn tmux_session() -> Option<String> {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+    std::env::var_os("TMUX")?;
+    let mut cmd = Command::new("tmux");
+    cmd.args(["display-message", "-p"]);
+    if let Some(pane) = std::env::var_os("TMUX_PANE") {
+        cmd.arg("-t").arg(pane);
+    }
+    let mut child = cmd.arg("#S").stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
+    let deadline = Instant::now() + Duration::from_millis(300);
+    while child.try_wait().ok()?.is_none() {
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let mut out = String::new();
+    child.stdout.take()?.read_to_string(&mut out).ok()?;
+    Some(out.trim().to_string())
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -374,6 +412,22 @@ mod tests {
 
     fn env_of(vars: &'static [(&'static str, &'static str)]) -> impl Fn(&str) -> Option<String> {
         move |name| vars.iter().find(|(k, _)| *k == name).map(|(_, v)| v.to_string())
+    }
+
+    #[test]
+    fn a_tmux_session_rides_with_session_start_and_prompts_only() {
+        let args = |e: &str| Args { agent: String::new(), event: e.into() };
+        let env = env_of(&[(TMUX_SESSION, "work-2")]);
+        let line = |raw: &str, e: &str| {
+            let ev = prepare(raw.as_bytes(), &args(e), &env, "/w").unwrap();
+            serde_json::from_str::<Value>(ev.line.trim_end()).unwrap()
+        };
+        assert_eq!(line(r#"{"hook_event_name":"SessionStart"}"#, "SessionStart")["tmux_session"], "work-2");
+        assert_eq!(line(r#"{"hook_event_name":"UserPromptSubmit"}"#, "UserPromptSubmit")["tmux_session"], "work-2");
+        assert!(line(r#"{"hook_event_name":"PreToolUse"}"#, "PreToolUse").get("tmux_session").is_none());
+        let odd = env_of(&[(TMUX_SESSION, "a b;rm")]);
+        let ev = prepare(br#"{"hook_event_name":"SessionStart"}"#, &args("SessionStart"), &odd, "/w").unwrap();
+        assert!(!ev.line.contains("tmux_session"));
     }
 
     #[test]

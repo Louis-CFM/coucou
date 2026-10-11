@@ -46,10 +46,110 @@ pub fn admit(payload: &mut Value, event: &str, host: &str) -> bool {
     if !id.is_empty() && !note(REMOTE_SESSIONS.lock().unwrap().get_or_insert_with(HashSet::new), id, event) {
         return false;
     }
+    if !id.is_empty() {
+        remember(PLACES.lock().unwrap().get_or_insert_with(HashMap::new), id, event, host, payload);
+    }
     let Some(fields) = payload.as_object_mut() else { return false };
     fields.retain(|k, _| !k.starts_with("coucou_") || HOST_FIELDS.contains(&k.as_str()));
     fields.insert("coucou_remote".into(), Value::String(host.to_string()));
     true
+}
+
+/// Where a remote session runs: what Open terminal attaches to from here.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Place {
+    host: String,
+    cwd: String,
+    tmux: String,
+}
+
+/// Kept for the sessions REMOTE_SESSIONS admits, so it is bounded the same way.
+static PLACES: Mutex<Option<HashMap<String, Place>>> = Mutex::new(None);
+
+fn remember(places: &mut HashMap<String, Place>, id: &str, event: &str, host: &str, payload: &Value) {
+    if event == "SessionEnd" {
+        places.remove(id);
+        return;
+    }
+    let place = places.entry(id.to_string()).or_default();
+    place.host = host.to_string();
+    if let Some(cwd) = payload.get("cwd").and_then(Value::as_str).filter(|c| c.starts_with('/')) {
+        place.cwd = cwd.to_string();
+    }
+    if let Some(tmux) = payload.get("tmux_session").and_then(Value::as_str).filter(|t| is_tmux_name(t)) {
+        place.tmux = tmux.to_string();
+    }
+}
+
+fn is_tmux_name(s: &str) -> bool {
+    (1..=64).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+}
+
+fn sh_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', r"'\''"))
+}
+
+/// `ssh` into the session's host: its tmux session when it has one, else a shell in its folder.
+fn ssh_argv(place: &Place) -> Option<Vec<String>> {
+    if !valid_host(&place.host) {
+        return None;
+    }
+    let remote = if !place.tmux.is_empty() {
+        format!("tmux attach -t {}", sh_quote(&place.tmux))
+    } else if !place.cwd.is_empty() {
+        format!("cd {} && exec \"$SHELL\" -l", sh_quote(&place.cwd))
+    } else {
+        "exec \"$SHELL\" -l".to_string()
+    };
+    Some(["ssh", "-t", "--", &place.host, &remote].map(String::from).to_vec())
+}
+
+/// The terminal and the arguments that run `command` in a new window of it.
+fn terminal_argv(terminal: &str, command: &[String]) -> Vec<String> {
+    let name = std::path::Path::new(terminal).file_name().and_then(|n| n.to_str()).unwrap_or(terminal);
+    let lead: &[&str] = match name {
+        "foot" | "kitty" => &[],
+        "wezterm" => &["start", "--"],
+        "gnome-terminal" => &["--"],
+        _ => &["-e"],
+    };
+    std::iter::once(terminal.to_string())
+        .chain(lead.iter().map(|a| a.to_string()))
+        .chain(command.iter().cloned())
+        .collect()
+}
+
+/// Open terminal for a remote session: a local terminal attached to it over ssh.
+#[cfg(target_os = "linux")]
+pub fn open_terminal(id: &str) -> bool {
+    let Some(place) = PLACES.lock().unwrap().as_ref().and_then(|p| p.get(id).cloned()) else { return false };
+    let Some(command) = ssh_argv(&place) else { return false };
+    let terminal = std::env::var("TERMINAL")
+        .ok()
+        .filter(|t| !t.is_empty() && !t.contains(char::is_whitespace))
+        .and_then(|t| crate::platform::find_on_path(&t))
+        .or_else(|| {
+            ["foot", "kitty", "alacritty", "wezterm", "gnome-terminal", "konsole", "xterm"]
+                .iter()
+                .find_map(|t| crate::platform::find_on_path(t))
+        });
+    let Some(terminal) = terminal else {
+        crate::log::line("open terminal: no terminal emulator found for the remote session");
+        return false;
+    };
+    let argv = terminal_argv(&terminal.to_string_lossy(), &command);
+    match std::process::Command::new(&argv[0]).args(&argv[1..]).spawn() {
+        Ok(_) => true,
+        Err(err) => {
+            crate::log::line(format!("open terminal: {err}"));
+            false
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn open_terminal(_id: &str) -> bool {
+    false
 }
 
 /// Records `id` as remote. False when the set is full and `id` is new.
@@ -400,6 +500,33 @@ fn listen(app: &AppHandle, host: &str) -> Result<std::path::PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_remote_session_opens_its_tmux_or_its_folder_over_ssh() {
+        let mut places = HashMap::new();
+        let start = serde_json::json!({"cwd": "/srv/it's here", "tmux_session": "work-2"});
+        remember(&mut places, "s1", "SessionStart", "devbox", &start);
+        let argv = ssh_argv(&places["s1"]).unwrap();
+        assert_eq!(argv, ["ssh", "-t", "--", "devbox", "tmux attach -t 'work-2'"]);
+        let mut no_tmux = places["s1"].clone();
+        no_tmux.tmux.clear();
+        assert_eq!(ssh_argv(&no_tmux).unwrap()[4], r#"cd '/srv/it'\''s here' && exec "$SHELL" -l"#);
+        remember(&mut places, "s1", "PreToolUse", "devbox", &serde_json::json!({"tmux_session": "a;b"}));
+        assert_eq!(places["s1"].tmux, "work-2", "an invalid name never replaces a good one");
+        no_tmux.host = "-oProxyCommand=x".into();
+        assert!(ssh_argv(&no_tmux).is_none());
+        remember(&mut places, "s1", "SessionEnd", "devbox", &serde_json::json!({}));
+        assert!(places.is_empty());
+    }
+
+    #[test]
+    fn each_terminal_gets_its_own_way_to_run_a_command() {
+        let cmd: Vec<String> = ["ssh", "-t", "--", "h", "x"].map(String::from).to_vec();
+        assert_eq!(terminal_argv("/usr/bin/foot", &cmd)[1], "ssh");
+        assert_eq!(terminal_argv("/usr/bin/wezterm", &cmd)[1..3], ["start", "--"]);
+        assert_eq!(terminal_argv("/usr/bin/gnome-terminal", &cmd)[1], "--");
+        assert_eq!(terminal_argv("/usr/bin/xterm", &cmd)[1], "-e");
+    }
     use serde_json::json;
 
     #[test]

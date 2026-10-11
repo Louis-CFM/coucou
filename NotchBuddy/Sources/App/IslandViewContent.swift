@@ -198,6 +198,7 @@ struct OverviewView: View {
 
     private func openAgentTarget(_ task: AgentTask?) {
         guard let task else { return }
+        if RemoteTerminal.open(pillId: task.id) { return }
         switch task.id {
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
@@ -632,6 +633,10 @@ struct FinishedView: View {
                         PrimaryButton("Open terminal") {
                             // The app the session runs in (its terminal, or VS Code), then any known terminal
                             let task = state.focusTask
+                            if let id = task?.id, RemoteTerminal.open(pillId: id) {
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                                return
+                            }
                             if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
                                !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
                                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
