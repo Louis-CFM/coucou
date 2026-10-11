@@ -13,6 +13,8 @@ final class AppState: ObservableObject {
 
     // Tasks
     @Published var tasks: [AgentTask] = []
+    /// Pills of sessions found running that have sent no event since Coucou started.
+    @Published var quietSessionPills: Set<String> = []
     @Published var focusId: String? = nil
 
     // Bot state override
