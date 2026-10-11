@@ -104,6 +104,9 @@ jobs:
       - name: Turn end policy tests
         run: bash scripts/test-turn-end-policy.sh
 
+      - name: Live edits tests
+        run: bash scripts/test-live-edits.sh
+
       - name: Voice spotter generation tests
         run: bash scripts/test-voice-spotter-gen.sh
 

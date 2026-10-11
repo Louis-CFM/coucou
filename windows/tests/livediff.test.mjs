@@ -11,7 +11,14 @@ import { parseDiffStep } from "../src/core/diff.ts";
 
 const CLAUDE = "integration_claude";
 
-const island = { alert() {}, setView() {}, reveal() {}, dropPin() {} };
+/** What the handler asked the island to do, in order. */
+let asked = [];
+const island = {
+  alert: (view) => asked.push(`alert:${view}`),
+  setView: (view) => asked.push(`setView:${view}`),
+  reveal() {},
+  dropPin() {},
+};
 registerHookHandlers(island);
 
 const hook = (payload) => emit("hook", payload);
@@ -38,7 +45,10 @@ beforeEach(() => {
   State.isPinned = false;
   State.pendingApproval = null;
   State.settings = { ...DEFAULT_SETTINGS };
+  State.liveDiff = null;
+  State.liveStopped.clear();
   State.loadIntegrationTasks();
+  asked = [];
 });
 
 afterEach(() => {
@@ -161,3 +171,70 @@ for (const [what, event] of [
     assert.equal(task().finalLine, null);
   });
 }
+
+// ── Follow edits live ─────────────────────────────────────────────────────────
+
+const following = () => {
+  State.settings = { ...State.settings, followEdits: true };
+};
+
+test("following off: an edit opens nothing", () => {
+  edit();
+  assert.equal(State.liveDiff, null);
+  assert.deepEqual(asked, []);
+});
+
+test("following on: an edit opens the island on its diff, the next one replaces it", () => {
+  following();
+  edit();
+  const first = State.liveDiff;
+  assert.equal(first.pillId, CLAUDE);
+  assert.ok(State.findDiff(CLAUDE, first.diffId));
+  assert.deepEqual(asked, ["alert:overview"]);
+  State.mode = "expanded";
+  edit();
+  assert.ok(State.liveDiff.diffId > first.diffId);
+  assert.deepEqual(asked, ["alert:overview", "setView:overview"]);
+});
+
+test("never over a waiting card, the chat or another view", () => {
+  following();
+  State.pendingApproval = { requestId: "r", pillId: CLAUDE, sessionId: "", tool: "Bash", command: "" };
+  edit();
+  assert.equal(State.liveDiff, null);
+  State.pendingApproval = null;
+  State.mode = "expanded";
+  State.view = "prompt";
+  edit();
+  assert.equal(State.liveDiff, null);
+  assert.deepEqual(asked, []);
+});
+
+test("another session's live diff is not taken over while the island is open", () => {
+  following();
+  hook({ hook_event_name: "SessionStart", coucou_agent: "gemini", cwd: "/p/other" });
+  edit();
+  State.mode = "expanded";
+  hook({
+    hook_event_name: "PostToolUse",
+    coucou_agent: "gemini",
+    tool_name: "Write",
+    tool_input: { file_path: "/p/other/x.md", content: "x\n" },
+  });
+  assert.equal(State.liveDiff.pillId, CLAUDE);
+});
+
+test("closed, it stays closed until the session's next prompt; Stop ends it", () => {
+  following();
+  edit();
+  // What the diff card's ← and Esc do (views.ts closeDiff).
+  State.liveStopped.add(CLAUDE);
+  State.liveDiff = null;
+  edit();
+  assert.equal(State.liveDiff, null);
+  hook({ hook_event_name: "UserPromptSubmit", cwd: "/p/proj", prompt: "next" });
+  edit();
+  assert.equal(State.liveDiff.pillId, CLAUDE);
+  hook({ hook_event_name: "Stop", cwd: "/p/proj", last_assistant_message: "Done." });
+  assert.equal(State.liveDiff, null);
+});

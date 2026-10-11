@@ -52,6 +52,18 @@ struct OverviewView: View {
 
     var agent: AgentTask? { state.focusTask }
 
+    /// Following edits live: the focused session's latest edit.
+    private var liveDiffId: Int? {
+        guard state.mode == .expanded, let live = state.liveDiff, live.pillId == agent?.id else { return nil }
+        return live.diffId
+    }
+    private var shownDiffId: Int? { liveDiffId ?? activeDiffId }
+
+    private func closeDiff() {
+        activeDiffId = nil
+        if state.liveDiff != nil { state.stopFollowing() }
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             // Left card: title row + ticker below + ↗ button overlay
@@ -128,19 +140,19 @@ struct OverviewView: View {
                 #endif
 
                 // Diff overlay — replaces ticker when a diff step is tapped
-                if let diffId = activeDiffId,
+                if let diffId = shownDiffId,
                    let task = agent,
                    let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
                     CardBackground(wash: nil)
-                    DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
+                    DiffCardView(diff: diff, live: liveDiffId != nil, onDismiss: { closeDiff() })
                         .transition(.opacity)
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
                 #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || shownDiffId != nil
                 #else
-                let hideJumpButton = showingN8nDetail || activeDiffId != nil
+                let hideJumpButton = showingN8nDetail || shownDiffId != nil
                 #endif
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
@@ -186,9 +198,8 @@ struct OverviewView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .islandToggleDiff)) { _ in
-            if let id = activeDiffId {
-                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = nil }
-                _ = id
+            if shownDiffId != nil {
+                withAnimation(.easeIn(duration: 0.16)) { closeDiff() }
             } else if let task = state.focusTask,
                       let last = state.sessionDiffs[task.id]?.last {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
@@ -657,6 +668,8 @@ struct FinishedView: View {
 
 struct DiffCardView: View {
     let diff: FileDiff
+    /// Following edits as they happen (Settings → Follow edits live).
+    var live = false
     let onDismiss: () -> Void
 
     private var allLines: [DiffLine] { diff.hunks.flatMap { $0.lines } }
@@ -676,6 +689,15 @@ struct DiffCardView: View {
                     .foregroundColor(Color(hex: "#F5F6F8"))
                 }
                 .buttonStyle(.plain)
+                if live {
+                    Text(String(localized: "Live").uppercased())
+                        .font(.system(size: 9, weight: .semibold).monospaced())
+                        .foregroundColor(Color(hex: "#22C55E"))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color(hex: "#22C55E").opacity(0.18))
+                        .clipShape(Capsule())
+                }
                 Spacer(minLength: 2)
                 if diff.added > 0 {
                     Text("+\(diff.added)")
