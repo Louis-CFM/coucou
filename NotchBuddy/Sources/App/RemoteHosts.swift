@@ -6,7 +6,7 @@ import SwiftUI
 // Claude Code sessions on other machines, over SSH (the same design as the Linux
 // app's windows/src-tauri/src/remote.rs):
 //
-//   host: claude → nb-hook (nb-hook.py) → ~/.coucou/nb.sock
+//   host: claude → nb-hook (nb-hook.py) → ~/.coucou/<client id>.sock
 //                                              │  ssh -R (the user's own ssh, keys and ~/.ssh/config)
 //   here: Application Support/NotchBuddy/r/<host>.sock → HookServer, events tagged with the host
 //
@@ -29,9 +29,32 @@ enum RemoteSSH {
     // Where the relay goes on a host, and the socket it talks to there.
     static let relayDir = ".local/share/coucou/bin"
 
-    /// Makes ~/.coucou private, clears a socket a dead tunnel left there (sshd will
-    /// not bind over it) and prints the socket's path.
-    static let probe = #"mkdir -p "$HOME/.coucou"; chmod 700 "$HOME/.coucou"; rm -f "$HOME/.coucou/nb.sock"; echo "$HOME/.coucou/nb.sock""#
+    /// This Coucou's id on every host (8 hex): its socket and hook entries there carry it,
+    /// so several machines can share one host. Shared contract with the Linux app.
+    static var clientId: String {
+        if let id = UserDefaults.standard.string(forKey: "remoteClientId"),
+           id.count == 8, id.allSatisfy({ $0.isHexDigit && !$0.isUppercase }) { return id }
+        let id = String(format: "%08x", UInt32.random(in: .min ... .max))
+        UserDefaults.standard.set(id, forKey: "remoteClientId")
+        return id
+    }
+
+    /// Makes ~/.coucou private, clears only this client's socket a dead tunnel left there
+    /// (sshd will not bind over it) and prints its path.
+    static func probe(_ id: String) -> String {
+        #"mkdir -p "$HOME/.coucou"; chmod 700 "$HOME/.coucou"; rm -f "$HOME/.coucou/\#(id).sock"; echo "$HOME/.coucou/\#(id).sock""#
+    }
+
+    /// The hook command on a host: the shared relay, pointed at this client's socket.
+    static func relayCommand(home: String, id: String) -> String {
+        "COUCOU_SOCKET='\(home)/.coucou/\(id).sock' '\(home)/\(relayDir)/nb-hook'"
+    }
+
+    /// Installing owns this client's entries and the untagged ones Mac clients wrote before ids;
+    /// uninstalling only this client's. Anybody else's hooks stay as they are.
+    static func owns(_ command: String, id: String, install: Bool) -> Bool {
+        isRemoteCoucouHook(command, clientId: id) || (install && isLegacyRemoteHook(command))
+    }
 
     /// Prints $HOME, then settings.json; exit 3 when there is none.
     static let readSettings = #"echo "$HOME"; f=$HOME/.claude/settings.json; if [ -e "$f" ]; then cat "$f"; else exit 3; fi"#
@@ -59,7 +82,8 @@ enum RemoteSSH {
     static let remoteWrapper = """
     #!/bin/sh
     # Coucou hook relay on a remote host: forwards to Coucou on the Mac through its SSH tunnel.
-    COUCOU_SOCKET="$HOME/.coucou/nb.sock"; export COUCOU_SOCKET
+    # Each client's hook entry sets COUCOU_SOCKET to its own socket; nb.sock is the pre-id default.
+    : "${COUCOU_SOCKET:=$HOME/.coucou/nb.sock}"; export COUCOU_SOCKET
     out=$(python3 "$(dirname "$0")/nb-hook.py" "$@" 2>/dev/null)
     if [ -n "$out" ]; then echo "$out"; fi
     exit 0
@@ -117,8 +141,8 @@ enum RemoteSSH {
         let original: Data?
     }
 
-    /// settings.json on the host, and the relay's path there.
-    private static func readRemote(_ host: String) -> Result<(bytes: Data?, relay: String), Failure> {
+    /// settings.json on the host, and this client's hook command there.
+    private static func readRemote(_ host: String) -> Result<(bytes: Data?, command: String), Failure> {
         switch run(host, readSettings) {
         case .failure(let f): return .failure(f)
         case .success(let (out, code)):
@@ -127,16 +151,17 @@ enum RemoteSSH {
             guard home.hasPrefix("/") else { return .failure(Failure(message: "\(host): no home directory")) }
             let rest = split < out.endIndex ? Data(out[out.index(after: split)...]) : Data()
             let bytes: Data? = code == 3 ? nil : rest
-            return .success((bytes: bytes, relay: "\(home)/\(relayDir)/nb-hook"))
+            return .success((bytes: bytes, command: relayCommand(home: home, id: clientId)))
         }
     }
 
-    private static func settingsAfter(_ bytes: Data?, install: Bool, relay: String) throws -> Data {
+    private static func settingsAfter(_ bytes: Data?, install: Bool, command: String) throws -> Data {
         let current = try bytes.map { try ClaudeSettingsFile.parse($0, name: "settings.json") } ?? [:]
-        let command = "\"\(relay)\""
+        let id = clientId
+        let mine = { (cmd: String) in owns(cmd, id: id, install: install) }
         let next = try install
-            ? HookServer.withClaudeHooks(current, command: command)
-            : HookServer.withoutClaudeHooks(current)
+            ? HookServer.withClaudeHooks(current, command: command, owns: mine)
+            : HookServer.withoutClaudeHooks(current, owns: mine)
         return try JSONSerialization.data(withJSONObject: next, options: [.prettyPrinted, .sortedKeys])
     }
 
@@ -144,9 +169,9 @@ enum RemoteSSH {
         guard validHost(host) else { return .failure(Failure(message: "\(host): not a host name")) }
         switch readRemote(host) {
         case .failure(let f): return .failure(f)
-        case .success(let (bytes, relay)):
+        case .success(let (bytes, command)):
             do {
-                let data = try settingsAfter(bytes, install: install, relay: relay)
+                let data = try settingsAfter(bytes, install: install, command: command)
                 return .success(Review(host: host, install: install, json: String(decoding: data, as: UTF8.self), original: bytes))
             } catch {
                 return .failure(Failure(message: error.localizedDescription))
@@ -158,7 +183,7 @@ enum RemoteSSH {
     /// showed, unless settings.json changed since. Returns the backup's path.
     static func apply(_ review: Review) -> Result<String, Failure> {
         let host = review.host
-        let current: (bytes: Data?, relay: String)
+        let current: (bytes: Data?, command: String)
         switch readRemote(host) {
         case .failure(let f): return .failure(f)
         case .success(let r): current = r
@@ -167,7 +192,7 @@ enum RemoteSSH {
             return .failure(Failure(message: ClaudeSettingsFile.Failure.changed("\(host):~/.claude/settings.json").localizedDescription))
         }
         let data: Data
-        do { data = try settingsAfter(current.bytes, install: review.install, relay: current.relay) + Data("\n".utf8) }
+        do { data = try settingsAfter(current.bytes, install: review.install, command: current.command) + Data("\n".utf8) }
         catch { return .failure(Failure(message: error.localizedDescription)) }
         if review.install {
             if case .failure(let f) = run(host, checkPython) { return .failure(f) }
@@ -226,7 +251,7 @@ final class RemoteTunnel: @unchecked Sendable {
             report("connecting")
             let started = Date()
             let error: String
-            switch RemoteSSH.run(host, RemoteSSH.probe) {
+            switch RemoteSSH.run(host, RemoteSSH.probe(RemoteSSH.clientId)) {
             case .failure(let f):
                 error = f.message
             case .success(let (out, _)):

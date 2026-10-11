@@ -1278,6 +1278,17 @@
    "ru": "Разрешено",
    "id": "Diberikan"
   },
+  "Handled elsewhere.": {
+   "zh-Hans": "已在别处处理。",
+   "hi": "कहीं और संभाला गया।",
+   "es": "Resuelto en otro lugar.",
+   "ar": "تمت معالجته في مكان آخر.",
+   "fr": "Traité ailleurs.",
+   "bn": "অন্য কোথাও সামলানো হয়েছে।",
+   "pt-BR": "Resolvido em outro lugar.",
+   "ru": "Обработано в другом месте.",
+   "id": "Ditangani di tempat lain."
+  },
   "Hermes Agent": {
    "zh-Hans": "Hermes Agent",
    "hi": "Hermes Agent",

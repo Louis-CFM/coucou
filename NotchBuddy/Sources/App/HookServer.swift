@@ -454,7 +454,8 @@ final class HookServer: @unchecked Sendable {
             case "agent_copilot": handledNote = "Handled in Copilot CLI."
             case "agent_muse":    handledNote = "Handled in Muse Code."
             case "agent_hermes":  handledNote = "Handled in Hermes."
-            default:              handledNote = "Handled in \(claudeHostName)."
+            // Another machine's Coucou, or its terminal, answered.
+            default:              handledNote = isRemote ? String(localized: "Handled elsewhere.") : "Handled in \(claudeHostName)."
             }
             var resolved = false
             switch name {
@@ -1266,8 +1267,7 @@ final class HookServer: @unchecked Sendable {
             for matcher in permReqHooks {
                 if let hookList = matcher["hooks"] as? [[String: Any]] {
                     for hook in hookList {
-                        if let cmd = hook["command"] as? String,
-                           cmd.contains("NotchBuddy") || cmd.contains("coucou") {
+                        if let cmd = hook["command"] as? String, isLocalCoucouHook(cmd) {
                             hasCoucouHooks = true
                             if let timeout = hook["timeout"] as? Int, timeout < 120 { return true }
                         }
@@ -1282,8 +1282,7 @@ final class HookServer: @unchecked Sendable {
             let hasAskEntry = preToolHooks.contains { m in
                 (m["matcher"] as? String) == "AskUserQuestion"
                 && (m["hooks"] as? [[String: Any]])?.contains {
-                    let cmd = $0["command"] as? String ?? ""
-                    return cmd.contains("NotchBuddy") || cmd.contains("coucou")
+                    isLocalCoucouHook($0["command"] as? String ?? "")
                 } ?? false
             }
             if !hasAskEntry { return true }
@@ -1334,9 +1333,10 @@ final class HookServer: @unchecked Sendable {
         return (data, snapshot.bytes)
     }
 
-    /// `settings` with Coucou's hooks for Claude Code, running `quotedCmd`; anybody
-    /// else's hooks untouched. Also used for a remote host's settings.json.
-    static func withClaudeHooks(_ original: [String: Any], command quotedCmd: String) throws -> [String: Any] {
+    /// `settings` with Coucou's hooks for Claude Code, running `quotedCmd`; only the hooks `owns`
+    /// claims are replaced. Also used for a remote host's settings.json.
+    static func withClaudeHooks(_ original: [String: Any], command quotedCmd: String,
+                                owns: (String) -> Bool = isLocalCoucouHook) throws -> [String: Any] {
         var settings = original
         let events: [(String, Int)] = [
             ("SessionStart", 10), ("SessionEnd", 10),
@@ -1351,7 +1351,7 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
+            existing = removingHooks(from: existing, where: owns)
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1376,19 +1376,15 @@ final class HookServer: @unchecked Sendable {
         try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
     }
 
-    /// `settings` without Coucou's entries; nothing else changed.
-    static func withoutClaudeHooks(_ original: [String: Any]) -> [String: Any] {
+    /// `settings` without the hooks `owns` claims; nothing else changed.
+    static func withoutClaudeHooks(_ original: [String: Any],
+                                   owns: (String) -> Bool = isLocalCoucouHook) -> [String: Any] {
         var settings = original
         guard var hooks = settings["hooks"] as? [String: Any] else { return settings }
 
         for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
-                    } ?? false
-                }
+            if let groups = hooks[key] as? [[String: Any]] {
+                let matchers = removingHooks(from: groups, where: owns)
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
                 else { hooks[key] = matchers }
             }
@@ -1411,7 +1407,7 @@ final class HookServer: @unchecked Sendable {
               let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let sl = settings["statusLine"] as? [String: Any],
               let cmd = sl["command"] as? String else { return false }
-        return cmd.contains("nb-hook")
+        return isLocalCoucouHook(cmd)
     }
 
     private var _pendingStatusLineData: Data?
@@ -1454,7 +1450,7 @@ final class HookServer: @unchecked Sendable {
             }
 
             if let existing = oldSL,
-               let cmd = existing["command"] as? String, !cmd.contains("nb-hook") {
+               let cmd = existing["command"] as? String, !isLocalCoucouHook(cmd) {
                 // Keep existing object but swap command; save old for later restoration
                 var updated = existing
                 updated["command"] = quotedCmd
@@ -1462,7 +1458,7 @@ final class HookServer: @unchecked Sendable {
                 _pendingPreviousData = try? JSONSerialization.data(withJSONObject: existing,
                                                                    options: [.prettyPrinted, .sortedKeys])
             } else if let existing = oldSL,
-                      let cmd = existing["command"] as? String, cmd.contains("nb-hook") {
+                      let cmd = existing["command"] as? String, isLocalCoucouHook(cmd) {
                 // Already installed — rebuild to update path if needed, keep other fields
                 var updated = existing
                 updated["command"] = quotedCmd
@@ -1472,7 +1468,7 @@ final class HookServer: @unchecked Sendable {
             }
         } else {
             // Uninstall: only if it's ours
-            if let cur = oldSL, let cmd = cur["command"] as? String, cmd.contains("nb-hook") {
+            if let cur = oldSL, let cmd = cur["command"] as? String, isLocalCoucouHook(cmd) {
                 if let prevData = try? Data(contentsOf: statusLinePreviousURL),
                    let prevObj = (try? JSONSerialization.jsonObject(with: prevData)) as? [String: Any] {
                     newSL = prevObj
@@ -1557,13 +1553,8 @@ final class HookServer: @unchecked Sendable {
         var settings = snapshot.object
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
         for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true
-                    } ?? false
-                }
+            if let groups = hooks[key] as? [[String: Any]] {
+                let matchers = removingHooks(from: groups, where: isLocalCoucouHook)
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
                 else { hooks[key] = matchers }
             }
@@ -1595,10 +1586,7 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false }
+            existing = removingHooks(from: existing, where: isLocalCoucouHook)
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }

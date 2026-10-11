@@ -4858,14 +4858,8 @@ struct SettingsIslandView: View {
         let url = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
         guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = json["hooks"] as? [String: Any],
-              let ss = hooks["SessionStart"] as? [[String: Any]] else { return false }
-        return ss.contains { matcher in
-            (matcher["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false
-        }
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return false }
+        return coucouHooksPresent(inSettings: json)
     }
 
     private var apiConnected: Bool {
