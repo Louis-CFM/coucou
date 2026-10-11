@@ -177,6 +177,9 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
                         SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
                         SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
+                        #if !APPSTORE
+                        SettingsSidebarRow(title: "Voice",        icon: "mic.fill",                          color: "#F97316").tag("voice")
+                        #endif
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
@@ -245,6 +248,7 @@ struct SettingsView: View {
         case "agents":       return String(localized: "Agents")
         case "chat":         return String(localized: "Chat")
         case "integrations": return String(localized: "Integrations")
+        case "voice":        return String(localized: "Voice")
         case "shortcuts":    return String(localized: "Shortcuts")
         default:             return String(localized: "General")
         }
@@ -256,6 +260,9 @@ struct SettingsView: View {
         case "agents":       agentsSection
         case "chat":         chatSection
         case "integrations": integrationsSection
+        #if !APPSTORE
+        case "voice":        voiceSection
+        #endif
         case "shortcuts":    ShortcutsSettingsView()
         default:             generalSection
         }
@@ -513,9 +520,7 @@ struct SettingsView: View {
                     }
                 }
                 .onChange(of: state.mainPillId) { _, newId in
-                    state.activeIntegrations.remove(newId)
-                    state.loadIntegrationTasks()
-                    state.setFocus(newId)
+                    state.setMainPill(newId)
                 }
 
                 ForEach(PillCategory.allCases, id: \.self) { cat in
@@ -1247,6 +1252,229 @@ struct SettingsView: View {
             .padding(6)
         }
     }
+
+    // MARK: - Voice section
+
+    #if !APPSTORE
+    @State private var voicePermissionsGranted: Bool = false
+    @ObservedObject private var voiceEngine = VoiceEngine.shared
+    @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
+    @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
+    @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
+    @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
+    @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
+    @State private var elevenKeyDraft: String = ""
+    @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
+
+    private func speakVoiceSample() {
+        let en = voiceLanguage != "fr"
+        VoiceSpeaker.shared.speak(en ? "Hi, I'm Coucou. Say OK Coucou whenever you need me."
+                                     : "Salut, c'est Coucou. Dis OK Coucou quand tu as besoin de moi.",
+                                  locale: Locale(identifier: en ? "en-US" : "fr-FR"))
+    }
+
+    @ViewBuilder private var voiceSection: some View {
+        // Claude is Coucou's brain: no model, language or feature switches any more,
+        // only the wake word, the Anthropic key it needs, and Coucou's voice.
+        GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
+                    .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
+
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: webKeySaved ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .foregroundColor(webKeySaved ? .green : .orange)
+                    Text(webKeySaved ? String(localized: "voice.setting-web-desc")
+                                     : String(localized: "voice.setting-web-nokey"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .onAppear { webKeySaved = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty }
+
+                if voiceEngine.recognizerUnavailable {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("No speech recognition model available on this device. Install one in System Settings \u{2192} Keyboard \u{2192} Dictation.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if let err = voiceEngine.audioError {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text("\(String(localized: "Microphone unavailable")): \(err)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if !voicePermissionsGranted {
+                    Button(String(localized: "Request permissions")) {
+                        Task {
+                            let ok = await VoiceSettings.requestPermissions()
+                            voicePermissionsGranted = ok
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(6)
+        }
+        .onAppear {
+            voicePermissionsGranted = VoiceSettings.micStatus == .granted
+                && VoiceSettings.speechStatus == .granted
+        }
+
+        GroupBox(String(localized: "voice.tts-engine")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker(String(localized: "voice.tts-engine"), selection: $ttsEngine) {
+                    Text(String(localized: "voice.tts-system")).tag("system")
+                    Text(verbatim: "ElevenLabs").tag("elevenlabs")
+                }
+                .labelsHidden()   // the box is already titled "Voice"
+                .frame(maxWidth: 260)
+
+                if ttsEngine == "elevenlabs" {
+                    HStack(spacing: 6) {
+                        SecureField(elevenKeySaved ? String(localized: "voice.tts-key-saved")
+                                                   : String(localized: "voice.tts-key"),
+                                    text: $elevenKeyDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 220)
+                        Button(String(localized: "Save")) {
+                            let k = elevenKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if k.isEmpty { KeychainStore.shared.remove(ElevenLabsTTS.keyName) }
+                            else { KeychainStore.shared.set(ElevenLabsTTS.keyName, value: k) }
+                            elevenKeyDraft = ""
+                            elevenKeySaved = !k.isEmpty
+                            ElevenLabsTTS.shared.reset()
+                        }
+                    }
+                }
+
+                Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
+                    Text(String(localized: "voice.tts-female")).tag("female")
+                    Text(String(localized: "voice.tts-male")).tag("male")
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 220)
+                .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+
+                if ttsEngine == "system" {
+                    HStack(spacing: 8) {
+                        Text(String(localized: "voice.tts-pitch"))
+                        Slider(value: elevenGender == "male" ? $pitchMale : $pitchFemale,
+                               in: 0.8...1.6, step: 0.05,
+                               onEditingChanged: { editing in
+                                   // Released: hear the new pitch right away.
+                                   if !editing { speakVoiceSample() }
+                               })
+                        .frame(maxWidth: 180)
+                    }
+                    let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
+                                                            gender: elevenGender)
+                    Text(String(format: String(localized: "voice.mac-voice-current %@"), current))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(String(localized: "voice.mac-voices-help"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(String(localized: "voice.mac-voices-open")) {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+
+                Button(String(localized: "voice.tts-test")) { speakVoiceSample() }
+            }
+            .padding(6)
+        }
+    }
+
+    #if !APPSTORE
+    private func localModelStatusLabel(_ status: LocalModelStatus) -> String {
+        switch status {
+        case .available:            return String(localized: "voice.model-available")
+        case .notMacOS26:           return String(localized: "voice.model-not-macos26")
+        case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
+        }
+    }
+    #endif
+
+    // MARK: - Transcript history debug view (in-memory, cleared on close)
+
+    private struct VoiceTranscriptHistoryView: View {
+        @ObservedObject private var history = VoiceTranscriptHistory.shared
+
+        var body: some View {
+            if !history.entries.isEmpty {
+                GroupBox(String(localized: "voice.history-title")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 4) {
+                                ForEach(history.entries) { entry in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(verbatim: entry.transcript)
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundColor(.primary)
+                                        Text(verbatim: "→ \(entry.intent)  [\(entry.origin.rawValue)]")
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 2)
+                                    Divider()
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                        .frame(maxHeight: 200)
+
+                        HStack {
+                            Button(String(localized: "Copy")) {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(history.plainText, forType: .string)
+                            }
+                            Button(String(localized: "Clear")) {
+                                history.clear()
+                            }
+                            .foregroundColor(.red)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(6)
+                }
+            }
+        }
+    }
+
+    private var micStatusIcon:  String { VoiceSettings.micStatus    == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
+    private var micStatusColor: Color  { VoiceSettings.micStatus    == .granted ? .green : .red }
+    private var micStatusLabel: String {
+        switch VoiceSettings.micStatus {
+        case .granted:      return String(localized: "Granted")
+        case .denied:       return String(localized: "Denied")
+        case .undetermined: return String(localized: "Not requested")
+        }
+    }
+    private var speechStatusIcon:  String { VoiceSettings.speechStatus == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
+    private var speechStatusColor: Color  { VoiceSettings.speechStatus == .granted ? .green : .red }
+    private var speechStatusLabel: String {
+        switch VoiceSettings.speechStatus {
+        case .granted:      return String(localized: "Granted")
+        case .denied:       return String(localized: "Denied")
+        case .undetermined: return String(localized: "Not requested")
+        }
+    }
+    #endif
 
     // MARK: - Actions
 

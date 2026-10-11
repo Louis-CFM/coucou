@@ -189,6 +189,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
+        #if !APPSTORE
+        _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
+        #endif
         N8nPoller.shared.start()
         VercelPoller.shared.start()
         ResendPoller.shared.start()

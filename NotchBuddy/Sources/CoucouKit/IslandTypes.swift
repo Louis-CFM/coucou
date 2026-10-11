@@ -12,6 +12,8 @@ enum IslandView: String, CaseIterable {
     case overview, empty, approval, question, error, finished
     case confused, upload, uploading, choose, mail, prompt
     case searching, result, note, settings, greeting, wardrobe, recap
+    case listening    // voice wake detected — "À l'écoute…" with live transcript
+    case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
 }
 
 // MARK: - Bot State
@@ -26,6 +28,18 @@ enum BotState: String, CaseIterable {
 
 enum BotEmote: String, CaseIterable {
     case love, surprised, proud, wink, yawn, happy, annoyed
+    case listening   // attentive: head tilt + wide-open eyes
+}
+
+// MARK: - Voice sub-state
+
+/// What Mochi is doing during a voice exchange (compact island or expanded).
+/// Driven by IslandWindowController; read by BotEngine each frame.
+enum BotVoiceSubState: Equatable {
+    case none       // voice not active
+    case listening  // mic open, waiting for words
+    case thinking   // command received, waiting for AI / TTS queue to drain
+    case speaking   // TTS audio playing
 }
 
 // MARK: - Approval info (pending PermissionRequest from Claude Code)
@@ -192,6 +206,10 @@ enum IslandConst {
         .greeting:  ViewLayout(height: 150, botX: 320, botY: 90,  botDiameter: 0,  agentMode: .none),
         .wardrobe:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
         .recap:     ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
+        // Voice listening: Mochi (listening emote) on left, transcript on right
+        .listening:    ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Voice result: same layout as listening — Mochi on left, ✓/✗ on right
+        .voiceResult:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug
