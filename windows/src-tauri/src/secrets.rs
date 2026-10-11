@@ -12,14 +12,18 @@ pub const KNOWN_KEYS: &[&str] = &[
     "google-api-key",
     "openrouter-api-key",
     "openai-compatible-key",
+    "cursor-api-key",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",
     "github-token",
     "stripe-api-key",
     "resend-api-key",
+    "resend-from",
     "notion-api-key",
     "calcom-api-key",
+    // The shared secret the Android companion proves on every relay call.
+    "phone-secret",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

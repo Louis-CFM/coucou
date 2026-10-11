@@ -5,7 +5,7 @@
 // centre of the main display inside a borderless, transparent, always-on-top
 // window that never takes focus.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -20,6 +20,9 @@ pub const PANEL_H: f64 = 320.0;
 /// Logical size of the invisible strip that wakes the island when it is hidden.
 pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
+/// Logical height the wake strip grows to while something is being dragged, so
+/// a file only has to reach the top-centre of the screen, not a 6 px line.
+const DROP_ZONE_H: f64 = 150.0;
 
 pub const WINDOW_LABEL: &str = "island";
 
@@ -300,6 +303,12 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
+    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    place(app, pref, lw, lh);
+}
+
+/// Centres a `lw` × `lh` logical window on the top edge of the island's monitor.
+fn place(app: &AppHandle, pref: &str, lw: f64, lh: f64) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
 
@@ -307,7 +316,6 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
@@ -322,11 +330,91 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
+    PLACED.fetch_add(1, Ordering::Relaxed);
     let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+    platform::raise_topmost(&win);
+}
+
+/// Grows the hidden island's wake strip into a drop zone while the left button is
+/// held, and shrinks it back on release.
+///
+/// OLE only delivers a dragged file to the window under the cursor, and the
+/// strip is a 6 px line at the very top of the screen: nobody drops a file
+/// there. While the island is hidden and a drag may be in flight, the strip
+/// becomes an invisible zone as wide as the panel; the file entering it wakes
+/// the island exactly as the strip would have. One GetAsyncKeyState every 50 ms
+/// while hidden; window moves and resizes are left alone.
+pub fn spawn_drop_zone_watch(app: AppHandle, gate: Arc<PollGate>) {
+    if !platform::CURSOR_POLL {
+        return; // Linux: no global button state to watch.
+    }
+    std::thread::spawn(move || {
+        let mut zone_up = false;
+        let mut was_down = false;
+        // Set when the press began outside the zone: only such a press can be a
+        // drag *into* it. A click inside the zone must never have the zone pop
+        // up under it, or the button release would land on us and be lost.
+        let mut armed_at: Option<(f64, f64)> = None;
+        loop {
+            std::thread::sleep(Duration::from_millis(50));
+            if !gate.collapsed.load(Ordering::Relaxed) {
+                zone_up = false; // the island took over
+                was_down = false;
+                armed_at = None;
+                continue;
+            }
+            let down = left_button_down();
+            if !down && !was_down {
+                continue; // the common case: nothing held, nothing to do
+            }
+            let pref = app
+                .try_state::<crate::Shared>()
+                .map(|s| s.settings.lock().unwrap().screen.clone())
+                .unwrap_or_else(|| "primary".into());
+
+            if down && !was_down {
+                armed_at = cursor_physical().filter(|&(x, y)| {
+                    !drop_zone_rect(&app, &pref).is_some_and(|(l, t, r, b)| {
+                        x >= l && x < r && y >= t && y < b
+                    })
+                });
+            }
+            was_down = down;
+
+            if down {
+                let moved = match (armed_at, cursor_physical()) {
+                    (Some((ax, ay)), Some((cx, cy))) => (cx - ax).hypot(cy - ay) >= 8.0,
+                    _ => false,
+                };
+                if !zone_up && moved && !platform::moving_window() {
+                    place(&app, &pref, PANEL_W, DROP_ZONE_H);
+                    zone_up = true;
+                }
+            } else {
+                // Released without the file entering: back to the strip, unless
+                // the island opened in the meantime.
+                if zone_up && gate.collapsed.load(Ordering::Relaxed) {
+                    apply_geometry(&app, &pref, true);
+                }
+                zone_up = false;
+                armed_at = None;
+            }
+        }
+    });
+}
+
+/// The drop zone in physical screen pixels: (left, top, right, bottom).
+fn drop_zone_rect(app: &AppHandle, pref: &str) -> Option<(f64, f64, f64, f64)> {
+    let m = target_monitor(app, pref)?;
+    let scale = m.scale_factor();
+    let (mp, ms) = (*m.position(), *m.size());
+    let w = PANEL_W * scale;
+    let left = mp.x as f64 + (ms.width as f64 - w) / 2.0;
+    Some((left, mp.y as f64, left + w, mp.y as f64 + DROP_ZONE_H * scale))
 }
 
 /// Position, size and scale of the monitor the island lives on. Any change here
@@ -342,11 +430,14 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
 }
 
+/// Counts every time the window is moved or resized, so the cursor poll knows
+/// when what it remembers of the window's place is out of date.
+static PLACED: AtomicU64 = AtomicU64::new(0);
+
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
 /// visible. Parked on a condvar the rest of the time.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
-        let mut was_down = false;
         // Remembered across wakes so a display change while hidden is noticed the
         // moment the island comes back.
         let mut last_screen: Option<(i32, i32, u32, u32, u64)> = None;
@@ -357,7 +448,11 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
+            let mut was_down = false;
             let mut ticks: u32 = 0;
+            // The window's origin, scale and logical size, as last asked.
+            let mut frame: Option<(f64, f64, f64, (f64, f64))> = None;
+            let mut frame_placed = 0;
             while gate.is_active() {
                 std::thread::sleep(Duration::from_millis(period));
 
@@ -366,28 +461,53 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // nobody can reach. Checked about twice a second — the cursor poll
                 // is already running, so this costs one monitor query.
                 ticks = ticks.wrapping_add(1);
-                if ticks % screen_every == 0 {
+                if ticks.is_multiple_of(screen_every) {
                     let now = current_screen_key(&app);
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
                         last_screen = now;
                         if !first {
-                            crate::log::line("display layout changed — repositioning".to_string());
+                            crate::log::line("display layout changed — repositioning");
                             let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
                         }
                     }
                 }
 
                 let Some(win) = window(&app) else { continue };
-                let Ok(origin) = win.outer_position() else { continue };
-                let scale = win.scale_factor().unwrap_or(1.0);
+                // Where the window is costs three trips to the main thread, and
+                // it only changes when we move it: asked again then, and with the
+                // display check as a safety net, not sixty times a second.
+                let placed = PLACED.load(Ordering::Relaxed);
+                if frame.is_none() || placed != frame_placed || ticks.is_multiple_of(screen_every) {
+                    frame_placed = placed;
+                    frame = win.outer_position().ok().map(|origin| {
+                        let scale = win.scale_factor().unwrap_or(1.0);
+                        let size = match win.inner_size() {
+                            Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
+                            Err(_) => (PANEL_W, PANEL_H),
+                        };
+                        (origin.x as f64, origin.y as f64, scale, size)
+                    });
+                }
+                let Some((ox, oy, scale, size)) = frame else { continue };
                 let Some((cx, cy)) = cursor_physical() else { continue };
-                let x = (cx - origin.x as f64) / scale;
-                let y = (cy - origin.y as f64) / scale;
-                let size = match win.inner_size() {
-                    Ok(s) => (s.width as f64 / scale, s.height as f64 / scale),
-                    Err(_) => (PANEL_W, PANEL_H),
-                };
+                let x = (cx - ox) / scale;
+                let y = (cy - oy) / scale;
+                // Checked before the "cursor hasn't moved" skip: a drag abandoned
+                // elsewhere usually ends with the mouse standing still, and the
+                // island needs to hear about the release to close behind it.
+                let down = left_button_down();
+                if down != was_down {
+                    was_down = down;
+                    if down {
+                        // A press may be the start of a drag: make sure the drop
+                        // target is ours before the file arrives.
+                        let handle = app.clone();
+                        let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+                    }
+                    let _ = win.emit("mouse-button", down);
+                }
+
                 if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                     continue;
                 }
@@ -410,22 +530,19 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // registered destinations whatever ignoresMouseEvents says. So while
                 // a button is held anywhere over the panel, the whole panel takes
                 // the mouse, which also makes the drop zone as forgiving as the Mac's.
-                // A press may be the start of a drag: make sure the drop target is
-                // ours before the file arrives.
-                let down = left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
-                }
-                was_down = down;
-
                 let dragging = down
                     && x >= 0.0
                     && x <= size.0
                     && y >= 0.0
                     && y <= size.1;
 
-                let accept = on_island || dragging;
+                // The wake strip always takes the mouse (hover to wake, drop a
+                // file). Checked here and not only in set_collapsed: a tick that
+                // was asleep while the island collapsed would otherwise compute
+                // "not on the island" for the new strip and make it click-through
+                // again — invisible to hovers and to dragged files alike.
+                let collapsed = gate.collapsed.load(Ordering::Relaxed);
+                let accept = on_island || dragging || collapsed;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);
@@ -433,6 +550,16 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
                 let _ = win.emit("cursor", CursorPayload { x, y });
             }
+
+            // Parked: the window is (or is about to be) the wake strip, which must
+            // take the mouse. The tick that was running when the island collapsed
+            // may just have made it click-through, and setters from this thread are
+            // queued to the event loop — so clear the flag from here, behind it.
+            // Otherwise the hidden island can only be woken by Claude Code events.
+            if let Some(win) = window(&app) {
+                let _ = win.set_ignore_cursor_events(false);
+            }
+            gate.forget_ignore_state();
         }
     });
 }

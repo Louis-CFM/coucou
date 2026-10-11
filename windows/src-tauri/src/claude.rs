@@ -91,11 +91,17 @@ fn user_content(first: bool, context: Option<&ChatContext>, query: &str) -> Vec<
 fn request_body(model: &str, system: &str, history: &[Value], user: &Value) -> Value {
     let mut messages = history.to_vec();
     messages.push(user.clone());
+    let mut web_search = json!({ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 });
+    // Haiku has no programmatic tool calling, which this web_search version
+    // asks for by default: the API rejects the request unless it is direct-only.
+    if model.starts_with("claude-haiku") {
+        web_search["allowed_callers"] = json!(["direct"]);
+    }
     json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
         "system": system,
-        "tools": [{ "type": "web_search_20260209", "name": "web_search", "max_uses": 5 }],
+        "tools": [web_search],
         "fallbacks": "default",
         "messages": messages,
     })
@@ -343,6 +349,15 @@ mod tests {
         assert_eq!(body["tools"][0]["name"], "web_search");
         assert_eq!(body["messages"].as_array().unwrap().len(), 3);
         assert_eq!(body["messages"][2], user);
+    }
+
+    #[test]
+    fn haiku_gets_direct_only_web_search() {
+        let user = json!({"role":"user","content":"q"});
+        let haiku = request_body("claude-haiku-4-5", "sys", &[], &user);
+        assert_eq!(haiku["tools"][0]["allowed_callers"], json!(["direct"]));
+        let sonnet = request_body("claude-sonnet-4-6", "sys", &[], &user);
+        assert!(sonnet["tools"][0].get("allowed_callers").is_none());
     }
 
     #[test]

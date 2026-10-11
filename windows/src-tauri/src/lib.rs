@@ -4,9 +4,18 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod claude_cli;
+mod claude_sessions;
+mod cli_chat;
+mod codex_chat;
 mod codex_plan;
+mod codex_sessions;
 mod config_file;
+mod cursor_chat;
 mod desktop;
+mod devin_chat;
+mod devin_sessions;
+mod dictation;
 mod files;
 mod github;
 mod hooks;
@@ -14,10 +23,13 @@ mod i18n;
 mod identity;
 mod integrations;
 mod island;
+mod kiro_chat;
 mod local_chat;
 mod log;
 mod net;
 mod openai_compat;
+mod opencode_sessions;
+mod phone;
 mod pipe;
 mod platform;
 #[cfg(target_os = "linux")]
@@ -38,6 +50,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
+use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
@@ -147,9 +160,10 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+    // Stop the cursor poll first so no in-flight tick can undo what follows.
+    shared.gate.set_active(!collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
-    shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
 }
 
@@ -193,10 +207,35 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to the file manager otherwise.
+fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(c) = custom.filter(|s| !s.trim().is_empty()) {
+        candidates.push(c.trim().to_string());
+    }
+    if let Some(vis) = std::env::var("VISUAL").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(vis.trim().to_string());
+    }
+    if let Some(ed) = std::env::var("EDITOR").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(ed.trim().to_string());
+    }
+    candidates.push("code".to_string());
+
+    for name in candidates {
+        let p = std::path::Path::new(&name);
+        if p.is_file() {
+            return Some(p.to_path_buf());
+        }
+        if let Some(found) = platform::find_on_path(&name) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// "Open terminal" opens the working folder in the configured editor (or
+/// VS Code / $EDITOR), and falls back to the file manager otherwise.
 #[tauri::command]
-fn open_in_vscode(path: Option<String>) -> bool {
+fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -211,8 +250,9 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = shared.settings.lock().unwrap().editor.clone();
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
@@ -228,11 +268,33 @@ fn open_in_vscode(path: Option<String>) -> bool {
 
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
-/// folder in VS Code, as before.
+/// folder in the editor, as before.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+fn open_session(shared: State<Shared>, session_id: Option<String>, path: Option<String>) -> bool {
+    let custom = shared.settings.lock().unwrap().editor.clone();
+    let open_editor = move |path: Option<String>| {
+        if let Some(editor) = resolve_editor(custom.as_deref()) {
+            let mut cmd = Command::new(editor);
+            if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+                let p = std::path::Path::new(p);
+                if p.is_absolute() && p.is_dir() {
+                    cmd.arg(p);
+                }
+            }
+            if platform::no_console(&mut cmd).spawn().is_ok() {
+                return true;
+            }
+        }
+        if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+            let p = std::path::Path::new(p);
+            if p.is_absolute() && p.is_dir() {
+                platform::reveal_folder(&p.to_string_lossy());
+            }
+        }
+        false
+    };
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return open_editor(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
@@ -240,16 +302,16 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
         if platform::focus_session_window(&owners, &folder) {
             return true;
         }
-        open_in_vscode(path)
+        open_editor(path)
     }
     // Linux asks the display server, KWin or the terminal, which can take a
-    // moment: never on the UI thread a sync command runs on. VS Code still
+    // moment: never on the UI thread a sync command runs on. The editor still
     // opens when none of them could bring the window forward.
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
             if !platform::focus_session_window(&owners, &folder) {
-                open_in_vscode(path);
+                open_editor(path);
             }
         });
         true
@@ -271,14 +333,16 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
-/// otherwise shows its folder. The file itself is never opened by its type —
-/// xdg-open or Explorer would run a script that Claude just wrote.
+/// The diff card's ↗: opens the edited file in the configured editor (or VS
+/// Code / $EDITOR), otherwise shows its folder. The file itself is never
+/// opened by its type — xdg-open or Explorer would run a script that Claude
+/// just wrote.
 #[tauri::command]
-fn open_file_in_vscode(path: String) -> bool {
+fn open_file_in_vscode(shared: State<Shared>, path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = shared.settings.lock().unwrap().editor.clone();
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
@@ -420,10 +484,11 @@ fn approval_answer(
     app: AppHandle,
     request_id: String,
     answers: std::collections::HashMap<String, serde_json::Value>,
+    other: Option<Vec<String>>,
 ) {
     // An answered question is not an Allow / Deny: nothing for the recap.
     recap::forget_request(&app, &request_id);
-    pipe::answer_question(&app, &request_id, &answers);
+    pipe::answer_question(&app, &request_id, &answers, &other.unwrap_or_default());
 }
 
 /// The island has the card on screen, so the long wait for a human may begin.
@@ -440,6 +505,156 @@ fn approval_ack(app: AppHandle, request_id: String) {
 fn approval_decline(app: AppHandle, request_id: String) {
     recap::forget_request(&app, &request_id);
     pipe::decline(&app, &request_id);
+}
+
+// ── Android companion ───────────────────────────────────────────────────────
+
+/// What the settings window shows: enabled, paired, which phone, which relay.
+#[tauri::command]
+fn phone_status(shared: State<'_, Shared>) -> serde_json::Value {
+    let s = shared.settings.lock().unwrap();
+    json!({
+        "enabled": s.phone_enabled,
+        "paired": s.phone_paired,
+        "device": s.phone_device,
+        "worker": s.phone_worker,
+        "pcId": s.phone_pc_id,
+    })
+}
+
+/// Turn remote control on or off. On needs a paired box — settings calls
+/// `phone_pair` for that; this just gates the poll loop.
+#[tauri::command]
+fn phone_enable(app: AppHandle, shared: State<'_, Shared>, on: bool) {
+    {
+        let mut s = shared.settings.lock().unwrap();
+        s.phone_enabled = on;
+        let snapshot = s.clone();
+        drop(s);
+        let _ = settings::save(&snapshot);
+    }
+    if on {
+        phone::spawn(app);
+    }
+}
+
+/// Create the pairing code/QR and the relay box. The phone claims it with
+/// `coucou://` payload the code carries.
+#[tauri::command]
+fn phone_pair(app: AppHandle, worker: String) -> Result<serde_json::Value, String> {
+    let pair = phone::start_pair(&worker)?;
+    if let Err(e) = phone::finish_pair(&app, &pair) {
+        let _ = secrets::clear("phone-secret");
+        return Err(e);
+    }
+    Ok(json!({ "code": pair.code, "qrSvg": pair.qr_svg }))
+}
+
+/// Forget the phone and wipe its mailbox on the relay.
+#[tauri::command]
+fn phone_unpair(app: AppHandle) {
+    phone::unpair(&app);
+}
+
+/// The island pushes its visible state after each change; `alert` wakes the
+/// phone for a waiting card.
+#[tauri::command]
+async fn phone_state(app: AppHandle, payload: serde_json::Value, alert: bool) {
+    let _ = phone::push_state(&app, payload, alert).await;
+}
+
+/// The Devin CLI's own session list — the phone's "continue this chat" picker.
+/// Read straight from the CLI's session store, newest first.
+#[tauri::command]
+async fn devin_sessions() -> Vec<devin_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(devin_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Devin session's conversation, for the phone's scrollback.
+#[tauri::command]
+async fn devin_transcript(session_id: String) -> Vec<devin_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || devin_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone, sent inside the picked Devin session —
+/// `devin -p <text> -r <id>` under the user's real config.
+#[tauri::command]
+async fn devin_resume(session_id: String, text: String) -> Result<String, String> {
+    devin_sessions::resume(&session_id, &text).await
+}
+
+/// The Claude Code session list — same picker as Devin's, sourced from
+/// ~/.claude/projects/*.jsonl.
+#[tauri::command]
+async fn claude_sessions() -> Vec<claude_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(claude_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Claude Code session's conversation.
+#[tauri::command]
+async fn claude_transcript(session_id: String) -> Vec<claude_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || claude_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone, sent inside the picked Claude Code session —
+/// `claude -p <text> --resume <id>` under the user's real config.
+#[tauri::command]
+async fn claude_resume(session_id: String, text: String) -> Result<String, String> {
+    claude_sessions::resume(&session_id, &text).await
+}
+
+/// The Codex session list — ~/.codex/sessions/* ⁄rollout-*.jsonl files.
+#[tauri::command]
+async fn codex_sessions() -> Vec<codex_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(codex_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Codex session's conversation.
+#[tauri::command]
+async fn codex_transcript(session_id: String) -> Vec<codex_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || codex_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone inside a Codex session —
+/// `codex exec resume <id> <text>` under the user's real config.
+#[tauri::command]
+async fn codex_resume(session_id: String, text: String) -> Result<String, String> {
+    codex_sessions::resume(&session_id, &text).await
+}
+
+/// The OpenCode session list — ~/.local/share/opencode/opencode.db.
+#[tauri::command]
+async fn opencode_sessions() -> Vec<opencode_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(opencode_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one OpenCode session's conversation.
+#[tauri::command]
+async fn opencode_transcript(session_id: String) -> Vec<opencode_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || opencode_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone inside an OpenCode session —
+/// `opencode run -s <id> <text>` under the user's real config.
+#[tauri::command]
+async fn opencode_resume(session_id: String, text: String) -> Result<String, String> {
+    opencode_sessions::resume(&session_id, &text).await
 }
 
 // ── Chat, files and secrets ───────────────────────────────────────────────────
@@ -466,6 +681,14 @@ async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<
     chat::models(&settings, &provider).await
 }
 
+/// The models of a provider that it refused and that have not answered since:
+/// a 404 for a model its own list offers. The picker marks them. Nothing is
+/// asked of anyone.
+#[tauri::command]
+fn chat_refused(chat: State<'_, Chat>, provider: String) -> Vec<String> {
+    chat.refused_models(&provider)
+}
+
 /// Settings → Local models → Connect: does the server answer, and with which models?
 #[tauri::command]
 async fn local_connect(provider: String, url: String) -> Result<local_chat::Connected, String> {
@@ -484,10 +707,48 @@ fn chat_reset(chat: State<Chat>) {
     chat.reset();
 }
 
+/// Whether a chat CLI (Cursor's `agent`, `kiro-cli`, `claude`) is installed and
+/// signed in — for the settings window and the picker's provider chips.
+#[tauri::command]
+async fn cli_status(provider: String) -> Option<cli_chat::CliStatus> {
+    match provider.as_str() {
+        "cursor" => Some(cursor_chat::status().await),
+        "kiro" => Some(kiro_chat::status().await),
+        "claude-cli" => Some(claude_cli::status().await),
+        "devin" => Some(devin_chat::status().await),
+        "codex" => Some(codex_chat::status().await),
+        _ => None,
+    }
+}
+
+/// Only from the settings' sign-in button: opens the CLI's browser sign-in and
+/// returns at once. Kiro's and Claude Code's logins are interactive — they are
+/// run in a terminal instead, so they get a hint line, not a button.
+#[tauri::command]
+fn cli_login(provider: String) -> Result<(), String> {
+    match provider.as_str() {
+        "cursor" => cursor_chat::login(),
+        _ => Err("That sign-in runs in a terminal.".into()),
+    }
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
     files::ingest(&path)
+}
+
+/// Sends the dropped file through Resend — MailView.sendViaResend on the Mac.
+/// The island already checked the keys exist; the Result carries a stable
+/// error code ("no-key" / "no-from" / "too-big" / "http-…"), not a sentence.
+#[tauri::command]
+async fn resend_send(
+    to: String,
+    subject: String,
+    body: String,
+    path: Option<String>,
+) -> Result<(), String> {
+    integrations::resend_send(&to, &subject, &body, path.as_deref()).await
 }
 
 /// The island may only ask whether a key exists — never read it.
@@ -664,7 +925,8 @@ pub fn run() {
             gate: gate.clone(),
         })
         .manage(Pending::default())
-        .manage(Chat::default())
+        .manage(Chat::stored())
+        .manage(dictation::Dictation::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
@@ -696,13 +958,37 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            phone_status,
+            phone_enable,
+            phone_pair,
+            phone_unpair,
+            phone_state,
+            devin_sessions,
+            devin_transcript,
+            devin_resume,
+            claude_sessions,
+            claude_transcript,
+            claude_resume,
+            codex_sessions,
+            codex_transcript,
+            codex_resume,
+            opencode_sessions,
+            opencode_transcript,
+            opencode_resume,
             log_line,
             chat_send,
             chat_models,
+            chat_refused,
+            cli_status,
+            cli_login,
             local_connect,
             local_set_key,
             chat_reset,
             ingest_file,
+            resend_send,
+            dictation::dictation_supported,
+            dictation::dictation_start,
+            dictation::dictation_stop,
             secret_present,
             secret_set,
             secret_clear,
@@ -743,6 +1029,7 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
+            platform::keep_topmost(&handle);
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
             // Same rule for Mochi's desktop window.
@@ -770,10 +1057,12 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            island::spawn_drop_zone_watch(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
+            phone::spawn(handle.clone());
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
@@ -785,7 +1074,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::diff_file;
+    use super::*;
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
@@ -803,5 +1092,24 @@ mod tests {
         assert!(diff_file("").is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_editor_finds_configured_executable() {
+        #[cfg(windows)]
+        let target = "cmd";
+        #[cfg(not(windows))]
+        let target = "sh";
+
+        let found = resolve_editor(Some(target));
+        assert!(found.is_some());
+        assert!(found.unwrap().to_string_lossy().to_lowercase().contains(target));
+    }
+
+    #[test]
+    fn resolve_editor_ignores_empty_custom_value() {
+        let none = resolve_editor(Some(""));
+        let spaces = resolve_editor(Some("   "));
+        assert_eq!(none, spaces);
     }
 }

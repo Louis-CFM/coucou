@@ -11,7 +11,7 @@ import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  PROVIDERS, activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
@@ -22,10 +22,18 @@ const STRINGS = {
   placeholderFirst: N_("Ask me anything…"),
   placeholderNext: N_("Continue…"),
   send: N_("Send"),
+  dictate: N_("Dictate"),
+  listening: N_("Listening…"),
+  noSpeech: N_("Speech recognition isn't available."),
+  noMic: N_("The microphone isn't available."),
+  noSpeechNet: N_("Dictation needs an internet connection."),
+  noSpeechLang: N_("Speech recognition isn't set up for this language."),
   switchModel: N_("Switch provider or model"),
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
+  noLogin: N_("Not signed in — see the Settings page."),
+  notAvailable: N_("Not available"),
   openSettings: N_("Open Settings"),
 };
 
@@ -80,12 +88,45 @@ function buildPicker(onChange: () => void): Picker {
 
   /** Models already asked for, by provider; a model server is asked again each time. */
   const cache = new Map<string, ModelInfo[]>();
+  /** The keys the credential store held the last time it was asked. */
+  const stored = new Set<string>();
+  /** The CLI providers signed in the last time they were asked (`agent`, `kiro-cli`, `claude`). */
+  const cliOk = new Set<string>();
   let isOpen = false;
   let request = 0;
 
+  /** Which cloud providers have their key: asked again each time the picker opens. */
+  async function findKeys() {
+    const keys = PROVIDERS.flatMap((p) => (p.key ? [p.key] : []));
+    const present = await Promise.all(keys.map((key) => Bridge.secretPresent(key)));
+    stored.clear();
+    keys.forEach((key, i) => {
+      if (present[i]) stored.add(key);
+    });
+    if (isOpen) drawChips();
+  }
+
+  /**
+   * Which chat CLIs are signed in — `agent status`, `kiro-cli whoami`, the
+   * saved Claude Code login. Each spawns the CLI, so this runs with findKeys
+   * when the picker opens, not on every redraw.
+   */
+  async function findClis() {
+    const clis = PROVIDERS.filter((p) => p.cli);
+    const status = await Promise.all(clis.map((p) => Bridge.cliStatus(p.id)));
+    cliOk.clear();
+    clis.forEach((p, i) => {
+      if (status[i]?.loggedIn) cliOk.add(p.id);
+    });
+    if (isOpen) drawChips();
+  }
+  // Known before the first opening, so the chips do not arrive one after another.
+  void findKeys();
+  void findClis();
+
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings)) {
+    for (const p of visibleProviders(State.settings, (key) => stored.has(key), (id) => cliOk.has(id))) {
       const on = p.id === State.settings.chatProvider;
       const chip = h(
         "button",
@@ -121,15 +162,22 @@ function buildPicker(onChange: () => void): Picker {
     list.append(line);
   }
 
-  function drawModels(p: ProviderDef, models: ModelInfo[]) {
+  function drawModels(p: ProviderDef, models: ModelInfo[], refused: ReadonlySet<string>) {
     clear(list);
     const current = activeModel(State.settings);
     for (const m of models) {
       const on = m.id === current;
+      // The provider lists it and answered "not found" when it was used.
+      const gone = refused.has(m.id);
       const row = h(
         "button",
-        { class: on ? "picker-model on" : "picker-model", style: `--accent:${p.accent}`, title: m.id },
+        {
+          class: `picker-model${on ? " on" : ""}${gone ? " refused" : ""}`,
+          style: `--accent:${p.accent}`,
+          title: m.id,
+        },
         h("span", { class: "picker-model-name", text: m.label }),
+        gone ? h("span", { class: "picker-flag", text: t(STRINGS.notAvailable) }) : null,
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
@@ -146,9 +194,11 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
+    const refused = new Set((await Bridge.chatRefused(p.id)) ?? []);
+    if (ticket !== request) return;
     const cached = p.urlField ? undefined : cache.get(p.id);
     if (cached) {
-      drawModels(p, cached);
+      drawModels(p, cached, refused);
       return;
     }
     // Nothing is asked of a provider that has no key yet.
@@ -156,19 +206,32 @@ function buildPicker(onChange: () => void): Picker {
       if (ticket === request) status(t(STRINGS.noKey), true);
       return;
     }
+    // A chat CLI answers the same way: nothing until it is signed in. Asked
+    // here rather than trusting findClis, so the answer is always current.
+    if (p.cli) {
+      const st = await Bridge.cliStatus(p.id);
+      if (st?.loggedIn) cliOk.add(p.id);
+      else cliOk.delete(p.id);
+      if (ticket !== request) return;
+      if (!st?.loggedIn) {
+        status(t(STRINGS.noLogin), true);
+        return;
+      }
+    }
     if (ticket !== request) return;
     status(t(STRINGS.loading));
     try {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
       if (!p.urlField) cache.set(p.id, models);
+      // `keep` may be "": Claude Code lists its own default under that id.
       const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
-      if (keep && keep !== activeModel(State.settings)) {
+      if (keep !== null && keep !== activeModel(State.settings)) {
         State.settings = withModel(State.settings, p.id, keep);
         saveSettings();
         onChange();
       }
-      drawModels(p, models);
+      drawModels(p, models, refused);
     } catch (err) {
       if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
     }
@@ -178,6 +241,8 @@ function buildPicker(onChange: () => void): Picker {
     isOpen = true;
     el.classList.add("on");
     drawChips();
+    void findKeys();
+    void findClis();
     onChange();
     void loadModels();
   }
@@ -211,7 +276,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     spellcheck: "false",
   }) as HTMLInputElement;
   const send = h("button", { class: "send-btn", title: tl(STRINGS.send) }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  const mic = h("button", { class: "mic-btn", title: tl(STRINGS.dictate), style: "display:none" }, svg(ICONS.mic, 11)) as HTMLButtonElement;
+  void Bridge.dictationSupported().then((ok) => {
+    mic.style.display = ok ? "" : "none";
+  });
+  const bar = h("div", { class: "chat-bar" }, input, mic, send);
 
   const modelDot = h("i", { class: "model-dot" });
   const modelName = h("span", { class: "model-name" });
@@ -228,6 +297,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
+    // The list needs room: the island is as tall as it can be while it is open.
+    if (State.pickingModel !== picker.isOpen) {
+      State.pickingModel = picker.isOpen;
+      onHeightChange();
+    }
   });
   body.append(chipRow, log, picker.el, modelRow, bar);
 
@@ -242,7 +316,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    // A CLI provider on its own default model has "" as the id: name the CLI.
+    modelName.textContent = activeModel(State.settings) || (p.cli ? t(p.name) : t(STRINGS.noModel));
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -278,18 +353,29 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
-    const file = State.droppedFile;
+    const pc = State.promptContext;
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+      State.chatHistory.length === 1 && pc
+        ? pc.kind === "window"
+          ? { kind: "window", appName: pc.appName, title: pc.title, url: pc.url }
+          : pc.path
+            ? { kind: "file", name: pc.name, path: pc.path }
+            : null
+        : null;
 
     try {
       const reply = await Bridge.chatSend(query, context);
+      if (context) State.promptContext = null; // consumed: rides the first turn only
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
       State.noteMessage = String(err).replace(/^Error:\s*/, "");
+      // What the error asks for (another model, a key) is done from the chat:
+      // the note's OK button comes back here.
+      State.noteThen = "prompt";
+      State.noteAt = performance.now();
       State.view = "note";
       Sound.play("error");
     } finally {
@@ -316,11 +402,64 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     e.stopPropagation(); // Escape closes the island, not the chat
   });
 
+  // Dictation — one tap starts the session, the next commits what was heard;
+  // each finished phrase lands at the caret, like the Mac's prefix+transcript.
+  let listening = false;
+  function drawMic() {
+    mic.classList.toggle("listening", listening);
+    mic.title = listening ? t(STRINGS.listening) : t(STRINGS.dictate);
+    mic.disabled = sending;
+  }
+  mic.addEventListener("click", () => {
+    if (listening) {
+      listening = false;
+      drawMic();
+      void Bridge.dictationStop();
+      return;
+    }
+    void Bridge.dictationStart()
+      .then(() => {
+        listening = true;
+        drawMic();
+        input.focus();
+      })
+      .catch(() => {
+        State.noteMessage = t(STRINGS.noSpeech);
+        State.view = "note";
+        Sound.play("error");
+        State.notify();
+      });
+  });
+  void onEvent<{ text: string }>("dictation-line", (e) => {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const piece = (start > 0 && !/\s$/.test(input.value.slice(0, start)) ? " " : "") + e.text + " ";
+    input.setRangeText(piece, start, end, "end");
+  });
+  void onEvent<null>("dictation-end", () => {
+    listening = false;
+    drawMic();
+  });
+  void onEvent<{ code: string }>("dictation-error", (e) => {
+    const msg =
+      e.code === "mic"
+        ? t(STRINGS.noMic)
+        : e.code === "net"
+          ? t(STRINGS.noSpeechNet)
+          : e.code === "language"
+            ? t(STRINGS.noSpeechLang)
+            : t(STRINGS.noSpeech);
+    State.noteMessage = msg;
+    State.view = "note";
+    Sound.play("error");
+    State.notify();
+  });
+
   return {
     el,
     sync() {
-      const file = State.droppedFile;
-      const wantChip = file?.name ?? "";
+      const pc = State.promptContext;
+      const wantChip = pc ? (pc.kind === "window" ? pc.appName : pc.name) : "";
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
@@ -341,8 +480,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      input.placeholder = listening
+        ? t(STRINGS.listening)
+        : t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
       input.disabled = sending;
+      mic.disabled = sending;
     },
     focus() {
       input.focus();

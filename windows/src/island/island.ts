@@ -3,6 +3,7 @@
 
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { wipe } from "../core/canvas";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -22,7 +23,8 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
-import { IslandStateMachine } from "./fsm";
+import { IslandStateMachine, type FsmState } from "./fsm";
+import { settleApproval } from "./approvals";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
@@ -34,6 +36,13 @@ const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 const BOT_SIDE = 24;
 /** Same margin as the Rust hit test (src-tauri/src/island.rs). */
 const HIT_MARGIN = 14;
+/** Frame pacing while only the working dots move: enough for the pulse to read as one. */
+const PULSE_FRAME_MS = 1000 / 15;
+/**
+ * The least time between two frames while only looping motion is left. Just
+ * under three frames at 90 Hz and two at 60, so both land on 30 a second.
+ */
+const CALM_FRAME_MS = 30;
 
 /** The three views the drop sequence owns; leaving them stops the engine. */
 const UPLOAD_VIEWS: ReadonlySet<IslandViewName> = new Set(["upload", "uploading", "choose"]);
@@ -58,6 +67,8 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  private clock!: HTMLElement;
+  private clockTimer: number | null = null;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -84,6 +95,9 @@ export class Island {
   // Rust starts the window at full size so the launch greeting has room.
   private collapsed = false;
   private collapseTimer: number | null = null;
+  private blinkTimer: number | null = null;
+  /** Only looping motion is left, so frames are paced (see `frame`). */
+  private calm = false;
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
@@ -97,6 +111,8 @@ export class Island {
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
+  /** A view other than the chat has the keyboard for its text field. */
+  private fieldKeyboard = false;
 
   /** The launch greeting ended, or the island came out of hidden — two of the
    *  moments the Monday recap may open (see src/recap/recap.ts). */
@@ -113,12 +129,19 @@ export class Island {
   private uploadTens = 0;
   private uploadDone = false;
 
+  /** Where the island was when a file drag first reached it, to go back on a cancel. */
+  private dragOrigin: { state: FsmState; view: IslandViewName } | null = null;
+  /** Left button, as reported by the Rust cursor poll. */
+  private mouseDown = false;
+  private abandonTimer: number | null = null;
+
   constructor(root: HTMLElement) {
     this.root = root;
     this.desktop = new DesktopLink({
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
+      attachContext: () => this.expand("prompt"),
     });
     this.build();
     this.wireFsm();
@@ -134,11 +157,12 @@ export class Island {
     });
   }
 
-  /** The request has its answer: the card goes and the session carries on. */
-  private closeApproval() {
-    State.endApproval();
-    this.fsm.pinned = false;
-    this.setView(State.defaultView());
+  /** The request has its answer: the card goes and the session carries on —
+   * unless another request was waiting in line, which takes the card instead.
+   * The phone companion calls this for its remote decisions. */
+  closeApproval() {
+    settleApproval(this);
+    this.fsm.pinned = State.isPinned;
   }
 
   /**
@@ -174,6 +198,7 @@ export class Island {
         // Sessions from the Claude desktop app live there, not in a terminal.
         if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
+        this.collapse();
       },
       // The ↗ button — same targets as openAgentTarget() on macOS.
       openTarget: () => {
@@ -187,15 +212,25 @@ export class Island {
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };
-        if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
-        else if (task.id === "integration_claude" || task.sessionId) {
-          void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
+        if (task.id === CLAUDE_DESKTOP_ID || task.id === "integration_claude" || task.sessionId) {
+          if (task.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
+          else void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
+          this.collapse();
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
+      },
+      // The mail sheet's send ending — sent or draft handed to the mail app:
+      // the Mac's wink, the send chime, the note, then back to the usual view.
+      mailDone: (note) => {
+        Sound.play("send");
+        this.engine.triggerEmote("wink");
+        State.noteMessage = note;
+        this.setView("note");
+        window.setTimeout(() => this.setView(State.defaultView()), 2400);
       },
       decide: (d) => {
         const req = State.pendingApproval;
@@ -205,11 +240,11 @@ export class Island {
         void Bridge.approvalDecision(req.requestId, d);
         this.closeApproval();
       },
-      answer: (answers) => {
+      answer: (answers, other) => {
         const req = State.pendingApproval;
         if (!req) return;
         Sound.play("approve");
-        void Bridge.approvalAnswer(req.requestId, answers);
+        void Bridge.approvalAnswer(req.requestId, answers, other);
         this.closeApproval();
       },
       answerInTerminal: () => {
@@ -259,9 +294,11 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.clock = h("div", { id: "clock" });
 
     this.header = buildHeader(actions);
-    this.views = buildViews(actions, () => this.animateGeometry(false));
+    // The chat grows with its conversation, and grows and shrinks with its model picker.
+    this.views = buildViews(actions, () => this.animateGeometry(this.targetSize().h < this.height.value));
     this.viewsEl = h("div", { id: "views" });
     for (const v of this.views.values()) this.viewsEl.append(v.el);
     this.contentEl = h("div", { id: "content" }, this.header.el, this.viewsEl);
@@ -293,6 +330,7 @@ export class Island {
       this.botCanvas,
       this.miniGrid,
       this.countdown,
+      this.clock,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -446,7 +484,21 @@ export class Island {
     // The greeting and the drop sequence draw a Mochi of their own.
     if (State.mode === "expanded" && (State.view === "greeting" || this.uploadActive)) return;
     if (State.mode === "expanded" && State.view === "wardrobe") this.setView(State.defaultView());
-    else this.setView("wardrobe");
+    else {
+      this.focusDressedPill();
+      this.setView("wardrobe");
+    }
+  }
+
+  /**
+   * The wardrobe dresses the main Mochi and no other. Opened on another pill it
+   * used to show that pill's Mochi in the outfit, which then jumped to the main
+   * one on the way out: the main pill is selected first, so the Mochi being
+   * dressed is the one that keeps the clothes.
+   */
+  private focusDressedPill() {
+    const main = State.mainPillId;
+    if (State.focusId !== main && State.tasks.some((t) => t.id === main)) State.setFocus(main);
   }
 
   /**
@@ -468,6 +520,7 @@ export class Island {
       return;
     }
     if (State.paused) return;
+    this.focusDressedPill();
     this.alert("wardrobe");
   }
 
@@ -532,24 +585,36 @@ export class Island {
       case "enter":
       case "over": {
         if (State.fileDragOver) return;
+        this.cancelAbandon();
+        // A drag is a held button, even if the poll hasn't reported it yet.
+        this.mouseDown = true;
+        this.dragOrigin ??= { state: this.fsm.state, view: State.view };
         State.fileDragOver = true;
         this.engine.animateMorph(1);
         // enterZone must run before the island expands, so the sequence is
         // already active by the time the view becomes `upload`.
         UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         this.alert("upload");
+        // Waking a hidden island passes through the home view, and leaving the
+        // drop views on the way switches the sequence off: switch it back on.
+        if (!UploadSeq.isActive) UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
         break;
       }
       case "leave": {
         if (!State.fileDragOver) return;
         State.fileDragOver = false;
         this.engine.animateMorph(0);
-        // The island deliberately stays open: the drag session is still alive.
+        // The island stays open while the drag session is alive — the file may
+        // come back. Once the button is up the drag is over, and waiting out
+        // the auto-close (up to 30 s) for a file that went elsewhere is no good.
         UploadSeq.exitZone();
+        if (!this.mouseDown) this.scheduleAbandon();
         State.notify();
         break;
       }
       case "drop": {
+        this.cancelAbandon();
+        this.dragOrigin = null;
         State.fileDragOver = false;
         const path = e.paths?.[0];
         if (!path) {
@@ -560,6 +625,52 @@ export class Island {
         this.swallow(path);
         break;
       }
+    }
+  }
+
+  /** Left button pressed or released anywhere (Rust cursor poll). */
+  onMouseButton(down: boolean) {
+    this.mouseDown = down;
+    if (down) this.cancelAbandon();
+    else if (this.dragOrigin && !State.fileDragOver) this.scheduleAbandon();
+  }
+
+  /**
+   * The file went elsewhere (or the drag was cancelled). A short grace lets a
+   * late `drop` win, then the island goes back to where it was before the drag.
+   */
+  private scheduleAbandon() {
+    this.cancelAbandon();
+    this.abandonTimer = window.setTimeout(() => {
+      this.abandonTimer = null;
+      this.abandonDrag();
+    }, 250);
+  }
+
+  private cancelAbandon() {
+    if (this.abandonTimer != null) window.clearTimeout(this.abandonTimer);
+    this.abandonTimer = null;
+  }
+
+  private abandonDrag() {
+    const origin = this.dragOrigin;
+    this.dragOrigin = null;
+    if (!origin || this.mouseDown || State.fileDragOver || UploadSeq.dropped) return;
+    // The user moved on to something else in the meantime: leave it alone.
+    if (State.mode !== "expanded" || State.view !== "upload") return;
+    void Bridge.log(`drag abandoned, back to ${origin.state}/${origin.view}`);
+    UploadSeq.deactivate();
+    switch (origin.state) {
+      case "hidden":
+        // Still under the cursor (an Escape over the island): stay reachable.
+        if (this.wasInIsland) this.collapse();
+        else this.fsm.forceHidden();
+        break;
+      case "home":
+        this.setView(origin.view);
+        break;
+      default:
+        this.collapse();
     }
   }
 
@@ -600,6 +711,9 @@ export class Island {
         if (State.droppedFile?.path !== path) return;
         UploadSeq.deactivate();
         State.noteMessage = String(err).replace(/^Error:\s*/, "");
+        // This note leaves on its own, below: no OK button for it.
+        State.noteThen = null;
+        State.noteAt = performance.now();
         this.engine.animateMorph(0);
         this.setView("note");
         Sound.play("error");
@@ -644,7 +758,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, State.pickingModel);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -673,7 +787,13 @@ export class Island {
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Centred on a whole pixel of the screen. `translateX(-50%)` put the island
+    // on a fraction of one for as long as its width was animating, and whatever
+    // was painted then in a layer of its own — a scrolling list, say — kept
+    // that fraction once the island had settled: its text stayed smeared until
+    // it was drawn again.
+    const dpr = window.devicePixelRatio || 1;
+    this.islandEl.style.transform = `translateX(${-Math.round((w / 2) * dpr) / dpr}px)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -941,12 +1061,39 @@ export class Island {
 
   ensureRunning() {
     if (this.running) return;
+    if (this.blinkTimer != null) {
+      window.clearTimeout(this.blinkTimer);
+      this.blinkTimer = null;
+    }
     this.running = true;
     this.lastFrame = performance.now();
     requestAnimationFrame(this.frame);
   }
 
+  /**
+   * The loop has stopped with Mochi still on screen: come back for his next
+   * blink, which only a frame can start. A hidden island schedules nothing.
+   */
+  private wakeForBlink() {
+    if (State.mode === "hidden") return;
+    const wait = this.engine.msUntilBlink();
+    if (wait === null) return;
+    this.blinkTimer = window.setTimeout(() => {
+      this.blinkTimer = null;
+      if (State.mode !== "hidden") this.ensureRunning();
+    }, Math.max(100, wait));
+  }
+
   private frame = (nowMs: number) => {
+    // Breathing and bouncing read the same at 30 frames a second as at the
+    // display's 90 or 120, and they are all the island does most of its life.
+    if (
+      this.calm && !this.dirty && !this.width.animating && !this.height.animating &&
+      !this.radius.animating && nowMs - this.lastFrame < CALM_FRAME_MS
+    ) {
+      requestAnimationFrame(this.frame);
+      return;
+    }
     const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
     this.lastFrame = nowMs;
 
@@ -1004,11 +1151,30 @@ export class Island {
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
 
-    if (busy) {
-      requestAnimationFrame(this.frame);
-    } else {
+    // Calm: nothing left but the loops. Anything on its way somewhere — the
+    // island changing shape, eyes following the pointer, a tween, a ticker —
+    // gets every frame back at once.
+    this.calm = busy && !settling &&
+      this.botCx.settled && this.botCy.settled && this.botSize.settled &&
+      !greetingActive && !UploadSeq.isActive && !viewAnimating &&
+      !this.engine.moving;
+
+    if (!busy) {
       this.running = false;
       Sound.idle();
+      this.wakeForBlink();
+    } else if (
+      this.engine.onlyPulsing && State.mode !== "hidden" && !settling && !greetingActive &&
+      this.botCx.settled && this.botCy.settled && this.botSize.settled &&
+      !UploadSeq.isActive && !viewAnimating
+    ) {
+      // Only the working dots are moving. A pulse that small does not need the
+      // display's own rate — eight times this on a 120 Hz panel — and no sound
+      // goes with it, so the audio thread can rest as it does when the loop stops.
+      Sound.idle();
+      window.setTimeout(() => requestAnimationFrame(this.frame), PULSE_FRAME_MS);
+    } else {
+      requestAnimationFrame(this.frame);
     }
   };
 
@@ -1099,7 +1265,7 @@ export class Island {
 
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
-    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    wipe(ctx);
     ctx.save();
     this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);
@@ -1140,6 +1306,8 @@ export class Island {
 
     const live = expanded && !greetingActive;
     this.contentEl.style.opacity = live ? "1" : "0";
+    // Lets the stylesheet pause what nobody can see (see `#content:not(.live)`).
+    this.contentEl.classList.toggle("live", live);
     // While the drop sequence owns the body its buttons are painted on the canvas
     // underneath, so only the header may keep taking clicks up here.
     this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
@@ -1159,20 +1327,36 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
+    // A question's "Other…" field takes the keyboard the same way while it is
+    // open, and gives it back once it is sent, left, or the card goes. Released
+    // before the field views grab it, so a card closing onto the chat or the
+    // mail sheet does not undo their take.
+    const field =
+      State.mode === "expanded" &&
+      State.view !== "prompt" &&
+      (this.views.get(State.view)?.wantsKeyboard?.() ?? false);
+    if (field !== this.fieldKeyboard) {
+      this.fieldKeyboard = field;
+      void Bridge.focusWindow(field);
+      if (field) window.setTimeout(() => this.views.get(State.view)?.focus?.(), 120);
+    }
+
+    // The chat and the mail sheet are the only views with text fields, so they
+    // are the only times the island is allowed to take keyboard focus.
     if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
-      this.lastSyncedView = State.view;
-      if (State.view === "prompt") {
+      const wasField = this.lastSyncedView === "prompt" || this.lastSyncedView === "mail";
+      const active = State.view;
+      this.lastSyncedView = active;
+      if (active === "prompt" || active === "mail") {
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
-      } else if (wasChat) {
+        window.setTimeout(() => this.views.get(active)?.focus?.(), 120);
+      } else if (wasField) {
         void Bridge.focusWindow(false);
       }
     }
-
     // Compact mini grid
+    this.syncClock();
+
     const showGrid = State.mode === "compact";
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
@@ -1192,11 +1376,37 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
+  /** Time and date in the compact island, refreshed only while it is shown. */
+  private syncClock() {
+    const on = State.settings.showClock && State.mode === "compact";
+    this.clock.style.opacity = on ? "1" : "0";
+    if (on && this.clockTimer == null) {
+      const tick = () => {
+        const now = new Date();
+        const time = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+        const date = now.toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+        this.clock.textContent = `${time}  ·  ${date}`;
+      };
+      tick();
+      // Re-arm on the minute boundary, then every minute: cheap and never late.
+      const toNextMinute = 60_000 - (Date.now() % 60_000) + 50;
+      this.clockTimer = window.setTimeout(() => {
+        tick();
+        this.clockTimer = window.setInterval(tick, 60_000);
+      }, toNextMinute);
+    } else if (!on && this.clockTimer != null) {
+      window.clearTimeout(this.clockTimer);
+      window.clearInterval(this.clockTimer);
+      this.clockTimer = null;
+    }
+  }
+
   /** Applies settings coming from Rust at boot. */
   applySettings() {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.setKeepPetit(State.settings.showClock, this.wasInIsland);
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
   }

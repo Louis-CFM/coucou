@@ -8,6 +8,7 @@ import { Island } from "./island/island";
 import { registerHookHandlers } from "./island/hooks";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
+import { wirePhone } from "./core/phone";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
@@ -43,6 +44,7 @@ async function main() {
   await island.desktop.init();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent<boolean>("mouse-button", (down) => island.onMouseButton(down));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
@@ -99,6 +101,7 @@ async function main() {
 
   registerHookHandlers(island);
   registerIntegrationHandlers(island);
+  wirePhone(island);
   registerShortcutHandlers(island, () => setPaused(false));
   registerSpotifyHandlers(island);
   // Rust may have read Spotify before this page listened: ask once.
@@ -111,6 +114,17 @@ async function main() {
   island.onGreetingDone = checkRecap;
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
+
+  // Resume from sleep: timers freeze with the machine, so a jump in wall-clock
+  // between ticks means the box slept (the Mac's NSWorkspace.didWake). One
+  // timestamp a minute; Recap.check self-gates, so a late background tick only
+  // costs a prefs lookup.
+  let lastTick = Date.now();
+  setInterval(() => {
+    const now = Date.now();
+    if (now - lastTick > 5 * 60_000) checkRecap();
+    lastTick = now;
+  }, 60_000);
 
   island.launch();
 

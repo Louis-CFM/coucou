@@ -4,7 +4,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CUSTOM_SERVER_KEY, providerDef, urlExposure, type ProviderId } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -399,6 +399,123 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Android companion section ────────────────────────────────────────────────
+
+/**
+ * Approve permissions and answer questions from an Android phone. The PC and
+ * the phone meet in a private "box" on a relay the user deploys (see
+ * android/README.md) — nothing is shared with any third party but the user's
+ * own worker, and the pairing secret lives in the keychain.
+ */
+function phoneSection(): HTMLElement {
+  const section = h("section", {}, h("h2", {}, h("span", { text: t("Android phone") })), h("div", {}));
+  const body = section.lastElementChild as HTMLElement;
+  let pairing: { code: string; qrSvg: string } | null = null;
+
+  async function draw() {
+    clear(body);
+    const st = (await Bridge.phoneStatus()) ?? {
+      enabled: false, paired: false, device: "", worker: "", pcId: "",
+    };
+    if (!st.paired && pairing) {
+      // The code is on screen and the phone hasn't claimed the box yet.
+      const qr = new DOMParser()
+        .parseFromString(pairing.qrSvg, "image/svg+xml")
+        .documentElement as unknown as SVGElement;
+      qr.setAttribute("width", "168");
+      qr.setAttribute("height", "168");
+      (qr as unknown as HTMLElement).style.cssText =
+        "background:#fff;border-radius:10px;padding:10px";
+      const code = h("input", {
+        type: "text",
+        value: pairing.code,
+        readonly: true,
+        style: "width:100%;font-family:monospace;font-size:10px",
+        onclick: (e) => (e.currentTarget as HTMLInputElement).select(),
+      });
+      body.append(
+        h("div", {
+          class: "hint",
+          text: t("Scan this with the Coucou app on your Android phone, or paste the code there."),
+        }),
+        h("div", { class: "row", style: "justify-content:center" }, qr as unknown as Node),
+        h("div", { class: "row" }, code),
+        h("div", { class: "hint", text: t("Waiting for the phone…") }),
+      );
+      return;
+    }
+    if (st.paired) {
+      body.append(
+        h("div", {
+          class: "hint",
+          text: t("Approvals, questions and chat reach {device} through your relay.", {
+            device: st.device || "Android",
+          }),
+        }),
+        h("div", { class: "row" },
+          h("label", { text: t("Phone") }),
+          statusDot(true),
+          h("span", { class: "hint", text: st.device || "Android" }),
+        ),
+        h("div", { class: "row" },
+          h("label", { text: t("Control from the phone") }),
+          toggle(st.enabled, (on) => void Bridge.phoneEnable(on)),
+        ),
+        h("div", { class: "row" },
+          h("label", { text: "" }),
+          h("button", {
+            class: "danger",
+            text: t("Unpair phone"),
+            onclick: () => void Bridge.phoneUnpair().then(draw),
+          }),
+        ),
+      );
+      return;
+    }
+    const worker = h("input", {
+      type: "text",
+      value: st.worker,
+      placeholder: "https://coucou-relay.you.workers.dev",
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const feedback = h("div", {});
+    body.append(
+      h("div", {
+        class: "hint",
+        text: t("Approve permissions, answer questions and chat from your Android phone. The phone and Coucou meet in a private mailbox on a relay you deploy yourself — free on Cloudflare's free tier (android/README.md)."),
+      }),
+      h("div", { class: "row" }, h("label", { text: t("Relay address") }), worker),
+      h("div", { class: "row" },
+        h("label", { text: "" }),
+        h("button", {
+          class: "primary",
+          text: t("Pair phone…"),
+          onclick: async () => {
+            clear(feedback);
+            try {
+              pairing = await Bridge.phonePair(worker.value.trim());
+              if (pairing) await draw();
+            } catch (err) {
+              feedback.append(
+                h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+              );
+            }
+          },
+        }),
+      ),
+      feedback,
+    );
+  }
+
+  draw();
+  void onEvent("phone-paired", () => {
+    pairing = null;
+    void draw();
+  });
+  return section;
+}
+
 // ── Active pills section ──────────────────────────────────────────────────────
 
 /**
@@ -742,6 +859,118 @@ function localSection(customKey: boolean): HTMLElement {
   return section;
 }
 
+// ── Chat through your CLIs section ───────────────────────────────────────────
+
+const CLI_STRINGS = {
+  get title() { return t("On your plan"); },
+  get hint() { return t("Chat through the tools you already pay for: Claude Code, Cursor's agent, Devin, ChatGPT and Kiro answer on your subscription — no API key. Once signed in, pick them above the chat box."); },
+  get checking() { return t("Checking…"); },
+  get notInstalled() { return t("Not installed"); },
+  get notSignedIn() { return t("Not signed in"); },
+  get signIn() { return t("Sign in…"); },
+  get browser() { return t("Finish the sign-in in your browser…"); },
+  terminal: (cmd: string) => t("Run `{cmd}` in a terminal to sign in.", { cmd }),
+};
+
+/** A chat CLI the user already pays for: its status is asked once the section draws. */
+function cliSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: CLI_STRINGS.title })),
+    h("div", { class: "hint", text: CLI_STRINGS.hint }),
+    body,
+  );
+
+  /** The terminal command each CLI's sign-in lives behind, when a button can't open it. */
+  const loginCmd: Partial<Record<ProviderId, string>> = {
+    "claude-cli": "claude",
+    devin: "devin auth login",
+    codex: "codex login",
+    kiro: "kiro-cli login",
+  };
+  /** The binary behind each row, so "ChatGPT" next to `codex login` makes sense. */
+  const cliBin: Partial<Record<ProviderId, string>> = {
+    "claude-cli": "claude",
+    cursor: "agent",
+    devin: "devin",
+    codex: "codex",
+    kiro: "kiro-cli",
+  };
+
+  for (const id of ["claude-cli", "cursor", "devin", "codex", "kiro"] as const) {
+    const p = providerDef(id);
+    const dotEl = statusDot(false);
+    const state = h("span", { class: "hint", text: CLI_STRINGS.checking });
+    const actions = h("span", { style: "display:inline-flex;gap:8px" });
+    body.append(h("div", { class: "row" },
+      h("label", {},
+        h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+        h("span", { text: t(p.name) }),
+        h("span", { class: "hint", text: ` (${cliBin[id]})` }),
+      ),
+      state, actions, dotEl,
+    ));
+
+    const refresh = async () => {
+      const st = await Bridge.cliStatus(id);
+      if (st === null) return;
+      clear(actions);
+      dotEl.style.background = st.loggedIn ? "#22c55e" : st.cli ? "#f5a524" : "#f4505e";
+      if (!st.cli) {
+        state.textContent = CLI_STRINGS.notInstalled;
+        return;
+      }
+      if (st.loggedIn) {
+        state.textContent = st.status;
+        const inUse = settings.chatProvider === id;
+        actions.append(h("button", {
+          class: inUse ? "" : "primary",
+          text: inUse ? CHAT_STRINGS.inUse : CHAT_STRINGS.useInChat,
+          disabled: inUse,
+          onclick: () => {
+            settings.chatProvider = id;
+            void save().then(refresh);
+          },
+        }));
+        return;
+      }
+      const cmd = loginCmd[id];
+      state.textContent = cmd
+        ? CLI_STRINGS.terminal(cmd)
+        : st.status || CLI_STRINGS.notSignedIn;
+      if (id === "cursor") {
+        // `agent login` opens the browser; the row watches for it to finish.
+        actions.append(h("button", {
+          class: "primary",
+          text: CLI_STRINGS.signIn,
+          onclick: async (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.disabled = true;
+            try {
+              await Bridge.cliLogin(id);
+            } catch {
+              btn.disabled = false;
+              return;
+            }
+            state.textContent = CLI_STRINGS.browser;
+            for (let i = 0; i < 30; i++) {
+              await new Promise((r) => window.setTimeout(r, 3000));
+              const next = await Bridge.cliStatus(id);
+              if (next?.loggedIn) { void refresh(); return; }
+            }
+            btn.disabled = false;
+            state.textContent = CLI_STRINGS.notSignedIn;
+          },
+        }));
+      }
+    };
+    void refresh();
+  }
+  return section;
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -768,7 +997,11 @@ const INTEGRATIONS: IntegrationDef[] = [
       { key: "n8n-api-key", label: N_("API key"), placeholder: "…", secret: true },
     ] },
   { id: "integration_resend", name: "Resend", color: "#22C55E",
-    fields: [{ key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true }] },
+    fields: [
+      { key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true },
+      // The sender shown on outgoing mail — the Mac's Keychain `resend-from`.
+      { key: "resend-from", label: N_("From address"), placeholder: "you@yourdomain.com", secret: true },
+    ] },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C",
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
@@ -907,6 +1140,16 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const editor = h("input", {
+    type: "text",
+    placeholder: "code (or $VISUAL / $EDITOR)",
+    value: settings.editor ?? "",
+  }) as HTMLInputElement;
+  editor.addEventListener("change", () => {
+    settings.editor = editor.value.trim() || null;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -953,6 +1196,16 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Auto-close") }),
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Editor command") }),
+      editor,
+      h("span", { class: "hint", text: "e.g. cursor, zed, code" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Clock") }),
+      toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
+      h("span", { class: "hint", text: t("time and date in the island while it rests") }),
     ),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
@@ -1326,7 +1579,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "resend-from", "notion-api-key", "calcom-api-key",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -1365,6 +1618,8 @@ async function render() {
     apiSection(hasKey),
     chatProvidersSection(chatKeys, keyChanged),
     localSection(customKey),
+    cliSection(),
+    phoneSection(),
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),

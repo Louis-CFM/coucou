@@ -136,5 +136,18 @@ export function installFakeDom() {
     createTextNode: (text) => new FakeText(text),
     body: new FakeElement("body"),
   };
+  // Window-level listeners (window === globalThis under the tests): a plain
+  // registry, since a bare Node global is no EventTarget.
+  const listeners = new Map();
+  globalThis.addEventListener = (type, fn) => {
+    listeners.set(type, [...(listeners.get(type) ?? []), fn]);
+  };
+  globalThis.removeEventListener = (type, fn) => {
+    listeners.set(type, (listeners.get(type) ?? []).filter((f) => f !== fn));
+  };
+  globalThis.dispatchEvent = (event) => {
+    for (const fn of listeners.get(event.type) ?? []) fn(event);
+    return true;
+  };
   return { root: () => new FakeElement("div") };
 }

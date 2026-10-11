@@ -97,6 +97,11 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// The agent sent `"coucou_approval": true` on a PermissionRequest: it
+    /// opted into a blocking Allow / Deny card, and its answer comes back as
+    /// `permissionDecision` (docs/AGENTS.md). Off by default, so agents that
+    /// do not expect a blocking answer keep re-asking in their own terminal.
+    opted_in: bool,
 }
 
 fn main() {
@@ -118,8 +123,10 @@ fn main() {
     };
 
     // Only an agent whose decisions the island can give waits for one; any other
-    // would be held for nothing, its decision being thrown away (reply.rs).
-    let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
+    // would be held for nothing, its decision being thrown away (reply.rs). A
+    // third-party agent that sent "coucou_approval": true asked for the wait.
+    let opt_in = event.name == "PermissionRequest" && event.opted_in && !reply::takes_decisions(&args.agent);
+    let waits_for_answer = event.name == "PermissionRequest" && (reply::takes_decisions(&args.agent) || opt_in);
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
@@ -133,7 +140,11 @@ fn main() {
     });
 
     let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    if opt_in {
+        print(reply::opt_in(decision.as_deref()));
+    } else {
+        print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    }
     std::process::exit(0);
 }
 
@@ -193,13 +204,16 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .then(|| map.get("tool_input").cloned())
         .flatten();
 
+    // The opt-in is read here and left in the payload: the island needs it too.
+    let opted_in = map.get("coucou_approval").and_then(Value::as_bool).unwrap_or(false);
+
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
     truncate_payload(&mut payload, &name);
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, opted_in })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -404,6 +418,25 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn coucou_approval_is_read_and_left_in_the_line() {
+        let (v, ev) = run(
+            r#"{"hook_event_name":"PermissionRequest","coucou_approval":true,"tool_name":"Bash"}"#,
+            "my-tool",
+            "PermissionRequest",
+        );
+        assert!(ev.opted_in);
+        assert_eq!(v["coucou_approval"], true);
+        // Anything but a real true is not an opt-in.
+        for raw in [
+            r#"{"hook_event_name":"PermissionRequest"}"#,
+            r#"{"hook_event_name":"PermissionRequest","coucou_approval":false}"#,
+            r#"{"hook_event_name":"PermissionRequest","coucou_approval":"yes"}"#,
+        ] {
+            assert!(!run(raw, "my-tool", "PermissionRequest").1.opted_in, "{raw}");
+        }
     }
 
     #[test]

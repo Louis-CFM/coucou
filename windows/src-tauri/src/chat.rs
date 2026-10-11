@@ -6,6 +6,7 @@
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -13,9 +14,18 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{
+    claude, claude_cli, codex_chat, cursor_chat, devin_chat, kiro_chat, local_chat, openai_compat,
+    secrets,
+};
 
 pub const ANTHROPIC: &str = "anthropic";
+/// Chat through the user's own CLI sign-ins instead of an API key.
+pub const CLAUDE_CLI: &str = "claude-cli";
+pub const CODEX: &str = "codex";
+pub const CURSOR: &str = "cursor";
+pub const DEVIN: &str = "devin";
+pub const KIRO: &str = "kiro";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -48,7 +58,17 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// (provider, model) pairs a provider answered "not found" for, oldest
+    /// first. Its own list offers them, this key cannot use them, and nothing
+    /// says so before trying: the picker marks them (`refused_models`) until
+    /// they answer again.
+    refused: Mutex<Vec<(String, String)>>,
+    /// Where `refused` is kept between launches. `None` keeps it in memory only.
+    store: Option<PathBuf>,
 }
+
+/// The most refused models that are remembered; past that the oldest go.
+const MAX_REFUSED: usize = 200;
 
 #[derive(Default)]
 struct Conversation {
@@ -59,6 +79,11 @@ struct Conversation {
     native: Vec<Value>,
     /// `{"role", "content": text}` turns, the same whoever answered.
     plain: Vec<Value>,
+    /// The resume token of each CLI provider that keeps the conversation in
+    /// its own binary (`agent --resume <id>`, `claude --resume <id>`; Kiro's is
+    /// the folder's latest, so the value is only a "started" marker). A
+    /// provider switching away keeps its own — it resumes where it left off.
+    cli_sessions: std::collections::HashMap<String, String>,
 }
 
 /// What a provider needs to build one turn.
@@ -72,6 +97,62 @@ pub struct Turn {
 }
 
 impl Chat {
+    /// The running app's chat: what its providers refused is read from
+    /// `refused-models.json`, next to the log, and written back as it changes.
+    /// Only model names are in it, and it never leaves the machine.
+    pub fn stored() -> Self {
+        Self::stored_at(crate::settings::local_dir().join("refused-models.json"))
+    }
+
+    fn stored_at(path: PathBuf) -> Self {
+        // A file that is missing or cannot be used means nothing was refused.
+        let mut refused: Vec<(String, String)> = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+        let extra = refused.len().saturating_sub(MAX_REFUSED);
+        refused.drain(..extra);
+        Self { refused: Mutex::new(refused), store: Some(path), ..Default::default() }
+    }
+
+    /// Writes `refused` where it is kept. Failing to only costs the memory of it.
+    fn keep(&self, refused: &[(String, String)]) {
+        let Some(path) = &self.store else { return };
+        let dir_ready = path.parent().is_none_or(|dir| crate::platform::ensure_private_dir(dir).is_ok());
+        if let (true, Ok(json)) = (dir_ready, serde_json::to_vec(refused)) {
+            let _ = std::fs::write(path, json);
+        }
+    }
+
+    /// `provider` listed `model`, then answered that it has no such model.
+    pub fn refuse(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock().unwrap();
+        if refused.iter().any(|(p, m)| p == provider && m == model) {
+            return;
+        }
+        refused.push((provider.to_string(), model.to_string()));
+        let extra = refused.len().saturating_sub(MAX_REFUSED);
+        refused.drain(..extra);
+        self.keep(&refused);
+    }
+
+    /// `model` answered: what was held against it no longer is. Called for
+    /// every answer, so the file is only touched when a mark really goes.
+    pub fn accept(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock().unwrap();
+        let before = refused.len();
+        refused.retain(|(p, m)| !(p == provider && m == model));
+        if refused.len() != before {
+            self.keep(&refused);
+        }
+    }
+
+    /// The models of `provider` the picker marks as not available.
+    pub fn refused_models(&self, provider: &str) -> Vec<String> {
+        let refused = self.refused.lock().unwrap();
+        refused.iter().filter(|(p, _)| p == provider).map(|(_, m)| m.clone()).collect()
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -106,6 +187,22 @@ impl Chat {
         c.native.push(assistant);
         c.plain.push(json!({ "role": "user", "content": user_text }));
         c.plain.push(json!({ "role": "assistant", "content": answer }));
+    }
+
+    /// The token a CLI provider resumes with — its own conversation in its own
+    /// binary — or None until its first answer.
+    pub fn cli_session(&self, provider: &str) -> Option<String> {
+        self.inner.lock().unwrap().cli_sessions.get(provider).cloned()
+    }
+
+    /// Stores the token, guarded like commit: an answer that lands after a
+    /// reset or a switch cannot write one.
+    pub fn set_cli_session(&self, turn: &Turn, session: String) {
+        let mut c = self.inner.lock().unwrap();
+        if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
+            return;
+        }
+        c.cli_sessions.insert(turn.provider.clone(), session);
     }
 }
 
@@ -163,11 +260,19 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         let m = settings.model.trim();
         return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
     }
+    let cli_default = match provider {
+        CURSOR => Some(cursor_chat::DEFAULT_MODEL),
+        KIRO => Some(kiro_chat::DEFAULT_MODEL),
+        // An empty model means the user's own CLI setting for these.
+        CLAUDE_CLI | CODEX | DEVIN => Some(""),
+        _ => None,
+    };
     settings
         .chat_models
         .get(provider)
         .map(|m| m.trim().to_string())
-        .filter(|m| !m.is_empty())
+        .filter(|m| !m.is_empty() || matches!(provider, CLAUDE_CLI | CODEX | DEVIN))
+        .or_else(|| cli_default.map(str::to_string))
         .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
         .unwrap_or_default()
 }
@@ -190,10 +295,43 @@ fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
 
 /// True when `path` is a regular file directly inside `dir`, both resolved
 /// (no `..`, no symlink pointing out of it).
-fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
+pub(crate) fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
     let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else { return false };
     file.parent() == Some(dir.as_path())
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
+}
+
+/// One turn through a provider whose conversation lives in its own CLI —
+/// `agent -p`, `kiro-cli chat`, `claude -p`. The resume token is the only
+/// history it needs, but the shared Chat still records the plain turns so
+/// switching provider mid-conversation loses nothing. `run` answers with the
+/// reply text and the token to resume with, when the CLI gave one.
+async fn cli_send<F, Fut>(
+    chat: &Chat,
+    provider: &str,
+    query: String,
+    context: Option<ChatContext>,
+    run: F,
+) -> Result<ChatReply, String>
+where
+    F: FnOnce(Option<String>, bool, Option<ChatContext>, String) -> Fut,
+    Fut: std::future::Future<Output = Result<(String, Option<String>), String>>,
+{
+    let turn = chat.begin(provider);
+    let session = chat.cli_session(provider);
+    let (text, resumed) = run(session, turn.first, context.clone(), query.clone()).await?;
+    let plain = plain_question(turn.first, context.as_ref(), &query);
+    chat.commit(
+        &turn,
+        json!({ "role": "user", "content": plain.clone() }),
+        json!({ "role": "assistant", "content": text.clone() }),
+        &plain,
+        &text,
+    );
+    if let Some(id) = resumed {
+        chat.set_cli_session(&turn, id);
+    }
+    Ok(ChatReply { text })
 }
 
 /// One chat turn with the provider chosen in the settings.
@@ -209,6 +347,37 @@ pub async fn send(
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
+    }
+    if provider == CURSOR {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            cursor_chat::send(model.clone(), first, s, q, c)
+        })
+        .await;
+    }
+    if provider == KIRO {
+        return cli_send(chat, provider, query, context, |s, _first, c, q| {
+            // `first` is not Kiro's to know — its resume is the folder's latest.
+            kiro_chat::send(model.clone(), s.is_some(), q, c)
+        })
+        .await;
+    }
+    if provider == CLAUDE_CLI {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            claude_cli::send(model.clone(), first, s, q, c)
+        })
+        .await;
+    }
+    if provider == DEVIN {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            devin_chat::send(model.clone(), first, s, q, c)
+        })
+        .await;
+    }
+    if provider == CODEX {
+        return cli_send(chat, provider, query, context, |s, first, c, q| {
+            codex_chat::send(model.clone(), first, s, q, c)
+        })
+        .await;
     }
     if let Some(p) = openai_compat::provider(provider) {
         return openai_compat::send(chat, p, &model, query, context).await;
@@ -232,6 +401,22 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
         let key = secrets::get(p.key).ok_or_else(no_key)?;
         return openai_compat::models(p, &key).await;
     }
+    // The CLI providers ask the binary itself; no key gates it.
+    if provider == CURSOR {
+        return Ok(cursor_chat::models().await.into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == KIRO {
+        return Ok(kiro_chat::models().await.into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == CLAUDE_CLI {
+        return Ok(claude_cli::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == DEVIN {
+        return Ok(devin_chat::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == CODEX {
+        return Ok(codex_chat::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::models(&server).await;
     }
@@ -247,6 +432,99 @@ mod tests {
             .iter()
             .map(|m| (m["role"].as_str().unwrap().to_string(), m["content"].clone()))
             .collect()
+    }
+
+    #[test]
+    fn a_refused_model_is_remembered_until_it_answers() {
+        let chat = Chat::default();
+        assert!(chat.refused_models("google").is_empty());
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openai", "gpt-x");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(chat.refused_models("openai"), ["gpt-x"]);
+        // "New chat" forgets the conversation, not what the provider said of its models.
+        chat.reset();
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        // Another provider's model of the same name is its own business.
+        chat.accept("openai", "gemini-2.5-pro");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        chat.accept("google", "gemini-2.5-pro");
+        assert!(chat.refused_models("google").is_empty());
+    }
+
+    #[test]
+    fn refused_models_are_kept_between_launches_until_they_answer() {
+        let dir = std::env::temp_dir().join(format!("coucou-refused-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = dir.join("refused-models.json");
+
+        // Nothing there yet: nothing refused, and nothing written until something is.
+        let chat = Chat::stored_at(file.clone());
+        assert!(chat.refused_models("google").is_empty());
+        chat.accept("google", "gemini-3.5-flash");
+        assert!(!file.exists());
+
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openrouter", "a/b:free");
+        // The next launch still knows.
+        let next = Chat::stored_at(file.clone());
+        assert_eq!(next.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(next.refused_models("openrouter"), ["a/b:free"]);
+
+        // Once it answers, the mark is gone for good.
+        next.accept("google", "gemini-2.5-pro");
+        let later = Chat::stored_at(file.clone());
+        assert!(later.refused_models("google").is_empty());
+        assert_eq!(later.refused_models("openrouter"), ["a/b:free"]);
+
+        // A file that cannot be used reads as nothing refused, and is replaced on the next change.
+        std::fs::write(&file, b"not json").unwrap();
+        let broken = Chat::stored_at(file.clone());
+        assert!(broken.refused_models("openrouter").is_empty());
+        broken.refuse("google", "x");
+        assert_eq!(Chat::stored_at(file.clone()).refused_models("google"), ["x"]);
+
+        // Only the newest MAX_REFUSED are remembered.
+        for i in 0..MAX_REFUSED + 5 {
+            broken.refuse("openrouter", &format!("m{i}"));
+        }
+        let full = Chat::stored_at(file.clone());
+        assert_eq!(full.refused_models("openrouter").len(), MAX_REFUSED);
+        assert!(full.refused_models("google").is_empty(), "the oldest went first");
+        assert_eq!(full.refused_models("openrouter").last().unwrap(), &format!("m{}", MAX_REFUSED + 4));
+
+        // A chat without a store (the tests' own) writes nothing anywhere.
+        let _ = std::fs::remove_dir_all(&dir);
+        Chat::default().refuse("google", "y");
+        assert!(!file.exists());
+    }
+
+    #[test]
+    fn a_cli_session_is_per_provider_and_follows_the_turn_rules() {
+        let chat = Chat::default();
+        let t1 = chat.begin("cursor");
+        chat.commit(&t1, json!({"role":"user","content":"q"}), json!({"role":"assistant","content":"a"}), "q", "a");
+        chat.set_cli_session(&t1, "ses-1".into());
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // Another provider keeps its own; switching away keeps cursor's.
+        let t2 = chat.begin("kiro");
+        chat.commit(&t2, json!({"role":"user","content":"q2"}), json!({"role":"assistant","content":"a2"}), "q2", "a2");
+        chat.set_cli_session(&t2, "-".into());
+        assert_eq!(chat.cli_session("kiro").as_deref(), Some("-"));
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // A stale turn — one begun before a switch — cannot write a token back.
+        let stale = chat.begin("cursor");
+        let _other = chat.begin("kiro");
+        chat.set_cli_session(&stale, "ses-old".into());
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // "New chat" starts every provider's conversation over.
+        chat.reset();
+        assert!(chat.cli_session("cursor").is_none());
+        assert!(chat.cli_session("kiro").is_none());
     }
 
     #[test]

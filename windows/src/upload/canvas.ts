@@ -6,6 +6,7 @@
 // exactly as on macOS, because this canvas draws its own.
 
 import { State } from "../core/state";
+import { wipe } from "../core/canvas";
 import { SCRIPT_FONTS } from "../core/fonts";
 import { N_, isRtl, t } from "../i18n/i18n";
 import {
@@ -162,7 +163,7 @@ export class UploadCanvas {
     const ctx = this.ctx;
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, USC.W, USC.ISL_H);
+    wipe(ctx);
 
     this.drawScene(ctx, f, wallTime);
 

@@ -9,14 +9,16 @@ import { State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
-import { buildChoose, buildUpload, buildUploading } from "./upload";
+import { buildChoose, buildMail, buildUpload, buildUploading } from "./upload";
 import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
+import { providerDef } from "../core/providers";
 import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { renderInline } from "./markdown";
 import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
@@ -29,6 +31,8 @@ import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
+  /** Mail sent (or handed to the mail app): chime + wink + note + back. */
+  mailDone(note: string): void;
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
@@ -40,8 +44,11 @@ export interface ViewActions {
   openTarget(): void;
   openUrl(url: string): void;
   decide(d: "allow" | "deny"): void;
-  /** Answers the question Claude Code asked: question text → chosen label. */
-  answer(answers: Record<string, string | string[]>): void;
+  /**
+   * Answers the question Claude Code asked: question text → chosen label, or
+   * the words typed under "Other…" for the questions listed in `other`.
+   */
+  answer(answers: Record<string, string | string[]>, other: string[]): void;
   /** Hands the pending request back to the terminal. */
   answerInTerminal(): void;
   toggleSound(): void;
@@ -60,6 +67,8 @@ export interface ViewHost {
   sync(): void;
   /** Called when the view becomes active, for views with a text field. */
   focus?(): void;
+  /** True while the view shows a text field that needs the keyboard (the chat always does). */
+  wantsKeyboard?(): boolean;
   /** Called every frame while the view is on screen. True = needs another frame. */
   tick?(nowMs: number): boolean | void;
   /** Ctrl+O / Ctrl+E while the view is on screen (island/shortcuts.ts). */
@@ -113,6 +122,11 @@ export function buildHeader(actions: ViewActions): ViewHost {
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
+  const minimizeBtn = h(
+    "button",
+    { title: tl("Minimize"), "aria-label": tl("Minimize"), onclick: () => actions.collapse() },
+    svg(ICONS.chevronUp, 14, { stroke: 2.4 }),
+  );
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
   const claudePill = buildPlanPill(false);
   const codexPill = buildPlanPill(true);
@@ -128,7 +142,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, minimizeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -144,6 +158,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      // Hidden while an approval is pending: the card stays until it is answered.
+      minimizeBtn.style.display = State.isPinned ? "none" : "";
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
@@ -390,6 +406,8 @@ function buildOverview(actions: ViewActions): ViewHost {
       shownSelection = State.cardSelection;
 
       const others = State.otherTasks.slice(0, 4);
+      // No other pill to show: the focused card takes the whole width.
+      el.classList.toggle("solo", others.length === 0);
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
@@ -425,7 +443,7 @@ export function hasSessionTicker(task: AgentTask): boolean {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? "VS Code" : task.name;
+  const label = task.id === "integration_claude" ? pillDefinition(task.id)!.name : task.name;
   const canvas = createMiniBot(task, 24);
   const pill = h(
     "div",
@@ -479,7 +497,7 @@ function buildEmpty(actions: ViewActions): ViewHost {
       h("div", { class: "sub", text: tl("Drop a file or window, or ask me anything.") }),
     ),
     h("div", { class: "grow" }),
-    btn(tl("Ask Claude"), "primary", () => actions.setView("prompt")),
+    btn(tl("Ask"), "primary", () => actions.setView("prompt")),
   );
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
@@ -505,19 +523,37 @@ function foldButton(actions: ViewActions): HTMLElement {
 function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
+  const desc = h("div", { class: "desc" });
   const row = h("div", { class: "actions" });
   const el = h("div", { class: "view" },
-    card("amber", stack(116, 16, who, code, row), foldButton(actions)));
+    card("amber", stack(116, 16, who, code, desc, row), foldButton(actions)));
   let rowKey = "";
   // The card pops up under a cursor that was busy with something else: a click
   // meant for the window underneath must not land on Allow. Clicks in the first
   // moments after a new request appears are ignored.
   let shownFor: string | null = null;
   let shownAt = 0;
-  const guarded = (d: "allow" | "deny") => () => {
+  const decide = (d: "allow" | "deny") => {
+    if (!State.pendingApproval || State.pendingApproval.requestId !== shownFor) return;
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
+  const guarded = (d: "allow" | "deny") => () => decide(d);
+
+  // Y / N only ever reach the page while the island itself has keyboard focus —
+  // there is no global shortcut, so typing "y" in another window can never
+  // answer a permission request.
+  window.addEventListener("keydown", (e) => {
+    if (State.view !== "approval" || !State.pendingApproval) return;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target as { tagName?: string; isContentEditable?: boolean } | null;
+    if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+    const key = e.key.toLowerCase();
+    if (key !== "y" && key !== "n") return;
+    e.preventDefault();
+    decide(key === "y" ? "allow" : "deny");
+  });
+
   return {
     el,
     sync() {
@@ -527,11 +563,24 @@ function buildApproval(actions: ViewActions): ViewHost {
         shownAt = performance.now();
       }
       clear(who);
-      who.append(agentWho(State.focusTask, t("needs permission")));
+      // "needs permission", with "1 of N" (and the agent when sources differ)
+      // while more requests are queued behind the card (Mac #157).
+      const reqInfo = State.pendingApproval;
+      let label = t("needs permission");
+      if (reqInfo && (reqInfo.total ?? 1) > 1) {
+        label += ` · ${t("{position} of {total}", { position: reqInfo.position ?? 1, total: reqInfo.total ?? 1 })}`;
+        if (reqInfo.sourceLabel) label += ` · ${reqInfo.sourceLabel}`;
+      }
+      who.append(agentWho(State.focusTask, label));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
+      // Codex explains its commands (tool_input.description): what is being
+      // authorised, under the command itself.
+      const d = State.pendingApproval?.description?.trim() ?? "";
+      desc.textContent = d;
+      desc.style.display = d ? "" : "none";
       // Two buttons, built once. Rebuilding them between a mouse-down and a
       // mouse-up would swallow the click, and there is nothing left to vary:
       // "Always" is gone until the remembered-rules list exists to back it.
@@ -560,21 +609,77 @@ function buildQuestion(actions: ViewActions): ViewHost {
   let requestId = "";
   let index = 0;
   let answers: Record<string, string | string[]> = {};
+  // The questions answered in words under "Other…" rather than with a label.
+  let other = new Set<string>();
   let picked = new Set<string>();
+  // "Other…" was clicked: the row is a text field until it is sent or left.
+  let typing = false;
   // The buttons are only rebuilt when what they show changes: rebuilding them
   // between a mouse-down and a mouse-up would swallow the click.
   let rowKey = "";
+  // What 1–9 and Enter do for the question on screen (null when nothing).
+  let pick: ((n: number) => void) | null = null;
+  let confirm: (() => void) | null = null;
 
-  const next = (question: string, answer: string | string[], total: number) => {
+  const field = h("input", {
+    class: "question-input",
+    type: "text",
+    placeholder: tl("Type your answer…"),
+  });
+
+  // The keys belong to the question on screen: they go quiet until the next one
+  // is drawn, or a quick second key would answer the old one again.
+  const disarm = () => {
+    pick = null;
+    confirm = null;
+  };
+
+  const next = (question: string, answer: string | string[], total: number, free = false) => {
+    disarm();
     answers[question] = answer;
+    if (free) other.add(question);
+    else other.delete(question);
     picked = new Set();
+    typing = false;
+    field.value = "";
     index += 1;
-    if (index >= total) actions.answer(answers);
+    if (index >= total) actions.answer(answers, [...other]);
     else State.notify();
   };
 
+  // Back to the previous question, with what was picked there ticked again.
+  const back = () => {
+    if (index === 0) return;
+    disarm();
+    index -= 1;
+    const questions = State.pendingApproval?.questions;
+    const previous = questions && answers[questions[index].question];
+    picked = new Set(Array.isArray(previous) ? previous : []);
+    State.notify();
+  };
+
+  // Plain 1–9 pick an option and Enter confirms, as in the terminal. Ctrl+digit
+  // stays the pill shortcut, and keys typed in the "Other…" field are its own.
+  window.addEventListener("keydown", (e) => {
+    if (State.mode !== "expanded" || State.view !== "question" || typing) return;
+    if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+    if (/^[1-9]$/.test(e.key) && pick) {
+      e.preventDefault();
+      pick(Number(e.key) - 1);
+    } else if (e.key === "Enter" && confirm) {
+      e.preventDefault();
+      confirm();
+    }
+  });
+
   return {
     el,
+    // The island window does not take the keyboard on a click (Windows), so
+    // the "Other…" field asks for it while it is open.
+    wantsKeyboard: () => typing && !!State.pendingApproval?.questions,
+    focus: () => {
+      if (typing) field.focus();
+    },
     sync() {
       const questions = State.pendingApproval?.questions;
       clear(who);
@@ -583,6 +688,7 @@ function buildQuestion(actions: ViewActions): ViewHost {
 
       // A question that arrived as a notification has nothing to pick from.
       if (!questions) {
+        disarm();
         who.append(agentWho(State.focusTask, t("is asking a question")));
         const task = State.focusTask;
         title.textContent = (task && lastTextStep(task.steps)) ?? t("Claude needs an answer.");
@@ -598,7 +704,10 @@ function buildQuestion(actions: ViewActions): ViewHost {
         requestId = State.pendingApproval!.requestId;
         index = 0;
         answers = {};
+        other = new Set();
         picked = new Set();
+        typing = false;
+        field.value = "";
       }
       const q = questions[Math.min(index, questions.length - 1)];
       const asking = questions.length > 1
@@ -608,39 +717,83 @@ function buildQuestion(actions: ViewActions): ViewHost {
       title.textContent = q.question;
       title.title = q.question;
 
-      const key = `${requestId}:${index}:${[...picked].join("|")}`;
+      const key = `${requestId}:${index}:${typing}:${[...picked].join("|")}`;
       if (rowKey === key) return;
       rowKey = key;
       clear(row);
+      // Until the next question is drawn these handlers are still on screen: a
+      // second click or key in that frame must not answer this question again.
+      const at = index;
+      const live = (f: () => void) => () => {
+        if (index === at) f();
+      };
+      const link = (label: Msg, onclick: () => void) =>
+        h("button", { class: "link-btn", style: "color:#8e939c", text: label, onclick });
+      const toTerminal = link(tl("Answer in terminal"), () => actions.answerInTerminal());
+
+      if (typing) {
+        disarm();
+        const send = live(() => {
+          const text = field.value.trim();
+          if (text) next(q.question, text, questions.length, true);
+        });
+        const ok = btn(tl("OK"), "primary", send);
+        ok.classList.toggle("off", !field.value.trim());
+        field.oninput = () => ok.classList.toggle("off", !field.value.trim());
+        // Enter sends; Escape leaves the field rather than folding the card.
+        field.onkeydown = (e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            send();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            typing = false;
+            State.notify();
+          }
+        };
+        row.append(field, ok, link(tl("Back"), live(() => {
+          typing = false;
+          State.notify();
+        })), toTerminal);
+        field.focus();
+        return;
+      }
+
+      const choose = (option: { label: string }) => {
+        if (!q.multiSelect) {
+          next(q.question, option.label, questions.length);
+          return;
+        }
+        if (picked.has(option.label)) picked.delete(option.label);
+        else picked.add(option.label);
+        State.notify();
+      };
+      pick = (n) => {
+        if (q.options[n]) choose(q.options[n]);
+      };
+      confirm = null;
       for (const option of q.options) {
         const on = picked.has(option.label);
-        const button = btn(option.label, on ? "primary" : "secondary", () => {
-          if (!q.multiSelect) {
-            next(q.question, option.label, questions.length);
-            return;
-          }
-          if (on) picked.delete(option.label);
-          else picked.add(option.label);
-          State.notify();
-        });
+        const button = btn(option.label, on ? "primary" : "secondary", live(() => choose(option)));
         if (option.description) button.title = option.description;
         row.append(button);
       }
+      row.append(btn(tl("Other…"), "secondary", live(() => {
+        typing = true;
+        State.notify();
+      })));
       if (q.multiSelect) {
-        const done = btn(tl("Done"), "primary", () => {
+        const last = index === questions.length - 1;
+        const done = btn(last ? tl("Done") : tl("Next"), "primary", live(() => {
           if (picked.size > 0) next(q.question, [...picked], questions.length);
-        });
+        }));
+        confirm = () => done.click();
         if (picked.size === 0) done.classList.add("off");
         row.append(done);
       }
-      row.append(
-        h("button", {
-          class: "link-btn",
-          style: "color:#8e939c",
-          text: tl("Answer in terminal"),
-          onclick: () => actions.answerInTerminal(),
-        }),
-      );
+      if (index > 0) row.append(link(tl("Back"), live(back)));
+      row.append(toTerminal);
     },
   };
 }
@@ -689,7 +842,8 @@ function buildFinished(actions: ViewActions): ViewHost {
       who.append(agentWho(State.focusTask, agent ? t("finished") : t("Claude Code finished")));
       // The final message, else the last step that is not a diff (FinishedView).
       const task = State.focusTask;
-      title.textContent = task?.finalLine || (task && lastTextStep(task.steps)) || t("Session finished");
+      if (task?.finalLine) renderInline(title, task.finalLine);
+      else title.textContent = (task && lastTextStep(task.steps)) || t("Session finished");
       // Sessions from the Claude desktop app live there, not in a terminal.
       const label = task?.id === "agent_claude-desktop" ? t("Open Claude") : t("Open terminal");
       const span = open.firstElementChild as HTMLElement;
@@ -712,13 +866,43 @@ function buildConfused(): ViewHost {
 
 // ── Note ──────────────────────────────────────────────────────────────────────
 
-function buildNote(): ViewHost {
-  const title = h("div", { class: "title" });
-  const el = h("div", { class: "view" }, card(null, h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title)));
+/** How long a note with an OK button stays up when nobody clicks it. */
+export const NOTE_SECONDS = 10;
+
+export function buildNote(actions: Pick<ViewActions, "setView" | "collapse">): ViewHost {
+  const title = h("div", { class: "title note" });
+  // Back to where the note came from. A click may take the keyboard there.
+  const ok = btn(tl("OK"), "secondary", () => {
+    if (State.view === "note" && State.noteThen) actions.setView(State.noteThen);
+  });
+  const row = h("div", { class: "actions" }, ok);
+  const body = h("div", { class: "stack", style: "padding:0 18px 0 98px" }, title, row);
+  const el = h("div", { class: "view" }, card(null, body));
+  let armedFor = -1;
+  let timer: number | null = null;
   return {
     el,
     sync() {
-      title.textContent = State.noteMessage ?? "";
+      const note = State.noteMessage ?? "";
+      title.textContent = note;
+      // A note that had to be cut (see `.title.note`) can still be read in full.
+      title.title = note;
+      const closable = State.noteThen != null;
+      body.classList.toggle("closable", closable);
+      row.style.display = closable ? "" : "none";
+
+      if (State.noteAt === armedFor) return;
+      armedFor = State.noteAt;
+      if (timer != null) window.clearTimeout(timer);
+      timer = null;
+      if (!closable) return;
+      // Left alone, the note folds the island instead of going back by itself:
+      // the chat takes the keyboard, and nobody asked for that.
+      const mine = State.noteAt;
+      timer = window.setTimeout(() => {
+        timer = null;
+        if (State.view === "note" && State.noteAt === mine) actions.collapse();
+      }, NOTE_SECONDS * 1000);
     },
   };
 }
@@ -799,6 +983,25 @@ function buildPlaceholder(title: Msg, sub: string): ViewHost {
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }
 
+/** "… is searching" names whichever provider the chat is actually using. */
+function buildSearching(): ViewHost {
+  const title = h("div", { class: "title" });
+  const body = h(
+    "div",
+    { class: "stack", style: "padding:0 18px 0 118px" },
+    title,
+    h("div", { class: "sub" }),
+  );
+  return {
+    el: h("div", { class: "view" }, card(null, body)),
+    sync() {
+      title.textContent = t("{provider} is searching…", {
+        provider: providerDef(State.settings.chatProvider).name,
+      });
+    },
+  };
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 export function buildViews(
@@ -813,7 +1016,7 @@ export function buildViews(
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
   map.set("confused", buildConfused());
-  map.set("note", buildNote());
+  map.set("note", buildNote(actions));
   map.set("settings", buildSettings(actions));
   map.set("prompt", buildPrompt(onChatHeightChange));
   map.set("upload", buildUpload());
@@ -821,9 +1024,9 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
-  // Not in the Windows v1: sending a file by email, window attach + web result.
-  map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
-  map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));
+  map.set("mail", buildMail(actions));
+  // Not in the Windows v1: window attach + web result.
+  map.set("searching", buildSearching());
   map.set("result", buildPlaceholder(tl("Result"), ""));
   return map;
 }

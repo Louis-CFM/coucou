@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mochi-ish blob: light rounded body, two dark eyes, centered in the safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#F2F2F5"
+        android:pathData="M54,32 C69,32 80,43 80,58 C80,73 69,82 54,82 C39,82 28,73 28,58 C28,43 39,32 54,32 Z" />
+    <path
+        android:fillColor="#101014"
+        android:pathData="M45,54 m-3.4,0 a3.4,3.4 0 1,0 6.8,0 a3.4,3.4 0 1,0 -6.8,0 Z" />
+    <path
+        android:fillColor="#101014"
+        android:pathData="M63,54 m-3.4,0 a3.4,3.4 0 1,0 6.8,0 a3.4,3.4 0 1,0 -6.8,0 Z" />
+</vector>

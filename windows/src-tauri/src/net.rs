@@ -142,20 +142,39 @@ pub fn error_detail(body: &[u8]) -> String {
     let text = String::from_utf8_lossy(body);
     if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
         if let Some(m) = v.pointer("/error/message").and_then(|m| m.as_str()) {
-            return m.to_string();
+            return brief(m);
         }
         if let Some(m) = v.get("error").and_then(|m| m.as_str()) {
-            return m.to_string();
+            return brief(m);
         }
         if let Some(m) = v.get("message").and_then(|m| m.as_str()) {
-            return m.to_string();
+            return brief(m);
         }
         // Gemini answers some errors as a one-element array.
         if let Some(m) = v.pointer("/0/error/message").and_then(|m| m.as_str()) {
-            return m.to_string();
+            return brief(m);
         }
     }
-    text.trim().chars().take(200).collect()
+    brief(&text)
+}
+
+/// The most of a provider's own words that goes in a message.
+const MAX_DETAIL: usize = 200;
+
+/// A provider's message, cut down to its first sentence. It is shown in a card
+/// made for one short line, after words of ours that already say what to do;
+/// what a provider adds after that is advice for whoever writes code against
+/// its API (Gemini's 404 goes on for two more sentences and a link).
+fn brief(message: &str) -> String {
+    let message = message.trim();
+    let end = message
+        .char_indices()
+        .find(|&(i, c)| {
+            let next = message[i + c.len_utf8()..].chars().next();
+            c == '\n' || (matches!(c, '.' | '!' | '?') && next.is_some_and(char::is_whitespace))
+        })
+        .map_or(message.len(), |(i, c)| if c == '\n' { i } else { i + c.len_utf8() });
+    message[..end].trim_end().chars().take(MAX_DETAIL).collect()
 }
 
 /// Only the host of an address, for the log: never a path, a query or a key.
@@ -235,6 +254,28 @@ pub(crate) mod tests {
         assert_eq!(error_detail(br#"[{"error":{"message":"quota"}}]"#), "quota");
         assert_eq!(error_detail(b"  plain text  "), "plain text");
         assert_eq!(error_detail("x".repeat(500).as_bytes()).len(), 200);
+    }
+
+    #[test]
+    fn an_error_detail_is_the_provider_s_first_sentence() {
+        // Gemini's answer for a model new accounts can no longer use.
+        let gemini = br#"[{"error":{"code":404,"message":"This model models/gemini-2.5-pro is no longer available to new users. Please update your code to use models/gemini-3.1-pro-preview for the latest features and improvements. We recommend you to use the Interactions API (https://ai.google.dev/gemini-api/docs/get-started)."}}]"#;
+        assert_eq!(
+            error_detail(gemini),
+            "This model models/gemini-2.5-pro is no longer available to new users."
+        );
+        // A full stop inside a model name or a number does not end the sentence.
+        assert_eq!(brief("gpt-4.1 costs $0.5 per call. Second."), "gpt-4.1 costs $0.5 per call.");
+        assert_eq!(brief("Really? Yes."), "Really?");
+        assert_eq!(brief("first line\nsecond line"), "first line");
+        // One sentence is kept whole, with or without its full stop.
+        assert_eq!(brief("  model 'x' not found  "), "model 'x' not found");
+        assert_eq!(brief("Quota exceeded."), "Quota exceeded.");
+        assert_eq!(brief(""), "");
+        // However long the sentence, and in any script, it stops at MAX_DETAIL characters.
+        assert_eq!(brief(&"é".repeat(500)).chars().count(), MAX_DETAIL);
+        let json = format!(r#"{{"error":{{"message":"{}"}}}}"#, "y".repeat(500));
+        assert_eq!(error_detail(json.as_bytes()).len(), MAX_DETAIL);
     }
 
     #[test]

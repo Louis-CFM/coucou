@@ -199,9 +199,9 @@ Weekly recap** turns it off or clears it.
 
 ## Languages
 
-Coucou speaks the same ten languages as the Mac app: English, 简体中文, हिन्दी,
-Español, العربية, Français, বাংলা, Português (Brasil), Русский and Bahasa
-Indonesia. **Settings… → General → Language** picks one; **System** (the
+Coucou speaks the same languages as the Mac app: English, 简体中文, हिन्दी,
+Español, العربية, Français, বাংলা, Português (Brasil), Русский, Bahasa
+Indonesia and Čeština. **Settings… → General → Language** picks one; **System** (the
 default) follows your system's language when it is one of these, English
 otherwise. The island, the settings window and the tray menu switch at once —
 nothing restarts, and the island keeps its sessions, steps and chat.
@@ -240,6 +240,18 @@ hidden. A text file you dropped goes along inline (24 000 characters at most);
 images and PDFs by name only. Settings tells you whether the address is this
 PC — nothing leaves it then — and warns before a key would travel over plain
 `http://` to another machine.
+
+**On your plan**: **Settings… → On your plan** lets the chat answer through the
+command-line tools you already pay for — **Claude Code** (`claude -p`),
+**Cursor** (`agent -p`, browser sign-in from the settings page), **Devin**
+(`devin -p`), **ChatGPT** (`codex exec`, sign-in through `codex login`) and
+**Kiro** (`kiro-cli chat`). No API key: each runs on its own sign-in, on your
+subscription. Each keeps its own conversation (`--resume`), so switching to one
+mid-chat carries the plain text over and switching back picks its own
+conversation up where it left off. They run read-only in a private, empty
+folder of Coucou's own — Claude Code with `--setting-sources project`, Devin
+with a private `--config`, Codex with `--disable hooks`, so the Coucou hook
+never sees these turns — and every call has a two-minute deadline.
 
 Answers from every provider are shown as **Markdown**: headings, lists, bold,
 inline code, quotes, and code blocks with a copy button. It is built from text
@@ -361,7 +373,7 @@ Linux.
 | Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
 | Claude Desktop (Windows) | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
-| OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
+| OpenCode | plugin `.config\opencode\plugins\coucou.js` | Allow / Deny in the island |
 | Amp | plugin `.config\amp\plugins\coucou.ts` | asked in Amp |
 | Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | asked in Hermes |
 | Any other | run `coucou-hook --agent <name> [<Event>]` from your tool's hooks | asked in the tool |
@@ -413,11 +425,25 @@ own window.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
   is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
   nothing to read it from yet.
-- Not in this version: sending a dropped file by email and dragging Mochi onto
-  a window to attach it as context. On the Mac, email goes through Resend or
-  Apple Mail's scripting; neither has a safe equivalent that attaches a file
-  here, and the drop card would need a third button it doesn't have.
-- Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- Sending a dropped file by email goes through Resend (API key **and** a From
+  address in Settings → Integrations), like the Mac. Without a key, Send opens
+  a draft in your mail app instead — `mailto:` cannot attach a file, so the
+  note asks you to attach it yourself.
+- Dropping Mochi on a window attaches that window to the chat (the app and its
+  title), like the Mac — he goes back where the drag began and the island
+  opens the chat with it as the context chip. On Linux this needs X11; on
+  Wayland there is no way to know what is under the pointer, so a drop just
+  lands him on the desktop. The browser's URL stays out of it — Chrome keeps
+  it behind UI Automation.
+- Cal.com shows the Mac's calendar: two week rows at a time, page through the
+  month with the arrows, a day opens its bookings and a booking its details.
+- The chat field has a dictation mic on Windows (WinRT speech recognition in
+  the system's speech language); tap to talk, tap again to stop, each phrase
+  lands at the caret. Linux does not show the mic.
+- The phone companion is an Android app (`android/`, sideloaded APK) rather
+  than the iPhone one: sessions, approval and question cards and chat over a
+  Cloudflare Worker relay you deploy yourself — free tier, Firebase wake-ups,
+  see `android/README.md` and `relay/README.md`.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
@@ -442,8 +468,7 @@ own window.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
   keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the
   Mac uses `⌘` inside the island. "Bring the terminal forward" is "Open
-  terminal" here. Not in this version: attaching the front window (its id is
-  kept for later). The island only reads its own shortcuts while it has the
+  terminal" here. The island only reads its own shortcuts while it has the
   keyboard: in the chat, or after a global shortcut opened it. `Ctrl+↓`
   `Ctrl+↑` `Ctrl+O` walk the GitHub lists, as on the Mac, and the highlighted
   row scrolls into view where the Mac's three-row list doesn't follow it; in the

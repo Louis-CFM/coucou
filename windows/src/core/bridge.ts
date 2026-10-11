@@ -127,16 +127,78 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
+  // ── Chat through a CLI the user already pays for (Cursor, Kiro, Claude Code) ──
+  /** Whether the provider's CLI is installed and signed in; null for a name that is not one. */
+  cliStatus: (provider: string) => call<CliStatus | null>("cli_status", { provider }),
+  /** The provider's own sign-in, when a button can start it (Cursor's opens the browser). */
+  cliLogin: (provider: string) => callOrThrow<void>("cli_login", { provider }),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
-  /** Answers a question Claude Code asked: question text → chosen label. */
-  approvalAnswer: (requestId: string, answers: Record<string, string | string[]>) =>
-    call<void>("approval_answer", { requestId, answers }),
+  /**
+   * Answers a question Claude Code asked: question text → chosen label, or the
+   * words typed under "Other…" for the questions listed in `other`.
+   */
+  approvalAnswer: (requestId: string, answers: Record<string, string | string[]>, other: string[] = []) =>
+    call<void>("approval_answer", { requestId, answers, other }),
 
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
+
+  // ── Android companion (core/phone.ts uses the island-facing ones) ────────
+  phoneStatus: () =>
+    call<{ enabled: boolean; paired: boolean; device: string; worker: string; pcId: string }>(
+      "phone_status",
+    ),
+  phoneEnable: (on: boolean) => call<void>("phone_enable", { on }),
+  /** Creates the relay box and the pairing code + QR SVG. */
+  phonePair: (worker: string) =>
+    callOrThrow<{ code: string; qrSvg: string }>("phone_pair", { worker }),
+  phoneUnpair: () => call<void>("phone_unpair"),
+  /** The island's visible state, pushed after each change. */
+  phoneState: (payload: unknown, alert: boolean) =>
+    call<void>("phone_state", { payload, alert }),
+
+  // ── Devin sessions (the phone picks one to read & continue) ───────────────
+  /** Every session in Devin's global sessions.db, newest first. */
+  devinSessions: () =>
+    call<{ id: string; title: string; dir: string; model: string; lastActivityAt: number }[]>(
+      "devin_sessions",
+    ),
+  /** The transcript tail of one session — chat lines plus tool calls. */
+  devinTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("devin_transcript", { sessionId }),
+  /** Continues a session: `devin -p "<text>" -r "<sessionId>"`, answer text back. */
+  devinResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("devin_resume", { sessionId, text }),
+
+  // ── Claude Code sessions (~/.claude/projects/*.jsonl) ─────────────────────
+  claudeSessions: () =>
+    call<{ id: string; title: string; dir: string; model: string; lastActivityAt: number }[]>(
+      "claude_sessions",
+    ),
+  claudeTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("claude_transcript", { sessionId }),
+  claudeResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("claude_resume", { sessionId, text }),
+
+  // ── Codex sessions (~/.codex/sessions/rollout-*.jsonl) ────────────────────
+  codexSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>("codex_sessions"),
+  codexTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("codex_transcript", { sessionId }),
+  codexResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("codex_resume", { sessionId, text }),
+
+  // ── OpenCode sessions (~/.local/share/opencode/opencode.db) ───────────────
+  opencodeSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>("opencode_sessions"),
+  opencodeTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("opencode_transcript", { sessionId }),
+  opencodeResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("opencode_resume", { sessionId, text }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
@@ -148,6 +210,8 @@ export const Bridge = {
    * the provider only when it has a key (or a server address).
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
+  /** Models this provider refused (404 for a model its list offers) and that have not answered since. */
+  chatRefused: (provider: string) => call<string[]>("chat_refused", { provider }),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
@@ -156,6 +220,20 @@ export const Bridge = {
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /**
+   * Sends the dropped file through Resend. Rejects with a stable code —
+   * "no-key" / "no-from" / "too-big" / "http-…" — the view maps it to words.
+   */
+  resendSend: (to: string, subject: string, body: string, path: string | null) =>
+    callOrThrow<void>("resend_send", { to, subject, body, path }),
+  // ── Dictation (Windows.Media.SpeechRecognition) ────────────────────────────
+  /** False on Linux: the chat bar hides the mic. */
+  dictationSupported: () => call<boolean>("dictation_supported"),
+  /** Starts the continuous session; lines arrive as `dictation-line` events. */
+  dictationStart: () => callOrThrow<void>("dictation_start"),
+  /** Commits what was heard so far; the session also ends itself on silence. */
+  dictationStop: () => call<void>("dictation_stop"),
+
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -289,6 +367,14 @@ export interface DroppedFile {
   name: string;
   path: string;
   size: number;
+}
+
+/** What a chat CLI's own status says (Cursor's `agent status`, Kiro's `whoami`…). */
+export interface CliStatus {
+  /** Path of the CLI, or null when it is not installed. */
+  cli: string | null;
+  status: string;
+  loggedIn: boolean;
 }
 
 export interface HookStatus {

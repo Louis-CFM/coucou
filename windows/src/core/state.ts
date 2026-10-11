@@ -42,14 +42,25 @@ export interface AgentTask {
 }
 
 export interface ApprovalInfo {
+  /** Queue entry this card answers — a decision only ever applies to this id. */
+  id?: string;
   requestId: string;
   sessionId: string;
   /** The pill the request belongs to: VS Code's or Cursor's (Claude Code), or an agent's (Codex…). */
   pillId: string;
   tool: string;
   command: string;
+  /** The tool's own one-line explanation (Codex sends tool_input.description). */
+  description?: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /** tool_input with sorted keys, to match the PostToolUse that resolves it. */
+  inputKey?: string;
+  /** 1-based place in the approval queue and its size, shown as "1 of N" when total > 1. */
+  position?: number;
+  total?: number;
+  /** Agent name, set only when queued requests come from different sessions or agents. */
+  sourceLabel?: string;
 }
 
 /** One question of an AskUserQuestion call. */
@@ -151,6 +162,16 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Custom editor executable to open projects (e.g. "cursor", "zed", "code"). */
+  editor?: string | null;
+  /** Time and date in the island while it rests compact. */
+  showClock: boolean;
+  /** Android companion — see phone.rs. The pairing secret never leaves the keychain. */
+  phoneEnabled?: boolean;
+  phoneWorker?: string;
+  phonePcId?: string;
+  phonePaired?: boolean;
+  phoneDevice?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -179,6 +200,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  editor: null,
+  showClock: false,
 };
 
 type Listener = () => void;
@@ -212,6 +235,14 @@ class AppState {
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
   noteMessage: string | null = null;
+  /**
+   * The view the note's OK button goes back to. A note that has one also
+   * leaves by itself after a moment (see buildNote); null is for a note with
+   * its own timing, like a failed drop.
+   */
+  noteThen: IslandViewName | null = null;
+  /** When the note went up: tells one note from the next, even with the same words. */
+  noteAt = 0;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
@@ -245,6 +276,9 @@ class AppState {
 
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
+
+  /** The chat's model picker is open: the island gives it its full height. */
+  pickingModel = false;
 
   lastActivity = performance.now();
 
@@ -296,10 +330,14 @@ class AppState {
    * the pill that was there is remembered (HookServer.focusBeforeApproval).
    */
   beginApproval(info: ApprovalInfo) {
+    // Same request re-shown (queue metadata refreshed, card promoted back):
+    // the card updates in place without pulling the front away from a pill
+    // the user picked while it was up.
+    const isNew = this.pendingApproval?.id !== info.id;
     this.pendingApproval = info;
     this.isPinned = true;
     if (this.focusBeforeApproval == null) this.focusBeforeApproval = this.focusId;
-    this.setFocus(info.pillId);
+    if (isNew) this.setFocus(info.pillId);
   }
 
   /**
