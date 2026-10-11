@@ -274,6 +274,13 @@ final class AppState: ObservableObject {
     @Published var openOnHover: Bool = false {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
+    // Folded island: the agent count, and whether it drops the "Agents" label — persisted
+    @Published var compactShowAgents: Bool = true {
+        didSet { UserDefaults.standard.set(compactShowAgents, forKey: "compactShowAgents") }
+    }
+    @Published var compactAgentsNumberOnly: Bool = false {
+        didSet { UserDefaults.standard.set(compactAgentsNumberOnly, forKey: "compactAgentsNumberOnly") }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -463,6 +470,10 @@ final class AppState: ObservableObject {
     @Published var showCodexPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showCodexPlanInNotch, forKey: "showCodexPlanInNotch") }
     }
+    // Folded island: the plan usage beside the mini grid — persisted
+    @Published var compactShowPlan: Bool = true {
+        didSet { UserDefaults.standard.set(compactShowPlan, forKey: "compactShowPlan") }
+    }
     @Published var codexPlanUsage: CodexPlanUsage? = nil
     // Which card showingPlanDetail opens
     @Published var planDetailIsCodex: Bool = false
@@ -508,6 +519,8 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
+        if let v = ud.object(forKey: "compactShowAgents") as? Bool { compactShowAgents = v }
+        if let v = ud.object(forKey: "compactAgentsNumberOnly") as? Bool { compactAgentsNumberOnly = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }
@@ -532,6 +545,7 @@ final class AppState: ObservableObject {
         #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
+        if let v = ud.object(forKey: "compactShowPlan") as? Bool { compactShowPlan = v }
         planRelayInstalled = HookServer.statusLineInstalled()
         #endif
 

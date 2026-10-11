@@ -198,6 +198,10 @@ body {
   font-weight: 700;
 }
 
+#compact-stats b.alone {
+  margin-left: 0;
+}
+
 #compact-stats .cs-sep {
   margin: 0 4px;
   color: #454850;

@@ -760,7 +760,9 @@ struct CompactStats: View {
                 if i > 0 {
                     Text(verbatim: " · ").foregroundColor(Color(hex: "#454850"))
                 }
-                Text(verbatim: items[i].label + " ").foregroundColor(Color(hex: "#8E939C"))
+                if !items[i].label.isEmpty {
+                    Text(verbatim: items[i].label + " ").foregroundColor(Color(hex: "#8E939C"))
+                }
                 Text(verbatim: items[i].value).fontWeight(.bold).foregroundColor(Color(hex: items[i].color))
             }
         }
@@ -777,12 +779,15 @@ extension AppState {
     /// Agents and workspaces; services and chat providers are .n8n.
     private var compactAgentStat: CompactStat? {
         let agents = tasks.filter { $0.source != .n8n }.count
-        return agents > 0 ? CompactStat(label: String(localized: "Agents"), value: "\(agents)", color: "#F5F6F8") : nil
+        guard compactShowAgents, agents > 0 else { return nil }
+        let label = compactAgentsNumberOnly ? "" : String(localized: "Agents")
+        return CompactStat(label: label, value: "\(agents)", color: "#F5F6F8")
     }
 
     /// The plan's 5-hour and week windows: Claude's when its pill is on and has numbers, else Codex's.
     private var compactPlanStats: [CompactStat] {
         #if !APPSTORE
+        guard compactShowPlan else { return [] }
         let plans: [PlanUsage?] = [
             showPlanInNotch && planRelayInstalled ? (demoPlanUsageOverride ?? claudePlanUsage) : nil,
             showCodexPlanInNotch ? codexPlanUsage?.planUsage : nil,
@@ -825,7 +830,7 @@ extension AppState {
         func widest(_ rows: [[CompactStat]]) -> CGFloat {
             var most: CGFloat = 0
             for row in rows {
-                let text: String = row.map { (s: CompactStat) -> String in s.label + " " + s.value }.joined(separator: " · ")
+                let text: String = row.map { (s: CompactStat) -> String in s.label.isEmpty ? s.value : s.label + " " + s.value }.joined(separator: " · ")
                 most = max(most, ceil((text as NSString).size(withAttributes: [.font: font]).width) + 4)
             }
             return most

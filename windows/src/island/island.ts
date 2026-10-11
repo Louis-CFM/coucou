@@ -1198,11 +1198,11 @@ export class Island {
 
     // Compact stats: agent session count beside Mochi, plan % beside the mini grid
     // (the last text stays while it fades out).
-    const count = showGrid ? State.tasks.filter((t) => t.source !== "n8n").length : 0;
+    const count = showGrid && State.settings.compactShowAgents ? State.tasks.filter((t) => t.source !== "n8n").length : 0;
     const windows = showGrid ? compactPlanWindows() : [];
     if (count || windows.length) {
       this.compactStats.replaceChildren(
-        ...(count ? [statRow([[t("Agents"), String(count), null]])] : []),
+        ...(count ? [statRow([[State.settings.compactAgentsNumberOnly ? "" : t("Agents"), String(count), null]])] : []),
         ...(windows.length ? [statRow(windows.map((w) => [w.label, `${Math.round(w.pct)}%`, planColor(w.pct)]))] : []),
       );
     }
@@ -1249,7 +1249,10 @@ function statRow(items: [label: string, value: string, color: string | null][]):
   const row = h("div", { class: "cs-row" });
   items.forEach(([label, value, color], i) => {
     if (i) row.append(h("span", { class: "cs-sep", text: "·" }));
-    row.append(h("span", { text: label }), h("b", { text: value, style: color ? `color:${color}` : "" }));
+    if (label) {
+      row.append(h("span", { text: label }));
+    }
+    row.append(h("b", { class: label ? "" : "alone", text: value, style: color ? `color:${color}` : "" }));
   });
   return row;
 }

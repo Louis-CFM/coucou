@@ -253,6 +253,10 @@ test("the compact plan row follows the header's switches, Claude first, both win
   State.view = "settings";
   State.planUsage = null;
   assert.deepEqual(pcts(), [["Week", 71]]);
+  // Its own switch hides it whatever the header shows.
+  State.settings.compactShowPlan = false;
+  assert.deepEqual(pcts(), []);
+  State.settings.compactShowPlan = true;
 });
 
 test("focusing another pill closes the plan card", () => {

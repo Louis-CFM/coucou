@@ -40,6 +40,7 @@ export interface CompactWindow {
 /** The compact island's plan row: Claude's windows when its pill is on and has numbers, else Codex's. */
 export function compactPlanWindows(now = Date.now()): CompactWindow[] {
   const s = State.settings;
+  if (!s.compactShowPlan) return [];
   const plans = [
     s.showPlanInNotch && s.planRelayInstalled ? State.planUsage : null,
     s.showCodexPlanInNotch ? State.codexPlanUsage : null,
