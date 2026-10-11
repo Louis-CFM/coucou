@@ -411,6 +411,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
       left.classList.toggle("expandable", codeOpens());
       codeBtn.style.display = codeOpens() && jump.style.display !== "none" ? "" : "none";
+      who.classList.toggle("with-code", codeBtn.style.display !== "none");
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
