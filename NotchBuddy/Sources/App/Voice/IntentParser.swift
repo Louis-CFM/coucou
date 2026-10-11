@@ -17,6 +17,7 @@ enum IntentParser {
 
         // Email, questions about the services, opening an app (VoiceQuery).
         if let m = VoiceQuery.mail(of: raw) { return .mail(m) }
+        if let q = VoiceQuery.webQuery(of: raw) { return .webSearch(query: q) }
         if let t = VoiceQuery.topic(of: raw) { return .query(t) }
         if let app = VoiceQuery.appToOpen(raw) { return .openApp(name: app) }
 

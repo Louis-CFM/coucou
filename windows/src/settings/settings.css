@@ -427,3 +427,7 @@ select option {
 html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="text"]) {
   direction: ltr;
 }
+
+/* Settings → Android phone: the pairing QR code (an SVG from Rust, black on white). */
+.qr { width: 220px; max-width: 100%; background: #fff; border-radius: 8px; padding: 4px; }
+.qr svg { display: block; width: 100%; height: auto; }

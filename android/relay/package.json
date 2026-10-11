@@ -1,0 +1,23 @@
+{
+  "name": "coucou-link-relay",
+  "private": true,
+  "description": "Key-less WebSocket relay for the Coucou Android link (docs/RELAY_LINK.md). Deployed by the user on their own Cloudflare account.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run -c vitest.config.ts && vitest run -c vitest.node.config.ts",
+    "vectors": "node tools/gen-vectors.mjs --check"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261010.1",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.6.0",
+    "vitest": "4.1.11",
+    "wrangler": "4.149.0",
+    "ws": "^8.18.0",
+    "@cloudflare/vitest-plugin": "1.4.0"
+  }
+}
