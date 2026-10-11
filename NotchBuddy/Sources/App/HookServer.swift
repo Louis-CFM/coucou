@@ -103,7 +103,8 @@ final class HookServer: @unchecked Sendable {
                                               command: head.command, inputKey: head.inputKey,
                                               pillId: head.pillId, id: head.id,
                                               queueCount: approvals.count,
-                                              projectName: head.projectName)
+                                              projectName: head.projectName,
+                                              link: SessionLink(hostApp: head.hostApp, hostURL: head.hostURL))
         state.isPinned = true
         // Approval always forces the island open — the user must be able to respond.
         // Save the focus once, so it comes back when the last request is gone.
@@ -601,10 +602,14 @@ final class HookServer: @unchecked Sendable {
                 break
             }
             // The finished card's "Open terminal" goes back to the session that just finished,
-            // even if Coucou started mid-turn or another session spoke in between
-            if agentId == "integration_claude", let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                state.tasks[idx].hostApp = hostApp
-                state.tasks[idx].hostURL = ClaudeHost.sessionURL(from: payload)
+            // even if Coucou started mid-turn or another session speaks once the card is up
+            if agentId == "integration_claude" {
+                let link = SessionLink(hostApp: hostApp, hostURL: ClaudeHost.sessionURL(from: payload))
+                state.finishedLink = link
+                if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+                    state.tasks[idx].hostApp = link.hostApp
+                    state.tasks[idx].hostURL = link.hostURL
+                }
             }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
@@ -853,7 +858,8 @@ final class HookServer: @unchecked Sendable {
         let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
                                    projectName: projectName, cwd: cwd, tool: tool,
                                    command: command, inputKey: inputKey,
-                                   hostApp: terminalHost?.bundleId, bundleId: bundleId)
+                                   hostApp: terminalHost?.bundleId,
+                                   hostURL: ClaudeHost.sessionURL(from: payload), bundleId: bundleId)
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
@@ -1006,7 +1012,9 @@ final class HookServer: @unchecked Sendable {
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
-        state.pendingQuestion = parsed
+        var question = parsed
+        question.link = SessionLink(hostApp: terminalHost?.bundleId, hostURL: ClaudeHost.sessionURL(from: payload))
+        state.pendingQuestion = question
         state.isPinned = true
         SoundEngine.shared.play("approval")
 

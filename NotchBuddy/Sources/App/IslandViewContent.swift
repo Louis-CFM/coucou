@@ -691,8 +691,9 @@ struct ErrorView: View {
 
 #if !APPSTORE
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
-private func openSessionApp(_ task: AgentTask?) {
-    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp, sessionURL: task?.hostURL)),
+private func openSessionApp(_ task: AgentTask?, link: SessionLink? = nil) {
+    let link = link ?? SessionLink(hostApp: task?.hostApp, hostURL: task?.hostURL)
+    if !(task?.id == "integration_claude" && ClaudeHost.activate(link.hostApp, sessionURL: link.hostURL)),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }
@@ -736,7 +737,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            openSessionApp(state.focusTask)
+                            openSessionApp(state.focusTask, link: state.finishedLink)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif

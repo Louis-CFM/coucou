@@ -59,6 +59,17 @@ struct ApprovalInfo: Sendable {
     var queueCount: Int = 1
     /// Project of the session that asks (several sessions can share one pill).
     var projectName: String = ""
+    /// Where "jump to terminal" goes while this card is up: the session that asked.
+    var link: SessionLink? = nil
+}
+
+// MARK: - Session link (captured by a card when it appears)
+
+/// The app a Claude Code session runs in and the link back to it. Several sessions share the
+/// integration_claude pill, which keeps only one of them: a card keeps the session it belongs to.
+struct SessionLink: Equatable, Sendable {
+    var hostApp: String?
+    var hostURL: URL?
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
