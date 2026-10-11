@@ -322,7 +322,8 @@ function fileTab(d: CodeData): HTMLElement {
     "div",
     { class: "ed-tab" },
     h("span", { class: "ed-file" }, chip, h("span", { class: "ed-name", text: name })),
-    h("span", { class: "ed-dir", text: e.file }),
+    // Isolated, the path reads left to right in its right-to-left box: "/a/b", not "a/b/".
+    h("span", { class: "ed-dir" }, h("bdi", { text: e.file })),
   );
 }
 

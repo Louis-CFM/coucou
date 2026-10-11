@@ -198,6 +198,7 @@ test("an edit is shown in place: snippet line numbers, removed red, added green"
   assert.equal(el.querySelector(".ed-name").textContent, "cart.ts");
   assert.equal(el.querySelector(".ed-chip").textContent, "TS");
   assert.equal(el.querySelector(".ed-dir").textContent, "src/cart.ts");
+  assert.equal(el.querySelector(".ed-dir").firstChild.tagName, "BDI");
   assert.deepEqual(el.find(".ed-row").map((r) => r.className.replace("ed-row ", "")),
     ["ctx", "ctx", "ctx", "del", "add", "add", "ctx", "ctx", "ctx"]);
   assert.deepEqual(texts(el, ".ed-n"), ["9", "10", "11", "", "12", "13", "14", "15", "16"]);
