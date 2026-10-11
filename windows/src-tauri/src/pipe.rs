@@ -225,8 +225,8 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
             log::line(format!("hook {event}"));
         }
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
-        pipe.finish();
         remember_session_window(relay_pid, session, &event);
+        pipe.finish();
         return;
     }
 
@@ -266,7 +266,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 /// process snapshot runs on the blocking pool after the island has the event:
 /// taken before, it held the event back while a later one from a faster relay
 /// went ahead. Only while the session is unknown; the relay must still be
-/// running for its parents to be found, otherwise a later event tries again.
+/// running for its parents to be found: it stays connected until we hang up
+/// (`finish`), so it is. One that exited anyway (killed, or an older relay)
+/// leaves no ancestors, and then a later event tries again.
 fn remember_session_window(relay: Option<u32>, session: Option<String>, event: &str) {
     let Some(session) = session else { return };
     if event == "SessionEnd" {
