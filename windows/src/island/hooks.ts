@@ -305,9 +305,11 @@ function handleHook(island: Island, payload: HookPayload) {
   // interrupted, or a new prompt — so the card would be lying. It goes, and the
   // relay is released without a decision. Same rule as the Mac.
   const pending = State.pendingApproval;
+  // The tool ran: answered elsewhere (another Coucou, the terminal).
+  const toolDone = (name === "PostToolUse" || name === "PostToolUseFailure") && pending?.tool === payload.tool_name;
   if (
     pending &&
-    TURN_OVER.has(name) &&
+    (TURN_OVER.has(name) || toolDone) &&
     pending.pillId === agentId &&
     pending.sessionId === (payload.session_id ?? "")
   ) {

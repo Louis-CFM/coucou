@@ -38,8 +38,32 @@ pub const HOOK_EVENTS: &[(&str, u64)] = &[
     ("SubagentStop", 10),
 ];
 
-/// Marker that identifies a Coucou entry inside settings.json.
-const MARKER: &str = "coucou-hook";
+/// Whose hook entries an edit may touch: this machine's own relay, or a remote
+/// Coucou whose socket on this host is `~/.coucou/<id>.sock` (remote.rs).
+#[derive(Clone, Copy)]
+pub enum Owner<'a> {
+    Local,
+    Remote(&'a str),
+}
+
+/// The variable that points a relay at a remote Coucou's socket.
+const SOCKET_VAR: &str = "COUCOU_SOCKET=";
+
+fn owns(owner: Owner, command: &str) -> bool {
+    match owner {
+        Owner::Local => !command.contains(SOCKET_VAR) && command.starts_with(&hook_command("")),
+        Owner::Remote(id) => socket_of(command).is_some_and(|s| s.ends_with(&format!("/.coucou/{id}.sock"))),
+    }
+}
+
+/// The COUCOU_SOCKET a hook command sets, quotes taken off.
+fn socket_of(command: &str) -> Option<&str> {
+    let rest = &command[command.find(SOCKET_VAR)? + SOCKET_VAR.len()..];
+    match rest.strip_prefix('\'') {
+        Some(quoted) => quoted.split('\'').next(),
+        None => rest.split_whitespace().next(),
+    }
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -83,42 +107,48 @@ fn hook_command(event: &str) -> String {
     agents::relay_command(Shell::Sh, event)
 }
 
-fn entry_is_ours(entry: &Value) -> bool {
+fn entry_is_ours(entry: &Value, owner: Owner) -> bool {
     entry
         .get("hooks")
         .and_then(Value::as_array)
-        .map(|hooks| {
-            hooks.iter().any(|h| {
-                h.get("command")
-                    .and_then(Value::as_str)
-                    .map(|c| c.contains(MARKER))
-                    .unwrap_or(false)
-            })
-        })
-        .unwrap_or(false)
+        .is_some_and(|hooks| hooks.iter().any(|h| h.get("command").and_then(Value::as_str).is_some_and(|c| owns(owner, c))))
 }
 
 /// The status line in settings.json is Coucou's relay (old installs wrote
 /// `coucou-hook StatusLine`, new ones `coucou-hook --statusline`; both match).
 fn status_line_is_ours(v: &Value) -> bool {
-    v.get("command").and_then(Value::as_str).is_some_and(|c| c.contains(MARKER))
+    v.get("command").and_then(Value::as_str).is_some_and(|c| owns(Owner::Local, c))
+}
+
+/// Coucou entries of anyone else: this host's own Coucou, other computers, older installs.
+pub fn other_coucou_entries(existing: &Value, owner: Owner) -> usize {
+    let lists = existing.get("hooks").and_then(Value::as_object).into_iter().flat_map(|h| h.values());
+    lists
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter_map(|e| e.get("hooks").and_then(Value::as_array))
+        .flatten()
+        .filter_map(|h| h.get("command").and_then(Value::as_str))
+        .filter(|c| (c.contains("coucou-hook") || c.contains("nb-hook")) && !owns(owner, c))
+        .count()
 }
 
 /// Settings with Coucou's hooks added; everything else is left untouched. A
 /// `hooks` (or one of its events) that is not what Claude Code documents is
 /// refused rather than replaced.
 fn merged(existing: &Value) -> Result<Value, String> {
-    merged_with(existing, &hook_command)
+    merged_with(existing, Owner::Local, &hook_command)
 }
 
-/// A remote host's settings.json with Coucou's hooks added or removed; `relay`
-/// is where the relay sits on that host (remote.rs).
-pub fn remote_settings(existing: &Value, install: bool, relay: &str) -> Result<Value, String> {
+/// A remote host's settings.json with the hooks of the Coucou `id` added or
+/// removed; `relay` and `socket` are where its relay and socket sit there (remote.rs).
+pub fn remote_settings(existing: &Value, install: bool, relay: &str, socket: &str, id: &str) -> Result<Value, String> {
     let relay = agents::Relay { exe: relay.to_string(), windows: false };
-    if install { merged_with(existing, &|event| relay.command(Shell::Sh, event)) } else { without_ours(existing) }
+    let command = |event: &str| format!("COUCOU_SOCKET={} {}", agents::sh_quote(socket), relay.command(Shell::Sh, event));
+    if install { merged_with(existing, Owner::Remote(id), &command) } else { without_ours(existing, Owner::Remote(id)) }
 }
 
-fn merged_with(existing: &Value, hook_command: &dyn Fn(&str) -> String) -> Result<Value, String> {
+fn merged_with(existing: &Value, owner: Owner, hook_command: &dyn Fn(&str) -> String) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = match root.get("hooks") {
         None => Map::new(),
@@ -132,7 +162,7 @@ fn merged_with(existing: &Value, hook_command: &dyn Fn(&str) -> String) -> Resul
             Some(Value::Array(list)) => list.clone(),
             Some(_) => return Err(unexpected(&format!("\"hooks\".\"{event}\""))),
         };
-        list.retain(|entry| !entry_is_ours(entry));
+        list.retain(|entry| !entry_is_ours(entry, owner));
         list.push(json!({
             "hooks": [{
                 "type": "command",
@@ -151,8 +181,8 @@ fn unexpected(what: &str) -> String {
     crate::i18n::tf("settings.json: {what} has an unexpected type — Coucou has not touched it.", &[("what", what)])
 }
 
-/// Settings with every Coucou entry removed, and nothing else changed.
-fn without_ours(existing: &Value) -> Result<Value, String> {
+/// Settings with `owner`'s entries removed, and nothing else changed.
+fn without_ours(existing: &Value, owner: Owner) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let hooks = match root.get("hooks") {
         None => return Ok(Value::Object(root)),
@@ -164,7 +194,7 @@ fn without_ours(existing: &Value) -> Result<Value, String> {
         match value.as_array() {
             Some(list) => {
                 let kept: Vec<Value> =
-                    list.iter().filter(|e| !entry_is_ours(e)).cloned().collect();
+                    list.iter().filter(|e| !entry_is_ours(e, owner)).cloned().collect();
                 if !kept.is_empty() {
                     out.insert(event, Value::Array(kept));
                 }
@@ -186,7 +216,7 @@ fn edits(install: bool) -> Vec<FileEdit<'static>> {
     vec![FileEdit {
         path: settings_path(),
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            if install { merged(current).map(Some) } else { without_ours(current).map(Some) }
+            if install { merged(current).map(Some) } else { without_ours(current, Owner::Local).map(Some) }
         }),
     }]
 }
@@ -203,7 +233,7 @@ pub fn status() -> HookStatus {
                 .values()
                 .filter_map(Value::as_array)
                 .flatten()
-                .any(entry_is_ours)
+                .any(|e| entry_is_ours(e, Owner::Local))
         })
         .unwrap_or(false);
     let hook_path = settings::hook_exe_path();
@@ -437,16 +467,25 @@ fn install_relay(src: &Path, dest: &Path) {
 mod tests {
     use super::*;
 
+    /// Held by every test that reads the relay path, since one test moves HOME.
+    static HOME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn home() -> std::sync::MutexGuard<'static, ()> {
+        HOME.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     #[test]
     fn the_hooks_leave_the_status_line_alone() {
+        let _home = home();
         let theirs = json!({ "statusLine": { "type": "command", "command": "~/bin/my-line" } });
         assert_eq!(merged(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
-        assert_eq!(without_ours(&theirs).unwrap()["statusLine"], theirs["statusLine"]);
+        assert_eq!(without_ours(&theirs, Owner::Local).unwrap()["statusLine"], theirs["statusLine"]);
         assert!(merged(&json!({})).unwrap().get("statusLine").is_none());
     }
 
     #[test]
     fn the_relay_takes_the_status_line_and_keeps_the_users_other_fields() {
+        let _home = home();
         // None yet: ours is added.
         let fresh = status_line_settings(&json!({ "model": "opus" }), true, None).unwrap();
         assert!(status_line_is_ours(&fresh["statusLine"]));
@@ -468,6 +507,7 @@ mod tests {
 
     #[test]
     fn removing_the_relay_restores_what_was_there_and_never_touches_anything_else() {
+        let _home = home();
         let previous = json!({ "type": "command", "command": "~/bin/my-line", "padding": 2 });
         let ours = status_line_settings(&json!({}), true, None).unwrap();
 
@@ -484,6 +524,7 @@ mod tests {
 
     #[test]
     fn merging_keeps_every_other_setting_and_every_foreign_hook() {
+        let _home = home();
         let existing = serde_json::json!({
             "model": "claude-opus-5",
             "theme": "dark",
@@ -508,22 +549,23 @@ mod tests {
             pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("someone-elses-tool.exe")),
             "another tool's hook was dropped"
         );
-        assert!(pre.iter().any(entry_is_ours), "our own hook was not added");
+        assert!(pre.iter().any(|e| entry_is_ours(e, Owner::Local)), "our own hook was not added");
         assert!(after["hooks"]["SomeEventWeDoNotTouch"].is_array());
 
         // Installing twice still leaves one entry of ours per event. (Compared
         // by count: another test points HOME elsewhere meanwhile, which moves
         // the relay path.)
         let twice = merged(&after).unwrap();
-        assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e)).count(), 1);
+        assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e, Owner::Local)).count(), 1);
 
         // And removing ours puts it back exactly as it was.
-        let cleaned = without_ours(&after).unwrap();
+        let cleaned = without_ours(&after, Owner::Local).unwrap();
         assert_eq!(cleaned, existing);
     }
 
     #[test]
     fn values_of_an_unexpected_type_are_refused_not_replaced() {
+        let _home = home();
         for odd in [
             json!({ "hooks": "a string" }),
             json!({ "hooks": [1, 2] }),
@@ -531,16 +573,17 @@ mod tests {
         ] {
             assert!(merged(&odd).is_err(), "{odd}");
         }
-        assert!(without_ours(&json!({ "hooks": 3 })).is_err());
+        assert!(without_ours(&json!({ "hooks": 3 }), Owner::Local).is_err());
         // An event we do not install stays as it is, whatever its shape.
         let kept = json!({ "hooks": { "Custom": "anything" } });
-        assert_eq!(without_ours(&kept).unwrap(), kept);
+        assert_eq!(without_ours(&kept, Owner::Local).unwrap(), kept);
     }
 
     /// Everything filesystem-shaped lives in one test on purpose: it points
     /// the home directory at a temp directory, and that is process-wide.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
+        let _home = home();
         let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(tmp.join(".claude")).unwrap();
@@ -587,5 +630,56 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
 
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// What a host's settings.json holds with many Coucous on it.
+    fn shared_host() -> Value {
+        let local = hook_command("PreToolUse");
+        json!({ "hooks": { "PreToolUse": [
+            { "matcher": "Bash", "hooks": [{ "type": "command", "command": "~/bin/my-guard.sh" }] },
+            { "hooks": [{ "type": "command", "command": local }] },
+            { "hooks": [{ "type": "command", "command": "\"/home/u/.local/share/coucou/bin/nb-hook\"" }] },
+            { "hooks": [{ "type": "command", "command": "COUCOU_SOCKET='/home/u/.coucou/11111111.sock' '/home/u/.local/share/coucou/bin/coucou-hook' PreToolUse" }] },
+            { "hooks": [{ "type": "command", "command": "COUCOU_SOCKET='/home/u/.coucou/22222222.sock' '/home/u/.local/share/coucou/bin/nb-hook'" }] },
+        ] } })
+    }
+
+    fn commands(v: &Value, event: &str) -> Vec<String> {
+        v["hooks"][event].as_array().unwrap().iter().map(|e| e["hooks"][0]["command"].as_str().unwrap().to_string()).collect()
+    }
+
+    #[test]
+    fn a_remote_install_touches_only_its_own_entries() {
+        let _home = home();
+        let host = shared_host();
+        let before = commands(&host, "PreToolUse");
+        let relay = "/home/u/.local/share/coucou/bin/coucou-hook";
+        let socket = "/home/u/.coucou/33333333.sock";
+
+        let installed = remote_settings(&host, true, relay, socket, "33333333").unwrap();
+        let after = commands(&installed, "PreToolUse");
+        assert_eq!(after[..before.len()], before[..], "everyone else's entries are kept as they were");
+        assert_eq!(after.last().unwrap(), &format!("COUCOU_SOCKET='{socket}' '{relay}' PreToolUse"));
+        let again = remote_settings(&installed, true, relay, socket, "33333333").unwrap();
+        assert_eq!(commands(&again, "PreToolUse"), after, "installing twice keeps one entry");
+
+        let removed = remote_settings(&installed, false, relay, socket, "33333333").unwrap();
+        assert_eq!(commands(&removed, "PreToolUse"), before);
+        assert_eq!(other_coucou_entries(&host, Owner::Remote("33333333")), 4);
+    }
+
+    #[test]
+    fn the_local_install_leaves_remote_and_mac_entries_alone() {
+        let _home = home();
+        let host = shared_host();
+        let cleaned = without_ours(&host, Owner::Local).unwrap();
+        let kept = commands(&cleaned, "PreToolUse");
+        assert_eq!(kept.len(), 4);
+        assert!(!kept.contains(&hook_command("PreToolUse")));
+        let merged_again = merged(&cleaned).unwrap();
+        assert_eq!(commands(&merged_again, "PreToolUse")[..4], kept[..]);
+        // An id that only ends like another client's is not that client's.
+        assert!(!owns(Owner::Remote("1111111"), "COUCOU_SOCKET='/home/u/.coucou/11111111.sock' x"));
+        assert!(owns(Owner::Remote("11111111"), "COUCOU_SOCKET=/home/u/.coucou/11111111.sock x"));
     }
 }

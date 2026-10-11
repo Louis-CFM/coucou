@@ -93,6 +93,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
         let mut settings = settings.clone();
         settings.desktop_mochi = current.desktop_mochi.clone();
+        // A new id would orphan this install's hooks on every remote host.
+        settings.remote_client_id = current.remote_client_id.clone();
         *current = settings;
         (screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -113,7 +115,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
-    remote::sync(&app, &settings.remote_hosts);
+    remote::sync(&app, &settings.remote_hosts, &settings.remote_client_id);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -800,7 +802,7 @@ pub fn run() {
             pipe::start(handle.clone());
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
-            remote::sync(&handle, &loaded.remote_hosts);
+            remote::sync(&handle, &loaded.remote_hosts, &loaded.remote_client_id);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

@@ -332,6 +332,22 @@ test("the end of the turn takes a waiting card down and releases the relay", () 
   }
 });
 
+test("a card answered elsewhere comes down once its tool has run", () => {
+  for (const done of ["PostToolUse", "PostToolUseFailure"]) {
+    State.pendingApproval = null;
+    calls.length = 0;
+    hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", tool_name: "Bash" });
+    // Another tool of the same session, or the same tool elsewhere, changes nothing.
+    hook({ hook_event_name: done, session_id: "s1", tool_name: "Read" });
+    hook({ hook_event_name: done, session_id: "other", tool_name: "Bash" });
+    assert.equal(State.pendingApproval?.requestId, "r1", done);
+    hook({ hook_event_name: done, session_id: "s1", tool_name: "Bash" });
+    assert.equal(State.pendingApproval, null, done);
+    assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], done);
+    mock.timers.runAll();
+  }
+});
+
 test("Codex's Interrupt puts its pill back to idle", () => {
   hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", coucou_agent: "codex", prompt: "go" });
   assert.equal(task("agent_codex").state, "thinking");

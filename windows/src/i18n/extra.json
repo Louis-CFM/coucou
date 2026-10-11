@@ -3240,6 +3240,17 @@
    "ru": "{n} мин",
    "id": "{n} mnt"
   },
+  "{count} hooks of other Coucou installs stay as they are: this host's own Coucou, other computers, or an older install.": {
+   "zh-Hans": "其他 Coucou 安装的 {count} 个 hook 保持不变：这台主机自己的 Coucou、其他电脑，或较旧的安装。",
+   "hi": "दूसरे Coucou इंस्टॉल के {count} hooks जैसे हैं वैसे ही रहते हैं: इस होस्ट का अपना Coucou, दूसरे कंप्यूटर, या कोई पुराना इंस्टॉल।",
+   "es": "{count} hooks de otras instalaciones de Coucou se quedan como están: el Coucou de este host, otros ordenadores o una instalación anterior.",
+   "ar": "تبقى {count} من hooks تثبيتات Coucou الأخرى كما هي: Coucou الخاص بهذا الجهاز، أو أجهزة كمبيوتر أخرى، أو تثبيت أقدم.",
+   "fr": "{count} hooks d'autres installations de Coucou restent tels quels : le Coucou de cet hôte, d'autres ordinateurs ou une ancienne installation.",
+   "bn": "অন্য Coucou ইনস্টলের {count}টি hook যেমন আছে তেমনই থাকে: এই হোস্টের নিজের Coucou, অন্য কম্পিউটার, বা কোনো পুরোনো ইনস্টল।",
+   "pt-BR": "{count} hooks de outras instalações do Coucou continuam como estão: o Coucou deste host, outros computadores ou uma instalação antiga.",
+   "ru": "{count} hooks других установок Coucou остаются как есть: собственный Coucou этого хоста, другие компьютеры или старая установка.",
+   "id": "{count} hook dari instalasi Coucou lain tetap seperti adanya: Coucou milik host ini, komputer lain, atau instalasi lama."
+  },
   "{path} changed since the preview. Nothing was written — review the new diff.": {
    "zh-Hans": "{path} 在预览后已被修改。未写入任何内容 — 请查看新的差异。",
    "hi": "प्रीव्यू के बाद {path} बदल गया। कुछ नहीं लिखा गया — नया डिफ़ देखें।",

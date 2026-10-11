@@ -110,29 +110,61 @@ fn socket_name(host: &str) -> String {
     format!("{safe}-{:08x}.sock", hash as u32)
 }
 
+// ── This install on a host ────────────────────────────────────────────────────
+//
+// Any number of Coucous can share a host: each has its own socket there,
+// `~/.coucou/<id>.sock`, and its own hook entries, which name that socket in
+// COUCOU_SOCKET. An install only ever touches entries naming its own socket.
+
+static CLIENT_ID: Mutex<String> = Mutex::new(String::new());
+
+/// Eight lowercase hex digits, as `new_client_id` makes them.
+pub fn valid_client_id(id: &str) -> bool {
+    id.len() == 8 && id.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+pub fn new_client_id() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    // RandomState is seeded from the OS's randomness.
+    format!("{:08x}", std::collections::hash_map::RandomState::new().build_hasher().finish() as u32)
+}
+
+fn client_id() -> Result<String, String> {
+    let id = CLIENT_ID.lock().unwrap().clone();
+    if valid_client_id(&id) { Ok(id) } else { Err("no remote client id".into()) }
+}
+
 // ── The remote side, as scripts ───────────────────────────────────────────────
 
-/// Where the relay goes on a host, relative to its $HOME.
-const REMOTE_RELAY: &str = ".local/share/coucou/bin/coucou-hook";
+/// Where the relays go on a host, relative to its $HOME: the static binary on
+/// Linux, the Python one (hook/coucou-hook.py) on macOS.
+const RELAY_DIR: &str = ".local/share/coucou/bin";
+const LINUX_RELAY: &str = "coucou-hook";
+const MAC_RELAY: &str = "coucou-hook.py";
+const PY_RELAY: &str = include_str!("../../hook/coucou-hook.py");
 
-/// Finds the directory coucou-hook will look in (hook/src/unix.rs: the runtime
-/// directory if private, else ~/.coucou), clears a socket a dead tunnel left
-/// there (sshd will not bind over it) and prints the socket's path.
-const PROBE: &str = r#"u=$(id -u); d=${XDG_RUNTIME_DIR:-/run/user/$u}
-case $d in /*) ;; *) d=/run/user/$u ;; esac
-ok() { [ -d "$1" ] || return 1; [ -L "$1" ] && return 1; [ "$(stat -c %u "$1")" = "$u" ] || return 1; case $(stat -c %a "$1") in *00) return 0 ;; esac; return 1; }
-if ok "$d"; then :; else d=$HOME/.coucou; mkdir -p -m 700 "$d"; ok "$d" || { echo "$d is not a private directory" >&2; exit 1; }; fi
-rm -f "$d/coucou.sock"
-echo "$d/coucou.sock""#;
+/// Makes ~/.coucou private, clears this install's socket a dead tunnel left there
+/// (sshd will not bind over it) and prints its path. Nothing else there is touched.
+fn probe(id: &str) -> String {
+    format!(
+        r#"d=$HOME/.coucou; mkdir -p "$d"; if [ -L "$d" ]; then echo "$d is a symlink" >&2; exit 1; fi; chmod 700 "$d"
+[ -d "$d" ] && [ -O "$d" ] || {{ echo "$d is not a private directory" >&2; exit 1; }}
+rm -f "$d/{id}.sock"; echo "$d/{id}.sock""#
+    )
+}
 
-/// Prints $HOME, then settings.json; exit 3 when there is none.
-const READ_SETTINGS: &str = r#"echo "$HOME"; f=$HOME/.claude/settings.json; if [ -e "$f" ]; then cat "$f"; else exit 3; fi"#;
+/// Prints $HOME and the OS, then settings.json; exit 3 when there is none.
+const READ_SETTINGS: &str = r#"echo "$HOME"; uname -s; f=$HOME/.claude/settings.json; if [ -e "$f" ]; then cat "$f"; else exit 3; fi"#;
 
 /// Takes the relay on stdin, checks it runs cleanly on this host (a glibc too old
-/// only warns), then puts it in place.
-const PUT_RELAY: &str = r#"set -e; d=$HOME/.local/share/coucou/bin; mkdir -p "$d"; t=$d/coucou-hook.new; cleanup() { rm -f "$t"; }; trap cleanup EXIT
+/// only warns, a missing python3 only complains), then puts it in place.
+fn put_relay(name: &str) -> String {
+    format!(
+        r#"set -e; d=$HOME/{RELAY_DIR}; mkdir -p "$d"; t=$d/{name}.new; cleanup() {{ rm -f "$t"; }}; trap cleanup EXIT
 cat > "$t"; chmod 755 "$t"; e=$("$t" < /dev/null 2>&1 > /dev/null) || true; if [ -n "$e" ]; then echo "$e" >&2; exit 1; fi
-mv -f "$t" "$d/coucou-hook""#;
+mv -f "$t" "$d/{name}""#
+    )
+}
 
 /// Takes the new settings.json on stdin; backs up the old one first (printing
 /// where) and writes through a symlink, keeping the file's mode.
@@ -176,23 +208,36 @@ fn last_line(bytes: &[u8]) -> Option<String> {
 
 // ── Installing the hooks on a host ────────────────────────────────────────────
 
-/// The host's settings.json as it is, and where the relay goes there.
-async fn read_remote(host: &str) -> Result<(Option<Vec<u8>>, String), String> {
+/// A host as an install sees it: its settings.json, and where this install's
+/// relay and socket sit there.
+struct Remote {
+    bytes: Option<Vec<u8>>,
+    relay: String,
+    socket: String,
+    mac: bool,
+}
+
+async fn read_remote(host: &str, id: &str) -> Result<Remote, String> {
     let (out, code) = run(host, READ_SETTINGS, b"").await?;
-    let split = out.iter().position(|b| *b == b'\n').unwrap_or(out.len());
-    let home = String::from_utf8_lossy(&out[..split]).trim().to_string();
+    let mut lines = out.splitn(3, |b| *b == b'\n');
+    let home = String::from_utf8_lossy(lines.next().unwrap_or_default()).trim().to_string();
+    let mac = String::from_utf8_lossy(lines.next().unwrap_or_default()).trim() == "Darwin";
     if !home.starts_with('/') {
         return Err(format!("{host}: no home directory"));
     }
-    let bytes = (code != 3).then(|| out.get(split + 1..).unwrap_or_default().to_vec());
-    Ok((bytes, format!("{home}/{REMOTE_RELAY}")))
+    let bytes = (code != 3).then(|| lines.next().unwrap_or_default().to_vec());
+    let name = if mac { MAC_RELAY } else { LINUX_RELAY };
+    Ok(Remote { bytes, relay: format!("{home}/{RELAY_DIR}/{name}"), socket: format!("{home}/.coucou/{id}.sock"), mac })
 }
 
-fn change(bytes: Option<&[u8]>, install: bool, relay: &str) -> Result<(String, String), String> {
+/// settings.json before and after, and how many other Coucou entries it keeps.
+fn change(remote: &Remote, install: bool, id: &str) -> Result<(String, String, usize), String> {
+    let bytes = remote.bytes.as_deref();
     let current = config_file::parse_json(bytes, "settings.json")?;
-    let next = crate::hooks::remote_settings(&current, install, relay)?;
+    let next = crate::hooks::remote_settings(&current, install, &remote.relay, &remote.socket, id)?;
+    let others = crate::hooks::other_coucou_entries(&current, crate::hooks::Owner::Remote(id));
     let before = if bytes.is_some() { config_file::pretty(&current) } else { String::new() };
-    Ok((before, config_file::pretty(&next)))
+    Ok((before, config_file::pretty(&next), others))
 }
 
 fn fingerprint(bytes: Option<&[u8]>) -> String {
@@ -203,14 +248,23 @@ pub async fn preview(host: &str, install: bool) -> Result<HookPreview, String> {
     if !valid_host(host) {
         return Err(format!("{host}: not a host name"));
     }
-    let (bytes, relay) = read_remote(host).await?;
-    let (before, after) = change(bytes.as_deref(), install, &relay)?;
+    let id = client_id()?;
+    let remote = read_remote(host, &id).await?;
+    let (before, after, others) = change(&remote, install, &id)?;
+    let mut diff = config_file::unified_diff(&before, &after);
+    if others > 0 {
+        let note = crate::i18n::tf(
+            "{count} hooks of other Coucou installs stay as they are: this host's own Coucou, other computers, or an older install.",
+            &[("count", &others.to_string())],
+        );
+        diff = format!("{note}\n{diff}");
+    }
     let path = format!("{host}:~/.claude/settings.json");
     Ok(HookPreview {
-        diff: config_file::unified_diff(&before, &after),
-        backup: if bytes.is_some() { format!("{path}.bak-{}", config_file::stamp()) } else { String::new() },
+        diff,
+        backup: if remote.bytes.is_some() { format!("{path}.bak-{}", config_file::stamp()) } else { String::new() },
         settings_path: path,
-        fingerprint: fingerprint(bytes.as_deref()),
+        fingerprint: fingerprint(remote.bytes.as_deref()),
     })
 }
 
@@ -220,18 +274,21 @@ pub async fn apply(host: &str, install: bool, expected: &str) -> Result<String, 
     if !valid_host(host) {
         return Err(format!("{host}: not a host name"));
     }
-    let (bytes, relay) = read_remote(host).await?;
-    if fingerprint(bytes.as_deref()) != expected {
+    let id = client_id()?;
+    let remote = read_remote(host, &id).await?;
+    if fingerprint(remote.bytes.as_deref()) != expected {
         return Err(crate::i18n::tf(
             "{path} changed since the preview. Nothing was written — review the new diff.",
             &[("path", &format!("{host}:~/.claude/settings.json"))],
         ));
     }
-    let (_, mut after) = change(bytes.as_deref(), install, &relay)?;
+    let (_, mut after, _) = change(&remote, install, &id)?;
     after.push('\n');
-    if install {
+    if install && remote.mac {
+        run(host, &put_relay(MAC_RELAY), PY_RELAY.as_bytes()).await?;
+    } else if install {
         let exe = std::fs::read(crate::settings::hook_exe_path()).map_err(|e| format!("coucou-hook: {e}"))?;
-        run(host, PUT_RELAY, &exe).await?;
+        run(host, &put_relay(LINUX_RELAY), &exe).await?;
     }
     // ponytail: the file could change between this read and the write (seconds); a remote lock if that ever matters.
     let (out, _) = run(host, &put_settings(&config_file::stamp()), after.as_bytes()).await?;
@@ -245,7 +302,8 @@ static TUNNELS: Mutex<Option<HashMap<String, tauri::async_runtime::JoinHandle<()
 
 /// Starts a tunnel for each host that has none, and stops those no longer listed.
 #[cfg(target_os = "linux")]
-pub fn sync(app: &AppHandle, hosts: &[String]) {
+pub fn sync(app: &AppHandle, hosts: &[String], id: &str) {
+    *CLIENT_ID.lock().unwrap() = id.to_string();
     let mut tunnels = TUNNELS.lock().unwrap();
     let tunnels = tunnels.get_or_insert_with(HashMap::new);
     tunnels.retain(|host, task| {
@@ -276,7 +334,9 @@ pub fn sync(app: &AppHandle, hosts: &[String]) {
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn sync(_app: &AppHandle, _hosts: &[String]) {}
+pub fn sync(_app: &AppHandle, _hosts: &[String], id: &str) {
+    *CLIENT_ID.lock().unwrap() = id.to_string();
+}
 
 fn set_status(app: &AppHandle, host: &str, state: &str, error: String) {
     let status = HostStatus { host: host.to_string(), state: state.to_string(), error };
@@ -305,7 +365,11 @@ async fn tunnel(app: AppHandle, host: String) {
     loop {
         set_status(&app, &host, "connecting", String::new());
         let started = Instant::now();
-        let error = match run(&host, PROBE, b"").await {
+        let probed = match client_id() {
+            Ok(id) => run(&host, &probe(&id), b"").await,
+            Err(err) => Err(err),
+        };
+        let error = match probed {
             Err(err) => err,
             Ok((out, _)) => {
                 let remote = String::from_utf8_lossy(&out).trim().to_string();
@@ -414,23 +478,27 @@ mod tests {
 
     #[test]
     fn scripts_survive_any_login_shell() {
-        for script in [PROBE, READ_SETTINGS, PUT_RELAY, &put_settings("20260102-030405")] {
+        for script in [&probe("0a1b2c3d"), READ_SETTINGS, &put_relay(LINUX_RELAY), &put_relay(MAC_RELAY), &put_settings("20260102-030405")] {
             assert!(!script.contains(['\'', '\\', '!']), "{script}");
         }
     }
 
-    /// Against a real host: COUCOU_TEST_HOST=<ssh destination> cargo test -p coucou remote -- --ignored
+    /// Against a real host: COUCOU_TEST_HOST=<ssh destination> [COUCOU_TEST_ID=<id>]
+    /// [COUCOU_TEST_REMOVE=1] cargo test -p coucou remote -- --ignored
     #[test]
     #[ignore]
     fn installs_on_a_real_host() {
         let host = std::env::var("COUCOU_TEST_HOST").expect("COUCOU_TEST_HOST");
+        let id = std::env::var("COUCOU_TEST_ID").unwrap_or_else(|_| "0a1b2c3d".into());
+        let install = std::env::var_os("COUCOU_TEST_REMOVE").is_none();
         let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
         rt.block_on(async {
-            let socket = run(&host, PROBE, b"").await.unwrap();
+            *CLIENT_ID.lock().unwrap() = id.clone();
+            let socket = run(&host, &probe(&id), b"").await.unwrap();
             eprintln!("socket: {}", String::from_utf8_lossy(&socket.0).trim());
-            let plan = preview(&host, true).await.unwrap();
+            let plan = preview(&host, install).await.unwrap();
             eprintln!("diff:\n{}\nbackup: {:?}", plan.diff, plan.backup);
-            match apply(&host, true, &plan.fingerprint).await {
+            match apply(&host, install, &plan.fingerprint).await {
                 Ok(backup) => eprintln!("installed, backup {backup:?}"),
                 Err(err) => eprintln!("install failed: {err}"),
             }
@@ -545,7 +613,7 @@ mod tests {
 
     #[test]
     fn scripts_quote_their_cleanup() {
-        for script in [PUT_RELAY.to_string(), put_settings("20261011-0100")] {
+        for script in [put_relay(LINUX_RELAY), put_settings("20261011-0100")] {
             assert!(!script.contains(r#"trap "rm -f $t""#), "{script}");
             assert!(script.contains(r#"rm -f "$t""#), "{script}");
         }

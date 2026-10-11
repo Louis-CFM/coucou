@@ -72,6 +72,9 @@ pub struct Settings {
     /// SSH destinations whose Claude Code sessions show in the island, as typed
     /// for `ssh` (an alias from ~/.ssh/config or user@host). See remote.rs.
     pub remote_hosts: Vec<String>,
+    /// This install's id on remote hosts: its socket and hook entries there carry
+    /// it (remote.rs). Made once, owned by the Rust side.
+    pub remote_client_id: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -128,6 +131,7 @@ impl Default for Settings {
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
             remote_hosts: Vec::new(),
+            remote_client_id: String::new(),
         }
     }
 }
@@ -143,7 +147,12 @@ fn settings_path() -> PathBuf {
 }
 
 pub fn load() -> Settings {
-    load_from(&settings_path())
+    let mut settings = load_from(&settings_path());
+    if !crate::remote::valid_client_id(&settings.remote_client_id) {
+        settings.remote_client_id = crate::remote::new_client_id();
+        let _ = save(&settings);
+    }
+    settings
 }
 
 pub fn save(settings: &Settings) -> std::io::Result<()> {
@@ -405,7 +414,8 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "remoteHosts": ["devbox", "me@build.example.org"]
+  "remoteHosts": ["devbox", "me@build.example.org"],
+  "remoteClientId": "0a1b2c3d"
 }"##;
 
     fn custom() -> Value {
@@ -810,6 +820,7 @@ mod tests {
                 "language",
                 "desktopMochi",
                 "remoteHosts",
+                "remoteClientId",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
