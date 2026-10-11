@@ -112,6 +112,17 @@
    "ru": "Активность",
    "id": "Aktivitas"
   },
+  "Add your Anthropic API key in Settings → Chat first.": {
+   "zh-Hans": "请先在设置 → 聊天中添加你的 Anthropic API 密钥。",
+   "hi": "पहले सेटिंग्स → चैट में अपनी Anthropic API कुंजी जोड़ो।",
+   "es": "Primero añade tu clave de API de Anthropic en Ajustes → Chat.",
+   "ar": "أضف أولًا مفتاح Anthropic API في الإعدادات ← الدردشة.",
+   "fr": "Ajoute d'abord ta clé API Anthropic dans Réglages → Chat.",
+   "bn": "আগে সেটিংস → চ্যাটে তোমার Anthropic API কী যোগ করো।",
+   "pt-BR": "Primeiro adicione sua chave de API da Anthropic em Ajustes → Chat.",
+   "ru": "Сначала добавь ключ Anthropic API в Настройки → Чат.",
+   "id": "Tambahkan dulu kunci API Anthropic-mu di Pengaturan → Chat."
+  },
   "Advertisement": {
    "zh-Hans": "广告",
    "hi": "विज्ञापन",
@@ -221,6 +232,17 @@
    "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Coucou não está em execução ficam na fila e são executadas no próximo início.",
    "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске.",
    "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
+  },
+  "Answer questions with a web search": {
+   "zh-Hans": "用网页搜索回答问题",
+   "hi": "वेब खोज से सवालों के जवाब",
+   "es": "Responder preguntas buscando en la web",
+   "ar": "الإجابة عن الأسئلة ببحث على الويب",
+   "fr": "Répondre aux questions avec une recherche web",
+   "bn": "ওয়েবে খুঁজে প্রশ্নের উত্তর দাও",
+   "pt-BR": "Responder perguntas com uma busca na web",
+   "ru": "Отвечать на вопросы с поиском в интернете",
+   "id": "Jawab pertanyaan dengan pencarian web"
   },
   "Anthropic API": {
    "zh-Hans": "Anthropic API",
@@ -1068,6 +1090,17 @@
    "pt-BR": "Busca",
    "ru": "Получает",
    "id": "Mengambil"
+  },
+  "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
+   "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
+   "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
+   "es": "Para una voz más natural, descarga una voz Premium: Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del sistema → Gestionar voces. En inglés: Ava para mujer, Jamie para hombre (británico).",
+   "ar": "لصوت أكثر طبيعية، نزّل صوتًا Premium: إعدادات النظام ← تسهيلات الاستخدام ← المحتوى المنطوق ← صوت النظام ← إدارة الأصوات. بالإنجليزية: Ava لامرأة، Jamie لرجل (بريطاني).",
+   "fr": "Pour une voix plus naturelle, télécharge une voix Premium : Réglages Système → Accessibilité → Contenu énoncé → Voix du système → Gérer les voix. En anglais : Ava pour une femme, Jamie pour un homme (britannique).",
+   "bn": "আরও স্বাভাবিক কণ্ঠের জন্য একটি Premium কণ্ঠ ডাউনলোড করো: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। ইংরেজিতে: নারী হলে Ava, পুরুষ হলে Jamie (ব্রিটিশ)।",
+   "pt-BR": "Para uma voz mais natural, baixe uma voz Premium: Ajustes do Sistema → Acessibilidade → Conteúdo Falado → Voz do Sistema → Gerenciar Vozes. Em inglês: Ava para mulher, Jamie para homem (britânico).",
+   "ru": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский).",
+   "id": "Untuk suara yang lebih alami, unduh suara Premium: Pengaturan Sistem → Aksesibilitas → Konten Lisan → Suara Sistem → Kelola Suara. Bahasa Inggris: Ava untuk wanita, Jamie untuk pria (Inggris)."
   },
   "From Open-Meteo for this city, only when you ask.": {
    "zh-Hans": "仅在你询问时，从 Open-Meteo 获取该城市的天气。",
@@ -2202,6 +2235,17 @@
    "ru": "Открыть / закрыть гардероб",
    "id": "Buka / tutup lemari"
   },
+  "Open Accessibility settings": {
+   "zh-Hans": "打开辅助功能",
+   "hi": "Accessibility खोलें",
+   "es": "Abrir Accesibilidad",
+   "ar": "افتح تسهيلات الاستخدام",
+   "fr": "Ouvrir Accessibilité",
+   "bn": "Accessibility খোলো",
+   "pt-BR": "Abrir Acessibilidade",
+   "ru": "Открыть Универсальный доступ",
+   "id": "Buka Aksesibilitas"
+  },
   "Open Codex": {
    "zh-Hans": "打开 Codex",
    "hi": "Codex खोलें",
@@ -2477,6 +2521,17 @@
    "ru": "Закрепить / открепить нотч",
    "id": "Sematkan / lepas island"
   },
+  "Pitch": {
+   "zh-Hans": "音调",
+   "hi": "आवाज़ की पिच",
+   "es": "Tono",
+   "ar": "حدّة الصوت",
+   "fr": "Hauteur",
+   "bn": "কণ্ঠের তীক্ষ্ণতা",
+   "pt-BR": "Tom",
+   "ru": "Высота голоса",
+   "id": "Nada suara"
+  },
   "Plan usage": {
    "zh-Hans": "计划用量",
    "hi": "प्लान उपयोग",
@@ -2597,6 +2652,17 @@
    "pt-BR": "Projetos",
    "ru": "Проекты",
    "id": "Proyek"
+  },
+  "Questions your pills can't answer go to Claude with a web search, using your Anthropic API key. Only the question is sent.": {
+   "zh-Hans": "药丸无法回答的问题会用你的 Anthropic API 密钥发送给 Claude 并进行网页搜索。只发送问题本身。",
+   "hi": "जिन सवालों का जवाब तुम्हारी पिल्स नहीं दे सकतीं, वे तुम्हारी Anthropic API कुंजी से वेब खोज के साथ Claude को जाते हैं। सिर्फ़ सवाल भेजा जाता है।",
+   "es": "Las preguntas que tus píldoras no responden van a Claude con una búsqueda web, con tu clave de API de Anthropic. Solo se envía la pregunta.",
+   "ar": "الأسئلة التي لا تجيب عنها حبوبك تُرسل إلى Claude مع بحث على الويب، بمفتاح Anthropic API الخاص بك. يُرسل السؤال فقط.",
+   "fr": "Les questions auxquelles tes pilules ne répondent pas partent chez Claude avec une recherche web, avec ta clé API Anthropic. Seule la question est envoyée.",
+   "bn": "যে প্রশ্নের উত্তর তোমার পিলগুলো দিতে পারে না, সেগুলো তোমার Anthropic API কী দিয়ে ওয়েব সার্চসহ Claude-এর কাছে যায়। শুধু প্রশ্নটাই পাঠানো হয়।",
+   "pt-BR": "Perguntas que suas pílulas não respondem vão para o Claude com uma busca na web, usando sua chave de API da Anthropic. Só a pergunta é enviada.",
+   "ru": "Вопросы, на которые не отвечают твои пилюли, уходят в Claude с поиском в интернете, по твоему ключу Anthropic API. Отправляется только вопрос.",
+   "id": "Pertanyaan yang tidak bisa dijawab pil-mu dikirim ke Claude dengan pencarian web, memakai kunci API Anthropic-mu. Hanya pertanyaannya yang dikirim."
   },
   "Quit": {
    "zh-Hans": "退出",
@@ -3488,6 +3554,17 @@
    "pt-BR": "Voz",
    "ru": "Голос",
    "id": "Suara"
+  },
+  "Voice in use: {0}": {
+   "zh-Hans": "当前声音：{0}",
+   "hi": "उपयोग में आवाज़: {0}",
+   "es": "Voz en uso: {0}",
+   "ar": "الصوت المستخدم: {0}",
+   "fr": "Voix utilisée : {0}",
+   "bn": "ব্যবহৃত কণ্ঠ: {0}",
+   "pt-BR": "Voz em uso: {0}",
+   "ru": "Используется голос: {0}",
+   "id": "Suara yang dipakai: {0}"
   },
   "Voice type": {
    "zh-Hans": "声音类型",
