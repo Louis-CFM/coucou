@@ -44,6 +44,11 @@ test("English is the key itself, other languages come from either table", () => 
     assert.equal(t("Open the chat"), "Ouvrir le chat"); // extra.json
   });
   inLanguage("zh-Hans", () => assert.equal(t("Cancel"), "取消"));
+  inLanguage("ko", () => {
+    assert.equal(t("Allow"), "허용");
+    assert.equal(t("Cancel"), "취소");
+    assert.equal(t("Open the chat"), "채팅 열기");
+  });
 });
 
 test("a string nobody translated falls back to its English text", () => {
@@ -78,6 +83,12 @@ test("plurals follow each language's rules", () => {
     assert.equal(files(21), "21 репозиторий");
   });
   inLanguage("zh-Hans", () => assert.equal(files(7), "7 个仓库"));
+  inLanguage("ko", () => {
+    assert.equal(files(1), "저장소 1개");
+    assert.equal(files(5), "저장소 5개");
+    assert.equal(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1), "✓ 연결됨 · 모델 1개");
+    assert.equal(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 2), "✓ 연결됨 · 모델 2개");
+  });
   // The Mac's plural entry: Spanish one/other.
   inLanguage("es", () => {
     assert.equal(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1), "✓ Conectado · 1 modelo");
@@ -97,6 +108,11 @@ test("labels() tables and dates read in the current language", () => {
   assert.equal(weekdayShort(1), "Mon");
   assert.equal(dayMonth(8, 28), "Sep 28");
   inLanguage("es", () => assert.match(dayMonth(8, 28), /^28 sept?/));
+  inLanguage("ko", () => {
+    assert.equal(monthShort(9), "10월");
+    assert.equal(weekdayShort(1), "월");
+    assert.equal(dayMonth(8, 28), "9월 28일");
+  });
 });
 
 // ── Choosing the language ─────────────────────────────────────────────────────
@@ -109,15 +125,18 @@ test("System follows the system's language when Coucou has it, else English", ()
   assert.equal(resolveLanguage("", ["zh-CN"]), "zh-Hans");
   assert.equal(resolveLanguage("", ["zh-TW"]), "en"); // Traditional is not one of ours
   assert.equal(resolveLanguage("", ["ar-EG"]), "ar");
+  assert.equal(resolveLanguage("", ["ko-KR"]), "ko");
+  assert.equal(resolveLanguage("", ["ko"]), "ko");
   assert.equal(resolveLanguage("", ["de-DE"]), "en");
   assert.equal(resolveLanguage("", []), "en");
   // A picked language wins; one this build doesn't know means System.
   assert.equal(resolveLanguage("ru", ["fr-FR"]), "ru");
+  assert.equal(resolveLanguage("ko", ["fr-FR"]), "ko");
   assert.equal(resolveLanguage("xx", ["bn-IN"]), "bn");
 });
 
-test("the picker offers the Mac's ten languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"]);
+test("the picker offers the Mac's eleven languages, Arabic reads right to left", () => {
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "ko"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });

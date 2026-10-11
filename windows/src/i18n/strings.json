@@ -10,7 +10,8 @@
   "bn",
   "pt-BR",
   "ru",
-  "id"
+  "id",
+  "ko"
  ],
  "strings": {
   " is ready.": {
@@ -22,7 +23,20 @@
    "bn": " প্রস্তুত।",
    "pt-BR": " está pronto.",
    "ru": " готов.",
-   "id": " siap."
+   "id": " siap.",
+   "ko": " 준비 완료."
+  },
+  "4 active — remove which?": {
+   "zh-Hans": "4 个激活 — 删除哪个？",
+   "hi": "4 सक्रिय — कौन सा हटाएं?",
+   "es": "4 activas — ¿cuál quitar?",
+   "ar": "4 نشطة — أيها أزيل؟",
+   "fr": "4 actives — laquelle retirer ?",
+   "bn": "4টি সক্রিয় — কোনটি সরাবো?",
+   "pt-BR": "4 ativas — qual remover?",
+   "ru": "4 активно — что удалить?",
+   "id": "4 aktif — mana yang dihapus?",
+   "ko": "4개 활성 — 어느 것을 제거할까요?"
   },
   "5 hours": {
    "zh-Hans": "5 小时",
@@ -33,7 +47,8 @@
    "bn": "৫ ঘণ্টা",
    "pt-BR": "5 horas",
    "ru": "5 часов",
-   "id": "5 jam"
+   "id": "5 jam",
+   "ko": "5시간"
   },
   "API key (AI Studio)": {
    "zh-Hans": "API 密钥 (AI Studio)",
@@ -44,7 +59,8 @@
    "bn": "API কী (AI Studio)",
    "pt-BR": "Chave de API (AI Studio)",
    "ru": "Ключ API (AI Studio)",
-   "id": "Kunci API (AI Studio)"
+   "id": "Kunci API (AI Studio)",
+   "ko": "API 키 (AI Studio)"
   },
   "API key (sk-ant-…)": {
    "zh-Hans": "API 密钥 (sk-ant-…)",
@@ -55,7 +71,8 @@
    "bn": "API কী (sk-ant-…)",
    "pt-BR": "Chave de API (sk-ant-…)",
    "ru": "Ключ API (sk-ant-…)",
-   "id": "Kunci API (sk-ant-…)"
+   "id": "Kunci API (sk-ant-…)",
+   "ko": "API 키 (sk-ant-…)"
   },
   "API key (sk-…)": {
    "zh-Hans": "API 密钥 (sk-…)",
@@ -66,7 +83,8 @@
    "bn": "API কী (sk-…)",
    "pt-BR": "Chave de API (sk-…)",
    "ru": "Ключ API (sk-…)",
-   "id": "Kunci API (sk-…)"
+   "id": "Kunci API (sk-…)",
+   "ko": "API 키 (sk-…)"
   },
   "AUTO": {
    "zh-Hans": "自动",
@@ -77,7 +95,8 @@
    "bn": "অটো",
    "pt-BR": "AUTO",
    "ru": "АВТО",
-   "id": "AUTO"
+   "id": "AUTO",
+   "ko": "자동"
   },
   "Active pills": {
    "zh-Hans": "活跃标签页",
@@ -88,7 +107,8 @@
    "bn": "সক্রিয় ট্যাব",
    "pt-BR": "Abas ativas",
    "ru": "Активные вкладки",
-   "id": "Tab aktif"
+   "id": "Tab aktif",
+   "ko": "활성 탭"
   },
   "Activity": {
    "zh-Hans": "动态",
@@ -99,7 +119,8 @@
    "bn": "কার্যকলাপ",
    "pt-BR": "Atividade",
    "ru": "Активность",
-   "id": "Aktivitas"
+   "id": "Aktivitas",
+   "ko": "활동"
   },
   "Advertisement": {
    "zh-Hans": "广告",
@@ -110,7 +131,8 @@
    "bn": "বিজ্ঞাপন",
    "pt-BR": "Anúncio",
    "ru": "Реклама",
-   "id": "Iklan"
+   "id": "Iklan",
+   "ko": "광고"
   },
   "Agent": {
    "zh-Hans": "代理",
@@ -121,7 +143,8 @@
    "bn": "এজেন্ট",
    "pt-BR": "Agente",
    "ru": "Агент",
-   "id": "Agen"
+   "id": "Agen",
+   "ko": "에이전트"
   },
   "Agents": {
    "zh-Hans": "代理",
@@ -132,7 +155,8 @@
    "bn": "এজেন্টস",
    "pt-BR": "Agentes",
    "ru": "Агенты",
-   "id": "Agen"
+   "id": "Agen",
+   "ko": "에이전트"
   },
   "Allow": {
    "zh-Hans": "允许",
@@ -143,7 +167,8 @@
    "bn": "অনুমতি দিন",
    "pt-BR": "Permitir",
    "ru": "Разрешить",
-   "id": "Izinkan"
+   "id": "Izinkan",
+   "ko": "허용"
   },
   "Allow Coucou to control Music": {
    "zh-Hans": "允许 Coucou 控制音乐",
@@ -154,7 +179,8 @@
    "bn": "Coucou-কে Music নিয়ন্ত্রণ করতে দিন",
    "pt-BR": "Permitir que o Coucou controle o Music",
    "ru": "Разрешить Coucou управлять Music",
-   "id": "Izinkan Coucou mengontrol Music"
+   "id": "Izinkan Coucou mengontrol Music",
+   "ko": "Coucou의 음악 제어 허용"
   },
   "Allow Coucou to control Spotify": {
    "zh-Hans": "允许 Coucou 控制 Spotify",
@@ -165,7 +191,20 @@
    "bn": "Coucou-কে Spotify নিয়ন্ত্রণ করতে দিন",
    "pt-BR": "Permitir que o Coucou controle o Spotify",
    "ru": "Разрешить Coucou управлять Spotify",
-   "id": "Izinkan Coucou mengontrol Spotify"
+   "id": "Izinkan Coucou mengontrol Spotify",
+   "ko": "Coucou의 Spotify 제어 허용"
+  },
+  "Already active": {
+   "zh-Hans": "已激活",
+   "hi": "पहले से सक्रिय",
+   "es": "Ya activo",
+   "ar": "مفعّل بالفعل",
+   "fr": "Déjà actif",
+   "bn": "ইতিমধ্যে সক্রিয়",
+   "pt-BR": "Já ativo",
+   "ru": "Уже активно",
+   "id": "Sudah aktif",
+   "ko": "이미 활성화됨"
   },
   "Always": {
    "zh-Hans": "始终允许",
@@ -176,7 +215,8 @@
    "bn": "সর্বদা",
    "pt-BR": "Sempre",
    "ru": "Всегда",
-   "id": "Selalu"
+   "id": "Selalu",
+   "ko": "항상"
   },
   "Amp plugin": {
    "zh-Hans": "Amp 插件",
@@ -187,7 +227,8 @@
    "bn": "Amp প্লাগইন",
    "pt-BR": "Plugin do Amp",
    "ru": "Плагин Amp",
-   "id": "Plugin Amp"
+   "id": "Plugin Amp",
+   "ko": "Amp 플러그인"
   },
   "An instruction sent from the iPhone uses the model open in chat. The system prompt and conversation history apply. Instructions sent when Coucou is not running are queued and executed on next launch.": {
    "zh-Hans": "从 iPhone 发送的指令使用聊天中当前打开的模型。系统提示和对话历史适用。Coucou 未运行时发送的指令将排队，并在下次启动时执行。",
@@ -198,7 +239,8 @@
    "bn": "iPhone থেকে পাঠানো নির্দেশনা চ্যাটে বর্তমানে খোলা মডেল ব্যবহার করে। সিস্টেম প্রম্পট এবং কথোপকথনের ইতিহাস প্রযোজ্য। Coucou চলছে না থাকলে পাঠানো নির্দেশনাগুলো কিউতে রাখা হয় এবং পরবর্তী চালুতে চালানো হয়।",
    "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Coucou não está em execução ficam na fila e são executadas no próximo início.",
    "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске.",
-   "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
+   "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya.",
+   "ko": "iPhone에서 전송된 지침은 채팅에 열려 있는 모델을 사용합니다. 시스템 프롬프트와 대화 기록이 적용됩니다. Coucou가 실행되지 않을 때 전송된 지침은 대기열에 추가되어 다음 실행 시 실행됩니다."
   },
   "Anthropic API": {
    "zh-Hans": "Anthropic API",
@@ -209,7 +251,8 @@
    "bn": "Anthropic API",
    "pt-BR": "API da Anthropic",
    "ru": "Anthropic API",
-   "id": "API Anthropic"
+   "id": "API Anthropic",
+   "ko": "Anthropic API"
   },
   "Antigravity hooks": {
    "zh-Hans": "Antigravity 钩子",
@@ -220,7 +263,8 @@
    "bn": "Antigravity হুক",
    "pt-BR": "Hooks do Antigravity",
    "ru": "Хуки Antigravity",
-   "id": "Hooks Antigravity"
+   "id": "Hooks Antigravity",
+   "ko": "Antigravity hooks"
   },
   "Applies on next launch": {
    "zh-Hans": "下次启动时生效",
@@ -231,7 +275,8 @@
    "bn": "পরবর্তী চালুতে প্রযোজ্য হবে",
    "pt-BR": "Aplica no próximo lançamento",
    "ru": "Применится при следующем запуске",
-   "id": "Berlaku saat peluncuran berikutnya"
+   "id": "Berlaku saat peluncuran berikutnya",
+   "ko": "다음 실행 시 적용"
   },
   "Approval requests appear in the notch. If Coucou is not running, Hermes falls back to its own prompt.": {
    "zh-Hans": "审批请求显示在刘海中。若 Coucou 未运行，Hermes 将回退到其自己的提示。",
@@ -242,7 +287,8 @@
    "bn": "নচে অনুমোদন অনুরোধ দেখানো হয়। Coucou না চললে Hermes তার নিজের প্রম্পটে ফলব্যাক করে।",
    "pt-BR": "Solicitações de aprovação aparecem no notch. Se Coucou não estiver em execução, Hermes usa seu próprio prompt.",
    "ru": "Запросы подтверждения отображаются в notch. Если Coucou не запущен, Hermes использует собственный prompt.",
-   "id": "Permintaan persetujuan muncul di notch. Jika Coucou tidak berjalan, Hermes menggunakan promptnya sendiri."
+   "id": "Permintaan persetujuan muncul di notch. Jika Coucou tidak berjalan, Hermes menggunakan promptnya sendiri.",
+   "ko": "승인 요청이 노치에 표시됩니다. Coucou가 실행되지 않으면 Hermes는 자체 프롬프트로 대체합니다."
   },
   "Approval requests are handled by Hermes (terminal or gateway).": {
    "zh-Hans": "审批请求由 Hermes 处理（终端或网关）。",
@@ -253,7 +299,8 @@
    "bn": "Hermes অনুমোদন অনুরোধ পরিচালনা করে (টার্মিনাল বা গেটওয়ে)।",
    "pt-BR": "Solicitações de aprovação tratadas pelo Hermes (terminal ou gateway).",
    "ru": "Запросы подтверждения обрабатывает Hermes (терминал или шлюз).",
-   "id": "Permintaan persetujuan ditangani oleh Hermes (terminal atau gateway)."
+   "id": "Permintaan persetujuan ditangani oleh Hermes (terminal atau gateway).",
+   "ko": "승인 요청은 Hermes(터미널 또는 게이트웨이)에서 처리됩니다."
   },
   "Approved": {
    "zh-Hans": "已批准",
@@ -264,7 +311,8 @@
    "bn": "অনুমোদিত",
    "pt-BR": "Aprovado",
    "ru": "Одобрено",
-   "id": "Disetujui"
+   "id": "Disetujui",
+   "ko": "승인됨"
   },
   "Ask Claude": {
    "zh-Hans": "问 Claude",
@@ -275,7 +323,8 @@
    "bn": "Claude-কে জিজ্ঞেস করুন",
    "pt-BR": "Perguntar ao Claude",
    "ru": "Спросить Claude",
-   "id": "Tanya Claude"
+   "id": "Tanya Claude",
+   "ko": "Claude에게 질문"
   },
   "Ask a question": {
    "zh-Hans": "提问",
@@ -286,7 +335,8 @@
    "bn": "একটি প্রশ্ন করুন",
    "pt-BR": "Fazer uma pergunta",
    "ru": "Задать вопрос",
-   "id": "Ajukan pertanyaan"
+   "id": "Ajukan pertanyaan",
+   "ko": "질문하기"
   },
   "Ask a question about it": {
    "zh-Hans": "提问",
@@ -297,7 +347,8 @@
    "bn": "এটা সম্পর্কে প্রশ্ন করুন",
    "pt-BR": "Fazer uma pergunta sobre isso",
    "ru": "Задать вопрос",
-   "id": "Ajukan pertanyaan tentang ini"
+   "id": "Ajukan pertanyaan tentang ini",
+   "ko": "이에 대해 질문하기"
   },
   "Ask me anything…": {
    "zh-Hans": "问我任何事…",
@@ -308,7 +359,8 @@
    "bn": "যেকোনো কিছু জিজ্ঞেস করুন…",
    "pt-BR": "Pergunte qualquer coisa…",
    "ru": "Спроси меня о чём угодно…",
-   "id": "Tanyakan apa saja…"
+   "id": "Tanyakan apa saja…",
+   "ko": "무엇이든 물어보세요…"
   },
   "Attach front window": {
    "zh-Hans": "附加前端窗口",
@@ -319,7 +371,8 @@
    "bn": "সামনের উইন্ডো সংযুক্ত করো",
    "pt-BR": "Anexar janela frontal",
    "ru": "Прикрепить переднее окно",
-   "id": "Lampirkan jendela depan"
+   "id": "Lampirkan jendela depan",
+   "ko": "전면 창 첨부"
   },
   "Auto-close · {seconds}s": {
    "zh-Hans": "自动关闭 · {seconds} 秒",
@@ -330,7 +383,8 @@
    "bn": "স্বয়ংক্রিয়-বন্ধ · {seconds}স",
    "pt-BR": "Fechar auto · {seconds}s",
    "ru": "Автозакрытие · {seconds} с",
-   "id": "Tutup otomatis · {seconds}dt"
+   "id": "Tutup otomatis · {seconds}dt",
+   "ko": "자동 닫기 · {seconds}초"
   },
   "Automation not allowed": {
    "zh-Hans": "不允许自动化",
@@ -341,7 +395,8 @@
    "bn": "অটোমেশন অনুমোদিত নয়",
    "pt-BR": "Automação não permitida",
    "ru": "Автоматизация не разрешена",
-   "id": "Otomatisasi tidak diizinkan"
+   "id": "Otomatisasi tidak diizinkan",
+   "ko": "자동화가 허용되지 않음"
   },
   "Behavior": {
    "zh-Hans": "行为",
@@ -352,7 +407,8 @@
    "bn": "আচরণ",
    "pt-BR": "Comportamento",
    "ru": "Поведение",
-   "id": "Perilaku"
+   "id": "Perilaku",
+   "ko": "동작"
   },
   "Busiest day": {
    "zh-Hans": "最忙的一天",
@@ -363,7 +419,8 @@
    "bn": "সবচেয়ে ব্যস্ত দিন",
    "pt-BR": "Dia mais ativo",
    "ru": "Самый насыщенный день",
-   "id": "Hari tersibuk"
+   "id": "Hari tersibuk",
+   "ko": "가장 바쁜 날"
   },
   "COMMANDS": {
    "zh-Hans": "命令",
@@ -374,7 +431,8 @@
    "bn": "কমান্ড",
    "pt-BR": "COMANDOS",
    "ru": "КОМАНДЫ",
-   "id": "PERINTAH"
+   "id": "PERINTAH",
+   "ko": "명령어"
   },
   "Can't reach {name} at {url}. Is it running?": {
    "zh-Hans": "无法访问 {name}（{url}）。它正在运行吗？",
@@ -385,7 +443,8 @@
    "bn": "{name} কে {url} তে পৌঁছানো যাচ্ছে না। এটি কি চলছে?",
    "pt-BR": "Não foi possível alcançar {name} em {url}. Ele está em execução?",
    "ru": "Не удалось подключиться к {name} по адресу {url}. Он запущен?",
-   "id": "Tidak dapat menjangkau {name} di {url}. Apakah sedang berjalan?"
+   "id": "Tidak dapat menjangkau {name} di {url}. Apakah sedang berjalan?",
+   "ko": "{url}의 {name}에 연결할 수 없습니다. 실행 중인가요?"
   },
   "Cancel": {
    "zh-Hans": "取消",
@@ -396,7 +455,8 @@
    "bn": "বাতিল",
    "pt-BR": "Cancelar",
    "ru": "Отмена",
-   "id": "Batal"
+   "id": "Batal",
+   "ko": "취소"
   },
   "Chat": {
    "zh-Hans": "聊天",
@@ -407,7 +467,8 @@
    "bn": "চ্যাট",
    "pt-BR": "Chat",
    "ru": "Чат",
-   "id": "Obrolan"
+   "id": "Obrolan",
+   "ko": "채팅"
   },
   "Chat with {name}": {
    "zh-Hans": "与 {name} 聊天",
@@ -418,7 +479,8 @@
    "bn": "{name}-এর সাথে চ্যাট",
    "pt-BR": "Conversar com {name}",
    "ru": "Чат с {name}",
-   "id": "Chat dengan {name}"
+   "id": "Chat dengan {name}",
+   "ko": "{name}와(과) 대화"
   },
   "Chat — other providers": {
    "zh-Hans": "聊天 — 其他服务商",
@@ -429,7 +491,8 @@
    "bn": "চ্যাট — অন্যান্য প্রদানকারী",
    "pt-BR": "Chat — outros provedores",
    "ru": "Чат — другие провайдеры",
-   "id": "Chat — penyedia lain"
+   "id": "Chat — penyedia lain",
+   "ko": "채팅 — 다른 제공업체"
   },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
@@ -440,7 +503,8 @@
    "bn": "আপনি যে টুলগুলো ব্যবহার করেন তা বেছে নিন। Coucou শুধুমাত্র আপনার ঘোষণা করা জিনিস দেখায়।",
    "pt-BR": "Escolha as ferramentas que você usa. O Coucou mostra apenas o que você declarar aqui.",
    "ru": "Выбери инструменты, которые ты используешь. Coucou показывает только то, что ты здесь объявишь.",
-   "id": "Pilih alat yang Anda gunakan. Coucou hanya menampilkan yang Anda deklarasikan di sini."
+   "id": "Pilih alat yang Anda gunakan. Coucou hanya menampilkan yang Anda deklarasikan di sini.",
+   "ko": "사용하는 도구를 선택하세요. Coucou는 여기에 선언된 항목만 표시합니다."
   },
   "Classic token with repo scope, or fine-grained with read access to Pull requests, commit statuses, and Actions.": {
    "zh-Hans": "具有 repo 权限的经典令牌，或具有 Pull requests、Commit statuses 和 Actions 读取权限的细粒度令牌。",
@@ -451,7 +515,8 @@
    "bn": "repo স্কোপ সহ ক্লাসিক টোকেন, অথবা Pull requests, Commit statuses এবং Actions-এ পড়ার অ্যাক্সেস সহ ফাইন-গ্রেইনড টোকেন।",
    "pt-BR": "Token clássico com escopo repo, ou fine-grained com acesso de leitura a Pull requests, Commit statuses e Actions.",
    "ru": "Классический токен с правом repo или гранулярный с доступом на чтение к Pull requests, Commit statuses и Actions.",
-   "id": "Token klasik dengan scope repo, atau token fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions."
+   "id": "Token klasik dengan scope repo, atau token fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions.",
+   "ko": "repo 스코프가 있는 기본 토큰, 또는 Pull requests, 커밋 상태, Actions에 대한 읽기 권한이 있는 세분화된 토큰."
   },
   "Claude Code finished": {
    "zh-Hans": "Claude Code 已完成",
@@ -462,7 +527,8 @@
    "bn": "Claude Code শেষ হয়েছে",
    "pt-BR": "Claude Code terminou",
    "ru": "Claude Code завершил",
-   "id": "Claude Code selesai"
+   "id": "Claude Code selesai",
+   "ko": "Claude Code 완료됨"
   },
   "Claude Code hooks": {
    "zh-Hans": "Claude Code 钩子",
@@ -473,7 +539,8 @@
    "bn": "Claude Code হুক",
    "pt-BR": "Hooks do Claude Code",
    "ru": "Хуки Claude Code",
-   "id": "Hooks Claude Code"
+   "id": "Hooks Claude Code",
+   "ko": "Claude Code hooks"
   },
   "Claude Code is asking": {
    "zh-Hans": "Claude Code 正在询问",
@@ -484,7 +551,8 @@
    "bn": "Claude Code জিজ্ঞেস করছে",
    "pt-BR": "Claude Code está perguntando",
    "ru": "Claude Code спрашивает",
-   "id": "Claude Code bertanya"
+   "id": "Claude Code bertanya",
+   "ko": "Claude Code가 질문 중"
   },
   "Claude is reading {name}…": {
    "zh-Hans": "Claude 正在读取 {name}…",
@@ -495,7 +563,8 @@
    "bn": "Claude {name} পড়ছে…",
    "pt-BR": "Claude está lendo {name}…",
    "ru": "Claude читает {name}…",
-   "id": "Claude sedang membaca {name}…"
+   "id": "Claude sedang membaca {name}…",
+   "ko": "Claude가 {name} 읽는 중…"
   },
   "Claude is searching…": {
    "zh-Hans": "Claude 正在搜索…",
@@ -506,7 +575,8 @@
    "bn": "Claude খুঁজছে…",
    "pt-BR": "Claude está pesquisando…",
    "ru": "Claude ищет…",
-   "id": "Claude sedang mencari…"
+   "id": "Claude sedang mencari…",
+   "ko": "Claude가 검색 중…"
   },
   "Claude plan": {
    "zh-Hans": "Claude 计划",
@@ -517,7 +587,8 @@
    "bn": "Claude প্ল্যান",
    "pt-BR": "Plano Claude",
    "ru": "План Claude",
-   "id": "Paket Claude"
+   "id": "Paket Claude",
+   "ko": "Claude 플랜"
   },
   "Clear": {
    "zh-Hans": "清除",
@@ -528,7 +599,8 @@
    "bn": "মুছুন",
    "pt-BR": "Limpar",
    "ru": "Очистить",
-   "id": "Hapus"
+   "id": "Hapus",
+   "ko": "지우기"
   },
   "Clear history": {
    "zh-Hans": "清除历史记录",
@@ -539,7 +611,8 @@
    "bn": "ইতিহাস মুছুন",
    "pt-BR": "Limpar histórico",
    "ru": "Очистить историю",
-   "id": "Hapus riwayat"
+   "id": "Hapus riwayat",
+   "ko": "기록 지우기"
   },
   "Close": {
    "zh-Hans": "关闭",
@@ -550,7 +623,8 @@
    "bn": "বন্ধ",
    "pt-BR": "Fechar",
    "ru": "Закрыть",
-   "id": "Tutup"
+   "id": "Tutup",
+   "ko": "닫기"
   },
   "Close after": {
    "zh-Hans": "自动关闭",
@@ -561,7 +635,8 @@
    "bn": "পরে বন্ধ করুন",
    "pt-BR": "Fechar após",
    "ru": "Закрыть через",
-   "id": "Tutup setelah"
+   "id": "Tutup setelah",
+   "ko": "다음 시간 후 닫기"
   },
   "Close notch (if not pinned)": {
    "zh-Hans": "关闭岛（如未固定）",
@@ -572,7 +647,8 @@
    "bn": "আইল্যান্ড বন্ধ করো (পিন না থাকলে)",
    "pt-BR": "Fechar island (se não fixado)",
    "ru": "Закрыть нотч (если не закреплён)",
-   "id": "Tutup island (jika tidak disematkan)"
+   "id": "Tutup island (jika tidak disematkan)",
+   "ko": "노치 닫기 (고정되지 않은 경우)"
   },
   "Codex hooks": {
    "zh-Hans": "Codex 钩子",
@@ -583,7 +659,8 @@
    "bn": "Codex হুক",
    "pt-BR": "Hooks do Codex",
    "ru": "Хуки Codex",
-   "id": "Hooks Codex"
+   "id": "Hooks Codex",
+   "ko": "Codex hooks"
   },
   "Color": {
    "zh-Hans": "颜色",
@@ -594,7 +671,8 @@
    "bn": "রং",
    "pt-BR": "Cor",
    "ru": "Цвет",
-   "id": "Warna"
+   "id": "Warna",
+   "ko": "색상"
   },
   "Coming soon": {
    "zh-Hans": "即将推出",
@@ -605,7 +683,20 @@
    "bn": "শীঘ্রই আসছে",
    "pt-BR": "Em breve",
    "ru": "Скоро",
-   "id": "Segera hadir"
+   "id": "Segera hadir",
+   "ko": "출시 예정"
+  },
+  "Command not recognised": {
+   "zh-Hans": "无法识别指令",
+   "hi": "आदेश पहचाना नहीं",
+   "es": "Comando no reconocido",
+   "ar": "الأمر غير مُتعرَّف عليه",
+   "fr": "Commande non reconnue",
+   "bn": "কমান্ড চেনা যায়নি",
+   "pt-BR": "Comando não reconhecido",
+   "ru": "Команда не распознана",
+   "id": "Perintah tidak dikenali",
+   "ko": "명령을 인식할 수 없음"
   },
   "Completed successfully.": {
    "zh-Hans": "已成功完成。",
@@ -616,7 +707,8 @@
    "bn": "সফলভাবে সম্পন্ন।",
    "pt-BR": "Concluído com sucesso.",
    "ru": "Завершено успешно.",
-   "id": "Selesai dengan berhasil."
+   "id": "Selesai dengan berhasil.",
+   "ko": "성공적으로 완료되었습니다."
   },
   "Confirm and write": {
    "zh-Hans": "确认并写入",
@@ -627,7 +719,8 @@
    "bn": "নিশ্চিত করুন এবং লিখুন",
    "pt-BR": "Confirmar e gravar",
    "ru": "Подтвердить и записать",
-   "id": "Konfirmasi & tulis"
+   "id": "Konfirmasi & tulis",
+   "ko": "Coucou는 다음 항목에만 씁니다"
   },
   "Connect": {
    "zh-Hans": "连接",
@@ -638,7 +731,8 @@
    "bn": "সংযুক্ত করুন",
    "pt-BR": "Conectar",
    "ru": "Подключить",
-   "id": "Hubungkan"
+   "id": "Hubungkan",
+   "ko": "연결"
   },
   "Connect to a local model server. No API key required.": {
    "zh-Hans": "连接到本地模型服务器。无需 API 密钥。",
@@ -649,7 +743,8 @@
    "bn": "একটি স্থানীয় মডেল সার্ভারে সংযুক্ত হন। কোনো API কী লাগবে না।",
    "pt-BR": "Conecte-se a um servidor de modelos local. Não é necessária chave de API.",
    "ru": "Подключись к локальному серверу моделей. API-ключ не нужен.",
-   "id": "Hubungkan ke server model lokal. Tidak perlu kunci API."
+   "id": "Hubungkan ke server model lokal. Tidak perlu kunci API.",
+   "ko": "로컬 모델 서버에 연결합니다. API 키가 필요하지 않습니다."
   },
   "Connected": {
    "zh-Hans": "已连接",
@@ -660,7 +755,8 @@
    "bn": "সংযুক্ত",
    "pt-BR": "Conectado",
    "ru": "Подключено",
-   "id": "Terhubung"
+   "id": "Terhubung",
+   "ko": "연결됨"
   },
   "Connected · loading…": {
    "zh-Hans": "已连接 · 加载中…",
@@ -671,7 +767,8 @@
    "bn": "সংযুক্ত · লোড হচ্ছে…",
    "pt-BR": "Conectado · carregando…",
    "ru": "Подключено · загрузка…",
-   "id": "Terhubung · memuat…"
+   "id": "Terhubung · memuat…",
+   "ko": "연결됨 · 로딩 중…"
   },
   "Connected · {detail}": {
    "zh-Hans": "已连接 · {detail}",
@@ -682,7 +779,8 @@
    "bn": "সংযুক্ত · {detail}",
    "pt-BR": "Conectado · {detail}",
    "ru": "Подключено · {detail}",
-   "id": "Terhubung · {detail}"
+   "id": "Terhubung · {detail}",
+   "ko": "연결됨 · {detail}"
   },
   "Connecting…": {
    "zh-Hans": "正在连接…",
@@ -693,7 +791,8 @@
    "bn": "সংযুক্ত হচ্ছে…",
    "pt-BR": "Conectando…",
    "ru": "Подключение…",
-   "id": "Menghubungkan…"
+   "id": "Menghubungkan…",
+   "ko": "연결 중…"
   },
   "Continue…": {
    "zh-Hans": "继续…",
@@ -704,7 +803,8 @@
    "bn": "চালিয়ে যান…",
    "pt-BR": "Continuar…",
    "ru": "Продолжить…",
-   "id": "Lanjutkan…"
+   "id": "Lanjutkan…",
+   "ko": "계속…"
   },
   "Copy": {
    "zh-Hans": "复制",
@@ -715,7 +815,32 @@
    "bn": "কপি",
    "pt-BR": "Copiar",
    "ru": "Скопировать",
-   "id": "Salin"
+   "id": "Salin",
+   "ko": "복사"
+  },
+  "Coucou reads back results in the spoken language, using a synthesized voice. 100% on-device.": {
+   "zh-Hans": "Coucou 用语音语言朗读结果。完全在设备上处理。",
+   "hi": "Coucou बोली जाने वाली भाषा में परिणाम पढ़ता है। सब कुछ डिवाइस पर।",
+   "es": "Coucou lee los resultados en el idioma hablado con una voz sintetizada. Todo en el dispositivo.",
+   "ar": "يقرأ كوكو النتائج باللغة المنطوقة باستخدام صوت مُركَّب. كل شيء يتم على الجهاز.",
+   "fr": "Coucou lit les résultats dans la langue parlée. Tout se passe sur l'appareil.",
+   "bn": "Coucou কথ্য ভাষায় ফলাফল পড়ে। সবকিছু ডিভাইসেই হয়।",
+   "pt-BR": "Coucou lê os resultados no idioma falado. Tudo no dispositivo.",
+   "ru": "Coucou зачитывает результаты на языке команды. Всё на устройстве.",
+   "id": "Coucou membaca hasil dalam bahasa yang diucapkan. Semuanya di perangkat.",
+   "ko": "Coucou가 합성된 음성을 사용하여 말한 언어로 결과를 읽어줍니다. 100% 기기 내에서 처리됩니다."
+  },
+  "Coucou responds aloud": {
+   "zh-Hans": "Coucou 大声回应",
+   "hi": "Coucou ज़ोर से जवाब देता है",
+   "es": "Coucou responde en voz alta",
+   "ar": "كوكو يرد بصوت عالٍ",
+   "fr": "Coucou répond à voix haute",
+   "bn": "Coucou জোরে জবাব দেয়",
+   "pt-BR": "Coucou responde em voz alta",
+   "ru": "Coucou отвечает вслух",
+   "id": "Coucou merespons dengan suara",
+   "ko": "Coucou가 음성으로 응답"
   },
   "Custom…": {
    "zh-Hans": "自定义…",
@@ -726,7 +851,8 @@
    "bn": "কাস্টম…",
    "pt-BR": "Personalizado…",
    "ru": "Свой…",
-   "id": "Kustom…"
+   "id": "Kustom…",
+   "ko": "커스텀…"
   },
   "Default": {
    "zh-Hans": "默认",
@@ -737,7 +863,8 @@
    "bn": "ডিফল্ট",
    "pt-BR": "Padrão",
    "ru": "По умолчанию",
-   "id": "Bawaan"
+   "id": "Bawaan",
+   "ko": "기본값"
   },
   "Demo": {
    "zh-Hans": "演示",
@@ -748,7 +875,8 @@
    "bn": "ডেমো",
    "pt-BR": "Demo",
    "ru": "Демо",
-   "id": "Demo"
+   "id": "Demo",
+   "ko": "데모"
   },
   "Demo mode": {
    "zh-Hans": "演示模式",
@@ -759,7 +887,8 @@
    "bn": "ডেমো মোড",
    "pt-BR": "Modo demo",
    "ru": "Демо-режим",
-   "id": "Mode demo"
+   "id": "Mode demo",
+   "ko": "데모 모드"
   },
   "Denied": {
    "zh-Hans": "已拒绝",
@@ -770,7 +899,8 @@
    "bn": "প্রত্যাখ্যাত",
    "pt-BR": "Negado",
    "ru": "Отклонено",
-   "id": "Ditolak"
+   "id": "Ditolak",
+   "ko": "거부됨"
   },
   "Deny": {
    "zh-Hans": "拒绝",
@@ -781,7 +911,8 @@
    "bn": "প্রত্যাখ্যান",
    "pt-BR": "Negar",
    "ru": "Отклонить",
-   "id": "Tolak"
+   "id": "Tolak",
+   "ko": "거부"
   },
   "Deployments": {
    "zh-Hans": "部署",
@@ -792,7 +923,8 @@
    "bn": "ডিপ্লয়মেন্ট",
    "pt-BR": "Implantações",
    "ru": "Деплои",
-   "id": "Penerapan"
+   "id": "Penerapan",
+   "ko": "배포"
   },
   "Diff too large": {
    "zh-Hans": "Diff 太大",
@@ -803,7 +935,8 @@
    "bn": "ডিফ খুব বড়",
    "pt-BR": "Diff muito grande",
    "ru": "Diff слишком большой",
-   "id": "Diff terlalu besar"
+   "id": "Diff terlalu besar",
+   "ko": "Diff가 너무 큼"
   },
   "Disconnect": {
    "zh-Hans": "断开连接",
@@ -814,7 +947,8 @@
    "bn": "সংযোগ বিচ্ছিন্ন করুন",
    "pt-BR": "Desconectar",
    "ru": "Отключить",
-   "id": "Putuskan"
+   "id": "Putuskan",
+   "ko": "연결 해제"
   },
   "Draft": {
    "zh-Hans": "草稿",
@@ -825,7 +959,8 @@
    "bn": "ড্রাফ্ট",
    "pt-BR": "Rascunho",
    "ru": "Черновик",
-   "id": "Draf"
+   "id": "Draf",
+   "ko": "초안"
   },
   "Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.": {
    "zh-Hans": "在声音文件夹中放入与 Mochi 某个声音同名的文件（finish.wav、approval.mp3、greet.m4a…）即可替换它，然后重新载入。",
@@ -836,7 +971,8 @@
    "bn": "Mochi-র কোনো সাউন্ডের নামে একটি ফাইল (finish.wav, approval.mp3, greet.m4a…) সাউন্ড ফোল্ডারে রাখুন, সেটি বদলে যাবে; তারপর Reload করুন।",
    "pt-BR": "Coloque na pasta de sons um arquivo com o nome de um dos sons do Mochi (finish.wav, approval.mp3, greet.m4a…) para substituí-lo e depois recarregue.",
    "ru": "Положите в папку звуков файл с именем одного из звуков Mochi (finish.wav, approval.mp3, greet.m4a…), чтобы заменить его, затем перезагрузите.",
-   "id": "Taruh file bernama seperti salah satu suara Mochi (finish.wav, approval.mp3, greet.m4a…) di folder suara untuk menggantinya, lalu muat ulang."
+   "id": "Taruh file bernama seperti salah satu suara Mochi (finish.wav, approval.mp3, greet.m4a…) di folder suara untuk menggantinya, lalu muat ulang.",
+   "ko": "사운드 폴더에 Mochi의 사운드 이름(finish.wav, approval.mp3, greet.m4a…)과 일치하는 파일을 드롭하여 교체한 다음 다시 로드하세요."
   },
   "Drop a file or window, or ask me anything.": {
    "zh-Hans": "拖入文件或窗口，或问我任何问题。",
@@ -847,7 +983,8 @@
    "bn": "একটি ফাইল বা উইন্ডো ড্রপ করুন, অথবা যেকোনো কিছু জিজ্ঞেস করুন।",
    "pt-BR": "Solte um arquivo ou janela, ou me pergunte qualquer coisa.",
    "ru": "Брось файл или окно, или спроси меня о чём угодно.",
-   "id": "Seret file atau jendela, atau tanya apa saja."
+   "id": "Seret file atau jendela, atau tanya apa saja.",
+   "ko": "파일이나 창을 드롭하거나, 무엇이든 물어보세요."
   },
   "Drop your files here": {
    "zh-Hans": "把文件拖到这里",
@@ -858,7 +995,8 @@
    "bn": "আপনার ফাইলগুলি এখানে ড্রপ করুন",
    "pt-BR": "Solte seus arquivos aqui",
    "ru": "Перетащите файлы сюда",
-   "id": "Letakkan file Anda di sini"
+   "id": "Letakkan file Anda di sini",
+   "ko": "여기에 파일을 드롭하세요"
   },
   "Duplicate": {
    "zh-Hans": "重复",
@@ -869,7 +1007,8 @@
    "bn": "ডুপ্লিকেট",
    "pt-BR": "Duplicado",
    "ru": "Дублирующийся",
-   "id": "Duplikat"
+   "id": "Duplikat",
+   "ko": "중복됨"
   },
   "Edits": {
    "zh-Hans": "编辑",
@@ -880,7 +1019,8 @@
    "bn": "সম্পাদনা করে",
    "pt-BR": "Edita",
    "ru": "Редактирует",
-   "id": "Mengedit"
+   "id": "Mengedit",
+   "ko": "편집"
   },
   "Emails": {
    "zh-Hans": "邮件",
@@ -891,7 +1031,8 @@
    "bn": "ইমেইল",
    "pt-BR": "Emails",
    "ru": "Письма",
-   "id": "Email"
+   "id": "Email",
+   "ko": "이메일"
   },
   "Enable sounds": {
    "zh-Hans": "启用声音",
@@ -902,7 +1043,20 @@
    "bn": "শব্দ সক্ষম করুন",
    "pt-BR": "Ativar sons",
    "ru": "Включить звуки",
-   "id": "Aktifkan suara"
+   "id": "Aktifkan suara",
+   "ko": "사운드 활성화"
+  },
+  "Enable voice command": {
+   "zh-Hans": "启用语音命令",
+   "hi": "वॉइस कमांड सक्षम करें",
+   "es": "Activar comando de voz",
+   "ar": "تفعيل الأوامر الصوتية",
+   "fr": "Activer la commande vocale",
+   "bn": "ভয়েস কমান্ড সক্ষম করুন",
+   "pt-BR": "Ativar comando de voz",
+   "ru": "Включить голосовые команды",
+   "id": "Aktifkan perintah suara",
+   "ko": "음성 명령 활성화"
   },
   "Explore all features without an API key or Claude Code. Nothing is written to disk.": {
    "zh-Hans": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。",
@@ -913,7 +1067,8 @@
    "bn": "API কী বা Claude Code ছাড়াই সমস্ত ফিচার এক্সপ্লোর করুন। ডিস্কে কিছু লেখা হয় না।",
    "pt-BR": "Explore todos os recursos sem chave de API ou Claude Code. Nada é gravado no disco.",
    "ru": "Изучи все функции без API-ключа и Claude Code. Ничего не записывается на диск.",
-   "id": "Jelajahi semua fitur tanpa kunci API atau Claude Code. Tidak ada yang ditulis ke disk."
+   "id": "Jelajahi semua fitur tanpa kunci API atau Claude Code. Tidak ada yang ditulis ke disk.",
+   "ko": "API 키나 Claude Code 없이 모든 기능을 체험해보세요. 디스크에 아무것도 기록되지 않습니다."
   },
   "FILES": {
    "zh-Hans": "文件",
@@ -924,7 +1079,8 @@
    "bn": "ফাইল",
    "pt-BR": "ARQUIVOS",
    "ru": "ФАЙЛЫ",
-   "id": "BERKAS"
+   "id": "BERKAS",
+   "ko": "파일"
   },
   "Failed": {
    "zh-Hans": "失败",
@@ -935,7 +1091,8 @@
    "bn": "ব্যর্থ",
    "pt-BR": "Falhou",
    "ru": "Ошибка",
-   "id": "Gagal"
+   "id": "Gagal",
+   "ko": "실패"
   },
   "Favorite": {
    "zh-Hans": "收藏",
@@ -946,7 +1103,8 @@
    "bn": "প্রিয়তে যোগ করুন",
    "pt-BR": "Favoritar",
    "ru": "В избранное",
-   "id": "Tambahkan ke favorit"
+   "id": "Tambahkan ke favorit",
+   "ko": "즐겨찾기"
   },
   "Fetches": {
    "zh-Hans": "获取",
@@ -957,7 +1115,8 @@
    "bn": "আনে",
    "pt-BR": "Busca",
    "ru": "Получает",
-   "id": "Mengambil"
+   "id": "Mengambil",
+   "ko": "가져오기"
   },
   "Gemini CLI hooks": {
    "zh-Hans": "Gemini CLI 钩子",
@@ -968,7 +1127,8 @@
    "bn": "Gemini CLI হুক",
    "pt-BR": "Hooks do Gemini CLI",
    "ru": "Хуки Gemini CLI",
-   "id": "Hooks Gemini CLI"
+   "id": "Hooks Gemini CLI",
+   "ko": "Gemini CLI hooks"
   },
   "General": {
    "zh-Hans": "通用",
@@ -979,7 +1139,8 @@
    "bn": "সাধারণ",
    "pt-BR": "Geral",
    "ru": "Основные",
-   "id": "Umum"
+   "id": "Umum",
+   "ko": "일반"
   },
   "Get Spotify": {
    "zh-Hans": "获取 Spotify",
@@ -990,7 +1151,8 @@
    "bn": "Spotify নিন",
    "pt-BR": "Baixar o Spotify",
    "ru": "Скачать Spotify",
-   "id": "Dapatkan Spotify"
+   "id": "Dapatkan Spotify",
+   "ko": "Spotify 다운로드"
   },
   "GitHub Copilot CLI hooks": {
    "zh-Hans": "GitHub Copilot CLI 钩子",
@@ -1001,7 +1163,8 @@
    "bn": "GitHub Copilot CLI হুক",
    "pt-BR": "Hooks do GitHub Copilot CLI",
    "ru": "Хуки GitHub Copilot CLI",
-   "id": "Hooks GitHub Copilot CLI"
+   "id": "Hooks GitHub Copilot CLI",
+   "ko": "Copilot CLI hooks"
   },
   "Give me a sec — back to work in three seconds.": {
    "zh-Hans": "给我一秒钟——三秒后恢复工作。",
@@ -1012,7 +1175,8 @@
    "bn": "এক সেকেন্ড — তিন সেকেন্ডে কাজে ফিরে যাচ্ছি।",
    "pt-BR": "Um segundo — voltando ao trabalho em três segundos.",
    "ru": "Секунду — вернусь к работе через три секунды.",
-   "id": "Satu detik — kembali bekerja dalam tiga detik."
+   "id": "Satu detik — kembali bekerja dalam tiga detik.",
+   "ko": "잠시만 기다려주세요 — 3초 후에 작업을 재개합니다."
   },
   "Global shortcuts — active from any app": {
    "zh-Hans": "全局快捷键 — 在任何应用中有效",
@@ -1023,7 +1187,8 @@
    "bn": "গ্লোবাল শর্টকাট — যেকোনো অ্যাপ থেকে কাজ করে",
    "pt-BR": "Atalhos globais — funcionam em qualquer app",
    "ru": "Глобальные сочетания — работают из любого приложения",
-   "id": "Pintasan global — bekerja dari app mana pun"
+   "id": "Pintasan global — bekerja dari app mana pun",
+   "ko": "전역 단축키 — 모든 앱에서 활성화"
   },
   "Gmail node timed out after 30s. Retry or open n8n.": {
    "zh-Hans": "Gmail 节点在 30 秒后超时。请重试或打开 n8n。",
@@ -1034,7 +1199,8 @@
    "bn": "Gmail নোড 30 সেকেন্ড পরে টাইম আউট হয়েছে। পুনরায় চেষ্টা করুন বা n8n খুলুন।",
    "pt-BR": "Nó do Gmail expirou após 30s. Tente novamente ou abra o n8n.",
    "ru": "Узел Gmail завершился по таймауту через 30с. Повторите или откройте n8n.",
-   "id": "Node Gmail habis waktu setelah 30 detik. Coba lagi atau buka n8n."
+   "id": "Node Gmail habis waktu setelah 30 detik. Coba lagi atau buka n8n.",
+   "ko": "Gmail 노드가 30초 후 시간 초과되었습니다. 다시 시도하거나 n8n을 여세요."
   },
   "Go to alert": {
    "zh-Hans": "跳转到警告",
@@ -1045,7 +1211,8 @@
    "bn": "সতর্কতায় যাও",
    "pt-BR": "Ir para o alerta",
    "ru": "Перейти к уведомлению",
-   "id": "Ke notifikasi"
+   "id": "Ke notifikasi",
+   "ko": "알림으로 이동"
   },
   "Go to tab by number": {
    "zh-Hans": "按编号切换标签",
@@ -1056,7 +1223,8 @@
    "bn": "নম্বর দিয়ে ট্যাবে যাও",
    "pt-BR": "Mudar para aba por número",
    "ru": "Перейти на вкладку по номеру",
-   "id": "Pindah ke tab berdasarkan nomor"
+   "id": "Pindah ke tab berdasarkan nomor",
+   "ko": "번호로 탭 이동"
   },
   "Goes through the Coucou relay to Apple's push service. Only the agent name and state are sent: no project name, command, or path.": {
    "zh-Hans": "通过 Coucou 中继传至 Apple 推送服务。仅发送 Agent 的名称和状态：不含项目名称、命令或路径。",
@@ -1067,7 +1235,8 @@
    "bn": "Apple-এর পুশ সার্ভিসে Coucou রিলের মাধ্যমে যায়। শুধুমাত্র এজেন্টের নাম এবং অবস্থা পাঠানো হয়: কোনো প্রজেক্ট নাম, কমান্ড বা পাথ নয়।",
    "pt-BR": "Passa pelo relay do Coucou para o serviço push da Apple. Apenas o nome e o estado do agente são enviados: sem nome de projeto, comando ou caminho.",
    "ru": "Проходит через ретранслятор Coucou к сервису push Apple. Отправляются только имя и состояние агента: без имени проекта, команды или пути.",
-   "id": "Melewati relay Coucou ke layanan push Apple. Hanya nama dan status agen yang dikirim: tanpa nama proyek, perintah, atau jalur."
+   "id": "Melewati relay Coucou ke layanan push Apple. Hanya nama dan status agen yang dikirim: tanpa nama proyek, perintah, atau jalur.",
+   "ko": "Coucou 릴레이를 통해 Apple의 푸시 서비스로 이동합니다. 에이전트 이름과 상태만 전송되며 프로젝트 이름, 명령 또는 경로는 전송되지 않습니다."
   },
   "Google AI": {
    "zh-Hans": "Google AI",
@@ -1078,7 +1247,20 @@
    "bn": "Google AI",
    "pt-BR": "Google AI",
    "ru": "Google AI",
-   "id": "Google AI"
+   "id": "Google AI",
+   "ko": "Google AI"
+  },
+  "Granted": {
+   "zh-Hans": "已授权",
+   "hi": "अनुमत",
+   "es": "Concedido",
+   "ar": "ممنوح",
+   "fr": "Accordé",
+   "bn": "অনুমোদিত",
+   "pt-BR": "Concedido",
+   "ru": "Разрешено",
+   "id": "Diberikan",
+   "ko": "허용됨"
   },
   "Hermes Agent": {
    "zh-Hans": "Hermes Agent",
@@ -1089,7 +1271,8 @@
    "bn": "Hermes প্লাগইন",
    "pt-BR": "Hermes Agent",
    "ru": "Hermes Agent",
-   "id": "Hermes Agent"
+   "id": "Hermes Agent",
+   "ko": "Hermes Agent"
   },
   "Hermes plugin removed": {
    "zh-Hans": "✓ Hermes 插件已移除。",
@@ -1100,7 +1283,8 @@
    "bn": "✓ Hermes প্লাগইন সরানো হয়েছে।",
    "pt-BR": "✓ Plugin do Hermes removido.",
    "ru": "✓ Плагин Hermes удалён.",
-   "id": "✓ Plugin Hermes dihapus."
+   "id": "✓ Plugin Hermes dihapus.",
+   "ko": "✓ Hermes 플러그인이 제거되었습니다."
   },
   "Hide after": {
    "zh-Hans": "隐藏于",
@@ -1111,7 +1295,8 @@
    "bn": "পরে লুকান",
    "pt-BR": "Ocultar após",
    "ru": "Скрыть через",
-   "id": "Sembunyikan setelah"
+   "id": "Sembunyikan setelah",
+   "ko": "다음 시간 후 숨기기"
   },
   "Hide project names in shared images": {
    "zh-Hans": "在分享图片中隐藏项目名称",
@@ -1122,7 +1307,8 @@
    "bn": "শেয়ার করা ছবিতে প্রকল্পের নাম লুকান",
    "pt-BR": "Ocultar nomes de projetos em imagens compartilhadas",
    "ru": "Скрывать названия проектов в изображениях",
-   "id": "Sembunyikan nama proyek di gambar yang dibagikan"
+   "id": "Sembunyikan nama proyek di gambar yang dibagikan",
+   "ko": "공유 이미지에서 프로젝트 이름 숨기기"
   },
   "Hooks installed": {
    "zh-Hans": "Hooks 已安装",
@@ -1133,7 +1319,8 @@
    "bn": "Hooks ইনস্টল করা আছে",
    "pt-BR": "Hooks instalados",
    "ru": "Хуки установлены",
-   "id": "Hooks terpasang"
+   "id": "Hooks terpasang",
+   "ko": "Hooks 설치됨"
   },
   "Hooks installed — open Codex and run /hooks or open Hooks in app settings to approve them": {
    "zh-Hans": "Hooks 已安装 — 打开 Codex 并运行 /hooks，或在应用设置中打开 Hooks 以信任它们",
@@ -1144,7 +1331,8 @@
    "bn": "হুক ইনস্টল হয়েছে — Codex খুলুন এবং /hooks চালান বা অ্যাপের সেটিংসে Hooks খুলুন বিশ্বাস করতে",
    "pt-BR": "Hooks instalados — abra o Codex e execute /hooks ou abra Hooks nas configurações do app para confiar neles",
    "ru": "Хуки установлены — открой Codex и выполни /hooks или открой Hooks в настройках приложения, чтобы подтвердить",
-   "id": "Hooks terpasang — buka Codex dan jalankan /hooks atau buka Hooks di pengaturan aplikasi untuk mempercayainya"
+   "id": "Hooks terpasang — buka Codex dan jalankan /hooks atau buka Hooks di pengaturan aplikasi untuk mempercayainya",
+   "ko": "Hooks 설치됨 — Codex를 열고 /hooks를 실행하거나 앱 설정에서 Hooks를 열어 승인하세요"
   },
   "Hooks installed — restart Antigravity to activate them": {
    "zh-Hans": "Hooks 已安装 — 重启 Antigravity 以激活",
@@ -1155,7 +1343,8 @@
    "bn": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Antigravity রিস্টার্ট করুন",
    "pt-BR": "Hooks instalados — reinicie o Antigravity para ativar",
    "ru": "Хуки установлены — перезапусти Antigravity для активации",
-   "id": "Hooks terpasang — mulai ulang Antigravity untuk mengaktifkan"
+   "id": "Hooks terpasang — mulai ulang Antigravity untuk mengaktifkan",
+   "ko": "Hooks 설치됨 — 적용하려면 Antigravity를 재시동하세요"
   },
   "Hooks installed — restart Copilot CLI to activate them": {
    "zh-Hans": "Hooks 已安装 — 重启 Copilot CLI 以激活",
@@ -1166,7 +1355,8 @@
    "bn": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Copilot CLI রিস্টার্ট করুন",
    "pt-BR": "Hooks instalados — reinicie o Copilot CLI para ativar",
    "ru": "Хуки установлены — перезапусти Copilot CLI для активации",
-   "id": "Hooks terpasang — mulai ulang Copilot CLI untuk mengaktifkan"
+   "id": "Hooks terpasang — mulai ulang Copilot CLI untuk mengaktifkan",
+   "ko": "Hooks 설치됨 — 새 터미널을 열어 적용하세요"
   },
   "Hooks installed — restart Gemini CLI to activate them": {
    "zh-Hans": "Hooks 已安装 — 重启 Gemini CLI 以激活",
@@ -1177,7 +1367,8 @@
    "bn": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Gemini CLI রিস্টার্ট করুন",
    "pt-BR": "Hooks instalados — reinicie o Gemini CLI para ativar",
    "ru": "Хуки установлены — перезапусти Gemini CLI для активации",
-   "id": "Hooks terpasang — mulai ulang Gemini CLI untuk mengaktifkan"
+   "id": "Hooks terpasang — mulai ulang Gemini CLI untuk mengaktifkan",
+   "ko": "Hooks 설치됨 — 새 터미널을 열어 적용하세요"
   },
   "Hooks installed — restart Muse Code to activate them": {
    "zh-Hans": "Hooks 已安装 — 重启 Muse Code 以激活",
@@ -1188,7 +1379,8 @@
    "bn": "হুক ইনস্টল হয়েছে — সক্রিয় করতে Muse Code রিস্টার্ট করুন",
    "pt-BR": "Hooks instalados — reinicie o Muse Code para ativar",
    "ru": "Хуки установлены — перезапусти Muse Code для активации",
-   "id": "Hooks terpasang — mulai ulang Muse Code untuk mengaktifkan"
+   "id": "Hooks terpasang — mulai ulang Muse Code untuk mengaktifkan",
+   "ko": "Hooks 설치됨 — 새 터미널을 열어 적용하세요"
   },
   "Hooks not installed": {
    "zh-Hans": "Hooks 未安装",
@@ -1199,7 +1391,8 @@
    "bn": "Hooks ইনস্টল নেই",
    "pt-BR": "Hooks não instalados",
    "ru": "Хуки не установлены",
-   "id": "Hooks belum terpasang"
+   "id": "Hooks belum terpasang",
+   "ko": "Hooks 설치되지 않음"
   },
   "Hooks outdated — update them to answer Claude's questions from the notch": {
    "zh-Hans": "Hooks 已过期 — 请更新以便从刘海处回答 Claude 的问题",
@@ -1210,7 +1403,8 @@
    "bn": "হুক পুরনো — নচ থেকে Claude-এর প্রশ্নের উত্তর দিতে আপডেট করুন",
    "pt-BR": "Hooks desatualizados — atualize-os para responder às perguntas do Claude pelo notch",
    "ru": "Хуки устарели — обнови их, чтобы отвечать на вопросы Claude из ноча",
-   "id": "Hooks usang — perbarui untuk menjawab pertanyaan Claude dari notch"
+   "id": "Hooks usang — perbarui untuk menjawab pertanyaan Claude dari notch",
+   "ko": "Hooks가 오래됨 — 노치에서 Claude의 질문에 답변하려면 업데이트하세요"
   },
   "Hotkey": {
    "zh-Hans": "快捷键",
@@ -1221,7 +1415,8 @@
    "bn": "হটকি",
    "pt-BR": "Tecla de atalho",
    "ru": "Горячая клавиша",
-   "id": "Tombol pintas"
+   "id": "Tombol pintas",
+   "ko": "단축키"
   },
   "Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.": {
    "zh-Hans": "将指针悬停在岛上即可打开；指针离开后不久会再次收起。在其中点按可保持打开。",
@@ -1232,7 +1427,8 @@
    "bn": "আইল্যান্ডের উপর পয়েন্টার রাখলে খোলে; পয়েন্টার সরালে একটু পরে আবার গুটিয়ে যায়। খোলা রাখতে ভিতরে ক্লিক করুন।",
    "pt-BR": "Passar o cursor pela ilha a abre; ela se fecha logo depois que o cursor sai. Clique dentro para mantê-la aberta.",
    "ru": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым.",
-   "id": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
+   "id": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka.",
+   "ko": "아일랜드에 마우스를 올리면 열리고, 포인터가 벗어나면 잠시 후 다시 접힙니다. 내부를 클릭하면 열린 상태가 유지됩니다."
   },
   "Install": {
    "zh-Hans": "安装",
@@ -1243,7 +1439,8 @@
    "bn": "ইনস্টল করুন",
    "pt-BR": "Instalar",
    "ru": "Установить",
-   "id": "Pasang"
+   "id": "Pasang",
+   "ko": "설치"
   },
   "Install Coucou hooks in ~/.claude?": {
    "zh-Hans": "是否将 Coucou Hooks 安装到 ~/.claude？",
@@ -1254,7 +1451,8 @@
    "bn": "~/.claude-এ Coucou হুক ইনস্টল করবেন?",
    "pt-BR": "Instalar os hooks do Coucou em ~/.claude?",
    "ru": "Установить хуки Coucou в ~/.claude?",
-   "id": "Pasang hooks Coucou di ~/.claude?"
+   "id": "Pasang hooks Coucou di ~/.claude?",
+   "ko": "~/.claude에 Coucou hooks를 설치할까요?"
   },
   "Install hooks": {
    "zh-Hans": "安装 Hooks",
@@ -1265,7 +1463,8 @@
    "bn": "হুক ইনস্টল করুন",
    "pt-BR": "Instalar hooks",
    "ru": "Установить хуки",
-   "id": "Pasang hooks"
+   "id": "Pasang hooks",
+   "ko": "Hooks 설치"
   },
   "Install plugin": {
    "zh-Hans": "安装插件",
@@ -1276,7 +1475,8 @@
    "bn": "প্লাগইন ইনস্টল করুন",
    "pt-BR": "Instalar plugin",
    "ru": "Установить плагин",
-   "id": "Pasang plugin"
+   "id": "Pasang plugin",
+   "ko": "플러그인 설치"
   },
   "Install relay": {
    "zh-Hans": "安装中继",
@@ -1287,7 +1487,8 @@
    "bn": "রিলে ইনস্টল করুন",
    "pt-BR": "Instalar relay",
    "ru": "Установить ретранслятор",
-   "id": "Pasang relay"
+   "id": "Pasang relay",
+   "ko": "릴레이 설치"
   },
   "Integrations": {
    "zh-Hans": "集成",
@@ -1298,7 +1499,8 @@
    "bn": "ইন্টিগ্রেশন",
    "pt-BR": "Integrações",
    "ru": "Интеграции",
-   "id": "Integrasi"
+   "id": "Integrasi",
+   "ko": "연동"
   },
   "Jump to terminal": {
    "zh-Hans": "跳转到终端",
@@ -1309,7 +1511,8 @@
    "bn": "টার্মিনালে যাও",
    "pt-BR": "Ir para o terminal",
    "ru": "Перейти в терминал",
-   "id": "Lompat ke terminal"
+   "id": "Lompat ke terminal",
+   "ko": "터미널로 이동"
   },
   "Keep a history of my coding sessions": {
    "zh-Hans": "保留我的编程会话历史记录",
@@ -1320,7 +1523,8 @@
    "bn": "আমার কোডিং সেশনের ইতিহাস রাখুন",
    "pt-BR": "Manter um histórico das minhas sessões de código",
    "ru": "Хранить историю сессий",
-   "id": "Simpan riwayat sesi kode saya"
+   "id": "Simpan riwayat sesi kode saya",
+   "ko": "코딩 세션 기록 보관"
   },
   "Key configured · {model}": {
    "zh-Hans": "密钥已配置 · {model}",
@@ -1331,7 +1535,8 @@
    "bn": "কী কনফিগার করা হয়েছে · {model}",
    "pt-BR": "Chave configurada · {model}",
    "ru": "Ключ настроен · {model}",
-   "id": "Kunci dikonfigurasi · {model}"
+   "id": "Kunci dikonfigurasi · {model}",
+   "ko": "키 설정됨 · {model}"
   },
   "Key not configured": {
    "zh-Hans": "密钥未配置",
@@ -1342,7 +1547,8 @@
    "bn": "কী কনফিগার নেই",
    "pt-BR": "Chave não configurada",
    "ru": "Ключ не настроен",
-   "id": "Kunci belum dikonfigurasi"
+   "id": "Kunci belum dikonfigurasi",
+   "ko": "키 설정되지 않음"
   },
   "LM Studio disconnected.": {
    "zh-Hans": "LM Studio 已断开连接。",
@@ -1353,7 +1559,8 @@
    "bn": "LM Studio সংযোগ বিচ্ছিন্ন হয়েছে।",
    "pt-BR": "LM Studio desconectado.",
    "ru": "LM Studio отключён.",
-   "id": "LM Studio terputus."
+   "id": "LM Studio terputus.",
+   "ko": "LM Studio 연결이 끊어졌습니다."
   },
   "Language": {
    "zh-Hans": "语言",
@@ -1364,7 +1571,8 @@
    "bn": "ভাষা",
    "pt-BR": "Idioma",
    "ru": "Язык",
-   "id": "Bahasa"
+   "id": "Bahasa",
+   "ko": "언어"
   },
   "Launch at Mac startup": {
    "zh-Hans": "在 Mac 启动时自动启动",
@@ -1375,7 +1583,8 @@
    "bn": "Mac স্টার্টআপে চালু করুন",
    "pt-BR": "Iniciar ao ligar o Mac",
    "ru": "Запускать при старте Mac",
-   "id": "Jalankan saat Mac startup"
+   "id": "Jalankan saat Mac startup",
+   "ko": "Mac 시동 시 실행"
   },
   "Let my iPhone send instructions to Claude Code": {
    "zh-Hans": "允许我的 iPhone 向 Claude Code 发送指令",
@@ -1386,7 +1595,20 @@
    "bn": "আমার iPhone-কে Claude Code-এ নির্দেশ পাঠাতে দাও",
    "pt-BR": "Deixar meu iPhone enviar instruções ao Claude Code",
    "ru": "Позволять iPhone отправлять инструкции в Claude Code",
-   "id": "Biarkan iPhone saya mengirim instruksi ke Claude Code"
+   "id": "Biarkan iPhone saya mengirim instruksi ke Claude Code",
+   "ko": "내 iPhone이 Claude Code에 지침을 보낼 수 있도록 허용"
+  },
+  "Listening…": {
+   "zh-Hans": "正在收听…",
+   "hi": "सुन रहा हूँ…",
+   "es": "Escuchando…",
+   "ar": "جارٍ الاستماع…",
+   "fr": "À l’écoute …",
+   "bn": "শুনছি…",
+   "pt-BR": "Ouvindo…",
+   "ru": "Слушаю…",
+   "id": "Mendengarkan…",
+   "ko": "듣는 중…"
   },
   "Lists": {
    "zh-Hans": "列出",
@@ -1397,7 +1619,8 @@
    "bn": "তালিকা",
    "pt-BR": "Lista",
    "ru": "Перечисляет",
-   "id": "Daftar"
+   "id": "Daftar",
+   "ko": "목록"
   },
   "Loading models…": {
    "zh-Hans": "正在加载模型…",
@@ -1408,7 +1631,8 @@
    "bn": "মডেল লোড হচ্ছে…",
    "pt-BR": "Carregando modelos…",
    "ru": "Загрузка моделей…",
-   "id": "Memuat model…"
+   "id": "Memuat model…",
+   "ko": "모델 로딩 중…"
   },
   "Loading…": {
    "zh-Hans": "加载中…",
@@ -1419,7 +1643,56 @@
    "bn": "লোড হচ্ছে…",
    "pt-BR": "Carregando…",
    "ru": "Загрузка…",
-   "id": "Memuat…"
+   "id": "Memuat…",
+   "ko": "로딩 중…"
+  },
+  "Local AI model: Apple Intelligence is off": {
+   "zh-Hans": "本地 AI 模型：Apple Intelligence 已关闭",
+   "hi": "स्थानीय AI मॉडल: Apple Intelligence बंद है",
+   "es": "Modelo de IA local: Apple Intelligence está desactivado",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: Apple Intelligence معطَّل",
+   "fr": "Modèle IA local : Apple Intelligence est désactivée",
+   "bn": "স্থানীয় AI মডেল: Apple Intelligence বন্ধ আছে",
+   "pt-BR": "Modelo de IA local: Apple Intelligence está desativado",
+   "ru": "Локальная модель ИИ: Apple Intelligence отключена",
+   "id": "Model AI lokal: Apple Intelligence dimatikan",
+   "ko": "로컬 AI 모델: Apple Intelligence 꺼짐"
+  },
+  "Local AI model: available": {
+   "zh-Hans": "本地 AI 模型：可用",
+   "hi": "स्थानीय AI मॉडल: उपलब्ध",
+   "es": "Modelo de IA local: disponible",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: متاح",
+   "fr": "Modèle IA local : disponible",
+   "bn": "স্থানীয় AI মডেল: উপলব্ধ",
+   "pt-BR": "Modelo de IA local: disponível",
+   "ru": "Локальная модель ИИ: доступна",
+   "id": "Model AI lokal: tersedia",
+   "ko": "로컬 AI 모델: 사용 가능"
+  },
+  "Local AI model: language not supported": {
+   "zh-Hans": "本地 AI 模型：不支持该语言",
+   "hi": "स्थानीय AI मॉडल: भाषा समर्थित नहीं है",
+   "es": "Modelo de IA local: idioma no compatible",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: اللغة غير مدعومة",
+   "fr": "Modèle IA local : langue non prise en charge",
+   "bn": "স্থানীয় AI মডেল: ভাষা সমর্থিত নয়",
+   "pt-BR": "Modelo de IA local: idioma não suportado",
+   "ru": "Локальная модель ИИ: язык не поддерживается",
+   "id": "Model AI lokal: bahasa tidak didukung",
+   "ko": "로컬 AI 모델: 지원되지 않는 언어"
+  },
+  "Local AI model: requires macOS 26 or later": {
+   "zh-Hans": "本地 AI 模型：需要 macOS 26 或更高版本",
+   "hi": "स्थानीय AI मॉडल: macOS 26 या बाद का संस्करण आवश्यक है",
+   "es": "Modelo de IA local: requiere macOS 26 o posterior",
+   "ar": "نموذج الذكاء الاصطناعي المحلي: يتطلب macOS 26 أو أحدث",
+   "fr": "Modèle IA local : nécessite macOS 26 ou plus",
+   "bn": "স্থানীয় AI মডেল: macOS 26 বা তার পরবর্তী প্রয়োজন",
+   "pt-BR": "Modelo de IA local: requer macOS 26 ou posterior",
+   "ru": "Локальная модель ИИ: требуется macOS 26 или новее",
+   "id": "Model AI lokal: membutuhkan macOS 26 atau lebih baru",
+   "ko": "로컬 AI 모델: macOS 26 이상 필요"
   },
   "Local models": {
    "zh-Hans": "本地模型",
@@ -1430,7 +1703,8 @@
    "bn": "স্থানীয় মডেল",
    "pt-BR": "Modelos locais",
    "ru": "Локальные модели",
-   "id": "Model lokal"
+   "id": "Model lokal",
+   "ko": "로컬 모델"
   },
   "Longest session": {
    "zh-Hans": "最长会话",
@@ -1441,7 +1715,8 @@
    "bn": "দীর্ঘতম সেশন",
    "pt-BR": "Sessão mais longa",
    "ru": "Самая долгая сессия",
-   "id": "Sesi terpanjang"
+   "id": "Sesi terpanjang",
+   "ko": "가장 긴 세션"
   },
   "Mail not available.": {
    "zh-Hans": "邮件不可用。",
@@ -1452,7 +1727,8 @@
    "bn": "মেইল পাওয়া যাচ্ছে না।",
    "pt-BR": "E-mail não disponível.",
    "ru": "Почта недоступна.",
-   "id": "Mail tidak tersedia."
+   "id": "Mail tidak tersedia.",
+   "ko": "메일을 사용할 수 없습니다."
   },
   "Main": {
    "zh-Hans": "主要",
@@ -1463,7 +1739,44 @@
    "bn": "প্রধান",
    "pt-BR": "Principal",
    "ru": "Главный",
-   "id": "Utama"
+   "id": "Utama",
+   "ko": "메인"
+  },
+  "Main: {0}": {
+   "zh-Hans": "主要：{0}",
+   "hi": "मुख्य: {0}",
+   "es": "Principal: {0}",
+   "ar": "الرئيسي: {0}",
+   "fr": "Principal : {0}",
+   "bn": "মূল: {0}",
+   "pt-BR": "Principal: {0}",
+   "ru": "Главный: {0}",
+   "id": "Utama: {0}",
+   "ko": "메인: {0}"
+  },
+  "Microphone unavailable": {
+   "zh-Hans": "麦克风不可用",
+   "hi": "माइक्रोफ़ोन अनुपलब्ध",
+   "es": "Micrófono no disponible",
+   "ar": "الميكروفون غير متاح",
+   "fr": "Microphone indisponible",
+   "bn": "মাইক্রোফোন অনুপলব্ধ",
+   "pt-BR": "Microfone indisponível",
+   "ru": "Микрофон недоступен",
+   "id": "Mikrofon tidak tersedia",
+   "ko": "마이크를 사용할 수 없음"
+  },
+  "Microphone:": {
+   "zh-Hans": "麦克风：",
+   "hi": "माइक्रोफ़ोन:",
+   "es": "Micrófono:",
+   "ar": "الميكروفون:",
+   "fr": "Microphone :",
+   "bn": "মাইক্রোফোন:",
+   "pt-BR": "Microfone:",
+   "ru": "Микрофон:",
+   "id": "Mikrofon:",
+   "ko": "마이크:"
   },
   "Missing recipient.": {
    "zh-Hans": "收件人缺失。",
@@ -1474,7 +1787,8 @@
    "bn": "প্রাপক অনুপস্থিত।",
    "pt-BR": "Destinatário ausente.",
    "ru": "Получатель не указан.",
-   "id": "Penerima tidak ada."
+   "id": "Penerima tidak ada.",
+   "ko": "받는 사람이 없습니다."
   },
   "Mochi to desktop on/off": {
    "zh-Hans": "Mochi 桌面开/关",
@@ -1485,7 +1799,8 @@
    "bn": "Mochi ডেস্কটপে চালু / বন্ধ",
    "pt-BR": "Mochi na área de trabalho sim / não",
    "ru": "Mochi на рабочем столе вкл / выкл",
-   "id": "Mochi di desktop ya / tidak"
+   "id": "Mochi di desktop ya / tidak",
+   "ko": "데스크탑 Mochi 켜기/끄기"
   },
   "Model": {
    "zh-Hans": "模型",
@@ -1496,7 +1811,8 @@
    "bn": "মডেল",
    "pt-BR": "Modelo",
    "ru": "Модель",
-   "id": "Model"
+   "id": "Model",
+   "ko": "모델"
   },
   "Model ID (e.g. claude-sonnet-4-6)": {
    "zh-Hans": "模型 ID（如 claude-sonnet-4-6）",
@@ -1507,7 +1823,8 @@
    "bn": "মডেল ID (যেমন claude-sonnet-4-6)",
    "pt-BR": "ID do modelo (ex.: claude-sonnet-4-6)",
    "ru": "ID модели (напр. claude-sonnet-4-6)",
-   "id": "ID model (mis. claude-sonnet-4-6)"
+   "id": "ID model (mis. claude-sonnet-4-6)",
+   "ko": "모델 ID (예: claude-sonnet-4-6)"
   },
   "Move Mochi to my iPhone's Dynamic Island when my Mac is locked": {
    "zh-Hans": "Mac 锁定时将 Mochi 移至我 iPhone 的灵动岛",
@@ -1518,7 +1835,8 @@
    "bn": "Mac লক থাকলে Mochi-কে আমার iPhone-এর Dynamic Island-এ নিয়ে যান",
    "pt-BR": "Mover o Mochi para a Dynamic Island do meu iPhone quando meu Mac estiver bloqueado",
    "ru": "Переносить Mochi на Dynamic Island моего iPhone, когда Mac заблокирован",
-   "id": "Pindahkan Mochi ke Dynamic Island iPhone saya saat Mac terkunci"
+   "id": "Pindahkan Mochi ke Dynamic Island iPhone saya saat Mac terkunci",
+   "ko": "Mac이 잠겨 있을 때 Mochi를 내 iPhone의 Dynamic Island로 이동"
   },
   "Muse Code hooks": {
    "zh-Hans": "Muse Code 钩子",
@@ -1529,7 +1847,8 @@
    "bn": "Muse Code হুক",
    "pt-BR": "Hooks do Muse Code",
    "ru": "Хуки Muse Code",
-   "id": "Hooks Muse Code"
+   "id": "Hooks Muse Code",
+   "ko": "Muse Code hooks"
   },
   "Mute / unmute sounds": {
    "zh-Hans": "静音/取消静音",
@@ -1540,7 +1859,8 @@
    "bn": "শব্দ মিউট / আনমিউট",
    "pt-BR": "Silenciar / ativar sons",
    "ru": "Выключить / включить звук",
-   "id": "Bisukan / aktifkan suara"
+   "id": "Bisukan / aktifkan suara",
+   "ko": "사운드 음소거 / 음소거 해제"
   },
   "My PRs": {
    "zh-Hans": "我的 PR",
@@ -1551,7 +1871,8 @@
    "bn": "আমার PR",
    "pt-BR": "Meus PRs",
    "ru": "Мои PR",
-   "id": "PR saya"
+   "id": "PR saya",
+   "ko": "내 PR"
   },
   "Navigate list items": {
    "zh-Hans": "在列表项中导航",
@@ -1562,7 +1883,8 @@
    "bn": "তালিকার আইটেম নেভিগেট করো",
    "pt-BR": "Navegar pelos itens da lista",
    "ru": "Навигация по элементам списка",
-   "id": "Navigasi item daftar"
+   "id": "Navigasi item daftar",
+   "ko": "목록 항목 탐색"
   },
   "New conversation": {
    "zh-Hans": "新建对话",
@@ -1573,7 +1895,8 @@
    "bn": "নতুন কথোপকথন",
    "pt-BR": "Nova conversa",
    "ru": "Новый разговор",
-   "id": "Percakapan baru"
+   "id": "Percakapan baru",
+   "ko": "새 대화"
   },
   "New email": {
    "zh-Hans": "新邮件",
@@ -1584,7 +1907,8 @@
    "bn": "নতুন ইমেইল",
    "pt-BR": "Novo email",
    "ru": "Новое письмо",
-   "id": "Email baru"
+   "id": "Email baru",
+   "ko": "새 이메일"
   },
   "Next": {
    "zh-Hans": "下一步",
@@ -1595,7 +1919,8 @@
    "bn": "পরবর্তী",
    "pt-BR": "Próximo",
    "ru": "Далее",
-   "id": "Berikutnya"
+   "id": "Berikutnya",
+   "ko": "다음"
   },
   "Next / previous tab": {
    "zh-Hans": "下一个/上一个标签",
@@ -1606,7 +1931,8 @@
    "bn": "পরের / আগের ট্যাব",
    "pt-BR": "Próxima / aba anterior",
    "ru": "Следующая / предыдущая вкладка",
-   "id": "Tab berikutnya / sebelumnya"
+   "id": "Tab berikutnya / sebelumnya",
+   "ko": "다음 / 이전 탭"
   },
   "Next tab": {
    "zh-Hans": "下一个标签",
@@ -1617,7 +1943,20 @@
    "bn": "পরের ট্যাব",
    "pt-BR": "Próxima aba",
    "ru": "Следующая вкладка",
-   "id": "Tab berikutnya"
+   "id": "Tab berikutnya",
+   "ko": "다음 탭"
+  },
+  "Next track": {
+   "zh-Hans": "下一首",
+   "hi": "अगला ट्रैक",
+   "es": "Siguiente pista",
+   "ar": "المقطع التالي",
+   "fr": "Morceau suivant",
+   "bn": "পরবর্তী ট্র্যাক",
+   "pt-BR": "Próxima faixa",
+   "ru": "Следующий трек",
+   "id": "Lagu berikutnya",
+   "ko": "다음 곡"
   },
   "No activity last week": {
    "zh-Hans": "上周无活动",
@@ -1628,7 +1967,8 @@
    "bn": "গত সপ্তাহে কোনো কার্যক্রম নেই",
    "pt-BR": "Sem atividade na semana passada",
    "ru": "На прошлой неделе активности не было",
-   "id": "Tidak ada aktivitas minggu lalu"
+   "id": "Tidak ada aktivitas minggu lalu",
+   "ko": "지난주 활동 없음"
   },
   "No calls scheduled": {
    "zh-Hans": "没有计划的通话",
@@ -1639,7 +1979,8 @@
    "bn": "কোনো কল নির্ধারিত নেই",
    "pt-BR": "Nenhuma chamada agendada",
    "ru": "Нет звонков",
-   "id": "Tidak ada panggilan terjadwal"
+   "id": "Tidak ada panggilan terjadwal",
+   "ko": "예정된 통화 없음"
   },
   "No changes": {
    "zh-Hans": "没有变更",
@@ -1650,7 +1991,8 @@
    "bn": "কোনো পরিবর্তন নেই",
    "pt-BR": "Sem alterações",
    "ru": "Нет изменений",
-   "id": "Tidak ada perubahan"
+   "id": "Tidak ada perubahan",
+   "ko": "변경 사항 없음"
   },
   "No contributions": {
    "zh-Hans": "没有贡献",
@@ -1661,7 +2003,8 @@
    "bn": "কোনো অবদান নেই",
    "pt-BR": "Sem contribuições",
    "ru": "Нет вкладов",
-   "id": "Tidak ada kontribusi"
+   "id": "Tidak ada kontribusi",
+   "ko": "기여 없음"
   },
   "No error details available.": {
    "zh-Hans": "无错误详情。",
@@ -1672,7 +2015,8 @@
    "bn": "কোনো ত্রুটির বিবরণ পাওয়া যায়নি।",
    "pt-BR": "Nenhum detalhe de erro disponível.",
    "ru": "Нет подробностей об ошибке.",
-   "id": "Tidak ada detail kesalahan yang tersedia."
+   "id": "Tidak ada detail kesalahan yang tersedia.",
+   "ko": "오류 세부 정보를 사용할 수 없습니다."
   },
   "No models yet — download one in {name} first.": {
    "zh-Hans": "暂无模型 — 请先在 {name} 中下载一个。",
@@ -1683,7 +2027,44 @@
    "bn": "এখনো কোনো মডেল নেই — প্রথমে {name}-এ একটি ডাউনলোড করুন।",
    "pt-BR": "Nenhum modelo ainda — baixe um no {name} primeiro.",
    "ru": "Нет моделей — скачай одну в {name} сначала.",
-   "id": "Belum ada model — unduh satu di {name} terlebih dahulu."
+   "id": "Belum ada model — unduh satu di {name} terlebih dahulu.",
+   "ko": "아직 모델이 없습니다 — 먼저 {name}에서 다운로드하세요."
+  },
+  "No music app running": {
+   "zh-Hans": "没有音乐应用",
+   "hi": "कोई म्यूज़िक ऐप नहीं",
+   "es": "Sin app de música",
+   "ar": "لا يوجد تطبيق موسيقى",
+   "fr": "Aucune app musicale active",
+   "bn": "কোনো মিউজিক অ্যাপ নেই",
+   "pt-BR": "Nenhum app de música",
+   "ru": "Нет музыкального приложения",
+   "id": "Tidak ada app musik",
+   "ko": "실행 중인 음악 앱 없음"
+  },
+  "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation.": {
+   "zh-Hans": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。",
+   "hi": "इस डिवाइस पर कोई वाक् पहचान मॉडल उपलब्ध नहीं है। सिस्टम सेटिंग्स → कीबोर्ड → डिक्टेशन में एक इंस्टॉल करें।",
+   "es": "No hay modelo de reconocimiento de voz disponible en este dispositivo. Instala uno en Ajustes del Sistema → Teclado → Dictado.",
+   "ar": "لا يوجد نموذج للتعرف على الكلام متاح على هذا الجهاز. قم بتثبيت واحد في إعدادات النظام → لوحة المفاتيح → الإملاء.",
+   "fr": "Aucun modèle de reconnaissance vocale disponible sur cet appareil. Installez un modèle dans Réglages Système → Clavier → Dictée.",
+   "bn": "এই ডিভাইসে কোনো বক্তৃতা স্বীকৃতি মডেল পাওয়া যায়নি। সিস্টেম সেটিংস → কীবোর্ড → ডিকটেশনে একটি ইনস্টল করুন।",
+   "pt-BR": "Nenhum modelo de reconhecimento de fala disponível neste dispositivo. Instale um em Ajustes do Sistema → Teclado → Ditado.",
+   "ru": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка.",
+   "id": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte.",
+   "ko": "이 기기에서 사용할 수 있는 음성 인식 모델이 없습니다. 시스템 설정 → 키보드 → 받아쓰기에서 설치하세요."
+  },
+  "Not active": {
+   "zh-Hans": "未激活",
+   "hi": "सक्रिय नहीं",
+   "es": "No activo",
+   "ar": "غير نشط",
+   "fr": "Non actif",
+   "bn": "সক্রিয় নয়",
+   "pt-BR": "Não ativo",
+   "ru": "Не активно",
+   "id": "Tidak aktif",
+   "ko": "활성화되지 않음"
   },
   "Not connected": {
    "zh-Hans": "未连接",
@@ -1694,7 +2075,32 @@
    "bn": "সংযুক্ত নয়",
    "pt-BR": "Não conectado",
    "ru": "Не подключено",
-   "id": "Tidak terhubung"
+   "id": "Tidak terhubung",
+   "ko": "연결되지 않음"
+  },
+  "Not found: {0}": {
+   "zh-Hans": "未找到：{0}",
+   "hi": "नहीं मिला: {0}",
+   "es": "No encontrado: {0}",
+   "ar": "غير موجود: {0}",
+   "fr": "Introuvable : {0}",
+   "bn": "পাওয়া যায়নি: {0}",
+   "pt-BR": "Não encontrado: {0}",
+   "ru": "Не найдено: {0}",
+   "id": "Tidak ditemukan: {0}",
+   "ko": "찾을 수 없음: {0}"
+  },
+  "Not in your library, opened search for {0}": {
+   "zh-Hans": "不在你的资料库中，已打开 {0} 的搜索",
+   "hi": "तुम्हारी लाइब्रेरी में नहीं है, {0} के लिए सर्च खोला",
+   "es": "No está en tu biblioteca, abrí la búsqueda de {0}",
+   "ar": "غير موجود في مكتبتك، فتحت البحث عن {0}",
+   "fr": "Introuvable dans ta bibliothèque, j'ai ouvert la recherche pour {0}",
+   "bn": "তোমার লাইব্রেরিতে নেই, {0} এর জন্য সার্চ খুলেছি",
+   "pt-BR": "Não está na sua biblioteca, abri a busca por {0}",
+   "ru": "Нет в библиотеке, открыл поиск для {0}",
+   "id": "Tidak ada di perpustakaan, membuka pencarian untuk {0}",
+   "ko": "보관함에 없습니다. {0} 검색을 열었습니다"
   },
   "Not installed": {
    "zh-Hans": "未安装",
@@ -1705,7 +2111,8 @@
    "bn": "ইনস্টল নেই",
    "pt-BR": "Não instalado",
    "ru": "Не установлено",
-   "id": "Belum terpasang"
+   "id": "Belum terpasang",
+   "ko": "설치되지 않음"
   },
   "Not playing": {
    "zh-Hans": "未播放",
@@ -1716,7 +2123,32 @@
    "bn": "চলছে না",
    "pt-BR": "Não está tocando",
    "ru": "Не воспроизводится",
-   "id": "Tidak diputar"
+   "id": "Tidak diputar",
+   "ko": "재생 중이 아님"
+  },
+  "Not recognised: « {0} »": {
+   "zh-Hans": "无法理解：« {0} »",
+   "hi": "समझ नहीं आया: « {0} »",
+   "es": "No entendido: « {0} »",
+   "ar": "غير مفهوم: « {0} »",
+   "fr": "Pas compris : « {0} »",
+   "bn": "বোঝা যায়নি: « {0} »",
+   "pt-BR": "Não entendido: « {0} »",
+   "ru": "Непонятно: « {0} »",
+   "id": "Tidak dimengerti: « {0} »",
+   "ko": "인식할 수 없음: « {0} »"
+  },
+  "Not requested": {
+   "zh-Hans": "未请求",
+   "hi": "अनुरोध नहीं किया गया",
+   "es": "No solicitado",
+   "ar": "لم يُطلب",
+   "fr": "Non demandé",
+   "bn": "অনুরোধ করা হয়নি",
+   "pt-BR": "Não solicitado",
+   "ru": "Не запрошено",
+   "id": "Belum diminta",
+   "ko": "요청되지 않음"
   },
   "Notch shortcuts — active when the notch is in front": {
    "zh-Hans": "岛快捷键 — 岛获得焦点时有效",
@@ -1727,7 +2159,8 @@
    "bn": "আইল্যান্ড শর্টকাট — আইল্যান্ড ফোকাসে থাকলে সক্রিয়",
    "pt-BR": "Atalhos do island — ativos quando o island está em foco",
    "ru": "Сочетания нотча — работают когда нотч в фокусе",
-   "id": "Pintasan island — aktif saat island difokuskan"
+   "id": "Pintasan island — aktif saat island difokuskan",
+   "ko": "노치 단축키 — 노치가 전면에 있을 때 활성화"
   },
   "Notebook": {
    "zh-Hans": "Notebook",
@@ -1738,7 +2171,8 @@
    "bn": "নোটবুক",
    "pt-BR": "Notebook",
    "ru": "Notebook",
-   "id": "Notebook"
+   "id": "Notebook",
+   "ko": "노트북"
   },
   "Nothing here": {
    "zh-Hans": "这里没有内容",
@@ -1749,7 +2183,8 @@
    "bn": "এখানে কিছু নেই",
    "pt-BR": "Nada aqui",
    "ru": "Ничего нет",
-   "id": "Tidak ada apa-apa"
+   "id": "Tidak ada apa-apa",
+   "ko": "내용이 없습니다"
   },
   "Nothing running right now.": {
    "zh-Hans": "当前没有任务。",
@@ -1760,7 +2195,8 @@
    "bn": "এখন কিছু চলছে না।",
    "pt-BR": "Nada em execução no momento.",
    "ru": "Сейчас ничего не запущено.",
-   "id": "Tidak ada yang berjalan sekarang."
+   "id": "Tidak ada yang berjalan sekarang.",
+   "ko": "현재 실행 중인 항목이 없습니다."
   },
   "OK": {
    "zh-Hans": "确定",
@@ -1771,7 +2207,20 @@
    "bn": "ঠিক আছে",
    "pt-BR": "OK",
    "ru": "ОК",
-   "id": "OK"
+   "id": "OK",
+   "ko": "확인"
+  },
+  "OK, leaving it as is": {
+   "zh-Hans": "好的，保持原样",
+   "hi": "ठीक है, जैसा है वैसा छोड़ता हूँ",
+   "es": "De acuerdo, lo dejo como está",
+   "ar": "حسنًا، أتركه كما هو",
+   "fr": "D'accord, je laisse comme ça",
+   "bn": "ঠিক আছে, এটা যেমন আছে রেখে দিচ্ছি",
+   "pt-BR": "Ok, vou deixar como está",
+   "ru": "Хорошо, оставляю как есть",
+   "id": "Baik, biarkan seperti itu",
+   "ko": "알겠습니다, 그대로 유지합니다"
   },
   "Ollama disconnected.": {
    "zh-Hans": "Ollama 已断开连接。",
@@ -1782,7 +2231,8 @@
    "bn": "Ollama সংযোগ বিচ্ছিন্ন হয়েছে।",
    "pt-BR": "Ollama desconectado.",
    "ru": "Ollama отключён.",
-   "id": "Ollama terputus."
+   "id": "Ollama terputus.",
+   "ko": "Ollama 연결이 끊어졌습니다."
   },
   "Only http:// and https:// URLs are accepted.": {
    "zh-Hans": "仅支持 http:// 和 https:// URL。",
@@ -1793,7 +2243,20 @@
    "bn": "শুধুমাত্র http:// এবং https:// URL সমর্থিত।",
    "pt-BR": "Apenas URLs com http:// e https:// são suportadas.",
    "ru": "Поддерживаются только URL с http:// и https://.",
-   "id": "Hanya URL http:// dan https:// yang didukung."
+   "id": "Hanya URL http:// dan https:// yang didukung.",
+   "ko": "http:// 및 https:// URL만 허용됩니다."
+  },
+  "Only: {0}": {
+   "zh-Hans": "仅：{0}",
+   "hi": "केवल: {0}",
+   "es": "Solo: {0}",
+   "ar": "فقط: {0}",
+   "fr": "Seulement : {0}",
+   "bn": "শুধুমাত্র: {0}",
+   "pt-BR": "Apenas: {0}",
+   "ru": "Только: {0}",
+   "id": "Hanya: {0}",
+   "ko": "단독: {0}"
   },
   "Open": {
    "zh-Hans": "打开",
@@ -1804,7 +2267,8 @@
    "bn": "খুলুন",
    "pt-BR": "Abrir",
    "ru": "Открыть",
-   "id": "Buka"
+   "id": "Buka",
+   "ko": "열기"
   },
   "Open / close current diff": {
    "zh-Hans": "打开/关闭当前差异",
@@ -1815,7 +2279,8 @@
    "bn": "বর্তমান ডিফ খোলা / বন্ধ",
    "pt-BR": "Abrir / fechar diff atual",
    "ru": "Открыть / закрыть текущий diff",
-   "id": "Buka / tutup diff saat ini"
+   "id": "Buka / tutup diff saat ini",
+   "ko": "현재 diff 열기 / 닫기"
   },
   "Open / close notch": {
    "zh-Hans": "打开/关闭岛",
@@ -1826,7 +2291,8 @@
    "bn": "আইল্যান্ড খোলা / বন্ধ",
    "pt-BR": "Abrir / fechar island",
    "ru": "Открыть / закрыть нотч",
-   "id": "Buka / tutup island"
+   "id": "Buka / tutup island",
+   "ko": "노치 열기 / 닫기"
   },
   "Open / close wardrobe": {
    "zh-Hans": "打开/关闭衣橱",
@@ -1837,7 +2303,8 @@
    "bn": "পোশাক খোলা / বন্ধ",
    "pt-BR": "Abrir / fechar guarda-roupa",
    "ru": "Открыть / закрыть гардероб",
-   "id": "Buka / tutup lemari"
+   "id": "Buka / tutup lemari",
+   "ko": "옷장 열기 / 닫기"
   },
   "Open Codex": {
    "zh-Hans": "打开 Codex",
@@ -1848,7 +2315,8 @@
    "bn": "Codex খুলুন",
    "pt-BR": "Abrir Codex",
    "ru": "Открыть Codex",
-   "id": "Buka Codex"
+   "id": "Buka Codex",
+   "ko": "Codex 열기"
   },
   "Open Coucou": {
    "zh-Hans": "打开 Coucou",
@@ -1859,7 +2327,8 @@
    "bn": "Coucou খুলুন",
    "pt-BR": "Abrir Coucou",
    "ru": "Открыть Coucou",
-   "id": "Buka Coucou"
+   "id": "Buka Coucou",
+   "ko": "Coucou 열기"
   },
   "Open Cursor": {
    "zh-Hans": "打开 Cursor",
@@ -1870,7 +2339,8 @@
    "bn": "Cursor খুলুন",
    "pt-BR": "Abrir Cursor",
    "ru": "Открыть Cursor",
-   "id": "Buka Cursor"
+   "id": "Buka Cursor",
+   "ko": "Cursor 열기"
   },
   "Open Music": {
    "zh-Hans": "打开 Music",
@@ -1881,7 +2351,8 @@
    "bn": "Music খুলুন",
    "pt-BR": "Abrir Music",
    "ru": "Открыть Music",
-   "id": "Buka Music"
+   "id": "Buka Music",
+   "ko": "음악 열기"
   },
   "Open Settings…": {
    "zh-Hans": "打开设置…",
@@ -1892,7 +2363,8 @@
    "bn": "সেটিংস খুলুন…",
    "pt-BR": "Abrir Configurações…",
    "ru": "Открыть настройки…",
-   "id": "Buka Pengaturan…"
+   "id": "Buka Pengaturan…",
+   "ko": "설정 열기…"
   },
   "Open Spotify": {
    "zh-Hans": "打开 Spotify",
@@ -1903,7 +2375,8 @@
    "bn": "Spotify খুলুন",
    "pt-BR": "Abrir o Spotify",
    "ru": "Открыть Spotify",
-   "id": "Buka Spotify"
+   "id": "Buka Spotify",
+   "ko": "Spotify 열기"
   },
   "Open Visual Studio Code": {
    "zh-Hans": "打开 Visual Studio Code",
@@ -1914,7 +2387,8 @@
    "bn": "Visual Studio Code খুলুন",
    "pt-BR": "Abrir Visual Studio Code",
    "ru": "Открыть Visual Studio Code",
-   "id": "Buka Visual Studio Code"
+   "id": "Buka Visual Studio Code",
+   "ko": "Visual Studio Code 열기"
   },
   "Open chat": {
    "zh-Hans": "打开聊天",
@@ -1925,7 +2399,8 @@
    "bn": "চ্যাট খোলো",
    "pt-BR": "Abrir chat",
    "ru": "Открыть чат",
-   "id": "Buka chat"
+   "id": "Buka chat",
+   "ko": "채팅 열기"
   },
   "Open in n8n": {
    "zh-Hans": "在 n8n 中打开",
@@ -1936,7 +2411,8 @@
    "bn": "n8n-এ খুলুন",
    "pt-BR": "Abrir no n8n",
    "ru": "Открыть в n8n",
-   "id": "Buka di n8n"
+   "id": "Buka di n8n",
+   "ko": "n8n에서 열기"
   },
   "Open on hover": {
    "zh-Hans": "悬停时打开",
@@ -1947,7 +2423,8 @@
    "bn": "হোভারে খুলুন",
    "pt-BR": "Abrir ao passar o cursor",
    "ru": "Открывать при наведении",
-   "id": "Buka saat kursor di atasnya"
+   "id": "Buka saat kursor di atasnya",
+   "ko": "마우스 올릴 때 열기"
   },
   "Open selected item": {
    "zh-Hans": "打开选定项",
@@ -1958,7 +2435,8 @@
    "bn": "নির্বাচিত আইটেম খোলো",
    "pt-BR": "Abrir item selecionado",
    "ru": "Открыть выбранный элемент",
-   "id": "Buka item yang dipilih"
+   "id": "Buka item yang dipilih",
+   "ko": "선택한 항목 열기"
   },
   "Open settings": {
    "zh-Hans": "打开设置",
@@ -1969,7 +2447,8 @@
    "bn": "সেটিংস খোলো",
    "pt-BR": "Abrir Ajustes",
    "ru": "Открыть настройки",
-   "id": "Buka Pengaturan"
+   "id": "Buka Pengaturan",
+   "ko": "설정 열기"
   },
   "Open sounds folder": {
    "zh-Hans": "打开声音文件夹",
@@ -1980,7 +2459,8 @@
    "bn": "সাউন্ড ফোল্ডার খুলুন",
    "pt-BR": "Abrir a pasta de sons",
    "ru": "Открыть папку звуков",
-   "id": "Buka folder suara"
+   "id": "Buka folder suara",
+   "ko": "사운드 폴더 열기"
   },
   "Open terminal": {
    "zh-Hans": "打开终端",
@@ -1991,7 +2471,8 @@
    "bn": "টার্মিনাল খুলুন",
    "pt-BR": "Abrir terminal",
    "ru": "Открыть терминал",
-   "id": "Buka terminal"
+   "id": "Buka terminal",
+   "ko": "터미널 열기"
   },
   "Open {name}": {
    "zh-Hans": "打开 {name}",
@@ -2002,7 +2483,8 @@
    "bn": "{name} খুলুন",
    "pt-BR": "Abrir {name}",
    "ru": "Открыть {name}",
-   "id": "Buka {name}"
+   "id": "Buka {name}",
+   "ko": "{name} 열기"
   },
   "OpenAI": {
    "zh-Hans": "OpenAI",
@@ -2013,7 +2495,8 @@
    "bn": "OpenAI",
    "pt-BR": "OpenAI",
    "ru": "OpenAI",
-   "id": "OpenAI"
+   "id": "OpenAI",
+   "ko": "OpenAI"
   },
   "OpenCode plugin": {
    "zh-Hans": "OpenCode 插件",
@@ -2024,7 +2507,20 @@
    "bn": "OpenCode প্লাগইন",
    "pt-BR": "Plugin do OpenCode",
    "ru": "Плагин OpenCode",
-   "id": "Plugin OpenCode"
+   "id": "Plugin OpenCode",
+   "ko": "OpenCode 플러그인"
+  },
+  "Opening Apple Music…": {
+   "zh-Hans": "正在打开 Apple Music…",
+   "hi": "Apple Music खुल रहा है…",
+   "es": "Abriendo Apple Music…",
+   "ar": "فتح Apple Music…",
+   "fr": "Ouverture d'Apple Music…",
+   "bn": "Apple Music খুলছে…",
+   "pt-BR": "Abrindo Apple Music…",
+   "ru": "Открытие Apple Music…",
+   "id": "Membuka Apple Music…",
+   "ko": "Apple Music 여는 중…"
   },
   "Other…": {
    "zh-Hans": "其他…",
@@ -2035,7 +2531,8 @@
    "bn": "অন্যান্য…",
    "pt-BR": "Outro…",
    "ru": "Другое…",
-   "id": "Lainnya…"
+   "id": "Lainnya…",
+   "ko": "기타…"
   },
   "Overview": {
    "zh-Hans": "概览",
@@ -2046,7 +2543,8 @@
    "bn": "সংক্ষিপ্ত বিবরণ",
    "pt-BR": "Visão geral",
    "ru": "Обзор",
-   "id": "Ikhtisar"
+   "id": "Ikhtisar",
+   "ko": "개요"
   },
   "Pause": {
    "zh-Hans": "暂停",
@@ -2057,7 +2555,20 @@
    "bn": "বিরতি",
    "pt-BR": "Pausar",
    "ru": "Пауза",
-   "id": "Jeda"
+   "id": "Jeda",
+   "ko": "일시 정지"
+  },
+  "Paused": {
+   "zh-Hans": "已暂停",
+   "hi": "रुका हुआ",
+   "es": "En pausa",
+   "ar": "متوقف مؤقتاً",
+   "fr": "En pause",
+   "bn": "বিরতি",
+   "pt-BR": "Em pausa",
+   "ru": "Пауза",
+   "id": "Dijeda",
+   "ko": "일시 정지됨"
   },
   "Payments": {
    "zh-Hans": "付款",
@@ -2068,7 +2579,20 @@
    "bn": "পেমেন্ট",
    "pt-BR": "Pagamentos",
    "ru": "Платежи",
-   "id": "Pembayaran"
+   "id": "Pembayaran",
+   "ko": "결제"
+  },
+  "Permissions": {
+   "zh-Hans": "权限",
+   "hi": "अनुमतियाँ",
+   "es": "Permisos",
+   "ar": "الأذونات",
+   "fr": "Permissions",
+   "bn": "অনুমতি",
+   "pt-BR": "Permissões",
+   "ru": "Разрешения",
+   "id": "Izin",
+   "ko": "권한"
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -2079,7 +2603,8 @@
    "bn": "আইল্যান্ড পিন / আনপিন",
    "pt-BR": "Fixar / soltar island",
    "ru": "Закрепить / открепить нотч",
-   "id": "Sematkan / lepas island"
+   "id": "Sematkan / lepas island",
+   "ko": "노치 고정 / 고정 해제"
   },
   "Plan usage": {
    "zh-Hans": "计划用量",
@@ -2090,7 +2615,8 @@
    "bn": "প্ল্যান ব্যবহার",
    "pt-BR": "Uso do plano",
    "ru": "Использование плана",
-   "id": "Penggunaan paket"
+   "id": "Penggunaan paket",
+   "ko": "플랜 사용량"
   },
   "Play": {
    "zh-Hans": "播放",
@@ -2101,7 +2627,20 @@
    "bn": "চালান",
    "pt-BR": "Reproduzir",
    "ru": "Воспроизвести",
-   "id": "Putar"
+   "id": "Putar",
+   "ko": "재생"
+  },
+  "Playing": {
+   "zh-Hans": "正在播放",
+   "hi": "चल रहा है",
+   "es": "Reproduciendo",
+   "ar": "يشغّل",
+   "fr": "Lecture",
+   "bn": "চলছে",
+   "pt-BR": "Reproduzindo",
+   "ru": "Воспроизведение",
+   "id": "Memutar",
+   "ko": "재생 중"
   },
   "Playing · {title}": {
    "zh-Hans": "正在播放 · {title}",
@@ -2112,7 +2651,8 @@
    "bn": "চালু আছে · {title}",
    "pt-BR": "Tocando · {title}",
    "ru": "Играет · {title}",
-   "id": "Memutar · {title}"
+   "id": "Memutar · {title}",
+   "ko": "재생 중 · {title}"
   },
   "Plugin installed — restart Amp to activate it": {
    "zh-Hans": "插件已安装 — 重启 Amp 以激活",
@@ -2123,7 +2663,8 @@
    "bn": "প্লাগইন ইনস্টল হয়েছে — সক্রিয় করতে Amp রিস্টার্ট করুন",
    "pt-BR": "Plugin instalado — reinicie o Amp para ativar",
    "ru": "Плагин установлен — перезапусти Amp для активации",
-   "id": "Plugin terpasang — mulai ulang Amp untuk mengaktifkan"
+   "id": "Plugin terpasang — mulai ulang Amp untuk mengaktifkan",
+   "ko": "플러그인 설치됨 — 적용하려면 Amp를 재시동하세요"
   },
   "Plugin installed — restart OpenCode to activate it": {
    "zh-Hans": "插件已安装 — 重启 OpenCode 以激活",
@@ -2134,7 +2675,8 @@
    "bn": "প্লাগইন ইনস্টল হয়েছে — সক্রিয় করতে OpenCode রিস্টার্ট করুন",
    "pt-BR": "Plugin instalado — reinicie o OpenCode para ativar",
    "ru": "Плагин установлен — перезапусти OpenCode для активации",
-   "id": "Plugin terpasang — mulai ulang OpenCode untuk mengaktifkan"
+   "id": "Plugin terpasang — mulai ulang OpenCode untuk mengaktifkan",
+   "ko": "플러그인 설치됨 — 적용하려면 OpenCode를 재시동하세요"
   },
   "Plugin not installed": {
    "zh-Hans": "插件未安装",
@@ -2145,7 +2687,8 @@
    "bn": "প্লাগইন ইনস্টল নেই",
    "pt-BR": "Plugin não instalado",
    "ru": "Плагин не установлен",
-   "id": "Plugin tidak terpasang"
+   "id": "Plugin tidak terpasang",
+   "ko": "플러그인 설치되지 않음"
   },
   "Previous": {
    "zh-Hans": "上一首",
@@ -2156,7 +2699,8 @@
    "bn": "আগেরটি",
    "pt-BR": "Anterior",
    "ru": "Предыдущий",
-   "id": "Sebelumnya"
+   "id": "Sebelumnya",
+   "ko": "이전"
   },
   "Previous tab": {
    "zh-Hans": "上一个标签",
@@ -2167,7 +2711,20 @@
    "bn": "আগের ট্যাব",
    "pt-BR": "Aba anterior",
    "ru": "Предыдущая вкладка",
-   "id": "Tab sebelumnya"
+   "id": "Tab sebelumnya",
+   "ko": "이전 탭"
+  },
+  "Previous track": {
+   "zh-Hans": "上一首",
+   "hi": "पिछला ट्रैक",
+   "es": "Pista anterior",
+   "ar": "المقطع السابق",
+   "fr": "Morceau précédent",
+   "bn": "আগের ট্র্যাক",
+   "pt-BR": "Faixa anterior",
+   "ru": "Предыдущий трек",
+   "id": "Lagu sebelumnya",
+   "ko": "이전 곡"
   },
   "Projects": {
    "zh-Hans": "项目",
@@ -2178,7 +2735,8 @@
    "bn": "প্রজেক্ট",
    "pt-BR": "Projetos",
    "ru": "Проекты",
-   "id": "Proyek"
+   "id": "Proyek",
+   "ko": "프로젝트"
   },
   "Quit": {
    "zh-Hans": "退出",
@@ -2189,7 +2747,8 @@
    "bn": "বাহির হন",
    "pt-BR": "Sair",
    "ru": "Выход",
-   "id": "Keluar"
+   "id": "Keluar",
+   "ko": "종료"
   },
   "Reads": {
    "zh-Hans": "读取",
@@ -2200,7 +2759,8 @@
    "bn": "পড়ে",
    "pt-BR": "Lê",
    "ru": "Читает",
-   "id": "Membaca"
+   "id": "Membaca",
+   "ko": "읽기"
   },
   "Recent": {
    "zh-Hans": "最近",
@@ -2211,7 +2771,8 @@
    "bn": "সাম্প্রতিক",
    "pt-BR": "Recente",
    "ru": "Недавние",
-   "id": "Terbaru"
+   "id": "Terbaru",
+   "ko": "최근"
   },
   "Refresh": {
    "zh-Hans": "刷新",
@@ -2222,7 +2783,8 @@
    "bn": "রিফ্রেশ",
    "pt-BR": "Atualizar",
    "ru": "Обновить",
-   "id": "Muat ulang"
+   "id": "Muat ulang",
+   "ko": "새로고침"
   },
   "Relay: installed": {
    "zh-Hans": "中继：已安装",
@@ -2233,7 +2795,8 @@
    "bn": "রিলে: ইনস্টল আছে",
    "pt-BR": "Relay: instalado",
    "ru": "Ретранслятор: установлен",
-   "id": "Relay: terpasang"
+   "id": "Relay: terpasang",
+   "ko": "릴레이: 설치됨"
   },
   "Relay: not installed": {
    "zh-Hans": "中继：未安装",
@@ -2244,7 +2807,8 @@
    "bn": "রিলে: ইনস্টল নেই",
    "pt-BR": "Relay: não instalado",
    "ru": "Ретранслятор: не установлен",
-   "id": "Relay: belum terpasang"
+   "id": "Relay: belum terpasang",
+   "ko": "릴레이: 설치되지 않음"
   },
   "Reload sounds": {
    "zh-Hans": "重新载入声音",
@@ -2255,7 +2819,8 @@
    "bn": "সাউন্ড আবার লোড করুন",
    "pt-BR": "Recarregar sons",
    "ru": "Перезагрузить звуки",
-   "id": "Muat ulang suara"
+   "id": "Muat ulang suara",
+   "ko": "사운드 다시 로드"
   },
   "Remove from favorites": {
    "zh-Hans": "取消收藏",
@@ -2266,7 +2831,8 @@
    "bn": "প্রিয় থেকে সরান",
    "pt-BR": "Remover dos favoritos",
    "ru": "Убрать из избранного",
-   "id": "Hapus dari favorit"
+   "id": "Hapus dari favorit",
+   "ko": "즐겨찾기에서 제거"
   },
   "Repeat all": {
    "zh-Hans": "全部重复",
@@ -2277,7 +2843,8 @@
    "bn": "সব রিপিট",
    "pt-BR": "Repetir tudo",
    "ru": "Повторять все",
-   "id": "Ulangi semua"
+   "id": "Ulangi semua",
+   "ko": "전체 반복"
   },
   "Repeat off": {
    "zh-Hans": "重复：关",
@@ -2288,7 +2855,8 @@
    "bn": "রিপিট বন্ধ",
    "pt-BR": "Repetir desativado",
    "ru": "Повтор выкл.",
-   "id": "Ulangi nonaktif"
+   "id": "Ulangi nonaktif",
+   "ko": "반복 끔"
   },
   "Repeat on": {
    "zh-Hans": "重复：开",
@@ -2299,7 +2867,8 @@
    "bn": "রিপিট চালু",
    "pt-BR": "Repetir ativado",
    "ru": "Повтор вкл.",
-   "id": "Ulangi aktif"
+   "id": "Ulangi aktif",
+   "ko": "반복 켬"
   },
   "Repeat one": {
    "zh-Hans": "单曲重复",
@@ -2310,7 +2879,8 @@
    "bn": "একটি রিপিট",
    "pt-BR": "Repetir uma",
    "ru": "Повторять один",
-   "id": "Ulangi satu"
+   "id": "Ulangi satu",
+   "ko": "한 곡 반복"
   },
   "Reply in terminal": {
    "zh-Hans": "在终端回复",
@@ -2321,7 +2891,20 @@
    "bn": "টার্মিনালে উত্তর দিন",
    "pt-BR": "Responder no terminal",
    "ru": "Ответить в терминале",
-   "id": "Balas di terminal"
+   "id": "Balas di terminal",
+   "ko": "터미널에서 응답"
+  },
+  "Request permissions": {
+   "zh-Hans": "请求权限",
+   "hi": "अनुमतियाँ अनुरोध करें",
+   "es": "Solicitar permisos",
+   "ar": "طلب الأذونات",
+   "fr": "Demander les permissions",
+   "bn": "অনুমতি অনুরোধ করুন",
+   "pt-BR": "Solicitar permissões",
+   "ru": "Запросить разрешения",
+   "id": "Minta izin",
+   "ko": "권한 요청"
   },
   "Resend": {
    "zh-Hans": "重新发送",
@@ -2332,7 +2915,8 @@
    "bn": "পুনরায় পাঠান",
    "pt-BR": "Reenviar",
    "ru": "Повторить",
-   "id": "Kirim ulang"
+   "id": "Kirim ulang",
+   "ko": "재전송"
   },
   "Reset all to defaults": {
    "zh-Hans": "全部重置为默认值",
@@ -2343,7 +2927,8 @@
    "bn": "সব ডিফল্টে রিসেট করো",
    "pt-BR": "Redefinir tudo para os padrões",
    "ru": "Сбросить всё к значениям по умолчанию",
-   "id": "Reset semua ke default"
+   "id": "Reset semua ke default",
+   "ko": "모두 기본값으로 재설정"
   },
   "Resetting…": {
    "zh-Hans": "重置中…",
@@ -2354,7 +2939,8 @@
    "bn": "রিসেট হচ্ছে…",
    "pt-BR": "Reiniciando…",
    "ru": "Сброс…",
-   "id": "Mereset…"
+   "id": "Mereset…",
+   "ko": "재설정 중…"
   },
   "Restart Coucou": {
    "zh-Hans": "重启 Coucou",
@@ -2365,7 +2951,8 @@
    "bn": "Coucou পুনরায় শুরু করুন",
    "pt-BR": "Reiniciar Coucou",
    "ru": "Перезапустить Coucou",
-   "id": "Mulai ulang Coucou"
+   "id": "Mulai ulang Coucou",
+   "ko": "Coucou 재시동"
   },
   "Retry": {
    "zh-Hans": "重试",
@@ -2376,7 +2963,8 @@
    "bn": "পুনরায় চেষ্টা",
    "pt-BR": "Tentar novamente",
    "ru": "Повторить",
-   "id": "Coba lagi"
+   "id": "Coba lagi",
+   "ko": "다시 시도"
   },
   "Review the JSON below before confirming.": {
    "zh-Hans": "确认前请检查以下 JSON。",
@@ -2387,7 +2975,8 @@
    "bn": "নিশ্চিত করার আগে নীচের JSON পর্যালোচনা করুন।",
    "pt-BR": "Revise o JSON abaixo antes de confirmar.",
    "ru": "Просмотри JSON ниже перед подтверждением.",
-   "id": "Tinjau JSON di bawah sebelum mengonfirmasi."
+   "id": "Tinjau JSON di bawah sebelum mengonfirmasi.",
+   "ko": "확인하기 전에 아래 JSON을 검토하세요."
   },
   "Review the content below before confirming.": {
    "zh-Hans": "确认前请检查以下内容。",
@@ -2398,7 +2987,8 @@
    "bn": "নিশ্চিত করার আগে নীচের বিষয়বস্তু পর্যালোচনা করুন।",
    "pt-BR": "Revise o conteúdo abaixo antes de confirmar.",
    "ru": "Просмотри содержимое ниже перед подтверждением.",
-   "id": "Tinjau konten di bawah sebelum mengonfirmasi."
+   "id": "Tinjau konten di bawah sebelum mengonfirmasi.",
+   "ko": "확인하기 전에 아래 내용을 검토하세요."
   },
   "Runs": {
    "zh-Hans": "执行",
@@ -2409,7 +2999,8 @@
    "bn": "চালায়",
    "pt-BR": "Executa",
    "ru": "Запускает",
-   "id": "Menjalankan"
+   "id": "Menjalankan",
+   "ko": "실행"
   },
   "SESSIONS": {
    "zh-Hans": "会话",
@@ -2420,7 +3011,8 @@
    "bn": "সেশন",
    "pt-BR": "SESSÕES",
    "ru": "СЕССИИ",
-   "id": "SESI"
+   "id": "SESI",
+   "ko": "세션"
   },
   "Save": {
    "zh-Hans": "保存",
@@ -2431,7 +3023,8 @@
    "bn": "সংরক্ষণ",
    "pt-BR": "Salvar",
    "ru": "Сохранить",
-   "id": "Simpan"
+   "id": "Simpan",
+   "ko": "저장"
   },
   "Save integrations": {
    "zh-Hans": "保存集成",
@@ -2442,7 +3035,8 @@
    "bn": "ইন্টিগ্রেশন সংরক্ষণ করুন",
    "pt-BR": "Salvar integrações",
    "ru": "Сохранить интеграции",
-   "id": "Simpan integrasi"
+   "id": "Simpan integrasi",
+   "ko": "연동 저장"
   },
   "Save…": {
    "zh-Hans": "存储…",
@@ -2453,7 +3047,20 @@
    "bn": "সংরক্ষণ করুন…",
    "pt-BR": "Salvar…",
    "ru": "Сохранить…",
-   "id": "Simpan…"
+   "id": "Simpan…",
+   "ko": "저장…"
+  },
+  "Say your command": {
+   "zh-Hans": "说出您的命令",
+   "hi": "अपना आदेश बोलें",
+   "es": "Di tu comando",
+   "ar": "قل أمرك",
+   "fr": "Dites votre commande",
+   "bn": "আপনার কমান্ড বলুন",
+   "pt-BR": "Diga seu comando",
+   "ru": "Скажите команду",
+   "id": "Katakan perintah Anda",
+   "ko": "명령을 말씀하세요"
   },
   "Schedule": {
    "zh-Hans": "日程",
@@ -2464,7 +3071,8 @@
    "bn": "সময়সূচি",
    "pt-BR": "Agenda",
    "ru": "Расписание",
-   "id": "Jadwal"
+   "id": "Jadwal",
+   "ko": "일정"
   },
   "Searches": {
    "zh-Hans": "搜索",
@@ -2475,7 +3083,8 @@
    "bn": "খোঁজে",
    "pt-BR": "Pesquisa",
    "ru": "Ищет",
-   "id": "Mencari"
+   "id": "Mencari",
+   "ko": "검색"
   },
   "Searches the web": {
    "zh-Hans": "搜索网络",
@@ -2486,7 +3095,8 @@
    "bn": "ওয়েব খোঁজে",
    "pt-BR": "Pesquisa na web",
    "ru": "Ищет в сети",
-   "id": "Mencari web"
+   "id": "Mencari web",
+   "ko": "웹 검색"
   },
   "Send": {
    "zh-Hans": "发送",
@@ -2497,7 +3107,8 @@
    "bn": "পাঠান",
    "pt-BR": "Enviar",
    "ru": "Отправить",
-   "id": "Kirim"
+   "id": "Kirim",
+   "ko": "보내기"
   },
   "Send by email": {
    "zh-Hans": "通过邮件发送",
@@ -2508,7 +3119,8 @@
    "bn": "ইমেইলে পাঠান",
    "pt-BR": "Enviar por email",
    "ru": "Отправить по email",
-   "id": "Kirim via email"
+   "id": "Kirim via email",
+   "ko": "이메일로 보내기"
   },
   "Send chat message": {
    "zh-Hans": "发送聊天消息",
@@ -2519,7 +3131,8 @@
    "bn": "চ্যাট বার্তা পাঠাও",
    "pt-BR": "Enviar mensagem do chat",
    "ru": "Отправить сообщение в чат",
-   "id": "Kirim pesan chat"
+   "id": "Kirim pesan chat",
+   "ko": "채팅 메시지 전송"
   },
   "Sending…": {
    "zh-Hans": "发送中…",
@@ -2530,7 +3143,8 @@
    "bn": "পাঠানো হচ্ছে…",
    "pt-BR": "Enviando…",
    "ru": "Отправка…",
-   "id": "Mengirim…"
+   "id": "Mengirim…",
+   "ko": "보내는 중…"
   },
   "Sends your sessions to your private iCloud for the Coucou app on iPhone. Project names, commands, and questions are encrypted with your iCloud keys. Disabling removes data from iCloud.": {
    "zh-Hans": "将你的会话发送到私有 iCloud，供 Coucou iPhone 应用使用。项目名称、命令和问题使用你的 iCloud 密钥加密。关闭后将从 iCloud 中删除。",
@@ -2541,7 +3155,8 @@
    "bn": "Coucou iPhone অ্যাপের জন্য আপনার সেশনগুলো আপনার প্রাইভেট iCloud-এ পাঠায়। প্রজেক্টের নাম, কমান্ড এবং প্রশ্নগুলো আপনার iCloud কী দিয়ে এনক্রিপ্ট করা হয়। বন্ধ করলে iCloud থেকে মুছে যাবে।",
    "pt-BR": "Envia suas sessões para seu iCloud privado para o app Coucou no iPhone. Nomes de projetos, comandos e perguntas são criptografados com suas chaves do iCloud. Desativar remove-os do iCloud.",
    "ru": "Отправляет твои сессии в личный iCloud для приложения Coucou на iPhone. Имена проектов, команды и вопросы шифруются твоими ключами iCloud. Отключение удаляет их из iCloud.",
-   "id": "Mengirim sesi Anda ke iCloud pribadi Anda untuk aplikasi Coucou iPhone. Nama proyek, perintah, dan pertanyaan dienkripsi dengan kunci iCloud Anda. Mematikannya menghapusnya dari iCloud."
+   "id": "Mengirim sesi Anda ke iCloud pribadi Anda untuk aplikasi Coucou iPhone. Nama proyek, perintah, dan pertanyaan dienkripsi dengan kunci iCloud Anda. Mematikannya menghapusnya dari iCloud.",
+   "ko": "iPhone의 Coucou 앱을 위해 세션을 비공개 iCloud로 전송합니다. 프로젝트 이름, 명령 및 질문은 iCloud 키로 암호화됩니다. 비활성화하면 iCloud에서 데이터가 삭제됩니다."
   },
   "Session finished": {
    "zh-Hans": "会话已结束",
@@ -2552,7 +3167,8 @@
    "bn": "সেশন শেষ",
    "pt-BR": "Sessão finalizada",
    "ru": "Сессия завершена",
-   "id": "Sesi selesai"
+   "id": "Sesi selesai",
+   "ko": "세션 완료됨"
   },
   "Settings — Coucou": {
    "zh-Hans": "设置 — Coucou",
@@ -2563,7 +3179,8 @@
    "bn": "সেটিংস — Coucou",
    "pt-BR": "Configurações — Coucou",
    "ru": "Настройки — Coucou",
-   "id": "Pengaturan — Coucou"
+   "id": "Pengaturan — Coucou",
+   "ko": "설정 — Coucou"
   },
   "Settings…": {
    "zh-Hans": "设置…",
@@ -2574,7 +3191,8 @@
    "bn": "সেটিংস…",
    "pt-BR": "Configurações…",
    "ru": "Настройки…",
-   "id": "Pengaturan…"
+   "id": "Pengaturan…",
+   "ko": "설정…"
   },
   "Share image": {
    "zh-Hans": "分享图片",
@@ -2585,7 +3203,8 @@
    "bn": "ছবি শেয়ার করুন",
    "pt-BR": "Compartilhar imagem",
    "ru": "Поделиться картинкой",
-   "id": "Bagikan gambar"
+   "id": "Bagikan gambar",
+   "ko": "이미지 공유"
   },
   "Share…": {
    "zh-Hans": "分享…",
@@ -2596,7 +3215,8 @@
    "bn": "শেয়ার করুন…",
    "pt-BR": "Compartilhar…",
    "ru": "Поделиться…",
-   "id": "Bagikan…"
+   "id": "Bagikan…",
+   "ko": "공유…"
   },
   "Shortcut": {
    "zh-Hans": "快捷键",
@@ -2607,7 +3227,8 @@
    "bn": "শর্টকাট",
    "pt-BR": "Atalho",
    "ru": "Сочетание клавиш",
-   "id": "Pintasan"
+   "id": "Pintasan",
+   "ko": "단축키"
   },
   "Shortcuts": {
    "zh-Hans": "快捷键",
@@ -2618,7 +3239,8 @@
    "bn": "শর্টকাট",
    "pt-BR": "Atalhos",
    "ru": "Горячие клавиши",
-   "id": "Pintasan"
+   "id": "Pintasan",
+   "ko": "단축키"
   },
   "Show approval requests in the notch": {
    "zh-Hans": "在刘海中显示审批请求",
@@ -2629,7 +3251,8 @@
    "bn": "নচে অনুমোদন অনুরোধ দেখান",
    "pt-BR": "Mostrar solicitações de aprovação no notch",
    "ru": "Показывать запросы подтверждения в notch",
-   "id": "Tampilkan permintaan persetujuan di notch"
+   "id": "Tampilkan permintaan persetujuan di notch",
+   "ko": "노치에 승인 요청 표시"
   },
   "Show in notch": {
    "zh-Hans": "在刘海中显示",
@@ -2640,7 +3263,8 @@
    "bn": "নচে দেখান",
    "pt-BR": "Mostrar no notch",
    "ru": "Показывать в нотче",
-   "id": "Tampilkan di notch"
+   "id": "Tampilkan di notch",
+   "ko": "노치에 표시"
   },
   "Show island with shortcut": {
    "zh-Hans": "用快捷键显示岛",
@@ -2651,7 +3275,8 @@
    "bn": "শর্টকাট দিয়ে আইল্যান্ড দেখান",
    "pt-BR": "Mostrar ilha com atalho",
    "ru": "Показывать остров горячей клавишей",
-   "id": "Tampilkan island dengan pintasan"
+   "id": "Tampilkan island dengan pintasan",
+   "ko": "단축키로 아일랜드 표시"
   },
   "Show my agent sessions on my iPhone": {
    "zh-Hans": "在我的 iPhone 上显示我的 Agent 会话",
@@ -2662,7 +3287,8 @@
    "bn": "আমার iPhone-এ আমার এজেন্ট সেশন দেখান",
    "pt-BR": "Mostrar minhas sessões de agente no meu iPhone",
    "ru": "Показывать мои сессии агента на iPhone",
-   "id": "Tampilkan sesi agen saya di iPhone saya"
+   "id": "Tampilkan sesi agen saya di iPhone saya",
+   "ko": "내 에이전트 세션을 iPhone에 표시"
   },
   "Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。",
@@ -2673,7 +3299,8 @@
    "bn": "নচ হেডারে আপনার Claude প্ল্যানের ব্যবহার (৫ ঘণ্টা ও সাপ্তাহিক সীমা) দেখায়। Coucou ~/.claude/settings.json-এ একটি স্ট্যাটাস লাইন রিলে যোগ করে। আপনার কাছে ইতিমধ্যে স্ট্যাটাস লাইন থাকলে তা আগের মতোই কাজ করবে। শুধুমাত্র Pro এবং Max প্ল্যানের জন্য।",
    "pt-BR": "Mostra o uso do seu plano Claude (limites de 5 horas e semanais) no cabeçalho do notch. O Coucou adiciona um relay de linha de status ao ~/.claude/settings.json. Se você já tiver uma linha de status, ela continua funcionando normalmente. Apenas planos Pro e Max.",
    "ru": "Показывает использование плана Claude (лимиты на 5 часов и на неделю) в шапке нотча. Coucou добавляет ретранслятор строки статуса в ~/.claude/settings.json. Если строка статуса уже есть, она продолжит работать как прежде. Только для планов Pro и Max.",
-   "id": "Menampilkan penggunaan paket Claude (batas 5 jam dan mingguan) di header notch. Coucou menambahkan relay baris status ke ~/.claude/settings.json. Jika Anda sudah memiliki baris status, tetap berjalan seperti sebelumnya. Hanya untuk paket Pro dan Max."
+   "id": "Menampilkan penggunaan paket Claude (batas 5 jam dan mingguan) di header notch. Coucou menambahkan relay baris status ke ~/.claude/settings.json. Jika Anda sudah memiliki baris status, tetap berjalan seperti sebelumnya. Hanya untuk paket Pro dan Max.",
+   "ko": "노치 헤더에 Claude 플랜 사용량(5시간 및 주간 한도)을 표시합니다. Coucou는 ~/.claude/settings.json에 상태 표시줄 릴레이를 추가합니다. 이미 상태 표시줄이 있다면 이전과 동일하게 계속 작동합니다. Pro 및 Max 플랜 전용입니다."
   },
   "Shuffle off": {
    "zh-Hans": "随机播放：关",
@@ -2684,7 +3311,8 @@
    "bn": "শাফল বন্ধ",
    "pt-BR": "Aleatório desativado",
    "ru": "Перемешивание выкл.",
-   "id": "Acak nonaktif"
+   "id": "Acak nonaktif",
+   "ko": "임의 재생 끔"
   },
   "Shuffle on": {
    "zh-Hans": "随机播放：开",
@@ -2695,7 +3323,8 @@
    "bn": "শাফল চালু",
    "pt-BR": "Aleatório ativado",
    "ru": "Перемешивание вкл.",
-   "id": "Acak aktif"
+   "id": "Acak aktif",
+   "ko": "임의 재생 켬"
   },
   "Sound": {
    "zh-Hans": "声音",
@@ -2706,7 +3335,20 @@
    "bn": "শব্দ",
    "pt-BR": "Som",
    "ru": "Звук",
-   "id": "Suara"
+   "id": "Suara",
+   "ko": "사운드"
+  },
+  "Speech recognition:": {
+   "zh-Hans": "语音识别：",
+   "hi": "वाक् पहचान:",
+   "es": "Reconocimiento de voz:",
+   "ar": "التعرف على الكلام:",
+   "fr": "Reconnaissance vocale :",
+   "bn": "বক্তৃতা স্বীকৃতি:",
+   "pt-BR": "Reconhecimento de fala:",
+   "ru": "Распознавание речи:",
+   "id": "Pengenalan ucapan:",
+   "ko": "음성 인식:"
   },
   "Spotify not installed": {
    "zh-Hans": "未安装 Spotify",
@@ -2717,7 +3359,8 @@
    "bn": "Spotify ইনস্টল নেই",
    "pt-BR": "Spotify não está instalado",
    "ru": "Spotify не установлен",
-   "id": "Spotify belum terpasang"
+   "id": "Spotify belum terpasang",
+   "ko": "Spotify가 설치되지 않음"
   },
   "Startup": {
    "zh-Hans": "启动",
@@ -2728,7 +3371,8 @@
    "bn": "স্টার্টআপ",
    "pt-BR": "Inicialização",
    "ru": "Запуск",
-   "id": "Mulai"
+   "id": "Mulai",
+   "ko": "시동"
   },
   "Stop demo": {
    "zh-Hans": "停止演示",
@@ -2739,7 +3383,8 @@
    "bn": "ডেমো বন্ধ করুন",
    "pt-BR": "Parar demo",
    "ru": "Остановить демо",
-   "id": "Hentikan demo"
+   "id": "Hentikan demo",
+   "ko": "데모 중지"
   },
   "Stored locally on your Mac. Nothing leaves your Mac. Retained for 12 weeks.": {
    "zh-Hans": "储存在 Mac 本地，不会离开你的 Mac，保留 12 周。",
@@ -2750,7 +3395,8 @@
    "bn": "তোমার Mac-এ স্থানীয়ভাবে সংরক্ষিত। কিছু Mac ছেড়ে যায় না। ১২ সপ্তাহ ধরে রাখা হয়।",
    "pt-BR": "Armazenado localmente no seu Mac. Nada sai do seu Mac. Mantido por 12 semanas.",
    "ru": "Хранится локально на Mac. Ничего не покидает Mac. Хранится 12 недель.",
-   "id": "Disimpan secara lokal di Mac. Tidak ada yang keluar dari Mac Anda. Disimpan selama 12 minggu."
+   "id": "Disimpan secara lokal di Mac. Tidak ada yang keluar dari Mac Anda. Disimpan selama 12 minggu.",
+   "ko": "Mac에 로컬로 저장됩니다. 어떤 데이터도 Mac 외부로 나가지 않습니다. 12주 동안 보관됩니다."
   },
   "Subject": {
    "zh-Hans": "主题",
@@ -2761,7 +3407,8 @@
    "bn": "বিষয়",
    "pt-BR": "Assunto",
    "ru": "Тема",
-   "id": "Subjek"
+   "id": "Subjek",
+   "ko": "제목"
   },
   "Success": {
    "zh-Hans": "成功",
@@ -2772,7 +3419,8 @@
    "bn": "সফল",
    "pt-BR": "Sucesso",
    "ru": "Успешно",
-   "id": "Berhasil"
+   "id": "Berhasil",
+   "ko": "성공"
   },
   "System": {
    "zh-Hans": "系统",
@@ -2783,7 +3431,8 @@
    "bn": "সিস্টেম",
    "pt-BR": "Sistema",
    "ru": "Системный",
-   "id": "Sistem"
+   "id": "Sistem",
+   "ko": "시스템"
   },
   "System conflict": {
    "zh-Hans": "系统冲突",
@@ -2794,7 +3443,8 @@
    "bn": "সিস্টেম কনফ্লিক্ট",
    "pt-BR": "Conflito do sistema",
    "ru": "Системный конфликт",
-   "id": "Konflik sistem"
+   "id": "Konflik sistem",
+   "ko": "시스템 충돌"
   },
   "TIME CODING": {
    "zh-Hans": "编程时长",
@@ -2805,7 +3455,20 @@
    "bn": "কোডিং সময়",
    "pt-BR": "TEMPO PROGRAMANDO",
    "ru": "ВРЕМЯ КОДИНГА",
-   "id": "WAKTU PEMROGRAMAN"
+   "id": "WAKTU PEMROGRAMAN",
+   "ko": "코딩 시간"
+  },
+  "Talk to Coucou": {
+   "zh-Hans": "与 Coucou 对话",
+   "hi": "Coucou से बात करें",
+   "es": "Hablar con Coucou",
+   "ar": "التحدث إلى Coucou",
+   "fr": "Parler à Coucou",
+   "bn": "Coucou-এর সাথে কথা বলুন",
+   "pt-BR": "Falar com Coucou",
+   "ru": "Говорить с Coucou",
+   "id": "Bicara ke Coucou",
+   "ko": "Coucou와 대화"
   },
   "Tasks": {
    "zh-Hans": "任务",
@@ -2816,7 +3479,8 @@
    "bn": "কার্য",
    "pt-BR": "Tarefas",
    "ru": "Задачи",
-   "id": "Tugas"
+   "id": "Tugas",
+   "ko": "작업"
   },
   "Tests": {
    "zh-Hans": "测试",
@@ -2827,7 +3491,8 @@
    "bn": "পরীক্ষা করে",
    "pt-BR": "Testa",
    "ru": "Тестирует",
-   "id": "Menguji"
+   "id": "Menguji",
+   "ko": "테스트"
   },
   "To": {
    "zh-Hans": "收件人",
@@ -2838,7 +3503,8 @@
    "bn": "প্রতি",
    "pt-BR": "Para",
    "ru": "Кому",
-   "id": "Kepada"
+   "id": "Kepada",
+   "ko": "받는 사람"
   },
   "To review": {
    "zh-Hans": "待审查",
@@ -2849,7 +3515,8 @@
    "bn": "পর্যালোচনার জন্য",
    "pt-BR": "Para revisar",
    "ru": "На ревью",
-   "id": "Untuk ditinjau"
+   "id": "Untuk ditinjau",
+   "ko": "검토 대기"
   },
   "To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain.": {
    "zh-Hans": "用于在聊天中使用 Google Gemini 或 OpenAI。密钥存储在 Keychain 中。",
@@ -2860,7 +3527,8 @@
    "bn": "চ্যাট থেকে Google Gemini বা OpenAI ব্যবহার করতে। কীগুলো Keychain-এ সংরক্ষিত হয়।",
    "pt-BR": "Para usar o Google Gemini ou OpenAI pelo chat. As chaves são armazenadas no Keychain.",
    "ru": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain.",
-   "id": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
+   "id": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain.",
+   "ko": "채팅에서 Google Gemini 또는 OpenAI를 사용합니다. 키는 키체인에 저장됩니다."
   },
   "Too many hits at once.": {
    "zh-Hans": "一次点击太多次了。",
@@ -2871,7 +3539,8 @@
    "bn": "একসাথে অনেক বেশি ক্লিক।",
    "pt-BR": "Muitas batidas de uma vez.",
    "ru": "Слишком много нажатий подряд.",
-   "id": "Terlalu banyak ketukan sekaligus."
+   "id": "Terlalu banyak ketukan sekaligus.",
+   "ko": "한 번에 너무 많은 요청이 발생했습니다."
   },
   "Top agent": {
    "zh-Hans": "最活跃 Agent",
@@ -2882,7 +3551,8 @@
    "bn": "শীর্ষ এজেন্ট",
    "pt-BR": "Agente principal",
    "ru": "Топ агент",
-   "id": "Agen teratas"
+   "id": "Agen teratas",
+   "ko": "최고 에이전트"
   },
   "Top project": {
    "zh-Hans": "最活跃项目",
@@ -2893,7 +3563,8 @@
    "bn": "শীর্ষ প্রজেক্ট",
    "pt-BR": "Projeto principal",
    "ru": "Топ проект",
-   "id": "Proyek teratas"
+   "id": "Proyek teratas",
+   "ko": "최고 프로젝트"
   },
   "Try demo mode": {
    "zh-Hans": "试用演示模式",
@@ -2904,7 +3575,8 @@
    "bn": "ডেমো মোড চেষ্টা করুন",
    "pt-BR": "Experimentar modo demo",
    "ru": "Попробовать демо",
-   "id": "Coba mode demo"
+   "id": "Coba mode demo",
+   "ko": "데모 모드 사용해보기"
   },
   "Uninstall": {
    "zh-Hans": "卸载",
@@ -2915,7 +3587,8 @@
    "bn": "আনইনস্টল করুন",
    "pt-BR": "Desinstalar",
    "ru": "Удалить",
-   "id": "Hapus"
+   "id": "Hapus",
+   "ko": "제거"
   },
   "Uninstall relay": {
    "zh-Hans": "卸载中继",
@@ -2926,7 +3599,8 @@
    "bn": "রিলে আনইনস্টল করুন",
    "pt-BR": "Desinstalar relay",
    "ru": "Удалить ретранслятор",
-   "id": "Hapus relay"
+   "id": "Hapus relay",
+   "ko": "릴레이 제거"
   },
   "Unknown": {
    "zh-Hans": "未知",
@@ -2937,7 +3611,8 @@
    "bn": "অজানা",
    "pt-BR": "Desconhecido",
    "ru": "Неизвестно",
-   "id": "Tidak diketahui"
+   "id": "Tidak diketahui",
+   "ko": "알 수 없음"
   },
   "Update hooks": {
    "zh-Hans": "更新 Hooks",
@@ -2948,7 +3623,8 @@
    "bn": "হুক আপডেট করুন",
    "pt-BR": "Atualizar hooks",
    "ru": "Обновить хуки",
-   "id": "Perbarui hooks"
+   "id": "Perbarui hooks",
+   "ko": "Hooks 업데이트"
   },
   "Uploading {name}": {
    "zh-Hans": "正在上传 {name}",
@@ -2959,7 +3635,8 @@
    "bn": "{name} আপলোড হচ্ছে",
    "pt-BR": "Enviando {name}",
    "ru": "Загружается {name}",
-   "id": "Mengunggah {name}"
+   "id": "Mengunggah {name}",
+   "ko": "{name} 업로드 중"
   },
   "Used by the chat. The list comes from your Anthropic account.": {
    "zh-Hans": "由聊天使用。列表来自你的 Anthropic 账户。",
@@ -2970,7 +3647,20 @@
    "bn": "চ্যাটে ব্যবহৃত হয়। তালিকা আপনার Anthropic অ্যাকাউন্ট থেকে আসে।",
    "pt-BR": "Usado pelo chat. A lista vem da sua conta Anthropic.",
    "ru": "Используется чатом. Список берётся из твоего аккаунта Anthropic.",
-   "id": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda."
+   "id": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda.",
+   "ko": "채팅에서 사용됩니다. 목록은 Anthropic 계정에서 가져옵니다."
+  },
+  "Voice": {
+   "zh-Hans": "语音",
+   "hi": "आवाज़",
+   "es": "Voz",
+   "ar": "صوت",
+   "fr": "Voix",
+   "bn": "ভয়েস",
+   "pt-BR": "Voz",
+   "ru": "Голос",
+   "id": "Suara",
+   "ko": "음성"
   },
   "Volume": {
    "zh-Hans": "音量",
@@ -2981,7 +3671,32 @@
    "bn": "ভলিউম",
    "pt-BR": "Volume",
    "ru": "Громкость",
-   "id": "Volume"
+   "id": "Volume",
+   "ko": "음량"
+  },
+  "Volume down": {
+   "zh-Hans": "调低音量",
+   "hi": "आवाज़ घटाएं",
+   "es": "Bajar volumen",
+   "ar": "خفض الصوت",
+   "fr": "Volume −",
+   "bn": "ভলিউম কমছে",
+   "pt-BR": "Volume mais baixo",
+   "ru": "Тише",
+   "id": "Volume turun",
+   "ko": "음량 낮추기"
+  },
+  "Volume up": {
+   "zh-Hans": "调高音量",
+   "hi": "आवाज़ बढ़ाएं",
+   "es": "Subir volumen",
+   "ar": "رفع الصوت",
+   "fr": "Volume +",
+   "bn": "ভলিউম বাড়ছে",
+   "pt-BR": "Volume mais alto",
+   "ru": "Громче",
+   "id": "Volume naik",
+   "ko": "음량 높이기"
   },
   "Volume {0}%": {
    "zh-Hans": "音量 {0}%",
@@ -2992,7 +3707,20 @@
    "bn": "ভলিউম {0}%",
    "pt-BR": "Volume {0}%",
    "ru": "Громкость {0}%",
-   "id": "Volume {0}%"
+   "id": "Volume {0}%",
+   "ko": "음량 {0}%"
+  },
+  "Volume: {0}%": {
+   "zh-Hans": "音量：{0}%",
+   "hi": "वॉल्यूम: {0}%",
+   "es": "Volumen: {0}%",
+   "ar": "الصوت: {0}%",
+   "fr": "Volume : {0}%",
+   "bn": "ভলিউম: {0}%",
+   "pt-BR": "Volume: {0}%",
+   "ru": "Громкость: {0}%",
+   "id": "Volume: {0}%",
+   "ko": "음량: {0}%"
   },
   "Waiting for a response from Claude Code": {
    "zh-Hans": "等待 Claude Code 回复",
@@ -3003,7 +3731,8 @@
    "bn": "Claude Code-এর উত্তরের অপেক্ষায়",
    "pt-BR": "Aguardando resposta do Claude Code",
    "ru": "Ожидание ответа Claude Code",
-   "id": "Menunggu balasan Claude Code"
+   "id": "Menunggu balasan Claude Code",
+   "ko": "Claude Code의 응답을 기다리는 중"
   },
   "Wardrobe": {
    "zh-Hans": "衣橱",
@@ -3014,7 +3743,8 @@
    "bn": "পোশাক ঘর",
    "pt-BR": "Guarda-roupa",
    "ru": "Гардероб",
-   "id": "Lemari"
+   "id": "Lemari",
+   "ko": "옷장"
   },
   "Watching {count} of {total}": {
    "zh-Hans": "监控 {count} / {total}",
@@ -3025,7 +3755,8 @@
    "bn": "{count} টির মধ্যে {total} টি দেখছেন",
    "pt-BR": "Observando {count} de {total}",
    "ru": "Наблюдение: {count} из {total}",
-   "id": "Melihat {count} dari {total}"
+   "id": "Melihat {count} dari {total}",
+   "ko": "{count} / {total} 감시 중"
   },
   "Week": {
    "zh-Hans": "一周",
@@ -3036,7 +3767,8 @@
    "bn": "সপ্তাহ",
    "pt-BR": "Semana",
    "ru": "Неделя",
-   "id": "Minggu"
+   "id": "Minggu",
+   "ko": "주간"
   },
   "Weekly recap": {
    "zh-Hans": "每周回顾",
@@ -3047,7 +3779,8 @@
    "bn": "সাপ্তাহিক রিক্যাপ",
    "pt-BR": "Resumo semanal",
    "ru": "Итоги недели",
-   "id": "Rekap mingguan"
+   "id": "Rekap mingguan",
+   "ko": "주간 요약"
   },
   "What do you want to do with it?": {
    "zh-Hans": "您想对它做什么？",
@@ -3058,7 +3791,32 @@
    "bn": "আপনি এটা দিয়ে কী করতে চান?",
    "pt-BR": "O que você quer fazer com ele?",
    "ru": "Что вы хотите с ним сделать?",
-   "id": "Apa yang ingin Anda lakukan dengannya?"
+   "id": "Apa yang ingin Anda lakukan dengannya?",
+   "ko": "어떤 작업을 수행하시겠습니까?"
+  },
+  "When enabled, Coucou listens for the wake word « OK Coucou ». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.": {
+   "zh-Hans": "启用后，Coucou 会监听唤醒词« OK Coucou »。语音识别完全在设备上运行—任何音频或文字记录都不会离开您的 Mac。",
+   "hi": "सक्षम होने पर, Coucou वेक शब्द « OK Coucou » सुनता है। वाक् पहचान पूरी तरह डिवाइस पर चलती है — कोई ऑडियो या ट्रांसक्रिप्ट आपके Mac को नहीं छोड़ता।",
+   "es": "Cuando está activado, Coucou escucha la palabra de activación « OK Coucou ». El reconocimiento de voz se ejecuta completamente en el dispositivo — ningún audio ni transcripción sale de tu Mac.",
+   "ar": "عند التفعيل، يستمع Coucou لكلمة التنشيط « OK Coucou ». يعمل التعرف على الكلام بالكامل على الجهاز — لا يغادر أي صوت أو نص جهاز Mac.",
+   "fr": "Quand cette option est activée, Coucou écoute le mot de réveil « OK Coucou ». La reconnaissance vocale se fait entièrement sur l’appareil — aucun audio ni transcription ne quitte votre Mac.",
+   "bn": "সক্ষম হলে, Coucou ওয়েক ওয়ার্ড « OK Coucou » শোনে। ভাষণ স্বীকৃতি সম্পূর্ণ ডিভাইসে চলে — কোনো অডিও বা ট্রান্সক্রিপ্ট আপনার Mac ছেড়ে যায় না।",
+   "pt-BR": "Quando ativado, o Coucou escuta a palavra de ativação « OK Coucou ». O reconhecimento de fala é executado inteiramente no dispositivo — nenhum áudio ou transcrição sai do seu Mac.",
+   "ru": "Когда включено, Coucou слушает слово активации « OK Coucou ». Распознавание речи работает полностью на устройстве — никакие аудиозаписи или транскрипции не покидают ваш Mac.",
+   "id": "Saat diaktifkan, Coucou mendengarkan kata pengaktif « OK Coucou ». Pengenalan ucapan berjalan sepenuhnya di perangkat — tidak ada audio atau transkrip yang meninggalkan Mac Anda.",
+   "ko": "활성화하면 Coucou가 호출어 « OK Coucou »를 듣습니다. 음성 인식은 기기 내에서만 실행되며, 어떤 오디오나 텍스트도 Mac 외부로 전송되지 않습니다."
+  },
+  "While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour.": {
+   "zh-Hans": "收听时，macOS 会在菜单栏右上角显示橙色麦克风指示灯。这是正常的系统行为。",
+   "hi": "सुनते समय, macOS मेनू बार के ऊपर-दाईं ओर नारंगी माइक्रोफ़ोन बिंदु दिखाता है। यह सामान्य सिस्टम व्यवहार है।",
+   "es": "Durante la escucha, macOS muestra el punto naranja del micrófono en la parte superior derecha de la barra de menús. Este es el comportamiento normal del sistema.",
+   "ar": "أثناء الاستماع، يعرض macOS نقطة الميكروفون البرتقالية في أعلى يمين شريط القوائم. هذا هو السلوك الطبيعي للنظام.",
+   "fr": "Pendant l’écoute, macOS affiche le point orange du microphone en haut à droite de la barre de menus. C’est le comportement normal du système.",
+   "bn": "শোনার সময়, macOS মেনু বারের উপরের-ডানে কমলা মাইক্রোফোন বিন্দু দেখায়। এটি স্বাভাবিক সিস্টেম আচরণ।",
+   "pt-BR": "Durante a escuta, o macOS exibe o ponto laranja do microfone no canto superior direito da barra de menus. Este é o comportamento normal do sistema.",
+   "ru": "Во время прослушивания macOS отображает оранжевую точку микрофона в правом верхнем углу строки меню. Это нормальное поведение системы.",
+   "id": "Saat mendengarkan, macOS menampilkan titik mikrofon oranye di kanan atas bilah menu. Ini adalah perilaku sistem yang normal.",
+   "ko": "듣는 동안 macOS 메뉴 막대 오른쪽 상단에 주황색 마이크 표시가 나타납니다. 이는 정상적인 시스템 동작입니다."
   },
   "Workflow stopped.": {
    "zh-Hans": "工作流已停止。",
@@ -3069,7 +3827,8 @@
    "bn": "ওয়ার্কফ্লো বন্ধ হয়ে গেছে।",
    "pt-BR": "Fluxo de trabalho parado.",
    "ru": "Рабочий процесс остановлен.",
-   "id": "Alur kerja dihentikan."
+   "id": "Alur kerja dihentikan.",
+   "ko": "워크플로가 중지되었습니다."
   },
   "Workflows": {
    "zh-Hans": "工作流",
@@ -3080,7 +3839,8 @@
    "bn": "ওয়ার্কফ্লো",
    "pt-BR": "Workflows",
    "ru": "Рабочие процессы",
-   "id": "Alur kerja"
+   "id": "Alur kerja",
+   "ko": "워크플로"
   },
   "Writes": {
    "zh-Hans": "写入",
@@ -3091,7 +3851,8 @@
    "bn": "লেখে",
    "pt-BR": "Escreve",
    "ru": "Записывает",
-   "id": "Menulis"
+   "id": "Menulis",
+   "ko": "쓰기"
   },
   "Writes:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup created first)": {
    "zh-Hans": "将写入：\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json（先创建备份）",
@@ -3102,7 +3863,8 @@
    "bn": "লিখবে:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (আগে ব্যাকআপ তৈরি হবে)",
    "pt-BR": "Vai escrever:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup criado antes)",
    "ru": "Запишет:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (резервная копия создаётся сначала)",
-   "id": "Akan menulis:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup dibuat terlebih dahulu)"
+   "id": "Akan menulis:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup dibuat terlebih dahulu)",
+   "ko": "다음 경로에 작성합니다:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (백업이 먼저 생성됨)"
   },
   "Your answer…": {
    "zh-Hans": "您的答案…",
@@ -3113,7 +3875,8 @@
    "bn": "আপনার উত্তর…",
    "pt-BR": "Sua resposta…",
    "ru": "Твой ответ…",
-   "id": "Jawaban Anda…"
+   "id": "Jawaban Anda…",
+   "ko": "답변 입력…"
   },
   "coding": {
    "zh-Hans": "编程",
@@ -3124,7 +3887,8 @@
    "bn": "কোডিং",
    "pt-BR": "programando",
    "ru": "программирования",
-   "id": "pemrograman"
+   "id": "pemrograman",
+   "ko": "코딩"
   },
   "commands": {
    "zh-Hans": "条命令",
@@ -3135,7 +3899,8 @@
    "bn": "কমান্ড",
    "pt-BR": "comandos",
    "ru": "команды",
-   "id": "perintah"
+   "id": "perintah",
+   "ko": "개 명령"
   },
   "file": {
    "zh-Hans": "个文件",
@@ -3146,7 +3911,8 @@
    "bn": "ফাইল",
    "pt-BR": "arquivo",
    "ru": "файл",
-   "id": "berkas"
+   "id": "berkas",
+   "ko": "개 파일"
   },
   "files": {
    "zh-Hans": "个文件",
@@ -3157,7 +3923,8 @@
    "bn": "ফাইল",
    "pt-BR": "arquivos",
    "ru": "файлы",
-   "id": "berkas"
+   "id": "berkas",
+   "ko": "개 파일"
   },
   "in {h} h {m}": {
    "zh-Hans": "{h} 小时 {m} 分后",
@@ -3168,7 +3935,8 @@
    "bn": "{h} ঘণ্টা {m} মিনিটে",
    "pt-BR": "em {h} h {m}",
    "ru": "через {h} ч {m} мин",
-   "id": "dalam {h} j {m}"
+   "id": "dalam {h} j {m}",
+   "ko": "{h}시간 {m}분 후"
   },
   "in {m} min": {
    "zh-Hans": "{m} 分钟后",
@@ -3179,7 +3947,8 @@
    "bn": "{m} মিনিটে",
    "pt-BR": "em {m} min",
    "ru": "через {m} мин",
-   "id": "dalam {m} menit"
+   "id": "dalam {m} menit",
+   "ko": "{m}분 후"
   },
   "just now": {
    "zh-Hans": "刚刚",
@@ -3190,7 +3959,8 @@
    "bn": "এইমাত্র",
    "pt-BR": "agora há pouco",
    "ru": "только что",
-   "id": "baru saja"
+   "id": "baru saja",
+   "ko": "방금"
   },
   "min without movement": {
    "zh-Hans": "分钟无动作",
@@ -3201,7 +3971,8 @@
    "bn": "মিনিট নড়াচড়া ছাড়া",
    "pt-BR": "min sem movimento",
    "ru": "мин без активности",
-   "id": "mnt tanpa gerakan"
+   "id": "mnt tanpa gerakan",
+   "ko": "분간 움직임 없음"
   },
   "needs permission": {
    "zh-Hans": "需要权限",
@@ -3212,7 +3983,8 @@
    "bn": "অনুমতি প্রয়োজন",
    "pt-BR": "precisa de permissão",
    "ru": "требует разрешения",
-   "id": "butuh izin"
+   "id": "butuh izin",
+   "ko": "권한 필요"
   },
   "presses this → island opens": {
    "zh-Hans": "按此键 → 岛打开",
@@ -3223,7 +3995,8 @@
    "bn": "এটি চাপলে → আইল্যান্ড খোলে",
    "pt-BR": "pressione → a ilha abre",
    "ru": "нажми → остров открывается",
-   "id": "tekan ini → island terbuka"
+   "id": "tekan ini → island terbuka",
+   "ko": "이 키를 누름 → 아일랜드 열림"
   },
   "s inactive": {
    "zh-Hans": "秒无活动",
@@ -3234,7 +4007,8 @@
    "bn": "সে. নিষ্ক্রিয়",
    "pt-BR": "s inativo",
    "ru": "с без активности",
-   "id": "dtk tidak aktif"
+   "id": "dtk tidak aktif",
+   "ko": "초 동안 비활성"
   },
   "session": {
    "zh-Hans": "个会话",
@@ -3245,7 +4019,8 @@
    "bn": "সেশন",
    "pt-BR": "sessão",
    "ru": "сессия",
-   "id": "sesi"
+   "id": "sesi",
+   "ko": "개 세션"
   },
   "sessions": {
    "zh-Hans": "个会话",
@@ -3256,7 +4031,8 @@
    "bn": "সেশন",
    "pt-BR": "sessões",
    "ru": "сессии",
-   "id": "sesi"
+   "id": "sesi",
+   "ko": "개 세션"
   },
   "with": {
    "zh-Hans": "附带",
@@ -3267,7 +4043,8 @@
    "bn": "সহ",
    "pt-BR": "com",
    "ru": "с",
-   "id": "dengan"
+   "id": "dengan",
+   "ko": "포함"
   },
   "with {name}": {
    "zh-Hans": "附件 {name}",
@@ -3278,7 +4055,32 @@
    "bn": "{name}-এর সাথে",
    "pt-BR": "com {name}",
    "ru": "с {name}",
-   "id": "dengan {name}"
+   "id": "dengan {name}",
+   "ko": "{name} 첨부"
+  },
+  "{0} added": {
+   "zh-Hans": "已添加 {0}",
+   "hi": "{0} जोड़ा गया",
+   "es": "{0} añadido",
+   "ar": "تمت إضافة {0}",
+   "fr": "{0} ajouté",
+   "bn": "{0} যোগ হয়েছে",
+   "pt-BR": "{0} adicionado",
+   "ru": "{0} добавлено",
+   "id": "{0} ditambahkan",
+   "ko": "{0} 추가됨"
+  },
+  "{0} added — hooks not installed": {
+   "zh-Hans": "已添加 {0} — 钩子未安装",
+   "hi": "{0} जोड़ा — hooks इंस्टॉल नहीं",
+   "es": "{0} añadido — hooks no instalados",
+   "ar": "تمت إضافة {0} — الخطافات غير مثبّتة",
+   "fr": "{0} ajouté — hooks non installés",
+   "bn": "{0} যোগ হয়েছে — হুকস ইনস্টল নেই",
+   "pt-BR": "{0} adicionado — hooks não instalados",
+   "ru": "{0} добавлено — хуки не установлены",
+   "id": "{0} ditambahkan — hooks tidak terpasang",
+   "ko": "{0} 추가됨 — hooks 설치되지 않음"
   },
   "{0} custom": {
    "zh-Hans": "{0} 个自定义",
@@ -3289,7 +4091,20 @@
    "bn": "{0} কাস্টম",
    "pt-BR": "{0} personalizados",
    "ru": "своих: {0}",
-   "id": "{0} kustom"
+   "id": "{0} kustom",
+   "ko": "커스텀 {0}개"
+  },
+  "{0} removed": {
+   "zh-Hans": "已移除 {0}",
+   "hi": "{0} हटाया गया",
+   "es": "{0} eliminado",
+   "ar": "تمت إزالة {0}",
+   "fr": "{0} retiré",
+   "bn": "{0} সরানো হয়েছে",
+   "pt-BR": "{0} removido",
+   "ru": "{0} удалено",
+   "id": "{0} dihapus",
+   "ko": "{0} 제거됨"
   },
   "{0} — open Spotify": {
    "zh-Hans": "{0} — 打开 Spotify",
@@ -3300,7 +4115,20 @@
    "bn": "{0} — Spotify খুলুন",
    "pt-BR": "{0} — abrir o Spotify",
    "ru": "{0} — открыть Spotify",
-   "id": "{0} — buka Spotify"
+   "id": "{0} — buka Spotify",
+   "ko": "{0} — Spotify 열기"
+  },
+  "{0} → {1}": {
+   "zh-Hans": "{0} → {1}",
+   "hi": "{0} → {1}",
+   "es": "{0} → {1}",
+   "ar": "{0} → {1}",
+   "fr": "{0} → {1}",
+   "bn": "{0} → {1}",
+   "pt-BR": "{0} → {1}",
+   "ru": "{0} → {1}",
+   "id": "{0} → {1}",
+   "ko": "{0} → {1}"
   },
   "{count}/4 slots used": {
    "zh-Hans": "已用 {count}/4 个插槽",
@@ -3311,7 +4139,8 @@
    "bn": "{count}/4 স্লট ব্যবহৃত",
    "pt-BR": "{count}/4 slots usados",
    "ru": "{count}/4 слотов занято",
-   "id": "{count}/4 slot digunakan"
+   "id": "{count}/4 slot digunakan",
+   "ko": "{count}/4개 슬롯 사용됨"
   },
   "{name} is ready.": {
    "zh-Hans": "{name} 已就绪。",
@@ -3322,7 +4151,8 @@
    "bn": "{name} প্রস্তুত।",
    "pt-BR": "{name} está pronto.",
    "ru": "{name} готов.",
-   "id": "{name} siap."
+   "id": "{name} siap.",
+   "ko": "{name} 준비 완료."
   },
   "{n} h ago": {
    "zh-Hans": "{n} 小时前",
@@ -3333,7 +4163,8 @@
    "bn": "{n} ঘণ্টা আগে",
    "pt-BR": "há {n} h",
    "ru": "{n} ч назад",
-   "id": "{n} jam lalu"
+   "id": "{n} jam lalu",
+   "ko": "{n}시간 전"
   },
   "{n} min ago": {
    "zh-Hans": "{n} 分钟前",
@@ -3344,7 +4175,20 @@
    "bn": "{n} মিনিট আগে",
    "pt-BR": "há {n} min",
    "ru": "{n} мин назад",
-   "id": "{n} menit lalu"
+   "id": "{n} menit lalu",
+   "ko": "{n}분 전"
+  },
+  "« OK Coucou » — voice wake word": {
+   "zh-Hans": "« OK Coucou » — 语音唤醒词",
+   "hi": "« OK Coucou » — वॉइस वेक वर्ड",
+   "es": "« OK Coucou » — palabra de activación de voz",
+   "ar": "« OK Coucou » — كلمة التنشيط الصوتية",
+   "fr": "« OK Coucou » — commande vocale mains libres",
+   "bn": "« OK Coucou » — ভয়েস ওয়েক ওয়ার্ড",
+   "pt-BR": "« OK Coucou » — palavra de ativação de voz",
+   "ru": "« OK Coucou » — голосовая активация",
+   "id": "« OK Coucou » — kata pengaktif suara",
+   "ko": "« OK Coucou » — 음성 호출어"
   },
   "✓ Amp plugin installed in ~/.config/amp/plugins/coucou.ts": {
    "zh-Hans": "✓ Amp 插件已安装至 ~/.config/amp/plugins/coucou.ts",
@@ -3355,7 +4199,8 @@
    "bn": "✓ ~/.config/amp/plugins/coucou.ts-এ Amp প্লাগইন ইনস্টল হয়েছে",
    "pt-BR": "✓ Plugin do Amp instalado em ~/.config/amp/plugins/coucou.ts",
    "ru": "✓ Плагин Amp установлен в ~/.config/amp/plugins/coucou.ts",
-   "id": "✓ Plugin Amp terpasang di ~/.config/amp/plugins/coucou.ts"
+   "id": "✓ Plugin Amp terpasang di ~/.config/amp/plugins/coucou.ts",
+   "ko": "✓ ~/.config/amp/plugins/coucou.ts에 Amp 플러그인이 설치되었습니다"
   },
   "✓ Amp plugin removed.": {
    "zh-Hans": "✓ Amp 插件已移除。",
@@ -3366,7 +4211,8 @@
    "bn": "✓ Amp প্লাগইন সরানো হয়েছে।",
    "pt-BR": "✓ Plugin do Amp removido.",
    "ru": "✓ Плагин Amp удалён.",
-   "id": "✓ Plugin Amp dihapus."
+   "id": "✓ Plugin Amp dihapus.",
+   "ko": "✓ Amp 플러그인이 제거되었습니다."
   },
   "✓ Antigravity hooks installed in ~/.gemini/config/hooks.json": {
    "zh-Hans": "✓ Antigravity Hooks 已安装至 ~/.gemini/config/hooks.json",
@@ -3377,7 +4223,8 @@
    "bn": "✓ ~/.gemini/config/hooks.json-এ Antigravity হুক ইনস্টল হয়েছে",
    "pt-BR": "✓ Hooks do Antigravity instalados em ~/.gemini/config/hooks.json",
    "ru": "✓ Хуки Antigravity установлены в ~/.gemini/config/hooks.json",
-   "id": "✓ Hooks Antigravity terpasang di ~/.gemini/config/hooks.json"
+   "id": "✓ Hooks Antigravity terpasang di ~/.gemini/config/hooks.json",
+   "ko": "✓ ~/.gemini/config/hooks.json에 Antigravity hooks가 설치되었습니다"
   },
   "✓ Antigravity hooks removed.": {
    "zh-Hans": "✓ Antigravity Hooks 已移除。",
@@ -3388,7 +4235,8 @@
    "bn": "✓ Antigravity হুক সরানো হয়েছে।",
    "pt-BR": "✓ Hooks do Antigravity removidos.",
    "ru": "✓ Хуки Antigravity удалены.",
-   "id": "✓ Hooks Antigravity dihapus."
+   "id": "✓ Hooks Antigravity dihapus.",
+   "ko": "✓ Antigravity hooks가 제거되었습니다."
   },
   "✓ Codex hooks installed — run /hooks in Codex or open Hooks in app settings to approve them.": {
    "zh-Hans": "✓ Codex Hooks 已安装 — 在 Codex 中运行 /hooks，或在应用设置中打开 Hooks 以信任它们。",
@@ -3399,7 +4247,8 @@
    "bn": "✓ Codex হুক ইনস্টল হয়েছে — Codex-এ /hooks চালান বা সেগুলো বিশ্বাস করতে অ্যাপের সেটিংসে Hooks খুলুন।",
    "pt-BR": "✓ Hooks do Codex instalados — execute /hooks no Codex ou abra Hooks nas configurações do app para confiar neles.",
    "ru": "✓ Хуки Codex установлены — выполни /hooks в Codex или открой Hooks в настройках приложения, чтобы подтвердить.",
-   "id": "✓ Hooks Codex terpasang — jalankan /hooks di Codex atau buka Hooks di pengaturan aplikasi untuk mempercayainya."
+   "id": "✓ Hooks Codex terpasang — jalankan /hooks di Codex atau buka Hooks di pengaturan aplikasi untuk mempercayainya.",
+   "ko": "✓ Codex hooks가 설치되었습니다 — Codex에서 /hooks를 실행하거나 앱 설정에서 Hooks를 열어 승인하세요."
   },
   "✓ Codex hooks removed.": {
    "zh-Hans": "✓ Codex Hooks 已移除。",
@@ -3410,7 +4259,8 @@
    "bn": "✓ Codex হুক সরানো হয়েছে।",
    "pt-BR": "✓ Hooks do Codex removidos.",
    "ru": "✓ Хуки Codex удалены.",
-   "id": "✓ Hooks Codex dihapus."
+   "id": "✓ Hooks Codex dihapus.",
+   "ko": "✓ Codex hooks가 제거되었습니다."
   },
   "✓ Connected · {count} models": {
    "zh-Hans": {
@@ -3449,6 +4299,10 @@
     "one": "✓ Terhubung · {count} model",
     "other": "✓ Terhubung · {count} model"
    },
+   "ko": {
+    "one": "✓ 연결됨 · 모델 {count}개",
+    "other": "✓ 연결됨 · 모델 {count}개"
+   },
    "en": {
     "one": "✓ Connected · {count} model",
     "other": "✓ Connected · {count} models"
@@ -3463,7 +4317,8 @@
    "bn": "✓ ~/.copilot/hooks/coucou.json-এ Copilot CLI হুক ইনস্টল হয়েছে",
    "pt-BR": "✓ Hooks do Copilot CLI instalados em ~/.copilot/hooks/coucou.json",
    "ru": "✓ Хуки Copilot CLI установлены в ~/.copilot/hooks/coucou.json",
-   "id": "✓ Hooks Copilot CLI terpasang di ~/.copilot/hooks/coucou.json"
+   "id": "✓ Hooks Copilot CLI terpasang di ~/.copilot/hooks/coucou.json",
+   "ko": "✓ ~/.copilot/hooks/coucou.json에 Copilot CLI hooks가 설치되었습니다"
   },
   "✓ Copilot CLI hooks removed.": {
    "zh-Hans": "✓ Copilot CLI Hooks 已移除。",
@@ -3474,7 +4329,8 @@
    "bn": "✓ Copilot CLI হুক সরানো হয়েছে।",
    "pt-BR": "✓ Hooks do Copilot CLI removidos.",
    "ru": "✓ Хуки Copilot CLI удалены.",
-   "id": "✓ Hooks Copilot CLI dihapus."
+   "id": "✓ Hooks Copilot CLI dihapus.",
+   "ko": "✓ Copilot CLI hooks가 제거되었습니다."
   },
   "✓ Gemini CLI hooks installed in ~/.gemini/settings.json": {
    "zh-Hans": "✓ Gemini CLI Hooks 已安装至 ~/.gemini/settings.json",
@@ -3485,7 +4341,8 @@
    "bn": "✓ ~/.gemini/settings.json-এ Gemini CLI হুক ইনস্টল হয়েছে",
    "pt-BR": "✓ Hooks do Gemini CLI instalados em ~/.gemini/settings.json",
    "ru": "✓ Хуки Gemini CLI установлены в ~/.gemini/settings.json",
-   "id": "✓ Hooks Gemini CLI terpasang di ~/.gemini/settings.json"
+   "id": "✓ Hooks Gemini CLI terpasang di ~/.gemini/settings.json",
+   "ko": "✓ ~/.gemini/settings.json에 Gemini CLI hooks가 설치되었습니다"
   },
   "✓ Gemini CLI hooks removed.": {
    "zh-Hans": "✓ Gemini CLI Hooks 已移除。",
@@ -3496,7 +4353,8 @@
    "bn": "✓ Gemini CLI হুক সরানো হয়েছে।",
    "pt-BR": "✓ Hooks do Gemini CLI removidos.",
    "ru": "✓ Хуки Gemini CLI удалены.",
-   "id": "✓ Hooks Gemini CLI dihapus."
+   "id": "✓ Hooks Gemini CLI dihapus.",
+   "ko": "✓ Gemini CLI hooks가 제거되었습니다."
   },
   "✓ Google key saved.": {
    "zh-Hans": "✓ Google 密钥已保存。",
@@ -3507,7 +4365,8 @@
    "bn": "✓ Google কী সংরক্ষিত হয়েছে।",
    "pt-BR": "✓ Chave do Google salva.",
    "ru": "✓ Ключ Google сохранён.",
-   "id": "✓ Kunci Google tersimpan."
+   "id": "✓ Kunci Google tersimpan.",
+   "ko": "✓ Google 키가 저장되었습니다."
   },
   "✓ Hermes plugin installed": {
    "zh-Hans": "✓ Hermes 插件已安装",
@@ -3518,7 +4377,8 @@
    "bn": "✓ Hermes প্লাগইন ইনস্টল হয়েছে",
    "pt-BR": "✓ Plugin do Hermes instalado",
    "ru": "✓ Плагин Hermes установлен",
-   "id": "✓ Plugin Hermes terpasang"
+   "id": "✓ Plugin Hermes terpasang",
+   "ko": "✓ Hermes 플러그인이 설치되었습니다"
   },
   "✓ Hermes plugin installed in ~/.hermes/plugins/coucou/": {
    "zh-Hans": "✓ Hermes 插件已安装至 ~/.hermes/plugins/coucou/",
@@ -3529,7 +4389,8 @@
    "bn": "✓ Hermes প্লাগইন ~/.hermes/plugins/coucou/-এ ইনস্টল হয়েছে",
    "pt-BR": "✓ Plugin do Hermes instalado em ~/.hermes/plugins/coucou/",
    "ru": "✓ Плагин Hermes установлен в ~/.hermes/plugins/coucou/",
-   "id": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/coucou/"
+   "id": "✓ Plugin Hermes terpasang di ~/.hermes/plugins/coucou/",
+   "ko": "✓ ~/.hermes/plugins/coucou/에 Hermes 플러그인이 설치되었습니다"
   },
   "✓ Hooks installed in ~/.claude/settings.json": {
    "zh-Hans": "✓ Hooks 已安装至 ~/.claude/settings.json",
@@ -3540,7 +4401,8 @@
    "bn": "✓ ~/.claude/settings.json-এ হুক ইনস্টল হয়েছে",
    "pt-BR": "✓ Hooks instalados em ~/.claude/settings.json",
    "ru": "✓ Хуки установлены в ~/.claude/settings.json",
-   "id": "✓ Hooks terpasang di ~/.claude/settings.json"
+   "id": "✓ Hooks terpasang di ~/.claude/settings.json",
+   "ko": "✓ ~/.claude/settings.json에 Hooks가 설치되었습니다"
   },
   "✓ Hooks installed — restart VS Code to activate them.": {
    "zh-Hans": "✓ Hooks 已安装 — 重启 VS Code 以激活。",
@@ -3551,7 +4413,8 @@
    "bn": "✓ হুক ইনস্টল হয়েছে — সক্রিয় করতে VS Code রিস্টার্ট করুন।",
    "pt-BR": "✓ Hooks instalados — reinicie o VS Code para ativar.",
    "ru": "✓ Хуки установлены — перезапусти VS Code для активации.",
-   "id": "✓ Hooks terpasang — mulai ulang VS Code untuk mengaktifkan."
+   "id": "✓ Hooks terpasang — mulai ulang VS Code untuk mengaktifkan.",
+   "ko": "✓ Hooks가 설치되었습니다 — 활성화하려면 VS Code를 재시동하세요."
   },
   "✓ Hooks removed.": {
    "zh-Hans": "✓ Hooks 已移除。",
@@ -3562,7 +4425,8 @@
    "bn": "✓ হুক সরানো হয়েছে।",
    "pt-BR": "✓ Hooks removidos.",
    "ru": "✓ Хуки удалены.",
-   "id": "✓ Hooks dihapus."
+   "id": "✓ Hooks dihapus.",
+   "ko": "✓ Hooks가 제거되었습니다."
   },
   "✓ Integration keys saved.": {
    "zh-Hans": "✓ 集成密钥已保存。",
@@ -3573,7 +4437,8 @@
    "bn": "✓ ইন্টিগ্রেশন কি সংরক্ষিত হয়েছে।",
    "pt-BR": "✓ Chaves de integração salvas.",
    "ru": "✓ Ключи интеграции сохранены.",
-   "id": "✓ Kunci integrasi tersimpan."
+   "id": "✓ Kunci integrasi tersimpan.",
+   "ko": "✓ 연동 키가 저장되었습니다."
   },
   "✓ Key saved.": {
    "zh-Hans": "✓ 密钥已保存。",
@@ -3584,7 +4449,8 @@
    "bn": "✓ কী সংরক্ষিত হয়েছে।",
    "pt-BR": "✓ Chave salva.",
    "ru": "✓ Ключ сохранён.",
-   "id": "✓ Kunci tersimpan."
+   "id": "✓ Kunci tersimpan.",
+   "ko": "✓ 키가 저장되었습니다."
   },
   "✓ Muse Code hooks installed in ~/.config/muse/settings.json": {
    "zh-Hans": "✓ Muse Code Hooks 已安装至 ~/.config/muse/settings.json",
@@ -3595,7 +4461,8 @@
    "bn": "✓ ~/.config/muse/settings.json-এ Muse Code হুক ইনস্টল হয়েছে",
    "pt-BR": "✓ Hooks do Muse Code instalados em ~/.config/muse/settings.json",
    "ru": "✓ Хуки Muse Code установлены в ~/.config/muse/settings.json",
-   "id": "✓ Hooks Muse Code terpasang di ~/.config/muse/settings.json"
+   "id": "✓ Hooks Muse Code terpasang di ~/.config/muse/settings.json",
+   "ko": "✓ ~/.config/muse/settings.json에 Muse Code hooks가 설치되었습니다"
   },
   "✓ Muse Code hooks removed.": {
    "zh-Hans": "✓ Muse Code Hooks 已移除。",
@@ -3606,7 +4473,8 @@
    "bn": "✓ Muse Code হুক সরানো হয়েছে।",
    "pt-BR": "✓ Hooks do Muse Code removidos.",
    "ru": "✓ Хуки Muse Code удалены.",
-   "id": "✓ Hooks Muse Code dihapus."
+   "id": "✓ Hooks Muse Code dihapus.",
+   "ko": "✓ Muse Code hooks가 제거되었습니다."
   },
   "✓ OpenAI key saved.": {
    "zh-Hans": "✓ OpenAI 密钥已保存。",
@@ -3617,7 +4485,8 @@
    "bn": "✓ OpenAI কী সংরক্ষিত হয়েছে।",
    "pt-BR": "✓ Chave da OpenAI salva.",
    "ru": "✓ Ключ OpenAI сохранён.",
-   "id": "✓ Kunci OpenAI tersimpan."
+   "id": "✓ Kunci OpenAI tersimpan.",
+   "ko": "✓ OpenAI 키가 저장되었습니다."
   },
   "✓ OpenCode plugin installed in ~/.config/opencode/plugins/coucou.js": {
    "zh-Hans": "✓ OpenCode 插件已安装至 ~/.config/opencode/plugins/coucou.js",
@@ -3628,7 +4497,8 @@
    "bn": "✓ ~/.config/opencode/plugins/coucou.js-এ OpenCode প্লাগইন ইনস্টল হয়েছে",
    "pt-BR": "✓ Plugin do OpenCode instalado em ~/.config/opencode/plugins/coucou.js",
    "ru": "✓ Плагин OpenCode установлен в ~/.config/opencode/plugins/coucou.js",
-   "id": "✓ Plugin OpenCode terpasang di ~/.config/opencode/plugins/coucou.js"
+   "id": "✓ Plugin OpenCode terpasang di ~/.config/opencode/plugins/coucou.js",
+   "ko": "✓ ~/.config/opencode/plugins/coucou.js에 OpenCode 플러그인이 설치되었습니다"
   },
   "✓ OpenCode plugin removed.": {
    "zh-Hans": "✓ OpenCode 插件已移除。",
@@ -3639,7 +4509,8 @@
    "bn": "✓ OpenCode প্লাগইন সরানো হয়েছে।",
    "pt-BR": "✓ Plugin do OpenCode removido.",
    "ru": "✓ Плагин OpenCode удалён.",
-   "id": "✓ Plugin OpenCode dihapus."
+   "id": "✓ Plugin OpenCode dihapus.",
+   "ko": "✓ OpenCode 플러그인이 제거되었습니다."
   },
   "✓ Status line installed.": {
    "zh-Hans": "✓ 状态栏已安装。",
@@ -3650,7 +4521,8 @@
    "bn": "✓ স্ট্যাটাস লাইন ইনস্টল হয়েছে।",
    "pt-BR": "✓ Linha de status instalada.",
    "ru": "✓ Строка статуса установлена.",
-   "id": "✓ Baris status terpasang."
+   "id": "✓ Baris status terpasang.",
+   "ko": "✓ 상태 표시줄이 설치되었습니다."
   },
   "✓ Status line removed.": {
    "zh-Hans": "✓ 状态栏已移除。",
@@ -3661,7 +4533,8 @@
    "bn": "✓ স্ট্যাটাস লাইন সরানো হয়েছে।",
    "pt-BR": "✓ Linha de status removida.",
    "ru": "✓ Строка статуса удалена.",
-   "id": "✓ Baris status dihapus."
+   "id": "✓ Baris status dihapus.",
+   "ko": "✓ 상태 표시줄이 제거되었습니다."
   },
   "❌ Select the .claude folder (hidden, in your Home directory).": {
    "zh-Hans": "❌ 请选择 .claude 文件夹（隐藏，在你的 Home 目录中）。",
@@ -3672,7 +4545,8 @@
    "bn": "❌ .claude ফোল্ডার নির্বাচন করুন (লুকানো, আপনার Home ডিরেক্টরিতে)।",
    "pt-BR": "❌ Selecione a pasta .claude (oculta, no seu diretório Home).",
    "ru": "❌ Выбери папку .claude (скрытая, в домашнем каталоге).",
-   "id": "❌ Pilih folder .claude (tersembunyi, di direktori Home Anda)."
+   "id": "❌ Pilih folder .claude (tersembunyi, di direktori Home Anda).",
+   "ko": "❌ .claude 폴더를 선택하세요 (홈 디렉토리의 숨김 폴더)."
   }
  }
 }

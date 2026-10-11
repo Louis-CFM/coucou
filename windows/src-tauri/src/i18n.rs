@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 11] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "ko"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -151,7 +151,7 @@ fn lookup_in(lang: &str, key: &str) -> Option<&'static Value> {
 /// CLDR plural category of `n` (whole numbers) in `lang`.
 fn plural_category(lang: &str, n: u64) -> &'static str {
     match lang {
-        "zh-Hans" | "id" => "other",
+        "zh-Hans" | "id" | "ko" => "other",
         "fr" | "pt-BR" | "hi" | "bn" => {
             if n <= 1 { "one" } else { "other" }
         }
@@ -243,6 +243,9 @@ mod tests {
         assert_eq!(resolve("", &sys(&["fr_FR.UTF-8"])), "fr");
         assert_eq!(resolve("", &sys(&["pt-PT"])), "pt-BR");
         assert_eq!(resolve("", &sys(&["zh-CN"])), "zh-Hans");
+        assert_eq!(resolve("", &sys(&["ko-KR"])), "ko");
+        assert_eq!(resolve("", &sys(&["ko"])), "ko");
+        assert_eq!(resolve("ko", &sys(&["fr-FR"])), "ko");
         assert_eq!(resolve("", &sys(&["zh-TW", "de", "es-MX"])), "es");
         assert_eq!(resolve("", &sys(&["de-DE"])), "en");
         assert_eq!(resolve("xx", &[]), "en");
@@ -257,6 +260,10 @@ mod tests {
         assert_eq!(t("Open Coucou"), "Ouvrir Coucou");
         assert_eq!(t("A string nobody translated"), "A string nobody translated");
         assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Ouvrir Vercel");
+        set_for_test("ko");
+        assert_eq!(t("Allow"), "허용");
+        assert_eq!(t("Open Coucou"), "Coucou 열기");
+        assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Vercel 열기");
         set_for_test("en");
         assert_eq!(t("Allow"), "Allow");
         assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Open Vercel");
@@ -270,6 +277,11 @@ mod tests {
         set_for_test("es");
         assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1, &[]), "✓ Conectado · 1 modelo");
         assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 4, &[]), "✓ Conectado · 4 modelos");
+        set_for_test("ko");
+        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1, &[]), "✓ 연결됨 · 모델 1개");
+        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 5, &[]), "✓ 연결됨 · 모델 5개");
+        assert_eq!(plural_category("ko", 1), "other");
+        assert_eq!(plural_category("ko", 5), "other");
         assert_eq!(plural_category("ru", 21), "one");
         assert_eq!(plural_category("ru", 23), "few");
         assert_eq!(plural_category("ru", 25), "many");
