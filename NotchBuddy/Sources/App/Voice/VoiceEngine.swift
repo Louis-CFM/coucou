@@ -625,7 +625,8 @@ final class VoiceEngine: ObservableObject {
         if wc > lastWordCount {
             // Load the on-device model once the sentence has started, not at the wake
             // word: loading it at the same moment slowed speech recognition down.
-            if lastWordCount == 0 { VoiceBrain.shared.prewarmSession() }
+            // Not when Claude is the brain: the on-device model would load for nothing.
+            if lastWordCount == 0 && !ClaudeVoiceBrain.isActive { VoiceBrain.shared.prewarmSession() }
             lastWordCount = wc
             resetSilenceTimer()
             let trimmed = command.trimmingCharacters(in: .whitespaces)

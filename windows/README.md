@@ -173,7 +173,9 @@ reset times. Both are off by default; turn them on in **Settings… → Plan usa
   Claude Code runs it (`CLAUDE_CODE_GIT_BASH_PATH`, then the Git for Windows that
   `git.exe` on `PATH` belongs to, then the usual install folders); it gets 10 s
   and 64 KB of output. **Uninstall relay** puts your status line back. The
-  numbers arrive with Claude Code's replies.
+  numbers arrive with Claude Code's replies. They come from the Claude Code
+  command-line tool only: the Claude desktop app does not run the status line, so
+  if you only use the desktop app the Claude gauge stays on "—".
 - **Codex**: nothing is installed. When the pill shows (or is clicked, at most
   once a minute) Coucou starts `codex app-server` and asks it
   `account/rateLimits/read`, as Codex's `/status` does, then stops it (15 s at
