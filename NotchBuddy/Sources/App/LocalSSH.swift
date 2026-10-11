@@ -115,6 +115,16 @@ enum LocalSSH {
         return (found, command.joined(separator: " "))
     }
 
+    /// A `mosh-client` that `mosh` started: its first argument is mosh's command line ("-# … host … |"),
+    /// read as the ssh call mosh makes, with mosh's own long options left out and the words of `--ssh=` kept.
+    static func moshCall(_ argv: [String]) -> (Destination, String)? {
+        guard argv.count > 1, argv[1].hasPrefix("-#") else { return nil }
+        var line = Substring(argv[1]).dropFirst(2).trimmingCharacters(in: .whitespaces)
+        if line.hasSuffix("|") { line.removeLast() }
+        let words = line.split(whereSeparator: \.isWhitespace).map(String.init).filter { !$0.hasPrefix("--") || $0 == "--" }
+        return call(["ssh"] + words)
+    }
+
     /// The same host, and the same port and user where both name one: `localhost:2222` is not `localhost`.
     static func same(_ a: Destination, _ b: Destination) -> Bool {
         a.host == b.host && a.port == b.port && (a.user == nil || b.user == nil || a.user == b.user)
@@ -228,15 +238,16 @@ enum LocalSSH {
         processes(ps: run("/bin/ps", ["-U", String(getuid()), "-o", "pid=,ppid=,tty=,etime=,ucomm="]))
     }
 
-    /// Our processes, and among them the ssh to `host` on a terminal to bring forward,
+    /// Our processes, and among them the ssh or mosh to `host` on a terminal to bring forward,
     /// Coucou's own left out. nil when there is none.
     static func find(host: String, tmux: String) -> (ssh: Proc, all: [Proc])? {
         guard let want = destination(host) else { return nil }
         let all = ownProcesses()
         let me = ProcessInfo.processInfo.processIdentifier
         let found: [(Proc, String)] = all.compactMap { p in
-            guard p.name == "ssh", !ancestors(of: p.pid, in: all).contains(me),
-                  let c = call(argv(procArgs: procArgs(p.pid))), same(c.0, want) else { return nil }
+            guard p.name == "ssh" || p.name == "mosh-client", !ancestors(of: p.pid, in: all).contains(me) else { return nil }
+            let args = argv(procArgs: procArgs(p.pid))
+            guard let c = p.name == "ssh" ? call(args) : moshCall(args), same(c.0, want) else { return nil }
             return (p, c.1)
         }
         guard let ssh = pick(found, tmux: tmux) else { return nil }

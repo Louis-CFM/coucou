@@ -262,6 +262,17 @@ fn ssh_call(argv: &[String]) -> Option<(Destination, String)> {
 /// The same host, and the same port and user where both name one. Ports
 /// differ when only one names one: `localhost:2222` is not `localhost`.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+/// A `mosh-client` that `mosh` started: its first argument is mosh's command
+/// line ("-# … host … |"), read as the ssh call mosh makes, with mosh's own long
+/// options left out and the words of `--ssh=` kept.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn mosh_call(argv: &[String]) -> Option<(Destination, String)> {
+    let line = argv.get(1)?.strip_prefix("-#")?.trim();
+    let line = line.strip_suffix('|').unwrap_or(line);
+    let words = line.split_whitespace().filter(|w| !w.starts_with("--") || *w == "--").map(String::from);
+    ssh_call(&std::iter::once("ssh".to_string()).chain(words).collect::<Vec<_>>())
+}
+
 fn same_destination(a: &Destination, b: &Destination) -> bool {
     let users = match (&a.user, &b.user) {
         (Some(x), Some(y)) => x == y,
@@ -280,14 +291,16 @@ fn pick_ssh(found: &[(u32, u64, String)], tmux: &str) -> Option<u32> {
     found.iter().max_by_key(|(_, start, command)| (names_tmux(command), *start)).map(|(pid, ..)| *pid)
 }
 
-/// Brings forward a local terminal already running ssh to the session's host.
+/// Brings forward a local terminal already running ssh or mosh to the session's host.
 #[cfg(target_os = "linux")]
 fn focus_open_ssh(place: &Place) -> bool {
     let Some(want) = destination(&place.host) else { return false };
-    let found: Vec<(u32, u64, String)> = crate::platform::terminal_processes("ssh")
-        .into_iter()
-        .filter_map(|(pid, start, argv)| {
-            let (dest, command) = ssh_call(&argv)?;
+    let ssh = crate::platform::terminal_processes("ssh").into_iter().map(|p| (p, false));
+    let mosh = crate::platform::terminal_processes("mosh-client").into_iter().map(|p| (p, true));
+    let found: Vec<(u32, u64, String)> = ssh
+        .chain(mosh)
+        .filter_map(|((pid, start, argv), is_mosh)| {
+            let (dest, command) = if is_mosh { mosh_call(&argv) } else { ssh_call(&argv) }?;
             same_destination(&dest, &want).then_some((pid, start, command))
         })
         .collect();
@@ -776,6 +789,16 @@ mod tests {
         assert_eq!(call("ssh"), None);
         assert_eq!(call("ssh -p"), None);
         assert_eq!(call("ssh -v"), None);
+    }
+
+    #[test]
+    fn a_mosh_client_reads_as_the_ssh_call_mosh_makes() {
+        let mosh = |line: &str| mosh_call(&["mosh-client", line, "10.0.0.7", "60001"].map(String::from));
+        assert_eq!(mosh("-# --ssh=ssh -p 2222 deploy@build.example.org |").unwrap().0, dest(Some("deploy"), "build.example.org", Some(2222)));
+        assert_eq!(mosh("-# devbox -- tmux attach -t work |").unwrap().1, "tmux attach -t work");
+        assert_eq!(mosh("-# --predict=always devbox |").unwrap().0, dest(None, "devbox", None));
+        // Started by hand, mosh-client names no host.
+        assert_eq!(mosh_call(&["mosh-client", "10.0.0.7", "60001"].map(String::from)), None);
     }
 
     #[test]

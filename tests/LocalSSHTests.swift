@@ -31,6 +31,14 @@ struct LocalSSHTests {
         check(call("ssh me@h -p 2222 -l other")?.0 == dest("me", "h", 2222), "options after the destination, first value wins")
         check(call("ssh -l me -p 1 ssh://you@h:2")?.0 == dest("me", "h", 1), "-l and -p before an ssh:// URL win")
         check(call("ssh -t h tmux attach -t main")?.1 == "tmux attach -t main", "the rest is the remote command")
+
+        // mosh: mosh-client carries mosh's own command line, read as the ssh call it makes.
+        let mosh = { (line: String) in LocalSSH.moshCall(["mosh-client", line, "10.0.0.7", "60001"]) }
+        check(mosh("-# --ssh=ssh -p 2222 deploy@build.example.org |")?.0 == dest("deploy", "build.example.org", 2222),
+              "mosh through ssh on another port")
+        check(mosh("-# devbox -- tmux attach -t work |")?.1 == "tmux attach -t work", "mosh's remote command")
+        check(mosh("-# --predict=always devbox |")?.0 == dest(nil, "devbox", nil), "mosh's own options left out")
+        check(LocalSSH.moshCall(["mosh-client", "10.0.0.7", "60001"]) == nil, "mosh-client started by hand names no host")
         check(call("ssh -- h -p 1").map { $0.0 == dest(nil, "h", nil) && $0.1 == "-p 1" } == true, "after --, no options")
         for line in ["ssh -N -R x:y h", "ssh -fN h", "ssh -W h:22 jump", "ssh -O check h", "ssh -NT -o BatchMode=yes -- h", "ssh", "ssh -p", "ssh -v"] {
             check(call(line) == nil, "no session: \(line)")
