@@ -164,55 +164,35 @@ final class LiveVoiceInfo: VoiceInfoProviding {
                      resetsIn: reset.map { duration($0.timeIntervalSinceNow, fr: fr, units: 2) })
     }
 
-    // MARK: Mail — prepare only, the user clicks Send
+    // MARK: Guided email — the island's mail card, sent only on the user's click
 
-    func composeMail(_ request: VoiceQuery.MailRequest, locale: Locale?) async -> VoiceActionResult {
-        let fr = Self.isFrench(locale)
-        func t(_ f: String, _ e: String) -> String { fr ? f : e }
+    func resolveEmail(_ recipient: String) async -> String? {
+        if let e = VoiceQuery.spokenEmail(recipient) { return e }
+        return await ContactLookup.email(for: recipient)
+    }
 
-        guard let address = await ContactLookup.email(for: request.recipient) else {
-            return .init(outcome: .failure,
-                         message: t("Je ne trouve pas l'adresse de \(request.recipient) dans tes contacts.",
-                                    "I can't find \(request.recipient)'s address in your contacts."))
-        }
-        var fileURL: URL? = nil
-        if let name = request.file {
-            fileURL = FileLookup.find(name, in: request.folder)
-            if fileURL == nil {
-                return .init(outcome: .failure,
-                             message: t("Je ne trouve pas le fichier « \(name) ».", "I can't find the file “\(name)”."))
-            }
-        }
+    func findFile(_ name: String, folder: VoiceQuery.MailRequest.Folder?) -> URL? {
+        FileLookup.find(name, in: folder)
+    }
 
-        // Body: dictated, or written by Coucou from what the mail should say.
-        var body = request.body
-        if body == nil, let what = request.instruction {
-            body = await VoiceBrain.draftMail(to: request.recipient, about: what) ?? what
-        }
-        let subject = request.subject ?? fileURL?.deletingPathExtension().lastPathComponent ?? ""
+    func draftBody(to recipient: String, about instruction: String) async -> String? {
+        await VoiceBrain.draftMail(to: recipient, about: instruction)
+    }
 
-        var items: [Any] = []
-        if let body { items.append(body) }
-        if let fileURL { items.append(fileURL) }
-        if !items.isEmpty, let service = NSSharingService(named: .composeEmail) {
-            service.recipients = [address]
-            service.subject = subject
-            service.perform(withItems: items)
-        } else {
-            var comps = URLComponents()
-            comps.scheme = "mailto"
-            comps.path = address
-            comps.queryItems = [URLQueryItem(name: "subject", value: subject),
-                                URLQueryItem(name: "body", value: body ?? "")]
-            guard let url = comps.url else {
-                return .init(outcome: .failure, message: t("Je n'arrive pas à ouvrir Mail.", "I can't open Mail."))
-            }
-            NSWorkspace.shared.open(url)
-        }
-        let what = fileURL.map { t(" avec \($0.lastPathComponent)", " with \($0.lastPathComponent)") } ?? ""
-        return .init(outcome: .success,
-                     message: t("Le mail pour \(request.recipient)\(what) est prêt dans Mail. Relis-le et clique sur Envoyer.",
-                                "The email to \(request.recipient)\(what) is ready in Mail. Check it and click Send."))
+    func showMailCard(to address: String, subject: String, body: String, file: URL?) {
+        let app = AppState.shared
+        app.voiceMailDraft = VoiceMailDraft(to: address, subject: subject, body: body)
+        app.droppedFile = file.map { DroppedFile(url: $0, name: $0.lastPathComponent) }
+        NotificationCenter.default.post(name: .voiceShowMailCard, object: nil)
+    }
+
+    // MARK: Web search (opt-in, the user's Anthropic key)
+
+    var webSearchEnabled: Bool { VoiceSettings.webSearchEnabled }
+    var hasWebKey: Bool { !(ClaudeService.shared.apiKey ?? "").isEmpty }
+
+    func webAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
+        await ClaudeService.shared.voiceAnswer(question, history: history, french: french)
     }
 
     // MARK: Apps
@@ -338,9 +318,16 @@ enum ContactLookup {
         return await Task.detached(priority: .userInitiated) { () -> String? in
             let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactNicknameKey,
                         CNContactEmailAddressesKey] as [CNKeyDescriptor]
-            let pred = CNContact.predicateForContacts(matchingName: trimmed)
-            let found = (try? CNContactStore().unifiedContacts(matching: pred, keysToFetch: keys)) ?? []
-            return found.lazy.compactMap { $0.emailAddresses.first?.value as String? }.first
+            // The whole name first, then its parts: "il s'appelle Enzo" must find Enzo.
+            let store = CNContactStore()
+            for candidate in VoiceQuery.contactCandidates(trimmed) {
+                let pred = CNContact.predicateForContacts(matchingName: candidate)
+                let found = (try? store.unifiedContacts(matching: pred, keysToFetch: keys)) ?? []
+                if let email = found.lazy.compactMap({ $0.emailAddresses.first?.value as String? }).first {
+                    return email
+                }
+            }
+            return nil
         }.value
     }
 }
