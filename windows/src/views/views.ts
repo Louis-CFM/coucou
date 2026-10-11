@@ -516,6 +516,9 @@ function buildApproval(actions: ViewActions): ViewHost {
   let shownAt = 0;
   const guarded = (d: "allow" | "deny") => () => {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+    // Decide the request actually on screen: pendingApproval can already point
+    // at a newer request one frame ahead of the next sync().
+    if (!shownFor || State.pendingApproval?.requestId !== shownFor) return;
     actions.decide(d);
   };
   return {

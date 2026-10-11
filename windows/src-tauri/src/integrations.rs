@@ -853,6 +853,13 @@ async fn poll_n8n(app: AppHandle) {
         return;
     };
     let base = raw_base.trim_end_matches('/').to_string();
+    // The API key rides every request: only https, or a server on this computer
+    // — the same rule the chat providers' keys follow (local_chat.rs).
+    let Ok(base_url) = reqwest::Url::parse(&base) else { return };
+    if base_url.scheme() != "https" && !crate::net::is_loopback_url(&base_url) {
+        log::line("n8n skipped — the key would travel cleartext on a non-https URL");
+        return;
+    }
     let http = client();
 
     // Same two shapes as the Swift poller: the public API first, then /rest.
