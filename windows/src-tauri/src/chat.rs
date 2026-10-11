@@ -1,7 +1,8 @@
 // The chat, whoever answers it: the conversation, the system prompt, and which
 // provider a turn goes to. Each provider's own wire format lives in its module:
-// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter) and
-// local_chat.rs (Ollama, LM Studio, any OpenAI-compatible server).
+// claude.rs (Anthropic), openai_compat.rs (OpenAI, Google AI, OpenRouter),
+// local_chat.rs (Ollama, LM Studio, any OpenAI-compatible server) and
+// claude_code.rs (the user's own Claude Code).
 //
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
@@ -13,7 +14,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{claude, claude_code, local_chat, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -207,6 +208,9 @@ pub async fn send(
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
+    if provider == claude_code::ID {
+        return claude_code::send(app, chat, settings, &model, query, context).await;
+    }
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
     }
@@ -247,6 +251,9 @@ pub async fn send_for_phone(
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
+    if provider == claude_code::ID {
+        return Ok(claude_code::models());
+    }
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
         return claude::models(&key).await;

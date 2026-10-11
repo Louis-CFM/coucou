@@ -552,6 +552,28 @@
    "ru": "Claude Code спрашивает",
    "id": "Claude Code bertanya"
   },
+  "Claude Code isn't installed (no `claude` command found).": {
+   "zh-Hans": "未安装 Claude Code（找不到 `claude` 命令）。",
+   "hi": "Claude Code इंस्टॉल नहीं है (`claude` कमांड नहीं मिला)।",
+   "es": "Claude Code no está instalado (no se encontró el comando `claude`).",
+   "ar": "Claude Code غير مثبّت (لم يُعثر على الأمر `claude`).",
+   "fr": "Claude Code n'est pas installé (commande `claude` introuvable).",
+   "bn": "Claude Code ইনস্টল করা নেই (`claude` কমান্ড পাওয়া যায়নি)।",
+   "pt-BR": "O Claude Code não está instalado (comando `claude` não encontrado).",
+   "ru": "Claude Code не установлен (команда `claude` не найдена).",
+   "id": "Claude Code belum terpasang (perintah `claude` tidak ditemukan)."
+  },
+  "Claude Code's default": {
+   "zh-Hans": "Claude Code 的默认设置",
+   "hi": "Claude Code का डिफ़ॉल्ट",
+   "es": "Lo predeterminado de Claude Code",
+   "ar": "الافتراضي في Claude Code",
+   "fr": "Par défaut de Claude Code",
+   "bn": "Claude Code-এর ডিফল্ট",
+   "pt-BR": "Padrão do Claude Code",
+   "ru": "По умолчанию в Claude Code",
+   "id": "Bawaan Claude Code"
+  },
   "Claude as Coucou's brain": {
    "zh-Hans": "由 Claude 担任 Coucou 的大脑",
    "hi": "Coucou का दिमाग: Claude",
@@ -838,6 +860,17 @@
    "ru": "Coucou отвечает вслух",
    "id": "Coucou merespons dengan suara"
   },
+  "Coucou's chat folder": {
+   "zh-Hans": "Coucou 聊天文件夹",
+   "hi": "Coucou का चैट फ़ोल्डर",
+   "es": "Carpeta de chat de Coucou",
+   "ar": "مجلد الدردشة في Coucou",
+   "fr": "Dossier de discussion de Coucou",
+   "bn": "Coucou-র চ্যাট ফোল্ডার",
+   "pt-BR": "Pasta de chat do Coucou",
+   "ru": "Папка чата Coucou",
+   "id": "Folder obrolan Coucou"
+  },
   "Custom…": {
    "zh-Hans": "自定义…",
    "hi": "कस्टम…",
@@ -1002,6 +1035,17 @@
    "pt-BR": "Edita",
    "ru": "Редактирует",
    "id": "Mengedit"
+  },
+  "Effort": {
+   "zh-Hans": "思考强度",
+   "hi": "प्रयास",
+   "es": "Esfuerzo",
+   "ar": "الجهد",
+   "fr": "Effort",
+   "bn": "প্রচেষ্টা",
+   "pt-BR": "Esforço",
+   "ru": "Усилие",
+   "id": "Upaya"
   },
   "ElevenLabs API key": {
    "zh-Hans": "ElevenLabs API 密钥",
@@ -1564,6 +1608,17 @@
    "ru": "Запускать при старте Mac",
    "id": "Jalankan saat Mac startup"
   },
+  "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project.": {
+   "zh-Hans": "留空则使用 Coucou 的聊天文件夹。选择项目文件夹，让 Claude Code 在该项目中工作。",
+   "hi": "Coucou का चैट फ़ोल्डर इस्तेमाल करने के लिए खाली छोड़ें। Claude Code को किसी प्रोजेक्ट पर काम कराने के लिए उसका फ़ोल्डर चुनें।",
+   "es": "Déjalo vacío para usar la carpeta de chat de Coucou. Elige la carpeta de un proyecto para que Claude Code trabaje en ese proyecto.",
+   "ar": "اتركه فارغًا لاستخدام مجلد الدردشة في Coucou. اختر مجلد مشروع ليعمل Claude Code على ذلك المشروع.",
+   "fr": "Laissez vide pour utiliser le dossier de discussion de Coucou. Choisissez le dossier d'un projet pour que Claude Code travaille sur ce projet.",
+   "bn": "Coucou-র চ্যাট ফোল্ডার ব্যবহার করতে খালি রাখুন। Claude Code-কে কোনো প্রকল্পে কাজ করাতে সেই প্রকল্পের ফোল্ডার বেছে নিন।",
+   "pt-BR": "Deixe vazio para usar a pasta de chat do Coucou. Escolha a pasta de um projeto para o Claude Code trabalhar nele.",
+   "ru": "Оставьте пустым, чтобы использовать папку чата Coucou. Выберите папку проекта, чтобы Claude Code работал над этим проектом.",
+   "id": "Biarkan kosong untuk memakai folder obrolan Coucou. Pilih folder proyek agar Claude Code bekerja di proyek itu."
+  },
   "Let my iPhone send instructions to Claude Code": {
    "zh-Hans": "允许我的 iPhone 向 Claude Code 发送指令",
    "hi": "मेरे iPhone को Claude Code को निर्देश भेजने दें",
@@ -2003,6 +2058,17 @@
    "pt-BR": "Nenhum app de música",
    "ru": "Нет музыкального приложения",
    "id": "Tidak ada app musik"
+  },
+  "No response text.": {
+   "zh-Hans": "没有回复内容。",
+   "hi": "जवाब में कोई टेक्स्ट नहीं।",
+   "es": "La respuesta no tiene texto.",
+   "ar": "لا يوجد نص في الرد.",
+   "fr": "La réponse ne contient pas de texte.",
+   "bn": "উত্তরে কোনো লেখা নেই।",
+   "pt-BR": "A resposta não tem texto.",
+   "ru": "В ответе нет текста.",
+   "id": "Tidak ada teks balasan."
   },
   "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation.": {
    "zh-Hans": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。",
@@ -3544,6 +3610,17 @@
    "ru": "Используется чатом. Список берётся из твоего аккаунта Anthropic.",
    "id": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda."
   },
+  "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed.": {
+   "zh-Hans": "使用 Claude Code 及其登录、MCP 服务器、技能和钩子。无需 API 密钥。",
+   "hi": "Claude Code को उसके साइन-इन, MCP सर्वर, स्किल और हुक के साथ इस्तेमाल करता है। API कुंजी की ज़रूरत नहीं।",
+   "es": "Usa Claude Code con su sesión, servidores MCP, skills y hooks. No hace falta clave de API.",
+   "ar": "يستخدم Claude Code مع تسجيل دخوله وخوادم MCP والمهارات والخطافات. لا حاجة إلى مفتاح API.",
+   "fr": "Utilise Claude Code avec sa connexion, ses serveurs MCP, ses skills et ses hooks. Aucune clé API nécessaire.",
+   "bn": "Claude Code-এর সাইন-ইন, MCP সার্ভার, স্কিল ও হুকসহ এটি ব্যবহার করে। API কী লাগে না।",
+   "pt-BR": "Usa o Claude Code com o login, servidores MCP, skills e hooks dele. Não precisa de chave de API.",
+   "ru": "Использует Claude Code с его входом, MCP-серверами, навыками и хуками. Ключ API не нужен.",
+   "id": "Memakai Claude Code dengan login, server MCP, skill, dan hook-nya. Tidak perlu kunci API."
+  },
   "Voice": {
    "zh-Hans": "声音",
    "hi": "आवाज़",
@@ -3797,6 +3874,17 @@
    "ru": "Рабочие процессы",
    "id": "Alur kerja"
   },
+  "Working folder": {
+   "zh-Hans": "工作文件夹",
+   "hi": "कार्य फ़ोल्डर",
+   "es": "Carpeta de trabajo",
+   "ar": "مجلد العمل",
+   "fr": "Dossier de travail",
+   "bn": "কাজের ফোল্ডার",
+   "pt-BR": "Pasta de trabalho",
+   "ru": "Рабочая папка",
+   "id": "Folder kerja"
+  },
   "Writes": {
    "zh-Hans": "写入",
    "hi": "लिखता है",
@@ -4038,6 +4126,17 @@
    "pt-BR": "{0} personalizados",
    "ru": "своих: {0}",
    "id": "{0} kustom"
+  },
+  "{0} is not a folder.": {
+   "zh-Hans": "{0} 不是文件夹。",
+   "hi": "{0} फ़ोल्डर नहीं है।",
+   "es": "{0} no es una carpeta.",
+   "ar": "{0} ليس مجلدًا.",
+   "fr": "{0} n'est pas un dossier.",
+   "bn": "{0} কোনো ফোল্ডার নয়।",
+   "pt-BR": "{0} não é uma pasta.",
+   "ru": "{0} не является папкой.",
+   "id": "{0} bukan folder."
   },
   "{0} removed": {
    "zh-Hans": "已移除 {0}",

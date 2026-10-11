@@ -26141,6 +26141,582 @@
           }
         }
       }
+    },
+    "Effort": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجهد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রচেষ্টা"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रयास"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upaya"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esforço"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усилие"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "思考强度"
+          }
+        }
+      }
+    },
+    "Working folder": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجلد العمل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কাজের ফোল্ডার"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Working folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta de trabajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier de travail"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कार्य फ़ोल्डर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder kerja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasta de trabalho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рабочая папка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作文件夹"
+          }
+        }
+      }
+    },
+    "Claude Code's default": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الافتراضي في Claude Code"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-এর ডিফল্ট"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code's default"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo predeterminado de Claude Code"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par défaut de Claude Code"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code का डिफ़ॉल्ट"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bawaan Claude Code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Padrão do Claude Code"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По умолчанию в Claude Code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 的默认设置"
+          }
+        }
+      }
+    },
+    "No response text.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد نص في الرد."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "উত্তরে কোনো লেখা নেই।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No response text."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La respuesta no tiene texto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse ne contient pas de texte."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "जवाब में कोई टेक्स्ट नहीं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada teks balasan."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A resposta não tem texto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В ответе нет текста."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有回复内容。"
+          }
+        }
+      }
+    },
+    "Claude Code isn't installed (no `claude` command found).": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code غير مثبّت (لم يُعثر على الأمر `claude`)."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code ইনস্টল করা নেই (`claude` কমান্ড পাওয়া যায়নি)।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code isn't installed (no `claude` command found)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code no está instalado (no se encontró el comando `claude`)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code n'est pas installé (commande `claude` introuvable)."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code इंस्टॉल नहीं है (`claude` कमांड नहीं मिला)।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code belum terpasang (perintah `claude` tidak ditemukan)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Claude Code não está instalado (comando `claude` não encontrado)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code не установлен (команда `claude` не найдена)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装 Claude Code（找不到 `claude` 命令）。"
+          }
+        }
+      }
+    },
+    "%@ is not a folder.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ليس مجلدًا."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ কোনো ফোল্ডার নয়।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is not a folder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no es una carpeta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ n'est pas un dossier."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ फ़ोल्डर नहीं है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bukan folder."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ não é uma pasta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ не является папкой."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 不是文件夹。"
+          }
+        }
+      }
+    },
+    "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اتركه فارغًا لاستخدام مجلد الدردشة في Coucou. اختر مجلد مشروع ليعمل Claude Code على ذلك المشروع."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-র চ্যাট ফোল্ডার ব্যবহার করতে খালি রাখুন। Claude Code-কে কোনো প্রকল্পে কাজ করাতে সেই প্রকল্পের ফোল্ডার বেছে নিন।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjalo vacío para usar la carpeta de chat de Coucou. Elige la carpeta de un proyecto para que Claude Code trabaje en ese proyecto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laissez vide pour utiliser le dossier de discussion de Coucou. Choisissez le dossier d'un projet pour que Claude Code travaille sur ce projet."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou का चैट फ़ोल्डर इस्तेमाल करने के लिए खाली छोड़ें। Claude Code को किसी प्रोजेक्ट पर काम कराने के लिए उसका फ़ोल्डर चुनें।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biarkan kosong untuk memakai folder obrolan Coucou. Pilih folder proyek agar Claude Code bekerja di proyek itu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixe vazio para usar a pasta de chat do Coucou. Escolha a pasta de um projeto para o Claude Code trabalhar nele."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставьте пустым, чтобы использовать папку чата Coucou. Выберите папку проекта, чтобы Claude Code работал над этим проектом."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空则使用 Coucou 的聊天文件夹。选择项目文件夹，让 Claude Code 在该项目中工作。"
+          }
+        }
+      }
+    },
+    "Coucou's chat folder": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجلد الدردشة في Coucou"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou-র চ্যাট ফোল্ডার"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou's chat folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta de chat de Coucou"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier de discussion de Coucou"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou का चैट फ़ोल्डर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder obrolan Coucou"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasta de chat do Coucou"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка чата Coucou"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 聊天文件夹"
+          }
+        }
+      }
+    },
+    "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم Claude Code مع تسجيل دخوله وخوادم MCP والمهارات والخطافات. لا حاجة إلى مفتاح API."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-এর সাইন-ইন, MCP সার্ভার, স্কিল ও হুকসহ এটি ব্যবহার করে। API কী লাগে না।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa Claude Code con su sesión, servidores MCP, skills y hooks. No hace falta clave de API."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilise Claude Code avec sa connexion, ses serveurs MCP, ses skills et ses hooks. Aucune clé API nécessaire."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code को उसके साइन-इन, MCP सर्वर, स्किल और हुक के साथ इस्तेमाल करता है। API कुंजी की ज़रूरत नहीं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memakai Claude Code dengan login, server MCP, skill, dan hook-nya. Tidak perlu kunci API."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa o Claude Code com o login, servidores MCP, skills e hooks dele. Não precisa de chave de API."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использует Claude Code с его входом, MCP-серверами, навыками и хуками. Ключ API не нужен."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Claude Code 及其登录、MCP 服务器、技能和钩子。无需 API 密钥。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

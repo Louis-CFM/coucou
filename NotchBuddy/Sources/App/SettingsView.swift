@@ -1147,6 +1147,37 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+
+        #if !APPSTORE
+        // Claude Code in the chat: what it starts with. The picker above the chat box changes the same values.
+        GroupBox("Claude Code") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(String(localized: "Uses Claude Code with its sign-in, MCP servers, skills and hooks. No API key needed."))
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                Picker(String(localized: "chat.model"), selection: $state.claudeCodeChatModel) {
+                    ForEach(ClaudeCodeChat.modelList, id: \.id) { m in
+                        Text(m.label).tag(m.id)
+                    }
+                }
+                Picker(String(localized: "Effort"), selection: $state.claudeCodeEffort) {
+                    Text(String(localized: "Claude Code's default")).tag("")
+                    ForEach(ClaudeCodeChat.efforts, id: \.self) { level in
+                        Text(level).tag(level)
+                    }
+                }
+                HStack {
+                    Text(String(localized: "Working folder"))
+                    TextField(String(localized: "Coucou's chat folder"), text: $state.claudeCodeDir)
+                        .textFieldStyle(.roundedBorder)
+                }
+                Text(String(localized: "Leave empty to use Coucou's chat folder. Pick a project folder to let Claude Code work on that project."))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 4)
+        }
+        #endif
     }
 
     // MARK: - Integrations section

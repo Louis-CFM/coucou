@@ -189,7 +189,12 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        claudeCodeSession = nil
+        ClaudeCodeChat.cancel()
     }
+
+    /// The Claude Code session this conversation continues; nil until its first answer.
+    private var claudeCodeSession: String?
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
@@ -222,6 +227,10 @@ final class ClaudeService {
             state.stateOverride = .thinking
             await DemoEngine.shared.streamChatResponse(for: query)
             state.stateOverride = nil
+            return
+        }
+        if state.chatProvider == .claudecode {
+            await chatClaudeCode(query: query, context: context, state: state)
             return
         }
         guard state.chatProvider == .anthropic else {
@@ -271,6 +280,91 @@ final class ClaudeService {
         }
     }
 
+    // MARK: - Claude Code (the user's own CLI, ClaudeCodeChat.swift)
+
+    func chatClaudeCode(query: String, context: PromptContext?, state: AppState) async {
+        #if APPSTORE
+        // The sandbox cannot run the user's CLI; the provider is hidden there.
+        await showError(String(localized: "Claude Code isn't installed (no `claude` command found)."), state: state)
+        #else
+        guard let exe = await Task.detached(operation: { ClaudeCodeChat.locate() }).value else {
+            await showError(String(localized: "Claude Code isn't installed (no `claude` command found)."), state: state)
+            return
+        }
+        let dir: URL
+        do {
+            dir = try ClaudeCodeChat.workDir(picked: state.claudeCodeDir, supportDir: HookServer.supportDir)
+        } catch {
+            await showError(error.localizedDescription, state: state)
+            return
+        }
+
+        let first = conversationMessages.isEmpty
+        var contextLine: String? = nil
+        var extraDir: String? = nil
+        if first, let context {
+            switch context {
+            case .window(let app, let title, let url):
+                contextLine = "Context — App: \(app), Window: \(title)" + (url.map { ", URL: \($0)" } ?? "")
+            case .file(let name, let fileURL):
+                contextLine = "File: \(name)" + (fileURL.map { " (\($0.path))" } ?? "")
+                // Claude Code may only read inside its folder unless told about this one.
+                // Before the inbox copy is done, none: reading the original asks first.
+                extraDir = ClaudeCodeChat.extraDir(file: fileURL,
+                                                   inbox: HookServer.supportDir.appendingPathComponent("inbox"))
+            }
+        }
+        // Turns another provider answered, as plain text.
+        let earlier: [(user: Bool, text: String)] = conversationMessages.map { m in
+            let content = m["content"]
+            let text = content as? String
+                ?? (content as? [[String: Any]])?.first(where: { ($0["type"] as? String) == "text" })?["text"] as? String
+                ?? ""
+            return (user: (m["role"] as? String) == "user", text: text)
+        }
+        let resume = claudeCodeSession
+        let prompt = ClaudeCodeChat.question(first: first, resuming: resume != nil, earlier: earlier,
+                                             context: contextLine, query: query)
+        let arguments = ClaudeCodeChat.arguments(systemPrompt: systemPrompt, model: state.claudeCodeChatModel,
+                                                 effort: state.claudeCodeEffort, resume: resume, extraDir: extraDir)
+        conversationMessages.append(["role": "user", "content": query])
+
+        // Placeholder, hidden until the first text by ChatBubble's empty-content guard.
+        let placeholder = ChatMessage(role: .assistant, content: "")
+        let msgId = placeholder.id
+        state.chatHistory.append(placeholder)
+        state.stateOverride = .thinking
+        do {
+            let result = try await ClaudeCodeChat.run(
+                executable: exe, arguments: arguments, directory: dir, prompt: prompt, resume: resume
+            ) { [state, msgId] visible in
+                if !visible.isEmpty, state.stateOverride == .thinking {
+                    state.stateOverride = nil
+                }
+                if let idx = state.chatHistory.firstIndex(where: { $0.id == msgId }) {
+                    state.chatHistory[idx].content = visible
+                }
+            }
+            // Stopped by New chat: the conversation is already gone.
+            guard let result else {
+                state.chatHistory.removeAll { $0.id == msgId }
+                state.stateOverride = nil
+                return
+            }
+            claudeCodeSession = result.session
+            conversationMessages.append(["role": "assistant", "content": result.answer])
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            if !conversationMessages.isEmpty { conversationMessages.removeLast() }
+            state.chatHistory.removeAll { $0.id == msgId }
+            state.stateOverride = nil
+            await showError(error.localizedDescription, state: state)
+        }
+        #endif
+    }
+
     // MARK: - OpenAI-compatible chat (Google Gemini / OpenAI / Ollama / LM Studio)
 
     func chatOpenAICompatible(query: String, context: PromptContext?, state: AppState) async {
@@ -286,7 +380,7 @@ final class ClaudeService {
             switch provider {
             case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
             case .openai:  baseURL = "https://api.openai.com/v1"
-            case .anthropic, .ollama, .lmstudio: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .claudecode: baseURL = ""
             }
         }
 

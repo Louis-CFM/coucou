@@ -69,6 +69,11 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// Claude Code in the chat (claude_code.rs): its effort level, "" for
+    /// Claude Code's own; its model is in `chat_models`.
+    pub claude_code_effort: String,
+    /// The folder it works in; "" is Coucou's own, so nothing lands in $HOME.
+    pub claude_code_dir: String,
     /// The phone link (phone_link/) is on: a TLS server for the Android app on
     /// the local network. Off until the user turns it on in Settings → Phone;
     /// owned by the Rust side, so what a webview sends back is ignored.
@@ -152,6 +157,8 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            claude_code_effort: String::new(),
+            claude_code_dir: String::new(),
             phone_link: false,
             phone_chat: false,
             phone_chat_models: Vec::new(),
@@ -439,6 +446,8 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "claudeCodeEffort": "high",
+  "claudeCodeDir": "/home/me/projects/site",
   "phoneLink": true,
   "phoneChat": true,
   "phoneChatModels": ["openai/gpt-x"],
@@ -946,6 +955,8 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "claudeCodeEffort",
+                "claudeCodeDir",
                 "phoneLink",
                 "phoneChat",
                 "phoneChatModels",

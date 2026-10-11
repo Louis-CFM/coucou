@@ -88,6 +88,8 @@ enum AgentSource: Equatable {
 
 enum ChatProvider: String, CaseIterable, Codable {
     case anthropic = "anthropic"
+    /// The user's own Claude Code CLI (ClaudeCodeChat.swift); no key, no pill.
+    case claudecode = "claudecode"
     case google    = "google"
     case openai    = "openai"
     case ollama    = "ollama"
@@ -96,6 +98,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var displayName: String {
         switch self {
         case .anthropic: "Anthropic"
+        case .claudecode: "Claude Code"
         case .google:    "Google"
         case .openai:    "OpenAI"
         case .ollama:    "Ollama"
@@ -106,6 +109,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var accentHex: String {
         switch self {
         case .anthropic: "#E07950"
+        case .claudecode: "#D97757"
         case .google:    "#4285F4"
         case .openai:    "#10A37F"
         case .ollama:    "#FACC15"
@@ -116,6 +120,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var defaultModel: String {
         switch self {
         case .anthropic: "claude-sonnet-4-6"
+        case .claudecode: "default"
         case .google:    "gemini-2.0-flash"
         case .openai:    "gpt-4o"
         case .ollama:    "llama3.2"
@@ -126,6 +131,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var keychainKey: String {
         switch self {
         case .anthropic: "anthropic-api-key"
+        case .claudecode: ""
         case .google:    "google-api-key"
         case .openai:    "openai-api-key"
         case .ollama:    ""
@@ -140,6 +146,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     var pillID: String {
         switch self {
         case .anthropic: "ai_anthropic"
+        case .claudecode: ""
         case .google:    "ai_google"
         case .openai:    "ai_openai"
         case .ollama:    "ai_ollama"

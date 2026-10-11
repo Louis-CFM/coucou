@@ -162,6 +162,9 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Claude Code in the chat: effort ("" = its own) and working folder ("" = Coucou's). */
+  claudeCodeEffort: string;
+  claudeCodeDir: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -190,6 +193,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  claudeCodeEffort: "",
+  claudeCodeDir: "",
 };
 
 type Listener = () => void;

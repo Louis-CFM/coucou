@@ -166,6 +166,11 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
             map.insert("term_editor".into(), Value::String(editor.into()));
         }
     }
+    // Coucou's own chat runs Claude Code (claude_code.rs): the island shows its
+    // permission requests, not a session.
+    if env("COUCOU_CHAT").as_deref() == Some("1") {
+        map.insert("coucou_chat".into(), Value::Bool(true));
+    }
 
     let raw_event = map
         .get("hook_event_name")
@@ -404,6 +409,16 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn coucous_own_chat_is_tagged() {
+        let args = Args { agent: String::new(), event: "PreToolUse".into() };
+        let raw = br#"{"hook_event_name":"PreToolUse"}"#;
+        let tagged = prepare(raw, &args, &env_of(&[("COUCOU_CHAT", "1")]), "/p").unwrap();
+        assert!(tagged.line.contains(r#""coucou_chat":true"#));
+        let plain = prepare(raw, &args, &env_of(&[]), "/p").unwrap();
+        assert!(!plain.line.contains("coucou_chat"));
     }
 
     #[test]
