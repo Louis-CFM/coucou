@@ -202,6 +202,37 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 1quinquies. Better Stack (incidents)
+
+**Plateformes** : macOS, Windows et Linux.
+
+**Token** : un token de l'API Uptime, créé dans Better Stack → API tokens → Team-based tokens. Stocké dans le Trousseau, le Gestionnaire d'identifiants Windows ou le Secret Service (`betterstack-token`). Coucou ne fait que lire.
+
+### Données récupérées
+
+Deux requêtes GET, en-tête `Authorization: Bearer <token>`, réponses au format JSON:API (`data[].id` + `data[].attributes`) :
+- **Incidents ouverts** : `https://incidents.betterstack.com/api/v3/incidents?resolved=false&per_page=50` ([doc](https://betterstack.com/docs/uptime/api/list-all-incidents/)). On garde `name`, `cause`, `started_at` et `acknowledged_at` (présent = pris en compte). Une ligne avec `resolved_at` est écartée.
+- **Moniteurs en panne** : `https://incidents.betterstack.com/api/v2/monitors?per_page=250` ([doc](https://betterstack.com/docs/uptime/api/list-all-existing-monitors/)), filtrés sur `status == "down"`. Nom = `pronounceable_name`, sinon `url`.
+
+**Cadence** : 60 s, première requête 10 s après le lancement. Aucune requête tant que la pastille n'est pas déclarée (Réglages → Active pills) ou sans token.
+
+### Carte
+
+Trois lignes au plus : les incidents ouverts (point rouge, orange s'il est pris en compte, cause et ancienneté), puis les moniteurs en panne qu'aucun incident ne nomme déjà. Rien d'ouvert : « All monitors up ». Un clic ouvre `https://uptime.betterstack.com/incidents/{id}` ou `…/monitors/{id}`.
+
+### Alertes
+
+Premier poll après lancement (ou après un changement de token) : silencieux. Ensuite :
+
+| Événement | État / badge | Son |
+|---|---|---|
+| Nouvel incident | `error` (rouge), défilé = nom + cause | `error` |
+| Dernier incident résolu (plus rien d'ouvert) | `finished` (vert), défilé = nom + « Resolved » | `finish` |
+
+Un nouvel incident l'emporte sur une résolution dans le même poll. Comme les autres services, l'état repasse à `idle` après 60 s ; la carte continue de lister ce qui est ouvert.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

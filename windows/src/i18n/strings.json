@@ -90,6 +90,17 @@
    "ru": "АВТО",
    "id": "AUTO"
   },
+  "Acknowledged": {
+   "zh-Hans": "已确认",
+   "hi": "स्वीकार किया गया",
+   "es": "Reconocido",
+   "ar": "تم الإقرار",
+   "fr": "Pris en compte",
+   "bn": "স্বীকৃত",
+   "pt-BR": "Reconhecido",
+   "ru": "Подтверждён",
+   "id": "Diakui"
+  },
   "Active pills": {
    "zh-Hans": "活跃标签页",
    "hi": "सक्रिय टैब",
@@ -166,6 +177,17 @@
    "pt-BR": "Agentes",
    "ru": "Агенты",
    "id": "Agen"
+  },
+  "All monitors up": {
+   "zh-Hans": "所有监控均正常",
+   "hi": "सभी मॉनिटर चालू हैं",
+   "es": "Todos los monitores activos",
+   "ar": "جميع أدوات المراقبة تعمل",
+   "fr": "Tous les moniteurs sont en ligne",
+   "bn": "সব মনিটর চালু",
+   "pt-BR": "Todos os monitores no ar",
+   "ru": "Все мониторы работают",
+   "id": "Semua monitor aktif"
   },
   "Allow": {
    "zh-Hans": "允许",
@@ -408,6 +430,17 @@
    "pt-BR": "Comportamento",
    "ru": "Поведение",
    "id": "Perilaku"
+  },
+  "Better Stack → API tokens → Team-based tokens: an Uptime API token.": {
+   "zh-Hans": "Better Stack → API tokens → Team-based tokens：一个 Uptime API 令牌。",
+   "hi": "Better Stack → API tokens → Team-based tokens: एक Uptime API टोकन।",
+   "es": "Better Stack → API tokens → Team-based tokens: un token de la API de Uptime.",
+   "ar": "Better Stack → API tokens → Team-based tokens: رمز Uptime API.",
+   "fr": "Better Stack → API tokens → Team-based tokens : un jeton de l'API Uptime.",
+   "bn": "Better Stack → API tokens → Team-based tokens: একটি Uptime API টোকেন।",
+   "pt-BR": "Better Stack → API tokens → Team-based tokens: um token da API Uptime.",
+   "ru": "Better Stack → API tokens → Team-based tokens: токен Uptime API.",
+   "id": "Better Stack → API tokens → Team-based tokens: token API Uptime."
   },
   "Busiest day": {
    "zh-Hans": "最忙的一天",
@@ -937,6 +970,17 @@
    "ru": "Отключить",
    "id": "Putuskan"
   },
+  "Down": {
+   "zh-Hans": "宕机",
+   "hi": "डाउन",
+   "es": "Caído",
+   "ar": "متوقف",
+   "fr": "En panne",
+   "bn": "ডাউন",
+   "pt-BR": "Fora do ar",
+   "ru": "Недоступен",
+   "id": "Mati"
+  },
   "Draft": {
    "zh-Hans": "草稿",
    "hi": "ड्राफ्ट",
@@ -1409,6 +1453,17 @@
    "pt-BR": "Passar o cursor pela ilha a abre; ela se fecha logo depois que o cursor sai. Clique dentro para mantê-la aberta.",
    "ru": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым.",
    "id": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
+  },
+  "Incidents": {
+   "zh-Hans": "事件",
+   "hi": "घटनाएँ",
+   "es": "Incidentes",
+   "ar": "الحوادث",
+   "fr": "Incidents",
+   "bn": "ঘটনা",
+   "pt-BR": "Incidentes",
+   "ru": "Инциденты",
+   "id": "Insiden"
   },
   "Install": {
    "zh-Hans": "安装",
@@ -2862,6 +2917,17 @@
    "ru": "Сброс…",
    "id": "Mereset…"
   },
+  "Resolved": {
+   "zh-Hans": "已解决",
+   "hi": "हल हो गया",
+   "es": "Resuelto",
+   "ar": "تم الحل",
+   "fr": "Résolu",
+   "bn": "সমাধান হয়েছে",
+   "pt-BR": "Resolvido",
+   "ru": "Решён",
+   "id": "Teratasi"
+  },
   "Restart Coucou": {
    "zh-Hans": "重启 Coucou",
    "hi": "Coucou को पुनः आरंभ करें",
@@ -3378,6 +3444,17 @@
    "pt-BR": "Tarefas",
    "ru": "Задачи",
    "id": "Tugas"
+  },
+  "Team ID (optional)": {
+   "zh-Hans": "团队 ID（可选）",
+   "hi": "टीम आईडी (वैकल्पिक)",
+   "es": "ID del equipo (opcional)",
+   "ar": "معرّف الفريق (اختياري)",
+   "fr": "ID de l'équipe (facultatif)",
+   "bn": "টিম আইডি (ঐচ্ছিক)",
+   "pt-BR": "ID da equipe (opcional)",
+   "ru": "ID команды (необязательно)",
+   "id": "ID tim (opsional)"
   },
   "Test the voice": {
    "zh-Hans": "试听声音",
