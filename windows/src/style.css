@@ -180,12 +180,12 @@ body {
 #compact-stats {
   position: absolute;
   top: 50%;
-  right: 60px;
+  right: 64px;
   transform: translateY(-50%);
   color: #8e939c;
   font: 600 9px var(--font);
   font-variant-numeric: tabular-nums;
-  line-height: 11px;
+  line-height: 12px;
   text-align: right;
   white-space: nowrap;
   pointer-events: none;
