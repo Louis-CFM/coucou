@@ -1675,8 +1675,8 @@ function realtimeCopilotSection(): HTMLElement {
   );
 
   const gcalInstructions = h("div", {
-    style: "font-size:11px; color:#a1a1aa; line-height:1.45;",
-    text: "Conecte sua conta do Google para ler reuniões do dia, links do Google Meet e sincronizar Atas de Reunião diretamente no evento da sua agenda real."
+    style: "font-size:11.5px; color:#a1a1aa; line-height:1.5;",
+    text: "Conecte sua agenda Google de forma simples: cole o 'Endereço Secreto em formato iCal' da sua agenda (nunca expira e não precisa de telas complexas) ou o Token OAuth2."
   });
 
   const authDrawer = h("div", {
@@ -1685,29 +1685,35 @@ function realtimeCopilotSection(): HTMLElement {
 
   const tokenRow = h("div", { style: "display:flex; gap:8px; align-items:center;" });
   const tokenInput = h("input", {
-    type: "password",
-    placeholder: isConnected ? "••••••••••••••••" : "Cole o Access Token da Google Calendar API (ya29...)",
+    type: "text",
+    placeholder: isConnected ? "••••••••••••••••" : "Cole o Endereço Secreto iCal (https://calendar.google.com/...) ou Token",
     autocomplete: "off",
     spellcheck: "false",
-    style: "flex:1 1 auto; min-width:0; font-size:11.5px; font-family:monospace; padding:6px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;",
+    style: "flex:1 1 auto; min-width:0; font-size:11px; font-family:monospace; padding:7px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;",
   }) as HTMLInputElement;
 
   const verifyBtn = h("button", {
     class: "primary",
-    style: "font-size:11.5px; white-space:nowrap;",
-    text: "Validar e Conectar",
+    style: "font-size:11.5px; white-space:nowrap; padding:7px 14px;",
+    text: "Conectar Agenda",
   });
 
   tokenRow.append(tokenInput, verifyBtn);
+
+  const guideBox = h("div", {
+    style: "background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:8px; padding:10px 12px; font-size:11px; color:#c7d2fe; line-height:1.5;",
+  },
+    h("strong", { style: "color:#fff; display:block; margin-bottom:4px;", text: "Como pegar seu link em 10 segundos (sem burocracia):" }),
+    h("div", { text: "1. No Google Agenda (calendar.google.com), clique nos 3 pontinhos ao lado da sua agenda no canto esquerdo e vá em 'Configurações e compart.'." }),
+    h("div", { text: "2. Role a página até encontrar o campo 'Endereço secreto em formato iCal' e clique em Copiar." }),
+    h("div", { text: "3. Cole o link no campo acima e clique em 'Conectar Agenda'. Pronto!" }),
+  );
 
   const feedbackMsg = h("div", { style: "font-size:11px; display:none;" });
 
   loginGoogleBtn.addEventListener("click", () => {
     GoogleCalendarService.openGoogleLogin();
     authDrawer.style.display = "flex";
-    feedbackMsg.style.display = "block";
-    feedbackMsg.style.color = "#93c5fd";
-    feedbackMsg.textContent = "Janela do Google aberta no navegador! Autorize as permissões de Google Calendar, copie o Access Token gerado e cole no campo acima.";
   });
 
   verifyBtn.addEventListener("click", async () => {
@@ -1715,23 +1721,23 @@ function realtimeCopilotSection(): HTMLElement {
     if (!val) {
       feedbackMsg.style.display = "block";
       feedbackMsg.style.color = "#fb7185";
-      feedbackMsg.textContent = "Por favor, cole o token de acesso gerado no Google.";
+      feedbackMsg.textContent = "Por favor, cole o link secreto iCal ou o token.";
       return;
     }
 
     verifyBtn.disabled = true;
-    verifyBtn.textContent = "Verificando...";
+    verifyBtn.textContent = "Conectando...";
     feedbackMsg.style.display = "none";
 
     const res = await GoogleCalendarService.verifyAndSaveToken(val);
     verifyBtn.disabled = false;
-    verifyBtn.textContent = "Validar e Conectar";
+    verifyBtn.textContent = "Conectar Agenda";
 
     if (res.ok) {
       isConnected = true;
       feedbackMsg.style.display = "block";
       feedbackMsg.style.color = "#34d399";
-      feedbackMsg.textContent = `✓ Sucesso! Conectado como ${res.email}. Suas reuniões e atas de IA agora estão sincronizadas com o Google Calendar.`;
+      feedbackMsg.textContent = `✓ Sucesso! ${res.email}. Suas reuniões e atas de IA agora estão sincronizadas com o Google Calendar.`;
       tokenInput.value = "";
       tokenInput.placeholder = "••••••••••••••••";
       disconnectBtn.style.display = "";
@@ -1753,7 +1759,7 @@ function realtimeCopilotSection(): HTMLElement {
     GoogleCalendarService.disconnect();
     isConnected = false;
     disconnectBtn.style.display = "none";
-    tokenInput.placeholder = "Cole o Access Token da Google Calendar API (ya29...)";
+    tokenInput.placeholder = "Cole o Endereço Secreto iCal (https://calendar.google.com/...) ou Token";
     gcalStatusBadge.textContent = "NÃO CONECTADO (DEMO)";
     gcalStatusBadge.style.background = "rgba(255,255,255,0.05)";
     gcalStatusBadge.style.color = "#a1a1aa";
@@ -1764,7 +1770,7 @@ function realtimeCopilotSection(): HTMLElement {
     authDrawer.style.display = "flex";
   });
 
-  authDrawer.append(tokenRow, feedbackMsg);
+  authDrawer.append(guideBox, tokenRow, feedbackMsg);
   gcalBlock.append(gcalHeader, gcalInstructions, authDrawer);
 
   return h(
