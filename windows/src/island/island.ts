@@ -1046,15 +1046,18 @@ export class Island {
     const hCss = w + BOT_OVERHANG;
     const wCss = w + BOT_SIDE * 2;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (this.canvasPx !== w) {
+    // The canvas only grows: WebKitGTK leaves a shrunk canvas's old pixels on screen.
+    if (w > this.canvasPx) {
       this.canvasPx = w;
-      this.botCanvas.width = Math.round(wCss * dpr);
-      this.botCanvas.height = Math.round(hCss * dpr);
-      this.botCanvas.style.width = `${wCss}px`;
-      this.botCanvas.style.height = `${hCss}px`;
+      this.botCanvas.width = Math.round((w + BOT_SIDE * 2) * dpr);
+      this.botCanvas.height = Math.round((w + BOT_OVERHANG) * dpr);
+      this.botCanvas.style.width = `${w + BOT_SIDE * 2}px`;
+      this.botCanvas.style.height = `${w + BOT_OVERHANG}px`;
     }
-    this.botCanvas.style.left = `${this.botCx.value - wCss / 2}px`;
-    this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - hCss / 2}px`;
+    const cw = this.canvasPx + BOT_SIDE * 2;
+    const ch = this.canvasPx + BOT_OVERHANG;
+    this.botCanvas.style.left = `${this.botCx.value - cw / 2}px`;
+    this.botCanvas.style.top = `${this.botCy.value - BOT_OVERHANG / 2 - ch / 2}px`;
 
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
@@ -1098,8 +1101,9 @@ export class Island {
     }));
 
     this.engine.update(dt);
-    ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
-    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.botCanvas.width, this.botCanvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, ((cw - wCss) / 2 + BOT_SIDE) * dpr, ((ch - hCss) / 2) * dpr);
     ctx.save();
     this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);
