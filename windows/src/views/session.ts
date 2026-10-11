@@ -378,9 +378,9 @@ const PHASES: { id: Phase; label: string; glyph: string }[] = [
 type PhaseState = "done" | "active" | "todo";
 
 function phaseIcon(state: PhaseState, glyph: string): HTMLElement {
-  if (state === "done") return h("span", { class: "ph-icon ok" }, svg(ICONS.check, 10, { stroke: 3 }));
+  if (state === "done") return h("span", { class: "ph-icon ok" }, svg(ICONS.check, 8, { stroke: 3 }));
   if (state === "active") return h("span", { class: "ph-icon spin" });
-  return h("span", { class: "ph-icon todo" }, svg(glyph, 10, { stroke: 2.2 }));
+  return h("span", { class: "ph-icon todo" }, svg(glyph, 11, { stroke: 2 }));
 }
 
 function phaseList(d: CodeData): HTMLElement {
@@ -392,7 +392,7 @@ function phaseList(d: CodeData): HTMLElement {
   list.append(h(
     "div",
     { class: `phase ${d.finished ? "done" : "todo"}` },
-    h("span", { class: d.finished ? "ph-icon ok" : "ph-icon ok muted" }, svg(ICONS.check, 10, { stroke: 3 })),
+    h("span", { class: d.finished ? "ph-icon ok" : "ph-icon ok muted" }, svg(ICONS.check, 8, { stroke: 3 })),
     h("span", { text: tl("Done") }),
   ));
   return list;

@@ -2690,61 +2690,62 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 .code-view .phases {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .code-view .phase {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font: 600 13.5px/16px var(--font);
-  color: var(--dim-4);
+  gap: 6px;
+  font: 400 11.5px/14px var(--font);
+  color: #6b7079;
 }
 
 .code-view .phase.done {
-  color: var(--dim-2);
+  color: var(--ink);
 }
 
 .code-view .phase.active {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
+/* Sizes and colours of the Mac's CodePhasesView. */
 .ph-icon {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
   display: grid;
   place-items: center;
   box-sizing: border-box;
 }
 
-/* A phase this turn went through: a green disc with a tick. */
 .ph-icon.ok {
   border-radius: 50%;
-  background: var(--green-2);
-  color: #052e1c;
-}
-
-/* "Done" before the end: the same disc, muted. */
-.ph-icon.ok.muted {
-  background: var(--dim-4);
+  background: #22c55e;
   color: #0b0c0e;
 }
 
-/* The running phase: a ring with a gap, turning. */
+/* "Done" before the end: an outlined circle, as the Mac's checkmark.circle. */
+.ph-icon.ok.muted {
+  background: none;
+  color: #454850;
+  box-shadow: inset 0 0 0 1.2px #454850;
+}
+
 .ph-icon.spin {
+  width: 11px;
+  height: 11px;
+  flex-basis: 11px;
+  margin: 0 1.5px;
   border-radius: 50%;
-  border: 2px solid var(--ink);
+  border: 1.5px solid var(--ink);
   border-right-color: transparent;
   animation: ph-spin 0.9s linear infinite;
 }
 
-/* A phase that has not started: its glyph in a rounded square. */
 .ph-icon.todo {
-  border-radius: 4.5px;
-  color: var(--dim-4);
-  box-shadow: inset 0 0 0 1.5px var(--dim-4);
+  color: #454850;
 }
 
 @keyframes ph-spin {
