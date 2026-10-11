@@ -18,9 +18,12 @@ import kotlinx.coroutines.withContext
 
 class CoucouViewModel(app: Application) : AndroidViewModel(app) {
 
-    enum class Screen { PAIR, HOME, CHAT }
+    enum class Screen { PAIR, HOME, PICKER, CHAT }
 
     var screen by mutableStateOf(if (Prefs.load(app) != null) Screen.HOME else Screen.PAIR)
+        private set
+    /** Agent the PICKER screen lists sessions for ("devin", "claude", …). */
+    var pickerAgent by mutableStateOf("devin")
         private set
     var box by mutableStateOf<Relay.Fetch?>(null)
         private set
@@ -34,15 +37,32 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
     /** Shown on the settings row. */
     var worker by mutableStateOf(Prefs.load(app)?.worker ?: "")
         private set
-    /** Set when the pending card just got answered locally — hides it until the PC confirms. */
+    /** Pull-to-refresh spinner. */
+    var refreshing by mutableStateOf(false)
+        private set
+    /** Set when the pending card just got answered locally — shows the sent state until the PC confirms. */
     private var answeredId: String? = null
+    private var answeredDecision: String? = null
 
     fun isAnswered(requestId: String) = requestId == answeredId
+    fun sentDecision(requestId: String): String? =
+        if (requestId == answeredId) answeredDecision else null
 
     private var pollJob: Job? = null
 
     fun navigate(to: Screen) {
         screen = to
+    }
+
+    /** Home → an agent's session list. */
+    fun openPicker(agent: String) {
+        pickerAgent = agent
+        screen = Screen.PICKER
+    }
+
+    /** The picker's agent dropdown switches which CLI's history it lists. */
+    fun pickAgent(agent: String) {
+        pickerAgent = agent
     }
 
     fun onForeground() {
@@ -60,11 +80,27 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
         pollJob = null
     }
 
+    /** One-shot fetch for pull-to-refresh — the 3 s poll keeps running anyway. */
+    fun refreshNow() {
+        if (refreshing) return
+        viewModelScope.launch {
+            refreshing = true
+            try {
+                refresh()
+            } finally {
+                refreshing = false
+            }
+        }
+    }
+
     private suspend fun refresh() {
         val p = Prefs.load(getApplication()) ?: return
         try {
             val f = withContext(Dispatchers.IO) { Relay.fetch(p) }
-            if (f.pending?.requestId != answeredId) answeredId = null
+            if (f.pending?.requestId != answeredId) {
+                answeredId = null
+                answeredDecision = null
+            }
             box = f
             lineError = null
         } catch (e: Relay.Forbidden) {
@@ -125,6 +161,7 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
     fun decide(card: Relay.Card, decision: String, answers: Map<String, String>? = null) {
         val p = Prefs.load(getApplication()) ?: return
         answeredId = card.requestId
+        answeredDecision = decision
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) { Relay.decide(p, card.requestId, decision, answers) }
@@ -133,7 +170,27 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
                 refresh()
             } catch (e: Exception) {
                 answeredId = null
+                answeredDecision = null
                 lineError = "Couldn't send the decision — ${e.message ?: "try again"}"
+            }
+        }
+    }
+
+    /** The Devin session the chat targets, or null for the island's own chat. */
+    fun selectedSession(): Relay.ChatSession? =
+        box?.state?.let { st -> st.chatSessions.firstOrNull { it.id == st.chatSel } }
+
+    /** Picks the conversation the chat talks to (null = the island's own provider). */
+    fun selectSession(session: Relay.ChatSession?) {
+        val p = Prefs.load(getApplication()) ?: return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    Relay.select(p, session?.id ?: "", session?.agent)
+                }
+                refresh()
+            } catch (e: Exception) {
+                lineError = "Couldn't open the session — ${e.message ?: "try again"}"
             }
         }
     }
@@ -142,9 +199,10 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
         val p = Prefs.load(getApplication()) ?: return
         val t = text.trim()
         if (t.isEmpty()) return
+        val session = selectedSession()
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { Relay.chat(p, t) }
+                withContext(Dispatchers.IO) { Relay.chat(p, t, session?.id, session?.agent) }
                 refresh()
             } catch (e: Exception) {
                 lineError = "Chat not sent — ${e.message ?: "try again"}"

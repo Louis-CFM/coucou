@@ -22,17 +22,14 @@ class CoucouMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        Log.w("CoucouPush", "onMessageReceived data=${message.data}")
-        val p = Prefs.load(this)
-        if (p == null) { Log.w("CoucouPush", "no prefs"); return }
+        val p = Prefs.load(this) ?: return
         Thread {
             try {
                 val f = Relay.fetch(p)
                 val card = f.pending
-                Log.w("CoucouPush", "fetch ok card=${card?.requestId}")
                 if (card != null) Notifier.showCard(this, card) else Notifier.cancelCard(this)
             } catch (e: Exception) {
-                Log.w("CoucouPush", "fetch failed: $e")
+                if (BuildConfig.DEBUG) Log.w("CoucouPush", "fetch failed", e)
             }
         }.start()
     }

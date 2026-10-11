@@ -5,13 +5,16 @@ mod agents;
 mod chat;
 mod claude;
 mod claude_cli;
+mod claude_sessions;
 mod cli_chat;
 mod codex_chat;
 mod codex_plan;
+mod codex_sessions;
 mod config_file;
 mod cursor_chat;
 mod desktop;
 mod devin_chat;
+mod devin_sessions;
 mod dictation;
 mod files;
 mod github;
@@ -25,6 +28,7 @@ mod local_chat;
 mod log;
 mod net;
 mod openai_compat;
+mod opencode_sessions;
 mod phone;
 mod pipe;
 mod platform;
@@ -559,6 +563,100 @@ async fn phone_state(app: AppHandle, payload: serde_json::Value, alert: bool) {
     let _ = phone::push_state(&app, payload, alert).await;
 }
 
+/// The Devin CLI's own session list — the phone's "continue this chat" picker.
+/// Read straight from the CLI's session store, newest first.
+#[tauri::command]
+async fn devin_sessions() -> Vec<devin_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(devin_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Devin session's conversation, for the phone's scrollback.
+#[tauri::command]
+async fn devin_transcript(session_id: String) -> Vec<devin_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || devin_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone, sent inside the picked Devin session —
+/// `devin -p <text> -r <id>` under the user's real config.
+#[tauri::command]
+async fn devin_resume(session_id: String, text: String) -> Result<String, String> {
+    devin_sessions::resume(&session_id, &text).await
+}
+
+/// The Claude Code session list — same picker as Devin's, sourced from
+/// ~/.claude/projects/*.jsonl.
+#[tauri::command]
+async fn claude_sessions() -> Vec<claude_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(claude_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Claude Code session's conversation.
+#[tauri::command]
+async fn claude_transcript(session_id: String) -> Vec<claude_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || claude_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone, sent inside the picked Claude Code session —
+/// `claude -p <text> --resume <id>` under the user's real config.
+#[tauri::command]
+async fn claude_resume(session_id: String, text: String) -> Result<String, String> {
+    claude_sessions::resume(&session_id, &text).await
+}
+
+/// The Codex session list — ~/.codex/sessions/* ⁄rollout-*.jsonl files.
+#[tauri::command]
+async fn codex_sessions() -> Vec<codex_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(codex_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Codex session's conversation.
+#[tauri::command]
+async fn codex_transcript(session_id: String) -> Vec<codex_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || codex_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone inside a Codex session —
+/// `codex exec resume <id> <text>` under the user's real config.
+#[tauri::command]
+async fn codex_resume(session_id: String, text: String) -> Result<String, String> {
+    codex_sessions::resume(&session_id, &text).await
+}
+
+/// The OpenCode session list — ~/.local/share/opencode/opencode.db.
+#[tauri::command]
+async fn opencode_sessions() -> Vec<opencode_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(opencode_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one OpenCode session's conversation.
+#[tauri::command]
+async fn opencode_transcript(session_id: String) -> Vec<opencode_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || opencode_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone inside an OpenCode session —
+/// `opencode run -s <id> <text>` under the user's real config.
+#[tauri::command]
+async fn opencode_resume(session_id: String, text: String) -> Result<String, String> {
+    opencode_sessions::resume(&session_id, &text).await
+}
+
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn with the provider picked in the chat view. API keys and any
@@ -865,6 +963,18 @@ pub fn run() {
             phone_pair,
             phone_unpair,
             phone_state,
+            devin_sessions,
+            devin_transcript,
+            devin_resume,
+            claude_sessions,
+            claude_transcript,
+            claude_resume,
+            codex_sessions,
+            codex_transcript,
+            codex_resume,
+            opencode_sessions,
+            opencode_transcript,
+            opencode_resume,
             log_line,
             chat_send,
             chat_models,

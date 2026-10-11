@@ -66,7 +66,7 @@ test("router: GET, unknown action and bad ids are rejected", async () => {
   assert.equal((await send("/v1/phone/pair", { body: "not json" })).status, 400);
   assert.equal((await send("/v1/phone/pair", { body: '{"id":"nothex!"}' })).status, 400);
   assert.equal(
-    (await send("/v1/phone/pair", { body: "{}", headers: { "content-length": "9000" } })).status,
+    (await send("/v1/phone/pair", { body: "{}", headers: { "content-length": "300000" } })).status,
     413,
   );
   assert.equal(

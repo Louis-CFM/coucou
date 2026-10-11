@@ -161,6 +161,45 @@ export const Bridge = {
   phoneState: (payload: unknown, alert: boolean) =>
     call<void>("phone_state", { payload, alert }),
 
+  // ── Devin sessions (the phone picks one to read & continue) ───────────────
+  /** Every session in Devin's global sessions.db, newest first. */
+  devinSessions: () =>
+    call<{ id: string; title: string; dir: string; model: string; lastActivityAt: number }[]>(
+      "devin_sessions",
+    ),
+  /** The transcript tail of one session — chat lines plus tool calls. */
+  devinTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("devin_transcript", { sessionId }),
+  /** Continues a session: `devin -p "<text>" -r "<sessionId>"`, answer text back. */
+  devinResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("devin_resume", { sessionId, text }),
+
+  // ── Claude Code sessions (~/.claude/projects/*.jsonl) ─────────────────────
+  claudeSessions: () =>
+    call<{ id: string; title: string; dir: string; model: string; lastActivityAt: number }[]>(
+      "claude_sessions",
+    ),
+  claudeTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("claude_transcript", { sessionId }),
+  claudeResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("claude_resume", { sessionId, text }),
+
+  // ── Codex sessions (~/.codex/sessions/rollout-*.jsonl) ────────────────────
+  codexSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>("codex_sessions"),
+  codexTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("codex_transcript", { sessionId }),
+  codexResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("codex_resume", { sessionId, text }),
+
+  // ── OpenCode sessions (~/.local/share/opencode/opencode.db) ───────────────
+  opencodeSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>("opencode_sessions"),
+  opencodeTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("opencode_transcript", { sessionId }),
+  opencodeResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("opencode_resume", { sessionId, text }),
+
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>

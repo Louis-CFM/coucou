@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
  * The phone half of the mailbox contract implemented by relay/src/index.ts:
  * every call is POST {worker}/v1/phone/{action} with {id, secret, ...}; the box
  * only ever keeps sha256(secret). The phone actions are claim / fetch /
- * decide / chat / unpair — pair and take belong to the PC.
+ * decide / chat / select / unpair — pair and take belong to the PC.
  */
 object Relay {
     private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -52,12 +52,28 @@ object Relay {
         val stepCount: Int,
     )
 
-    data class ChatLine(val isUser: Boolean, val text: String)
+    /** name != null → a tool call (compact card), not a chat bubble. */
+    data class ChatLine(val isUser: Boolean, val text: String, val name: String? = null)
+
+    /** A CLI session the phone may open and continue (Devin's sessions.db,
+     * Claude's ~/.claude/projects/&lt;id&gt;.jsonl). */
+    data class ChatSession(
+        val id: String,
+        val title: String,
+        val dir: String,
+        val at: Long,
+        val agent: String = "devin",
+    )
 
     data class State(
         val sessions: List<Session>,
         val awaiting: Card?,
         val chatTail: List<ChatLine>,
+        val chatSessions: List<ChatSession>,
+        /** Id of the CLI session the phone is reading, "" = the island's own chat. */
+        val chatSel: String,
+        /** Transcript tail of the selected session; null when none is selected. */
+        val chatTranscript: List<ChatLine>?,
     )
 
     data class Fetch(
@@ -112,8 +128,20 @@ object Relay {
         post(p.worker, "decide", body)
     }
 
-    fun chat(p: Prefs.Pairing, text: String) {
-        post(p.worker, "chat", auth(p).put("text", text))
+    fun chat(p: Prefs.Pairing, text: String, sessionId: String? = null, agent: String? = null) {
+        val body = auth(p).put("text", text)
+        if (!sessionId.isNullOrBlank()) {
+            body.put("sessionId", sessionId)
+            if (!agent.isNullOrBlank()) body.put("agent", agent)
+        }
+        post(p.worker, "chat", body)
+    }
+
+    /** Tells the PC which CLI session's transcript to push ("" = island chat). */
+    fun select(p: Prefs.Pairing, sessionId: String, agent: String? = null) {
+        val body = auth(p).put("sessionId", sessionId)
+        if (!agent.isNullOrBlank()) body.put("agent", agent)
+        post(p.worker, "select", body)
     }
 
     fun unpair(p: Prefs.Pairing) {
@@ -158,10 +186,35 @@ object Relay {
                 ChatLine(m.optString("role") == "user", m.optString("text"))
             }
         }
+        val chatSessions = o.optJSONArray("chatSessions").let { arr ->
+            (0 until (arr?.length() ?: 0)).map { i ->
+                val s = arr!!.getJSONObject(i)
+                ChatSession(
+                    id = s.optString("id"),
+                    title = s.optString("title"),
+                    dir = s.optString("dir"),
+                    at = s.optLong("at"),
+                    agent = s.optString("agent").ifBlank { "devin" },
+                )
+            }
+        }
+        val transcript = o.optJSONObject("chatTranscript")?.optJSONArray("lines")?.let { arr ->
+            (0 until arr.length()).map { i ->
+                val m = arr.getJSONObject(i)
+                ChatLine(
+                    m.optString("role") == "user",
+                    m.optString("text"),
+                    m.optString("name").ifBlank { null },
+                )
+            }
+        }
         return State(
             sessions = sessions,
             awaiting = o.optJSONObject("awaiting")?.let(::parseCard),
             chatTail = tail,
+            chatSessions = chatSessions,
+            chatSel = o.optString("chatSel"),
+            chatTranscript = transcript,
         )
     }
 

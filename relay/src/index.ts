@@ -218,11 +218,13 @@ const STATE_TTL_MS = 24 * 3600 * 1000;
 function phoneRoute(request: Request, url: URL, env: Env): Promise<Response> | Response {
   if (!env.PHONE_BOX) return text(501, "android support not deployed on this relay");
   if (request.method !== "POST") return text(404, "not found");
-  if (Number(request.headers.get("content-length") ?? "0") > 8192) {
+  // State pushes carry the chat transcript tail — up to ~200 KB once every
+  // cleanState bound is maxed out. Anything past this is junk anyway.
+  if (Number(request.headers.get("content-length") ?? "0") > 262144) {
     return text(413, "too large");
   }
   const action = url.pathname.slice("/v1/phone/".length);
-  if (!["pair", "claim", "claimed", "state", "fetch", "decide", "chat", "take", "unpair"].includes(action)) {
+  if (!["pair", "claim", "claimed", "state", "fetch", "decide", "chat", "select", "take", "unpair"].includes(action)) {
     return text(404, "not found");
   }
   return request.json().then((body) => {
@@ -282,13 +284,17 @@ function cleanCard(raw: unknown): PhoneCard {
 }
 
 interface OutboxItem {
-  type: "decision" | "chat";
+  type: "decision" | "chat" | "chat_sel";
   at: number;
   requestId?: string;
   decision?: string;
   /** Question answers as question-text → chosen label, the shape AskUserQuestion takes. */
   answers?: Record<string, string>;
   text?: string;
+  /** A chat line into a specific CLI session, or which transcript to push. */
+  sessionId?: string;
+  /** Which CLI owns the session — "devin" | "claude". */
+  agent?: string;
 }
 
 function clipped(v: unknown, max: number): string {
@@ -300,6 +306,9 @@ function cleanState(raw: unknown): {
   awaiting?: unknown;
   chatReply?: unknown;
   chatTail?: { role: string; text: string }[];
+  chatSessions?: { id: string; title: string; dir: string; at: number; agent: string }[];
+  chatSel?: string;
+  chatTranscript?: { id: string; lines: { role: string; text: string; name?: string }[] };
 } | null {
   if (typeof raw !== "object" || raw === null) return null;
   const src = raw as Record<string, unknown>;
@@ -327,6 +336,40 @@ function cleanState(raw: unknown): {
     const r = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;
     return { role: r.role === "assistant" ? "assistant" : "user", text: clipped(r.text, 2000) };
   });
+
+  // Remote session continuation: the CLI sessions the phone may pick (each
+  // tagged with its agent), the currently selected one, and its transcript tail.
+  const cliSessionsIn = Array.isArray(src.chatSessions) ? src.chatSessions : [];
+  out.chatSessions = cliSessionsIn.slice(0, 384).map((s) => {
+    const r = (typeof s === "object" && s !== null ? s : {}) as Record<string, unknown>;
+    return {
+      id: clipped(r.id, 64),
+      title: clipped(r.title, 120),
+      dir: clipped(r.dir, 160),
+      at: Number.isInteger(r.at) ? Number(r.at) : 0,
+      agent: clipped(r.agent, 16) || "devin",
+    };
+  });
+  if (typeof src.chatSel === "string") out.chatSel = src.chatSel.slice(0, 64);
+  const tr = src.chatTranscript;
+  if (typeof tr === "object" && tr !== null) {
+    const t = tr as Record<string, unknown>;
+    const lines = Array.isArray(t.lines) ? t.lines : [];
+    out.chatTranscript = {
+      id: clipped(t.id, 64),
+      lines: lines.slice(0, 40).map((m) => {
+        const r = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;
+        const role = r.role === "assistant" || r.role === "tool" ? r.role : "user";
+        const line: { role: string; text: string; name?: string } = {
+          role,
+          text: clipped(r.text, 4000),
+        };
+        const name = clipped(r.name, 40);
+        if (name) line.name = name;
+        return line;
+      }),
+    };
+  }
   return out;
 }
 
@@ -444,7 +487,21 @@ export class PhoneBox {
       case "chat": {
         const textIn = clipped(body.text, 4000);
         if (!textIn) return text(400, "text");
-        if (await this.enqueue({ type: "chat", at: now, text: textIn }, now)) return json({ ok: true });
+        const item: OutboxItem = { type: "chat", at: now, text: textIn };
+        const sessionId = clipped(body.sessionId, 64);
+        if (sessionId) item.sessionId = sessionId;
+        const agent = clipped(body.agent, 16);
+        if (agent) item.agent = agent;
+        if (await this.enqueue(item, now)) return json({ ok: true });
+        return text(429, "outbox full");
+      }
+      case "select": {
+        // Which CLI session's transcript the PC should push ("" = island chat).
+        const sessionId = clipped(body.sessionId, 64);
+        const agent = clipped(body.agent, 16);
+        const item: OutboxItem = { type: "chat_sel", at: now, sessionId };
+        if (agent) item.agent = agent;
+        if (await this.enqueue(item, now)) return json({ ok: true });
         return text(429, "outbox full");
       }
       case "take": {

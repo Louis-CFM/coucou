@@ -201,6 +201,8 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         Some(i) => &buf[..i],
         None => &buf[..],
     };
+    // Hand-rolled clients may prefix a UTF-8 BOM; coucou-hook never does.
+    let line = line.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(line);
     let Ok(mut payload) = serde_json::from_slice::<Value>(line) else { return };
     if !payload.is_object() {
         return;

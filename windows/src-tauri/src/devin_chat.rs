@@ -17,6 +17,11 @@ use crate::chat::ChatContext;
 use crate::cli_chat::{self, CliStatus};
 
 fn cli_path() -> Option<std::path::PathBuf> {
+    cli_path_pub()
+}
+
+/// The Devin binary — devin_sessions (remote session resume) needs it too.
+pub(crate) fn cli_path_pub() -> Option<std::path::PathBuf> {
     cli_chat::find_cli(&["devin"])
 }
 
@@ -77,6 +82,11 @@ pub async fn send(
 
 /// The answer from stdout — minus the first-run welcome banner a fresh
 /// private config gets once — or the CLI's own error line.
+/// Same answer parsing for devin_sessions::resume.
+pub(crate) fn parse_answer_pub(ok: bool, stdout: &[u8], stderr: &[u8]) -> Result<String, String> {
+    parse_answer(ok, stdout, stderr)
+}
+
 fn parse_answer(ok: bool, stdout: &[u8], stderr: &[u8]) -> Result<String, String> {
     if ok {
         let text = strip_banner(&cli_chat::strip_ansi(&String::from_utf8_lossy(stdout)));
