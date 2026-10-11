@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older: nothing is backed up (the pairing secret stays on this phone). -->
+<full-backup-content>
+    <exclude domain="root" /><exclude domain="sharedpref" /><exclude domain="database" /><exclude domain="file" />
+</full-backup-content>

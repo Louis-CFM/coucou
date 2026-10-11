@@ -35,18 +35,39 @@ protocol PillControlling {
 @MainActor
 protocol VoiceInfoProviding {
     func answer(_ topic: VoiceTopic, locale: Locale?) async -> String
-    /// Opens a compose window (Mail) — never sends: I click Send myself.
-    func composeMail(_ request: VoiceQuery.MailRequest, locale: Locale?) async -> VoiceActionResult
     func openApp(_ name: String, locale: Locale?) -> VoiceActionResult
+    // Guided email
+    /// An address for a contact name or a spoken address, nil when not found.
+    func resolveEmail(_ recipient: String) async -> String?
+    func findFile(_ name: String, folder: VoiceQuery.MailRequest.Folder?) -> URL?
+    /// The on-device model writes the text ("thank her for yesterday"); nil if unavailable.
+    func draftBody(to recipient: String, about instruction: String) async -> String?
+    /// Opens the island's mail card, filled in. Nothing is sent until I click Send.
+    func showMailCard(to address: String, subject: String, body: String, file: URL?)
+    // Web search (Settings → Voice, opt-in, the user's Anthropic API key)
+    var webSearchEnabled: Bool { get }
+    var hasWebKey: Bool { get }
+    /// A short spoken answer from Claude with web search; nil on any failure.
+    func webAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String?
+}
+
+/// One earlier exchange of the web conversation, kept in memory only.
+struct VoiceWebTurn: Equatable {
+    let question: String
+    let answer: String
 }
 
 @MainActor
 private final class NullInfo: VoiceInfoProviding {
     func answer(_ topic: VoiceTopic, locale: Locale?) async -> String { "" }
-    func composeMail(_ request: VoiceQuery.MailRequest, locale: Locale?) async -> VoiceActionResult {
-        .init(outcome: .failure, message: "")
-    }
     func openApp(_ name: String, locale: Locale?) -> VoiceActionResult { .init(outcome: .failure, message: "") }
+    func resolveEmail(_ recipient: String) async -> String? { VoiceQuery.spokenEmail(recipient) }
+    func findFile(_ name: String, folder: VoiceQuery.MailRequest.Folder?) -> URL? { nil }
+    func draftBody(to recipient: String, about instruction: String) async -> String? { nil }
+    func showMailCard(to address: String, subject: String, body: String, file: URL?) {}
+    var webSearchEnabled: Bool { false }
+    var hasWebKey: Bool { false }
+    func webAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? { nil }
 }
 
 // MARK: - Null implementations (test-safe, no AppKit)
@@ -285,10 +306,13 @@ final class VoiceActionRunner {
             return text.isEmpty ? fail("voice.unknown") : .init(outcome: .success, message: text)
 
         case .mail(let request):
-            return await info.composeMail(request, locale: commandLocale)
+            return await startMail(request)
 
         case .openApp(let name):
             return info.openApp(name, locale: commandLocale)
+
+        case .webSearch(let query):
+            return await webSearch(query)
 
         case .unknown:
             if rawTranscript.isEmpty { return fail("voice.unknown") }
@@ -304,6 +328,10 @@ final class VoiceActionRunner {
     func handleAnswer(_ transcript: String, availablePills: [PillDefinition] = []) async -> VoiceActionResult {
         guard let pending = pendingQuestion else { return fail("voice.unknown") }
         pendingQuestion = nil
+
+        if case .mailStep(let field) = pending.kind {
+            return await answerMail(field, transcript, pending: pending)
+        }
 
         guard !transcript.trimmingCharacters(in: .whitespaces).isEmpty else {
             return ok("voice.question-cancelled")
@@ -331,6 +359,11 @@ final class VoiceActionRunner {
             return fail("voice.unknown")
         }
 
+        // "What should I look up?" → the answer is the question.
+        if case .webQuery = pending.kind {
+            return await webSearch(transcript)
+        }
+
         // A playlist name is free text, not a pill.
         if case .whichPlaylist = pending.kind {
             var name = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -356,7 +389,7 @@ final class VoiceActionRunner {
         }
 
         switch pending.kind {
-        case .whichPlaylist, .switchLanguage:
+        case .whichPlaylist, .switchLanguage, .mailStep, .webQuery:
             return fail("voice.unknown")   // handled above
         case .whichPill(let add):
             return await run(add ? .pillAdd(id: entity) : .pillRemove(id: entity),
@@ -375,6 +408,202 @@ final class VoiceActionRunner {
                                          : "\(removedName) → \(addedName)"
             return .init(outcome: .success, message: msg)
         }
+    }
+
+    // MARK: - Web search
+    //
+    // Claude answers with a web search (opt-in, the user's key). The last exchanges stay
+    // in memory so "and in Paris?" or "yes, tell me more" continue the same subject; the
+    // island controller forgets them with the rest of the conversation context.
+
+    private(set) var webHistory: [VoiceWebTurn] = []
+    var hasWebThread: Bool { !webHistory.isEmpty }
+    func resetWebThread() { webHistory = [] }
+
+    func webSearch(_ query: String) async -> VoiceActionResult {
+        guard info.webSearchEnabled, info.hasWebKey else {
+            let msg = info.hasWebKey
+                ? t("La recherche web est coupée. Active-la dans Réglages, Voix.",
+                    "Web search is off. Turn it on in Settings, Voice.")
+                : t("Pour chercher sur internet, ajoute ta clé API Anthropic dans Réglages, puis active la recherche web dans Voix.",
+                    "To search the web, add your Anthropic API key in Settings, then turn on web search in Voice.")
+            return .init(outcome: .failure, message: msg)
+        }
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if q.isEmpty {
+            let text = t("Qu'est-ce que je cherche ?", "What should I look up?")
+            pendingQuestion = PendingVoiceQuestion(kind: .webQuery, text: text)
+            return .init(outcome: .question(text: text), message: text)
+        }
+        guard let answer = await info.webAnswer(q, history: webHistory, french: answersFrench),
+              !answer.isEmpty else {
+            return .init(outcome: .failure, message: t("Je n'arrive pas à chercher sur internet là, réessaie dans un instant.",
+                                                       "I can't reach the web right now, try again in a moment."))
+        }
+        webHistory.append(VoiceWebTurn(question: q, answer: answer))
+        if webHistory.count > 6 { webHistory.removeFirst(webHistory.count - 6) }
+        return .init(outcome: .success, message: answer)
+    }
+
+    // MARK: - Guided email
+    //
+    // "envoie un mail" → who? → subject? → text? (or "write it for me") → attachment?
+    // (drop it on the notch, or say no) → the island's mail card opens, filled in, and I
+    // click Send. Steps already given in the first sentence are skipped.
+
+    private var mail: VoiceQuery.MailRequest?
+    private var mailAddress: String?
+    private var mailFile: URL?
+    private var mailAttachmentAsked = false
+
+    /// True while Coucou waits for a file to be dropped on the notch.
+    var isWaitingForAttachment: Bool {
+        if case .mailStep(.attachment)? = pendingQuestion?.kind { return true }
+        return false
+    }
+
+    /// The answer Coucou waits for is free text (who, subject, what the mail says, what to
+    /// look up): the mic gives more time to pause and think before the turn ends.
+    var expectsLongAnswer: Bool {
+        switch pendingQuestion?.kind {
+        case .mailStep(let field)?: return field != .attachment
+        case .webQuery?:            return true
+        default:                    return false
+        }
+    }
+
+    /// True while Coucou waits for any answer of the voice email (who, subject, text, file).
+    var isMailInProgress: Bool {
+        if case .mailStep? = pendingQuestion?.kind { return true }
+        return false
+    }
+
+    private var answersFrench: Bool { commandLocale?.language.languageCode?.identifier == "fr" }
+    private func t(_ fr: String, _ en: String) -> String { answersFrench ? fr : en }
+
+    func startMail(_ request: VoiceQuery.MailRequest) async -> VoiceActionResult {
+        mail = request
+        mailAddress = nil
+        mailFile = nil
+        mailAttachmentAsked = false
+        return await continueMail()
+    }
+
+    /// A file dropped on the notch while Coucou asked for an attachment.
+    func attachDroppedFile(_ url: URL) async -> VoiceActionResult {
+        pendingQuestion = nil
+        mailFile = url
+        mailAttachmentAsked = true
+        return await continueMail()
+    }
+
+    private func askMail(_ field: PendingVoiceQuestion.MailField, _ text: String) -> VoiceActionResult {
+        pendingQuestion = PendingVoiceQuestion(kind: .mailStep(field), text: text)
+        return .init(outcome: .question(text: text), message: text)
+    }
+
+    private func continueMail() async -> VoiceActionResult {
+        guard var m = mail else { return fail("voice.unknown") }
+
+        if mailAddress == nil {
+            let who = m.recipient.trimmingCharacters(in: .whitespaces)
+            if who.isEmpty {
+                return askMail(.recipient, t("À qui j'envoie le mail ? Dis son nom ou son adresse.",
+                                             "Who should I send it to? Say a name or an email address."))
+            }
+            if let address = await info.resolveEmail(who) {
+                mailAddress = address
+            } else {
+                m.recipient = ""; mail = m
+                return askMail(.recipient, t("Je ne trouve pas \(who) dans tes contacts. Dis-moi son adresse mail.",
+                                             "I can't find \(who) in your contacts. What's the email address?"))
+            }
+        }
+        if let name = m.file, mailFile == nil {
+            mailAttachmentAsked = true
+            m.file = nil; mail = m
+            if let url = info.findFile(name, folder: m.folder) {
+                mailFile = url
+            } else {
+                return askMail(.attachment, t("Je ne trouve pas « \(name) ». Glisse-le sur le notch, ou dis non.",
+                                              "I can't find “\(name)”. Drop it on the notch, or say no."))
+            }
+        }
+        if m.subject == nil {
+            return askMail(.subject, t("Quel est l'objet ?", "What's the subject?"))
+        }
+        if m.body == nil {
+            if let what = m.instruction {
+                m.body = await info.draftBody(to: m.recipient, about: what) ?? VoiceQuery.simpleMail(from: what)
+                mail = m
+            } else {
+                return askMail(.body, t("Qu'est-ce que je lui dis ? Je l'écris pour toi.",
+                                        "What should the email say? I'll write it for you."))
+            }
+        }
+        if !mailAttachmentAsked {
+            mailAttachmentAsked = true
+            return askMail(.attachment, t("Une pièce jointe ? Glisse-la sur le notch, ou dis non.",
+                                          "Any attachment? Drop it on the notch, or say no."))
+        }
+
+        info.showMailCard(to: mailAddress ?? m.recipient, subject: m.subject ?? "", body: m.body ?? "", file: mailFile)
+        mail = nil
+        let with = mailFile.map { t(" avec \($0.lastPathComponent)", " with \($0.lastPathComponent)") } ?? ""
+        return .init(outcome: .success,
+                     message: t("Voilà ton mail\(with). Relis-le et clique sur Envoyer.",
+                                "Here's your email\(with). Check it and click Send."))
+    }
+
+    private func answerMail(_ field: PendingVoiceQuestion.MailField, _ transcript: String,
+                            pending: PendingVoiceQuestion) async -> VoiceActionResult {
+        guard var m = mail else { return fail("voice.unknown") }
+        // "image image": the same answer said twice in one turn counts once.
+        let said = VoiceQuery.collapseRepeat(transcript.trimmingCharacters(in: .whitespacesAndNewlines))
+
+        if said.isEmpty {
+            // Silence after "any attachment?" means none; anywhere else it cancels the mail.
+            if field == .attachment { return await continueMail() }
+            mail = nil
+            return .init(outcome: .success, message: t("OK, j'annule le mail.", "Okay, I cancelled the email."))
+        }
+        if Self.cancelsMail(said) {
+            mail = nil
+            return .init(outcome: .success, message: t("OK, j'annule le mail.", "Okay, I cancelled the email."))
+        }
+        switch field {
+        case .recipient:
+            m.recipient = VoiceQuery.recipientAnswer(said)
+            mailAddress = nil
+        case .subject:
+            m.subject = VoiceQuery.subjectAnswer(said)
+        case .body:
+            let a = VoiceQuery.bodyAnswer(said)
+            m.body = a.body
+            m.instruction = a.instruction
+        case .attachment:
+            if !Self.isNo(said), let name = VoiceQuery.attachmentAnswer(said) {
+                if let url = info.findFile(name, folder: nil) {
+                    mailFile = url
+                } else if !pending.askedAgain {
+                    var again = PendingVoiceQuestion(kind: .mailStep(.attachment),
+                        text: t("Je ne trouve pas « \(name) ». Glisse-le sur le notch, ou dis non.",
+                                "I can't find “\(name)”. Drop it on the notch, or say no."))
+                    again.askedAgain = true
+                    pendingQuestion = again
+                    return .init(outcome: .question(text: again.text), message: again.text)
+                }
+            }
+        }
+        mail = m
+        return await continueMail()
+    }
+
+    /// "Annule", "laisse tomber", "cancel"… as the whole answer stops the voice email.
+    static func cancelsMail(_ s: String) -> Bool {
+        let t = IntentParser.normalise(s)
+        return ["annule", "annuler", "annule le mail", "annule tout", "laisse tomber", "oublie",
+                "stop", "cancel", "cancel it", "never mind", "forget it"].contains(t)
     }
 
     /// Asked once, in the current answer language, when I speak another one.
