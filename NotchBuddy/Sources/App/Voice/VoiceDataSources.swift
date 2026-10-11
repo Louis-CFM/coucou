@@ -318,9 +318,16 @@ enum ContactLookup {
         return await Task.detached(priority: .userInitiated) { () -> String? in
             let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactNicknameKey,
                         CNContactEmailAddressesKey] as [CNKeyDescriptor]
-            let pred = CNContact.predicateForContacts(matchingName: trimmed)
-            let found = (try? CNContactStore().unifiedContacts(matching: pred, keysToFetch: keys)) ?? []
-            return found.lazy.compactMap { $0.emailAddresses.first?.value as String? }.first
+            // The whole name first, then its parts: "il s'appelle Enzo" must find Enzo.
+            let store = CNContactStore()
+            for candidate in VoiceQuery.contactCandidates(trimmed) {
+                let pred = CNContact.predicateForContacts(matchingName: candidate)
+                let found = (try? store.unifiedContacts(matching: pred, keysToFetch: keys)) ?? []
+                if let email = found.lazy.compactMap({ $0.emailAddresses.first?.value as String? }).first {
+                    return email
+                }
+            }
+            return nil
         }.value
     }
 }
