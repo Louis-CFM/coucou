@@ -130,10 +130,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
-  // Spotify's MPRIS interface on the session bus (src-tauri/src/spotify.rs).
-  // Windows has nothing to read it from yet.
+  // Spotify's MPRIS interface on the session bus on Linux, the System Media
+  // Transport Controls on Windows (src-tauri/src/spotify.rs, spotify_win.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

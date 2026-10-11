@@ -260,6 +260,14 @@ body {
   color: var(--ink);
 }
 
+.header-actions button.minimize {
+  transition: color 0.15s;
+}
+
+.header-actions button.minimize:hover {
+  color: var(--ink);
+}
+
 #views {
   position: relative;
   flex: 1 1 auto;
@@ -697,7 +705,10 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  /* The mini Mochi takes the first 31px (7px margin + 24px body): the label is
+     centred in the space after it, so a long name ("Claude Desktop") no longer
+     slides under the icon and loses its first letter. */
+  padding: 0 8px 0 34px;
   pointer-events: none;
 }
 

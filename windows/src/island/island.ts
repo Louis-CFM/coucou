@@ -160,6 +160,7 @@ export class Island {
       setView: (v) => this.setView(v),
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
+      minimize: () => this.minimize(),
       foldApproval: () => this.foldApproval(),
       setFocus: (id) => {
         State.setFocus(id);
@@ -422,6 +423,16 @@ export class Island {
     this.fsm.forcePetit();
   }
 
+  /**
+   * The Minimize button: the island leaves the screen entirely, and work events
+   * stop bringing it back until the pointer reaches the top edge (or an alert
+   * opens it). A card waiting for an answer is not answered: it is still there
+   * when the island comes back.
+   */
+  minimize() {
+    this.fsm.minimize();
+  }
+
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
     this.fsm.pinned = State.isPinned;
@@ -430,11 +441,13 @@ export class Island {
   }
 
   reveal() {
+    if (this.browserInFront) return;
     this.fsm.reveal();
   }
 
   /** Music started playing: the compact island, without the peek sound (musicReveal). */
   revealSilently() {
+    if (this.browserInFront) return;
     this.silentReveal = true;
     this.fsm.reveal();
     this.silentReveal = false;
@@ -723,10 +736,7 @@ export class Island {
 
   private wireInput() {
     // The wake strip is the only thing the OS can hit while the island is hidden.
-    this.wakeStrip.addEventListener("mouseenter", () => {
-      Sound.resume();
-      if (State.mode === "hidden") this.fsm.mouseEntered();
-    });
+    this.wakeStrip.addEventListener("mouseenter", () => this.wakeFromEdge());
 
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
@@ -798,6 +808,34 @@ export class Island {
     // Outside Tauri (plain browser) drive the cursor from DOM events so the
     // island can be inspected with `npm run dev`.
     if (!IS_TAURI) this.followPageCursor();
+  }
+
+  /**
+   * The pointer reached the wake strip at the top of the screen: from the
+   * strip's own `mouseenter`, or from Rust's `wake-hover` when the webview
+   * missed it. Both may fire for one push; only the first does anything.
+   */
+  wakeFromEdge() {
+    if (this.browserInFront) return;
+    Sound.resume();
+    if (State.mode === "hidden") this.fsm.mouseEntered();
+  }
+
+  /**
+   * A web browser is the app in front (Windows only). The top of the screen is
+   * its tab strip there, so the island keeps out of the way: the pointer at the
+   * top edge does not wake it, routine activity does not reveal it, and a
+   * compact island still showing hides. Alerts (a permission request, a
+   * question) open it as usual.
+   */
+  private browserInFront = false;
+
+  setBrowserForeground(on: boolean) {
+    const was = this.browserInFront;
+    this.browserInFront = on;
+    if (on && !was && this.fsm.state === "petit" && !this.fsm.pinned && !this.wasInIsland) {
+      this.fsm.forceHidden();
+    }
   }
 
   /**

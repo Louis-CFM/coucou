@@ -1,4 +1,5 @@
-// The Spotify pill — port of SpotifyController.swift, Linux only.
+// The Spotify pill — port of SpotifyController.swift. Linux below; Windows in
+// spotify_win.rs (the System Media Transport Controls).
 //
 // The Mac listens to Spotify's distributed notification and drives it over
 // AppleScript. Linux has MPRIS instead: Spotify owns
@@ -13,7 +14,8 @@
 // the card comes on screen; the page runs it on from a timestamp while playing,
 // as the Mac's `position(at:)` does. Turning the pill off ends the thread.
 //
-// Windows has no music source yet: the commands answer "nothing playing".
+// Windows reads the same player from the System Media Transport Controls: see
+// spotify_win.rs. Elsewhere the commands answer "nothing playing".
 
 // The pure parts below are only reached from the Linux client and the tests.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
@@ -414,6 +416,10 @@ fn emit_state(app: &AppHandle, state: &PlayerState) {
     let _ = app.emit_to(crate::island::WINDOW_LABEL, STATE_EVENT, state);
 }
 
+#[cfg(windows)]
+#[path = "spotify_win.rs"]
+mod win;
+
 // ── Commands ──────────────────────────────────────────────────────────────────
 
 /// The player as it is now, read again from Spotify (the card coming on
@@ -424,7 +430,11 @@ pub async fn spotify_refresh(app: AppHandle) -> Option<PlayerState> {
     {
         tauri::async_runtime::spawn_blocking(move || linux::refresh(&linux::Out::App(app))).await.ok().flatten()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(move || win::refresh(&app)).await.ok().flatten()
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = app;
         None
@@ -439,7 +449,11 @@ pub async fn spotify_control(app: AppHandle, action: String, value: Option<f64>)
     {
         tauri::async_runtime::spawn_blocking(move || linux::control(&linux::Out::App(app), &action, value)).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(move || win::control(&app, &action, value)).await.unwrap_or(false)
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = (app, action, value);
         false
@@ -454,7 +468,11 @@ pub async fn spotify_open() -> bool {
     {
         tauri::async_runtime::spawn_blocking(linux::open).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(win::open).await.unwrap_or(false)
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         false
     }
@@ -467,7 +485,11 @@ pub fn spotify_installed() -> bool {
     {
         linux::installed()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        win::installed()
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         false
     }
@@ -478,7 +500,9 @@ pub fn spotify_installed() -> bool {
 pub fn sync(app: &AppHandle, active_integrations: &[String]) {
     #[cfg(target_os = "linux")]
     linux::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    win::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
+    #[cfg(not(any(target_os = "linux", windows)))]
     let _ = (app, active_integrations);
 }
 

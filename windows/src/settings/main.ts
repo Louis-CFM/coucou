@@ -773,7 +773,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
+  // Nothing to enter: Spotify is read over D-Bus on Linux and from the media
+  // controls on Windows (see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
 
@@ -806,7 +807,20 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       if (on) {
         settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
       } else {
-        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
+        if (settings.activeIntegrations.length >= MAX_ACTIVE) {
+          // Every slot is taken: say so, rather than a switch that seems broken.
+          note.textContent = t("All {max} pill slots are in use. Turn one off to add {name}.", { max: MAX_ACTIVE, name: def.name });
+          note.style.color = "#F5A524";
+          sw.animate(
+            [{ transform: "translateX(0)" }, { transform: "translateX(-4px)" }, { transform: "translateX(4px)" }, { transform: "translateX(0)" }],
+            { duration: 260 },
+          );
+          window.setTimeout(() => {
+            note.style.color = "";
+            updateNote();
+          }, 4000);
+          return;
+        }
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);

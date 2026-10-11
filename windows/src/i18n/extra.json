@@ -1244,6 +1244,17 @@
    "ru": "Без звука",
    "id": "Bisukan"
   },
+  "Minimize": {
+   "zh-Hans": "最小化",
+   "hi": "छोटा करें",
+   "es": "Minimizar",
+   "ar": "تصغير",
+   "fr": "Réduire",
+   "bn": "ছোট করুন",
+   "pt-BR": "Minimizar",
+   "ru": "Свернуть",
+   "id": "Perkecil"
+  },
   "Mute or unmute Mochi": {
    "zh-Hans": "静音或取消静音 Mochi",
    "hi": "Mochi को म्यूट या अनम्यूट करें",
@@ -3360,6 +3371,17 @@
    "pt-BR": "Só um arquivo solto na ilha pode ser enviado com uma pergunta.",
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan."
+  },
+  "All {max} pill slots are in use. Turn one off to add {name}.": {
+   "zh-Hans": "{max} 个药丸位置已全部占用。请先关闭一个，再添加 {name}。",
+   "hi": "सभी {max} पिल स्लॉट भरे हुए हैं। {name} जोड़ने के लिए किसी एक को बंद करें।",
+   "es": "Los {max} espacios de píldoras están en uso. Desactiva una para añadir {name}.",
+   "ar": "جميع خانات الأقراص الـ{max} مستخدمة. أوقف واحدة لإضافة {name}.",
+   "fr": "Les {max} emplacements de pastilles sont pris. Désactivez-en une pour ajouter {name}.",
+   "bn": "সব {max}টি পিল স্লট ব্যবহৃত হচ্ছে। {name} যোগ করতে একটি বন্ধ করুন।",
+   "pt-BR": "Todos os {max} espaços de pílulas estão em uso. Desative uma para adicionar {name}.",
+   "ru": "Все {max} места для пилюль заняты. Отключите одну, чтобы добавить {name}.",
+   "id": "Semua {max} slot pil sedang dipakai. Matikan satu untuk menambahkan {name}."
   }
  }
 }

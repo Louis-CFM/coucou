@@ -300,6 +300,12 @@ pub fn codex_candidates() -> Vec<PathBuf> {
 /// input region decides click-through (see the top of this file).
 pub const CURSOR_POLL: bool = false;
 
+/// Not looked up on Linux: the browser rule (island::spawn_browser_watch) is
+/// Windows-only.
+pub fn foreground_exe() -> Option<String> {
+    None
+}
+
 pub fn cursor_physical() -> Option<(f64, f64)> {
     None
 }

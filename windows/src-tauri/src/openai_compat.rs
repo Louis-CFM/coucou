@@ -108,10 +108,36 @@ fn user_message(first: bool, context: Option<&ChatContext>, query: &str) -> Valu
     }
 }
 
+/// Google's Gemma models take no system instruction: through the OpenAI
+/// endpoint a `system` message makes them fail with a bare "500: Internal
+/// error encountered". They get the instructions at the top of the first
+/// user message instead.
+fn takes_system_message(p: &Provider, model: &str) -> bool {
+    !(p.id == "google" && model.to_lowercase().starts_with("gemma"))
+}
+
+/// Puts `system` in front of a user message, plain text or a list of parts.
+fn prepend_instructions(message: &mut Value, system: &str) {
+    match message.get_mut("content") {
+        Some(Value::String(text)) => *text = format!("{system}\n\n{text}"),
+        Some(Value::Array(parts)) => parts.insert(0, json!({ "type": "text", "text": system })),
+        _ => {}
+    }
+}
+
 fn request_body(p: &Provider, model: &str, system: &str, history: &[Value], user: &Value) -> Value {
-    let mut messages = vec![json!({ "role": "system", "content": system })];
+    let with_system = takes_system_message(p, model);
+    let mut messages = Vec::with_capacity(history.len() + 2);
+    if with_system {
+        messages.push(json!({ "role": "system", "content": system }));
+    }
     messages.extend(history.iter().cloned());
     messages.push(user.clone());
+    if !with_system {
+        if let Some(first) = messages.iter_mut().find(|m| m["role"] == "user") {
+            prepend_instructions(first, system);
+        }
+    }
     let mut body = json!({ "model": model, "messages": messages });
     body[p.max_tokens_field] = json!(MAX_TOKENS);
     body
@@ -151,6 +177,52 @@ fn status_error(p: &Provider, status: u16, detail: &str) -> String {
     }
 }
 
+/// Waits before each retry of a request the provider was too busy to answer.
+const RETRY_DELAYS: [Duration; 3] = [Duration::from_secs(2), Duration::from_secs(4), Duration::from_secs(8)];
+
+/// Server-side hiccups worth retrying: overloaded, bad gateway, timed out.
+fn is_transient(status: u16) -> bool {
+    matches!(status, 502 | 503 | 504)
+}
+
+/// How a request proves the key: OpenAI-style bearer, or Google's own header.
+pub(crate) enum Auth<'a> {
+    Bearer(&'a str),
+    GoogApiKey(&'a str),
+}
+
+/// POSTs `body` and returns the JSON answer. An overloaded model ("503: high
+/// demand") usually answers a few seconds later, so those are tried again
+/// before the error is shown.
+pub(crate) async fn post_json(p: &Provider, endpoint: &Url, auth: Auth<'_>, body: &Value) -> Result<Value, String> {
+    let mut attempt = 0;
+    let response = loop {
+        let request = net::client(endpoint, Duration::from_secs(90))?.post(endpoint.clone());
+        let request = match auth {
+            Auth::Bearer(key) => request.bearer_auth(key),
+            Auth::GoogApiKey(key) => request.header("x-goog-api-key", key),
+        };
+        let response = request
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
+        let status = response.status();
+        if status.is_success() {
+            break response;
+        }
+        if is_transient(status.as_u16()) && attempt < RETRY_DELAYS.len() {
+            tokio::time::sleep(RETRY_DELAYS[attempt]).await;
+            attempt += 1;
+            continue;
+        }
+        let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
+    };
+    let bytes = net::read_capped(response, net::MAX_BODY).await?;
+    serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))
+}
+
 /// One chat turn with a cloud provider.
 pub async fn send(
     chat: &Chat,
@@ -165,24 +237,17 @@ pub async fn send(
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
-    let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
 
-    let endpoint = url(p, "chat/completions")?;
-    let response = net::client(&endpoint, Duration::from_secs(90))?
-        .post(endpoint)
-        .bearer_auth(&key)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
-    let status = response.status();
-    if !status.is_success() {
-        let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
-        return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
-    }
-    let bytes = net::read_capped(response, net::MAX_BODY).await?;
-    let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
-    let text = reply_text(p, &json)?;
+    // Gemini searches Google for current information: its native API carries
+    // that tool, the OpenAI-compatible one does not.
+    let text = if crate::gemini::handles(p, model) {
+        crate::gemini::reply(p, model, &key, &turn.history, &user).await?
+    } else {
+        let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
+        let endpoint = url(p, "chat/completions")?;
+        let json = post_json(p, &endpoint, Auth::Bearer(&key), &body).await?;
+        reply_text(p, &json)?
+    };
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": text }), &plain, &text);
@@ -312,6 +377,29 @@ mod tests {
         }
         assert!(provider("anthropic").is_none());
         assert!(provider("ollama").is_none());
+    }
+
+    #[test]
+    fn gemma_gets_the_instructions_in_the_first_user_message() {
+        let history = vec![json!({"role":"user","content":"a"}), json!({"role":"assistant","content":"b"})];
+        let user = json!({"role":"user","content":"c"});
+        let body = request_body(p("google"), "gemma-4-31b-it", "sys", &history, &user);
+        let msgs = body["messages"].as_array().unwrap();
+        assert_eq!(msgs.len(), 3, "no system message");
+        assert_eq!(msgs[0], json!({"role":"user","content":"sys\n\na"}));
+        assert_eq!(msgs[2], user, "later turns are left alone");
+
+        // First turn, with a file attached: the instructions lead the parts.
+        let user = json!({"role":"user","content":[{"type":"text","text":"c"}]});
+        let body = request_body(p("google"), "gemma-3-27b-it", "sys", &[], &user);
+        assert_eq!(body["messages"][0]["content"][0], json!({"type":"text","text":"sys"}));
+        assert_eq!(body["messages"][0]["content"][1], json!({"type":"text","text":"c"}));
+
+        // Gemini, and Gemma served by anyone else, keep the system message.
+        let body = request_body(p("openrouter"), "google/gemma-3-27b-it", "sys", &[], &user);
+        assert_eq!(body["messages"][0]["role"], "system");
+        let body = request_body(p("google"), "gemini-2.5-flash", "sys", &[], &user);
+        assert_eq!(body["messages"][0]["role"], "system");
     }
 
     #[test]

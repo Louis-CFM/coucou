@@ -21,8 +21,12 @@ export class IslandStateMachine {
     this.homeDelay = seconds;
     if (this.state === "home" && this.homeCollapse != null) this.scheduleHomeCollapse();
   }
-  /** petit → hidden delay, seconds. */
-  petitToHiddenDelay = 60;
+  /**
+   * petit → hidden delay, seconds. The Mac waits 60 s, but on Windows the
+   * compact island sits over the top of whatever window is open, so it gets
+   * out of the way sooner.
+   */
+  petitToHiddenDelay = 10;
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
@@ -36,6 +40,14 @@ export class IslandStateMachine {
   openOnHover = false;
   /** Grace period after the pointer leaves a hover-opened island, seconds. */
   hoverCloseDelay = 0.6;
+  /**
+   * Put away with the Minimize button: work events no longer bring the compact
+   * island back, only the pointer at the top of the screen, an alert, or an
+   * explicit open does.
+   */
+  get minimized(): boolean {
+    return this.dismissed;
+  }
   /** Open because of a hover, until the user clicks inside it. */
   get openedByHover(): boolean {
     return this.byHover;
@@ -50,6 +62,7 @@ export class IslandStateMachine {
 
   private homeDelay = 15;
   private byHover = false;
+  private dismissed = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
@@ -117,7 +130,7 @@ export class IslandStateMachine {
 
   /** Non-alert work event: show compact from hidden. */
   reveal() {
-    if (this.state !== "hidden") return;
+    if (this.state !== "hidden" || this.dismissed) return;
     this.cancelTimers();
     this.transition("petit");
     this.schedulePetitHide();
@@ -152,6 +165,12 @@ export class IslandStateMachine {
     this.byHover = false;
     this.cancelTimers();
     this.transition("hidden");
+  }
+
+  /** The Minimize button: gone from the screen until the user asks for it back. */
+  minimize() {
+    this.forceHidden();
+    this.dismissed = true;
   }
 
   // ── Timers ──────────────────────────────────────────────────────────────────
@@ -206,6 +225,8 @@ export class IslandStateMachine {
 
   private transition(next: FsmState) {
     if (next === this.state) return;
+    // Whatever brings the island back on screen ends a minimize.
+    if (next !== "hidden") this.dismissed = false;
     const from = this.state;
     this.state = next;
     this.onTransition?.(from, next);
