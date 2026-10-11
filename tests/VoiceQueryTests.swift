@@ -67,7 +67,17 @@ struct VoiceQueryTests {
         check("recipient spoken email", VoiceQuery.recipientAnswer("tana arobase gmail point com"), "tana@gmail.com")
         check("subject answer", VoiceQuery.subjectAnswer("l'objet c'est Voilà votre image"), "Voilà votre image")
         check("no subject", VoiceQuery.subjectAnswer("pas d'objet"), "")
-        check("body verbatim", VoiceQuery.bodyAnswer("Image en 1980 par 1080").body, "Image en 1980 par 1080")
+        check("body verbatim only on request", VoiceQuery.bodyAnswer("mot pour mot : Image en 1980 par 1080").body, "Image en 1980 par 1080")
+        check("body plain answer is drafted", VoiceQuery.bodyAnswer("Image en 1980 par 1080").instruction, "Image en 1980 par 1080")
+        check("body faut dire que", VoiceQuery.bodyAnswer("Faut dire que l'image est prête").instruction, "l'image est prête")
+        check("body faut dire → no literal", VoiceQuery.bodyAnswer("Faut dire que l'image est prête").body, nil)
+        check("body tell her", VoiceQuery.bodyAnswer("tell her that the file is ready").instruction, "the file is ready")
+        check("simple mail fr", VoiceQuery.simpleMail(from: "faut dire que l'image est prête"), "Bonjour,\n\nL'image est prête.\n\nBonne journée !")
+        check("simple mail en", VoiceQuery.simpleMail(from: "the file is ready"), "Hi,\n\nThe file is ready.\n\nBest,")
+        check("looks French", VoiceQuery.looksFrench("l'image est prête"), true)
+        check("looks English", VoiceQuery.looksFrench("the image is ready"), false)
+        check("mail pour lui dire → drafted", VoiceQuery.mail(of: "envoie un mail à Tana pour lui dire que l'image est prête")?.instruction, "l'image est prête")
+        check("mail description → literal", VoiceQuery.mail(of: "envoie un mail à Tana avec le texte rendez-vous demain")?.body, "rendez-vous demain")
         check("body draft", VoiceQuery.bodyAnswer("écris-lui que je serai en retard").instruction, "je serai en retard")
         check("attachment name", VoiceQuery.attachmentAnswer("oui, Goku point png"), "Goku.png")
         // Louis's example, as dictated
@@ -96,6 +106,15 @@ struct VoiceQueryTests {
         check("ouvre l'app Notes", VoiceQuery.appToOpen("ouvre l'app Notes"), "Notes")
         check("open Safari", VoiceQuery.appToOpen("open Safari"), "Safari")
         check("parse open app", IntentParser.parse("ouvre Figma", pills: pills), .openApp(name: "Figma"))
+
+        // Guided mail: names and repeats
+        check("recipient il s'appelle", VoiceQuery.recipientAnswer("Il s'appelle Enzo"), "Enzo")
+        check("recipient son nom c'est", VoiceQuery.recipientAnswer("son nom c'est Enzo Martin"), "Enzo Martin")
+        check("recipient his name is", VoiceQuery.recipientAnswer("his name is Paul"), "Paul")
+        check("contact candidates", VoiceQuery.contactCandidates("mon pote Enzo"), ["mon pote Enzo", "Enzo"])
+        check("collapse repeat", VoiceQuery.collapseRepeat("image image"), "image")
+        check("collapse repeat two words", VoiceQuery.collapseRepeat("Voilà l'image voilà l'image"), "Voilà l'image")
+        check("no collapse", VoiceQuery.collapseRepeat("bonjour Enzo"), "bonjour Enzo")
 
         // Web search
         check("web fr lead", VoiceQuery.webQuery(of: "cherche sur internet qui a gagné l'Euro"), "qui a gagné l'Euro")

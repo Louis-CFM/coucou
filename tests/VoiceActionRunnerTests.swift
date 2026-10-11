@@ -244,7 +244,7 @@ enum VoiceActionRunnerTests {
         r = await runner.handleAnswer("it's Tana", availablePills: pills)
         check("mail asks subject", r.message.contains("subject"), true)
         r = await runner.handleAnswer("the subject is Here is your image", availablePills: pills)
-        check("mail asks text", r.message.contains("What should the message say"), true)
+        check("mail asks text", r.message.contains("What should the email say"), true)
         r = await runner.handleAnswer("write her that the image is in 1980 by 1080", availablePills: pills)
         check("mail asks attachment", r.message.contains("Any attachment"), true)
         check("waiting for a drop", runner.isWaitingForAttachment, true)

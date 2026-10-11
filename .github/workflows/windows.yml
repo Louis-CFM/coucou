@@ -28,16 +28,16 @@ jobs:
         working-directory: windows
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: windows/package-lock.json
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -83,7 +83,7 @@ jobs:
       # The repo is public, so artifacts are downloadable by any signed-in GitHub
       # user; the condition keeps them off automatic tag builds while downloads
       # are paused. retention-days: 3 limits exposure.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
         with:
           name: Coucou-Windows-setup
@@ -92,7 +92,7 @@ jobs:
 
       # MSI installer generated via WiX toolset. Bypasses NSIS extractor false-positives
       # and provides clean native Windows Installer deployment.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
         with:
           name: Coucou-Windows-msi
@@ -103,7 +103,7 @@ jobs:
       # bare binaries go up as well. hooks.rs already falls back to looking for
       # coucou-hook.exe next to coucou.exe, which is exactly this layout, so the
       # portable pair runs with working Claude Code hooks and no installer.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'workflow_dispatch' || env.PUBLISH == 'true'
         with:
           name: Coucou-Windows-portable
