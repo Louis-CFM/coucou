@@ -199,7 +199,7 @@ final class SpotifyController: ObservableObject {
         }
         isPlaying = playing
         // Reveal only on transition from not-playing → playing
-        if playing && !wasPlaying {
+        if playing && !wasPlaying && !AppState.shared.openForAlert("integration_spotify", pill: "integration_spotify") {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
         }
     }

@@ -19,6 +19,9 @@ pub struct Settings {
     /// Hovering the island opens it all the way, and it folds again shortly
     /// after the pointer leaves (the Mac's "Open on hover"). Off by default.
     pub open_on_hover: bool,
+    /// The alerts that open the island instead of peeking (src/core/alerts.ts):
+    /// "agentFinished", "agentError" or a pill ID, as the Mac's "expandOnAlert". None by default.
+    pub expand_on_alert: Vec<String>,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
@@ -127,6 +130,7 @@ impl Default for Settings {
             sound_volume: 0.12,
             auto_close_interval: 15.0,
             open_on_hover: false,
+            expand_on_alert: Vec::new(),
             absence_interval: 180.0,
             active_integrations: vec![
                 "integration_resend".into(),
@@ -419,6 +423,7 @@ mod tests {
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
   "openOnHover": true,
+  "expandOnAlert": ["agentFinished", "integration_vercel"],
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
@@ -926,6 +931,7 @@ mod tests {
                 "soundVolume",
                 "autoCloseInterval",
                 "openOnHover",
+                "expandOnAlert",
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",

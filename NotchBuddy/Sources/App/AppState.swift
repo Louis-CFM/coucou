@@ -277,6 +277,14 @@ final class AppState: ObservableObject {
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
+    // Alerts that open the island instead of peeking (AlertExpansion), persisted, none by default
+    @Published var expandOnAlert: Set<String> = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(Array(expandOnAlert)) {
+                UserDefaults.standard.set(data, forKey: "expandOnAlert")
+            }
+        }
+    }
 
     // Absence interval — persisted
     var absenceInterval: TimeInterval = 3 * 60 {
@@ -521,6 +529,8 @@ final class AppState: ObservableObject {
            let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
         if let d = ud.data(forKey: "n8nWorkflowFilter"),
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
+        if let d = ud.data(forKey: "expandOnAlert"),
+           let a = try? JSONDecoder().decode([String].self, from: d) { expandOnAlert = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
@@ -601,6 +611,21 @@ final class AppState: ObservableObject {
         tasks[idx].pillBadge = badge
     }
 
+    /// Settings asks this alert to open the island, and nothing open or waiting stands in the way.
+    func opensOnAlert(_ key: String) -> Bool {
+        expandOnAlert.contains(key) && isPresent && mode != .expanded
+            && pendingApproval == nil && pendingQuestion == nil
+    }
+
+    /// Opens the island on the pill's card when Settings asks for it; false when it did not.
+    @discardableResult
+    func openForAlert(_ key: String, pill id: String, view: IslandView = .overview) -> Bool {
+        guard opensOnAlert(key), tasks.contains(where: { $0.id == id }) else { return false }
+        setFocus(id)
+        NotificationCenter.default.post(name: .alertExpand, object: view)
+        return true
+    }
+
     /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
     func handleGitHubEvents(_ events: [GitHubEvent]) {
         guard !events.isEmpty else { return }
@@ -621,6 +646,7 @@ final class AppState: ObservableObject {
         // Only set badge when the GitHub pill is not currently in focus
         if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
         if let s = sound { SoundEngine.shared.play(s) }
+        openForAlert("integration_github", pill: "integration_github")
     }
 
     func syncMode() {
@@ -726,6 +752,17 @@ final class AppState: ObservableObject {
 }
 
 // MARK: - Supporting types
+
+/// Keys of `AppState.expandOnAlert`, besides an integration's pill ID. Same as Windows and Linux (src/core/alerts.ts).
+enum AlertExpansion {
+    static let agentFinished = "agentFinished"
+    static let agentError = "agentError"
+    /// The integration pills whose alerts can open the island.
+    static let pills: Set<String> = [
+        "integration_n8n", "integration_vercel", "integration_github", "integration_stripe",
+        "integration_music", "integration_spotify",
+    ]
+}
 
 enum PromptContext {
     case window(appName: String, title: String, url: String?)

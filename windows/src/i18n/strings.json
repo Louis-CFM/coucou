@@ -156,6 +156,28 @@
    "ru": "Агент",
    "id": "Agen"
   },
+  "Agent error": {
+   "zh-Hans": "代理出错",
+   "hi": "एजेंट त्रुटि",
+   "es": "Error del agente",
+   "ar": "خطأ في الوكيل",
+   "fr": "Erreur de l'agent",
+   "bn": "এজেন্টের ত্রুটি",
+   "pt-BR": "Erro do agente",
+   "ru": "Ошибка агента",
+   "id": "Kesalahan agen"
+  },
+  "Agent finished": {
+   "zh-Hans": "代理已完成",
+   "hi": "एजेंट समाप्त",
+   "es": "Agente terminó",
+   "ar": "انتهى الوكيل",
+   "fr": "Agent terminé",
+   "bn": "এজেন্ট শেষ করেছে",
+   "pt-BR": "Agente terminou",
+   "ru": "Агент завершил работу",
+   "id": "Agen selesai"
+  },
   "Agents": {
    "zh-Hans": "代理",
    "hi": "एजेंट्स",
@@ -166,6 +188,17 @@
    "pt-BR": "Agentes",
    "ru": "Агенты",
    "id": "Agen"
+  },
+  "Alerts that open the island": {
+   "zh-Hans": "会打开岛的提醒",
+   "hi": "अलर्ट जो आइलैंड खोलते हैं",
+   "es": "Alertas que abren la isla",
+   "ar": "التنبيهات التي تفتح الجزيرة",
+   "fr": "Alertes qui ouvrent l'île",
+   "bn": "যে সতর্কতাগুলো আইল্যান্ড খোলে",
+   "pt-BR": "Alertas que abrem a ilha",
+   "ru": "Оповещения, открывающие остров",
+   "id": "Peringatan yang membuka pulau"
   },
   "Allow": {
    "zh-Hans": "允许",

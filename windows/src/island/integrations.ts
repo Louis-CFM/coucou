@@ -4,6 +4,7 @@
 
 import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
 import { gitHubAlert, type GitHubEvent } from "../core/github";
+import { openForAlert, type AlertHost } from "../core/alerts";
 import { availablePills } from "../core/pills";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
@@ -15,7 +16,7 @@ const clearTimers = new Map<string, number>();
 
 export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
-  void onEvent<GitHubEvent[]>("github-alerts", handleGitHubAlerts);
+  void onEvent<GitHubEvent[]>("github-alerts", (events) => handleGitHubAlerts(island, events));
   void refreshConfigured();
   State.subscribe(refreshGitHubWhenShown);
 }
@@ -26,7 +27,7 @@ export function registerIntegrationHandlers(island: Island) {
  * integrations it leaves Mochi's state alone and the badge stays until the pill
  * is focused, as on macOS.
  */
-export function handleGitHubAlerts(events: GitHubEvent[]) {
+export function handleGitHubAlerts(island: AlertHost, events: GitHubEvent[]) {
   if (State.paused) return;
   const alert = gitHubAlert(events);
   if (!alert) return;
@@ -34,6 +35,7 @@ export function handleGitHubAlerts(events: GitHubEvent[]) {
   if (!task) return;
   if (State.focusId !== GITHUB) task.pillBadge = alert.badge;
   Sound.play(alert.sound);
+  openForAlert(island, GITHUB, GITHUB, "overview");
   State.notify();
 }
 
@@ -113,8 +115,10 @@ function handle(island: Island, update: IntegrationUpdate) {
       }
       Sound.play(event.success ? "finish" : "error");
       // Same as the Swift pollers: show the compact island so the badge is seen,
-      // but never steal the screen for a successful deploy.
-      island.reveal();
+      // but never steal the screen for a successful deploy unless Settings asks to.
+      if (!openForAlert(island, update.id, update.id, "overview")) {
+        island.reveal();
+      }
 
       const existing = clearTimers.get(update.id);
       if (existing != null) window.clearTimeout(existing);

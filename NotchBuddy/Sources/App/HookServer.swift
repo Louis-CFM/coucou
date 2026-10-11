@@ -531,7 +531,7 @@ final class HookServer: @unchecked Sendable {
             SoundEngine.shared.play("finish")
             if focused {
                 expandIfNeeded(to: .finished)
-            } else {
+            } else if !state.openForAlert(AlertExpansion.agentFinished, pill: agentId, view: .finished) {
                 setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
@@ -549,7 +549,7 @@ final class HookServer: @unchecked Sendable {
             SoundEngine.shared.play("error")
             if focused {
                 expandIfNeeded(to: .error)
-            } else {
+            } else if !state.openForAlert(AlertExpansion.agentError, pill: agentId, view: .error) {
                 setPillBadge(id: agentId, badge: .error)
             }
 

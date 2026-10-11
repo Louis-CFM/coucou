@@ -146,7 +146,7 @@ final class MusicController: ObservableObject {
         syncTaskName()
 
         // Reveal only on transition from not-playing → playing
-        if playing && !wasPlaying {
+        if playing && !wasPlaying && !AppState.shared.openForAlert("integration_music", pill: "integration_music") {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
         }
     }
@@ -182,7 +182,7 @@ final class MusicController: ObservableObject {
             album      = values[3].isEmpty ? nil : values[3]
             AppState.shared.musicPlaying = playing
             syncTaskName()
-            if playing && !wasPlaying {
+            if playing && !wasPlaying && !AppState.shared.openForAlert("integration_music", pill: "integration_music") {
                 NotificationCenter.default.post(name: .musicReveal, object: nil)
             }
         }
