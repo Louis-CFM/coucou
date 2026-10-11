@@ -29,3 +29,9 @@ Coucou (Custom Edition by ZirconX) is a native-like assistant app powered by Tau
 ## 3. Automation & Custom Workflows
 - **`sync_and_update.bat`**: One-click local synchronization with upstream repository (`Louis-CFM/coucou`) and automatic rebuild.
 - **`.github/workflows/sync-upstream.yml`**: Daily automated upstream sync on GitHub.
+
+---
+
+## 4. Chat Providers & Speech
+- **Antigravity (agy)**: Custom integrated provider in `windows/src/core/providers.ts` and `windows/src-tauri/src/chat.rs`. Runs `agy -p` with `CREATE_NO_WINDOW` and turn history context.
+- **Voice Wake Detection**: `windows/src/island/voice.ts` listens for wake words ("คูกู", "Coucou") to expand the prompt island. (In progress: Windows WebView2 native audio stream pipeline refinement).
