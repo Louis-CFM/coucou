@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One-colour Mochi for the status bar: a rounded blob with two eyes cut out. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M12,4.5C6.2,4.5 2.5,7.4 2.5,12.2C2.5,17 6.2,19.5 12,19.5C17.8,19.5 21.5,17 21.5,12.2C21.5,7.4 17.8,4.5 12,4.5ZM8.2,10.2C7.6,10.2 7.2,10.7 7.2,11.3L7.2,12.7C7.2,13.3 7.6,13.8 8.2,13.8C8.8,13.8 9.2,13.3 9.2,12.7L9.2,11.3C9.2,10.7 8.8,10.2 8.2,10.2ZM15.8,10.2C15.2,10.2 14.8,10.7 14.8,11.3L14.8,12.7C14.8,13.3 15.2,13.8 15.8,13.8C16.4,13.8 16.8,13.3 16.8,12.7L16.8,11.3C16.8,10.7 16.4,10.2 15.8,10.2Z" />
+</vector>

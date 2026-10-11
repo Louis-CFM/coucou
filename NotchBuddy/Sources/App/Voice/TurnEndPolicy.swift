@@ -6,13 +6,17 @@ import Foundation
 // Decides silence duration before ending a command turn.
 // Standalone compilable (used by test scripts via swiftc).
 enum TurnEndPolicy {
-    static let baseSilence:     TimeInterval = 1.2
-    static let extendedSilence: TimeInterval = 2.2
+    static let baseSilence:     TimeInterval = 1.6
+    static let extendedSilence: TimeInterval = 2.6
+    /// Answers Coucou asked for in free text (who, subject, what the mail says, what to
+    /// look up): room to think, a 2–3 s pause doesn't cut me off.
+    static let answerSilence:   TimeInterval = 3.2
     static let maxTurnTime:     TimeInterval = 15.0
 
     /// Returns the silence timeout given the current *normalised* partial transcript.
     /// Call with `IntentParser.normalise(rawTranscript)`.
-    static func silenceDelay(for transcript: String) -> TimeInterval {
+    static func silenceDelay(for transcript: String, longAnswer: Bool = false) -> TimeInterval {
+        if longAnswer { return answerSilence }
         guard !transcript.trimmingCharacters(in: .whitespaces).isEmpty else {
             return baseSilence
         }
@@ -33,6 +37,9 @@ enum TurnEndPolicy {
         "et", "puis", "ensuite", "mais", "ou",
         // EN conjunctions
         "and", "then", "but", "or",
+        // Thinking out loud ("euh…", "hmm", "genre")
+        "euh", "heu", "hum", "hmm", "mmm", "bah", "ben", "bon", "genre", "enfin", "attends",
+        "um", "uh", "uhm", "erm", "er", "like", "well", "wait",
         // FR articles / prepositions
         "de", "du", "le", "la", "les", "des", "un", "une",
         "a", "au", "aux", "sur", "dans", "avec", "pour",

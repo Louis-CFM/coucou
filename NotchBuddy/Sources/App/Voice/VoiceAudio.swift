@@ -49,6 +49,10 @@ final class VoiceAudio: @unchecked Sendable {
     /// Read on main for stall detection — nonisolated for cross-thread access.
     nonisolated(unsafe) private(set) var lastBufferTime: Date = .distantPast
 
+    /// Last time the mic heard a voice-like sound while a command was being listened to
+    /// ("euhhh" included, which the recognizer doesn't write down). Read on main.
+    nonisolated(unsafe) private(set) var lastVoicedTime: Date = .distantPast
+
     /// When true, every audio buffer is delivered via `onBuffer` regardless of VAD.
     nonisolated(unsafe) var bypassVAD: Bool = false
 
@@ -166,6 +170,7 @@ final class VoiceAudio: @unchecked Sendable {
         if bypassVAD {
             onBuffer?(deliverBuf, time)
             let power = buf.meanSquarePower   // raw format for accuracy
+            if power > vad.noisePower * 5 { lastVoicedTime = Date() }
             smoothedLevel = smoothedLevel * 0.6 + power * 0.4
             levelFrameCount += 1
             if levelFrameCount % 2 == 0 {
@@ -176,6 +181,7 @@ final class VoiceAudio: @unchecked Sendable {
         }
 
         let power = buf.meanSquarePower   // raw format for accuracy
+        if power > vad.noisePower * 5 { lastVoicedTime = Date() }
         let event = vad.feed(power)
 
         switch event {
