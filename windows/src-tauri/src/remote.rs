@@ -119,11 +119,149 @@ fn terminal_argv(terminal: &str, command: &[String]) -> Vec<String> {
         .collect()
 }
 
-/// Open terminal for a remote session: a local terminal attached to it over ssh.
+/// Who and where an ssh destination connects to. None: what ssh's config says.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[derive(Debug, PartialEq)]
+struct Destination {
+    user: Option<String>,
+    host: String,
+    port: Option<u16>,
+}
+
+/// `host`, `user@host` or `ssh://[user@]host[:port]`, read as ssh reads it.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn destination(text: &str) -> Option<Destination> {
+    let (rest, uri) = match text.strip_prefix("ssh://") {
+        Some(rest) => (rest, true),
+        None => (text, false),
+    };
+    let (user, mut host) = match rest.rsplit_once('@') {
+        Some((user, host)) => (Some(user.to_string()), host),
+        None => (None, rest),
+    };
+    let mut port = None;
+    if uri {
+        let (bare, tail) = match host.strip_prefix('[') {
+            Some(v6) => v6.split_once(']')?,
+            None => host.split_once(':').unwrap_or((host, "")),
+        };
+        let tail = tail.strip_prefix(':').unwrap_or(tail);
+        if !tail.is_empty() {
+            port = Some(tail.parse().ok()?);
+        }
+        host = bare;
+    }
+    let host = host.trim_start_matches('[').trim_end_matches(']').to_ascii_lowercase();
+    (!host.is_empty() && !host.starts_with('-')).then_some(Destination { user, host, port })
+}
+
+/// OpenSSH's options that take a value (its getopt string).
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+const SSH_VALUE_OPTIONS: &[u8] = b"BDEFIJLOPQRSWbceilmopw";
+/// An ssh with one of these holds no terminal session: a tunnel, in the background, a stdio forward, a control command.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+const SSH_NO_SESSION: &[u8] = b"NfWO";
+
+/// An `ssh` command line: where it connects and its remote command. None when it holds no session.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn ssh_call(argv: &[String]) -> Option<(Destination, String)> {
+    let (mut user, mut port): (Option<String>, Option<u16>) = (None, None);
+    let mut dest = None;
+    let mut command = Vec::new();
+    let mut options = true;
+    let mut args = argv.iter().skip(1);
+    while let Some(arg) = args.next() {
+        if !options || !arg.starts_with('-') || arg == "-" {
+            if dest.is_some() {
+                command.push(arg.as_str());
+                command.extend(args.map(String::as_str));
+                break;
+            }
+            let found = destination(arg)?;
+            user = user.or(found.user.clone());
+            port = port.or(found.port);
+            dest = Some(found);
+            continue;
+        }
+        if arg == "--" {
+            options = false;
+            continue;
+        }
+        for (i, opt) in arg.bytes().enumerate().skip(1) {
+            if SSH_NO_SESSION.contains(&opt) {
+                return None;
+            }
+            if !SSH_VALUE_OPTIONS.contains(&opt) {
+                continue;
+            }
+            let value = if i + 1 < arg.len() { &arg[i + 1..] } else { args.next()?.as_str() };
+            let (key, value) = match opt {
+                b'o' => value.split_once(|c: char| c == '=' || c.is_whitespace()).unwrap_or((value, "")),
+                b'l' => ("user", value),
+                b'p' => ("port", value),
+                _ => ("", ""),
+            };
+            let value = value.trim_start_matches(|c: char| c == '=' || c.is_whitespace());
+            // The first value given wins, as in ssh.
+            if key.eq_ignore_ascii_case("user") && user.is_none() {
+                user = Some(value.to_string());
+            } else if key.eq_ignore_ascii_case("port") && port.is_none() {
+                port = value.parse().ok();
+            }
+            break;
+        }
+    }
+    let mut found = dest?;
+    (found.user, found.port) = (user, port);
+    Some((found, command.join(" ")))
+}
+
+/// The same host, and the same port and user where both name one. Ports
+/// differ when only one names one: `localhost:2222` is not `localhost`.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn same_destination(a: &Destination, b: &Destination) -> bool {
+    let users = match (&a.user, &b.user) {
+        (Some(x), Some(y)) => x == y,
+        _ => true,
+    };
+    a.host == b.host && a.port == b.port && users
+}
+
+/// Of the ssh processes to a host — (pid, start time, remote command) — the
+/// one running the session's tmux session, else the newest.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn pick_ssh(found: &[(u32, u64, String)], tmux: &str) -> Option<u32> {
+    let names_tmux = |command: &str| {
+        !tmux.is_empty() && command.split(|c: char| !(c.is_ascii_alphanumeric() || "._-".contains(c))).any(|w| w == tmux)
+    };
+    found.iter().max_by_key(|(_, start, command)| (names_tmux(command), *start)).map(|(pid, ..)| *pid)
+}
+
+/// Brings forward a local terminal already running ssh to the session's host.
+#[cfg(target_os = "linux")]
+fn focus_open_ssh(place: &Place) -> bool {
+    let Some(want) = destination(&place.host) else { return false };
+    let found: Vec<(u32, u64, String)> = crate::platform::terminal_processes("ssh")
+        .into_iter()
+        .filter_map(|(pid, start, argv)| {
+            let (dest, command) = ssh_call(&argv)?;
+            same_destination(&dest, &want).then_some((pid, start, command))
+        })
+        .collect();
+    let Some(pid) = pick_ssh(&found, &place.tmux) else { return false };
+    let names: Vec<&str> = [place.tmux.as_str(), want.host.as_str()].into_iter().filter(|n| !n.is_empty()).collect();
+    crate::platform::focus_process_window(pid, &names)
+}
+
+/// Open terminal for a remote session: the local terminal already ssh'd into
+/// its host, else a new one attached to it over ssh.
 #[cfg(target_os = "linux")]
 pub fn open_terminal(id: &str) -> bool {
     let Some(place) = PLACES.lock().unwrap().as_ref().and_then(|p| p.get(id).cloned()) else { return false };
     let Some(command) = ssh_argv(&place) else { return false };
+    if focus_open_ssh(&place) {
+        return true;
+    }
     let terminal = std::env::var("TERMINAL")
         .ok()
         .filter(|t| !t.is_empty() && !t.contains(char::is_whitespace))
@@ -517,6 +655,81 @@ mod tests {
         assert!(ssh_argv(&no_tmux).is_none());
         remember(&mut places, "s1", "SessionEnd", "devbox", &serde_json::json!({}));
         assert!(places.is_empty());
+    }
+
+    fn argv(line: &str) -> Vec<String> {
+        line.split(' ').map(String::from).collect()
+    }
+
+    fn dest(user: Option<&str>, host: &str, port: Option<u16>) -> Destination {
+        Destination { user: user.map(String::from), host: host.into(), port }
+    }
+
+    #[test]
+    fn a_destination_is_read_as_ssh_reads_it() {
+        assert_eq!(destination("devbox"), Some(dest(None, "devbox", None)));
+        assert_eq!(destination("me@Build.Example.org"), Some(dest(Some("me"), "build.example.org", None)));
+        assert_eq!(destination("ssh://mastodon@localhost:23456"), Some(dest(Some("mastodon"), "localhost", Some(23456))));
+        assert_eq!(destination("ssh://[::1]:2222"), Some(dest(None, "::1", Some(2222))));
+        assert_eq!(destination("a@b@host"), Some(dest(Some("a@b"), "host", None)));
+        assert_eq!(destination("[fe80::1]"), Some(dest(None, "fe80::1", None)));
+        assert_eq!(destination("ssh://host:x"), None);
+        assert_eq!(destination("me@"), None);
+        assert_eq!(destination("-oProxyCommand=x"), None);
+    }
+
+    #[test]
+    fn an_ssh_command_line_gives_its_destination_and_command() {
+        let call = |line: &str| ssh_call(&argv(line));
+        assert_eq!(call("ssh devbox"), Some((dest(None, "devbox", None), String::new())));
+        // Values glued or apart, flags clustered with a value option last.
+        assert_eq!(call("ssh -p 2222 -i key me@h").unwrap().0, dest(Some("me"), "h", Some(2222)));
+        assert_eq!(call("ssh -tp2222 -l me h").unwrap().0, dest(Some("me"), "h", Some(2222)));
+        assert_eq!(call("ssh -oPort=2200 -o User=you h").unwrap().0, dest(Some("you"), "h", Some(2200)));
+        // A value is never the destination.
+        assert_eq!(call("ssh -J jump -F cfg -L 8080:x:80 -E log -b 0.0.0.0 h").unwrap().0, dest(None, "h", None));
+        // Options after the destination still count; the first value given wins.
+        assert_eq!(call("ssh me@h -p 2222 -l other").unwrap().0, dest(Some("me"), "h", Some(2222)));
+        assert_eq!(call("ssh -l me -p 1 ssh://you@h:2").unwrap().0, dest(Some("me"), "h", Some(1)));
+        // The rest is the remote command, options and all.
+        assert_eq!(call("ssh -t h tmux attach -t main").unwrap().1, "tmux attach -t main");
+        assert_eq!(call("ssh -- h -p 1").unwrap(), (dest(None, "h", None), "-p 1".to_string()));
+        // No session: a tunnel, in the background, a stdio forward, a control command.
+        for line in ["ssh -N -R x:y h", "ssh -fN h", "ssh -W h:22 jump", "ssh -O check h", "ssh -NT -o BatchMode=yes -- h"] {
+            assert_eq!(call(line), None, "{line}");
+        }
+        // Nothing to connect to.
+        assert_eq!(call("ssh"), None);
+        assert_eq!(call("ssh -p"), None);
+        assert_eq!(call("ssh -v"), None);
+    }
+
+    #[test]
+    fn a_process_matches_the_host_as_it_was_typed() {
+        let host = destination("ssh://mastodon@localhost:23456").unwrap();
+        let of = |line: &str| ssh_call(&argv(line)).unwrap().0;
+        assert!(same_destination(&of("ssh -p 23456 mastodon@localhost"), &host));
+        assert!(same_destination(&of("ssh -p 23456 LOCALHOST"), &host));
+        assert!(!same_destination(&of("ssh mastodon@localhost"), &host), "another port");
+        assert!(!same_destination(&of("ssh -p 23456 root@localhost"), &host), "another user");
+        assert!(!same_destination(&of("ssh -p 23456 otherhost"), &host));
+        let alias = destination("devbox").unwrap();
+        assert!(same_destination(&of("ssh -A me@devbox"), &alias));
+        assert!(!same_destination(&of("ssh -p 2222 devbox"), &alias));
+    }
+
+    #[test]
+    fn the_ssh_running_the_sessions_tmux_wins_else_the_newest() {
+        let found = vec![
+            (10, 500, String::new()),
+            (11, 900, "htop".to_string()),
+            (12, 100, "tmux attach -t 'work-2'".to_string()),
+            (13, 50, "tmux attach -t work-22".to_string()),
+        ];
+        assert_eq!(pick_ssh(&found, "work-2"), Some(12));
+        assert_eq!(pick_ssh(&found, ""), Some(11));
+        assert_eq!(pick_ssh(&found, "other"), Some(11));
+        assert_eq!(pick_ssh(&[], "work-2"), None);
     }
 
     #[test]

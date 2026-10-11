@@ -77,6 +77,9 @@ jobs:
       - name: Test SSH destinations
         run: bash scripts/test-ssh-destination.sh
 
+      - name: Test local ssh lookup
+        run: bash scripts/test-local-ssh.sh
+
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 

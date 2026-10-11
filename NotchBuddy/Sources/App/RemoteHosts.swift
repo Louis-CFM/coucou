@@ -513,11 +513,40 @@ enum RemoteTerminal {
         "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }
 
-    /// False when the pill shows no remote session; iTerm2 when it runs, else Terminal.
+    /// False when the pill shows no remote session. The local terminal already ssh'd into
+    /// its host comes forward; else a new one opens, in iTerm2 when it runs, else Terminal.
     @discardableResult
     static func open(pillId: String) -> Bool {
         guard let place = places[pillId],
               let cmd = command(host: place.host, cwd: place.cwd, tmux: place.tmux) else { return false }
+        let (host, tmux) = (place.host, place.tmux)
+        Task.detached {
+            let found = LocalSSH.find(host: host, tmux: tmux).map { (tty: $0.ssh.tty, owners: owners(of: $0.ssh, in: $0.all)) }
+            await MainActor.run {
+                if let found, bringForward(found.owners, tty: found.tty) { return }
+                openNew(cmd)
+            }
+        }
+        return true
+    }
+
+    /// The processes above `ssh` and, inside tmux, above the clients showing its pane: its app is one of them.
+    nonisolated static func owners(of ssh: LocalSSH.Proc, in all: [LocalSSH.Proc]) -> [Int32] {
+        let ttys = TerminalTarget.tabTTYs(for: ssh.tty)
+        let starts = [ssh.pid] + all.filter { $0.pid != ssh.pid && ttys.contains($0.tty) }.map(\.pid)
+        return starts.flatMap { LocalSSH.ancestors(of: $0, in: all) }
+    }
+
+    /// Brings forward the first app among `owners`, on the tab of `tty` in Terminal or iTerm2.
+    private static func bringForward(_ owners: [Int32], tty: String) -> Bool {
+        guard let app = owners.lazy.compactMap({ NSRunningApplication(processIdentifier: $0) })
+                .first(where: { $0.activationPolicy == .regular }),
+              let id = app.bundleIdentifier, let url = app.bundleURL else { return false }
+        ClaudeHost.bringForward(url, bundleId: id, tty: tty)
+        return true
+    }
+
+    private static func openNew(_ cmd: String) {
         let iterm = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.googlecode.iterm2").isEmpty
         let script = iterm
             ? """
@@ -536,6 +565,5 @@ enum RemoteTerminal {
         var error: NSDictionary?
         NSAppleScript(source: script)?.executeAndReturnError(&error)
         if let error { appendAppLog("nb.log", "Open terminal (remote): \(error)") }
-        return true
     }
 }

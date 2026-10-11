@@ -144,14 +144,58 @@ fn methods(session_type: &str, wayland_display: &str, display: &str, desktop: &s
 /// the one titled after `folder` if it has several. False when no way worked,
 /// so the caller falls back to VS Code.
 pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
-    let chain = still_linked(owners);
+    focus_chain(&still_linked(owners), &[folder])
+}
+
+/// Brings forward the window `pid` runs in, as for a session; `names` tell
+/// windows apart by title where nothing else can.
+pub fn focus_process_window(pid: u32, names: &[&str]) -> bool {
+    let mut owners = vec![pid];
+    owners.extend(process_ancestors(pid));
+    focus_chain(&still_linked(&owners), names)
+}
+
+fn focus_chain(chain: &[(u32, String)], names: &[&str]) -> bool {
     if chain.is_empty() {
         return false;
     }
-    if let Some(pane) = tmux::locate(&chain) {
-        return tmux::focus(&pane, folder);
+    if let Some(pane) = tmux::locate(chain) {
+        return tmux::focus(&pane, names.first().copied().unwrap_or_default());
     }
-    raise(&chain, &[folder])
+    raise(chain, names)
+}
+
+/// Our processes named `name` that have a terminal, Coucou's own left out:
+/// (pid, start time, argv).
+pub fn terminal_processes(name: &str) -> Vec<(u32, u64, Vec<String>)> {
+    let (uid, me) = (my_uid(), std::process::id());
+    let Ok(dir) = std::fs::read_dir("/proc") else { return Vec::new() };
+    dir.flatten()
+        .filter_map(|entry| entry.file_name().to_str()?.parse::<u32>().ok())
+        .filter_map(|pid| {
+            let path = format!("/proc/{pid}");
+            if std::fs::metadata(&path).ok()?.uid() != uid {
+                return None;
+            }
+            let stat = std::fs::read_to_string(format!("{path}/stat")).ok()?;
+            let (exe, _) = session_window::parse_stat(&stat)?;
+            let (tty, start) = tty_and_start(&stat)?;
+            if exe != name || tty == 0 || process_ancestors(pid).contains(&me) {
+                return None;
+            }
+            let cmdline = std::fs::read(format!("{path}/cmdline")).ok()?;
+            let argv = cmdline.strip_suffix(&[0]).unwrap_or(&cmdline).split(|b| *b == 0);
+            Some((pid, start, argv.map(|a| String::from_utf8_lossy(a).into_owned()).collect()))
+        })
+        .collect()
+}
+
+/// `/proc/<pid>/stat` → (controlling terminal, start time): fields 7 and 22.
+fn tty_and_start(line: &str) -> Option<(i64, u64)> {
+    let mut fields = line.get(line.rfind(')')? + 1..)?.split_ascii_whitespace();
+    let tty = fields.nth(4)?.parse().ok()?;
+    let start = fields.nth(14)?.parse().ok()?;
+    Some((tty, start))
 }
 
 /// Brings forward the terminal or editor window at the end of `chain`. Where
@@ -873,6 +917,18 @@ mod tests {
         assert_eq!(linked.len(), found.len());
         assert!(!found.contains(&me) && !found.contains(&1));
         assert!(still_linked(&[u32::MAX - 1]).is_empty());
+    }
+
+    #[test]
+    fn a_processes_terminal_and_start_are_read_from_its_stat() {
+        let line = "4242 (ssh) S 4200 4242 4100 34823 4242 4194304 1 0 0 0 2 1 0 0 20 0 1 0 98765 1000 100";
+        assert_eq!(tty_and_start(line), Some((34823, 98765)));
+        assert_eq!(tty_and_start("9 (a) b) S 1 9 9 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 77"), Some((0, 77)));
+        assert_eq!(tty_and_start("9 (ssh) S 1 9 9 0"), None);
+        // This test runs as us: whatever it finds is ours and outside Coucou.
+        let me = std::process::id();
+        assert!(terminal_processes("ssh").iter().all(|(pid, _, argv)| *pid != me && !argv.is_empty()));
+        assert!(!focus_process_window(u32::MAX - 1, &["x"]));
     }
 
     #[test]

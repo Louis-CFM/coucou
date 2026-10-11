@@ -816,6 +816,10 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
+        if let id = state.focusTask?.id, RemoteTerminal.open(pillId: id) {
+            collapse(allowPendingApproval: true)
+            return
+        }
         if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId, tty: state.focusTask?.sessionTTY) {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))

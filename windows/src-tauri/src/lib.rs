@@ -241,14 +241,23 @@ fn open_in_vscode(path: Option<String>) -> bool {
     false
 }
 
+/// How long the compositor gets to take the keyboard back from the island before a window is raised.
+const KEYBOARD_HANDOVER: std::time::Duration = std::time::Duration::from_millis(60);
+
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
 /// folder in VS Code, as before.
 #[tauri::command]
 fn open_session(app: AppHandle, session_id: Option<String>, path: Option<String>) -> bool {
-    // On another machine: no window here is the session's, so a local terminal attaches to it over ssh.
-    if let Some(id) = session_id.as_deref().filter(|id| remote::is_remote_session(id)) {
-        return remote::open_terminal(id);
+    // On another machine: the local terminal ssh'd into it, else a new one. Off the UI thread, as below.
+    if let Some(id) = session_id.clone().filter(|id| remote::is_remote_session(id)) {
+        #[cfg(target_os = "linux")]
+        focus_window(app, false);
+        std::thread::spawn(move || {
+            std::thread::sleep(KEYBOARD_HANDOVER);
+            remote::open_terminal(&id);
+        });
+        return true;
     }
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
         return open_in_vscode(path);
@@ -270,7 +279,7 @@ fn open_session(app: AppHandle, session_id: Option<String>, path: Option<String>
         // The island gives the keyboard back first, or the compositor hands it to the window it had before.
         focus_window(app, false);
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(60));
+            std::thread::sleep(KEYBOARD_HANDOVER);
             if platform::focus_session_window(&owners, &folder) {
                 return;
             }
