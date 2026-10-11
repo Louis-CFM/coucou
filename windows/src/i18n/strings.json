@@ -1938,6 +1938,17 @@
    "ru": "На прошлой неделе активности не было",
    "id": "Tidak ada aktivitas minggu lalu"
   },
+  "No activity since Coucou started": {
+   "zh-Hans": "自 Coucou 启动以来没有活动",
+   "hi": "Coucou शुरू होने के बाद से कोई गतिविधि नहीं",
+   "es": "Sin actividad desde que se abrió Coucou",
+   "ar": "لا نشاط منذ تشغيل Coucou",
+   "fr": "Aucune activité depuis le lancement de Coucou",
+   "bn": "Coucou চালু হওয়ার পর থেকে কোনো কার্যকলাপ নেই",
+   "pt-BR": "Nenhuma atividade desde que o Coucou abriu",
+   "ru": "Нет активности с запуска Coucou",
+   "id": "Tidak ada aktivitas sejak Coucou dibuka"
+  },
   "No calls scheduled": {
    "zh-Hans": "没有计划的通话",
    "hi": "कोई कॉल निर्धारित नहीं",
@@ -3378,6 +3389,17 @@
    "pt-BR": "Tarefas",
    "ru": "Задачи",
    "id": "Tugas"
+  },
+  "Terminal": {
+   "zh-Hans": "终端",
+   "hi": "टर्मिनल",
+   "es": "Terminal",
+   "ar": "الطرفية",
+   "fr": "Terminal",
+   "bn": "টার্মিনাল",
+   "pt-BR": "Terminal",
+   "ru": "Терминал",
+   "id": "Terminal"
   },
   "Test the voice": {
    "zh-Hans": "试听声音",

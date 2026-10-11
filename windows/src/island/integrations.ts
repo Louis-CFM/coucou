@@ -62,8 +62,10 @@ export async function refreshConfigured() {
       case "hooks":
         // Without an answer from Rust (a plain browser), the Claude Code pill
         // falls back to what the settings say about its hooks.
-        configured = hooks?.[def.id] ??
-          (def.id === "integration_claude" ? State.settings.hooksInstalled : false);
+        // Both Claude Code pills stand on the same hooks.
+        const claude = def.id === "integration_claude" || def.id === "workspace_claude";
+        configured = hooks?.[claude ? "integration_claude" : def.id] ??
+          (claude ? State.settings.hooksInstalled : false);
         break;
       case "server":
         // A local model server counts once the chat is connected to it.

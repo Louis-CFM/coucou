@@ -368,7 +368,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
-          language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
+          language(), task.id, task.sessionId, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
         ].join("~");
@@ -389,10 +389,12 @@ function buildOverview(actions: ViewActions): ViewHost {
       highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
       shownSelection = State.cardSelection;
 
-      const others = State.otherTasks.slice(0, 4);
+      // Two columns of four fit the card; past that the grid scrolls.
+      const others = State.otherTasks.slice(0, 8);
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;
+        pills.classList.toggle("many", others.length > 4);
         clear(pills);
         spotifyPill = null;
         for (const t of others) {

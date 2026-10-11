@@ -1741,10 +1741,12 @@ struct IntegrationCardView: View {
     @State private var githubDetailSection: GitHubDetailSection = .myPRs
 
     private var isConfigured: Bool {
+        // A session's own pill is Claude Code too.
+        if task.id.hasPrefix(PillCatalog.sessionPillPrefix) { return HookServer.claudeHooksInstalled() }
         switch task.id {
         // Cursor sessions are Claude Code running in Cursor's integrated terminal,
         // so the Cursor pill is set up exactly when the Claude Code hooks are.
-        case "integration_claude", "agent_cursor":
+        case "integration_claude", "workspace_claude", "agent_cursor":
             return HookServer.claudeHooksInstalled()
         case "agent_codex":
             #if !APPSTORE
@@ -1909,7 +1911,9 @@ struct IntegrationCardView: View {
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
         #endif
-        if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
+        if PillCatalog.definition(for: task.id)?.comingSoon == true || appState.quietSessionPills.contains(task.id) {
+            return Color(hex: "#6B7079")
+        }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
                    : nil
@@ -1933,13 +1937,15 @@ struct IntegrationCardView: View {
         // Pills driven by hooks, never by a key: the idle card reports whether the
         // hooks are in place. integration_claude read "Connected · loading…" with
         // nothing left to load — a session replaces this card, it never resolves here.
-        let isHooks = task.id == "integration_claude" || task.id == "agent_gemini"
+        let isHooks = task.id == "integration_claude" || task.id == "workspace_claude"
+                   || task.id.hasPrefix(PillCatalog.sessionPillPrefix) || task.id == "agent_gemini"
                    || task.id == "agent_antigravity"  || task.id == "agent_cursor"
                    || task.id == "agent_codex"        || task.id == "agent_copilot"
                    || task.id == "agent_muse"         || task.id == "agent_opencode"
                    || task.id == "agent_amp"          || task.id == "agent_hermes"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
+            if isHooks && appState.quietSessionPills.contains(task.id) { return String(localized: "No activity since Coucou started") }
             if isHooks { return String(localized: "Hooks installed") }
             // No key or poller behind this pill: it only reflects hook events.
             if task.id == "agent_claude-desktop" { return String(localized: "Ready · no setup needed") }
@@ -2044,7 +2050,8 @@ struct IntegrationCardView: View {
                         .foregroundColor(Color(hex: "#F5F6F8"))
                         .lineLimit(1).truncationMode(.tail)
                         .layoutPriority(1)
-                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle ?? "Agent")
+                    Text(PillCatalog.definition(for: task.id)?.sessionSubtitle
+                         ?? (task.id.hasPrefix(PillCatalog.sessionPillPrefix) ? "Claude Code" : "Agent"))
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                         .lineLimit(1).truncationMode(.tail)
@@ -2079,7 +2086,8 @@ struct IntegrationCardView: View {
                                                          : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
-                    Text(PillCatalog.definition(for: task.id)?.subtitle ?? "Integration")
+                    Text(PillCatalog.definition(for: task.id)?.subtitle
+                         ?? (task.id.hasPrefix(PillCatalog.sessionPillPrefix) ? "Claude Code" : "Integration"))
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                     Spacer(minLength: 2)
@@ -3870,8 +3878,9 @@ struct AgentPillsView: View {
         state.tasks.filter { $0.id != state.focusId }
     }
 
+    // Two columns of four fit the card; past that the grid scrolls.
     private var displayTasks: [AgentTask] {
-        Array(others.prefix(4))
+        Array(others.prefix(8))
     }
 
     private let columns = [
@@ -3880,47 +3889,58 @@ struct AgentPillsView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(displayTasks) { task in
-                    #if !APPSTORE
-                    if task.id == "integration_music" {
-                        MusicPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
-                    } else if task.id == "integration_spotify" {
-                        SpotifyPill(task: task, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
-                    } else {
-                        AgentPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
+        if displayTasks.count > 4 {
+            ScrollView(.vertical, showsIndicators: false) {
+                grid.padding(.top, 6)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                grid
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var grid: some View {
+        LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(displayTasks) { task in
+                #if !APPSTORE
+                if task.id == "integration_music" {
+                    MusicPill(task: task, state: state, swapping: $swapping) {
+                        swapping = true
+                        state.setFocus(task.id)
+                        SoundEngine.shared.play("blip")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
-                    #else
+                } else if task.id == "integration_spotify" {
+                    SpotifyPill(task: task, swapping: $swapping) {
+                        swapping = true
+                        state.setFocus(task.id)
+                        SoundEngine.shared.play("blip")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                    }
+                } else {
                     AgentPill(task: task, state: state, swapping: $swapping) {
                         swapping = true
                         state.setFocus(task.id)
                         SoundEngine.shared.play("blip")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
-                    #endif
                 }
+                #else
+                AgentPill(task: task, state: state, swapping: $swapping) {
+                    swapping = true
+                    state.setFocus(task.id)
+                    SoundEngine.shared.play("blip")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                }
+                #endif
             }
-            .padding(.horizontal, 8)
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 8)
     }
 }
 
@@ -3962,6 +3982,8 @@ struct AgentPill: View {
                                          : Color(hex: "#6B7079"))
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .padding(.leading, 34)
+                        .padding(.trailing, 10)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .frame(maxWidth: .infinity)

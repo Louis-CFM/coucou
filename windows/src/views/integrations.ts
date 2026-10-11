@@ -86,7 +86,10 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
   const info = State.integrations[task.id];
   const configured = info?.configured ?? false;
   const def = pillDefinition(task.id);
-  const status = idleStatus(task.id, info, State.settings.model);
+  // A session found running that has sent nothing since Coucou started: its key is still `pid-<pid>`.
+  const status = task.sessionId?.startsWith("pid-")
+    ? { label: t("No activity since Coucou started"), color: "#6B7079" }
+    : idleStatus(task.id, info, State.settings.model);
 
   const actions = h("div", { class: "int-actions" });
   if (task.id === "integration_claude") {
@@ -96,6 +99,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         style: `color:${task.color}b3`,
         text: t("Open Visual Studio Code"),
         onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
+      }),
+    );
+  } else if (task.id === "workspace_claude") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}b3`,
+        text: t("Open terminal"),
+        onclick: () => void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null),
       }),
     );
   } else if (task.id === "agent_claude-desktop") {

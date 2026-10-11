@@ -223,7 +223,8 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
+    // VSCodium is the same editor under another name.
+    if let Some(code) = platform::find_on_path("code").or_else(|| platform::find_on_path("codium")) {
         let mut cmd = Command::new(code);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
@@ -236,6 +237,38 @@ fn open_in_vscode(path: Option<String>) -> bool {
         platform::reveal_folder(p);
     }
     false
+}
+
+/// A Claude Code session found running, before any hook event of its own.
+#[derive(Serialize)]
+struct ClaudeProcess {
+    pid: u32,
+    cwd: String,
+    /// What to call it: the tmux session the user named, else its folder.
+    name: String,
+}
+
+/// The Claude Code sessions running now, so each has its pill from the start
+/// rather than from its next event. Each is remembered by `pid-<pid>` for
+/// "Open terminal" until its hook names its session.
+#[tauri::command]
+async fn claude_sessions() -> Vec<ClaudeProcess> {
+    // Off the main thread: each tmux question can take up to 2 s.
+    tauri::async_runtime::spawn_blocking(|| {
+        platform::claude_processes()
+            .into_iter()
+            .map(|(pid, cwd)| {
+                let mut owners = vec![pid];
+                owners.extend(platform::window_owners(&platform::process_ancestors(pid)));
+                session_window::remember(&format!("pid-{pid}"), owners);
+                let name = platform::tmux_session_name(pid)
+                    .unwrap_or_else(|| session_window::folder_name(&cwd).to_string());
+                ClaudeProcess { pid, cwd, name }
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session
@@ -260,9 +293,14 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
-                open_in_vscode(path);
+            if platform::focus_session_window(&owners, &folder) {
+                return;
             }
+            if platform::runs_in_terminal(&owners) {
+                crate::log::line("open terminal: its window could not be raised".to_string());
+                return;
+            }
+            open_in_vscode(path);
         });
         true
     }
@@ -289,7 +327,8 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
+    // VSCodium is the same editor under another name.
+    if let Some(code) = platform::find_on_path("code").or_else(|| platform::find_on_path("codium")) {
         let mut cmd = Command::new(code);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
@@ -713,6 +752,7 @@ pub fn run() {
             chat_models,
             local_connect,
             local_set_key,
+            claude_sessions,
             chat_reset,
             ingest_file,
             secret_present,
