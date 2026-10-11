@@ -219,6 +219,29 @@ pub async fn send(
     Err(format!("Unknown chat provider: {provider}"))
 }
 
+/// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as
+/// [`send`], with no file or window context and no `AppHandle`. `on_delta` gets the streamed
+/// text so far, which only the model servers produce; the cloud providers answer all at once.
+pub async fn send_for_phone(
+    settings: &Settings,
+    chat: &Chat,
+    provider: &str,
+    model: &str,
+    query: String,
+    on_delta: impl FnMut(String),
+) -> Result<ChatReply, String> {
+    if provider == ANTHROPIC {
+        return claude::send(chat, model, query, None).await;
+    }
+    if let Some(p) = openai_compat::provider(provider) {
+        return openai_compat::send(chat, p, model, query, None).await;
+    }
+    if let Some(server) = local_chat::server(settings, provider) {
+        return local_chat::send_with(chat, &server, model, query, None, on_delta).await;
+    }
+    Err(format!("Unknown chat provider: {provider}"))
+}
+
 /// The models `provider` offers. Asked only when the user opens the picker on
 /// that provider, and only once it has a key (or, for a local server, an
 /// address): nothing is sent anywhere before that.
