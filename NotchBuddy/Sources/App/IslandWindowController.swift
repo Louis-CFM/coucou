@@ -826,7 +826,7 @@ final class IslandWindowController: NSWindowController {
             return
         }
         // A Conductor session: straight back to its workspace and chat (the card's own session when one is up)
-        if let task = state.focusTask, task.id == "integration_claude" {
+        if let task = state.focusTask, ClaudeHost.recordsHost(pillId: task.id) {
             let link = state.cardLink ?? SessionLink(hostApp: task.hostApp, hostURL: task.hostURL)
             if link.hostURL != nil, ClaudeHost.activate(link.hostApp, sessionURL: link.hostURL) {
                 collapse(allowPendingApproval: true)

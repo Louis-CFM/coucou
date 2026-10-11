@@ -453,6 +453,7 @@ final class HookServer: @unchecked Sendable {
         if isCodexEvent {
             agentId = "agent_codex"
             isExternalAgent = false
+            hostApp = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)?.bundleId
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
@@ -609,7 +610,7 @@ final class HookServer: @unchecked Sendable {
                                     overridingOwner: true)
             }
             // ...and keeps its link if another session speaks once the card is up
-            if agentId == "integration_claude" { state.finishedLink = SessionLink(hostApp: hostApp, hostURL: display.hostURL) }
+            if ClaudeHost.recordsHost(pillId: agentId) { state.finishedLink = SessionLink(hostApp: hostApp, hostURL: display.hostURL) }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
@@ -1078,7 +1079,7 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
         if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp; state.tasks[idx].hostURL = owner.hostURL }
+        if ClaudeHost.recordsHost(pillId: pill) { state.tasks[idx].hostApp = owner.hostApp; state.tasks[idx].hostURL = owner.hostURL }
         if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
@@ -1097,7 +1098,7 @@ final class HookServer: @unchecked Sendable {
             guard overridingOwner || sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp; state.tasks[idx].hostURL = hostURL }
+            if ClaudeHost.recordsHost(pillId: id) { state.tasks[idx].hostApp = hostApp; state.tasks[idx].hostURL = hostURL }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1107,7 +1108,7 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp; task.hostURL = hostURL }
+        if ClaudeHost.recordsHost(pillId: id) { task.hostApp = hostApp; task.hostURL = hostURL }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)

@@ -262,6 +262,8 @@ struct OverviewView: View {
             #endif
         case "agent_codex":
             #if !APPSTORE
+            // A session from a terminal or Conductor: back to it, else the Codex app
+            if ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) { return }
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.openai.codex") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
@@ -693,7 +695,7 @@ struct ErrorView: View {
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
 private func openSessionApp(_ task: AgentTask?, link: SessionLink? = nil) {
     let link = link ?? SessionLink(hostApp: task?.hostApp, hostURL: task?.hostURL)
-    if !(task?.id == "integration_claude" && ClaudeHost.activate(link.hostApp, sessionURL: link.hostURL)),
+    if !(ClaudeHost.recordsHost(pillId: task?.id) && ClaudeHost.activate(link.hostApp, sessionURL: link.hostURL)),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }

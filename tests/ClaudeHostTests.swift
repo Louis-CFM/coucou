@@ -32,6 +32,12 @@ enum ClaudeHostTests {
         check("editor session → VS Code", ClaudeHost.pillName(hostApp: nil) == "VS Code")
         check("terminal session → Claude Code", ClaudeHost.pillName(hostApp: "dev.warp.Warp-Stable") == "Claude Code")
 
+        print("ClaudeHost.recordsHost")
+        check("Claude Code keeps its host", ClaudeHost.recordsHost(pillId: "integration_claude"))
+        check("Codex keeps its host", ClaudeHost.recordsHost(pillId: "agent_codex"))
+        check("Cursor doesn't", !ClaudeHost.recordsHost(pillId: "agent_cursor"))
+        check("no pill doesn't", !ClaudeHost.recordsHost(pillId: nil))
+
         print("ClaudeHost.sessionURL")
         let conductor: [String: Any] = ["bundle_id": "com.conductor.app",
                                         "conductor_workspace_id": "a1f5ba4e-8f43-4648-9e05-4a87c51f5168",
