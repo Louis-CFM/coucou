@@ -109,7 +109,11 @@ struct ClaudeHost: Equatable {
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
             NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
-                guard let running else { return }
+                // The link failed to open (app moved, launch refused): bring the host forward without it.
+                guard let running else {
+                    DispatchQueue.main.async { activate(id) }
+                    return
+                }
                 running.activate()
                 switchToDesktop(of: running)
             }
