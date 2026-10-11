@@ -7,6 +7,14 @@
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
 - Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
 
+## 0.3.0 — October 11, 2026
+
+- **« OK Coucou »: talk to Mochi** *(macOS, GitHub build)* — say « OK Coucou » and ask anything, in English or French. Claude is Coucou's brain, with your own Anthropic API key: add or swap pills, play music, ask how much you made on Stripe today, your GitHub stars, your Vercel deploys, what your agents are doing, search the web, open an app. It keeps the thread, asks back when something is missing, and listens again for your answer. Speech recognition runs on your Mac; your words and the data Coucou reads to answer go to Anthropic, never audio. Turn it on in Settings → Voice
+- **Emails by voice** — « send an email to Enzo to tell him the image is ready »: Coucou finds the address in your contacts, writes the email, opens it in the notch, and you drop an attachment on the notch if you want one. Nothing is sent until you click Send
+- **Mochi lives the conversation** — he listens (his eyes follow your voice), thinks, talks back, and winks when he's done. The answer shows under the notch: click it to read it in full. You can open the island while he talks
+- **His voice** — the Mac's voices with Woman / Man and pitch, the best installed voice picked automatically (Premium voices recommended), or ElevenLabs with your own key
+- **Smoother and lighter** — animations at the display's full rate, a hidden island that really rests, and less background work everywhere (pollers, logs, Mochi on the desktop)
+
 ## Windows and Linux 0.3.0 — October 9, 2026
 
 The first Linux release since 0.1.1, so on Linux it also brings everything in Windows and Linux 0.2.0 below.

@@ -365,6 +365,7 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor [weak self] in
                 // Genuine wake phrase (not programmatic re-listen) → clear any pending question
                 AppState.shared.voiceActive = true
+                AppState.shared.voiceSubState = .listening
                 self?.voiceContextExpiry?.cancel()
                 if !isDirect {
                     VoiceActionRunner.shared.pendingQuestion = nil
@@ -1543,6 +1544,9 @@ extension IslandWindowController {
             return
         }
 
+        // Mochi transitions to "thinking" while we process
+        AppState.shared.voiceSubState = .thinking
+
         // ── Claude as the brain (Settings → Voice, the user's Anthropic key) ───────
         // Every phrase goes to Claude, which acts with Coucou's tools. Only when Claude
         // can't be reached does the phrase parser below take over.
@@ -1678,7 +1682,8 @@ extension IslandWindowController {
         }
 
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence) with streaming TTS.
-        if case .unknown = intent, !askedBack {
+        // (Not when Claude is the brain and just couldn't be reached: no local model then.)
+        if case .unknown = intent, !askedBack, !ClaudeVoiceBrain.isActive {
             let tBrain0  = Date()
             let brainWarm = VoiceBrain.shared.isSessionReady
             var brainUsed = false
@@ -1843,6 +1848,7 @@ extension IslandWindowController {
         let asks = Self.isQuestion(result)
         let speaker = VoiceSpeaker.shared
         if VoiceSettings.speakEnabled {
+            AppState.shared.voiceSubState = .speaking
             speaker.speak(result.message, locale: VoiceSettings.answerLocale)
             speaker.onDidFinish = { [weak self] in
                 Task { @MainActor in self?.finishVoiceTurn(expectAnswer: asks) }
@@ -1885,7 +1891,7 @@ extension IslandWindowController {
     private func finishVoiceTurn(expectAnswer: Bool) {
         // First time I speak one language and Coucou answers in another: offer once to
         // answer in mine ("You're speaking French. Want me to answer in French?").
-        if !expectAnswer, !VoiceSettings.languageOfferDone,
+        if !expectAnswer, !ClaudeVoiceBrain.isActive, !VoiceSettings.languageOfferDone,
            let spoken = VoiceEngine.shared.speechLocale?.language.languageCode?.identifier,
            ["fr", "en"].contains(spoken), spoken != VoiceSettings.language,
            VoiceEngine.shared.isEnabled {
@@ -1907,8 +1913,9 @@ extension IslandWindowController {
         // (unless that reply leads to another question, e.g. "which one do I remove?").
         if expectAnswer && VoiceEngine.shared.isEnabled {
             isInConversation = true
-            VoiceBrain.shared.beginConversation()
+            if !ClaudeVoiceBrain.isActive { VoiceBrain.shared.beginConversation() }
             if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
+            AppState.shared.voiceSubState = .listening
             VoiceEngine.shared.startConversationTurn(firstWordTimeout: Self.answerWait(8.0))
         } else {
             closeVoiceTurn()
@@ -2030,6 +2037,12 @@ extension IslandWindowController {
         VoiceCaptionManager.shared.hide(after: delay)
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
+            // Mochi winks as the exchange ends — but only when the sub-state is still .speaking
+            // (not if voiceActive was already cleared by a collapse).
+            if AppState.shared.voiceActive {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.wink)
+            }
+            AppState.shared.voiceSubState = .none
             AppState.shared.voiceResult = nil
             AppState.shared.voiceActive = false
             if AppState.shared.voiceMailDraft != nil {
@@ -2038,6 +2051,8 @@ extension IslandWindowController {
                 self.expand(to: .mail)
                 return
             }
+            // If the island is already expanded (user opened it during voice): stay open.
+            guard self.fsm.state != .home else { return }
             // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
             AppState.shared.view = self.defaultView()
             self.fsm.voiceFinished()

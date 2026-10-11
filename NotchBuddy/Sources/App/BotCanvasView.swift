@@ -86,7 +86,14 @@ struct BotCanvasView: View {
                     let target = CGFloat(VoiceEngine.shared.micLevel)
                     engine.listeningLevel += (target - engine.listeningLevel) * 0.12
                     engine.listeningHasWords = !VoiceEngine.shared.commandTranscript.isEmpty
+                } else if state.voiceActive && state.mode == .compact {
+                    // Compact voice: feed mic level for the listening sub-state eye pulse.
+                    let target = CGFloat(VoiceEngine.shared.micLevel)
+                    engine.listeningLevel += (target - engine.listeningLevel) * 0.12
                 }
+                // Propagate voice sub-state every frame so BotEngine gets transitions promptly.
+                if state.voiceActive { engine.voiceSubState = state.voiceSubState }
+                else if engine.voiceSubState != .none { engine.voiceSubState = .none }
                 #endif
 
                 MochiFrameClock.advance(engine)

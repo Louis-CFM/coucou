@@ -440,6 +440,9 @@ final class AppState: ObservableObject {
     /// True from "OK Coucou" until Coucou has finished answering (island stays compact).
     /// Drives Mochi's single attentive pose for the whole exchange.
     @Published var voiceActive = false
+    /// Listening / thinking / speaking — drives per-frame Mochi animations.
+    /// Set by IslandWindowController; read by BotCanvasView each display frame.
+    @Published var voiceSubState: BotVoiceSubState = .none
     #endif
 
     // Claude plan gauge (from statusline hook)
