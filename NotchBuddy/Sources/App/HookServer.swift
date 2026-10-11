@@ -478,7 +478,7 @@ final class HookServer: @unchecked Sendable {
             session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, bundleId: bundleId)
+            hostApp: hostApp, hostURL: ClaudeHost.sessionURL(from: payload), bundleId: bundleId)
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -861,6 +861,7 @@ final class HookServer: @unchecked Sendable {
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
+                                                        hostURL: ClaudeHost.sessionURL(from: payload),
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .approval)
@@ -995,6 +996,7 @@ final class HookServer: @unchecked Sendable {
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
+                                                        hostURL: ClaudeHost.sessionURL(from: payload),
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
@@ -1048,8 +1050,8 @@ final class HookServer: @unchecked Sendable {
             upsertExternalAgent(id: pill, name: externalAgent)
         } else {
             upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
-                                hostApp: display.hostApp, bundleId: display.bundleId,
-                                session: display.session)
+                                hostApp: display.hostApp, hostURL: display.hostURL,
+                                bundleId: display.bundleId, session: display.session)
         }
     }
 
@@ -1063,7 +1065,7 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
         if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
+        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp; state.tasks[idx].hostURL = owner.hostURL }
         if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
@@ -1074,13 +1076,13 @@ final class HookServer: @unchecked Sendable {
     /// still running), so a second session under the same client cannot rename the card,
     /// or send "Open terminal" elsewhere, out from under the first.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, hostURL: URL? = nil, bundleId: String = "", session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp; state.tasks[idx].hostURL = hostURL }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1090,7 +1092,7 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if id == "integration_claude" { task.hostApp = hostApp; task.hostURL = hostURL }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
@@ -3309,6 +3311,9 @@ def main():
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+        payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+        payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
         if 'cwd' not in payload or not payload['cwd']:
             paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
             if isinstance(paths, list) and paths:
@@ -3376,6 +3381,9 @@ def main():
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
     if 'cwd' not in payload or not payload['cwd']:
         paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:
@@ -3616,6 +3624,9 @@ def main():
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+        # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+        payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+        payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
         if 'cwd' not in payload or not payload['cwd']:
             paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
             if isinstance(paths, list) and paths:
@@ -3682,6 +3693,9 @@ def main():
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
     if 'cwd' not in payload or not payload['cwd']:
         paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
         if isinstance(paths, list) and paths:

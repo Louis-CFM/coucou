@@ -42,6 +42,8 @@ struct PillSessionRegistry {
         var cwd: String
         /// Terminal the session runs in (bundle id), for "Open terminal".
         var hostApp: String? = nil
+        /// Link back to the session inside its host (a Conductor workspace and chat).
+        var hostURL: URL? = nil
         /// Bundle id of the client (VS Code, Cursor…) that sent the event.
         var bundleId: String = ""
     }
@@ -50,6 +52,7 @@ struct PillSessionRegistry {
         var projectName: String
         var cwd: String
         var hostApp: String?
+        var hostURL: URL?
         var bundleId: String
         var isWorking: Bool
         var lastSeen: Date
@@ -76,11 +79,12 @@ struct PillSessionRegistry {
         }
         var session = p.sessions[display.session]
             ?? Session(projectName: display.projectName, cwd: display.cwd,
-                       hostApp: display.hostApp, bundleId: display.bundleId,
-                       isWorking: false, lastSeen: now)
+                       hostApp: display.hostApp, hostURL: display.hostURL,
+                       bundleId: display.bundleId, isWorking: false, lastSeen: now)
         session.projectName = display.projectName
         if !display.cwd.isEmpty { session.cwd = display.cwd }
         if display.hostApp != nil { session.hostApp = display.hostApp }
+        if display.hostURL != nil { session.hostURL = display.hostURL }
         if !display.bundleId.isEmpty { session.bundleId = display.bundleId }
         if working { session.isWorking = true }
         session.lastSeen = now
@@ -128,7 +132,8 @@ struct PillSessionRegistry {
         guard let p = pills[pill], let id = p.order.first,
               let session = p.sessions[id] else { return nil }
         return Display(session: id, projectName: session.projectName, cwd: session.cwd,
-                       hostApp: session.hostApp, bundleId: session.bundleId)
+                       hostApp: session.hostApp, hostURL: session.hostURL,
+                       bundleId: session.bundleId)
     }
 
     /// Whether this session may write the pill's name and cwd. True when the

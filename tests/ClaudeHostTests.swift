@@ -32,6 +32,23 @@ enum ClaudeHostTests {
         check("editor session → VS Code", ClaudeHost.pillName(hostApp: nil) == "VS Code")
         check("terminal session → Claude Code", ClaudeHost.pillName(hostApp: "dev.warp.Warp-Stable") == "Claude Code")
 
+        print("ClaudeHost.sessionURL")
+        let conductor: [String: Any] = ["bundle_id": "com.conductor.app",
+                                        "conductor_workspace_id": "a1f5ba4e-8f43-4648-9e05-4a87c51f5168",
+                                        "conductor_session_id": "8b2c171b-1417-4340-a5a6-61fb8d8e99f9"]
+        check("Conductor workspace and chat",
+              ClaudeHost.sessionURL(from: conductor)?.absoluteString
+              == "conductor://workspace?id=a1f5ba4e-8f43-4648-9e05-4a87c51f5168&session=8b2c171b-1417-4340-a5a6-61fb8d8e99f9")
+        var noSession = conductor; noSession["conductor_session_id"] = ""
+        check("Conductor workspace only",
+              ClaudeHost.sessionURL(from: noSession)?.absoluteString == "conductor://workspace?id=a1f5ba4e-8f43-4648-9e05-4a87c51f5168")
+        var noWorkspace = conductor; noWorkspace["conductor_workspace_id"] = ""
+        check("Conductor without workspace → nil", ClaudeHost.sessionURL(from: noWorkspace) == nil)
+        var odd = conductor; odd["conductor_workspace_id"] = "x&session=y"
+        check("Conductor odd id → nil", ClaudeHost.sessionURL(from: odd) == nil)
+        var warp = conductor; warp["bundle_id"] = "dev.warp.Warp-Stable"
+        check("other host → nil", ClaudeHost.sessionURL(from: warp) == nil)
+
         print("ClaudeHost.terminalCardsEnabled")
         UserDefaults.standard.removeObject(forKey: ClaudeHost.terminalCardsKey)
         check("off by default", ClaudeHost.terminalCardsEnabled == false)

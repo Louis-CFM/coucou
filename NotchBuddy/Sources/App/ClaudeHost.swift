@@ -64,10 +64,35 @@ struct ClaudeHost: Equatable {
         hostApp == nil ? "VS Code" : "Claude Code"
     }
 
+    /// Conductor's link to the workspace and chat a session runs in
+    /// (`conductor://workspace?id=…&session=…`), from the ids the relay reads in
+    /// CONDUCTOR_WORKSPACE_ID / CONDUCTOR_SESSION_ID. nil for any other host.
+    static func sessionURL(from payload: [String: Any]) -> URL? {
+        guard payload["bundle_id"] as? String == "com.conductor.app",
+              let workspace = conductorId(payload["conductor_workspace_id"]) else { return nil }
+        var link = URLComponents()
+        link.scheme = "conductor"
+        link.host = "workspace"
+        link.queryItems = [URLQueryItem(name: "id", value: workspace)]
+        if let session = conductorId(payload["conductor_session_id"]) {
+            link.queryItems?.append(URLQueryItem(name: "session", value: session))
+        }
+        return link.url
+    }
+
+    /// A Conductor id (a UUID: letters, digits and hyphens), or nil.
+    private static func conductorId(_ value: Any?) -> String? {
+        guard let id = value as? String, !id.isEmpty, id.count <= 64,
+              id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }) else { return nil }
+        return id
+    }
+
     /// Brings the session's terminal forward (launching it if needed). false when not a terminal host.
+    /// With a `sessionURL` (Conductor), opens that link instead, so the host shows the session itself.
     @discardableResult
-    static func activate(_ hostBundleId: String?) -> Bool {
+    static func activate(_ hostBundleId: String?, sessionURL: URL? = nil) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
+        if let sessionURL, NSWorkspace.shared.open(sessionURL) { return true }
         if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
             running.activate()
         } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {

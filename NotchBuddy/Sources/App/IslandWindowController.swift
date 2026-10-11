@@ -825,6 +825,12 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
+        // A Conductor session: straight back to its workspace and chat
+        if let task = state.focusTask, task.id == "integration_claude", task.hostURL != nil,
+           ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) {
+            collapse(allowPendingApproval: true)
+            return
+        }
         if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))

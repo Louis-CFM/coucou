@@ -218,7 +218,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            if ClaudeHost.activate(task.hostApp) { return }
+            if ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -692,7 +692,7 @@ struct ErrorView: View {
 #if !APPSTORE
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
 private func openSessionApp(_ task: AgentTask?) {
-    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp, sessionURL: task?.hostURL)),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }
@@ -2272,7 +2272,7 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude", task.hostApp != nil {
-                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
