@@ -163,6 +163,79 @@ body {
   width: 0;
 }
 
+/* Live activity (island/live.ts): volume, brightness, battery. In the compact
+   island it sits right of Mochi where the mini grid was; open, it is a small
+   toast over the header. Only opacity and transforms move. */
+#live {
+  position: absolute;
+  top: 0;
+  left: 64px;
+  right: 16px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  transition: opacity 0.18s ease-out, transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  will-change: opacity, transform;
+  color: #f5f6f8;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+#live.on {
+  opacity: 1;
+  transform: none;
+}
+#live.expanded {
+  left: 50%;
+  right: auto;
+  top: 6px;
+  width: 232px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: rgba(40, 41, 46, 0.98);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 6px 18px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -6px) scale(0.96);
+  z-index: 5;
+}
+#live.expanded.on {
+  transform: translate(-50%, 0);
+}
+.live-icon {
+  display: flex;
+  flex: none;
+  transition: color 0.2s;
+}
+.live-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.live-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.14s cubic-bezier(0.25, 0.8, 0.3, 1), background 0.2s;
+  will-change: transform;
+}
+.live-label {
+  flex: none;
+  min-width: 24px;
+  text-align: right;
+  color: rgba(245, 246, 248, 0.82);
+}
+#live.has-text .live-label {
+  min-width: 0;
+}
+
 /* Compact 2×2 mini grid, to the right of the notch. */
 #mini-grid {
   position: absolute;
@@ -689,8 +762,10 @@ body {
 
 .pill .lbl {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Starts after the mini Mochi, so a long name never runs under him. */
+  left: 34px;
+  right: 8px;
+  text-overflow: ellipsis;
   text-align: center;
   font: 600 10px var(--font);
   color: var(--dim-3);
@@ -2386,9 +2461,26 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .np-card {
+  position: relative;
   padding: 10px 12px 0 108px;
   display: flex;
   flex-direction: column;
+}
+.np-card > :not(.np-backdrop) {
+  position: relative;
+}
+.np-backdrop {
+  position: absolute;
+  inset: -40px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.6);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.np-card.has-art .np-backdrop {
+  opacity: 0.32;
 }
 
 .np-head {
@@ -2401,9 +2493,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 .np-art {
   position: relative;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);

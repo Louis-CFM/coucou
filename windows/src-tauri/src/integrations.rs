@@ -71,7 +71,8 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
-    spawn(app, "integration_notion", 9, 300, poll_notion);
+    spawn(app.clone(), "integration_notion", 9, 300, poll_notion);
+    spawn(app, "integration_calendar", 4, 300, poll_calendar);
 }
 
 /// True when the user has this integration switched on in settings.
@@ -120,6 +121,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_calendar" => poll_calendar(app).await,
         _ => {}
     }
 }
@@ -1020,5 +1022,116 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+}
+
+
+// ── Calendar (any iCal link: Google, Outlook, iCloud…) ───────────────────────
+
+/// The calendar's private iCal address, kept in the credential store: it is a
+/// key in all but name (anyone holding it reads the calendar).
+pub const CALENDAR_KEY: &str = "calendar-ics-url";
+
+/// `webcal://` is iCal over https; anything but https is refused.
+pub fn calendar_url(raw: &str) -> Option<String> {
+    let raw = raw.trim();
+    let url = match raw.strip_prefix("webcal://") {
+        Some(rest) => format!("https://{rest}"),
+        None => raw.to_string(),
+    };
+    url.starts_with("https://").then_some(url)
+}
+
+/// DTSTART value → (sortable yyyymmddThhmmss, ISO for the page, all day).
+/// UTC times end in Z; floating and TZID times are read as local.
+fn ics_time(v: &str) -> Option<(String, String, bool)> {
+    let v = v.trim();
+    let d = v.get(..8)?;
+    if !d.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let date = format!("{}-{}-{}", &d[..4], &d[4..6], &d[6..8]);
+    match v.get(9..15) {
+        Some(t) if t.bytes().all(|b| b.is_ascii_digit()) => {
+            let z = if v.ends_with('Z') { "Z" } else { "" };
+            Some((format!("{d}T{t}"), format!("{date}T{}:{}:{}{z}", &t[..2], &t[2..4], &t[4..6]), false))
+        }
+        _ => Some((format!("{d}T000000"), format!("{date}T00:00:00"), true)),
+    }
+}
+
+/// Upcoming events (from `today`, yyyymmddThhmmss), soonest first, at most `max`.
+// ponytail: recurring events (RRULE) show only their first date; expanding them needs an RRULE engine.
+pub fn ics_events(text: &str, today: &str, max: usize) -> Vec<Value> {
+    // Lines starting with a space continue the previous one (RFC 5545 folding).
+    let unfolded = text.replace("\r\n ", "").replace("\r\n\t", "").replace("\n ", "").replace("\n\t", "");
+    let mut out: Vec<(String, Value)> = Vec::new();
+    let (mut title, mut start, mut inside): (String, Option<(String, String, bool)>, bool) = (String::new(), None, false);
+    for line in unfolded.lines() {
+        let line = line.trim_end_matches('\r');
+        if line == "BEGIN:VEVENT" {
+            (title, start, inside) = (String::new(), None, true);
+        } else if line == "END:VEVENT" && inside {
+            inside = false;
+            if let Some((key, iso, all_day)) = start.take() {
+                if key.as_str() >= today {
+                    let t = if title.is_empty() { "Event".to_string() } else { title.clone() };
+                    out.push((key, json!({ "title": t, "start": iso, "allDay": all_day })));
+                }
+            }
+        } else if inside {
+            let Some((name, value)) = line.split_once(':') else { continue };
+            match name.split(';').next().unwrap_or("") {
+                "SUMMARY" => title = value.replace("\\,", ",").replace("\\;", ";").replace("\\n", " "),
+                "DTSTART" => start = ics_time(value),
+                _ => {}
+            }
+        }
+    }
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out.into_iter().take(max).map(|(_, v)| v).collect()
+}
+
+async fn poll_calendar(app: AppHandle) {
+    let Some(url) = secrets::get(CALENDAR_KEY).and_then(|u| calendar_url(&u)) else { return };
+    let Ok(response) = client().get(&url).send().await else { return };
+    if !response.status().is_success() {
+        emit(&app, IntegrationUpdate {
+            id: "integration_calendar",
+            data: json!({}),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Key lacks access"))),
+            event: None,
+        });
+        return;
+    }
+    let Ok(bytes) = crate::net::read_capped(response, 8 * 1024 * 1024).await else { return };
+    let text = String::from_utf8_lossy(&bytes);
+    let now = crate::platform::local_time();
+    let today = format!("{:04}{:02}{:02}T000000", now.year, now.month, now.day);
+    let events = ics_events(&text, &today, 6);
+    emit(&app, IntegrationUpdate { id: "integration_calendar", data: json!({ "events": events }), error: None, event: None });
+}
+
+#[cfg(test)]
+mod calendar_tests {
+    use super::*;
+
+    #[test]
+    fn upcoming_events_come_out_of_an_ics_feed_soonest_first() {
+        let ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY:Past\r\nDTSTART:20200101T090000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:Stand\r\n up\\, daily\r\nDTSTART;TZID=Asia/Kolkata:20261012T093000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:20261011\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        let ev = ics_events(ics, "20261010T000000", 5);
+        assert_eq!(ev.len(), 2);
+        assert_eq!(ev[0]["title"], "Holiday");
+        assert_eq!(ev[0]["allDay"], true);
+        assert_eq!(ev[1]["title"], "Standup, daily");
+        assert_eq!(ev[1]["start"], "2026-10-12T09:30:00");
+    }
+
+    #[test]
+    fn only_https_and_webcal_links_are_fetched() {
+        assert_eq!(calendar_url("webcal://p.calendar.google.com/x.ics").as_deref(), Some("https://p.calendar.google.com/x.ics"));
+        assert_eq!(calendar_url(" https://outlook.office365.com/a.ics ").as_deref(), Some("https://outlook.office365.com/a.ics"));
+        assert_eq!(calendar_url("http://evil/x.ics"), None);
+        assert_eq!(calendar_url("file:///C:/x.ics"), None);
     }
 }

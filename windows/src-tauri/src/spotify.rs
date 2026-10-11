@@ -13,7 +13,9 @@
 // the card comes on screen; the page runs it on from a timestamp while playing,
 // as the Mac's `position(at:)` does. Turning the pill off ends the thread.
 //
-// Windows has no music source yet: the commands answer "nothing playing".
+// Windows reads every player from the system media controls instead
+// (media_win.rs): Apple Music, Spotify and any other app, through these same
+// commands and events.
 
 // The pure parts below are only reached from the Linux client and the tests.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
@@ -103,6 +105,11 @@ pub struct Track {
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerState {
+    /// The pill this player shows on: integration_spotify, and on Windows
+    /// also integration_music (Apple Music) or integration_media (any app).
+    pub source: String,
+    /// The player's name ("Apple Music", "Edge"…), empty on Linux.
+    pub app: String,
     /// Spotify owns its name on the bus.
     pub running: bool,
     /// A `spotify` (or the Flatpak / Snap) is there to launch.
@@ -123,6 +130,8 @@ pub struct PlayerState {
 impl Default for PlayerState {
     fn default() -> Self {
         PlayerState {
+            source: PILL_ID.to_string(),
+            app: String::new(),
             running: false,
             installed: false,
             track: None,
@@ -424,10 +433,9 @@ pub async fn spotify_refresh(app: AppHandle) -> Option<PlayerState> {
     {
         tauri::async_runtime::spawn_blocking(move || linux::refresh(&linux::Out::App(app))).await.ok().flatten()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
     {
-        let _ = app;
-        None
+        tauri::async_runtime::spawn_blocking(move || crate::media_win::refresh(&app)).await.ok().flatten()
     }
 }
 
@@ -439,10 +447,9 @@ pub async fn spotify_control(app: AppHandle, action: String, value: Option<f64>)
     {
         tauri::async_runtime::spawn_blocking(move || linux::control(&linux::Out::App(app), &action, value)).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
     {
-        let _ = (app, action, value);
-        false
+        tauri::async_runtime::spawn_blocking(move || crate::media_win::control(&app, &action, value)).await.unwrap_or(false)
     }
 }
 
@@ -454,22 +461,23 @@ pub async fn spotify_open() -> bool {
     {
         tauri::async_runtime::spawn_blocking(linux::open).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
     {
-        false
+        tauri::async_runtime::spawn_blocking(crate::media_win::open).await.unwrap_or(false)
     }
 }
 
-/// For Settings: whether there is a Spotify to launch.
+/// For Settings: whether there is a player to launch for this pill.
 #[tauri::command]
-pub fn spotify_installed() -> bool {
+pub fn spotify_installed(pill: Option<String>) -> bool {
     #[cfg(target_os = "linux")]
     {
+        let _ = pill;
         linux::installed()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
     {
-        false
+        crate::media_win::installed_for(pill.as_deref().unwrap_or(PILL_ID))
     }
 }
 
@@ -478,8 +486,8 @@ pub fn spotify_installed() -> bool {
 pub fn sync(app: &AppHandle, active_integrations: &[String]) {
     #[cfg(target_os = "linux")]
     linux::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
-    #[cfg(not(target_os = "linux"))]
-    let _ = (app, active_integrations);
+    #[cfg(windows)]
+    crate::media_win::sync(app, active_integrations);
 }
 
 // ── Linux: MPRIS over D-Bus ───────────────────────────────────────────────────

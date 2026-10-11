@@ -12,7 +12,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
-import { SPOTIFY_ID, islandDances } from "../core/spotify";
+import { isMusicPill, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -27,6 +27,7 @@ import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { LIVE_W, Live, buildLive } from "./live";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -57,6 +58,7 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
+  private live = buildLive();
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -191,7 +193,7 @@ export class Island {
         else if (task.id === "integration_claude" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
-        else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (isMusicPill(task.id)) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -292,6 +294,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.live.el,
       this.countdown,
     );
 
@@ -438,6 +441,19 @@ export class Island {
     this.silentReveal = true;
     this.fsm.reveal();
     this.silentReveal = false;
+  }
+
+  /** A live activity (island/live.ts): out of hidden for `ms`, silently. */
+  peekLive(ms: number) {
+    if (State.paused) return;
+    this.silentReveal = true;
+    this.fsm.peek(ms);
+    this.silentReveal = false;
+  }
+
+  /** A live activity came or went: the compact island widens or narrows. */
+  liveResized() {
+    this.animateGeometry(Live.current == null);
   }
 
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
@@ -645,6 +661,7 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    if (State.mode === "compact" && Live.current) w = LIVE_W;
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1172,8 +1189,11 @@ export class Island {
       }
     }
 
+    // A live activity takes the mini grid's place while it lasts.
+    this.live.sync(expanded);
+
     // Compact mini grid
-    const showGrid = State.mode === "compact";
+    const showGrid = State.mode === "compact" && !Live.current;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);
@@ -1198,6 +1218,9 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.fsm.alwaysVisible = State.settings.plus?.alwaysVisible ?? true;
+    // Already hidden when it was switched on: come back out.
+    if (this.fsm.alwaysVisible && this.fsm.state === "hidden") this.fsm.reveal();
     State.notify();
   }
 

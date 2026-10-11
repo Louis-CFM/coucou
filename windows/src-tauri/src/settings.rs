@@ -69,6 +69,29 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// What the Windows build adds to the island (sysevents.rs).
+    pub plus: PlusPrefs,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PlusPrefs {
+    /// The island shows the volume and takes the volume keys from Windows' popup.
+    pub volume_hud: bool,
+    /// The island shows the brightness when it changes.
+    pub brightness_hud: bool,
+    /// Plugged in, unplugged, 20 % and 10 % left.
+    pub battery_alerts: bool,
+    /// The texts copied lately, kept in memory only — never on disk.
+    pub clipboard_history: bool,
+    /// The compact island never hides on its own.
+    pub always_visible: bool,
+}
+
+impl Default for PlusPrefs {
+    fn default() -> Self {
+        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true, always_visible: true }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -124,6 +147,7 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            plus: PlusPrefs::default(),
         }
     }
 }
@@ -400,7 +424,8 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
-  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
+  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": false }
 }"##;
 
     fn custom() -> Value {
@@ -804,6 +829,7 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "plus",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

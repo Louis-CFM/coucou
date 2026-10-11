@@ -9,10 +9,10 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_PLUS, DEFAULT_SETTINGS, type PlusPrefs, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  HOST_OS, MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
@@ -773,8 +773,15 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
+  { id: "integration_calendar", name: "iCal", color: "#4F9DF7",
+    fields: [{ key: "calendar-ics-url", label: N_("iCal link"), placeholder: "https://…/basic.ics", secret: true }],
+    hint: N_("Google Calendar: Settings → your calendar → Secret address in iCal format. Outlook: Settings → Shared calendars → Publish → ICS.") },
+  // Nothing to enter: the music pills read the player (D-Bus on Linux, the
+  // media controls on Windows — see core/pills.ts).
+  { id: "integration_music", name: "Apple Music", color: "#FA2D48", fields: [] },
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_media", name: "Now Playing", color: "#A78BFA", fields: [],
+    hint: N_("Any app that plays: a browser tab, VLC, Media Player…") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -845,11 +852,11 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
-    if (def.id === "integration_spotify") {
-      // As on the Mac's row: said only when there is no Spotify to launch.
+    if (def.id === "integration_spotify" || def.id === "integration_music") {
+      // As on the Mac's row: said only when there is no player to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
       rows.append(hint);
-      void Bridge.spotifyInstalled().then((ok) => {
+      void Bridge.spotifyInstalled(def.id).then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }
@@ -964,6 +971,28 @@ function generalSection(): HTMLElement {
     ),
     ...recapRows(),
     languageRow(),
+  );
+}
+
+/** Settings → Island extras (Windows): the live activities and the clipboard. */
+function islandExtrasSection(): HTMLElement {
+  const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
+  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+    h("div", { class: "row" },
+      h("label", { text: t(label) }),
+      toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t(hint) }),
+  ];
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Island extras") })),
+    ...item("alwaysVisible", N_("Always show the island"), N_("The compact island stays at the top of the screen instead of hiding after a minute.")),
+    ...item("volumeHud", N_("Volume"), N_("The volume keys show the level in the island instead of Windows' popup.")),
+    ...item("brightnessHud", N_("Brightness"), N_("The island shows the brightness when it changes.")),
+    ...item("batteryAlerts", N_("Battery"), N_("Plugged in, unplugged, and a word at 20 % and 10 % left.")),
+    ...item("clipboardHistory", N_("Clipboard history"), N_("The last texts you copied, on the Shelf pill. Kept in memory only, never on disk; what password managers copy is never kept.")),
   );
 }
 
@@ -1326,7 +1355,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key", "calendar-ics-url",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -1368,6 +1397,7 @@ async function render() {
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
+    ...(HOST_OS === "windows" ? [islandExtrasSection()] : []),
     shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",
