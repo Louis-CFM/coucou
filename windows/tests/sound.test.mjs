@@ -94,6 +94,19 @@ test("turning sound off suspends at once and clears a pending idle wait", async 
   assert.equal(ctx.state, "suspended", "the stream closes immediately, not in 1.5 s");
 });
 
+test("resume() cancels a pending idle wait, keeping the stream for the sound that follows", async () => {
+  contexts = [];
+  const e = engine();
+  await e.preload(); // sound on, nothing played yet
+  const ctx = contexts[0];
+  assert.notEqual(e.idleTimer, null, "an idle wait is armed after preload");
+
+  e.resume(); // a click just before Mochi speaks
+  assert.equal(e.idleTimer, null, "the pending suspend is cancelled");
+  assert.equal(ctx.state, "running", "the stream stays for the upcoming sound");
+  e.setEnabled(false); // tidy up: close the stream
+});
+
 test("resume() never reopens a muted page's stream", async () => {
   contexts = [];
   const e = engine();
