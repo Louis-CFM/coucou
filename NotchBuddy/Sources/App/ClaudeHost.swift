@@ -80,6 +80,17 @@ struct ClaudeHost: Equatable {
         return link.url
     }
 
+    /// Brings the host forward the way ⌘-Tab does, so macOS also switches to the desktop its
+    /// window is on: activate() alone leaves that window on another desktop. Needs Accessibility,
+    /// like the prompt context (GitHub build only); without it, activate() is all there is.
+    private static func switchToDesktop(of app: NSRunningApplication) {
+        #if !APPSTORE
+        guard AXIsProcessTrusted() else { return }
+        AXUIElementSetAttributeValue(AXUIElementCreateApplication(app.processIdentifier),
+                                     kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        #endif
+    }
+
     /// A Conductor id (a UUID: letters, digits and hyphens), or nil.
     private static func conductorId(_ value: Any?) -> String? {
         guard let id = value as? String, !id.isEmpty, id.count <= 64,
@@ -92,7 +103,18 @@ struct ClaudeHost: Equatable {
     @discardableResult
     static func activate(_ hostBundleId: String?, sessionURL: URL? = nil) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
-        if let sessionURL, NSWorkspace.shared.open(sessionURL) { return true }
+        // The link switches the chat, but opened from Coucou (never the active app) it leaves
+        // the host behind other windows or on another desktop: bring it forward once it has it.
+        if let sessionURL, let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
+                guard let running else { return }
+                running.activate()
+                switchToDesktop(of: running)
+            }
+            return true
+        }
         if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
             running.activate()
         } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
