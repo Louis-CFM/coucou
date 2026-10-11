@@ -98,6 +98,17 @@ pub fn candidate_paths(home: &str) -> Vec<CandidatePath> {
 
     #[cfg(windows)]
     {
+        if let Ok(opencode_dir) = std::env::var("OPENCODE_CONFIG_DIR") {
+            let p = PathBuf::from(opencode_dir);
+            paths.push(CandidatePath {
+                path: p.join("opencode.json"),
+                source: MCPServerSource::Opencode,
+            });
+            paths.push(CandidatePath {
+                path: p.join("mcp.json"),
+                source: MCPServerSource::Opencode,
+            });
+        }
         if let Ok(appdata) = std::env::var("APPDATA") {
             let appdata_p = Path::new(&appdata);
             paths.push(CandidatePath {
@@ -155,6 +166,10 @@ pub fn parse_standard_servers(data: &[u8], source: &MCPServerSource, home: &str,
     };
     let mut result = Vec::new();
 
+    // OpenCode format: "mcp": { "name": { type: "local"|"remote", command: [...], url: "..." } }
+    if let Some(mcp) = json.get("mcp").and_then(Value::as_object) {
+        result.extend(parse_server_dict(mcp, source, home, env));
+    }
     if let Some(servers) = json.get("mcpServers").and_then(Value::as_object) {
         result.extend(parse_server_dict(servers, source, home, env));
     }
@@ -226,20 +241,27 @@ fn parse_server_dict(
             continue;
         }
 
-        let Some(cmd_val) = server_obj.get("command").and_then(Value::as_str) else {
+        let (command, args) = if let Some(cmd_val) = server_obj.get("command").and_then(Value::as_str) {
+            let cmd = normalise_value(cmd_val, home, env);
+            let a = server_obj
+                .get("args")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(Value::as_str)
+                        .map(|a| normalise_value(a, home, env))
+                        .collect()
+                })
+                .unwrap_or_default();
+            (cmd, a)
+        } else if let Some(cmd_arr) = server_obj.get("command").and_then(Value::as_array) {
+            let mut parts = cmd_arr.iter().filter_map(Value::as_str);
+            let first = parts.next().map(|c| normalise_value(c, home, env)).unwrap_or_default();
+            let rest: Vec<String> = parts.map(|a| normalise_value(a, home, env)).collect();
+            (first, rest)
+        } else {
             continue;
         };
-        let command = normalise_value(cmd_val, home, env);
-        let args = server_obj
-            .get("args")
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(Value::as_str)
-                    .map(|a| normalise_value(a, home, env))
-                    .collect()
-            })
-            .unwrap_or_default();
 
         let mut env_map = HashMap::new();
         if let Some(env_obj) = server_obj.get("env").and_then(Value::as_object) {
@@ -348,24 +370,24 @@ mod tests {
     }
 
     #[test]
-    fn parse_and_deduplicate() {
+    fn parse_opencode_format() {
         let raw = br#"{
-            "mcpServers": {
-                "sqlite": {
-                    "command": "uvx",
-                    "args": ["mcp-server-sqlite", "--db-path", "~/test.db"]
+            "mcp": {
+                "context7": {
+                    "type": "remote",
+                    "url": "https://mcp.context7.com/mcp"
                 },
-                "remote": {
-                    "url": "http://127.0.0.1:8000/mcp"
+                "engram": {
+                    "type": "local",
+                    "command": ["engram.exe", "mcp", "--tools=agent"]
                 }
             }
         }"#;
         let env = HashMap::new();
-        let servers = parse_standard_servers(raw, &MCPServerSource::ClaudeDesktop, "/home/user", &env);
+        let servers = parse_standard_servers(raw, &MCPServerSource::Opencode, "/home/user", &env);
         assert_eq!(servers.len(), 2);
-        let deduped = deduplicate(servers);
-        assert_eq!(deduped.len(), 2);
-        assert_eq!(deduped[0].id, "remote");
-        assert_eq!(deduped[1].id, "sqlite");
+        let ids: Vec<&str> = servers.iter().map(|s| s.id.as_str()).collect();
+        assert!(ids.contains(&"context7"));
+        assert!(ids.contains(&"engram"));
     }
 }
