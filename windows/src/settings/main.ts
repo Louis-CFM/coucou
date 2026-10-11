@@ -488,7 +488,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
 
 const CHAT_STRINGS = {
   get providersTitle() { return t("Chat providers"); },
-  get providersHint() { return t("Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer."); },
+  get providersHint() { return t("Chat with Google AI, OpenAI, OpenRouter or RodiumAi instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer."); },
   get stored() { return `••••••••  ${t("(stored)")}`; },
   get save() { return t("Save"); },
   get remove() { return t("Remove"); },
@@ -510,7 +510,7 @@ const CHAT_STRINGS = {
 };
 
 interface CloudDef {
-  id: "google" | "openai" | "openrouter";
+  id: "google" | "openai" | "openrouter" | "rodiumai";
   name: string;
   placeholder: string;
   where: string;
@@ -520,6 +520,7 @@ const CLOUD: CloudDef[] = [
   { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
   { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
+  { id: "rodiumai", name: "RodiumAi", placeholder: "rd_sk_…", where: "rodiumai.io/dashboard" },
 ];
 
 function chatProvidersSection(

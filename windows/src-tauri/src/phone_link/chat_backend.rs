@@ -19,7 +19,9 @@ use crate::{chat, claude, log, openai_compat, secrets, Shared};
 pub const MAX_ALLOWED: usize = 50;
 const MAX_MODEL_CHARS: usize = 200;
 
-const PROVIDERS: [&str; 7] = ["anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom"];
+const PROVIDERS: [&str; 8] = [
+    "anthropic", "google", "openai", "openrouter", "rodiumai", "ollama", "lmstudio", "custom",
+];
 
 pub struct AppChat {
     app: AppHandle,
@@ -94,6 +96,7 @@ pub fn provider_name(provider: &str) -> String {
         "google" => "Google".into(),
         "openai" => "OpenAI".into(),
         "openrouter" => "OpenRouter".into(),
+        "rodiumai" => "RodiumAi".into(),
         "ollama" => "Ollama".into(),
         "lmstudio" => "LM Studio".into(),
         _ => "Custom server".into(),
@@ -163,6 +166,7 @@ mod tests {
     fn model_ids_need_a_known_provider_and_a_plain_model() {
         assert_eq!(parse_model_id("openai/gpt-4o"), Some(("openai", "gpt-4o")));
         assert_eq!(parse_model_id("openrouter/openrouter/auto"), Some(("openrouter", "openrouter/auto")));
+        assert_eq!(parse_model_id("rodiumai/openai/gpt-4o"), Some(("rodiumai", "openai/gpt-4o")));
         assert_eq!(parse_model_id("ollama/llama3.2:latest"), Some(("ollama", "llama3.2:latest")));
         for bad in ["", "openai", "openai/", "openai/ ", "nope/gpt", "OpenAI/gpt", "openai/a\nb", &format!("openai/{}", "x".repeat(201))] {
             assert_eq!(parse_model_id(bad), None, "{bad:?}");
@@ -201,6 +205,7 @@ mod tests {
     fn keys_are_found_by_provider() {
         assert_eq!(key_name("anthropic"), Some("anthropic-api-key"));
         assert_eq!(key_name("openai"), Some("openai-api-key"));
+        assert_eq!(key_name("rodiumai"), Some("rodiumai-api-key"));
         assert_eq!(key_name("ollama"), None);
         assert!(is_local("custom") && !is_local("openai"));
     }

@@ -12040,61 +12040,61 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لاستخدام Google Gemini أو OpenAI من الدردشة. تُحفظ المفاتيح في Keychain."
+            "value": "لاستخدام Google Gemini أو OpenAI أو RodiumAi من الدردشة. تُحفظ المفاتيح في Keychain."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "চ্যাট থেকে Google Gemini বা OpenAI ব্যবহার করতে। কীগুলো Keychain-এ সংরক্ষিত হয়।"
+            "value": "চ্যাট থেকে Google Gemini, OpenAI বা RodiumAi ব্যবহার করতে। কীগুলো Keychain-এ সংরক্ষিত হয়।"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To use Google Gemini or OpenAI from the chat. Keys are stored in the Keychain."
+            "value": "To use Google Gemini, OpenAI or RodiumAi from the chat. Keys are stored in the Keychain."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Para usar Google Gemini u OpenAI desde el chat. Las claves se guardan en el Keychain."
+            "value": "Para usar Google Gemini, OpenAI o RodiumAi desde el chat. Las claves se guardan en el Keychain."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pour utiliser Google Gemini ou OpenAI depuis le chat. Les clés sont stockées dans le Trousseau."
+            "value": "Pour utiliser Google Gemini, OpenAI ou RodiumAi depuis le chat. Les clés sont stockées dans le Trousseau."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "चैट से Google Gemini या OpenAI उपयोग करने के लिए। कुंजियां Keychain में संग्रहीत की जाती हैं।"
+            "value": "चैट से Google Gemini, OpenAI या RodiumAi उपयोग करने के लिए। कुंजियां Keychain में संग्रहीत की जाती हैं।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
+            "value": "Untuk menggunakan Google Gemini, OpenAI, atau RodiumAi dari chat. Kunci disimpan di Keychain."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Para usar o Google Gemini ou OpenAI pelo chat. As chaves são armazenadas no Keychain."
+            "value": "Para usar o Google Gemini, OpenAI ou RodiumAi pelo chat. As chaves são armazenadas no Keychain."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain."
+            "value": "Для использования Google Gemini, OpenAI или RodiumAi в чате. Ключи хранятся в Keychain."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用于在聊天中使用 Google Gemini 或 OpenAI。密钥存储在 Keychain 中。"
+            "value": "用于在聊天中使用 Google Gemini、OpenAI 或 RodiumAi。密钥保存在钥匙串中。"
           }
         }
       }
@@ -26138,6 +26138,198 @@
           "stringUnit": {
             "state": "translated",
             "value": "请先在设置 → 聊天中添加你的 Anthropic API 密钥。"
+          }
+        }
+      }
+    },
+    "chat.rodiumai": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RodiumAi"
+          }
+        }
+      }
+    },
+    "chat.api-key.rodiumai": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مفتاح API (rd_sk_…)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API কী (rd_sk_…)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API key (rd_sk_…)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave API (rd_sk_…)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé API (rd_sk_…)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API कुंजी (rd_sk_…)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunci API (rd_sk_…)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave de API (rd_sk_…)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ API (rd_sk_…)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥 (rd_sk_…)"
+          }
+        }
+      }
+    },
+    "status.rodiumai-key-saved": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ تم حفظ مفتاح RodiumAi."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ RodiumAi কী সংরক্ষিত হয়েছে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ RodiumAi key saved."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Clave de RodiumAi guardada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Clé RodiumAi enregistrée."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ RodiumAi कुंजी सहेजी गई।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Kunci RodiumAi tersimpan."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Chave da RodiumAi salva."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Ключ RodiumAi сохранён."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ 已保存 RodiumAi 密钥。"
           }
         }
       }

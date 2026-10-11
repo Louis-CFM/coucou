@@ -101,6 +101,8 @@ enum PillCatalog {
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_openai",           name: "OpenAI",      color: ChatProvider.openai.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
+        .init(id: "ai_rodiumai",         name: "RodiumAi",    color: ChatProvider.rodiumai.accentHex,
+              category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_ollama",           name: "Ollama",      color: ChatProvider.ollama.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),
         .init(id: "ai_lmstudio",         name: "LM Studio",   color: ChatProvider.lmstudio.accentHex,

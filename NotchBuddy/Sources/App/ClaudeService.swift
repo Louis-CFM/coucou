@@ -64,6 +64,7 @@ final class KeychainStore: @unchecked Sendable {
         "anthropic-api-key",
         "google-api-key",
         "openai-api-key",
+        "rodiumai-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -155,16 +156,39 @@ final class ClaudeService {
     /// Fetches chat models from the OpenAI API, sorted newest-first by creation date.
     /// Excludes non-chat model families.
     static func fetchOpenAIModels(apiKey: String) async -> [(id: String, label: String)] {
-        guard let url = URL(string: "https://api.openai.com/v1/models") else { return [] }
+        await fetchOpenAICompatibleModels(
+            baseURL: "https://api.openai.com/v1",
+            apiKey: apiKey,
+            excluded: ["embed", "tts", "whisper", "dall-e", "audio", "realtime", "moderat",
+                       "codex", "computer-use", "transcribe", "image", "sora",
+                       "babbage", "davinci", "instruct"]
+        )
+    }
+
+    /// Fetches chat models from RodiumAi (`GET /v1/models`), sorted newest-first.
+    /// Model ids are provider-scoped (e.g. `openai/gpt-4o`, `anthropic/claude-…`).
+    static func fetchRodiumAIModels(apiKey: String) async -> [(id: String, label: String)] {
+        await fetchOpenAICompatibleModels(
+            baseURL: "https://api.rodiumai.io/v1",
+            apiKey: apiKey,
+            excluded: ["embed", "tts", "whisper", "dall-e", "audio", "realtime", "moderat",
+                       "image", "sora", "babbage", "davinci", "instruct", "rerank"]
+        )
+    }
+
+    /// Shared OpenAI-compatible `GET …/models` client for cloud providers.
+    private static func fetchOpenAICompatibleModels(
+        baseURL: String,
+        apiKey: String,
+        excluded: [String]
+    ) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "\(baseURL)/models") else { return [] }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         guard let (data, response) = try? await URLSession.shared.data(for: req),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let items = json["data"] as? [[String: Any]] else { return [] }
-        let excluded = ["embed", "tts", "whisper", "dall-e", "audio", "realtime", "moderat",
-                        "codex", "computer-use", "transcribe", "image", "sora",
-                        "babbage", "davinci", "instruct"]
         return items
             .compactMap { item -> (id: String, created: Int)? in
                 guard let id = item["id"] as? String else { return nil }
@@ -284,8 +308,9 @@ final class ClaudeService {
             baseURL = LocalChat.normaliseURL(state.lmstudioServerURL)
         } else {
             switch provider {
-            case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-            case .openai:  baseURL = "https://api.openai.com/v1"
+            case .google:   baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+            case .openai:   baseURL = "https://api.openai.com/v1"
+            case .rodiumai: baseURL = "https://api.rodiumai.io/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }

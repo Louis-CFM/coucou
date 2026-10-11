@@ -66,6 +66,7 @@ const ACCENT = {
   anthropic: "#E07950",
   google: "#4285F4",
   openai: "#10A37F",
+  rodiumai: "#FF6A3D",
   ollama: "#FACC15",
   lmstudio: "#A3E635",
 };
@@ -109,6 +110,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("google-api-key") },
   { id: "ai_openai", name: "OpenAI", color: ACCENT.openai, category: "ai",
     subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("openai-api-key") },
+  { id: "ai_rodiumai", name: "RodiumAi", color: ACCENT.rodiumai, category: "ai",
+    subtitle: N_("Chat"), source: "n8n", support: "yes", connect: key("rodiumai-api-key") },
   { id: "ai_ollama", name: "Ollama", color: ACCENT.ollama, category: "ai",
     subtitle: N_("Chat"), source: "n8n", support: "yes", connect: server("ollamaUrl") },
   { id: "ai_lmstudio", name: "LM Studio", color: ACCENT.lmstudio, category: "ai",

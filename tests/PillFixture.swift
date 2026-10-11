@@ -22,6 +22,7 @@ enum PillFixture {
         .init(id: "ai_anthropic",         name: "Anthropic",     color: "#E07950", category: .ai,        subtitle: "Chat",        source: .n8n),
         .init(id: "ai_google",            name: "Google AI",     color: "#4285F4", category: .ai,        subtitle: "Chat",        source: .n8n),
         .init(id: "ai_openai",            name: "OpenAI",        color: "#10A37F", category: .ai,        subtitle: "Chat",        source: .n8n),
+        .init(id: "ai_rodiumai",          name: "RodiumAi",      color: "#FF6A3D", category: .ai,        subtitle: "Chat",        source: .n8n),
         .init(id: "ai_ollama",            name: "Ollama",        color: "#AAAAAA", category: .ai,        subtitle: "Chat",        source: .n8n),
         .init(id: "ai_lmstudio",          name: "LM Studio",     color: "#800080", category: .ai,        subtitle: "Chat",        source: .n8n),
         // ── Services ──────────────────────────────────────────────────────────

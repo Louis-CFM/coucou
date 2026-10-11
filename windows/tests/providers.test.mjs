@@ -11,10 +11,11 @@ import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
 test("the ids and key names match the Rust side and the Mac", () => {
-  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom"]);
+  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "rodiumai", "ollama", "lmstudio", "custom"]);
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
+  assert.equal(providerDef("rodiumai").key, "rodiumai-api-key");
   assert.equal(providerDef("ollama").key, null);
   // An unknown id (an older or newer settings.json) falls back to Claude.
   assert.equal(providerDef("nope").id, "anthropic");
@@ -36,9 +37,9 @@ test("Claude's model is the existing setting; the others are kept per provider",
 
 test("model servers show in the picker once connected, or while in use", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter", "rodiumai"]);
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "rodiumai", "ollama"]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "rodiumai", "custom"]);
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {
@@ -48,6 +49,7 @@ test("the saved model is kept when offered, else a sensible one is picked", () =
   assert.equal(pickModel(providerDef("openai"), ["gpt-4o", "gpt-5-mini"], "gone"), "gpt-5-mini");
   assert.equal(pickModel(providerDef("ollama"), ["llama3.2", "qwen"], ""), "llama3.2");
   assert.equal(pickModel(providerDef("openrouter"), ["a/b", "openrouter/auto"], "gone"), "openrouter/auto");
+  assert.equal(pickModel(providerDef("rodiumai"), ["anthropic/claude-sonnet-4-6", "openai/gpt-4o"], "gone"), "openai/gpt-4o");
   assert.equal(pickModel(google, [], "x"), null);
 });
 
