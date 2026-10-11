@@ -31,14 +31,25 @@ export function codexPillVisible(): boolean {
   return State.view === "overview" && State.settings.showCodexPlanInNotch;
 }
 
-/** The % beside the compact island's mini grid: the highest of the plans the header shows. */
-export function compactPlanPct(now = Date.now()): number | null {
+/** One window of the compact island's plan row: "5 hours" or "Week" and its %. */
+export interface CompactWindow {
+  label: string;
+  pct: number;
+}
+
+/** The compact island's plan row: Claude's windows when its pill is on and has numbers, else Codex's. */
+export function compactPlanWindows(now = Date.now()): CompactWindow[] {
   const s = State.settings;
-  const pcts = [
-    s.showPlanInNotch && s.planRelayInstalled ? dominantPct(State.planUsage, now) : null,
-    s.showCodexPlanInNotch ? dominantPct(State.codexPlanUsage, now) : null,
-  ].filter((p): p is number => p != null);
-  return pcts.length ? Math.max(...pcts) : null;
+  const plans = [
+    s.showPlanInNotch && s.planRelayInstalled ? State.planUsage : null,
+    s.showCodexPlanInNotch ? State.codexPlanUsage : null,
+  ];
+  const u = plans.find((p) => p?.fiveHour || p?.sevenDay);
+  if (!u) return [];
+  const rows: CompactWindow[] = [];
+  if (u.fiveHour) rows.push({ label: PLAN_TEXT.fiveHours, pct: effectivePct(u.fiveHour, now) });
+  if (u.sevenDay) rows.push({ label: PLAN_TEXT.week, pct: effectivePct(u.sevenDay, now) });
+  return rows;
 }
 
 /** A plan card is open and its pill is still there. */

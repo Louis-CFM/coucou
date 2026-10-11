@@ -13,6 +13,7 @@ import {
 import { planColor } from "../core/plan";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { t } from "../i18n/i18n";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -20,7 +21,7 @@ import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from ".
 import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
-import { closePlanCard, compactPlanPct, openPlanColor, planCardOpen, refreshCodexPlanUsage } from "../views/usage";
+import { closePlanCard, compactPlanWindows, openPlanColor, planCardOpen, refreshCodexPlanUsage } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
@@ -58,8 +59,7 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
-  private compactCount!: HTMLElement;
-  private compactPlan!: HTMLElement;
+  private compactStats!: HTMLElement;
   private compactCodexShown = false;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
@@ -262,8 +262,7 @@ export class Island {
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
-    this.compactCount = h("div", { id: "compact-count" });
-    this.compactPlan = h("div", { id: "compact-plan" });
+    this.compactStats = h("div", { id: "compact-stats" });
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
@@ -298,8 +297,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
-      this.compactCount,
-      this.compactPlan,
+      this.compactStats,
       this.countdown,
     );
 
@@ -1199,16 +1197,14 @@ export class Island {
     // Compact stats: agent session count beside Mochi, plan % beside the mini grid
     // (the last text stays while it fades out).
     const count = showGrid ? State.tasks.filter((t) => t.source !== "n8n").length : 0;
-    if (count) {
-      this.compactCount.textContent = String(count);
+    const windows = showGrid ? compactPlanWindows() : [];
+    if (count || windows.length) {
+      this.compactStats.replaceChildren(
+        ...(count ? [statRow([[t("Agents"), String(count), null]])] : []),
+        ...(windows.length ? [statRow(windows.map((w) => [w.label, `${Math.round(w.pct)}%`, planColor(w.pct)]))] : []),
+      );
     }
-    this.compactCount.style.opacity = count ? "1" : "0";
-    const pct = showGrid ? compactPlanPct() : null;
-    if (pct != null) {
-      this.compactPlan.textContent = `${Math.round(pct)}%`;
-      this.compactPlan.style.color = planColor(pct);
-    }
-    this.compactPlan.style.opacity = pct == null ? "0" : "1";
+    this.compactStats.style.opacity = count || windows.length ? "1" : "0";
     // Codex is asked when the compact island comes into view, as by its pill.
     const codexShown = showGrid && State.settings.showCodexPlanInNotch;
     if (codexShown && !this.compactCodexShown) {
@@ -1236,4 +1232,14 @@ export class Island {
   get chatHeight() {
     return chatPromptHeight(State.chatHistory.length);
   }
+}
+
+/** One right-aligned compact stats line: grey labels, each followed by its value. */
+function statRow(items: [label: string, value: string, color: string | null][]): HTMLElement {
+  const row = h("div", { class: "cs-row" });
+  items.forEach(([label, value, color], i) => {
+    if (i) row.append(h("span", { class: "cs-sep", text: "·" }));
+    row.append(h("span", { text: label }), h("b", { text: value, style: color ? `color:${color}` : "" }));
+  });
+  return row;
 }

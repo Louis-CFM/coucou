@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Top-level SwiftUI view rendered inside the 720×320 transparent panel.
@@ -717,33 +718,44 @@ struct CompactMiniGrid: View {
     }
 }
 
-// MARK: - Compact stats (agent session count beside Mochi, plan % beside the mini grid)
+// MARK: - Compact stats (agents and plan usage, right-aligned before the mini grid)
+
+struct CompactStat {
+    let label: String
+    let value: String
+    let color: String
+}
 
 struct CompactStats: View {
     @ObservedObject var state: AppState
 
-    // Agents and workspaces; services and chat providers are .n8n.
-    private var agentCount: Int { state.tasks.filter { $0.source != .n8n }.count }
-
     var body: some View {
-        HStack(spacing: 0) {
-            if agentCount > 0 {
-                Text(verbatim: "\(agentCount)")
-                    .foregroundColor(Color(hex: "#8E939C"))
-            }
-            Spacer(minLength: 0)
-            if let pct = state.compactPlanPct {
-                Text(verbatim: "\(Int(pct.rounded()))%")
-                    .foregroundColor(Color(hex: ClaudePlanGauge.color(for: pct)))
+        let rows = state.compactStatRows
+        VStack(alignment: .trailing, spacing: 1) {
+            ForEach(rows.indices, id: \.self) { i in
+                row(rows[i])
             }
         }
-        .font(.system(size: 10, weight: .semibold).monospacedDigit())
+        .font(.system(size: 9, weight: .semibold).monospacedDigit())
         .lineLimit(1)
-        // Clears Mochi (x 40, 20 wide) and the mini grid (28 wide at width - 40).
-        .padding(.leading, 54)
+        .fixedSize()
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        // Clears the mini grid (28 wide at width - 40).
         .padding(.trailing, 60)
         .allowsHitTesting(false)
         .onAppear { refreshCodex() }
+    }
+
+    private func row(_ items: [CompactStat]) -> some View {
+        HStack(spacing: 0) {
+            ForEach(items.indices, id: \.self) { i in
+                if i > 0 {
+                    Text(verbatim: " · ").foregroundColor(Color(hex: "#454850"))
+                }
+                Text(verbatim: items[i].label + " ").foregroundColor(Color(hex: "#8E939C"))
+                Text(verbatim: items[i].value).fontWeight(.bold).foregroundColor(Color(hex: items[i].color))
+            }
+        }
     }
 
     private func refreshCodex() {
@@ -754,21 +766,42 @@ struct CompactStats: View {
 }
 
 extension AppState {
-    /// The highest % among the plans shown in the header; nil when none has numbers.
-    var compactPlanPct: Double? {
+    /// Agents, then the plan's 5-hour and week windows: Claude's when its pill is on and has numbers, else Codex's.
+    var compactStatRows: [[CompactStat]] {
+        var rows: [[CompactStat]] = []
+        // Agents and workspaces; services and chat providers are .n8n.
+        let agents = tasks.filter { $0.source != .n8n }.count
+        if agents > 0 {
+            rows.append([CompactStat(label: String(localized: "Agents"), value: "\(agents)", color: "#F5F6F8")])
+        }
         #if !APPSTORE
-        let claude = showPlanInNotch && planRelayInstalled
-            ? (demoPlanUsageOverride ?? claudePlanUsage).flatMap { ClaudePlanGauge.dominantPct($0) }
-            : nil
-        let codex = showCodexPlanInNotch
-            ? codexPlanUsage.flatMap { ClaudePlanGauge.dominantPct($0.planUsage) }
-            : nil
-        return [claude, codex].compactMap { $0 }.max()
-        #else
-        return nil
+        let plans: [PlanUsage?] = [
+            showPlanInNotch && planRelayInstalled ? (demoPlanUsageOverride ?? claudePlanUsage) : nil,
+            showCodexPlanInNotch ? codexPlanUsage?.planUsage : nil,
+        ]
+        if let u = plans.compactMap({ $0 }).first(where: { $0.fiveHour != nil || $0.sevenDay != nil }) {
+            let windows: [(String, PlanWindow?)] = [
+                (String(localized: "plan.5hours"), u.fiveHour),
+                (String(localized: "plan.week"), u.sevenDay),
+            ]
+            rows.append(windows.compactMap { (label, window) -> CompactStat? in
+                guard let window else { return nil }
+                let pct = ClaudePlanGauge.effectivePct(window)
+                return CompactStat(label: label, value: "\(Int(pct.rounded()))%", color: ClaudePlanGauge.color(for: pct))
+            })
+        }
         #endif
+        return rows
     }
 
-    /// Width added on each side of the compact island so "100%" clears the notch.
-    var compactSideExtra: CGFloat { compactPlanPct == nil ? 0 : 12 }
+    /// Width added on each side of the compact island so the widest stats row clears the notch.
+    var compactSideExtra: CGFloat {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
+        let widest = compactStatRows
+            .map { $0.enumerated().map { i, s in (i > 0 ? " · " : "") + s.label + " " + s.value }.joined() }
+            .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
+            .max() ?? 0
+        // The right ear is 80 wide and the mini grid with its padding takes 60 of it.
+        return widest == 0 ? 0 : max(0, ceil(widest + 4 - 20))
+    }
 }
