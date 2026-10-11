@@ -210,6 +210,7 @@ final class HookServer: @unchecked Sendable {
         installHookScript()
         #endif
         Thread.detachNewThread { self.serverThread() }
+        discoverSessions()
     }
 
     // MARK: - Socket server (background thread)
@@ -290,11 +291,17 @@ final class HookServer: @unchecked Sendable {
         }
 
         guard !raw.isEmpty,
-              let payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+              var payload = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
             return
         }
+        #if !APPSTORE
+        // The session's own process, so its first event takes the pill found for it (as on Linux).
+        if let pid = Self.claudeAncestor(from: payload["hook_ppid"] as? Int, peer: fd) {
+            payload["coucou_claude_pid"] = Int(pid)
+        }
+        #endif
 
         let coucouKind = payload["coucou_kind"] as? String ?? ""
 
@@ -374,28 +381,44 @@ final class HookServer: @unchecked Sendable {
         #else
         let isCodexEvent = false
         #endif
-        let agentId: String
+        let baseId: String
         let isExternalAgent: Bool
         var hostApp: String? = nil
         if isCodexEvent {
-            agentId = "agent_codex"
+            baseId = "agent_codex"
             isExternalAgent = false
         } else if let agent = validAgent {
-            agentId = "agent_\(agent)"
+            baseId = "agent_\(agent)"
             isExternalAgent = true
         } else if isCursorEditor {
-            agentId = "agent_cursor"
+            baseId = "agent_cursor"
             isExternalAgent = false
         } else if isVSCodeEditor {
-            agentId = "integration_claude"
+            baseId = "integration_claude"
             isExternalAgent = false
         } else if let host = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId) {
-            agentId = "integration_claude"
+            baseId = "integration_claude"
             isExternalAgent = false
             hostApp = host.bundleId
         } else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
+        }
+        // Claude Code sessions running at once each get their own pill; agents keep theirs.
+        if !isExternalAgent && !isCodexEvent {
+            adoptProcess(sessionId: sessionId, cwd: cwd, claudePid: payload["coucou_claude_pid"] as? Int)
+        }
+        let agentId = isExternalAgent || isCodexEvent ? baseId : claudePill(workspaceId: baseId, sessionId: sessionId)
+        let ownSession = agentId.hasPrefix(PillCatalog.sessionPillPrefix)
+
+        func ensurePill() {
+            if ownSession {
+                upsertSessionTask(id: agentId, projectName: projectName, cwd: cwd, bundleId: bundleId)
+            } else if isExternalAgent {
+                upsertExternalAgent(id: agentId, name: validAgent!)
+            } else {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId)
+            }
         }
 
         let focused = state.focusId == agentId
@@ -450,9 +473,10 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionStart":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            ensurePill()
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
+            if !isExternalAgent { discoverSessions() }
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
@@ -464,7 +488,7 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            ensurePill()
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
@@ -482,7 +506,7 @@ final class HookServer: @unchecked Sendable {
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
             guard tool != "AskUserQuestion" else { break }
-            if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
+            ensurePill()
             state.updateTask(id: agentId, state: .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = localizedStep(tool: tool, input: input)
@@ -562,6 +586,8 @@ final class HookServer: @unchecked Sendable {
 
         case "SessionEnd":
             activeSessionId = nil
+            endSession(sessionId)
+            if !isExternalAgent { discoverSessions() }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
@@ -576,6 +602,275 @@ final class HookServer: @unchecked Sendable {
         default:
             break
         }
+    }
+
+    // MARK: - One pill per Claude Code session
+
+    /// Extra sessions running at once, by session ID: the first keeps the workspace pill,
+    /// each other one gets a pill of its own until it ends or goes silent.
+    private var sessionPills: [String: String] = [:]
+    /// The session each workspace pill shows, by pill ID.
+    private var workspaceOwner: [String: String] = [:]
+    private var lastHeard: [String: Date] = [:]
+    /// A session silent this long, and idle, was closed without a SessionEnd.
+    private static let sessionStale: TimeInterval = 30 * 60
+
+    @MainActor
+    private func isStale(_ sessionId: String, pillId: String, now: Date) -> Bool {
+        // A pill made from a process never goes stale: the next scan says if it is gone.
+        if hasProcess(sessionId) { return false }
+        let heard = lastHeard[sessionId] ?? .distantPast
+        let idle = AppState.shared.tasks.first(where: { $0.id == pillId }).map { $0.state == .idle } ?? true
+        return now.timeIntervalSince(heard) > Self.sessionStale && idle
+    }
+
+    /// The pill a Claude Code session's events go to.
+    @MainActor
+    private func claudePill(workspaceId: String, sessionId: String) -> String {
+        guard !sessionId.isEmpty, sessionId != "unknown" else { return workspaceId }
+        let now = Date()
+        for (sid, pid) in sessionPills where isStale(sid, pillId: pid, now: now) {
+            sessionPills[sid] = nil
+            lastHeard[sid] = nil
+            AppState.shared.removeTask(id: pid)
+        }
+        // Sessions that only ever held a workspace pill are forgotten the same way.
+        let owners = Set(workspaceOwner.values)
+        for (sid, heard) in lastHeard where sessionPills[sid] == nil && !owners.contains(sid)
+            && now.timeIntervalSince(heard) > Self.sessionStale {
+            lastHeard[sid] = nil
+        }
+        lastHeard[sessionId] = now
+        if let own = sessionPills[sessionId] { return own }
+        if let owner = workspaceOwner[workspaceId], owner != sessionId,
+           !isStale(owner, pillId: workspaceId, now: now) {
+            let pillId = SessionPillId.make(sessionId, prefix: PillCatalog.sessionPillPrefix,
+                                            taken: Set(sessionPills.values))
+            sessionPills[sessionId] = pillId
+            return pillId
+        }
+        workspaceOwner[workspaceId] = sessionId
+        return workspaceId
+    }
+
+    @MainActor
+    private func endSession(_ sessionId: String) {
+        sessionPills[sessionId] = nil
+        lastHeard[sessionId] = nil
+        for (pill, owner) in workspaceOwner where owner == sessionId { workspaceOwner[pill] = nil }
+        for (key, id) in pidSessions where id == sessionId {
+            pidSessions[key] = nil
+            pidCwd[key] = nil
+        }
+        sessionPids[sessionId] = nil
+    }
+
+    // MARK: - Sessions found running
+    //
+    // A session is only heard of at its next event, and an idle one has none to send:
+    // after a launch its pill would be missing until it did something. So the `claude`
+    // processes running get their pills at once under `pid-<pid>`, and the session's
+    // first event in that folder takes the pill over.
+
+    /// `pid-<pid>` → the session key its pill is under (that same key until adopted).
+    private var pidSessions: [String: String] = [:]
+    private var pidCwd: [String: String] = [:]
+    /// Session key → the `claude` process its events came from.
+    private var sessionPids: [String: Int] = [:]
+
+    private struct FoundSession: Sendable {
+        let pid: Int32
+        let cwd: String
+        /// The tmux session the user named, "" outside tmux.
+        let name: String
+    }
+
+    private func hasProcess(_ sessionId: String) -> Bool {
+        sessionId.hasPrefix("pid-") || pidSessions.values.contains(sessionId)
+    }
+
+    /// The session's first event: the pill made for its process is its. By the process when the
+    /// event names it, else by folder (the session may have moved since it started).
+    @MainActor
+    private func adoptProcess(sessionId: String, cwd: String, claudePid: Int?) {
+        guard !sessionId.isEmpty, sessionId != "unknown",
+              sessionPills[sessionId] == nil, !workspaceOwner.values.contains(sessionId),
+              !pidSessions.values.contains(sessionId) else { return }
+        if let claudePid { sessionPids[sessionId] = claudePid }
+        let byPid = claudePid.map { "pid-\($0)" }.flatMap { pidSessions[$0] == $0 ? $0 : nil }
+        // ponytail: by folder, two idle sessions in one folder may swap pills (same name).
+        let byCwd = cwd.isEmpty ? nil : pidSessions.first(where: { $0.key == $0.value && pidCwd[$0.key] == cwd })?.key
+        guard let key = claudePid == nil ? byCwd : byPid else { return }
+        nbLog("Session \(sessionId.prefix(8)) takes the pill found for \(key)")
+        if let own = sessionPills.removeValue(forKey: key) { sessionPills[sessionId] = own }
+        for (pill, owner) in workspaceOwner where owner == key { workspaceOwner[pill] = sessionId }
+        lastHeard[sessionId] = lastHeard.removeValue(forKey: key)
+        pidSessions[key] = sessionId
+    }
+
+    /// Pills for the sessions running now; those whose process is gone go.
+    func discoverSessions() {
+        #if !APPSTORE
+        DispatchQueue.global(qos: .utility).async {
+            let found = Self.claudeProcesses()
+            Task { @MainActor in self.applyDiscovered(found) }
+        }
+        #endif
+    }
+
+    @MainActor
+    private func applyDiscovered(_ found: [FoundSession]) {
+        let state = AppState.shared
+        let alive = Set(found.map { "pid-\($0.pid)" })
+        for (key, sessionId) in pidSessions where !alive.contains(key) {
+            let pillId = sessionPills[sessionId] ?? workspaceOwner.first(where: { $0.value == sessionId })?.key
+            endSession(sessionId)
+            guard let pillId else { continue }
+            state.clearSessionDiffs(for: pillId)
+            state.removeTask(id: pillId)
+        }
+        for session in found {
+            let key = "pid-\(session.pid)"
+            guard pidSessions[key] == nil else { continue }
+            // A session already heard from in this folder is this process's: no second pill.
+            let known = Set(sessionPills.keys).union(workspaceOwner.values)
+                .filter { !$0.hasPrefix("pid-") && !pidSessions.values.contains($0) }
+            if let sid = known.first(where: { sessionPids[$0] == Int(session.pid) }) ?? known.first(where: { sid in
+                sessionPids[sid] == nil && {
+                    let pill = sessionPills[sid] ?? workspaceOwner.first(where: { $0.value == sid })?.key
+                    return state.tasks.first(where: { $0.id == pill })?.sessionCwd == session.cwd
+                }()
+            }) {
+                pidSessions[key] = sid
+                pidCwd[key] = session.cwd
+                continue
+            }
+            pidSessions[key] = key
+            pidCwd[key] = session.cwd
+            let raw = session.name.isEmpty ? URL(fileURLWithPath: session.cwd).lastPathComponent : session.name
+            let projectName = aliasProjectName(raw.isEmpty ? "Session" : raw)
+            let pillId = claudePill(workspaceId: "integration_claude", sessionId: key)
+            if pillId.hasPrefix(PillCatalog.sessionPillPrefix) {
+                upsertSessionTask(id: pillId, projectName: projectName, cwd: session.cwd, bundleId: "")
+            } else {
+                let host = state.tasks.first(where: { $0.id == pillId })?.hostApp
+                upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: session.cwd, hostApp: host)
+            }
+        }
+    }
+
+    #if !APPSTORE
+    private static func commandOutput(_ path: String, _ args: [String]) -> String {
+        let task = Process(); let pipe = Pipe()
+        task.executableURL = URL(fileURLWithPath: path)
+        task.arguments = args; task.standardOutput = pipe; task.standardError = Pipe()
+        guard (try? task.run()) != nil else { return "" }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    /// Each top-level `claude` process of ours (not one whose parent is `claude`: the
+    /// helpers it spawns under its own name), with its folder and tmux session.
+    private static func claudeProcesses() -> [FoundSession] {
+        let uid = getuid()
+        var parent: [Int32: Int32] = [:]
+        var name: [Int32: String] = [:]
+        for line in commandOutput("/bin/ps", ["-axo", "pid=,ppid=,uid=,comm="]).split(separator: "\n") {
+            let f = line.split(separator: " ", omittingEmptySubsequences: true)
+            guard f.count >= 4, let pid = Int32(f[0]), let ppid = Int32(f[1]),
+                  let owner = UInt32(f[2]), owner == uid else { continue }
+            parent[pid] = ppid
+            // macOS reports Claude Code as its version in ucomm; comm is its path, may have spaces
+            name[pid] = URL(fileURLWithPath: f[3...].joined(separator: " ")).lastPathComponent
+        }
+        let panes = tmuxPanes()
+        var found: [FoundSession] = []
+        for (pid, comm) in name where comm == "claude" {
+            if let ppid = parent[pid], name[ppid] == "claude" { continue }
+            let cwd = commandOutput("/usr/sbin/lsof", ["-a", "-d", "cwd", "-Fn", "-p", String(pid)])
+                .split(separator: "\n").first(where: { $0.hasPrefix("n/") }).map { String($0.dropFirst()) }
+            guard let cwd else { continue }
+            var tmux = ""
+            var walk: Int32? = pid
+            for _ in 0..<8 {
+                guard let current = walk else { break }
+                if let session = panes[current] { tmux = session; break }
+                walk = parent[current]
+            }
+            found.append(FoundSession(pid: pid, cwd: cwd, name: tmux))
+        }
+        return found.sorted { $0.pid < $1.pid }
+    }
+
+    /// The `claude` process that ran a hook: the farthest one up from the hook's parent, else
+    /// from the relay on the socket (gone already when it sent its event and left).
+    private static func claudeAncestor(from hookParent: Int?, peer fd: Int32) -> Int32? {
+        var pid: pid_t = 0
+        var len = socklen_t(MemoryLayout<pid_t>.size)
+        if let hookParent, (2...Int(Int32.max)).contains(hookParent) {
+            pid = pid_t(hookParent)
+        } else {
+            guard getsockopt(fd, SOL_LOCAL, LOCAL_PEERPID, &pid, &len) == 0, pid > 1 else { return nil }
+        }
+        var found: Int32?
+        var current = pid
+        for _ in 0..<12 {
+            guard let ppid = parentPid(current) else { break }
+            if commandName(current) == "claude" { found = current }
+            guard ppid > 1 else { break }
+            current = ppid
+        }
+        return found
+    }
+
+    private static func parentPid(_ pid: pid_t) -> pid_t? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        return info.kp_eproc.e_ppid
+    }
+
+    /// argv[0]'s last part, as `ps -o comm` shows it: macOS names Claude Code by its version otherwise.
+    private static func commandName(_ pid: pid_t) -> String? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return nil }
+        var buf = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, 3, &buf, &size, nil, 0) == 0 else { return nil }
+        // argc, the executable's path, NUL padding, then argv[0].
+        var i = MemoryLayout<Int32>.size
+        while i < size, buf[i] != 0 { i += 1 }
+        while i < size, buf[i] == 0 { i += 1 }
+        let start = i
+        while i < size, buf[i] != 0 { i += 1 }
+        guard start < i else { return nil }
+        return URL(fileURLWithPath: String(decoding: buf[start..<i], as: UTF8.self)).lastPathComponent
+    }
+
+    /// The process in each tmux pane → its session's name. Empty without tmux.
+    private static func tmuxPanes() -> [Int32: String] {
+        let paths = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/opt/local/bin/tmux"]
+        guard let tmux = paths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return [:] }
+        var panes: [Int32: String] = [:]
+        for line in commandOutput(tmux, ["list-panes", "-a", "-F", "#{pane_pid} #{session_name}"]).split(separator: "\n") {
+            let f = line.split(separator: " ", maxSplits: 1)
+            if f.count == 2, let pid = Int32(f[0]) { panes[pid] = String(f[1]) }
+        }
+        return panes
+    }
+    #endif
+
+    /// A session's own pill: named after its folder, in that folder's colour, with what
+    /// Open terminal needs.
+    @MainActor
+    private func upsertSessionTask(id: String, projectName: String, cwd: String, bundleId: String) {
+        upsertExternalAgent(id: id, name: projectName)
+        let state = AppState.shared
+        guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
+        if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
+        if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
     }
 
     // MARK: - Agent validation + dynamic pill
@@ -706,20 +1001,22 @@ final class HookServer: @unchecked Sendable {
         }
 
         // Determine which workspace pill owns the request.
-        let pillId: String
+        let basePillId: String
         if isCodexRequest {
-            pillId = "agent_codex"
+            basePillId = "agent_codex"
         } else if isCopilotRequest {
-            pillId = "agent_copilot"
+            basePillId = "agent_copilot"
         } else if isMuseRequest {
-            pillId = "agent_muse"
+            basePillId = "agent_muse"
         } else if isHermesRequest {
-            pillId = "agent_hermes"
+            basePillId = "agent_hermes"
         } else if isCursorEditor {
-            pillId = "agent_cursor"
+            basePillId = "agent_cursor"
         } else {
-            pillId = "integration_claude"
+            basePillId = "integration_claude"
         }
+        let isClaudeCode = !isCodexRequest && !isCopilotRequest && !isMuseRequest && !isHermesRequest
+        let pillId = isClaudeCode ? claudePill(workspaceId: basePillId, sessionId: sessionId) : basePillId
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
@@ -765,7 +1062,11 @@ final class HookServer: @unchecked Sendable {
         pendingApprovalFD = fd
         activeSessionId = sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        if pillId.hasPrefix(PillCatalog.sessionPillPrefix) {
+            upsertSessionTask(id: pillId, projectName: projectName, cwd: cwd, bundleId: bundleId)
+        } else {
+            upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        }
         state.updateTask(id: pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: sessionId, tool: tool,
                                               command: command, inputKey: inputKey, pillId: pillId)
@@ -902,10 +1203,8 @@ final class HookServer: @unchecked Sendable {
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
-        } else if isCursorEditor {
-            pillId = "agent_cursor"
         } else {
-            pillId = "integration_claude"
+            pillId = claudePill(workspaceId: isCursorEditor ? "agent_cursor" : "integration_claude", sessionId: sessionId)
         }
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
@@ -936,7 +1235,11 @@ final class HookServer: @unchecked Sendable {
             ? "\(pillId)+\(cwd)"
             : sessionId
 
-        upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        if pillId.hasPrefix(PillCatalog.sessionPillPrefix) {
+            upsertSessionTask(id: pillId, projectName: projectName, cwd: cwd, bundleId: bundleId)
+        } else {
+            upsertWorkspaceTask(id: pillId, projectName: projectName, cwd: cwd, hostApp: terminalHost?.bundleId, bundleId: bundleId)
+        }
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
         state.isPinned = true
@@ -3060,6 +3363,8 @@ private let nbHookShellWrapper = """
 #!/bin/sh
 # Coucou hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
+# The agent that ran the hook, still running after this relay has exited
+COUCOU_HOOK_PPID=$PPID; export COUCOU_HOOK_PPID
 out=""
 if xcode-select -p >/dev/null 2>&1; then
     out=$(/usr/bin/python3 "$HOOK_DIR/nb-hook.py" "$@" 2>/dev/null)
@@ -3212,6 +3517,8 @@ def main():
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
         payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        if env.get('COUCOU_HOOK_PPID', '').isdigit():
+            payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3279,6 +3586,8 @@ def main():
     # Enrich with terminal context
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    if env.get('COUCOU_HOOK_PPID', '').isdigit():
+        payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3519,6 +3828,8 @@ def main():
         payload['coucou_kind'] = 'ask_user_question'
         env = os.environ
         payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+        if env.get('COUCOU_HOOK_PPID', '').isdigit():
+            payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
         payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
         payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
@@ -3585,6 +3896,8 @@ def main():
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    if env.get('COUCOU_HOOK_PPID', '').isdigit():
+        payload['hook_ppid'] = int(env['COUCOU_HOOK_PPID'])
     payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
     payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
     payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))

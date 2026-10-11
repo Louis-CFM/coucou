@@ -66,6 +66,9 @@ struct PillDefinition {
 // MARK: - Catalog
 
 enum PillCatalog {
+    /// Prefix of the pill each extra Claude Code session running at once gets (HookServer).
+    static let sessionPillPrefix = "session_"
+
     // All declared pills in display order.
     static let all: [PillDefinition] = [
         // ── Where you code ───────────────────────────────────────────────────
