@@ -92,6 +92,9 @@ struct SettingsView: View {
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
     @State private var connectingLMStudio:  Bool = false
+    @State private var openWebUIURL:        String = AppState.shared.openWebUIServerURL
+    @State private var openWebUIKey:        String = ""
+    @State private var connectingOpenWebUI: Bool = false
 
     // Integration keys
     @State private var resendKey: String    = KeychainStore.shared.get("resend-api-key")  ?? ""
@@ -1144,6 +1147,53 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.bordered)
                 }
+
+                Divider()
+
+                // ── Open WebUI ──────────────────────────────────────────────────
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: ChatProvider.openwebui.accentHex)).frame(width: 8, height: 8)
+                    Text("Open WebUI").font(.system(size: 12, weight: .semibold))
+                    if !state.openWebUIServerURL.isEmpty {
+                        Text(String(localized: "Connected"))
+                            .font(.system(size: 10))
+                            .foregroundColor(Color(hex: "#22C55E"))
+                    }
+                }
+                if state.openWebUIServerURL.isEmpty {
+                    TextField("http://127.0.0.1:8080", text: $openWebUIURL)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField(String(localized: "API key"), text: $openWebUIKey)
+                        .textFieldStyle(.roundedBorder)
+                    Text(String(localized: "Chats you have here also show up in Open WebUI. For the key, an admin turns on Admin Panel → Settings → Authentication → API Keys; then Settings → Account → API keys → Secrets → Show creates one."))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(connectingOpenWebUI ? String(localized: "chat.connecting") : String(localized: "chat.connect")) {
+                        Task { await connectOpenWebUI() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(connectingOpenWebUI)
+                } else {
+                    Text(state.openWebUIServerURL)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                    Toggle(String(localized: "Web search"), isOn: $state.openWebUIWebSearch)
+                    Text(String(localized: "Open WebUI searches the web before answering, where its admin has turned web search on."))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(String(localized: "chat.disconnect")) {
+                        state.openWebUIServerURL = ""
+                        openWebUIURL = ""
+                        KeychainStore.shared.remove(OpenWebUI.keychainKey)
+                        state.fetchedProviderModels[.openwebui] = nil
+                        state.providerModelFetchError[.openwebui] = nil
+                        state.openWebUIModelGroups = [:]
+                        if state.chatProvider == .openwebui { state.chatProvider = .anthropic }
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
             .padding(.vertical, 4)
         }
@@ -1577,6 +1627,50 @@ struct SettingsView: View {
             statusMessage = String(localized: "status.local.connected \(models.count)")
         case .failure:
             statusMessage = String(format: String(localized: "status.local.unreachable %1$@ %2$@"), name, normalised)
+        }
+    }
+
+    /// Stores the key with the address it is for (it is only ever sent there),
+    /// then checks that Open WebUI answers with models for it.
+    private func connectOpenWebUI() async {
+        let normalised = LocalChat.normaliseURL(openWebUIURL)
+        guard normalised.hasPrefix("http://") || normalised.hasPrefix("https://") else {
+            statusMessage = String(localized: "status.local.url-invalid")
+            return
+        }
+        let typedKey = openWebUIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !typedKey.isEmpty {
+            guard OpenWebUI.mayCarryKey(normalised) else {
+                statusMessage = String(localized: "A key is only sent over https, or to a server on this computer.")
+                return
+            }
+            KeychainStore.shared.set(OpenWebUI.keychainKey, value: OpenWebUI.boundKey(typedKey, url: normalised))
+            openWebUIKey = ""
+        }
+        guard let key = OpenWebUI.key(stored: KeychainStore.shared.get(OpenWebUI.keychainKey), url: normalised) else {
+            statusMessage = String(localized: "Add an Open WebUI API key in Settings → Local models first.")
+            return
+        }
+        connectingOpenWebUI = true
+        statusMessage = ""
+        do {
+            let models = try await OpenWebUI.models(baseURL: normalised, key: key)
+            connectingOpenWebUI = false
+            guard !models.isEmpty else {
+                statusMessage = String(localized: "Open WebUI has no models for this account.")
+                return
+            }
+            state.openWebUIServerURL = normalised
+            openWebUIURL = normalised
+            state.fetchedProviderModels[.openwebui] = nil
+            state.providerModelFetchError[.openwebui] = nil
+            statusMessage = String(localized: "status.local.connected \(models.count)")
+        } catch let failure as OpenWebUI.Failure {
+            connectingOpenWebUI = false
+            statusMessage = failure.message
+        } catch {
+            connectingOpenWebUI = false
+            statusMessage = String(format: String(localized: "status.local.unreachable %1$@ %2$@"), "Open WebUI", normalised)
         }
     }
 

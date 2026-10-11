@@ -210,7 +210,7 @@ fn parse_models(json: &Value) -> Vec<ModelInfo> {
         .filter_map(|m| {
             let id = m.get("id")?.as_str()?.to_string();
             let label = m.get("display_name").and_then(Value::as_str).unwrap_or(&id).to_string();
-            Some(ModelInfo { id, label })
+            Some(ModelInfo { id, label, group: None })
         })
         .collect()
 }
@@ -367,8 +367,8 @@ mod tests {
         assert_eq!(
             parse_models(&list),
             vec![
-                ModelInfo { id: "claude-opus-5".into(), label: "Claude Opus 5".into() },
-                ModelInfo { id: "claude-x".into(), label: "claude-x".into() },
+                ModelInfo { id: "claude-opus-5".into(), label: "Claude Opus 5".into(), group: None },
+                ModelInfo { id: "claude-x".into(), label: "claude-x".into(), group: None },
             ]
         );
     }

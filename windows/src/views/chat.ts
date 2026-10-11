@@ -10,7 +10,7 @@ import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
-import {
+import { promptVariables,
   activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
@@ -25,6 +25,9 @@ const STRINGS = {
   switchModel: N_("Switch provider or model"),
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
+  mostUsed: N_("Most used"),
+  workspaceModels: N_("Workspace models"),
+  allModels: N_("All models"),
   noKey: N_("No API key — add it in Settings."),
   openSettings: N_("Open Settings"),
 };
@@ -70,6 +73,12 @@ interface Picker {
   open(): void;
   close(): void;
   readonly isOpen: boolean;
+}
+
+function sectionTitle(group: ModelInfo["group"]): string {
+  if (group === "used") return STRINGS.mostUsed;
+  if (group === "custom") return STRINGS.workspaceModels;
+  return STRINGS.allModels;
 }
 
 /** Provider chips, then the chosen provider's models — ModelPickerView. */
@@ -124,7 +133,13 @@ function buildPicker(onChange: () => void): Picker {
   function drawModels(p: ProviderDef, models: ModelInfo[]) {
     clear(list);
     const current = activeModel(State.settings);
+    const grouped = models.some((m) => m.group);
+    let section: string | undefined | null = null;
     for (const m of models) {
+      if (grouped && m.group !== section) {
+        section = m.group;
+        list.append(h("div", { class: "picker-section", text: t(sectionTitle(m.group)) }));
+      }
       const on = m.id === current;
       const row = h(
         "button",
@@ -140,7 +155,10 @@ function buildPicker(onChange: () => void): Picker {
       });
       list.append(row);
     }
-    list.querySelector(".picker-model.on")?.scrollIntoView({ block: "nearest" });
+    // The chosen model in view, with its section's title when it leads one.
+    const on = list.querySelector(".picker-model.on");
+    const before = on?.previousElementSibling;
+    (before?.classList.contains("picker-section") ? before : on)?.scrollIntoView({ block: "nearest" });
   }
 
   async function loadModels() {
@@ -283,7 +301,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
+      const reply = await Bridge.chatSend(query, context, promptVariables());
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
