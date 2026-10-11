@@ -149,10 +149,10 @@ final class ApprovalRelay {
         switch decision {
         case "allow":
             log("allowed from the iPhone: \(pending.tool)")
-            HookServer.shared.sendApprovalDecision("allow")
+            HookServer.shared.sendApprovalDecision("allow", for: pending.id)
         case "deny":
             log("denied from the iPhone: \(pending.tool)")
-            HookServer.shared.sendApprovalDecision("deny")
+            HookServer.shared.sendApprovalDecision("deny", for: pending.id)
         default:
             log("unknown decision '\(decision)', ignored")
         }

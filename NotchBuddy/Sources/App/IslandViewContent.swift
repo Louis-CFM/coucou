@@ -27,6 +27,18 @@ struct IslandViewContent: View {
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
         case .wardrobe:  WardrobeView(state: state)
         case .recap:     WeeklyRecapCardView(state: state)
+        case .listening:
+            #if !APPSTORE
+            VoiceListeningView(isActive: state.view == .listening)
+            #else
+            EmptyView()
+            #endif
+        case .voiceResult:
+            #if !APPSTORE
+            VoiceResultView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
@@ -108,7 +120,19 @@ struct OverviewView: View {
                         if state.planDetailIsCodex {
                             CodexPlanCardView(usage: state.codexPlanUsage)
                         } else {
-                            ClaudePlanCardView(usage: state.claudePlanUsage)
+                            // Claude and Codex both on: the header shows only the Claude pill,
+                            // Codex is a third row here that opens its own card.
+                            let bothPlans = state.showPlanInNotch && state.planRelayInstalled
+                                && state.showCodexPlanInNotch
+                            ClaudePlanCardView(usage: state.claudePlanUsage,
+                                               codexRow: bothPlans,
+                                               codexUsage: state.codexPlanUsage,
+                                               onCodex: {
+                                                   withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                                       state.planDetailIsCodex = true
+                                                   }
+                                                   state.refreshCodexPlanUsage()
+                                               })
                         }
                     }
                     .transition(.opacity)
@@ -299,18 +323,37 @@ struct ApprovalView: View {
 
     var approval: ApprovalInfo? { state.pendingApproval }
 
+    /// The pill, named after the session that asks (several sessions can share a pill).
+    private var asker: AgentTask? {
+        guard var task = state.focusTask else { return nil }
+        if let project = approval?.projectName, !project.isEmpty { task.name = project }
+        return task
+    }
+
     var body: some View {
+        // Captured when the card is drawn: a click answers the request that was on screen,
+        // and is ignored if the card has moved on to the next one since.
+        let shownId = approval?.id
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "needs permission")
+                HStack(spacing: 7) {
+                    AgentWho(task: asker, label: "needs permission")
+                    // Other requests waiting behind this one: "1/3".
+                    if let count = approval?.queueCount, count > 1 {
+                        Text(verbatim: "1/\(count)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                            .monospacedDigit()
+                    }
+                }
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
                 HStack(spacing: 8) {
                     SecondaryButton("Deny") {
-                        HookServer.shared.sendApprovalDecision("deny")
+                        HookServer.shared.sendApprovalDecision("deny", for: shownId)
                     }
                     PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow")
+                        HookServer.shared.sendApprovalDecision("allow", for: shownId)
                     }
                     // Codex, Copilot CLI and Muse Code do not support updatedPermissions
                     let hideAlways = approval?.pillId == "agent_codex"
@@ -318,7 +361,7 @@ struct ApprovalView: View {
                         || approval?.pillId == "agent_muse"
                     if !hideAlways {
                         SecondaryButton("Always") {
-                            HookServer.shared.sendApprovalDecision("always")
+                            HookServer.shared.sendApprovalDecision("always", for: shownId)
                         }
                     }
                 }
@@ -799,12 +842,8 @@ struct ConfusedView: View {
 
 struct UploadView: View {
     @ObservedObject var state: AppState
-    @State private var dashPhase: CGFloat = 0
-    @State private var breathAngle: Double = 0
-    // Timer only runs while this is the active tab — killed on deactivation
-    @State private var animTimer: Timer? = nil
 
-    private var borderOpacity: Double {
+    private func borderOpacity(breathAngle: Double) -> Double {
         let breathe = 0.11 + 0.04 * (sin(breathAngle) * 0.5 + 0.5)
         return state.fileDragOver ? 0.65 : breathe
     }
@@ -813,13 +852,21 @@ struct UploadView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color(hex: "#0E0F11"))
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    state.fileDragOver
-                        ? Color(hex: "#22C55E").opacity(borderOpacity)
-                        : Color.white.opacity(borderOpacity),
-                    style: StrokeStyle(lineWidth: 1.5, dash: [6, 5], dashPhase: dashPhase)
-                )
+            // The dashes march at 20 pt/s and the border breathes at 0.9 rad/s, computed from the
+            // clock on every display frame (it was a 20 Hz timer, visibly stepped). Runs only while
+            // this is the open view.
+            TimelineView(.animation(paused: state.view != .upload || state.mode != .expanded)) { tl in
+                let t = tl.date.timeIntervalSinceReferenceDate
+                let dashPhase = CGFloat((t * 20).truncatingRemainder(dividingBy: 11))
+                let opacity = borderOpacity(breathAngle: t * 0.9)
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        state.fileDragOver
+                            ? Color(hex: "#22C55E").opacity(opacity)
+                            : Color.white.opacity(opacity),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [6, 5], dashPhase: dashPhase)
+                    )
+            }
             RoundedRectangle(cornerRadius: 20)
                 .fill(RadialGradient(
                     colors: [Color(hex: "#22C55E").opacity(state.fileDragOver ? 0.13 : 0), Color.clear],
@@ -843,27 +890,6 @@ struct UploadView: View {
             .padding(.leading, 196)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onChange(of: state.view) { _, newView in
-            newView == .upload ? startTimer() : stopTimer()
-        }
-        .onAppear {
-            if state.view == .upload { startTimer() }
-        }
-        .onDisappear { stopTimer() }
-    }
-
-    private func startTimer() {
-        guard animTimer == nil else { return }
-        // 20 fps — smooth enough for slow dash, 3× lighter than 60fps
-        animTimer = Timer.scheduledTimer(withTimeInterval: 1.0/20.0, repeats: true) { _ in
-            dashPhase  += 1.0          // 20 pt/s march
-            breathAngle += 0.9 / 20.0  // advance sin phase at 0.9 rad/s
-        }
-    }
-
-    private func stopTimer() {
-        animTimer?.invalidate()
-        animTimer = nil
     }
 }
 
@@ -883,7 +909,8 @@ struct UploadingView: View {
     var body: some View {
         // TimelineView fires at display refresh rate — progress derived from elapsed wall time,
         // not from @Published uploadProgress (which only flips to 1.0 at completion).
-        TimelineView(.animation) { tl in
+        // Only runs while this view is shown (it stays mounted behind the others).
+        TimelineView(.animation(paused: state.view != .uploading || state.mode != .expanded)) { tl in
             let elapsed: Double = {
                 guard let start = state.uploadStartTime else { return 0 }
                 return tl.date.timeIntervalSince(start)
@@ -1034,25 +1061,50 @@ struct MailView: View {
                         guard !isSending else { return }
                         sendMail()
                     }
-                    SecondaryButton("Cancel") { state.view = .choose }
+                    SecondaryButton("Cancel") {
+                        if state.voiceMailDraft != nil {
+                            // Prepared by voice: nothing to go back to, close the card.
+                            state.voiceMailDraft = nil
+                            state.droppedFile = nil
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        } else {
+                            state.view = .choose
+                        }
+                    }
                 }
             }
             .padding(.leading, 92)
             .padding(.trailing, 18)
             .padding(.vertical, 8)
         }
-        .onAppear { subject = state.droppedFile?.name ?? "" }
+        .onAppear { fillFromVoiceDraft() }
+        .onChange(of: state.voiceMailDraft) { _, _ in fillFromVoiceDraft() }
+    }
+
+    /// A mail prepared by voice arrives filled in; otherwise the dropped file's name.
+    private func fillFromVoiceDraft() {
+        if let d = state.voiceMailDraft {
+            to = d.to
+            subject = d.subject.isEmpty ? (state.droppedFile?.name ?? "") : d.subject
+            bodyText = d.body
+            statusMsg = ""
+        } else if subject.isEmpty {
+            subject = state.droppedFile?.name ?? ""
+        }
     }
 
     private func sendMail() {
         guard !to.isEmpty else { statusMsg = String(localized: "Missing recipient."); return }
         let subj = subject.isEmpty ? (state.droppedFile?.name ?? "File") : subject
 
-        // Prefer Resend if API key + sender address are configured
+        // Prefer Resend if API key + sender address are configured — except for a mail
+        // prepared by voice, which goes through the user's own Apple Mail account.
         let apiKey  = KeychainStore.shared.get("resend-api-key")
         let fromAddr = KeychainStore.shared.get("resend-from")
 
-        if let apiKey, let fromAddr {
+        if state.voiceMailDraft != nil {
+            sendViaAppleMail(to: to, subject: subj)
+        } else if let apiKey, let fromAddr {
             isSending = true
             statusMsg = ""
             let recipient = to
@@ -1153,14 +1205,27 @@ struct MailView: View {
             send m
         end tell
         """
-        var err: NSDictionary?
-        NSAppleScript(source: script)?.executeAndReturnError(&err)
-        if err == nil { onSuccess(recipient: to) }
-        else { statusMsg = "Mail error: \(err?["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
+        // Off the main thread: the script waits for Mail (and has a 1 s delay), which used
+        // to freeze the whole island until the mail was sent.
+        isSending = true
+        statusMsg = ""
+        let recipient = to
+        Task {
+            let message: String? = await Task.detached(priority: .userInitiated) {
+                var err: NSDictionary?
+                NSAppleScript(source: script)?.executeAndReturnError(&err)
+                return err.map { "Mail error: \($0["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
+            }.value
+            await MainActor.run {
+                isSending = false
+                if let message { statusMsg = message } else { onSuccess(recipient: recipient) }
+            }
+        }
         #endif
     }
 
     private func onSuccess(recipient: String) {
+        state.voiceMailDraft = nil
         SoundEngine.shared.play("send")
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.wink)
         state.noteMessage = "Email sent to \(recipient)."
@@ -3624,7 +3689,8 @@ struct TickerView: View {
             Color.clear
 
             // Row A: completed row — always rendered at phase=1 + completedScale
-            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, onDiffTap: rowADiffTap)
+            // Row A never shows its shimmer (phase 1): it doesn't animate one either.
+            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, shimmerPaused: true, onDiffTap: rowADiffTap)
                 .scaleEffect(completedScale, anchor: .leading)
                 .offset(x: -10, y: rowAOffset)
                 .opacity(rowAOpacity)
@@ -3715,6 +3781,7 @@ struct TickerRowView: View {
     let text: String
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
     var isActive: Bool = true
+    var shimmerPaused: Bool = false
     var onDiffTap: (() -> Void)? = nil
 
     var body: some View {
@@ -3740,7 +3807,7 @@ struct TickerRowView: View {
                 // Filename + counts
                 HStack(spacing: 0) {
                     ZStack(alignment: .leading) {
-                        TickerShimmerText(text: dp.filename)
+                        TickerShimmerText(text: dp.filename, paused: shimmerPaused || !isActive)
                             .opacity(shimmerOpacity)
                         Text(dp.filename)
                             .font(.system(size: 13, weight: .medium))
@@ -3783,7 +3850,8 @@ struct TickerRowView: View {
 
                 // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
                 ZStack(alignment: .leading) {
-                    TickerShimmerText(text: text)
+                    // An idle task never shows the shimmer (nor row A, see shimmerPaused).
+                    TickerShimmerText(text: text, paused: shimmerPaused || !isActive)
                         .opacity(shimmerOpacity)
                     Text(text)
                         .font(.system(size: 13, weight: .medium))
@@ -3800,9 +3868,12 @@ struct TickerRowView: View {
 
 struct TickerShimmerText: View {
     let text: String
+    var paused: Bool = false
+    @Environment(\.islandViewActive) private var viewActive
 
     var body: some View {
-        TimelineView(.animation) { tl in
+        // A 2.2 s sweep at display refresh rate. Paused when hidden.
+        TimelineView(.animation(paused: paused || !viewActive)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             let p = CGFloat(t.truncatingRemainder(dividingBy: 2.2) / 2.2)
             // phase sweeps -0.1 → 1.1 so white peak enters from left and exits right
