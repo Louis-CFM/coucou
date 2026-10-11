@@ -56,11 +56,11 @@ enum VoiceIslandTests {
             precondition(m.state == .petit, "collapse while listening → petit")
         }
 
-        // click while listening → no-op (already expanded)
+        // click while listening → home: the island opens, voice keeps running
         do {
             let m = IslandStateMachine()
             m.voiceWoke(); m.click()
-            precondition(m.state == .listening, "click while listening → no-op")
+            precondition(m.state == .home, "click while listening → home")
         }
 
         // mouseLeft while listening → stays listening (no timer scheduled)
