@@ -887,10 +887,22 @@ function buildRecorderView(actions: ViewActions): ViewHost {
       syncCalendarBtn.textContent = "Sincronizando...";
       const eventId = currentEvent ? currentEvent.id : "evt-gcal-1";
       const summary = `• Alinhamento e escopo de entregas Q4 validados.\n• Decisão: Conexão direta com Google Calendar API ativada.\n• Próximos passos: Envio das minutas e sincronização de tarefas.`;
-      const ok = await GoogleCalendarService.syncMeetingAtaToEvent(eventId, summary);
+      const res = await GoogleCalendarService.syncMeetingAtaToEvent(eventId, summary);
       isSyncing = false;
-      if (ok) {
-        syncCalendarBtn.textContent = "✓ Sincronizado na Agenda";
+      if (res.notConnected) {
+        syncCalendarBtn.textContent = "⚠️ Faça Login no Google!";
+        syncCalendarBtn.style.color = "#fb7185";
+        syncCalendarBtn.style.borderColor = "rgba(244,63,94,0.4)";
+        syncCalendarBtn.style.background = "rgba(244,63,94,0.1)";
+        setTimeout(() => {
+          actions.openSettingsWindow();
+          syncCalendarBtn.textContent = "Sincronizar Ata no Calendar";
+          syncCalendarBtn.style.color = "#a1a1aa";
+          syncCalendarBtn.style.borderColor = "rgba(255,255,255,0.1)";
+          syncCalendarBtn.style.background = "rgba(255,255,255,0.04)";
+        }, 1200);
+      } else if (res.ok) {
+        syncCalendarBtn.textContent = "✓ Sincronizado na Agenda Real";
         syncCalendarBtn.style.color = "#34d399";
         syncCalendarBtn.style.borderColor = "rgba(52,211,153,0.4)";
         syncCalendarBtn.style.background = "rgba(52,211,153,0.1)";
@@ -900,6 +912,10 @@ function buildRecorderView(actions: ViewActions): ViewHost {
           syncCalendarBtn.style.borderColor = "rgba(255,255,255,0.1)";
           syncCalendarBtn.style.background = "rgba(255,255,255,0.04)";
         }, 3000);
+      } else {
+        syncCalendarBtn.textContent = "Erro ao Sincronizar";
+        syncCalendarBtn.style.color = "#fb7185";
+        syncCalendarBtn.style.borderColor = "rgba(244,63,94,0.4)";
       }
     },
   });
@@ -921,13 +937,29 @@ function buildRecorderView(actions: ViewActions): ViewHost {
 
   async function loadCalendar() {
     try {
+      const email = GoogleCalendarService.getConnectedEmail();
+      const hasRealToken = GoogleCalendarService.hasToken();
+      if (hasRealToken && email) {
+        eventTimeEl.textContent = `GOOGLE: ${email.split("@")[0]}`;
+        eventTimeEl.style.color = "#34d399";
+        eventTimeEl.style.borderColor = "rgba(52,211,153,0.3)";
+        eventTimeEl.style.background = "rgba(52,211,153,0.1)";
+      } else {
+        eventTimeEl.textContent = "DEMO (NÃO CONECTADO)";
+        eventTimeEl.style.color = "#fbbf24";
+        eventTimeEl.style.borderColor = "rgba(251,191,36,0.3)";
+        eventTimeEl.style.background = "rgba(251,191,36,0.1)";
+      }
+
       upcomingEvents = await GoogleCalendarService.getUpcomingEvents();
       if (upcomingEvents.length > 0) {
         currentEvent = upcomingEvents[0];
         eventTitleEl.textContent = currentEvent.summary;
         eventTitleEl.title = currentEvent.summary;
         const diffMins = Math.round((new Date(currentEvent.start).getTime() - Date.now()) / 60000);
-        eventTimeEl.textContent = diffMins <= 0 ? "AGORA" : `Em ${diffMins}m`;
+        if (hasRealToken) {
+          eventTimeEl.textContent = diffMins <= 0 ? "AGORA" : `Em ${diffMins}m`;
+        }
         if (currentEvent.attendees && currentEvent.attendees.length > 0) {
           eventAttendeesEl.textContent = currentEvent.attendees.map(a => a.displayName || a.email).join(", ");
         } else {

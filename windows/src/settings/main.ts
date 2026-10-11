@@ -22,6 +22,7 @@ import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
 } from "../i18n/i18n";
+import { GoogleCalendarService } from "../core/calendar";
 
 /** Where secrets.rs keeps the keys on this OS. */
 const KEY_STORE = navigator.userAgent.includes("Windows")
@@ -1640,35 +1641,131 @@ function realtimeCopilotSection(): HTMLElement {
 
   renderCustomList();
 
-  const gcalToken = localStorage.getItem("coucou_google_calendar_token") || "";
-  const gCalInput = h("input", {
+  // Google Calendar Integration Block with "Logar com o Google"
+  const gcalBlock = h("div", {
+    style: "background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;",
+  });
+
+  const connectedEmail = GoogleCalendarService.getConnectedEmail();
+  let isConnected = GoogleCalendarService.hasToken();
+
+  const gcalStatusBadge = h("span", {
+    style: `font-size:10.5px; font-family:monospace; padding:2px 7px; border-radius:4px; ${isConnected ? "background:rgba(34,197,94,0.1); color:#4ade80; border:1px solid rgba(34,197,94,0.3);" : "background:rgba(255,255,255,0.05); color:#a1a1aa; border:1px solid rgba(255,255,255,0.1);"}`,
+    text: isConnected && connectedEmail ? `CONECTADO (${connectedEmail})` : "NÃO CONECTADO (DEMO)",
+  });
+
+  const loginGoogleBtn = h("button", {
+    style: "background:#2563eb; color:#ffffff; font-weight:600; font-size:11.5px; padding:6px 14px; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.15s ease;",
+    text: "Logar com o Google ↗",
+  });
+
+  const disconnectBtn = h("button", {
+    class: "danger",
+    style: isConnected ? "font-size:11px; padding:5px 10px;" : "display:none;",
+    text: "Desconectar",
+  });
+
+  const gcalHeader = h("div", { style: "display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;" },
+    h("div", { style: "display:flex; align-items:center; gap:8px;" },
+      h("strong", { style: "font-size:12px; color:#f4f4f5", text: "Google Calendar & Agenda" }),
+      statusDot(isConnected),
+      gcalStatusBadge,
+    ),
+    h("div", { style: "display:flex; align-items:center; gap:6px;" }, loginGoogleBtn, disconnectBtn)
+  );
+
+  const gcalInstructions = h("div", {
+    style: "font-size:11px; color:#a1a1aa; line-height:1.45;",
+    text: "Conecte sua conta do Google para ler reuniões do dia, links do Google Meet e sincronizar Atas de Reunião diretamente no evento da sua agenda real."
+  });
+
+  const authDrawer = h("div", {
+    style: isConnected ? "display:none; flex-direction:column; gap:8px; margin-top:2px;" : "display:flex; flex-direction:column; gap:8px; margin-top:2px;",
+  });
+
+  const tokenRow = h("div", { style: "display:flex; gap:8px; align-items:center;" });
+  const tokenInput = h("input", {
     type: "password",
-    placeholder: gcalToken ? "••••••••••••••••" : "ya29.a0AfH6...",
+    placeholder: isConnected ? "••••••••••••••••" : "Cole o Access Token da Google Calendar API (ya29...)",
     autocomplete: "off",
     spellcheck: "false",
-    style: "flex:1 1 auto;min-width:0",
+    style: "flex:1 1 auto; min-width:0; font-size:11.5px; font-family:monospace; padding:6px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;",
   }) as HTMLInputElement;
 
-  const gCalDot = statusDot(!!gcalToken);
-  const gCalSave = h("button", { text: "Salvar Token Calendar" });
-  const gCalRemove = h("button", { class: "danger", text: "Remover", style: gcalToken ? "" : "display:none" });
+  const verifyBtn = h("button", {
+    class: "primary",
+    style: "font-size:11.5px; white-space:nowrap;",
+    text: "Validar e Conectar",
+  });
 
-  gCalSave.addEventListener("click", () => {
-    if (gCalInput.value.trim()) {
-      localStorage.setItem("coucou_google_calendar_token", gCalInput.value.trim());
-      gCalDot.style.background = "#22c55e";
-      gCalRemove.style.display = "";
-      gCalInput.value = "";
-      gCalInput.placeholder = "••••••••••••••••";
+  tokenRow.append(tokenInput, verifyBtn);
+
+  const feedbackMsg = h("div", { style: "font-size:11px; display:none;" });
+
+  loginGoogleBtn.addEventListener("click", () => {
+    GoogleCalendarService.openGoogleLogin();
+    authDrawer.style.display = "flex";
+    feedbackMsg.style.display = "block";
+    feedbackMsg.style.color = "#93c5fd";
+    feedbackMsg.textContent = "Janela do Google aberta no navegador! Autorize as permissões de Google Calendar, copie o Access Token gerado e cole no campo acima.";
+  });
+
+  verifyBtn.addEventListener("click", async () => {
+    const val = tokenInput.value.trim();
+    if (!val) {
+      feedbackMsg.style.display = "block";
+      feedbackMsg.style.color = "#fb7185";
+      feedbackMsg.textContent = "Por favor, cole o token de acesso gerado no Google.";
+      return;
+    }
+
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = "Verificando...";
+    feedbackMsg.style.display = "none";
+
+    const res = await GoogleCalendarService.verifyAndSaveToken(val);
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = "Validar e Conectar";
+
+    if (res.ok) {
+      isConnected = true;
+      feedbackMsg.style.display = "block";
+      feedbackMsg.style.color = "#34d399";
+      feedbackMsg.textContent = `✓ Sucesso! Conectado como ${res.email}. Suas reuniões e atas de IA agora estão sincronizadas com o Google Calendar.`;
+      tokenInput.value = "";
+      tokenInput.placeholder = "••••••••••••••••";
+      disconnectBtn.style.display = "";
+      gcalStatusBadge.textContent = `CONECTADO (${res.email})`;
+      gcalStatusBadge.style.background = "rgba(34,197,94,0.1)";
+      gcalStatusBadge.style.color = "#4ade80";
+      gcalStatusBadge.style.borderColor = "rgba(34,197,94,0.3)";
+      setTimeout(() => {
+        authDrawer.style.display = "none";
+      }, 2500);
+    } else {
+      feedbackMsg.style.display = "block";
+      feedbackMsg.style.color = "#fb7185";
+      feedbackMsg.textContent = `Falha na conexão: ${res.error}`;
     }
   });
 
-  gCalRemove.addEventListener("click", () => {
-    localStorage.removeItem("coucou_google_calendar_token");
-    gCalDot.style.background = "#f4505e";
-    gCalRemove.style.display = "none";
-    gCalInput.placeholder = "ya29.a0AfH6...";
+  disconnectBtn.addEventListener("click", () => {
+    GoogleCalendarService.disconnect();
+    isConnected = false;
+    disconnectBtn.style.display = "none";
+    tokenInput.placeholder = "Cole o Access Token da Google Calendar API (ya29...)";
+    gcalStatusBadge.textContent = "NÃO CONECTADO (DEMO)";
+    gcalStatusBadge.style.background = "rgba(255,255,255,0.05)";
+    gcalStatusBadge.style.color = "#a1a1aa";
+    gcalStatusBadge.style.borderColor = "rgba(255,255,255,0.1)";
+    feedbackMsg.style.display = "block";
+    feedbackMsg.style.color = "#a1a1aa";
+    feedbackMsg.textContent = "Conta Google desconectada. O app voltou ao modo demonstrativo.";
+    authDrawer.style.display = "flex";
   });
+
+  authDrawer.append(tokenRow, feedbackMsg);
+  gcalBlock.append(gcalHeader, gcalInstructions, authDrawer);
 
   return h(
     "section",
@@ -1684,11 +1781,7 @@ function realtimeCopilotSection(): HTMLElement {
         providerSelect,
       ),
       keysContainer,
-      h("div", { class: "row", style: "align-items:center" },
-        h("label", { style: "min-width:140px" }, h("span", { text: "Google Calendar API" })),
-        gCalInput, gCalSave, gCalRemove, gCalDot,
-      ),
-      h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: "Token OAuth2 ou chave da Google Calendar API (primary calendar). Sincroniza eventos do dia, link do Meet e atas de reunião. Se vazio, opera em agenda demonstrativa." }),
+      gcalBlock,
       h("div", { class: "row", style: "align-items:center" },
         h("label", { style: "min-width:140px" }, h("span", { text: "Modo do Assistente" })),
         modeSelect,

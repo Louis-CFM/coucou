@@ -14,7 +14,23 @@ export interface CalendarEvent {
   isHappeningNow?: boolean;
 }
 
+export interface GoogleAuthResult {
+  ok: boolean;
+  email?: string;
+  name?: string;
+  error?: string;
+}
+
+export interface SyncAtaResult {
+  ok: boolean;
+  notConnected?: boolean;
+  error?: string;
+}
+
 const STORAGE_KEY = "coucou_google_calendar_token";
+const CLIENT_ID_KEY = "coucou_google_client_id";
+const USER_EMAIL_KEY = "coucou_google_user_email";
+const USER_NAME_KEY = "coucou_google_user_name";
 
 export class GoogleCalendarService {
   private static token: string | null = null;
@@ -27,7 +43,7 @@ export class GoogleCalendarService {
   }
 
   static setToken(token: string) {
-    this.token = token.trim();
+    this.token = token.trim().replace(/^Bearer\s+/i, "");
     localStorage.setItem(STORAGE_KEY, this.token);
   }
 
@@ -35,14 +51,105 @@ export class GoogleCalendarService {
     return Boolean(this.getToken());
   }
 
+  static getClientId(): string {
+    return localStorage.getItem(CLIENT_ID_KEY) || "";
+  }
+
+  static setClientId(clientId: string) {
+    localStorage.setItem(CLIENT_ID_KEY, clientId.trim());
+  }
+
+  static getConnectedEmail(): string | null {
+    return localStorage.getItem(USER_EMAIL_KEY);
+  }
+
+  static getConnectedName(): string | null {
+    return localStorage.getItem(USER_NAME_KEY);
+  }
+
   static disconnect() {
     this.token = null;
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(USER_EMAIL_KEY);
+    localStorage.removeItem(USER_NAME_KEY);
+  }
+
+  /**
+   * Opens Google's OAuth2 authorization page in the default web browser.
+   * If a Client ID is configured, opens Google's consent screen.
+   * Otherwise, opens Google OAuth Playground pre-filled with Calendar scopes.
+   */
+  static openGoogleLogin() {
+    const clientId = this.getClientId();
+    if (clientId) {
+      const scope = encodeURIComponent(
+        "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+      );
+      const redirectUri = encodeURIComponent("https://developers.google.com/oauthplayground");
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        clientId
+      )}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=consent`;
+      void Bridge.openUrl(url);
+    } else {
+      const url =
+        "https://developers.google.com/oauthplayground/#scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email";
+      void Bridge.openUrl(url);
+    }
+  }
+
+  /**
+   * Verifies the OAuth2 token with Google APIs (userinfo + primary calendar),
+   * retrieves the authenticated email/name, and persists the session.
+   */
+  static async verifyAndSaveToken(rawToken: string): Promise<GoogleAuthResult> {
+    const token = rawToken.trim().replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return { ok: false, error: "Nenhum token fornecido." };
+    }
+
+    try {
+      // 1. Verify user profile
+      const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!userRes.ok) {
+        if (userRes.status === 401) {
+          return { ok: false, error: "Token não autorizado ou expirado pelo Google (401). Gere um novo token." };
+        }
+        return { ok: false, error: `Erro ao validar com o Google (${userRes.status})` };
+      }
+
+      const userData = await userRes.json();
+      const email = userData.email || "";
+      const name = userData.name || "";
+
+      // 2. Verify Google Calendar permission
+      const calRes = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!calRes.ok) {
+        return {
+          ok: false,
+          error: "Conta Google autenticada, mas o token não tem permissão para o Google Calendar. Marque os escopos de Calendar.",
+        };
+      }
+
+      this.token = token;
+      localStorage.setItem(STORAGE_KEY, token);
+      if (email) localStorage.setItem(USER_EMAIL_KEY, email);
+      if (name) localStorage.setItem(USER_NAME_KEY, name);
+
+      return { ok: true, email, name };
+    } catch (err: any) {
+      return { ok: false, error: `Falha de rede ao conectar com Google: ${err?.message || err}` };
+    }
   }
 
   /**
    * Fetches upcoming events for today from Google Calendar API.
-   * If not connected yet, returns smart mock events for demonstration.
+   * If not connected yet or token invalid, returns demonstration schedule.
    */
   static async getUpcomingEvents(): Promise<CalendarEvent[]> {
     const token = this.getToken();
@@ -55,7 +162,7 @@ export class GoogleCalendarService {
 
         const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(
           timeMin
-        )}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime&maxResults=5`;
+        )}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime&maxResults=8`;
 
         const response = await fetch(url, {
           headers: {
@@ -74,7 +181,6 @@ export class GoogleCalendarService {
               const endTime = new Date(endStr).getTime();
               const nowTime = Date.now();
 
-              // Extract meet url from hangoutLink or conferenceData or description
               let meet = item.hangoutLink || "";
               if (!meet && item.conferenceData?.entryPoints) {
                 const ep = item.conferenceData.entryPoints.find((e: any) => e.entryPointType === "video");
@@ -100,20 +206,23 @@ export class GoogleCalendarService {
               };
             });
           }
+        } else if (response.status === 401) {
+          console.warn("[Google Calendar] Token expirado. Desconectando.");
+          this.disconnect();
         }
       } catch (err) {
-        console.warn("Falha ao consultar Google Calendar API, usando dados locais de demonstração:", err);
+        console.warn("Falha ao consultar Google Calendar API:", err);
       }
     }
 
-    // Default high-fidelity demonstration schedule for meetings
+    // Default demonstration schedule for meetings when not connected
     const now = Date.now();
     return [
       {
         id: "evt-gcal-1",
         summary: "Alinhamento Comercial & Implantação Q4",
         description: "Alinhar escopo de entrega com Roberto Almeida (Logix Tech). Definir cronograma do MVP.",
-        start: new Date(now + 12 * 60 * 1000).toISOString(), // starts in 12 min
+        start: new Date(now + 12 * 60 * 1000).toISOString(),
         end: new Date(now + 42 * 60 * 1000).toISOString(),
         meetUrl: "https://meet.google.com/cou-moch-cal",
         attendees: [
@@ -140,11 +249,14 @@ export class GoogleCalendarService {
   /**
    * Appends the AI Meeting Wrap-Up directly to the Google Calendar Event description.
    */
-  static async syncMeetingAtaToEvent(eventId: string, summaryText: string): Promise<boolean> {
+  static async syncMeetingAtaToEvent(eventId: string, summaryText: string): Promise<SyncAtaResult> {
     const token = this.getToken();
     if (!token) {
-      console.log(`[Google Calendar Demo] Ata sincronizada com sucesso no evento ${eventId}:`, summaryText);
-      return true;
+      return {
+        ok: false,
+        notConnected: true,
+        error: "Nenhuma conta Google conectada. Acesse as Configurações para 'Logar com o Google'.",
+      };
     }
 
     try {
@@ -157,6 +269,26 @@ export class GoogleCalendarService {
       if (getRes.ok) {
         const eventData = await getRes.json();
         currentDesc = eventData.description || "";
+      } else if (getRes.status === 404) {
+        // Event not found in user's calendar (e.g. demo event clicked)
+        // Let's create a new event for the meeting ata!
+        const createRes = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            summary: "Reunião Gravada no Coucou — Ata de Reunião",
+            description: `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📝 ATA DE REUNIÃO — GERADA POR COUCOU\nData: ${new Date().toLocaleString("pt-BR")}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${summaryText}`,
+            start: { dateTime: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
+            end: { dateTime: new Date().toISOString() },
+          }),
+        });
+        if (createRes.ok) {
+          return { ok: true };
+        }
+        return { ok: false, error: "Falha ao criar evento no Google Calendar" };
       }
 
       const appendBlock = `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📝 ATA DE REUNIÃO — GERADA POR COUCOU\nData: ${new Date().toLocaleString("pt-BR")}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${summaryText}`;
@@ -172,10 +304,13 @@ export class GoogleCalendarService {
         }),
       });
 
-      return patchRes.ok;
-    } catch (err) {
+      if (patchRes.ok) {
+        return { ok: true };
+      }
+      return { ok: false, error: `Google Calendar respondeu com erro ${patchRes.status}` };
+    } catch (err: any) {
       console.error("Erro ao sincronizar ata com Google Calendar:", err);
-      return false;
+      return { ok: false, error: err?.message || String(err) };
     }
   }
 

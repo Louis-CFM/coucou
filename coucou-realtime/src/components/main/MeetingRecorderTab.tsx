@@ -53,6 +53,9 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
   const [calendarSyncSuccess, setCalendarSyncSuccess] = useState(false);
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [tokenValue, setTokenValue] = useState(GoogleCalendarService.getToken() || '');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+  const [connectedEmail, setConnectedEmail] = useState<string | null>(GoogleCalendarService.getConnectedEmail());
 
   useEffect(() => {
     void loadCalendarEvents();
@@ -62,27 +65,53 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
     const list = await GoogleCalendarService.getUpcomingEvents();
     setEvents(list);
     if (list.length > 0) setSelectedEvent(list[0]);
+    setConnectedEmail(GoogleCalendarService.getConnectedEmail());
   };
 
-  const handleSaveToken = () => {
-    if (tokenValue.trim()) {
-      GoogleCalendarService.setToken(tokenValue.trim());
-    } else {
+  const handleOpenGoogleLogin = () => {
+    GoogleCalendarService.openGoogleLogin();
+    setShowTokenInput(true);
+    setFeedbackMsg("Janela do Google aberta! Conclua o login na sua conta, autorize o Calendar e cole o Access Token gerado abaixo.");
+  };
+
+  const handleSaveToken = async () => {
+    if (!tokenValue.trim()) {
       GoogleCalendarService.disconnect();
+      setConnectedEmail(null);
+      setFeedbackMsg("Desconectado da conta Google. O app voltou ao modo de demonstração.");
+      void loadCalendarEvents();
+      return;
     }
-    setShowTokenInput(false);
-    void loadCalendarEvents();
+
+    setIsValidating(true);
+    setFeedbackMsg("Validando com as APIs do Google...");
+    const res = await GoogleCalendarService.verifyAndSaveToken(tokenValue);
+    setIsValidating(false);
+
+    if (res.ok) {
+      setConnectedEmail(res.email || null);
+      setFeedbackMsg(`✓ Conectado com sucesso como ${res.email}! Sincronização 100% ativa.`);
+      setTimeout(() => setShowTokenInput(false), 2500);
+      void loadCalendarEvents();
+    } else {
+      setFeedbackMsg(`Falha ao conectar: ${res.error}`);
+    }
   };
 
   const handleSyncToCalendar = async () => {
     if (!selectedEvent || isSyncingCalendar) return;
     setIsSyncingCalendar(true);
     const summary = `• Alinhamento e escopo de entregas Q4 validados com sucesso.\n• Decisões: Integração com Google Calendar API ativada.\n• Próximos passos: Envio das minutas e sincronização das tarefas.`;
-    const ok = await GoogleCalendarService.syncMeetingAtaToEvent(selectedEvent.id, summary);
+    const res = await GoogleCalendarService.syncMeetingAtaToEvent(selectedEvent.id, summary);
     setIsSyncingCalendar(false);
-    if (ok) {
+    if (res.notConnected) {
+      setShowTokenInput(true);
+      setFeedbackMsg("⚠️ Você ainda não conectou sua conta do Google. Clique em 'Logar com o Google' abaixo para sincronizar na sua agenda real.");
+    } else if (res.ok) {
       setCalendarSyncSuccess(true);
       setTimeout(() => setCalendarSyncSuccess(false), 3500);
+    } else {
+      setFeedbackMsg(`Erro ao salvar no Google Calendar: ${res.error}`);
     }
   };
 
@@ -166,8 +195,12 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
                     : `EM ${Math.round((new Date(selectedEvent.start).getTime() - Date.now()) / 60000)}M`}
                 </span>
               )}
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded text-zinc-500 border border-zinc-800">
-                {GoogleCalendarService.hasToken() ? 'GOOGLE CALENDAR' : 'DEMO CALENDAR'}
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                connectedEmail
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                  : 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+              }`}>
+                {connectedEmail ? `GOOGLE (${connectedEmail})` : 'NÃO CONECTADO (DEMO)'}
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mt-0.5 truncate max-w-md">
@@ -179,6 +212,15 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
+          {!connectedEmail && (
+            <button
+              onClick={handleOpenGoogleLogin}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+            >
+              <span>Logar com o Google ↗</span>
+            </button>
+          )}
+
           {selectedEvent?.meetUrl && (
             <button
               onClick={() => GoogleCalendarService.openMeetLink(selectedEvent.meetUrl)}
@@ -219,28 +261,42 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
       </div>
 
       {showTokenInput && (
-        <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex flex-col md:flex-row items-center gap-3 animate-in fade-in duration-150">
-          <input
-            type="password"
-            value={tokenValue}
-            onChange={(e) => setTokenValue(e.target.value)}
-            placeholder="Cole o Bearer / OAuth2 token da Google Calendar API (ya29...)"
-            className="flex-1 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono"
-          />
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleSaveToken}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
-            >
-              Salvar Token
-            </button>
-            <button
-              onClick={() => setShowTokenInput(false)}
-              className="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 text-xs transition-colors cursor-pointer"
-            >
-              Fechar
-            </button>
+        <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex flex-col gap-3 animate-in fade-in duration-150">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <input
+              type="password"
+              value={tokenValue}
+              onChange={(e) => setTokenValue(e.target.value)}
+              placeholder="Cole o Bearer / OAuth2 Access Token da Google Calendar API (ya29...)"
+              className="flex-1 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono"
+            />
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleOpenGoogleLogin}
+                className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium transition-colors cursor-pointer"
+              >
+                Abrir Login Google ↗
+              </button>
+              <button
+                onClick={handleSaveToken}
+                disabled={isValidating}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                {isValidating ? 'Validando...' : 'Validar e Conectar'}
+              </button>
+              <button
+                onClick={() => setShowTokenInput(false)}
+                className="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 text-xs transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
+          {feedbackMsg && (
+            <p className="text-xs text-indigo-300 leading-relaxed font-mono">
+              {feedbackMsg}
+            </p>
+          )}
         </div>
       )}
 
