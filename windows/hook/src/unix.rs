@@ -17,13 +17,23 @@ use crate::CONNECT_TIMEOUT;
 /// `$XDG_RUNTIME_DIR/coucou.sock`, or `/run/user/<uid>/coucou.sock` when the
 /// variable is missing (a hook started from a stripped-down environment). The
 /// directory must be ours and closed to everyone else, or there is no relay.
-/// Must match `platform::relay_socket_path()` in the app exactly.
+/// Must match `platform::relay_socket_path()` in the app exactly. A host with no
+/// runtime directory (a container) gets `~/.coucou`, where the app's SSH tunnel
+/// puts the socket (remote.rs).
 fn socket_path() -> Option<PathBuf> {
+    // A remote Coucou's own socket on this host (remote.rs), under the same checks.
+    if let Some(sock) = std::env::var_os("COUCOU_SOCKET").map(PathBuf::from) {
+        return (sock.is_absolute() && sock.parent().is_some_and(is_private_dir)).then_some(sock);
+    }
     let dir = std::env::var_os("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
         .unwrap_or_else(|| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
-    is_private_dir(&dir).then(|| dir.join("coucou.sock"))
+    if is_private_dir(&dir) {
+        return Some(dir.join("coucou.sock"));
+    }
+    let home = PathBuf::from(std::env::var_os("HOME")?).join(".coucou");
+    (home.is_absolute() && is_private_dir(&home)).then(|| home.join("coucou.sock"))
 }
 
 /// A real directory (not a symlink), owned by us, no access for group or others.
@@ -111,4 +121,26 @@ fn server_is_same_user(stream: &UnixStream) -> bool {
     rc == 0
         && len as usize == std::mem::size_of::<libc::ucred>()
         && cred.uid == unsafe { libc::getuid() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn coucou_socket_is_used_only_in_a_private_dir() {
+        let dir = std::env::temp_dir().join(format!("coucou-sock-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let sock = dir.join("0a1b2c3d.sock");
+        std::env::set_var("COUCOU_SOCKET", &sock);
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert_eq!(socket_path(), Some(sock.clone()));
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert_eq!(socket_path(), None, "a directory others can reach gives no relay");
+        std::env::set_var("COUCOU_SOCKET", "relative.sock");
+        assert_eq!(socket_path(), None);
+        std::env::remove_var("COUCOU_SOCKET");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

@@ -162,6 +162,10 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** SSH destinations whose Claude Code sessions show in the island (remote.rs). */
+  remoteHosts: string[];
+  /** This install's id on remote hosts. Rust owns it: what the page sends back is ignored. */
+  remoteClientId: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -190,6 +194,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  remoteHosts: [],
+  remoteClientId: "",
 };
 
 type Listener = () => void;

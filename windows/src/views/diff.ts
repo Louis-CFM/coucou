@@ -34,11 +34,14 @@ export function buildDiffCard(diff: FileDiff, hooks: DiffCardHooks): HTMLElement
     h("span", { class: "grow" }),
     diff.added > 0 ? h("span", { class: "tick-count plus", text: `+${diff.added}` }) : null,
     diff.removed > 0 ? h("span", { class: "tick-count minus", text: `−${diff.removed}` }) : null,
-    h(
-      "button",
-      { class: "icon-btn", title: tl(STRINGS.open), onclick: () => hooks.open(diff.path) },
-      svg(ICONS.arrowUpRight, 8),
-    ),
+    // A remote host's file is not on this machine: nothing to open.
+    diff.remote
+      ? null
+      : h(
+          "button",
+          { class: "icon-btn", title: tl(STRINGS.open), onclick: () => hooks.open(diff.path) },
+          svg(ICONS.arrowUpRight, 8),
+        ),
   );
 
   const lines = diff.hunks.flatMap((hunk) => hunk.lines);

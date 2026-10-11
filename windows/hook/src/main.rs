@@ -29,6 +29,7 @@ use std::time::Duration;
 
 use serde_json::{Map, Value};
 
+mod answered;
 mod normalize;
 mod reply;
 
@@ -38,6 +39,8 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
+/// How often a waiting relay looks for another relay's answer (answered.rs).
+const ANSWERED_POLL: Duration = Duration::from_millis(200);
 
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
@@ -97,6 +100,8 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// The tool call, as every relay on this host names it (answered.rs).
+    key: String,
 }
 
 fn main() {
@@ -119,7 +124,8 @@ fn main() {
 
     // Only an agent whose decisions the island can give waits for one; any other
     // would be held for nothing, its decision being thrown away (reply.rs).
-    let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
+    let asks = event.name == "PreToolUse" && event.question.is_some() && args.agent.is_empty();
+    let waits_for_answer = (event.name == "PermissionRequest" || asks) && reply::takes_decisions(&args.agent);
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
@@ -132,9 +138,31 @@ fn main() {
         let _ = tx.send(talk(&line, waits_for_answer));
     });
 
-    let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    let decision = if waits_for_answer { wait(&rx, budget, &event.key) } else { rx.recv_timeout(budget).ok().flatten() };
+    let out = reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref());
+    // Answered here: the other Coucous' relays on this host let go.
+    if waits_for_answer && out.is_some() {
+        answered::mark(&event.key);
+    }
+    print(out);
     std::process::exit(0);
+}
+
+/// Waits for the island's word, giving up as soon as another relay on this
+/// host has the answer for the same call.
+fn wait(rx: &mpsc::Receiver<Option<String>>, budget: Duration, key: &str) -> Option<String> {
+    let deadline = std::time::Instant::now() + budget;
+    loop {
+        match rx.recv_timeout(ANSWERED_POLL) {
+            Ok(decision) => return decision,
+            Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if answered::is_answered(key) || std::time::Instant::now() >= deadline {
+                    return None;
+                }
+            }
+        }
+    }
 }
 
 fn print(line: Option<String>) {
@@ -175,7 +203,11 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .unwrap_or_else(|| args.event.clone());
     normalize::fields(map, env);
     let name = normalize::refine(normalize::event(&raw_event), map);
-    map.insert("hook_event_name".into(), Value::String(name.clone()));
+    let key = answered::key(map);
+    // Claude Code asks at PreToolUse (2.1.x): the island shows it as its question card.
+    let asks = name == "PreToolUse" && args.agent.is_empty() && map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion");
+    let wire = if asks { "PermissionRequest" } else { name.as_str() };
+    map.insert("hook_event_name".into(), Value::String(wire.to_string()));
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -199,7 +231,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, key })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -538,5 +570,93 @@ mod tests {
         truncate_payload(&mut multi, "PostToolUse");
         assert!(multi.to_string().len() < MAX_DIFF_TOTAL + 64 * 1024);
         assert_eq!(multi["coucou_diff_truncated"], serde_json::Value::Bool(true));
+    }
+
+    /// Runs `call` (a Python expression over `m`, the relay module, and `c`, one
+    /// case) for each case. None when python3 is missing.
+    fn python(call: &str, cases: &Value) -> Option<Vec<Value>> {
+        use std::process::{Command, Stdio};
+        let script = format!(
+            "import importlib.util,json,sys\ns=importlib.util.spec_from_file_location('r',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nprint(json.dumps([{call} for c in json.loads(sys.stdin.buffer.read())]))"
+        );
+        let mut child = Command::new("python3")
+            .args(["-B", "-c", &script, concat!(env!("CARGO_MANIFEST_DIR"), "/coucou-hook.py")])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .ok()?;
+        child.stdin.take()?.write_all(cases.to_string().as_bytes()).ok()?;
+        let out = child.wait_with_output().ok()?;
+        assert!(out.status.success(), "the Python relay failed");
+        serde_json::from_slice(&out.stdout).ok()
+    }
+
+    fn as_json(s: Option<&str>) -> Value {
+        s.map(|s| serde_json::from_str(s).expect("JSON")).unwrap_or(Value::Null)
+    }
+
+    #[test]
+    fn the_python_relay_replies_as_reply_rs_does() {
+        let question = serde_json::json!({ "questions": [
+            { "question": "Which?", "options": [{ "label": "A" }, { "label": "B" }] },
+            { "question": "Many?", "multiSelect": true, "options": [{ "label": "X" }, { "label": "Y" }] },
+        ] });
+        let decisions = [
+            Value::Null, "allow".into(), "always".into(), "deny".into(), " allow\n".into(), "ask".into(), "".into(),
+            r#"{"answers":{"Which?":"A","Many?":["X","Y"]}}"#.into(),
+            r#"{"answers":{"Which?":"C","Many?":["X"]}}"#.into(),
+            r#"{"answers":{"Which?":"A","Many?":["X","X"]}}"#.into(),
+            r#"{"answers":{"Which?":"A"}}"#.into(),
+        ];
+        let mut cases = Vec::new();
+        for event in ["PermissionRequest", "PreToolUse", "Stop"] {
+            for decision in &decisions {
+                for q in [Value::Null, question.clone()] {
+                    cases.push(serde_json::json!([event, decision, q]));
+                }
+            }
+        }
+        let Some(py) = python("m.stdout(*c)", &Value::Array(cases.clone())) else { return };
+        for (case, got) in cases.iter().zip(py) {
+            let (event, decision) = (case[0].as_str().unwrap(), case[1].as_str());
+            let q = (!case[2].is_null()).then_some(&case[2]);
+            let want = reply::stdout("", event, decision, q);
+            assert_eq!(as_json(got.as_str()), as_json(want.as_deref()), "{case}");
+        }
+    }
+
+    #[test]
+    fn the_python_relay_forwards_what_the_rust_one_does() {
+        let long = "é".repeat(1500);
+        let edit = "x".repeat(300 * 1024);
+        let raws = [
+            serde_json::json!({ "hook_event_name": "PreToolUse", "session_id": "s", "cwd": "/w", "tool_name": "Bash", "tool_input": { "command": long }, "transcript_path": "/t" }).to_string(),
+            serde_json::json!({ "hook_event_name": "PostToolUse", "session_id": "s", "tool_name": "Edit", "tool_input": { "file_path": "/f", "old_string": edit, "new_string": "y" }, "tool_response": "big" }).to_string(),
+            serde_json::json!({ "hook_event_name": "PermissionRequest", "session_id": "s", "tool_name": "AskUserQuestion", "tool_input": { "questions": [] } }).to_string(),
+            serde_json::json!({ "hook_event_name": "Stop", "status": "error" }).to_string(),
+            serde_json::json!({ "hook_event_name": "PreToolUse", "session_id": "s", "tool_use_id": "toolu_01X", "tool_name": "AskUserQuestion", "tool_input": { "questions": [{ "question": "Q?" }] } }).to_string(),
+            serde_json::json!({ "hook_event_name": "PermissionRequest", "session_id": "s", "tool_name": "Bash", "tool_input": { "z": [1, true, null], "a": "ä \"q\" \\ \n\t\u{1}/€", "n": -3 } }).to_string(),
+            format!("\u{feff}{}", serde_json::json!({ "session_id": "s", "cwd": "" })),
+            "not json".to_string(),
+        ];
+        let env = serde_json::json!({ "CURSOR_TRACE_ID": "1", "TERM_PROGRAM": "kitty" });
+        let cases: Vec<Value> = raws.iter().map(|r| serde_json::json!([r, "SessionStart", env, "/home/me/here"])).collect();
+        let Some(py) = python("m.prepare(c[0].encode(), c[1], c[2], c[3])", &Value::Array(cases)) else { return };
+        let vars = env_of(&[("CURSOR_TRACE_ID", "1"), ("TERM_PROGRAM", "kitty")]);
+        let args = Args { agent: String::new(), event: "SessionStart".into() };
+        for (raw, got) in raws.iter().zip(py) {
+            let want = prepare(raw.as_bytes(), &args, &vars, "/home/me/here");
+            match want {
+                None => assert!(got.is_null(), "{raw:.40}"),
+                Some(ev) => {
+                    let line: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+                    let py_line: Value = serde_json::from_str(got[0].as_str().unwrap().trim_end()).unwrap();
+                    assert_eq!(py_line, line, "{raw:.40}");
+                    assert_eq!(got[1], Value::String(ev.name), "{raw:.40}");
+                    assert_eq!(got[2], ev.question.unwrap_or(Value::Null), "{raw:.40}");
+                    assert_eq!(got[3], Value::String(ev.key), "both relays name the call alike: {raw:.40}");
+                }
+            }
+        }
     }
 }

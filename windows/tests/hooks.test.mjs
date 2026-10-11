@@ -76,6 +76,12 @@ test("a session names the pill after its folder and reveals the island", () => {
   assert.deepEqual(asked, ["reveal"]);
 });
 
+test("a session on a remote host is named with the host and keeps no local folder", () => {
+  hook({ hook_event_name: "SessionStart", session_id: "s-remote", cwd: "/srv/api-server", coucou_remote: "devbox" });
+  assert.equal(task().name, "api-server · devbox");
+  assert.notEqual(task().sessionCwd, "/srv/api-server");
+});
+
 test("known project folders get their display name, and no folder is a Session", () => {
   hook({ hook_event_name: "SessionStart", cwd: "/home/me/notch-buddy" });
   assert.equal(task().name, "Notch Buddy");
@@ -324,6 +330,30 @@ test("the end of the turn takes a waiting card down and releases the relay", () 
     assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], end);
     mock.timers.runAll();
   }
+});
+
+test("a card answered elsewhere comes down once its tool has run", () => {
+  for (const done of ["PostToolUse", "PostToolUseFailure"]) {
+    State.pendingApproval = null;
+    calls.length = 0;
+    hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", tool_name: "Bash" });
+    // Another tool of the same session, or the same tool elsewhere, changes nothing.
+    hook({ hook_event_name: done, session_id: "s1", tool_name: "Read" });
+    hook({ hook_event_name: done, session_id: "other", tool_name: "Bash" });
+    assert.equal(State.pendingApproval?.requestId, "r1", done);
+    hook({ hook_event_name: done, session_id: "s1", tool_name: "Bash" });
+    assert.equal(State.pendingApproval, null, done);
+    assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], done);
+    mock.timers.runAll();
+  }
+});
+
+test("a card whose relay hung up comes down at once", () => {
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1", tool_name: "Bash" });
+  hook({ hook_event_name: "Released", request_id: "other" });
+  assert.equal(State.pendingApproval?.requestId, "r1");
+  hook({ hook_event_name: "Released", request_id: "r1" });
+  assert.equal(State.pendingApproval, null);
 });
 
 test("Codex's Interrupt puts its pill back to idle", () => {

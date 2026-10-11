@@ -69,6 +69,12 @@ pub struct Settings {
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// SSH destinations whose Claude Code sessions show in the island, as typed
+    /// for `ssh` (an alias from ~/.ssh/config or user@host). See remote.rs.
+    pub remote_hosts: Vec<String>,
+    /// This install's id on remote hosts: its socket and hook entries there carry
+    /// it (remote.rs). Made once, owned by the Rust side.
+    pub remote_client_id: String,
     /// The phone link (phone_link/) is on: a TLS server for the Android app on
     /// the local network. Off until the user turns it on in Settings → Phone;
     /// owned by the Rust side, so what a webview sends back is ignored.
@@ -152,6 +158,8 @@ impl Default for Settings {
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
+            remote_hosts: Vec::new(),
+            remote_client_id: String::new(),
             phone_link: false,
             phone_chat: false,
             phone_chat_models: Vec::new(),
@@ -177,7 +185,12 @@ fn settings_path() -> PathBuf {
 }
 
 pub fn load() -> Settings {
-    load_from(&settings_path())
+    let mut settings = load_from(&settings_path());
+    if !crate::remote::valid_client_id(&settings.remote_client_id) {
+        settings.remote_client_id = crate::remote::new_client_id();
+        let _ = save(&settings);
+    }
+    settings
 }
 
 pub fn save(settings: &Settings) -> std::io::Result<()> {
@@ -439,6 +452,8 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "remoteHosts": ["devbox", "me@build.example.org"],
+  "remoteClientId": "0a1b2c3d",
   "phoneLink": true,
   "phoneChat": true,
   "phoneChatModels": ["openai/gpt-x"],
@@ -946,6 +961,8 @@ mod tests {
                 "pillColors",
                 "language",
                 "desktopMochi",
+                "remoteHosts",
+                "remoteClientId",
                 "phoneLink",
                 "phoneChat",
                 "phoneChatModels",

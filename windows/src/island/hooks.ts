@@ -15,6 +15,7 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { sshLabel } from "../core/ssh";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -65,6 +66,8 @@ interface HookPayload {
   coucou_agent?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
+  /** The SSH host the session runs on, set by the app for a remote host's events. */
+  coucou_remote?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
@@ -220,6 +223,7 @@ function recordDiff(agentId: string, payload: HookPayload) {
   if (!State.tasks.some((t) => t.id === agentId)) return;
   const diff = buildFileDiff(payload.tool_name ?? "", payload.tool_input ?? {});
   if (!diff) return;
+  if (payload.coucou_remote) diff.remote = true;
   const id = State.appendSessionDiff(agentId, diff);
   State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
 }
@@ -239,6 +243,16 @@ function handleHook(island: Island, payload: HookPayload) {
     return;
   }
 
+  // A waiting relay hung up: its request was answered elsewhere.
+  if (payload.hook_event_name === "Released") {
+    if (State.pendingApproval?.requestId === payload.request_id) {
+      if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+      pendingTimeout = null;
+      dropPendingCard(island);
+    }
+    return;
+  }
+
   if (State.paused) {
     // Silence here used to cost Claude Code nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,
@@ -248,9 +262,13 @@ function handleHook(island: Island, payload: HookPayload) {
   }
 
   const name = payload.hook_event_name ?? "";
-  const cwd = payload.cwd ?? "";
-  const raw = lastPathComponent(cwd);
-  const projectName = aliasProjectName(raw || "Session");
+  // A remote session's folder is on its host: named after it, never opened here.
+  const remote = payload.coucou_remote ?? "";
+  const cwd = remote ? "" : payload.cwd ?? "";
+  const raw = lastPathComponent(payload.cwd ?? "");
+  const projectName = remote
+    ? `${aliasProjectName(raw || "Session")} · ${sshLabel(remote)}`
+    : aliasProjectName(raw || "Session");
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
@@ -297,9 +315,11 @@ function handleHook(island: Island, payload: HookPayload) {
   // interrupted, or a new prompt — so the card would be lying. It goes, and the
   // relay is released without a decision. Same rule as the Mac.
   const pending = State.pendingApproval;
+  // The tool ran: answered elsewhere (another Coucou, the terminal).
+  const toolDone = (name === "PostToolUse" || name === "PostToolUseFailure") && pending?.tool === payload.tool_name;
   if (
     pending &&
-    TURN_OVER.has(name) &&
+    (TURN_OVER.has(name) || toolDone) &&
     pending.pillId === agentId &&
     pending.sessionId === (payload.session_id ?? "")
   ) {

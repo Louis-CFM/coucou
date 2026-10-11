@@ -77,7 +77,7 @@ pub fn relay_command(shell: Shell, args: &str) -> String {
 
 /// `s` as one single-quoted POSIX shell word: `'` becomes `'\''`, nothing else
 /// is special inside single quotes.
-fn sh_quote(s: &str) -> String {
+pub(crate) fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 

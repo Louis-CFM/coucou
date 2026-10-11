@@ -21,6 +21,7 @@
 // one place.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -44,6 +45,11 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+/// The relay writes its line at once: 5 s is the Mac's receive timeout too.
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
+/// Connections at once on one remote host's socket: a host can't pile them up.
+#[cfg(target_os = "linux")]
+const MAX_REMOTE_CONNECTIONS: usize = 8;
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -97,7 +103,7 @@ pub fn start(app: AppHandle) {
             };
             let connected = std::mem::replace(&mut server, next);
             let app = app.clone();
-            tauri::async_runtime::spawn(async move { handle(app, connected).await });
+            tauri::async_runtime::spawn(async move { handle(app, connected, None).await });
         }
     });
 }
@@ -131,24 +137,44 @@ pub fn start(app: AppHandle) {
         };
         // The runtime directory is already 0700; this is belt and braces.
         let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-        let uid = unsafe { libc::getuid() };
-        loop {
-            let stream = match listener.accept().await {
-                Ok((stream, _)) => stream,
-                Err(_) => {
-                    tokio::time::sleep(Duration::from_millis(200)).await;
-                    continue;
-                }
-            };
-            // Only the relay run by our own user may drive the island.
-            if !matches!(stream.peer_cred(), Ok(c) if c.uid() == uid) {
-                log::line("refused a relay connection from another user");
+        serve(app, listener, None).await;
+    });
+}
+
+/// Accepts relay connections forever. `host` is set for a remote host's socket
+/// (remote.rs), whose events are tagged with it.
+#[cfg(target_os = "linux")]
+pub async fn serve(app: AppHandle, listener: tokio::net::UnixListener, host: Option<String>) {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::Arc;
+
+    let uid = unsafe { libc::getuid() };
+    let open = Arc::new(AtomicUsize::new(0));
+    loop {
+        let stream = match listener.accept().await {
+            Ok((stream, _)) => stream,
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(200)).await;
                 continue;
             }
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move { handle(app, stream).await });
+        };
+        // Only our own user (the relay, or our own ssh for a remote host) may drive the island.
+        if !matches!(stream.peer_cred(), Ok(c) if c.uid() == uid) {
+            log::line("refused a relay connection from another user");
+            continue;
         }
-    });
+        if host.is_some() && open.load(Ordering::Relaxed) >= MAX_REMOTE_CONNECTIONS {
+            continue;
+        }
+        open.fetch_add(1, Ordering::Relaxed);
+        let app = app.clone();
+        let host = host.clone();
+        let open = open.clone();
+        tauri::async_runtime::spawn(async move {
+            handle(app, stream, host).await;
+            open.fetch_sub(1, Ordering::Relaxed);
+        });
+    }
 }
 
 /// One accepted relay connection, whatever carries it.
@@ -182,21 +208,27 @@ impl Relay for tokio::net::UnixStream {
     }
 }
 
-async fn handle(app: AppHandle, mut pipe: impl Relay) {
+/// Reads up to the first newline (or MAX_PAYLOAD). None: the read failed.
+async fn read_request(pipe: &mut impl Relay) -> Option<Vec<u8>> {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
         match pipe.read(&mut chunk).await {
-            Ok(0) => break,
+            Ok(0) => return Some(buf),
             Ok(n) => {
                 buf.extend_from_slice(&chunk[..n]);
                 if buf.contains(&b'\n') || buf.len() > MAX_PAYLOAD {
-                    break;
+                    return Some(buf);
                 }
             }
-            Err(_) => return,
+            Err(_) => return None,
         }
     }
+}
+
+async fn handle(app: AppHandle, mut pipe: impl Relay, host: Option<String>) {
+    // A client that connects and says nothing does not hold the connection forever.
+    let Ok(Some(buf)) = tokio::time::timeout(READ_TIMEOUT, read_request(&mut pipe)).await else { return };
     let line = match buf.iter().position(|b| *b == b'\n') {
         Some(i) => &buf[..i],
         None => &buf[..],
@@ -212,7 +244,16 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
-    note_session_window(&pipe, &payload, &event);
+    match host {
+        // The process on our end is ssh, not the session: nothing local to find.
+        Some(host) => {
+            if !crate::remote::admit(&mut payload, &event, &host) {
+                pipe.finish();
+                return;
+            }
+        }
+        None => note_session_window(&pipe, &payload, &event),
+    }
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -237,7 +278,22 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    // The relay hanging up means it was answered elsewhere (another Coucou on the host).
+    let mut byte = [0u8; 1];
+    let outcome = {
+        let mut decided = std::pin::pin!(wait_for_decision(&id, &mut rx));
+        let mut hung_up = std::pin::pin!(pipe.read(&mut byte));
+        std::future::poll_fn(|cx| match decided.as_mut().poll(cx) {
+            std::task::Poll::Ready(d) => std::task::Poll::Ready(Some(d)),
+            std::task::Poll::Pending => hung_up.as_mut().poll(cx).map(|_| None),
+        })
+        .await
+    };
+    let decision = outcome.unwrap_or_else(|| {
+        log::line(format!("hook id={id} released by the relay"));
+        let _ = app.emit_to(WINDOW_LABEL, "hook", json!({ "hook_event_name": "Released", "request_id": id }));
+        None
+    });
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
