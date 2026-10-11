@@ -1068,6 +1068,32 @@ input[type="range"]::-webkit-slider-thumb {
   overflow-wrap: anywhere;
 }
 
+.md-math-block {
+  margin: 6px 0;
+  padding: 6px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  color: #e8e9ec;
+}
+
+.md-math-inline {
+  color: #e8e9ec;
+  display: inline-block;
+}
+
+math {
+  font-family: Latin Modern Math, STIX Two Math, Cambria Math, DejaVu Math TeX Gyre, serif;
+  font-size: 1.1em;
+  color: #e8e9ec;
+}
+
+math[display="block"] {
+  display: block;
+  margin: 0 auto;
+  text-align: center;
+}
+
 .md-copy {
   flex: 0 0 22px;
   display: grid;
@@ -2615,7 +2641,7 @@ html[data-dir="rtl"] #views :is(.stack, .int-card, .plan-card, .drop-body, .up-c
   direction: rtl;
 }
 
-html[data-dir="rtl"] #views :is(.code, .gh-grid, .diff-card, .md-pre) {
+html[data-dir="rtl"] #views :is(.code, .gh-grid, .diff-card, .md-pre, .md-math-block, math) {
   direction: ltr;
 }
 
