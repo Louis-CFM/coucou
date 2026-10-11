@@ -175,6 +175,8 @@ export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
 
 /** PillDefinition.sessionSubtitle — next to the name in a live session's card. */
 export function sessionSubtitle(id: string): string {
+  // A pill made for one Claude Code session (src/island/hooks.ts).
+  if (id.startsWith("session_")) return "Claude Code";
   switch (id) {
     case "integration_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";

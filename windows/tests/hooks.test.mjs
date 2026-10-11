@@ -695,3 +695,62 @@ test("a declined permission request leaves the stop timer running", () => {
   assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }, { requestId: "r2" }]);
   assert.equal(task().state, "idle");
 });
+
+// ── One pill per Claude Code session ──────────────────────────────────────────
+
+const SESSION_A = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SESSION_B = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const sessionPill = (id) => `session_${id}`;
+
+test("a second Claude Code session gets its own pill, named after its folder", () => {
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/coucou" });
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/api" });
+  assert.equal(task().sessionId, SESSION_A);
+  const b = task(sessionPill(SESSION_B));
+  assert.equal(b.name, "api");
+  assert.equal(b.sessionId, SESSION_B);
+  assert.equal(b.sessionCwd, "/home/me/api");
+
+  hook({ hook_event_name: "PreToolUse", session_id: SESSION_B, cwd: "/home/me/api", tool_name: "Bash", tool_input: { command: "ls" } });
+  assert.equal(task(sessionPill(SESSION_B)).state, "working");
+  assert.equal(task().state, "idle");
+});
+
+test("a session's pill stays between turns and goes when the session ends", () => {
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/a" });
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/b" });
+  hook({ hook_event_name: "Stop", session_id: SESSION_B, cwd: "/home/me/b" });
+  seconds(6);
+  assert.equal(task(sessionPill(SESSION_B)).state, "idle");
+  hook({ hook_event_name: "SessionEnd", session_id: SESSION_B, cwd: "/home/me/b" });
+  assert.equal(task(sessionPill(SESSION_B)), undefined);
+  // The workspace pill's session ended too: the next one takes it.
+  hook({ hook_event_name: "SessionEnd", session_id: SESSION_A, cwd: "/home/me/a" });
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/b" });
+  assert.equal(task().sessionId, SESSION_B);
+  assert.equal(task(sessionPill(SESSION_B)), undefined);
+});
+
+test("a session closed without SessionEnd gives its pill up after half an hour idle", () => {
+  let now = 1000;
+  mock.method(performance, "now", () => now);
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/a" });
+  now += 31 * 60 * 1000;
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/b" });
+  assert.equal(task().sessionId, SESSION_B);
+  assert.equal(task(sessionPill(SESSION_B)), undefined);
+  mock.restoreAll();
+});
+
+test("session ids that differ only in dropped characters or past 36 get pills of their own", () => {
+  const long = "x".repeat(40);
+  const ids = ["abc!", "abc?", `${long}1`, `${long}2`];
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/a" });
+  ids.forEach((id, i) => hook({ hook_event_name: "SessionStart", session_id: id, cwd: `/home/me/${i}` }));
+  const pills = State.tasks.filter((t) => t.id.startsWith("session_"));
+  assert.deepEqual(pills.map((t) => t.sessionId).sort(), [...ids].sort());
+  for (const t of pills) assert.match(t.id, /^session_[A-Za-z0-9-]{1,36}$/);
+  // A UUID keeps the pill ID it always had.
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/b" });
+  assert.ok(task(sessionPill(SESSION_B)));
+});
