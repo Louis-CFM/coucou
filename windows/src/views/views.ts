@@ -110,6 +110,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabHome = h("button", { class: "tab", title: tl("Overview"), onclick: () => go("overview") }, svg(ICONS.house, 13));
   const tabChat = h("button", { class: "tab", title: tl("Ask"), onclick: () => go("prompt") }, svg(ICONS.bubble, 13));
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
+  const tabRecord = h("button", { class: "tab", title: "Gravar Reunião & Tela", onclick: () => go("record") }, svg(ICONS.video, 13));
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
@@ -127,7 +128,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, tabRecord),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -139,6 +140,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
+      tabRecord.classList.toggle("on", v === "record");
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
@@ -787,6 +789,191 @@ function buildSettings(actions: ViewActions): ViewHost {
   };
 }
 
+// ── In-island screen & meeting recorder ─────────────────────────────────────────
+
+function buildRecorderView(actions: ViewActions): ViewHost {
+  let isRecording = false;
+  let recorder: MediaRecorder | null = null;
+  let recordedChunks: Blob[] = [];
+  let timerId: number | null = null;
+  let elapsedSec = 0;
+  let currentStream: MediaStream | null = null;
+
+  const statusBadge = h("span", {
+    style: "font-size:10px; font-family:monospace; padding:2px 7px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); color:#a1a1aa; background:rgba(255,255,255,0.04); display:flex; align-items:center; gap:5px;",
+  });
+
+  const sourceBadge = h("span", {
+    style: "font-size:9.5px; font-family:monospace; padding:2px 6px; border-radius:4px; border:1px solid rgba(99,102,241,0.25); color:#818cf8; background:rgba(99,102,241,0.08);",
+    text: "WASAPI + MIC",
+  });
+
+  const topRow = h(
+    "div",
+    { style: "display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;" },
+    h("strong", { style: "font-size:12px; color:#f4f4f5; font-weight:600;", text: "Gravador de Reunião & Tela" }),
+    h("div", { style: "display:flex; align-items:center; gap:6px;" }, sourceBadge, statusBadge),
+  );
+
+  const toggleBtn = h("button", {
+    style: "display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:600; padding:6px 14px; border-radius:6px; border:1px solid rgba(244,63,94,0.4); background:rgba(244,63,94,0.12); color:#fb7185; cursor:pointer; transition:all 0.15s ease;",
+    onclick: () => void toggleRecording(),
+  });
+
+  const actionAtaBtn = h("button", {
+    style: "display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:500; padding:6px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#d4d4d8; cursor:pointer; transition:all 0.15s ease;",
+    text: "Gerar Ata com IA",
+    onclick: () => {
+      actions.blip();
+      actions.setView("prompt");
+    },
+  });
+
+  const controlsRow = h(
+    "div",
+    { style: "display:flex; align-items:center; gap:8px;" },
+    toggleBtn,
+    actionAtaBtn,
+  );
+
+  const footerHint = h("div", {
+    style: "font-size:10px; color:#71717a; margin-top:8px; display:flex; justify-content:space-between; align-items:center;",
+  },
+    h("span", { text: "Captura simultânea sem abrir configurações." }),
+    h("span", { style: "font-family:monospace; color:#8e939c;", text: "Atalho: Alt + R" }),
+  );
+
+  function updateStatusUI() {
+    clear(statusBadge);
+    if (isRecording) {
+      statusBadge.style.borderColor = "rgba(244,63,94,0.4)";
+      statusBadge.style.color = "#fb7185";
+      statusBadge.style.background = "rgba(244,63,94,0.1)";
+      const mins = Math.floor(elapsedSec / 60).toString().padStart(2, "0");
+      const secs = (elapsedSec % 60).toString().padStart(2, "0");
+      statusBadge.append(dot("#f43f5e", 6), h("span", { text: `REC ${mins}:${secs}` }));
+
+      toggleBtn.textContent = "Parar e Salvar Gravação";
+      toggleBtn.style.background = "#e11d48";
+      toggleBtn.style.color = "#ffffff";
+      toggleBtn.style.borderColor = "#f43f5e";
+    } else {
+      statusBadge.style.borderColor = "rgba(255,255,255,0.1)";
+      statusBadge.style.color = "#a1a1aa";
+      statusBadge.style.background = "rgba(255,255,255,0.04)";
+      statusBadge.append(dot("#22c55e", 6), h("span", { text: "PRONTO" }));
+
+      toggleBtn.textContent = "[REC] Iniciar Gravação";
+      toggleBtn.style.background = "rgba(244,63,94,0.12)";
+      toggleBtn.style.color = "#fb7185";
+      toggleBtn.style.borderColor = "rgba(244,63,94,0.4)";
+    }
+  }
+
+  async function toggleRecording() {
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+    await startRecording();
+  }
+
+  async function startRecording() {
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30 } },
+        audio: true,
+      });
+
+      let finalStream = displayStream;
+      try {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new AudioContext();
+        const dest = audioCtx.createMediaStreamDestination();
+        if (displayStream.getAudioTracks().length > 0) {
+          audioCtx.createMediaStreamSource(displayStream).connect(dest);
+        }
+        audioCtx.createMediaStreamSource(micStream).connect(dest);
+        finalStream = new MediaStream([
+          ...displayStream.getVideoTracks(),
+          ...dest.stream.getAudioTracks(),
+        ]);
+      } catch {
+        // mic fallback
+      }
+
+      currentStream = finalStream;
+      recordedChunks = [];
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm";
+      recorder = new MediaRecorder(finalStream, { mimeType: mime });
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const now = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+        a.download = `reuniao-coucou-${now}.webm`;
+        a.click();
+        displayStream.getTracks().forEach((t) => t.stop());
+        if (currentStream) currentStream.getTracks().forEach((t) => t.stop());
+        currentStream = null;
+      };
+
+      displayStream.getVideoTracks()[0].onended = () => {
+        if (isRecording) stopRecording();
+      };
+
+      recorder.start(1000);
+      isRecording = true;
+      elapsedSec = 0;
+      actions.blip();
+      updateStatusUI();
+
+      if (timerId != null) clearInterval(timerId);
+      timerId = window.setInterval(() => {
+        elapsedSec++;
+        updateStatusUI();
+      }, 1000);
+    } catch (err) {
+      console.error("Falha ao iniciar gravador de tela:", err);
+    }
+  }
+
+  function stopRecording() {
+    if (!isRecording) return;
+    if (recorder && recorder.state === "recording") {
+      recorder.stop();
+    }
+    isRecording = false;
+    if (timerId != null) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+    actions.blip();
+    updateStatusUI();
+  }
+
+  updateStatusUI();
+
+  const el = h("div", { class: "view" },
+    card(null, h("div", { class: "stack", style: "padding:14px 16px 14px 84px" }, topRow, controlsRow, footerHint))
+  );
+
+  return {
+    el,
+    sync() {
+      updateStatusUI();
+    },
+  };
+}
+
 // ── Placeholders filled in later stages ───────────────────────────────────────
 
 function buildPlaceholder(title: Msg, sub: string): ViewHost {
@@ -821,6 +1008,7 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
+  map.set("record", buildRecorderView(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

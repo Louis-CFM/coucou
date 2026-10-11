@@ -1644,13 +1644,13 @@ function realtimeCopilotSection(): HTMLElement {
   let mediaRec: MediaRecorder | null = null;
   const recordScreenBtn = h("button", {
     style: "background:rgba(244,63,94,0.18); color:#f43f5e; border:1px solid rgba(244,63,94,0.4); font-size:12px; font-weight:600; cursor:pointer;",
-    text: "⏺️ Iniciar Gravação de Tela"
+    text: "[REC] Iniciar Gravação de Tela"
   });
 
   recordScreenBtn.addEventListener("click", async () => {
     if (mediaRec && mediaRec.state === "recording") {
       mediaRec.stop();
-      recordScreenBtn.textContent = "⏺️ Iniciar Gravação de Tela";
+      recordScreenBtn.textContent = "[REC] Iniciar Gravação de Tela";
       recordScreenBtn.style.background = "rgba(244,63,94,0.18)";
       recordScreenBtn.style.color = "#f43f5e";
     } else {
@@ -1678,12 +1678,12 @@ function realtimeCopilotSection(): HTMLElement {
         };
         stream.getVideoTracks()[0].onended = () => {
           if (recorder.state === "recording") recorder.stop();
-          recordScreenBtn.textContent = "⏺️ Iniciar Gravação de Tela";
+          recordScreenBtn.textContent = "[REC] Iniciar Gravação de Tela";
           recordScreenBtn.style.background = "rgba(244,63,94,0.18)";
           recordScreenBtn.style.color = "#f43f5e";
         };
         recorder.start(1000);
-        recordScreenBtn.textContent = "⏹️ Parar e Baixar Gravação";
+        recordScreenBtn.textContent = "Parar e Baixar Gravação";
         recordScreenBtn.style.background = "#f43f5e";
         recordScreenBtn.style.color = "#fff";
       } catch (err) {

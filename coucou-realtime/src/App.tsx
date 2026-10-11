@@ -13,6 +13,7 @@ import { ToolConfirmationModal } from './components/tools/ToolConfirmationModal'
 import { SessionsDrawer } from './components/sessions/SessionsDrawer';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { ScreenRecorderModal } from './components/main/ScreenRecorderModal';
+import { MeetingRecorderTab } from './components/main/MeetingRecorderTab';
 import { PostMeetingModal } from './components/main/PostMeetingModal';
 import { AutomationsModal } from './components/automations/AutomationsModal';
 import { SecondBrainModal } from './components/brain/SecondBrainModal';
@@ -45,6 +46,7 @@ import {
 
 export const App: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<AssistantMode>('realtime');
+  const [activeNavTab, setActiveNavTab] = useState<'copilot' | 'recorder'>('copilot');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAgentsOpen, setIsAgentsOpen] = useState(false);
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
@@ -253,15 +255,56 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Mode Selector */}
-        <ModeSelector currentMode={currentMode} onModeChange={setCurrentMode} />
+        {/* Center: Navigation Tabs & Mode Selector */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center p-1 rounded-xl bg-zinc-900/90 border border-zinc-800">
+            <button
+              onClick={() => setActiveNavTab('copilot')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeNavTab === 'copilot'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Radio size={13} className={activeNavTab === 'copilot' ? 'text-indigo-400' : ''} />
+              <span>Copilot ao Vivo</span>
+            </button>
+
+            <button
+              onClick={() => setActiveNavTab('recorder')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeNavTab === 'recorder'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Video
+                size={13}
+                className={isRecording ? 'text-rose-400 animate-pulse' : activeNavTab === 'recorder' ? 'text-rose-400' : ''}
+              />
+              <span>Gravador & Reunião</span>
+              {isRecording && (
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+              )}
+            </button>
+          </div>
+
+          <ModeSelector currentMode={currentMode} onModeChange={setCurrentMode} />
+        </div>
 
         {/* Right: Agent Badge & Quick Controls */}
         <div className="flex items-center gap-2.5">
           <AgentBadge agent={activeAgent} onClick={() => setIsAgentsOpen(true)} />
 
           <button
-            onClick={() => (isRecording ? stopRecording() : startRecording(true))}
+            onClick={() => {
+              if (isRecording) {
+                stopRecording();
+              } else {
+                startRecording(true);
+                setActiveNavTab('recorder');
+              }
+            }}
             title={isRecording ? 'Parar Gravação (Alt+R)' : 'Gravar Tela & Reunião (Alt+R)'}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
               isRecording
@@ -398,24 +441,39 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Workspace Body */}
-      <main className="flex-1 flex overflow-hidden p-4 gap-4">
-        {/* Left Column: Live Audio Stream View (Unified or Split Columns) */}
-        <AudioStreamView
-          mode={currentMode}
-          status={isMuted ? 'muted' : isConnected ? aiStatus : 'idle'}
-          history={history}
-          userLiveTranscript={userTranscript}
-          agentLiveTranscript={agentTranscript}
+      {activeNavTab === 'recorder' ? (
+        <MeetingRecorderTab
+          isRecording={isRecording}
+          recordedTimeSec={recordedTimeSec}
+          lastRecording={lastRecording}
+          audioLevel={audioLevel}
+          onStartRecording={() => startRecording(true)}
+          onStopRecording={stopRecording}
+          onDownloadRecording={downloadRecording}
+          onGenerateAta={handleOpenWrapUp}
+          onOpenContent={() => setIsContentOpen(true)}
+          onClearRecording={clearLastRecording}
         />
+      ) : (
+        <main className="flex-1 flex overflow-hidden p-4 gap-4">
+          {/* Left Column: Live Audio Stream View (Unified or Split Columns) */}
+          <AudioStreamView
+            mode={currentMode}
+            status={isMuted ? 'muted' : isConnected ? aiStatus : 'idle'}
+            history={history}
+            userLiveTranscript={userTranscript}
+            agentLiveTranscript={agentTranscript}
+          />
 
-        {/* Right Column: Insights, Whisper Coach, Mini-CRM & Screen OCR */}
-        <InsightsPanel
-          screenContext={screenContext}
-          onRefreshScreen={captureNow}
-          isScanningScreen={isScanning}
-          onOpenWrapUp={handleOpenWrapUp}
-        />
-      </main>
+          {/* Right Column: Insights, Whisper Coach, Mini-CRM & Screen OCR */}
+          <InsightsPanel
+            screenContext={screenContext}
+            onRefreshScreen={captureNow}
+            isScanningScreen={isScanning}
+            onOpenWrapUp={handleOpenWrapUp}
+          />
+        </main>
+      )}
 
       {/* Bottom Audio & Action Control Bar */}
       <footer className="flex items-center justify-between px-6 py-3 border-t border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md shrink-0">
