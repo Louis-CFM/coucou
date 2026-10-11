@@ -18,7 +18,7 @@ pub use self::linux::*;
 #[cfg(target_os = "linux")]
 mod linux_focus;
 #[cfg(target_os = "linux")]
-pub use self::linux_focus::{focus_session_window, process_ancestors, window_owners};
+pub use self::linux_focus::{focus_session_window, process_ancestors, runs_in_terminal, window_owners};
 
 /// Wall-clock time in the user's time zone, for log lines and backup names.
 pub struct LocalTime {
