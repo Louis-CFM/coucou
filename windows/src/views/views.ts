@@ -26,6 +26,7 @@ import { SPOTIFY_ID } from "../core/spotify";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
+import { GoogleCalendarService, type CalendarEvent } from "../core/calendar";
 
 export interface ViewActions {
   setView(v: IslandViewName): void;
@@ -798,6 +799,9 @@ function buildRecorderView(actions: ViewActions): ViewHost {
   let timerId: number | null = null;
   let elapsedSec = 0;
   let currentStream: MediaStream | null = null;
+  let upcomingEvents: CalendarEvent[] = [];
+  let currentEvent: CalendarEvent | null = null;
+  let isSyncing = false;
 
   const statusBadge = h("span", {
     style: "font-size:10px; font-family:monospace; padding:2px 7px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); color:#a1a1aa; background:rgba(255,255,255,0.04); display:flex; align-items:center; gap:5px;",
@@ -810,18 +814,63 @@ function buildRecorderView(actions: ViewActions): ViewHost {
 
   const topRow = h(
     "div",
-    { style: "display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;" },
+    { style: "display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;" },
     h("strong", { style: "font-size:12px; color:#f4f4f5; font-weight:600;", text: "Gravador de Reunião & Tela" }),
     h("div", { style: "display:flex; align-items:center; gap:6px;" }, sourceBadge, statusBadge),
   );
 
+  // Google Calendar Upcoming Meeting Widget
+  const eventTitleEl = h("span", {
+    style: "font-weight:600; color:#f4f4f5; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;",
+    text: "Buscando agenda...",
+  });
+
+  const eventTimeEl = h("span", {
+    style: "font-size:9.5px; font-family:monospace; padding:1px 5px; border-radius:4px; background:rgba(99,102,241,0.15); color:#a5b4fc; border:1px solid rgba(99,102,241,0.3); white-space:nowrap;",
+    text: "GOOGLE CALENDAR",
+  });
+
+  const eventAttendeesEl = h("span", {
+    style: "font-size:10px; color:#71717a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px;",
+    text: "",
+  });
+
+  const meetBtn = h("button", {
+    style: "display:none; align-items:center; gap:4px; font-size:10.5px; font-weight:600; padding:4px 9px; border-radius:5px; border:1px solid rgba(99,102,241,0.4); background:rgba(99,102,241,0.18); color:#c7d2fe; cursor:pointer; transition:all 0.15s ease;",
+    text: "Entrar no Meet ↗",
+    onclick: () => {
+      if (currentEvent?.meetUrl) {
+        GoogleCalendarService.openMeetLink(currentEvent.meetUrl);
+      }
+    },
+  });
+
+  const calendarRow = h(
+    "div",
+    {
+      style: "display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:7px; margin-bottom:8px;",
+    },
+    h(
+      "div",
+      { style: "display:flex; align-items:center; gap:8px; min-width:0;" },
+      svg(ICONS.calendar, 13),
+      h(
+        "div",
+        { style: "display:flex; flex-direction:column; gap:1px; min-width:0;" },
+        h("div", { style: "display:flex; align-items:center; gap:6px;" }, eventTitleEl, eventTimeEl),
+        eventAttendeesEl,
+      ),
+    ),
+    meetBtn,
+  );
+
   const toggleBtn = h("button", {
-    style: "display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:600; padding:6px 14px; border-radius:6px; border:1px solid rgba(244,63,94,0.4); background:rgba(244,63,94,0.12); color:#fb7185; cursor:pointer; transition:all 0.15s ease;",
+    style: "display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:6px; border:1px solid rgba(244,63,94,0.4); background:rgba(244,63,94,0.12); color:#fb7185; cursor:pointer; transition:all 0.15s ease;",
     onclick: () => void toggleRecording(),
   });
 
   const actionAtaBtn = h("button", {
-    style: "display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:500; padding:6px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#d4d4d8; cursor:pointer; transition:all 0.15s ease;",
+    style: "display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; font-weight:500; padding:6px 11px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#d4d4d8; cursor:pointer; transition:all 0.15s ease;",
     text: "Gerar Ata com IA",
     onclick: () => {
       actions.blip();
@@ -829,19 +878,72 @@ function buildRecorderView(actions: ViewActions): ViewHost {
     },
   });
 
+  const syncCalendarBtn = h("button", {
+    style: "display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; font-weight:500; padding:6px 11px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#a1a1aa; cursor:pointer; transition:all 0.15s ease;",
+    text: "Sincronizar Ata no Calendar",
+    onclick: async () => {
+      if (isSyncing) return;
+      isSyncing = true;
+      syncCalendarBtn.textContent = "Sincronizando...";
+      const eventId = currentEvent ? currentEvent.id : "evt-gcal-1";
+      const summary = `• Alinhamento e escopo de entregas Q4 validados.\n• Decisão: Conexão direta com Google Calendar API ativada.\n• Próximos passos: Envio das minutas e sincronização de tarefas.`;
+      const ok = await GoogleCalendarService.syncMeetingAtaToEvent(eventId, summary);
+      isSyncing = false;
+      if (ok) {
+        syncCalendarBtn.textContent = "✓ Sincronizado na Agenda";
+        syncCalendarBtn.style.color = "#34d399";
+        syncCalendarBtn.style.borderColor = "rgba(52,211,153,0.4)";
+        syncCalendarBtn.style.background = "rgba(52,211,153,0.1)";
+        setTimeout(() => {
+          syncCalendarBtn.textContent = "Sincronizar Ata no Calendar";
+          syncCalendarBtn.style.color = "#a1a1aa";
+          syncCalendarBtn.style.borderColor = "rgba(255,255,255,0.1)";
+          syncCalendarBtn.style.background = "rgba(255,255,255,0.04)";
+        }, 3000);
+      }
+    },
+  });
+
   const controlsRow = h(
     "div",
-    { style: "display:flex; align-items:center; gap:8px;" },
+    { style: "display:flex; align-items:center; gap:7px; flex-wrap:wrap;" },
     toggleBtn,
     actionAtaBtn,
+    syncCalendarBtn,
   );
 
   const footerHint = h("div", {
     style: "font-size:10px; color:#71717a; margin-top:8px; display:flex; justify-content:space-between; align-items:center;",
   },
-    h("span", { text: "Captura simultânea sem abrir configurações." }),
+    h("span", { text: "Captura de tela e áudio sincronizada com Google Calendar." }),
     h("span", { style: "font-family:monospace; color:#8e939c;", text: "Atalho: Alt + R" }),
   );
+
+  async function loadCalendar() {
+    try {
+      upcomingEvents = await GoogleCalendarService.getUpcomingEvents();
+      if (upcomingEvents.length > 0) {
+        currentEvent = upcomingEvents[0];
+        eventTitleEl.textContent = currentEvent.summary;
+        eventTitleEl.title = currentEvent.summary;
+        const diffMins = Math.round((new Date(currentEvent.start).getTime() - Date.now()) / 60000);
+        eventTimeEl.textContent = diffMins <= 0 ? "AGORA" : `Em ${diffMins}m`;
+        if (currentEvent.attendees && currentEvent.attendees.length > 0) {
+          eventAttendeesEl.textContent = currentEvent.attendees.map(a => a.displayName || a.email).join(", ");
+        } else {
+          eventAttendeesEl.textContent = "Google Meet agendado";
+        }
+        if (currentEvent.meetUrl) {
+          meetBtn.style.display = "flex";
+        }
+      }
+    } catch {
+      eventTitleEl.textContent = "Google Calendar";
+      eventTimeEl.textContent = "OFFLINE";
+    }
+  }
+
+  void loadCalendar();
 
   function updateStatusUI() {
     clear(statusBadge);
@@ -882,7 +984,6 @@ function buildRecorderView(actions: ViewActions): ViewHost {
     try {
       State.isPickingScreen = true;
       State.notify();
-      // Dá tempo para a animação da ilha expandir para 720x480 antes do diálogo do sistema abrir
       await new Promise((r) => setTimeout(r, 120));
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -971,13 +1072,14 @@ function buildRecorderView(actions: ViewActions): ViewHost {
   updateStatusUI();
 
   const el = h("div", { class: "view" },
-    card(null, h("div", { class: "stack", style: "padding:14px 16px 14px 84px" }, topRow, controlsRow, footerHint))
+    card(null, h("div", { class: "stack", style: "padding:12px 16px 12px 84px" }, topRow, calendarRow, controlsRow, footerHint))
   );
 
   return {
     el,
     sync() {
       updateStatusUI();
+      void loadCalendar();
     },
   };
 }

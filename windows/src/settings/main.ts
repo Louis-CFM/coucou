@@ -1640,6 +1640,36 @@ function realtimeCopilotSection(): HTMLElement {
 
   renderCustomList();
 
+  const gcalToken = localStorage.getItem("coucou_google_calendar_token") || "";
+  const gCalInput = h("input", {
+    type: "password",
+    placeholder: gcalToken ? "••••••••••••••••" : "ya29.a0AfH6...",
+    autocomplete: "off",
+    spellcheck: "false",
+    style: "flex:1 1 auto;min-width:0",
+  }) as HTMLInputElement;
+
+  const gCalDot = statusDot(!!gcalToken);
+  const gCalSave = h("button", { text: "Salvar Token Calendar" });
+  const gCalRemove = h("button", { class: "danger", text: "Remover", style: gcalToken ? "" : "display:none" });
+
+  gCalSave.addEventListener("click", () => {
+    if (gCalInput.value.trim()) {
+      localStorage.setItem("coucou_google_calendar_token", gCalInput.value.trim());
+      gCalDot.style.background = "#22c55e";
+      gCalRemove.style.display = "";
+      gCalInput.value = "";
+      gCalInput.placeholder = "••••••••••••••••";
+    }
+  });
+
+  gCalRemove.addEventListener("click", () => {
+    localStorage.removeItem("coucou_google_calendar_token");
+    gCalDot.style.background = "#f4505e";
+    gCalRemove.style.display = "none";
+    gCalInput.placeholder = "ya29.a0AfH6...";
+  });
+
   return h(
     "section",
     {},
@@ -1654,6 +1684,11 @@ function realtimeCopilotSection(): HTMLElement {
         providerSelect,
       ),
       keysContainer,
+      h("div", { class: "row", style: "align-items:center" },
+        h("label", { style: "min-width:140px" }, h("span", { text: "Google Calendar API" })),
+        gCalInput, gCalSave, gCalRemove, gCalDot,
+      ),
+      h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: "Token OAuth2 ou chave da Google Calendar API (primary calendar). Sincroniza eventos do dia, link do Meet e atas de reunião. Se vazio, opera em agenda demonstrativa." }),
       h("div", { class: "row", style: "align-items:center" },
         h("label", { style: "min-width:140px" }, h("span", { text: "Modo do Assistente" })),
         modeSelect,
