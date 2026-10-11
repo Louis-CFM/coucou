@@ -27,18 +27,6 @@ struct IslandViewContent: View {
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
         case .wardrobe:  WardrobeView(state: state)
         case .recap:     WeeklyRecapCardView(state: state)
-        case .listening:
-            #if !APPSTORE
-            VoiceListeningView(isActive: state.view == .listening)
-            #else
-            EmptyView()
-            #endif
-        case .voiceResult:
-            #if !APPSTORE
-            VoiceResultView()
-            #else
-            EmptyView()
-            #endif
         }
     }
 }
@@ -895,8 +883,7 @@ struct UploadingView: View {
     var body: some View {
         // TimelineView fires at display refresh rate — progress derived from elapsed wall time,
         // not from @Published uploadProgress (which only flips to 1.0 at completion).
-        // Only runs while this view is shown (it stays mounted behind the others).
-        TimelineView(.animation(paused: state.view != .uploading || state.mode != .expanded)) { tl in
+        TimelineView(.animation) { tl in
             let elapsed: Double = {
                 guard let start = state.uploadStartTime else { return 0 }
                 return tl.date.timeIntervalSince(start)
@@ -1047,50 +1034,25 @@ struct MailView: View {
                         guard !isSending else { return }
                         sendMail()
                     }
-                    SecondaryButton("Cancel") {
-                        if state.voiceMailDraft != nil {
-                            // Prepared by voice: nothing to go back to, close the card.
-                            state.voiceMailDraft = nil
-                            state.droppedFile = nil
-                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
-                        } else {
-                            state.view = .choose
-                        }
-                    }
+                    SecondaryButton("Cancel") { state.view = .choose }
                 }
             }
             .padding(.leading, 92)
             .padding(.trailing, 18)
             .padding(.vertical, 8)
         }
-        .onAppear { fillFromVoiceDraft() }
-        .onChange(of: state.voiceMailDraft) { _, _ in fillFromVoiceDraft() }
-    }
-
-    /// A mail prepared by voice arrives filled in; otherwise the dropped file's name.
-    private func fillFromVoiceDraft() {
-        if let d = state.voiceMailDraft {
-            to = d.to
-            subject = d.subject.isEmpty ? (state.droppedFile?.name ?? "") : d.subject
-            bodyText = d.body
-            statusMsg = ""
-        } else if subject.isEmpty {
-            subject = state.droppedFile?.name ?? ""
-        }
+        .onAppear { subject = state.droppedFile?.name ?? "" }
     }
 
     private func sendMail() {
         guard !to.isEmpty else { statusMsg = String(localized: "Missing recipient."); return }
         let subj = subject.isEmpty ? (state.droppedFile?.name ?? "File") : subject
 
-        // Prefer Resend if API key + sender address are configured — except for a mail
-        // prepared by voice, which goes through the user's own Apple Mail account.
+        // Prefer Resend if API key + sender address are configured
         let apiKey  = KeychainStore.shared.get("resend-api-key")
         let fromAddr = KeychainStore.shared.get("resend-from")
 
-        if state.voiceMailDraft != nil {
-            sendViaAppleMail(to: to, subject: subj)
-        } else if let apiKey, let fromAddr {
+        if let apiKey, let fromAddr {
             isSending = true
             statusMsg = ""
             let recipient = to
@@ -1191,27 +1153,14 @@ struct MailView: View {
             send m
         end tell
         """
-        // Off the main thread: the script waits for Mail (and has a 1 s delay), which used
-        // to freeze the whole island until the mail was sent.
-        isSending = true
-        statusMsg = ""
-        let recipient = to
-        Task {
-            let message: String? = await Task.detached(priority: .userInitiated) {
-                var err: NSDictionary?
-                NSAppleScript(source: script)?.executeAndReturnError(&err)
-                return err.map { "Mail error: \($0["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
-            }.value
-            await MainActor.run {
-                isSending = false
-                if let message { statusMsg = message } else { onSuccess(recipient: recipient) }
-            }
-        }
+        var err: NSDictionary?
+        NSAppleScript(source: script)?.executeAndReturnError(&err)
+        if err == nil { onSuccess(recipient: to) }
+        else { statusMsg = "Mail error: \(err?["NSAppleScriptErrorMessage"] as? String ?? "unknown")" }
         #endif
     }
 
     private func onSuccess(recipient: String) {
-        state.voiceMailDraft = nil
         SoundEngine.shared.play("send")
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.wink)
         state.noteMessage = "Email sent to \(recipient)."
@@ -3675,8 +3624,7 @@ struct TickerView: View {
             Color.clear
 
             // Row A: completed row — always rendered at phase=1 + completedScale
-            // Row A never shows its shimmer (phase 1): it doesn't animate one either.
-            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, shimmerPaused: true, onDiffTap: rowADiffTap)
+            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, onDiffTap: rowADiffTap)
                 .scaleEffect(completedScale, anchor: .leading)
                 .offset(x: -10, y: rowAOffset)
                 .opacity(rowAOpacity)
@@ -3767,7 +3715,6 @@ struct TickerRowView: View {
     let text: String
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
     var isActive: Bool = true
-    var shimmerPaused: Bool = false
     var onDiffTap: (() -> Void)? = nil
 
     var body: some View {
@@ -3793,7 +3740,7 @@ struct TickerRowView: View {
                 // Filename + counts
                 HStack(spacing: 0) {
                     ZStack(alignment: .leading) {
-                        TickerShimmerText(text: dp.filename, paused: shimmerPaused || !isActive)
+                        TickerShimmerText(text: dp.filename)
                             .opacity(shimmerOpacity)
                         Text(dp.filename)
                             .font(.system(size: 13, weight: .medium))
@@ -3836,8 +3783,7 @@ struct TickerRowView: View {
 
                 // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
                 ZStack(alignment: .leading) {
-                    // An idle task never shows the shimmer (nor row A, see shimmerPaused).
-                    TickerShimmerText(text: text, paused: shimmerPaused || !isActive)
+                    TickerShimmerText(text: text)
                         .opacity(shimmerOpacity)
                     Text(text)
                         .font(.system(size: 13, weight: .medium))
@@ -3854,12 +3800,9 @@ struct TickerRowView: View {
 
 struct TickerShimmerText: View {
     let text: String
-    var paused: Bool = false
-    @Environment(\.islandViewActive) private var viewActive
 
     var body: some View {
-        // A 2.2 s sweep at display refresh rate. Paused when hidden.
-        TimelineView(.animation(paused: paused || !viewActive)) { tl in
+        TimelineView(.animation) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             let p = CGFloat(t.truncatingRemainder(dividingBy: 2.2) / 2.2)
             // phase sweeps -0.1 → 1.1 so white peak enters from left and exits right

@@ -17,7 +17,6 @@ import {
 } from "../core/pills";
 import { h, clear } from "../views/dom";
 import { agentsSection } from "./agents";
-import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -239,7 +238,6 @@ function claudeSection(status: HookStatus): HTMLElement {
  */
 const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
-  get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
   get showClaude() { return t("Show in notch"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
@@ -285,7 +283,6 @@ function planSection(status: HookStatus): HTMLElement {
         class: "hint",
         text: PLAN_SETTINGS_TEXT.claude,
       }),
-      h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
@@ -1317,6 +1314,592 @@ async function main() {
   });
 }
 
+// ── Coucou Copilot / Realtime AI Desktop Assistant Section ──────────────────
+
+interface CustomAgent {
+  id: string;
+  name: string;
+  tone: string;
+  voice: string;
+  system_prompt: string;
+}
+
+function realtimeCopilotSection(): HTMLElement {
+  const currentProvider = localStorage.getItem("coucou_ai_provider") || "openai";
+  const openaiKey = localStorage.getItem("coucou_openai_api_key") || "";
+  const geminiKey = localStorage.getItem("coucou_gemini_api_key") || "";
+  const currentMode = localStorage.getItem("coucou_assistant_mode") || "realtime";
+  let activeAgentId = localStorage.getItem("coucou_active_agent") || "Sales Copilot";
+
+  // Load custom agents from storage
+  const loadCustomAgents = (): CustomAgent[] => {
+    try {
+      return JSON.parse(localStorage.getItem("coucou_custom_agents") || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  let customAgents = loadCustomAgents();
+
+  // Provider selector
+  const providerSelect = h("select", { style: "padding: 6px 10px; border-radius: 6px; background: #16181d; color: #fff; border: 1px solid #272a30" },
+    h("option", { value: "gemini", selected: currentProvider === "gemini" }, "Google Gemini Live (Gemini 2.0 Flash)"),
+    h("option", { value: "openai", selected: currentProvider === "openai" }, "OpenAI Realtime API (GPT-4o Realtime)"),
+    h("option", { value: "offline", selected: currentProvider === "offline" }, "Modo Local Privado (Whisper + Ollama Local / LGPD)"),
+  ) as HTMLSelectElement;
+
+  // Key inputs container
+  const keysContainer = h("div", { style: "display:flex; flex-direction:column; gap:8px" });
+
+  const renderKeyInputs = (provider: string) => {
+    clear(keysContainer);
+    if (provider === "offline") {
+      const ollamaEndpoint = localStorage.getItem("coucou_ollama_endpoint") || "http://localhost:11434";
+      const ollamaModel = localStorage.getItem("coucou_ollama_model") || "llama3.3:70b";
+
+      const endpointInput = h("input", {
+        type: "text",
+        value: ollamaEndpoint,
+        style: "flex:1 1 auto; min-width:0; font-family:monospace; font-size:12px;",
+      }) as HTMLInputElement;
+
+      const modelSelect = h("select", { style: "padding: 5px 8px; border-radius: 6px; background: #16181d; color: #fff; border: 1px solid #272a30; font-size:12px;" },
+        h("option", { value: "llama3.3:70b", selected: ollamaModel === "llama3.3:70b" }, "Llama 3.3 (70B)"),
+        h("option", { value: "llama3.1:8b", selected: ollamaModel === "llama3.1:8b" }, "Llama 3.1 (8B - Rápido)"),
+        h("option", { value: "deepseek-r1:8b", selected: ollamaModel === "deepseek-r1:8b" }, "DeepSeek R1 (8B)"),
+        h("option", { value: "mistral:7b", selected: ollamaModel === "mistral:7b" }, "Mistral (7B)"),
+      ) as HTMLSelectElement;
+
+      const saveOfflineBtn = h("button", { text: "Salvar Configuração Local" });
+      saveOfflineBtn.addEventListener("click", () => {
+        localStorage.setItem("coucou_ollama_endpoint", endpointInput.value.trim());
+        localStorage.setItem("coucou_ollama_model", modelSelect.value);
+        saveOfflineBtn.textContent = "Salvo!";
+        setTimeout(() => (saveOfflineBtn.textContent = "Salvar Configuração Local"), 1500);
+      });
+
+      keysContainer.append(
+        h("div", { class: "row", style: "align-items:center" },
+          h("label", { style: "min-width:140px" }, h("span", { text: "Endpoint Ollama" })),
+          endpointInput, modelSelect, saveOfflineBtn, statusDot(true)
+        ),
+        h("div", {
+          style: "margin:-4px 0 0 144px; display:flex; align-items:center; gap:6px; font-size:11px; color:#34d399;",
+          text: "Execução 100% local: transcrição Whisper e inferência LLM executadas na máquina do usuário. Conformidade LGPD com retenção zero na nuvem."
+        })
+      );
+    } else if (provider === "gemini") {
+      const gInput = h("input", {
+        type: "password",
+        placeholder: geminiKey ? "••••••••••••••••" : "AIzaSy...",
+        autocomplete: "off",
+        spellcheck: "false",
+        style: "flex:1 1 auto;min-width:0",
+      }) as HTMLInputElement;
+
+      const gDot = statusDot(!!geminiKey);
+      const gSave = h("button", { text: "Salvar Chave Gemini" });
+      const gRemove = h("button", { class: "danger", text: "Remover", style: geminiKey ? "" : "display:none" });
+
+      gSave.addEventListener("click", () => {
+        if (gInput.value.trim()) {
+          localStorage.setItem("coucou_gemini_api_key", gInput.value.trim());
+          gDot.style.background = "#22c55e";
+          gRemove.style.display = "";
+          gInput.value = "";
+          gInput.placeholder = "••••••••••••••••";
+        }
+      });
+
+      gRemove.addEventListener("click", () => {
+        localStorage.removeItem("coucou_gemini_api_key");
+        gDot.style.background = "#f4505e";
+        gRemove.style.display = "none";
+        gInput.placeholder = "AIzaSy...";
+      });
+
+      keysContainer.append(
+        h("div", { class: "row" },
+          h("label", { style: "min-width:140px" }, h("span", { text: "Google Gemini Key" })),
+          gInput, gSave, gRemove, gDot,
+        ),
+        h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: "Chave gratuita do Google AI Studio (aistudio.google.com). Suporta o modelo Gemini 2.0 Flash com voz e streaming ao vivo." })
+      );
+    } else {
+      const oInput = h("input", {
+        type: "password",
+        placeholder: openaiKey ? "••••••••••••••••" : "sk-proj-...",
+        autocomplete: "off",
+        spellcheck: "false",
+        style: "flex:1 1 auto;min-width:0",
+      }) as HTMLInputElement;
+
+      const oDot = statusDot(!!openaiKey);
+      const oSave = h("button", { text: "Salvar Chave OpenAI" });
+      const oRemove = h("button", { class: "danger", text: "Remover", style: openaiKey ? "" : "display:none" });
+
+      oSave.addEventListener("click", () => {
+        if (oInput.value.trim()) {
+          localStorage.setItem("coucou_openai_api_key", oInput.value.trim());
+          oDot.style.background = "#22c55e";
+          oRemove.style.display = "";
+          oInput.value = "";
+          oInput.placeholder = "••••••••••••••••";
+        }
+      });
+
+      oRemove.addEventListener("click", () => {
+        localStorage.removeItem("coucou_openai_api_key");
+        oDot.style.background = "#f4505e";
+        oRemove.style.display = "none";
+        oInput.placeholder = "sk-proj-...";
+      });
+
+      keysContainer.append(
+        h("div", { class: "row" },
+          h("label", { style: "min-width:140px" }, h("span", { text: "OpenAI Realtime Key" })),
+          oInput, oSave, oRemove, oDot,
+        ),
+        h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: "Chave da OpenAI para GPT-4o Realtime. Se vazia, opera em Modo Demonstração." })
+      );
+    }
+  };
+
+  renderKeyInputs(providerSelect.value);
+
+  providerSelect.addEventListener("change", () => {
+    localStorage.setItem("coucou_ai_provider", providerSelect.value);
+    renderKeyInputs(providerSelect.value);
+  });
+
+  const modeSelect = h("select", { style: "padding: 6px 10px; border-radius: 6px; background: #16181d; color: #fff; border: 1px solid #272a30" },
+    h("option", { value: "realtime", selected: currentMode === "realtime" }, "Realtime — Voz bidirecional direta"),
+    h("option", { value: "ultra", selected: currentMode === "ultra" }, "Ultra — Gravação simultânea WASAPI loopback"),
+    h("option", { value: "eco", selected: currentMode === "eco" }, "Eco — Detecção de voz (VAD) e otimização de tokens"),
+  ) as HTMLSelectElement;
+
+  modeSelect.addEventListener("change", () => {
+    localStorage.setItem("coucou_assistant_mode", modeSelect.value);
+  });
+
+  const agentSelect = h("select", { style: "padding: 6px 10px; border-radius: 6px; background: #16181d; color: #fff; border: 1px solid #272a30; flex: 1" }) as HTMLSelectElement;
+
+  const refreshAgentOptions = () => {
+    clear(agentSelect);
+    const defaults = [
+      { id: "Sales Copilot", name: "Sales Copilot (Vendas & Objeções)" },
+      { id: "Meeting Assist", name: "Meeting Assist (Atas & Ações)" },
+      { id: "Operations", name: "Operations (Processos & Automação)" },
+    ];
+    for (const d of defaults) {
+      const opt = h("option", { value: d.id, selected: activeAgentId === d.id }, d.name) as HTMLOptionElement;
+      agentSelect.append(opt);
+    }
+    for (const ca of customAgents) {
+      const opt = h("option", { value: ca.id, selected: activeAgentId === ca.id }, `${ca.name} (Personalizado)`) as HTMLOptionElement;
+      agentSelect.append(opt);
+    }
+  };
+
+  refreshAgentOptions();
+
+  agentSelect.addEventListener("change", () => {
+    activeAgentId = agentSelect.value;
+    localStorage.setItem("coucou_active_agent", activeAgentId);
+  });
+
+  // Custom agent creator form elements
+  const formContainer = h("div", {
+    style: "display:none; flex-direction:column; gap:10px; padding:14px; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.25); border-radius:10px; margin-top:8px;"
+  });
+
+  const nameInput = h("input", {
+    type: "text",
+    placeholder: "Ex: Especialista Tributário, Suporte N2, Mentor...",
+    style: "padding:6px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;"
+  }) as HTMLInputElement;
+
+  const toneInput = h("input", {
+    type: "text",
+    placeholder: "Ex: Formal, analítico, persuasivo, calmo...",
+    style: "padding:6px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;"
+  }) as HTMLInputElement;
+
+  const voiceSelect = h("select", { style: "padding:6px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;" },
+    h("option", { value: "alloy" }, "Voz: Alloy (Neutra)"),
+    h("option", { value: "echo" }, "Voz: Echo (Grave/Masculina)"),
+    h("option", { value: "shimmer" }, "Voz: Shimmer (Clara/Feminina)"),
+    h("option", { value: "ash" }, "Voz: Ash"),
+    h("option", { value: "ballad" }, "Voz: Ballad"),
+    h("option", { value: "coral" }, "Voz: Coral"),
+    h("option", { value: "sage" }, "Voz: Sage"),
+    h("option", { value: "verse" }, "Voz: Verse"),
+  ) as HTMLSelectElement;
+
+  const promptInput = h("textarea", {
+    rows: "3",
+    placeholder: "Instruções do sistema: Como este agente deve agir, o que deve priorizar e qual o objetivo principal nas reuniões...",
+    style: "padding:8px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px; font-family:monospace; font-size:11.5px; resize:vertical;"
+  }) as HTMLTextAreaElement;
+
+  const saveAgentBtn = h("button", { class: "primary", text: "Salvar e Ativar Assistente" });
+  const cancelAgentBtn = h("button", { text: "Cancelar" });
+
+  saveAgentBtn.addEventListener("click", () => {
+    const name = nameInput.value.trim();
+    if (!name) return;
+    const newAgent: CustomAgent = {
+      id: `custom-${Date.now()}`,
+      name,
+      tone: toneInput.value.trim() || "Profissional",
+      voice: voiceSelect.value,
+      system_prompt: promptInput.value.trim() || `Você é ${name}, assistente pessoal focado em produtividade.`,
+    };
+
+    customAgents.push(newAgent);
+    localStorage.setItem("coucou_custom_agents", JSON.stringify(customAgents));
+    activeAgentId = newAgent.id;
+    localStorage.setItem("coucou_active_agent", activeAgentId);
+
+    nameInput.value = "";
+    toneInput.value = "";
+    promptInput.value = "";
+    formContainer.style.display = "none";
+    refreshAgentOptions();
+    renderCustomList();
+  });
+
+  cancelAgentBtn.addEventListener("click", () => {
+    formContainer.style.display = "none";
+  });
+
+  formContainer.append(
+    h("strong", { style: "font-size:12.5px; color:#c7d2fe", text: "Novo Assistente Personalizado" }),
+    h("div", { style: "display:flex; flex-direction:column; gap:4px" },
+      h("label", { style: "font-size:11px; color:#a1a1aa", text: "Nome do Assistente:" }),
+      nameInput
+    ),
+    h("div", { style: "display:flex; gap:10px" },
+      h("div", { style: "flex:1; display:flex; flex-direction:column; gap:4px" },
+        h("label", { style: "font-size:11px; color:#a1a1aa", text: "Tom de Voz:" }),
+        toneInput
+      ),
+      h("div", { style: "flex:1; display:flex; flex-direction:column; gap:4px" },
+        h("label", { style: "font-size:11px; color:#a1a1aa", text: "Voz (OpenAI Realtime):" }),
+        voiceSelect
+      ),
+    ),
+    h("div", { style: "display:flex; flex-direction:column; gap:4px" },
+      h("label", { style: "font-size:11px; color:#a1a1aa", text: "Prompt de Sistema (Instruções Principais):" }),
+      promptInput
+    ),
+    h("div", { class: "row", style: "margin-top:4px" }, saveAgentBtn, cancelAgentBtn)
+  );
+
+  const toggleCreateBtn = h("button", {
+    style: "background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.4); color:#c7d2fe; font-size:12px; cursor:pointer;",
+    text: "+ Criar Assistente Personalizado"
+  });
+
+  toggleCreateBtn.addEventListener("click", () => {
+    formContainer.style.display = formContainer.style.display === "none" ? "flex" : "none";
+  });
+
+  const customListEl = h("div", { style: "display:flex; flex-direction:column; gap:6px; margin-top:4px;" });
+
+  const renderCustomList = () => {
+    clear(customListEl);
+    if (customAgents.length === 0) return;
+    for (const ca of customAgents) {
+      const delBtn = h("button", { class: "danger", style: "padding:2px 8px; font-size:11px;", text: "Excluir" });
+      delBtn.addEventListener("click", () => {
+        customAgents = customAgents.filter((a) => a.id !== ca.id);
+        localStorage.setItem("coucou_custom_agents", JSON.stringify(customAgents));
+        if (activeAgentId === ca.id) {
+          activeAgentId = "Sales Copilot";
+          localStorage.setItem("coucou_active_agent", activeAgentId);
+        }
+        refreshAgentOptions();
+        renderCustomList();
+      });
+
+      customListEl.append(
+        h("div", {
+          style: "display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px;"
+        },
+          h("div", { style: "display:flex; flex-direction:column; gap:2px" },
+            h("span", { style: "font-weight:600; font-size:12px; color:#f4f4f5", text: ca.name }),
+            h("span", { class: "hint", text: `${ca.tone} • Voz: ${ca.voice}` })
+          ),
+          delBtn
+        )
+      );
+    }
+  };
+
+  renderCustomList();
+
+  // Screen recorder button logic
+  let mediaRec: MediaRecorder | null = null;
+  const recordScreenBtn = h("button", {
+    style: "background:rgba(244,63,94,0.18); color:#f43f5e; border:1px solid rgba(244,63,94,0.4); font-size:12px; font-weight:600; cursor:pointer;",
+    text: "[REC] Iniciar Gravação de Tela"
+  });
+
+  recordScreenBtn.addEventListener("click", async () => {
+    if (mediaRec && mediaRec.state === "recording") {
+      mediaRec.stop();
+      recordScreenBtn.textContent = "[REC] Iniciar Gravação de Tela";
+      recordScreenBtn.style.background = "rgba(244,63,94,0.18)";
+      recordScreenBtn.style.color = "#f43f5e";
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        const chunks: Blob[] = [];
+        const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+          ? "video/webm;codecs=vp9,opus"
+          : "video/webm";
+        const recorder = new MediaRecorder(stream, { mimeType });
+        mediaRec = recorder;
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `Gravacao_Tela_Coucou_${Date.now()}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          stream.getTracks().forEach((t) => t.stop());
+        };
+        stream.getVideoTracks()[0].onended = () => {
+          if (recorder.state === "recording") recorder.stop();
+          recordScreenBtn.textContent = "[REC] Iniciar Gravação de Tela";
+          recordScreenBtn.style.background = "rgba(244,63,94,0.18)";
+          recordScreenBtn.style.color = "#f43f5e";
+        };
+        recorder.start(1000);
+        recordScreenBtn.textContent = "Parar e Baixar Gravação";
+        recordScreenBtn.style.background = "#f43f5e";
+        recordScreenBtn.style.color = "#fff";
+      } catch (err) {
+        console.error("Falha ao iniciar gravador de tela:", err);
+      }
+    }
+  });
+
+  return h(
+    "section",
+    {},
+    h("h2", {},
+      h("span", { text: "Coucou Copilot / Realtime AI Assistant" }),
+      h("span", { style: "background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);padding:2px 8px;border-radius:12px;font-size:10px;margin-left:8px;font-weight:600", text: "ATIVO" })
+    ),
+    h("div", { class: "hint", text: "Camada de assistência contínua e inteligente: voz em tempo real (OpenAI Realtime API), gravação de reuniões (WASAPI Loopback), visão de tela (OCR) e agentes personalizados." }),
+    h("div", { style: "display:flex;flex-direction:column;gap:12px;margin-top:10px" },
+      h("div", { class: "row", style: "align-items:center" },
+        h("label", { style: "min-width:140px" }, h("span", { text: "Provedor de IA" })),
+        providerSelect,
+      ),
+      keysContainer,
+      h("div", { class: "row", style: "align-items:center" },
+        h("label", { style: "min-width:140px" }, h("span", { text: "Modo do Assistente" })),
+        modeSelect,
+      ),
+      h("div", { class: "row", style: "align-items:center; gap:8px" },
+        h("label", { style: "min-width:140px" }, h("span", { text: "Agente Ativo" })),
+        agentSelect,
+        toggleCreateBtn,
+      ),
+      formContainer,
+      customListEl,
+      h("div", {
+        style: "display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px;"
+      },
+        h("div", { style: "display:flex; flex-direction:column; gap:2px" },
+          h("strong", { style: "font-size:12px; color:#f4f4f5", text: "Gravador de Tela & Reuniões" }),
+          h("span", { class: "hint", text: "Captura de vídeo e áudio bidirecional (alto-falantes via WASAPI Loopback + microfone do usuário)." })
+        ),
+        recordScreenBtn
+      ),
+
+      // Header de Módulos
+      h("div", { style: "display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.06);" },
+        h("strong", { style: "font-size:11px; color:#a1a1aa; text-transform:uppercase; letter-spacing:0.8px;", text: "Módulos de Assistência Ativos" }),
+        h("span", { style: "font-size:10px; font-family:monospace; color:#71717a;", text: "12 MÓDULOS HABILITADOS" })
+      ),
+
+      // Grid de Módulos (Design Clean, Moderno, Sem Emojis)
+      h("div", { style: "display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;" },
+
+        // 1. Modo Sussurro
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Modo Sussurro (Coach em Tempo Real)" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); color:#fbbf24; background:rgba(245,158,11,0.08)", text: "AO VIVO" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Intervenções discretas durante a fala. Alerta sobre hesitação em preço, cadência excessiva ou timing de fechamento." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Detecção contextual de objeções e ritmo de conversa" })
+        ),
+
+        // 2. Pós-Reunião Automático
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Pós-Reunião Automático" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(16,185,129,0.3); color:#34d399; background:rgba(16,185,129,0.08)", text: "FOLLOW-UP" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Ao encerrar a call, sintetiza ata executiva, decisões tomadas, tarefas com prazos e minuta de e-mail pronta para envio." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Exportação para Notion, Trello, Google Calendar e SMTP" })
+        ),
+
+        // 3. Memória de Interlocutores
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Memória de Interlocutores (Mini-CRM)" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(147,51,234,0.3); color:#c084fc; background:rgba(147,51,234,0.08)", text: "PERSISTENTE" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Cria ficha de contexto por pessoa: histórico de acordos, objeções anteriores e preferências de negociação." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Recuperação de contexto histórico antes da próxima chamada" })
+        ),
+
+        // 4. Telemetria Vocal & Ritmo
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Telemetria de Fala & Cadência" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(6,182,212,0.3); color:#22d3ee; background:rgba(6,182,212,0.08)", text: "TELEMETRIA" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Medição contínua de velocidade de fala (palavras por minuto), pausas, interrupções e divisão do Talk Ratio." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Monitoramento de segurança emocional e equilíbrio de conversa" })
+        ),
+
+        // 5. RAG Local
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Base de Conhecimento RAG Local" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(59,130,246,0.3); color:#60a5fa; background:rgba(59,130,246,0.08)", text: "OFFLINE 2s" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Indexação vetorial de playbooks, PDFs e propostas. Respostas fundamentadas com citação exata de página e fonte." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Armazenamento em banco vetorial local sem envio para terceiros" })
+        ),
+
+        // 6. Tradução Simultânea
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Tradução de Voz Simultânea" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(236,72,153,0.3); color:#f472b6; background:rgba(236,72,153,0.08)", text: "BILÍNGUE" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Legendas bilíngues instantâneas na tela (PT-BR, EN-US, ES-ES) para reuniões e negociações internacionais." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Exibição em overlay flutuante de baixa latência" })
+        ),
+
+        // 7. Automações IFTTT & MCP
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Automações por Voz & Protocolo MCP" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); color:#fbbf24; background:rgba(245,158,11,0.08)", text: "MCP & WEBHOOK" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Gatilhos executados ao detectar termos como intenção de fechamento, concorrentes ou orçamentos na tela (OCR)." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Conexão com webhooks REST e servidores de contexto MCP" })
+        ),
+
+        // 8. Segundo Cérebro & Grafo
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Segundo Cérebro Autônomo" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(139,92,246,0.3); color:#c4b5fd; background:rgba(139,92,246,0.08)", text: "GRAFO" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Grafo semântico que conecta discussões recentes com dúvidas e anotações gravadas em sessões anteriores." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Cruzamento relacional e detecção de padrões de trabalho" })
+        ),
+
+        // 9. Briefing Semanal em Áudio
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Briefing Semanal em Áudio" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); color:#fbbf24; background:rgba(245,158,11,0.08)", text: "SEXTA 17H" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Resumo em áudio sintetizado com conquistas da semana, evolução de cadência vocal e compromissos seguintes." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Duração aproximada de 2 minutos com reprodução nativa" })
+        ),
+
+        // 10. Jarvis Controle do PC
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Controle por Voz do PC (Jarvis)" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(16,185,129,0.3); color:#34d399; background:rgba(16,185,129,0.08)", text: "HUMAN-IN-THE-LOOP" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Decomposição de ordens faladas em passos encadeados com bloqueio obrigatório de ações sensíveis." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Log de auditoria auditável para conformidade corporativa" })
+        ),
+
+        // 11. Mapa Mental ao Vivo
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Mapa Mental ao Vivo" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(6,182,212,0.3); color:#22d3ee; background:rgba(6,182,212,0.08)", text: "MERMAID / GRAFO" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Estruturação contínua de temas, decisões e responsáveis durante reuniões, aulas e planejamentos." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Exportação direta em formato Mermaid, Markdown ou link público" })
+        ),
+
+        // 12. Conversa Vira Conteúdo
+        h("div", { style: "background:#141519; border:1px solid #23252c; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Conversa Vira Conteúdo" }),
+            h("span", { style: "font-size:9.5px; font-family:monospace; padding:1px 6px; border-radius:4px; border:1px solid rgba(244,63,94,0.3); color:#fb7185; background:rgba(244,63,94,0.08)", text: "REPURPOSING" })
+          ),
+          h("span", { style: "font-size:11px; color:#a1a1aa; line-height:1.4;", text: "Conversão de gravações em post para LinkedIn, newsletter, roteiro de vídeo e thread calibrados no seu tom." }),
+          h("span", { style: "font-size:10px; color:#71717a; font-family:monospace; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;", text: "Opções de estilo: direto, storytelling, analítico ou executivo" })
+        ),
+      ),
+
+      // Tabela Limpa de Atalhos Globais
+      h("div", {
+        style: "background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:12px 14px; margin-top:6px; display:flex; flex-direction:column; gap:8px;"
+      },
+        h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+          h("strong", { style: "font-size:11.5px; color:#f4f4f5", text: "Atalhos Globais do Sistema" }),
+          h("span", { style: "font-size:9.5px; font-family:monospace; color:#71717a", text: "WINDOWS 10/11" })
+        ),
+        h("div", { style: "display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px 14px; font-size:11px; color:#d4d4d8;" },
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Alternar Janela Principal" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + Space" })
+          ),
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Mutar / Desmutar Microfone" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + M" })
+          ),
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Captura & OCR da Janela Ativa" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + S" })
+          ),
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Gravação de Tela & Reunião" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + R" })
+          ),
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Jarvis PC (Comandos por Voz)" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + J" })
+          ),
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Mapa Mental ao Vivo" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + D" })
+          ),
+          h("div", { style: "display:flex; justify-content:space-between; align-items:center;" },
+            h("span", { text: "Conversa Vira Conteúdo" }),
+            h("kbd", { style: "padding:2px 6px; background:#18181b; border:1px solid #3f3f46; border-radius:4px; font-family:monospace; font-size:10px; color:#e4e4e7", text: "Alt + C" })
+          ),
+        )
+      ),
+    ),
+  );
+}
+
 /** Reads what the sections show and draws them all. */
 async function render() {
   const status = (await Bridge.hooksStatus()) ?? {
@@ -1362,6 +1945,7 @@ async function render() {
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
+    realtimeCopilotSection(),
     claudeSection(status),
     agentsSection(agents),
     planSection(status),
@@ -1370,7 +1954,6 @@ async function render() {
     localSection(customKey),
     activePillsSection(connected),
     integrationsSection(present),
-    phoneSection(settings.phoneLink ?? false, toggle, settings),
     generalSection(),
     shortcutsSection(shortcutReport),
     h("div", {
