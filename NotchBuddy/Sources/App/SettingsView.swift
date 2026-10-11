@@ -103,6 +103,7 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @State private var linearKey: String    = KeychainStore.shared.get("linear-api-key")  ?? ""
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1246,6 +1247,19 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
+                // Linear
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#5E6AD2")).frame(width: 8, height: 8)
+                        Text("Linear").font(.system(size: 12, weight: .semibold))
+                    }
+                    SecureField("Personal API key", text: $linearKey)
+                        .textFieldStyle(.roundedBorder)
+                    Text(String(localized: "integrations.linear.key-hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+
                 Button(String(localized: "integrations.save")) { saveIntegrations() }
                     .buttonStyle(.borderedProminent)
             }
@@ -1930,6 +1944,13 @@ struct SettingsView: View {
         saveKey("stripe-api-key",  value: stripeKey)
         saveKey("calcom-api-key",  value: calcomKey)
         saveKey("notion-api-key",  value: notionKey)
+
+        let prevLinearKey = KeychainStore.shared.get("linear-api-key")
+        saveKey("linear-api-key",  value: linearKey)
+        if KeychainStore.shared.get("linear-api-key") != prevLinearKey {
+            LinearPoller.shared.reset()
+            LinearPoller.shared.pollNow()
+        }
         statusMessage = String(localized: "status.integrations-saved")
     }
 

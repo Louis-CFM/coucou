@@ -1134,6 +1134,17 @@
    "ru": "У ключа нет доступа",
    "id": "Kunci tidak punya akses"
   },
+  "Unexpected response": {
+   "zh-Hans": "意外的响应",
+   "hi": "अप्रत्याशित जवाब",
+   "es": "Respuesta inesperada",
+   "ar": "استجابة غير متوقعة",
+   "fr": "Réponse inattendue",
+   "bn": "অপ্রত্যাশিত উত্তর",
+   "pt-BR": "Resposta inesperada",
+   "ru": "Неожиданный ответ",
+   "id": "Respons tak terduga"
+  },
   "Key removed.": {
    "zh-Hans": "密钥已移除。",
    "hi": "कुंजी हटा दी गई।",

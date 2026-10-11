@@ -31,6 +31,7 @@ export const LANGUAGES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR"
  * key: the n-th specifier becomes `{names[n]}` instead of `{n}`.
  */
 const RENAMES = {
+  "%lld unread": ["count"],
   "Auto-close · %llds": ["seconds"],
   "Chat with %@": ["name"],
   "Claude is reading %@…": ["name"],

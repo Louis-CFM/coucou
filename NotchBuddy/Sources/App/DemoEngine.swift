@@ -34,7 +34,8 @@ final class DemoEngine: ObservableObject {
     private var demoCycleIndex: Int = 0
     private let rotatingIntegrationIds = [
         "integration_stripe", "integration_calcom",
-        "integration_n8n", "integration_notion", "integration_vercel"
+        "integration_n8n", "integration_notion", "integration_vercel",
+        "integration_linear"
     ]
     private var demoDiffIds: [String: [Int]] = [:]   // [pillId: [diffId]]
     private var lastApprovalDecision: String = "allow"
@@ -67,6 +68,7 @@ final class DemoEngine: ObservableObject {
         var n8nRuns: [N8nRun]
         var notionPages: [NotionPage]
         var notionLoaded: Bool
+        var linearInbox: LinearInbox?
         // NOTE: pendingApproval and pendingQuestion are intentionally NOT snapshotted.
         // HookServer's file descriptors are authoritative for real requests.
         var mode: IslandMode
@@ -113,6 +115,7 @@ final class DemoEngine: ObservableObject {
             n8nRuns:             s.n8nRuns,
             notionPages:         s.notionPages,
             notionLoaded:        s.notionLoaded,
+            linearInbox:         s.linearInbox,
             mode:                s.mode,
             view:                s.view
         )
@@ -222,6 +225,7 @@ final class DemoEngine: ObservableObject {
         s.n8nRuns              = snap.n8nRuns
         s.notionPages          = snap.notionPages
         s.notionLoaded         = snap.notionLoaded
+        s.linearInbox          = snap.linearInbox
 
         // Restore tasks: keep real tasks that arrived during the demo, discard demo-only ones.
         // For tasks that existed before the demo (realTaskIdsAtStart), use the CURRENT version
@@ -382,6 +386,23 @@ final class DemoEngine: ObservableObject {
                        url: "https://notion.so/demo/auth-notes"),
         ]
         s.notionLoaded = true
+
+        // Linear
+        s.linearInbox = LinearInbox(
+            unread: [
+                LinearNotification(id: "lin_demo1", reason: .mention, actor: "Alice Martin", key: "APP-142",
+                                   title: "Checkout fails on Safari", url: "https://linear.app/demo/issue/APP-142",
+                                   createdAt: now.addingTimeInterval(-420)),
+                LinearNotification(id: "lin_demo2", reason: .assigned, actor: "Bob Chen", key: "APP-139",
+                                   title: "Rate limit the export API", url: "https://linear.app/demo/issue/APP-139",
+                                   createdAt: now.addingTimeInterval(-5400)),
+            ],
+            assigned: [
+                LinearIssue(id: "lin_demo3", key: "APP-131", title: "Dark mode for settings",
+                            url: "https://linear.app/demo/issue/APP-131", stateName: "In Progress",
+                            stateColor: "#F2C94C", updatedAt: now.addingTimeInterval(-86400)),
+            ],
+            inboxURL: "https://linear.app/demo/inbox")
 
         // Inject GitHub pill only — rotating 4th integration added per cycle.
         var injected: [String] = []

@@ -38,6 +38,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     ["integration_notion", "Notion", "#8C8C8C", "service", "Integration"],
     ["integration_calcom", "Cal.com", "#C9956A", "service", "Integration"],
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
+    ["integration_linear", "Linear", "#5E6AD2", "service", "Integration"],
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];

@@ -14,6 +14,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod island;
+mod linear;
 mod local_chat;
 mod log;
 mod net;
@@ -514,6 +515,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     if key == local_chat::CUSTOM_KEY {
         return Err("use local_set_key".into());
     }
+    if key == "linear-api-key" {
+        integrations::forget_linear();
+    }
     let before = (key == "github-token").then(|| secrets::get(&key));
     secrets::set(&key, &value)?;
     if let Some(before) = before {
@@ -526,6 +530,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
 
 #[tauri::command]
 fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
+    if key == "linear-api-key" {
+        integrations::forget_linear();
+    }
     let had = key == "github-token" && secrets::present(&key);
     secrets::clear(&key)?;
     if had {

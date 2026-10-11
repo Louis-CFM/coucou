@@ -4,7 +4,7 @@
 // Cal.com is the one simplification: macOS shows a three-level calendar
 // (month → day → booking); here it is the list of upcoming bookings.
 
-import { h, svg, clear, dot } from "./dom";
+import { h, svg, clear, dot, hexColor } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
@@ -114,6 +114,15 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         style: `color:${task.color}d9`,
         text: t("Open {name}", { name: "n8n" }),
         onclick: () => void Bridge.openN8n(),
+      }),
+    );
+  } else if (task.id === "integration_linear") {
+    actions.append(
+      h("button", {
+        class: "link-btn",
+        style: `color:${task.color}d9`,
+        text: t("Open {name}", { name: task.name }),
+        onclick: () => void Bridge.openUrl(linearInboxUrl()),
       }),
     );
   } else if (OPEN_URLS[task.id]) {
@@ -330,6 +339,52 @@ function notionCard(): HTMLElement {
   return h("div", { class: "int-card" }, header("#E8E8E8", "Notion", t("Recent")), rows);
 }
 
+// ── Linear ────────────────────────────────────────────────────────────────────
+
+const LINEAR = "#5E6AD2";
+const LINEAR_ROWS = 3;
+
+function linearRow(url: unknown, glyph: string, key: unknown, title: unknown, when: unknown, tip: unknown) {
+  const row = h(
+    "button",
+    {
+      class: "int-page",
+      onclick: () => {
+        if (typeof url === "string") void Bridge.openUrl(url);
+      },
+    },
+    h("i", { class: "int-emoji" }, dot(glyph, 5)),
+  );
+  if (typeof tip === "string") row.title = tip;
+  if (typeof key === "string") row.append(h("span", { class: "int-key", text: key }));
+  row.append(
+    h("span", { class: "int-name", text: String(title ?? "") }),
+    h("span", { class: "int-ago", text: timeAgo(when) }),
+  );
+  return row;
+}
+
+/** LinearCardView: unread inbox entries first, assigned issues fill the rows left. */
+function linearCard(): HTMLElement {
+  const unread = arr("integration_linear", "unread");
+  const issues = arr("integration_linear", "assigned").slice(0, Math.max(0, LINEAR_ROWS - unread.length));
+  const rows = h("div", { class: "int-rows tight" });
+  for (const n of unread.slice(0, LINEAR_ROWS)) {
+    rows.append(linearRow(n.url, LINEAR, n.key, n.title, n.createdAt, n.actor));
+  }
+  for (const i of issues) {
+    rows.append(linearRow(i.url, hexColor(i.stateColor, "#8E939C"), i.key, i.title, i.updatedAt, i.stateName));
+  }
+  const subtitle = unread.length > 0 ? t("{count} unread", { count: unread.length }) : t("Assigned to you");
+  return h("div", { class: "int-card" }, header(LINEAR, "Linear", subtitle), rows);
+}
+
+/** The workspace's inbox once the first poll knows the workspace. */
+export function linearInboxUrl(): string {
+  const url = get("integration_linear").inboxUrl;
+  return typeof url === "string" ? url : "https://linear.app";
+}
+
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
 function calcomCard(): HTMLElement {
@@ -440,6 +495,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "pages").length > 0;
     case "integration_calcom":
       return info.loaded;
+    case "integration_linear":
+      return info.loaded;
     default:
       return false;
   }
@@ -479,6 +536,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return notionCard();
     case "integration_calcom":
       return calcomCard();
+    case "integration_linear":
+      return linearCard();
     default:
       return idleCard(task, hooks.openSettings);
   }
