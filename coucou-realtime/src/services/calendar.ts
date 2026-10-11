@@ -30,8 +30,47 @@ const CLIENT_ID_KEY = "coucou_google_client_id";
 const USER_EMAIL_KEY = "coucou_google_user_email";
 const USER_NAME_KEY = "coucou_google_user_name";
 
+declare const google: any;
+
 export class GoogleCalendarService {
   private static token: string | null = null;
+
+  static trigger1ClickGoogleLogin(
+    clientId: string,
+    onSuccess: (result: GoogleAuthResult) => void,
+    onError: (err: string) => void
+  ): boolean {
+    if (typeof google === "undefined" || !google?.accounts?.oauth2) {
+      onError("Google Identity Services ainda está carregando.");
+      return false;
+    }
+
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientId.trim(),
+        scope:
+          "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+        callback: async (resp: any) => {
+          if (resp && resp.access_token) {
+            const authResult = await GoogleCalendarService.verifyAndSaveToken(resp.access_token);
+            if (authResult.ok) {
+              onSuccess(authResult);
+            } else {
+              onError(authResult.error || "Falha ao validar token do Google.");
+            }
+          } else if (resp && resp.error) {
+            onError(`Google login cancelado ou erro: ${resp.error}`);
+          }
+        },
+      });
+
+      client.requestAccessToken({ prompt: "consent" });
+      return true;
+    } catch (err: any) {
+      onError(`Erro ao abrir popup Google: ${err?.message || err}`);
+      return false;
+    }
+  }
 
   static getToken(): string | null {
     if (!this.token) {

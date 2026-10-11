@@ -1712,8 +1712,36 @@ function realtimeCopilotSection(): HTMLElement {
   const feedbackMsg = h("div", { style: "font-size:11px; display:none;" });
 
   loginGoogleBtn.addEventListener("click", () => {
-    GoogleCalendarService.openGoogleLogin();
     authDrawer.style.display = "flex";
+    const clientId = GoogleCalendarService.getClientId();
+    if (clientId) {
+      feedbackMsg.style.display = "block";
+      feedbackMsg.style.color = "#93c5fd";
+      feedbackMsg.textContent = "Abrindo popup oficial do Google...";
+      const started = GoogleCalendarService.trigger1ClickGoogleLogin(
+        clientId,
+        (res) => {
+          isConnected = true;
+          feedbackMsg.style.display = "block";
+          feedbackMsg.style.color = "#34d399";
+          feedbackMsg.textContent = `✓ Sucesso! Conectado como ${res.email}. A agenda já está sincronizada.`;
+          disconnectBtn.style.display = "";
+          gcalStatusBadge.textContent = `CONECTADO (${res.email})`;
+          gcalStatusBadge.style.background = "rgba(34,197,94,0.1)";
+          gcalStatusBadge.style.color = "#4ade80";
+          gcalStatusBadge.style.borderColor = "rgba(34,197,94,0.3)";
+          setTimeout(() => {
+            authDrawer.style.display = "none";
+          }, 2000);
+        },
+        (err) => {
+          feedbackMsg.style.display = "block";
+          feedbackMsg.style.color = "#fb7185";
+          feedbackMsg.textContent = err;
+        }
+      );
+      if (started) return;
+    }
   });
 
   verifyBtn.addEventListener("click", async () => {
