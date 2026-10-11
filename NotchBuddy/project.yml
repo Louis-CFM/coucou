@@ -25,6 +25,8 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Manual
     OTHER_SWIFT_FLAGS: "-strict-concurrency=complete"
+    # Prevent Xcode from scanning Swift source and rewriting Localizable.xcstrings.
+    SWIFT_EMIT_LOC_STRINGS: NO
   configs:
     Debug:
       CODE_SIGNING_REQUIRED: NO
@@ -127,8 +129,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "14"
-        CFBundleShortVersionString: "0.2.3"
+        CFBundleVersion: "15"
+        CFBundleShortVersionString: "0.3.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -137,6 +139,7 @@ targets:
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate a message in the chat."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
+        NSContactsUsageDescription: "Coucou looks up an email address when you ask it, by voice, to prepare an email."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         CFBundleLocalizations:
@@ -162,6 +165,9 @@ targets:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
+          # The build run every day from Xcode: optimized like Release, so Mochi's
+          # drawing costs what it costs for users (unoptimized Swift was ~2× the CPU).
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
         # The distributed build carries the iPhone sync (off until the user
         # turns it on in Settings), so it needs iCloud and its Developer ID profile.
         Release:
@@ -172,6 +178,13 @@ targets:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
           PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
+    postBuildScripts:
+      - name: "Write Git Hash to Info.plist"
+        script: |
+          HASH=$(git -C "${SRCROOT}/.." rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          /usr/libexec/PlistBuddy -c "Set :CoucouGitHash ${HASH}" "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :CoucouGitHash string ${HASH}" "${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+        showEnvVars: false
 
   CoucouAppStore:
     type: application
