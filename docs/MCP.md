@@ -9,27 +9,29 @@ Following the philosophy of PR #400 (where local AI backends are automatically d
 ## 1. Architecture Overview
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                   Coucou Chat UI                       │
-│      (Dynamic Island / Settings / ClaudeService)       │
-└───────────────────────────┬────────────────────────────┘
-                            │ OpenAI-compatible tool_calls
-┌───────────────────────────▼────────────────────────────┐
-│                  MCPChatCoordinator                   │
-│   - Intercepts tool calls from LLM response            │
-│   - Dispatches read-only vs mutating calls             │
-└─────────────┬───────────────────────────┬──────────────┘
-              │ Mutating (Approval)       │ Read-Only (Safe)
-┌─────────────▼─────────────┐ ┌───────────▼──────────────┐
-│    MCPApprovalManager     │ │     MCPToolRegistry      │
-│  - Native Notch card      │ │  - Dispatches calls      │
-│  - Sound & Allow/Deny     │ │  - Formats OpenAI schema │
-└───────────────────────────┘ └───────────┬──────────────┘
-                                          │
-                      ┌───────────────────┴───────────────────┐
-                      ▼                                       ▼
-             MCPStdioClient                          MCPHTTPClient
-         (Subprocesses over stdio)             (Remote streamable HTTP)
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Coucou Conversation & Voice                       │
+│    (Dynamic Island / Chat / ClaudeVoiceBrain / FoundationModels)      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Tool definitions & tool_calls
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                         MCPChatCoordinator                             │
+│       - Intercepts tool calls from LLM (Chat & Voice brains)           │
+│       - Dispatches read-only vs mutating calls                         │
+└─────────────────────┬───────────────────────────┬──────────────────────┘
+                      │ Mutating (Approval)       │ Read-Only (Safe)
+┌─────────────────────▼─────────────────────┐ ┌───▼──────────────────────┐
+│            MCPApprovalManager             │ │     MCPToolRegistry      │
+│  - Integrates with unified ApprovalQueue  │ │  - Dispatches calls      │
+│  - Notch Card (1/N, project, Allow/Deny)  │ │  - Formats OpenAI schema │
+└───────────────────────────────────────────┘ └───┬──────────────────────┘
+                                                  │
+                              ┌───────────────────┴───────────────────┐
+                              ▼                                       ▼
+                     MCPStdioClient                          MCPHTTPClient
+                 (Hardened Subprocesses)               (Remote streamable HTTP)
+                 - CLOEXEC & clean env                 - JSON-RPC over HTTP
+                 - Sandboxed / bounded                 - Bearer auth injection
 ```
 
 ---
@@ -60,12 +62,19 @@ Coucou automatically reads existing configurations from standard developer tools
 
 ## 3. Communication Transports
 
-### A. Subprocesses over Stdio (`MCPStdioClient.swift`)
+### A. Hardened Subprocesses over Stdio (`MCPStdioClient.swift`)
 * Launches servers as child processes (`Process`) with isolated standard pipes (`stdin`, `stdout`, `stderr`).
-* Environment inherits user `PATH` entries including `/opt/homebrew/bin`, `/usr/local/bin`, `.nvm`, and `.local/bin`.
-* Strict line-delimited JSON-RPC 2.0 framing.
-* Watchdog timers ensure runaway processes are terminated on timeout (15s for handshake, 60s for tool calls).
-* Child processes are cleanly terminated when the app exits or a server is disabled.
+* **Process & Descriptor Hygiene (Gentle Dot pattern):**
+  * All internal sockets and pipes (e.g., Coucou's `HookServer` socket `nb.sock`, IPC channels) are strictly closed-on-exec (`CLOEXEC`) so child tool processes cannot inherit or tamper with internal communications.
+  * Continuous draining of `stderr` via dedicated readability handlers to prevent XNU pipe buffer exhaustion (64 KB kernel deadlock).
+* **Environment Sanitization:**
+  * Clean environment isolation: child processes inherit essential developer paths (`/opt/homebrew/bin`, `/usr/local/bin`, `.nvm`, `.local/bin`), but Coucou's internal secrets, API keys, and sensitive tokens are strictly scrubbed, passing only explicitly configured server variables.
+* **Protocol & Watchdogs:**
+  * Strict line-delimited JSON-RPC 2.0 framing.
+  * Watchdog timers terminate runaway processes on timeout (15s for handshake, 60s for tool calls).
+  * Child processes are cleanly terminated when the app exits or a server is disabled.
+* **App Store Sandbox Guard:**
+  * Guarded under `#if !APPSTORE`: in Mac App Store builds, subprocess execution is disabled, recommending remote HTTP servers.
 
 ### B. Remote Streamable HTTP (`MCPHTTPClient.swift`)
 * Communicates with remote servers via JSON-RPC 2.0 over HTTP POST (`application/json`).
@@ -74,7 +83,7 @@ Coucou automatically reads existing configurations from standard developer tools
 
 ---
 
-## 4. Human-in-the-Loop Governance in the Notch
+## 4. Human-in-the-Loop Governance & Unified Approval Queue
 
 Coucou strictly regulates tool execution to prevent unintended side effects:
 
@@ -85,27 +94,33 @@ Coucou strictly regulates tool execution to prevent unintended side effects:
   * *Action:* Execute immediately and show an active working state.
 * **Mutating / Side-Effect Tools:**
   * Any tool with keywords like `write`, `delete`, `send`, `post`, `update`, `create`, `execute`, `run`, `edit`.
-  * *Action:* Triggers the native **Approval** card in the Notch.
+  * *Action:* Triggers the native **Approval** card in the Notch via the unified `ApprovalQueue`.
 
-### The Notch Approval Card
-When a mutating tool is called:
-1. `MCPApprovalManager` captures execution state using an async continuation.
-2. The Notch displays:
-   * Server name and tool (e.g. `PostgreSQL → execute_query(...)`).
-   * Tool arguments summarized in a code block.
-   * `Allow (Y)` / `Always` / `Deny (N)` action buttons.
-3. If the user clicks **Allow**, execution continues and results are returned to the LLM.
-4. If the user clicks **Deny** or closes the Notch, execution is rejected cleanly without side effects.
+### Unified Approval Queue (Coucou PR #563 Pattern)
+Mutating tool requests no longer overwrite each other or get clobbered by external agent hook approvals (Claude Code, Cursor):
+1. `MCPApprovalManager` captures execution state with a unique request `UUID` and enqueues it into `ApprovalQueue`.
+2. The Notch displays requests in strict FIFO order:
+   * Header indicates current position in queue (e.g. `1/3`) and asking context (`MCP: PostgreSQL`).
+   * Tool arguments summarized in a formatted code block.
+   * `Allow` / `Always` / `Deny` action buttons bound strictly to the currently displayed request `UUID`.
+3. Answering or clicking on a request settles only that specific `UUID`. Subsequent waiting tool calls are promoted automatically.
+4. If the user dismisses the Notch or the 115s safety watchdog elapses, the tool execution fails closed without side effects.
 
 ---
 
-## 5. Chat Completion Integration
+## 5. Chat & Voice Brain Integration
 
-When any MCP server is enabled in **Settings → Chat → MCP Tools & Connectors**:
-1. `MCPToolRegistry` formats all active tools as standard OpenAI function definitions (`mcp__<serverID>__<toolName>`).
-2. Tools are injected into the `/chat/completions` payload in `ClaudeService.swift`.
-3. When the LLM responds with `tool_calls`, `MCPChatCoordinator` executes the tools (with Notch approval if mutating) and appends `tool` messages to the conversation.
-4. Coucou triggers a follow-up completion with the tool results so the LLM responds with a complete, contextual answer.
+MCP tools are available to both text-based island conversations and Coucou's voice assistant:
+
+1. **Schema Generation:** `MCPToolRegistry` formats all active tools as standard function definitions (`mcp__<serverID>__<toolName>`).
+2. **Text Chat (`ClaudeService.swift`):**
+   * Tools are injected into the `/chat/completions` payload.
+   * `MCPChatCoordinator` executes tool calls returned by the model and feeds the results back for contextual follow-up turns.
+3. **Voice Brain (`ClaudeVoiceBrain.swift` & `VoiceBrain.swift`):**
+   * Dynamic MCP tools augment Coucou's built-in voice tools (`pills`, `service_info`, `open_app`, `prepare_email`).
+   * When Claude or FoundationModels invokes an MCP tool via voice:
+     * Read-only tools fetch data seamlessly to answer the user's spoken question.
+     * Mutating tools open the native Notch approval card with sound before performing any action.
 
 ---
 
