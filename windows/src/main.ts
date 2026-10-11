@@ -43,6 +43,7 @@ async function main() {
   await island.desktop.init();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent<{ x: number; y: number }>("pointer-global", ({ x, y }) => island.onGlobalPointer(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */

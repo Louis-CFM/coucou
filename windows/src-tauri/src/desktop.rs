@@ -676,6 +676,19 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
     });
 }
 
+/// Layer mode: the compositor's pointer for his eyes, in his window's space (he lives on the island's display).
+pub fn gaze(app: &AppHandle, pointer: (f64, f64), display: (f64, f64)) {
+    let Some(d) = app.try_state::<Arc<Desktop>>() else { return };
+    let pos = {
+        let i = d.inner.lock().unwrap();
+        if d.mode != DesktopMode::Layer || !i.shown || !i.landed || i.asleep || i.overlay {
+            return;
+        }
+        i.pos
+    };
+    let _ = app.emit_to(LABEL, "desktop-gaze", Cursor { x: pointer.0 - display.0 - pos.0, y: pointer.1 - display.1 - pos.1 });
+}
+
 // ── Commands ──────────────────────────────────────────────────────────────────
 
 #[tauri::command]

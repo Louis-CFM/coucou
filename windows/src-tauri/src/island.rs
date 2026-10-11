@@ -342,6 +342,22 @@ fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
 }
 
+/// Logical origin and width of the island's display.
+fn display_logical(app: &AppHandle) -> Option<(f64, f64, f64)> {
+    let pref = app
+        .try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().screen.clone())
+        .unwrap_or_else(|| "primary".into());
+    let m = target_monitor(app, &pref)?;
+    let (x, y) = logical_origin(&m);
+    Some((x as f64, y as f64, m.size().width as f64 / m.scale_factor()))
+}
+
+/// A global logical point in the island window, which sits centred at the top of its display.
+fn island_local(global: (f64, f64), display: (f64, f64, f64), width: f64) -> (f64, f64) {
+    (global.0 - (display.0 + (display.2 - width) / 2.0), global.1 - display.1)
+}
+
 /// Emits `cursor` (window-logical coordinates) at ~60 Hz while the island is
 /// visible. Parked on a condvar the rest of the time.
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
@@ -353,7 +369,17 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         // Without a cursor to read (Linux) the loop only watches the display
         // layout, and twice a second is plenty for that: waking at 60 Hz just to
         // find no cursor costs CPU for nothing.
-        let (period, screen_every) = if platform::CURSOR_POLL { (16, 30) } else { (500, 1) };
+        // Linux: a compositor that reports the pointer (driftwm, Hyprland) is read at 20 Hz for Mochi's eyes.
+        let pointer = platform::pointer_source();
+        if pointer.is_some() {
+            crate::log::line("pointer: read from the compositor for Mochi's eyes");
+        }
+        let (period, screen_every) = match (platform::CURSOR_POLL, pointer.is_some()) {
+            (true, _) => (16, 30),
+            (false, true) => (50, 10),
+            (false, false) => (500, 1),
+        };
+        let mut display: Option<(f64, f64, f64)> = None;
         loop {
             gate.wait_until_active();
             let mut last = (f64::MIN, f64::MIN);
@@ -379,6 +405,23 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 }
 
                 let Some(win) = window(&app) else { continue };
+                if !platform::CURSOR_POLL {
+                    let Some(p) = &pointer else { continue };
+                    if display.is_none() || ticks % screen_every == 0 {
+                        display = display_logical(&app);
+                    }
+                    let (Some(d), Some(g)) = (display, p.read()) else { continue };
+                    if (g.0 - last.0).abs() < 1.0 && (g.1 - last.1).abs() < 1.0 {
+                        continue;
+                    }
+                    last = g;
+                    let scale = win.scale_factor().unwrap_or(1.0);
+                    let width = win.inner_size().map(|s| s.width as f64 / scale).unwrap_or(PANEL_W);
+                    let (x, y) = island_local(g, d, width);
+                    let _ = win.emit("pointer-global", CursorPayload { x, y });
+                    crate::desktop::gaze(&app, g, (d.0, d.1));
+                    continue;
+                }
                 let Ok(origin) = win.outer_position() else { continue };
                 let scale = win.scale_factor().unwrap_or(1.0);
                 let Some((cx, cy)) = cursor_physical() else { continue };
@@ -473,5 +516,17 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
+    }
+}
+
+#[cfg(test)]
+mod pointer_tests {
+    use super::island_local;
+
+    #[test]
+    fn a_global_point_lands_in_the_centred_island_window() {
+        // A 1920-wide display right of a 1440 one; the island window is 720 wide.
+        assert_eq!(island_local((1440.0 + 960.0, 30.0), (1440.0, 0.0, 1920.0), 720.0), (360.0, 30.0));
+        assert_eq!(island_local((10.0, 500.0), (1440.0, 0.0, 1920.0), 720.0), (10.0 - 1440.0 - 600.0, 500.0));
     }
 }

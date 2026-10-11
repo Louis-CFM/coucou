@@ -262,6 +262,19 @@ fn local_full_name() -> Option<String> {
 /// The 60 Hz poll reads the cursor and flips click-through from it.
 pub const CURSOR_POLL: bool = true;
 
+/// Linux only: Windows reads the cursor itself (`cursor_physical`).
+pub struct PointerSource;
+
+pub fn pointer_source() -> Option<PointerSource> {
+    None
+}
+
+impl PointerSource {
+    pub fn read(&self) -> Option<(f64, f64)> {
+        None
+    }
+}
+
 /// Cursor position in physical screen pixels.
 pub fn cursor_physical() -> Option<(f64, f64)> {
     let mut p = POINT::default();

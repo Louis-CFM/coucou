@@ -26,7 +26,7 @@ import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
-import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { DRAG_THRESHOLD, gazePoint } from "../mochi/desktop-logic";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -818,6 +818,12 @@ export class Island {
    * until the first report, so a platform that never sends it is not gated.
    */
   private pointerInside: boolean | null = null;
+  /** Linux: the compositor's pointer in window coordinates, for Mochi's eyes. */
+  private globalPointer: { x: number; y: number } | null = null;
+
+  onGlobalPointer(x: number, y: number) {
+    this.globalPointer = { x, y };
+  }
 
   setPointerInside(inside: boolean) {
     this.pointerInside = inside;
@@ -1110,11 +1116,15 @@ export class Island {
   private lookX(): number {
     const rect = this.islandRect();
     const botScreenX = rect.x + this.botCx.value;
-    return Math.tanh((State.mouse.x - botScreenX) / 260);
+    return Math.tanh((this.lookTarget().x - botScreenX) / 260);
   }
 
   private lookY(): number {
-    return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
+    return -Math.tanh((this.lookTarget().y - this.botCy.value) / 200);
+  }
+
+  private lookTarget(): { x: number; y: number } {
+    return gazePoint(State.mouse, this.globalPointer, this.pointerInside === true);
   }
 
   private updateCountdown(nowMs: number) {

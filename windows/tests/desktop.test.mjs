@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BODY_RADIUS_FRACTION, DesktopMochiController, PANEL_SIZE, RETRACT_DELAY_MS, RETURN_DELAY_MS,
-  agentActive, alertActive, gaze, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance,
+  agentActive, alertActive, gaze, gazePoint, isOverBody, layerDragTopLeft, lookOrigin, pointerDistance,
   shouldRetractOnLanding, shouldSleep, windowDragTopLeft,
 } from "../src/mochi/desktop-logic.ts";
 
@@ -401,4 +401,13 @@ test("a finished task gets a happy jump, only on the desktop", () => {
   w.c.updateState("finished");
   w.c.updateState("finished");
   assert.deepEqual(w.log, ["emote:happy"]);
+});
+
+test("Linux: the compositor's pointer turns his eyes, the pointer over the window wins", () => {
+  const bot = lookOrigin(0, 0);
+  const page = { x: bot.x, y: bot.y };
+  const global = { x: bot.x + 800, y: bot.y };
+  assert.equal(gaze(bot, gazePoint(page, null, false)).lookX, 0, "no compositor pointer: as before");
+  assert.ok(gaze(bot, gazePoint(page, global, false)).lookX > 0.9, "looks right at a far pointer");
+  assert.equal(gaze(bot, gazePoint(page, global, true)).lookX, 0, "over the window, the page wins");
 });
