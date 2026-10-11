@@ -19,6 +19,8 @@ export interface Env {
   // contents only — project_id, client_email and private_key are read from it.
   FCM_SA?: string;
   PHONE_BOX?: DurableObjectNamespace;
+  // Optional (wrangler.toml [[ratelimits]]): how many new boxes one address may create.
+  PAIR_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
 type Event = "start" | "update" | "end";
@@ -207,7 +209,7 @@ const SECRET_RE = /^[0-9a-f]{64}$/;
 /** The phone's own id, made once per pairing (Android Prefs): who may refresh the box's token. */
 const DEVICE_RE = /^[0-9a-f]{32}$/;
 const TOKEN_MAX = 512;
-const ALERTS = ["approval", "question", "finished"] as const;
+const ALERTS = ["approval", "question"] as const;
 const OUTBOX_MAX = 50;
 const OUTBOX_TTL_MS = 10 * 60 * 1000;
 const STATE_TTL_MS = 24 * 3600 * 1000;
@@ -264,6 +266,12 @@ async function phoneRoute(request: Request, url: URL, env: Env): Promise<Respons
   if (body instanceof Response) return body;
   const id = body.id;
   if (typeof id !== "string" || !ID_RE.test(id)) return text(400, "id");
+  // `pair` is the one call without a secret: without a limit, anyone who finds
+  // this worker could spend its owner's Durable Object quota on empty boxes.
+  if (action === "pair" && env.PAIR_LIMITER) {
+    const { success } = await env.PAIR_LIMITER.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" });
+    if (!success) return text(429, "slow down");
+  }
   const stub = env.PHONE_BOX.get(env.PHONE_BOX.idFromName(id));
   return stub.fetch(new Request(`https://box/${action}`, {
     method: "POST",
@@ -338,7 +346,6 @@ function clipped(v: unknown, max: number): string {
 function cleanState(raw: unknown): {
   sessions: PhoneStateSession[];
   awaiting?: unknown;
-  chatReply?: unknown;
   chatTail?: { role: string; text: string }[];
   chatSessions?: { id: string; title: string; dir: string; at: number; agent: string }[];
   chatSel?: string;
@@ -364,7 +371,6 @@ function cleanState(raw: unknown): {
   if (typeof aw === "object" && aw !== null) {
     out.awaiting = cleanCard(aw);
   }
-  if (typeof src.chatReply === "string") out.chatReply = src.chatReply.slice(0, 4000);
   const tail = Array.isArray(src.chatTail) ? src.chatTail : [];
   out.chatTail = tail.slice(0, 10).map((m) => {
     const r = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;

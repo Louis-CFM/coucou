@@ -98,12 +98,23 @@ phone's FCM token, and a small outbox — all wiped on unpair.
    `pcId|secret|workerUrl`; the secret is generated on the spot and stored in
    the OS keychain (`phone-secret`), never in settings.json.
 
+**Optional — rate-limit pairing.** `POST /v1/phone/pair` is the only call that
+needs no secret. Uncomment the `[[ratelimits]]` block in `wrangler.toml` to let
+one address create at most 5 boxes a minute.
+
+**One phone per box.** `claim` carries a `device` id (32 hex) the phone makes
+once. After a phone has claimed a box, only that phone may refresh its push
+token; any other `claim` gets `409`. Unpair on the PC to hand the box to a
+new phone.
+
 ### Phone API
 
 All calls are `POST /v1/phone/<action>` with `{"id", "secret", …}` — the id
 is 24–48 lowercase hex, the secret 64 hex chars (compared as SHA-256).
 Responses are JSON; errors are `400` (shape), `403` (auth), `409` (box id
-taken), `413`/`429` (bounds), `501` (no `PHONE_BOX` binding).
+taken, or claimed by another phone), `413`/`429` (bounds), `501` (no
+`PHONE_BOX` binding). Bodies are counted as they arrive and must be JSON
+objects.
 
 | action | caller | body / reply |
 |---|---|---|

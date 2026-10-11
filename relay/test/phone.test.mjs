@@ -111,6 +111,27 @@ test("live-activity: an oversized body is refused whatever Content-Length says",
   assert.equal(r.status, 413);
 });
 
+test("router: new boxes are rate-limited per address when a limiter is bound", async () => {
+  const b = box();
+  const ns = { idFromName: () => ({}), get: () => ({ fetch: (r) => b.fetch(r) }) };
+  const keys = [];
+  const PAIR_LIMITER = { limit: async ({ key }) => (keys.push(key), { success: false }) };
+  const send = (action) =>
+    worker.fetch(
+      new Request(`https://relay/v1/phone/${action}`, {
+        method: "POST",
+        body: JSON.stringify({ id: ID, secret: SECRET }),
+        headers: { "cf-connecting-ip": "203.0.113.7" },
+      }),
+      { PHONE_BOX: ns, PAIR_LIMITER },
+    );
+  assert.equal((await send("pair")).status, 429);
+  assert.deepEqual(keys, ["203.0.113.7"]);
+  // Authenticated actions never consult it (this box is not paired: 403).
+  assert.equal((await send("fetch")).status, 403);
+  assert.deepEqual(keys, ["203.0.113.7"]);
+});
+
 // ── Pairing and auth ──────────────────────────────────────────────────────────
 
 test("pair creates the box; every action needs the secret", async () => {

@@ -24,3 +24,12 @@ new_sqlite_classes = ["PhoneBox"]
 
 [observability]
 enabled = false
+
+# Optional: limit how fast new phone boxes can be created (the one call that
+# needs no secret). Uncomment to enable; the code works with or without it.
+# [[ratelimits]]
+# name = "PAIR_LIMITER"
+# namespace_id = "1001"
+#   [ratelimits.simple]
+#   limit = 5
+#   period = 60
