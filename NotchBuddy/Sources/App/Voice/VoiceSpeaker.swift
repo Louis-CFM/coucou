@@ -133,6 +133,30 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
     /// Premium and Siri voices often report no gender: their name tells it instead.
     static func bestVoice(for locale: Locale?, gender: String) -> AVSpeechSynthesisVoice? {
         guard let loc = locale else { return nil }
+        // Listing the system voices (150+) for every sentence cost milliseconds between
+        // sentences: one lookup per language and voice type, redone when voices change.
+        let key = "\(loc.identifier)|\(gender)"
+        if let hit = voiceCache[key] { return hit }
+        observeVoiceChanges()
+        let v = findBestVoice(for: loc, gender: gender)
+        voiceCache[key] = .some(v)
+        return v
+    }
+
+    private static var voiceCache: [String: AVSpeechSynthesisVoice?] = [:]
+    private static var observingVoices = false
+
+    private static func observeVoiceChanges() {
+        guard !observingVoices else { return }
+        observingVoices = true
+        NotificationCenter.default.addObserver(
+            forName: AVSpeechSynthesizer.availableVoicesDidChangeNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { VoiceSpeaker.voiceCache.removeAll() }
+        }
+    }
+
+    private static func findBestVoice(for loc: Locale, gender: String) -> AVSpeechSynthesisVoice? {
         let lang = loc.language.languageCode?.identifier ?? ""
         guard !lang.isEmpty else { return nil }
         let exact = loc.region.map { "\(lang)-\($0.identifier)" }

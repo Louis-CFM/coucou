@@ -129,8 +129,8 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "14"
-        CFBundleShortVersionString: "0.2.3"
+        CFBundleVersion: "15"
+        CFBundleShortVersionString: "0.3.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
@@ -165,6 +165,9 @@ targets:
         DebugCloud:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG PHONE_LINK"
+          # The build run every day from Xcode: optimized like Release, so Mochi's
+          # drawing costs what it costs for users (unoptimized Swift was ~2× the CPU).
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
         # The distributed build carries the iPhone sync (off until the user
         # turns it on in Settings), so it needs iCloud and its Developer ID profile.
         Release:

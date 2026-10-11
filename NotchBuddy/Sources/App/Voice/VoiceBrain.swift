@@ -138,12 +138,16 @@ final class VoiceBrain {
         #if canImport(FoundationModels)
         if #available(macOS 26, *) {
             guard SystemLanguageModel.default.availability == .available else { return nil }
-            let fr = VoiceSettings.language == "fr"
+            // The mail is written in the language I used for it, whatever Coucou speaks.
+            let fr = VoiceQuery.looksFrench(instruction)
+            // An address is not a name to greet: a plain greeting then.
+            let name = recipient.contains("@") ? "" : recipient
             let session = LanguageModelSession(instructions: fr
-                ? "Tu écris des mails courts et naturels, sans objet ni signature, 2 à 4 phrases."
-                : "You write short, natural emails without a subject line or signature, 2 to 4 sentences.")
-            let prompt = fr ? "Écris le mail à \(recipient) : \(instruction)"
-                            : "Write the email to \(recipient): \(instruction)"
+                ? "Tu écris des mails courts et naturels à la place de l'utilisateur : une salutation, 1 à 3 phrases qui disent ce qu'il veut dire, sans rien inventer, sans objet ni signature. Réponds uniquement avec le texte du mail."
+                : "You write short, natural emails for the user: a greeting, 1 to 3 sentences saying what they want to say, inventing nothing, no subject line or signature. Reply with the email text only.")
+            let to = name.isEmpty ? "" : (fr ? " à \(name)" : " to \(name)")
+            let prompt = fr ? "Mail\(to). Ce que je veux dire : \(instruction)"
+                            : "Email\(to). What I want to say: \(instruction)"
             // Boxed like the conversation session: the timeout closure must be Sendable.
             let box = SessionContainer(session: session, collector: IntentCollector())
             do {
