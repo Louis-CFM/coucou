@@ -601,16 +601,15 @@ final class HookServer: @unchecked Sendable {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
                 break
             }
-            // The finished card's "Open terminal" goes back to the session that just finished,
-            // even if Coucou started mid-turn or another session speaks once the card is up
-            if agentId == "integration_claude" {
-                let link = SessionLink(hostApp: hostApp, hostURL: ClaudeHost.sessionURL(from: payload))
-                state.finishedLink = link
-                if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                    state.tasks[idx].hostApp = link.hostApp
-                    state.tasks[idx].hostURL = link.hostURL
-                }
+            // The finished card shows and goes back to the session that just finished (its name,
+            // app and link), even if Coucou started mid-turn or another session owns the pill
+            if !isExternalAgent {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp,
+                                    hostURL: display.hostURL, bundleId: bundleId, session: sessionId,
+                                    overridingOwner: true)
             }
+            // ...and keeps its link if another session speaks once the card is up
+            if agentId == "integration_claude" { state.finishedLink = SessionLink(hostApp: hostApp, hostURL: display.hostURL) }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
@@ -1088,12 +1087,14 @@ final class HookServer: @unchecked Sendable {
     /// If missing (transient), creates it and inserts after the main pill.
     /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
     /// still running), so a second session under the same client cannot rename the card,
-    /// or send "Open terminal" elsewhere, out from under the first.
+    /// or send "Open terminal" elsewhere, out from under the first. `overridingOwner` is for
+    /// the finished card, which shows the session that finished whichever session owns the pill.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, hostURL: URL? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, hostURL: URL? = nil, bundleId: String = "", session: String,
+                                     overridingOwner: Bool = false) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
-            guard sessions.ownsDisplay(pill: id, session: session) else { return }
+            guard overridingOwner || sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
             if id == "integration_claude" { state.tasks[idx].hostApp = hostApp; state.tasks[idx].hostURL = hostURL }
