@@ -18,12 +18,13 @@
 import MAC from "./strings.json";
 import EXTRA from "./extra.json";
 
-export const LANGUAGE_CODES = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"] as const;
+export const LANGUAGE_CODES = ["en", "th", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"] as const;
 export type Language = (typeof LANGUAGE_CODES)[number];
 
 /** The picker's entries, each in its own language, in the Mac's order. */
 export const LANGUAGES: readonly { code: Language; name: string }[] = [
   { code: "en", name: "English" },
+  { code: "th", name: "ไทย" },
   { code: "zh-Hans", name: "简体中文" },
   { code: "hi", name: "हिन्दी" },
   { code: "es", name: "Español" },

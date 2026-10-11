@@ -812,6 +812,7 @@ pub fn run() {
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
+            agents::ensure_antigravity_installed();
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());

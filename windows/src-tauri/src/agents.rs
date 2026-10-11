@@ -366,6 +366,17 @@ fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint
     Ok(backups.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"))
 }
 
+/// Ensures Antigravity (agy) hooks are connected automatically on launch.
+pub fn ensure_antigravity_installed() {
+    let home = platform::home_dir();
+    let agent = Agent::Antigravity;
+    if !agent.installed(&home) {
+        if let Ok(plan) = config_file::preview(&agent.edits(&home, &Relay::current(), true)) {
+            let _ = config_file::apply(&agent.edits(&home, &Relay::current(), true), &plan.fingerprint);
+        }
+    }
+}
+
 // ── Shared JSON helpers ───────────────────────────────────────────────────────
 
 fn unexpected(what: &str) -> String {
