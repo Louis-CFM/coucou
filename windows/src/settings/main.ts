@@ -10,7 +10,7 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
-import { SOUND_NAMES } from "../core/sound";
+import { SOUND_NAMES, SOUND_VOLUME_MAX } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
@@ -877,7 +877,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 function generalSection(): HTMLElement {
   const volume = h("input", {
-    type: "range", min: "0", max: "0.2", step: "0.005",
+    type: "range", min: "0", max: String(SOUND_VOLUME_MAX), step: "0.005",
     value: String(settings.soundVolume),
   }) as HTMLInputElement;
   volume.addEventListener("input", () => {

@@ -242,7 +242,8 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Sound volume (0–0.2) — persisted, synced to SoundEngine
+    // Sound volume (0–soundVolumeMax) — persisted, synced to SoundEngine
+    static let soundVolumeMax: Double = 1
     @Published var soundVolume: Double = 0.12 {
         didSet {
             UserDefaults.standard.set(soundVolume, forKey: "soundVolume")
