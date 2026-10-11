@@ -47,11 +47,18 @@ fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
-fn client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .timeout(TIMEOUT)
-        .build()
-        .unwrap_or_default()
+/// One client for every poller, built once with the 10 s timeout. A client that
+/// cannot be built (no TLS backend) means no polling at all, said once in the
+/// log, rather than a client without a timeout.
+fn client() -> Option<&'static reqwest::Client> {
+    static CLIENT: std::sync::LazyLock<Option<reqwest::Client>> = std::sync::LazyLock::new(|| {
+        reqwest::Client::builder()
+            .timeout(TIMEOUT)
+            .build()
+            .map_err(|err| log::line(format!("integrations: no HTTP client: {err}")))
+            .ok()
+    });
+    CLIENT.as_ref()
 }
 
 /// Set from the tray's Pause item. While it is on, nothing reaches the network:
@@ -155,7 +162,7 @@ fn status_error(code: u16, unauthorised_hint: &str) -> String {
 async fn poll_stripe(app: AppHandle) {
     let Some(key) = secrets::get("stripe-api-key") else { return };
     let auth = format!("Basic {}", crate::claude::base64_for(format!("{key}:").as_bytes()));
-    let http = client();
+    let Some(http) = client() else { return };
 
     let balance = http
         .get("https://api.stripe.com/v1/balance")
@@ -275,7 +282,7 @@ async fn poll_stripe(app: AppHandle) {
 
 async fn poll_github(app: AppHandle) {
     let Some(token) = secrets::get("github-token") else { return };
-    let http = client();
+    let Some(http) = client() else { return };
 
     let user = http
         .get("https://api.github.com/user")
@@ -421,7 +428,7 @@ fn spawn_github_loops(app: AppHandle) {
 /// One authenticated GraphQL call. Partial errors are logged (as a count) and the
 /// data parsed anyway; only a response without `data` is dropped.
 async fn github_graphql(token: &str, query: &str, what: &str) -> Option<Value> {
-    let response = client()
+    let response = client()?
         .post("https://api.github.com/graphql")
         .header("Authorization", format!("Bearer {token}"))
         .header("Content-Type", "application/json")
@@ -568,7 +575,8 @@ pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
 
 async fn poll_vercel(app: AppHandle) {
     let Some(token) = secrets::get("vercel-token") else { return };
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .get("https://api.vercel.com/v6/deployments?limit=5")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/json")
@@ -640,7 +648,8 @@ async fn poll_vercel(app: AppHandle) {
 
 async fn poll_resend(app: AppHandle) {
     let Some(key) = secrets::get("resend-api-key") else { return };
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .get("https://api.resend.com/emails?limit=100")
         .header("Authorization", format!("Bearer {key}"))
         .header("Accept", "application/json")
@@ -753,7 +762,8 @@ pub async fn resend_send(
         payload["attachments"] = json!([{ "filename": name, "content": b64(&bytes) }]);
     }
 
-    let response = client()
+    let Some(http) = client() else { return Err("http-0".into()) };
+    let response = http
         .post("https://api.resend.com/emails")
         .header("Authorization", format!("Bearer {key}"))
         .json(&payload)
@@ -773,7 +783,8 @@ pub async fn resend_send(
 
 async fn poll_notion(app: AppHandle) {
     let Some(token) = secrets::get("notion-api-key") else { return };
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .post("https://api.notion.com/v1/search")
         .header("Authorization", format!("Bearer {token}"))
         .header("Notion-Version", "2022-06-28")
@@ -887,7 +898,8 @@ async fn poll_calcom(app: AppHandle) {
     // today through today + 60 days, at most 50 rows — the Mac's range.
     let after = utc_date(0);
     let before = utc_date(60);
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .get(format!(
             "https://api.cal.com/v2/bookings?status=upcoming&afterStart={after}&beforeEnd={before}&take=50"
         ))
@@ -954,7 +966,7 @@ async fn poll_n8n(app: AppHandle) {
         return;
     };
     let base = raw_base.trim_end_matches('/').to_string();
-    let http = client();
+    let Some(http) = client() else { return };
 
     // Same two shapes as the Swift poller: the public API first, then /rest.
     let list_urls = [
