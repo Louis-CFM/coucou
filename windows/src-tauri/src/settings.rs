@@ -152,6 +152,25 @@ impl Default for Settings {
     }
 }
 
+impl Settings {
+    /// What a webview sends back, with the fields only Rust changes kept as they
+    /// are: the phone pairing (phone.rs), whether Coucou's hooks and status line
+    /// are in Claude Code's settings.json (hooks.rs) and Mochi's desktop spot
+    /// (desktop.rs). A webview holds a copy taken at boot and writes the whole
+    /// object back on any change, so its stale copy would otherwise undo them.
+    pub fn from_webview(&self, mut incoming: Settings) -> Settings {
+        incoming.desktop_mochi = self.desktop_mochi.clone();
+        incoming.hooks_installed = self.hooks_installed;
+        incoming.plan_relay_installed = self.plan_relay_installed;
+        incoming.phone_enabled = self.phone_enabled;
+        incoming.phone_worker = self.phone_worker.clone();
+        incoming.phone_pc_id = self.phone_pc_id.clone();
+        incoming.phone_paired = self.phone_paired;
+        incoming.phone_device = self.phone_device.clone();
+        incoming
+    }
+}
+
 pub use crate::platform::{config_dir, local_dir};
 
 pub fn hook_exe_path() -> PathBuf {
@@ -397,6 +416,32 @@ fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
 mod tests {
     use super::*;
     use serde_json::{json, Value};
+
+    #[test]
+    fn a_webview_save_keeps_what_only_rust_may_change() {
+        let mut current = Settings::default();
+        current.phone_enabled = true;
+        current.phone_worker = "https://relay.example".into();
+        current.phone_pc_id = "a1b2c3d4e5f6a1b2c3d4e5f6".into();
+        current.phone_paired = true;
+        current.phone_device = "Pixel".into();
+        current.hooks_installed = true;
+        current.plan_relay_installed = true;
+        current.desktop_mochi.on_desktop = true;
+
+        // A webview's copy from before the pairing, carrying one real change.
+        let mut stale = Settings::default();
+        stale.sound_volume = 0.05;
+
+        let saved = current.from_webview(stale);
+        assert_eq!(saved.sound_volume, 0.05, "the webview's own change goes through");
+        assert!(saved.phone_enabled && saved.phone_paired);
+        assert_eq!(saved.phone_worker, "https://relay.example");
+        assert_eq!(saved.phone_pc_id, "a1b2c3d4e5f6a1b2c3d4e5f6");
+        assert_eq!(saved.phone_device, "Pixel");
+        assert!(saved.hooks_installed && saved.plan_relay_installed);
+        assert!(saved.desktop_mochi.on_desktop);
+    }
 
     /// A settings.json in which no value is the default one.
     // Two #: the colours in it are written "#RRGGBB".

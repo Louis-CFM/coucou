@@ -4,9 +4,10 @@
 // clicks come back down the same mailbox.
 //
 //   PC     POST /v1/phone/pair     once, when Pair is clicked
-//   PC     POST /v1/phone/claimed  while pairing, until a phone answers
+//   PC     POST /v1/phone/claimed  while a pairing code is on screen
 //   PC     POST /v1/phone/state    on every island change (alert = a card is up)
 //   PC     POST /v1/phone/take     drains decisions and chat lines, every 3 s
+//                                  while something is going on, else every 10 s
 //   PC     POST /v1/phone/unpair   the phone is forgotten, the box wiped
 //
 // The pc id lives in settings.json; the pairing secret lives in the keychain.
@@ -15,27 +16,40 @@
 // the card's text is sent only inside the box the user owns.
 
 use serde_json::{json, Value};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::Notify;
 
 use crate::i18n::t;
 use crate::island::WINDOW_LABEL;
 
+/// How often the outbox is read while something is going on: a card up, or
+/// the phone having just said something.
 const POLL: Duration = Duration::from_secs(3);
+/// How often it is read while nothing is going on — no card up, the phone
+/// quiet for a while. A message typed then waits at most this long.
+const POLL_IDLE: Duration = Duration::from_secs(10);
+/// After the phone last sent something, it is answered at the quick pace.
+const ACTIVE_WINDOW: Duration = Duration::from_secs(120);
+/// How long a pairing code on screen is watched for a phone to claim it.
+const PAIR_WINDOW: Duration = Duration::from_secs(30 * 60);
 const PAIR_WAIT: Duration = Duration::from_secs(3);
 const BACKOFF_MAX: Duration = Duration::from_secs(30);
 const HTTP: Duration = Duration::from_secs(10);
-/// The phone may go quiet between cards; a box is considered live while the
-/// relay can still reach it.
+/// The shortest gap between two state pushes that do not wake the phone.
+const PUSH_GAP: Duration = Duration::from_millis(1500);
 const WORKER_PATH: &str = "/v1/phone";
 
 /// The credentials a box is created with. `pc_id` identifies it (and is fine
-/// in settings.json); `secret` authenticates every call and stays in the
-/// keychain only.
+/// in settings.json); `secret` authenticates every call. It reaches the
+/// keychain only once the relay has created the box, so a pairing that fails
+/// leaves the previous one working.
 pub struct Pairing {
     pub worker: String,
     pub pc_id: String,
+    secret: String,
     /// `id|secret|worker` — what the QR encodes and the manual fallback shows.
     pub code: String,
     /// The QR as SVG markup, for the settings window to drop into the page.
@@ -62,76 +76,125 @@ pub fn check_worker(raw: &str) -> Result<String, String> {
     Ok(url.to_string().trim_end_matches('/').to_string())
 }
 
-/// A phone taking over the island: pair + start the background loop.
+/// A phone taking over the island: the code and its QR. Nothing is stored yet.
 pub fn start_pair(worker: &str) -> Result<Pairing, String> {
     let worker = check_worker(worker)?;
     let Some(pc_id) = hex(12) else { return Err("no random source".into()) };
-    let Some(sec) = hex(32) else { return Err("no random source".into()) };
-    crate::secrets::set("phone-secret", &sec)?;
-
-    let code = format!("{pc_id}|{sec}|{worker}");
+    let Some(secret) = hex(32) else { return Err("no random source".into()) };
+    let code = format!("{pc_id}|{secret}|{worker}");
     let qr_svg = qrcode::QrCode::new(code.as_bytes())
         .map_err(|e| e.to_string())?
         .render::<qrcode::render::svg::Color>()
         .build();
-    Ok(Pairing { worker, pc_id, code, qr_svg })
+    Ok(Pairing { worker, pc_id, secret, code, qr_svg })
 }
 
-/// Called once the code is on screen: creates the box, keeps id + worker in
-/// settings, starts the loop so `claimed` is noticed.
-pub fn finish_pair(app: &AppHandle, pair: &Pairing) -> Result<(), String> {
-    tauri::async_runtime::block_on(post_async(
-        &pair.worker,
-        "pair",
-        &json!({ "id": pair.pc_id, "secret": secret().unwrap_or_default() }),
-    ))?;
-    let shared = app.state::<crate::Shared>();
-    let mut settings = shared.settings.lock().unwrap();
-    settings.phone_worker = pair.worker.clone();
-    settings.phone_pc_id = pair.pc_id.clone();
-    settings.phone_paired = false;
-    settings.phone_device.clear();
-    settings.phone_enabled = true;
-    let snapshot = settings.clone();
-    drop(settings);
-    let _ = crate::settings::save(&snapshot);
-    spawn(app.clone());
-    Ok(())
+/// The box this PC is paired with now, if any.
+struct BoxRef {
+    worker: String,
+    id: String,
+    secret: String,
 }
 
-pub fn unpair(app: &AppHandle) {
+fn current_box(app: &AppHandle) -> Option<BoxRef> {
     let (worker, id) = {
         let shared = app.state::<crate::Shared>();
         let s = shared.settings.lock().unwrap();
         (s.phone_worker.clone(), s.phone_pc_id.clone())
     };
-    if let (Some(worker), Some(id)) = (nonempty(worker), nonempty(id)) {
-        if let Some(secret) = secret() {
-            let _ = tauri::async_runtime::block_on(post_async(
-                &worker,
-                "unpair",
-                &json!({ "id": id, "secret": secret }),
-            ));
-        }
+    Some(BoxRef { worker: nonempty(worker)?, id: nonempty(id)?, secret: secret()? })
+}
+
+/// Called once the code is on screen: creates the box, and only when the relay
+/// has it does the new pairing replace the old one, whose box is then wiped.
+pub async fn finish_pair(app: &AppHandle, pair: &Pairing) -> Result<(), String> {
+    post_async(&pair.worker, "pair", &json!({ "id": pair.pc_id, "secret": pair.secret })).await?;
+    let old = current_box(app);
+    crate::secrets::set("phone-secret", &pair.secret)?;
+    *PAIRING_SINCE.lock().unwrap() = Some(Instant::now());
+    update_settings(app, |s| {
+        s.phone_worker = pair.worker.clone();
+        s.phone_pc_id = pair.pc_id.clone();
+        s.phone_paired = false;
+        s.phone_device.clear();
+        s.phone_enabled = true;
+    });
+    spawn(app.clone());
+    // The previous box would otherwise keep the old phone's token and the last state for good.
+    if let Some(old) = old.filter(|o| o.id != pair.pc_id) {
+        let _ = post_async(&old.worker, "unpair", &json!({ "id": old.id, "secret": old.secret })).await;
+    }
+    Ok(())
+}
+
+pub async fn unpair(app: &AppHandle) {
+    if let Some(current) = current_box(app) {
+        let _ = post_async(&current.worker, "unpair", &json!({ "id": current.id, "secret": current.secret })).await;
     }
     let _ = crate::secrets::clear("phone-secret");
-    let shared = app.state::<crate::Shared>();
-    let mut settings = shared.settings.lock().unwrap();
-    settings.phone_paired = false;
-    settings.phone_device.clear();
-    settings.phone_pc_id.clear();
-    let snapshot = settings.clone();
-    drop(settings);
-    let _ = crate::settings::save(&snapshot);
+    update_settings(app, |s| {
+        s.phone_paired = false;
+        s.phone_device.clear();
+        s.phone_pc_id.clear();
+    });
 }
 
 fn nonempty(s: String) -> Option<String> {
     (!s.is_empty()).then_some(s)
 }
 
-/// The poll loop: claim → outbox. Started at launch and after pairing; it
-/// no-ops whenever the phone is not enabled, so it is safe to spawn twice —
-/// a `RUNNING` flag makes sure only one instance ever actually loops.
+/// Changes the phone fields, saves, and tells both webviews: their copies of
+/// the settings would otherwise keep the old values and write them back.
+fn update_settings(app: &AppHandle, change: impl FnOnce(&mut crate::settings::Settings)) {
+    let snapshot = {
+        let shared = app.state::<crate::Shared>();
+        let mut s = shared.settings.lock().unwrap();
+        change(&mut s);
+        s.clone()
+    };
+    if let Err(err) = crate::settings::save(&snapshot) {
+        crate::log::line(format!("could not save settings: {err}"));
+    }
+    let _ = app.emit("settings-changed", snapshot);
+    wake();
+}
+
+/// Settings → "Control from the phone".
+pub fn set_enabled(app: &AppHandle, on: bool) {
+    update_settings(app, |s| s.phone_enabled = on);
+    if on {
+        spawn(app.clone());
+    }
+}
+
+// ── The poll loop ─────────────────────────────────────────────────────────────
+
+/// Rings when something the loop decides on changed: settings, a card, a pairing.
+static WAKE: LazyLock<Notify> = LazyLock::new(Notify::new);
+static CARD_UP: AtomicBool = AtomicBool::new(false);
+static PHONE_SPOKE: Mutex<Option<Instant>> = Mutex::new(None);
+static PAIRING_SINCE: Mutex<Option<Instant>> = Mutex::new(None);
+
+fn wake() {
+    WAKE.notify_one();
+}
+
+fn since(at: &Mutex<Option<Instant>>) -> Option<Duration> {
+    at.lock().unwrap().map(|t| t.elapsed())
+}
+
+fn take_interval(card_up: bool, since_phone: Option<Duration>) -> Duration {
+    if card_up || since_phone.is_some_and(|d| d < ACTIVE_WINDOW) { POLL } else { POLL_IDLE }
+}
+
+fn pairing_open(since_pairing: Option<Duration>) -> bool {
+    since_pairing.is_some_and(|d| d < PAIR_WINDOW)
+}
+
+/// The poll loop: claim → outbox. Started at launch and after pairing; until a
+/// phone is set up it only waits to be woken (no timer, no keychain read), so
+/// it is safe to spawn twice — a `RUNNING` flag makes sure only one instance
+/// ever actually loops.
 static RUNNING: Mutex<bool> = Mutex::new(false);
 
 pub fn spawn(app: AppHandle) {
@@ -142,46 +205,51 @@ pub fn spawn(app: AppHandle) {
         }
         *running = true;
     }
+    // A pairing the last run left half-way is watched for a while again.
+    {
+        let shared = app.state::<crate::Shared>();
+        let s = shared.settings.lock().unwrap();
+        if s.phone_enabled && !s.phone_paired && !s.phone_pc_id.is_empty() {
+            *PAIRING_SINCE.lock().unwrap() = Some(Instant::now());
+        }
+    }
     tauri::async_runtime::spawn(async move {
         let mut backoff = POLL;
         loop {
             let (enabled, paired, worker, id) = {
                 let shared = app.state::<crate::Shared>();
                 let s = shared.settings.lock().unwrap();
-                (
-                    s.phone_enabled,
-                    s.phone_paired,
-                    s.phone_worker.clone(),
-                    s.phone_pc_id.clone(),
-                )
+                (s.phone_enabled, s.phone_paired, s.phone_worker.clone(), s.phone_pc_id.clone())
             };
-            let (Some(worker), Some(id), Some(sec)) =
-                (nonempty(worker), nonempty(id), secret())
-            else {
-                tokio::time::sleep(POLL).await;
+            // Nothing to do until the settings change: no timer, no keychain read.
+            let ready = enabled && (paired || pairing_open(since(&PAIRING_SINCE)));
+            let (true, Some(worker), Some(id)) = (ready, nonempty(worker), nonempty(id)) else {
+                WAKE.notified().await;
                 continue;
             };
-            if !enabled {
-                tokio::time::sleep(POLL).await;
+            let Some(sec) = secret() else {
+                WAKE.notified().await;
                 continue;
-            }
-
+            };
             let result = if paired {
                 take(&app, &worker, &id, &sec).await
             } else {
                 claimed(&app, &worker, &id, &sec).await
             };
-            match result {
-                Ok(()) => backoff = POLL,
-                Err(_) => {
-                    // The worker or the network is down: keep trying, quietly,
-                    // widening the gap so a phone-less afternoon is cheap.
-                    tokio::time::sleep(backoff).await;
-                    backoff = (backoff * 2).min(BACKOFF_MAX);
-                    continue;
-                }
+            if result.is_err() {
+                // The worker or the network is down: keep trying, quietly,
+                // widening the gap so a phone-less afternoon is cheap.
+                let _ = tokio::time::timeout(backoff, WAKE.notified()).await;
+                backoff = (backoff * 2).min(BACKOFF_MAX);
+                continue;
             }
-            tokio::time::sleep(if paired { POLL } else { PAIR_WAIT }).await;
+            backoff = POLL;
+            let wait = if paired {
+                take_interval(CARD_UP.load(Ordering::Relaxed), since(&PHONE_SPOKE))
+            } else {
+                PAIR_WAIT
+            };
+            let _ = tokio::time::timeout(wait, WAKE.notified()).await;
         }
     });
 }
@@ -196,15 +264,11 @@ async fn claimed(app: &AppHandle, worker: &str, id: &str, sec: &str) -> Result<(
             .and_then(Value::as_str)
             .unwrap_or("Android")
             .to_string();
-        {
-            let shared = app.state::<crate::Shared>();
-            let mut s = shared.settings.lock().unwrap();
+        *PAIRING_SINCE.lock().unwrap() = None;
+        update_settings(app, |s| {
             s.phone_paired = true;
             s.phone_device = device.clone();
-            let snapshot = s.clone();
-            drop(s);
-            let _ = crate::settings::save(&snapshot);
-        }
+        });
         crate::log::line(format!("phone paired: {device}"));
         let _ = app.emit_to("settings", "phone-paired", json!({ "device": device }));
     }
@@ -219,22 +283,85 @@ async fn take(app: &AppHandle, worker: &str, id: &str, sec: &str) -> Result<(), 
     if out.is_empty() {
         return Ok(());
     }
+    *PHONE_SPOKE.lock().unwrap() = Some(Instant::now());
     crate::log::line(format!("phone: {} message(s) from the phone", out.len()));
     let _ = app.emit_to(WINDOW_LABEL, "phone-remote", Value::Array(out));
     Ok(())
 }
 
-/// PC → phone: the island's latest state. `alert` gets an FCM wake; the rest
-/// is for when the app is already open. The worker validates the shape.
-pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<(), String> {
-    static LAST: Mutex<Option<Instant>> = Mutex::new(None);
-    {
-        let mut last = LAST.lock().unwrap();
-        if !alert && last.is_some_and(|t| t.elapsed() < Duration::from_millis(1500)) {
-            return Ok(());
-        }
-        *last = Some(Instant::now());
+// ── State pushes ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, PartialEq)]
+enum Plan {
+    Now,
+    After(Duration),
+}
+
+/// When a push may go: an alert at once, anything else at most every
+/// PUSH_GAP — and the last one of a burst after the gap, never not at all.
+fn plan(last: Option<Instant>, now: Instant, alert: bool) -> Plan {
+    match last {
+        Some(t) if !alert && now.duration_since(t) < PUSH_GAP => Plan::After(PUSH_GAP - now.duration_since(t)),
+        _ => Plan::Now,
     }
+}
+
+struct Outgoing {
+    last: Option<Instant>,
+    /// The newest state held back by the gap; a later one replaces it.
+    held: Option<Value>,
+    flush_scheduled: bool,
+}
+
+static OUTGOING: Mutex<Outgoing> = Mutex::new(Outgoing { last: None, held: None, flush_scheduled: false });
+
+/// PC → phone: the island's latest state. `alert` gets an FCM wake; the rest is
+/// for when the app is already open. Ok when sent, held for the end of the gap,
+/// or not needed (no phone paired); Err when the relay could not be reached.
+pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<(), String> {
+    // A card on screen: the phone's answer is read at the quick pace.
+    let card_up = payload.get("awaiting").is_some_and(|a| !a.is_null());
+    if CARD_UP.swap(card_up, Ordering::Relaxed) != card_up && card_up {
+        wake();
+    }
+
+    let now = Instant::now();
+    let wait = {
+        let mut out = OUTGOING.lock().unwrap();
+        match plan(out.last, now, alert) {
+            Plan::Now => {
+                out.last = Some(now);
+                out.held = None;
+                None
+            }
+            Plan::After(wait) => {
+                out.held = Some(payload.clone());
+                if out.flush_scheduled {
+                    return Ok(());
+                }
+                out.flush_scheduled = true;
+                Some(wait)
+            }
+        }
+    };
+    let Some(wait) = wait else { return send_state(app, payload, alert).await };
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(wait).await;
+        let held = {
+            let mut out = OUTGOING.lock().unwrap();
+            out.flush_scheduled = false;
+            out.last = Some(Instant::now());
+            out.held.take()
+        };
+        if let Some(payload) = held {
+            let _ = send_state(&app, payload, false).await;
+        }
+    });
+    Ok(())
+}
+
+async fn send_state(app: &AppHandle, payload: Value, alert: bool) -> Result<(), String> {
     let (worker, id) = {
         let shared = app.state::<crate::Shared>();
         let s = shared.settings.lock().unwrap();
@@ -243,8 +370,7 @@ pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<
         }
         (s.phone_worker.clone(), s.phone_pc_id.clone())
     };
-    let (Some(worker), Some(id), Some(sec)) = (nonempty(worker), nonempty(id), secret())
-    else {
+    let (Some(worker), Some(id), Some(sec)) = (nonempty(worker), nonempty(id), secret()) else {
         return Ok(());
     };
     let mut body = json!({ "id": id, "secret": sec, "state": payload });
@@ -260,16 +386,82 @@ pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<
     post_async(&worker, "state", &body).await.map(|_| ())
 }
 
+// ── HTTP ──────────────────────────────────────────────────────────────────────
+
+/// One HTTP client per relay address, kept: a fresh one per call meant a new
+/// TLS handshake every poll.
+fn client_for(worker: &str) -> Result<reqwest::Client, String> {
+    static CLIENT: Mutex<Option<(String, reqwest::Client)>> = Mutex::new(None);
+    let mut slot = CLIENT.lock().unwrap();
+    if let Some((addr, client)) = slot.as_ref() {
+        if addr == worker {
+            return Ok(client.clone());
+        }
+    }
+    let client = crate::net::client(&crate::net::normalise_server_url(worker)?, HTTP)?;
+    *slot = Some((worker.to_string(), client.clone()));
+    Ok(client)
+}
+
 async fn post_async(worker: &str, action: &str, body: &Value) -> Result<Value, String> {
     let worker = worker.trim_end_matches('/');
     let url = format!("{worker}{WORKER_PATH}/{action}");
-    let client = crate::net::client(
-        &crate::net::normalise_server_url(&url)?,
-        HTTP,
-    )?;
+    let client = client_for(worker)?;
     let resp = client.post(&url).json(body).send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("relay {}", resp.status()));
     }
     resp.json::<Value>().await.map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_pairing_code_carries_the_box_id_its_secret_and_the_relay() {
+        let p = start_pair("https://relay.example.workers.dev").unwrap();
+        let parts: Vec<&str> = p.code.split('|').collect();
+        assert_eq!(parts.len(), 3);
+        assert!(parts[0].len() == 24 && parts[0].bytes().all(|b| b.is_ascii_hexdigit()));
+        assert!(parts[1].len() == 64 && parts[1].bytes().all(|b| b.is_ascii_hexdigit()));
+        // The secret travels in the code and is only stored once the box exists.
+        assert_eq!(parts[1], p.secret);
+        assert_eq!(parts[2], "https://relay.example.workers.dev");
+        assert!(p.qr_svg.contains("<svg"));
+    }
+
+    #[test]
+    fn a_relay_must_be_https_or_this_machine() {
+        assert!(start_pair("http://relay.example").is_err());
+        assert!(start_pair("http://127.0.0.1:8787").is_ok());
+    }
+
+    #[test]
+    fn a_push_inside_the_gap_is_delayed_not_dropped() {
+        let t0 = Instant::now();
+        assert_eq!(plan(None, t0, false), Plan::Now);
+        assert_eq!(
+            plan(Some(t0), t0 + Duration::from_millis(400), false),
+            Plan::After(Duration::from_millis(1100))
+        );
+        // A card waking the phone never waits.
+        assert_eq!(plan(Some(t0), t0 + Duration::from_millis(400), true), Plan::Now);
+        assert_eq!(plan(Some(t0), t0 + PUSH_GAP, false), Plan::Now);
+    }
+
+    #[test]
+    fn the_outbox_is_read_quickly_only_while_something_is_going_on() {
+        assert_eq!(take_interval(true, None), POLL);
+        assert_eq!(take_interval(false, Some(Duration::from_secs(30))), POLL);
+        assert_eq!(take_interval(false, Some(ACTIVE_WINDOW + Duration::from_secs(1))), POLL_IDLE);
+        assert_eq!(take_interval(false, None), POLL_IDLE);
+    }
+
+    #[test]
+    fn a_pairing_code_is_watched_for_half_an_hour() {
+        assert!(pairing_open(Some(Duration::from_secs(60))));
+        assert!(!pairing_open(Some(PAIR_WINDOW + Duration::from_secs(1))));
+        assert!(!pairing_open(None));
+    }
 }

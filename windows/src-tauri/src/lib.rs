@@ -80,11 +80,15 @@ pub struct BootInfo {
 
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
-    let mut settings = shared.settings.lock().unwrap().clone();
-    // The real state of ~/.claude/settings.json wins over whatever we stored.
+    // The real state of ~/.claude/settings.json wins over whatever we stored,
+    // and is what a later save keeps (Settings::from_webview).
     let hooks_status = hooks::status();
-    settings.hooks_installed = hooks_status.installed;
-    settings.plan_relay_installed = hooks_status.plan_relay_installed;
+    let settings = {
+        let mut current = shared.settings.lock().unwrap();
+        current.hooks_installed = hooks_status.installed;
+        current.plan_relay_installed = hooks_status.plan_relay_installed;
+        current.clone()
+    };
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -97,18 +101,17 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed, shortcuts_changed) = {
+    let (settings, screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
-        let screen_changed = current.screen != settings.screen;
-        let autostart_changed = current.autostart != settings.autostart;
-        let shortcuts_changed = current.shortcuts != settings.shortcuts;
-        // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
-        let mut settings = settings.clone();
-        settings.desktop_mochi = current.desktop_mochi.clone();
-        *current = settings;
-        (screen_changed, autostart_changed, shortcuts_changed)
+        // What only Rust changes (the phone pairing, the hooks state, Mochi's
+        // desktop spot) is not a webview's to say: its copy may be a stale one.
+        let next = current.from_webview(settings);
+        let screen_changed = current.screen != next.screen;
+        let autostart_changed = current.autostart != next.autostart;
+        let shortcuts_changed = current.shortcuts != next.shortcuts;
+        *current = next.clone();
+        (next, screen_changed, autostart_changed, shortcuts_changed)
     };
-    let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
@@ -525,42 +528,32 @@ fn phone_status(shared: State<'_, Shared>) -> serde_json::Value {
 /// Turn remote control on or off. On needs a paired box — settings calls
 /// `phone_pair` for that; this just gates the poll loop.
 #[tauri::command]
-fn phone_enable(app: AppHandle, shared: State<'_, Shared>, on: bool) {
-    {
-        let mut s = shared.settings.lock().unwrap();
-        s.phone_enabled = on;
-        let snapshot = s.clone();
-        drop(s);
-        let _ = settings::save(&snapshot);
-    }
-    if on {
-        phone::spawn(app);
-    }
+fn phone_enable(app: AppHandle, on: bool) {
+    phone::set_enabled(&app, on);
 }
 
 /// Create the pairing code/QR and the relay box. The phone claims it with
-/// `coucou://` payload the code carries.
+/// `coucou://` payload the code carries. Async: the relay may take seconds, and
+/// a sync command would hold the UI thread meanwhile.
 #[tauri::command]
-fn phone_pair(app: AppHandle, worker: String) -> Result<serde_json::Value, String> {
+async fn phone_pair(app: AppHandle, worker: String) -> Result<serde_json::Value, String> {
     let pair = phone::start_pair(&worker)?;
-    if let Err(e) = phone::finish_pair(&app, &pair) {
-        let _ = secrets::clear("phone-secret");
-        return Err(e);
-    }
+    phone::finish_pair(&app, &pair).await?;
     Ok(json!({ "code": pair.code, "qrSvg": pair.qr_svg }))
 }
 
 /// Forget the phone and wipe its mailbox on the relay.
 #[tauri::command]
-fn phone_unpair(app: AppHandle) {
-    phone::unpair(&app);
+async fn phone_unpair(app: AppHandle) {
+    phone::unpair(&app).await;
 }
 
 /// The island pushes its visible state after each change; `alert` wakes the
-/// phone for a waiting card.
+/// phone for a waiting card. False when the relay could not be reached, so the
+/// island tries the alert again with its next change.
 #[tauri::command]
-async fn phone_state(app: AppHandle, payload: serde_json::Value, alert: bool) {
-    let _ = phone::push_state(&app, payload, alert).await;
+async fn phone_state(app: AppHandle, payload: serde_json::Value, alert: bool) -> bool {
+    phone::push_state(&app, payload, alert).await.is_ok()
 }
 
 /// The Devin CLI's own session list — the phone's "continue this chat" picker.
