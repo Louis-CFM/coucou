@@ -226,6 +226,7 @@ pub async fn send(
 pub async fn send_for_phone(
     settings: &Settings,
     chat: &Chat,
+    mcp: &crate::mcp::Registry,
     provider: &str,
     model: &str,
     query: String,
@@ -235,7 +236,7 @@ pub async fn send_for_phone(
         return claude::send(chat, model, query, None).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, model, query, None).await;
+        return openai_compat::send(chat, p, model, mcp, query, None).await;
     }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::send_with(chat, &server, model, query, None, on_delta).await;

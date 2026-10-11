@@ -34,6 +34,10 @@ impl AppChat {
     fn settings(&self) -> Settings {
         self.app.state::<Shared>().settings.lock().unwrap().clone()
     }
+
+    fn mcp(&self) -> Arc<crate::mcp::Registry> {
+        self.app.state::<Shared>().mcp.clone()
+    }
 }
 
 impl ChatBackend for AppChat {
@@ -45,6 +49,7 @@ impl ChatBackend for AppChat {
     fn send(&self, model_id: &str, text: String, deltas: UnboundedSender<String>) -> BoxFuture<Result<String, ChatFail>> {
         let settings = self.settings();
         let chat = self.chat.clone();
+        let mcp = self.mcp();
         let id = model_id.to_string();
         Box::pin(async move {
             let Some((provider, model)) = parse_model_id(&id) else { return Err(ChatFail::Internal) };
@@ -53,7 +58,7 @@ impl ChatBackend for AppChat {
                     return Err(ChatFail::NoKey);
                 }
             }
-            let result = chat::send_for_phone(&settings, &chat, provider, model, text, |so_far| {
+            let result = chat::send_for_phone(&settings, &chat, &mcp, provider, model, text, |so_far| {
                 let _ = deltas.send(so_far);
             })
             .await;
