@@ -108,14 +108,14 @@ struct ClaudeHost: Equatable {
         if let sessionURL, let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
+            // `activates` already brings the host forward; the completion runs on a background
+            // queue, so the desktop switch (Accessibility) goes back to the main thread.
             NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
-                // The link failed to open (app moved, launch refused): bring the host forward without it.
-                guard let running else {
-                    DispatchQueue.main.async { activate(id) }
-                    return
+                DispatchQueue.main.async {
+                    // The link failed to open (app moved, launch refused): bring the host forward without it.
+                    guard let running else { activate(id); return }
+                    switchToDesktop(of: running)
                 }
-                running.activate()
-                switchToDesktop(of: running)
             }
             return true
         }
