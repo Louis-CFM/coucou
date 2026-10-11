@@ -1,6 +1,8 @@
 name: Windows CI
 
-# Type-checks and tests the Windows app on every pull request that touches it.
+# Type-checks and tests the Windows app on every pull request that touches it,
+# or the Mac's string catalog: windows/src/i18n/strings.json is generated from
+# it, and a test fails when the two drift apart.
 # Nothing is packed and nothing is published: releases stay in windows.yml,
 # which only runs on tags.
 
@@ -8,11 +10,13 @@ on:
   pull_request:
     paths:
       - 'windows/**'
+      - 'NotchBuddy/Resources/Localizable.xcstrings'
       - '.github/workflows/windows-ci.yml'
   push:
     branches: [main]
     paths:
       - 'windows/**'
+      - 'NotchBuddy/Resources/Localizable.xcstrings'
       - '.github/workflows/windows-ci.yml'
 
 permissions:
