@@ -1742,6 +1742,63 @@ function realtimeCopilotSection(): HTMLElement {
       );
       if (started) return;
     }
+
+    GoogleCalendarService.openGoogleLogin();
+    feedbackMsg.style.display = "block";
+    feedbackMsg.style.color = "#93c5fd";
+    feedbackMsg.textContent = "Abrindo o Google no navegador! Copie o 'Endereço secreto em formato iCal' da sua agenda e cole abaixo, ou informe seu Client ID para popup de 1 clique.";
+  });
+
+  const clientIdInput = h("input", {
+    type: "text",
+    value: GoogleCalendarService.getClientId(),
+    placeholder: "Google Client ID para popup oficial (ex: 123...apps.googleusercontent.com)",
+    autocomplete: "off",
+    spellcheck: "false",
+    style: "flex:1 1 auto; min-width:0; font-size:11px; font-family:monospace; padding:6px 10px; background:#16181d; color:#fff; border:1px solid #272a30; border-radius:6px;",
+  }) as HTMLInputElement;
+
+  const saveClientIdBtn = h("button", {
+    style: "font-size:11px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#c7d2fe; border:1px solid rgba(99,102,241,0.4); border-radius:6px; cursor:pointer; white-space:nowrap;",
+    text: "Ativar Popup 1-Clique",
+  });
+
+  const clientIdRow = h("div", { style: "display:flex; gap:8px; align-items:center; margin-top:2px;" }, clientIdInput, saveClientIdBtn);
+
+  saveClientIdBtn.addEventListener("click", () => {
+    const val = clientIdInput.value.trim();
+    if (!val) {
+      feedbackMsg.style.display = "block";
+      feedbackMsg.style.color = "#fb7185";
+      feedbackMsg.textContent = "Informe um Google Client ID válido.";
+      return;
+    }
+    GoogleCalendarService.setClientId(val);
+    feedbackMsg.style.display = "block";
+    feedbackMsg.style.color = "#93c5fd";
+    feedbackMsg.textContent = "Abrindo popup oficial do Google...";
+    GoogleCalendarService.trigger1ClickGoogleLogin(
+      val,
+      (res) => {
+        isConnected = true;
+        feedbackMsg.style.display = "block";
+        feedbackMsg.style.color = "#34d399";
+        feedbackMsg.textContent = `✓ Sucesso! Conectado como ${res.email}. A agenda já está sincronizada.`;
+        disconnectBtn.style.display = "";
+        gcalStatusBadge.textContent = `CONECTADO (${res.email})`;
+        gcalStatusBadge.style.background = "rgba(34,197,94,0.1)";
+        gcalStatusBadge.style.color = "#4ade80";
+        gcalStatusBadge.style.borderColor = "rgba(34,197,94,0.3)";
+        setTimeout(() => {
+          authDrawer.style.display = "none";
+        }, 2000);
+      },
+      (err) => {
+        feedbackMsg.style.display = "block";
+        feedbackMsg.style.color = "#fb7185";
+        feedbackMsg.textContent = err;
+      }
+    );
   });
 
   verifyBtn.addEventListener("click", async () => {
@@ -1798,7 +1855,7 @@ function realtimeCopilotSection(): HTMLElement {
     authDrawer.style.display = "flex";
   });
 
-  authDrawer.append(guideBox, tokenRow, feedbackMsg);
+  authDrawer.append(guideBox, tokenRow, clientIdRow, feedbackMsg);
   gcalBlock.append(gcalHeader, gcalInstructions, authDrawer);
 
   return h(
