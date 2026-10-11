@@ -140,6 +140,41 @@ test("claim → claimed → fetch round-trips device and state", async () => {
   assert.equal((await call(b, "claim", { id: ID, secret: SECRET })).status, 400); // no token
 });
 
+const PHONE = "1".repeat(32);
+const THIEF = "2".repeat(32);
+
+test("a paired box only takes a new token from the phone that claimed it", async () => {
+  const b = await paired();
+  await ok(call(b, "claim", { id: ID, secret: SECRET, token: "t1", name: "Pixel", device: PHONE }));
+  // The same phone refreshing its FCM token is fine.
+  await ok(call(b, "claim", { id: ID, secret: SECRET, token: "t2", name: "Pixel", device: PHONE }));
+  // Anyone else holding the code cannot take the box over…
+  assert.equal(
+    (await call(b, "claim", { id: ID, secret: SECRET, token: "t3", name: "Evil", device: THIEF })).status,
+    409,
+  );
+  // …with or without a device id.
+  assert.equal((await call(b, "claim", { id: ID, secret: SECRET, token: "t3", name: "Evil" })).status, 409);
+  assert.deepEqual(await ok(call(b, "claimed", { id: ID, secret: SECRET })), { paired: true, device: "Pixel" });
+  // A malformed device id is refused outright.
+  assert.equal(
+    (await call(b, "claim", { id: ID, secret: SECRET, token: "t4", device: "not-hex" })).status,
+    400,
+  );
+});
+
+test("a box paired before device ids existed is taken by the first phone that sends one", async () => {
+  const b = await paired();
+  await ok(call(b, "claim", { id: ID, secret: SECRET, token: "t1", name: "Old build" })); // no device
+  // The old build refreshing its token still works until it learns device ids.
+  await ok(call(b, "claim", { id: ID, secret: SECRET, token: "t1b", name: "Old build" }));
+  await ok(call(b, "claim", { id: ID, secret: SECRET, token: "t2", name: "Pixel", device: PHONE }));
+  assert.equal(
+    (await call(b, "claim", { id: ID, secret: SECRET, token: "t3", device: THIEF })).status,
+    409,
+  );
+});
+
 test("state is clipped to bounds before it is stored", async () => {
   const b = await paired();
   const sessions = Array.from({ length: 20 }, (_, i) => ({

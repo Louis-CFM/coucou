@@ -202,6 +202,8 @@ function text(status: number, message: string): Response {
 
 const ID_RE = /^[0-9a-f]{24,48}$/;
 const SECRET_RE = /^[0-9a-f]{64}$/;
+/** The phone's own id, made once per pairing (Android Prefs): who may refresh the box's token. */
+const DEVICE_RE = /^[0-9a-f]{32}$/;
 const TOKEN_MAX = 512;
 const ALERTS = ["approval", "question", "finished"] as const;
 const OUTBOX_MAX = 50;
@@ -459,7 +461,22 @@ export class PhoneBox {
         const token = clipped(body.token, TOKEN_MAX);
         const name = clipped(body.name, 40);
         if (!token) return text(400, "token");
-        await this.ctx.storage.put({ token, dev: name || "Android", paired: true });
+        const device = body.device === undefined ? "" : String(body.device);
+        if (device && !DEVICE_RE.test(device)) return text(400, "device");
+        const paired = (await this.ctx.storage.get<boolean>("paired")) === true;
+        const owner = (await this.ctx.storage.get<string>("devId")) ?? "";
+        // Once a phone has the box, only that phone may refresh its token: the
+        // code on the PC's screen is not a key to someone else's phone. A box
+        // paired by a build that sent no device id has no owner yet: its phone
+        // keeps refreshing as before, and the first claim that carries a device
+        // id becomes the owner.
+        if (paired && owner && device !== owner) return text(409, "claimed by another phone");
+        await this.ctx.storage.put({
+          token,
+          dev: name || "Android",
+          paired: true,
+          ...(device ? { devId: device } : {}),
+        });
         return json({ ok: true });
       }
       case "claimed": {
