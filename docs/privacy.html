@@ -1,11 +1,11 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Privacy Policy — Coucou</title><link rel="icon" href="media/icon.png"><link rel="stylesheet" href="site.css"></head><body><div class="wrap">
 <header><a href="index.html"><img src="media/icon.png" alt=""></a><span class="name">Coucou</span>
-<nav><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="support.html">Support</a><a href="privacy.html" class="on">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
+<nav><a href="index.html">Home</a><a href="iphone.html">iPhone</a><a href="android.html">Android</a><a href="support.html">Support</a><a href="privacy.html" class="on">Privacy</a><a href="terms.html">Terms</a><a href="legal.html">Legal</a></nav></header>
 <div class="lang"><a href="#en">English</a><a href="#fr">Français</a></div>
 <section id="en">
 <h1>Privacy Policy</h1>
-<div class="meta">Last updated: October 5, 2026</div>
+<div class="meta">Last updated: October 11, 2026</div>
 <div class="card"><b>In short:</b> Coucou has no account, no analytics, no ads and no tracking. The developer receives none of your data. Everything stays on your computer (Mac or PC), except what you choose to send to the services you connect yourself.</div>
 
 <h2>1. Who is responsible</h2>
@@ -57,20 +57,26 @@
 <p>When you open a service on the iPhone (GitHub, Vercel, Stripe, Resend, Cal.com, n8n, Notion), the iPhone asks your Mac, through your private iCloud, to read that service; your Mac calls its API with the key in its Keychain and writes what it read back to iCloud, encrypted. From there you can ask your Mac to redeploy or cancel a Vercel build, re-run failed GitHub jobs, approve or merge a pull request, or turn an n8n workflow on or off or retry a run, always after Face ID. Nothing that moves money or sends an email can be asked from the iPhone, and no API key ever leaves your Mac.</p>
 <p>If you also turn on <b>Move Mochi to my iPhone’s Dynamic Island when my Mac is locked</b>, then while your Mac is locked and an agent is working, your Mac sends the agent’s name and state (for example “VS Code · working 3/7”) and your iPhone’s Live Activity push token to the Coucou relay, a small server we run on Cloudflare, which forwards it to Apple’s push service to update the Live Activity. The relay never receives a project name, a command, a path or a message, stores nothing and keeps no logs.</p>
 
-<h2>10. Children</h2>
+<h2>10. Android app</h2>
+<p>Coucou for Android (by Rhytam Biswas, part of Coucou) talks to Coucou on your Windows or Linux computer, <b>directly over your local network</b>. No Coucou server is involved and we receive nothing. The link is off by default: nothing listens on your computer until you turn on <b>Settings → Android phone → Phone link</b>, and while it is on your computer announces itself on your local network only (its name and a short piece of its certificate fingerprint, so the phone can find it again).</p>
+<p>The phone pairs by scanning a QR code with its camera: the camera is used only on that screen, and the picture is neither stored nor sent. The pairing code and the computer’s certificate fingerprint are stored on the phone, encrypted with a key from the Android Keystore; on the computer, the certificate key and the pairing code stay in Windows Credential Manager or the Linux Secret Service. The connection is encrypted (TLS) and checked against the certificate you paired with. <b>Pair again</b> replaces the code and disconnects every phone.</p>
+<p>Your computer sends the phone the state of your agent sessions and your permission requests. When you allow or deny a request on the phone (allowing needs your fingerprint or screen lock), the decision goes back to your computer, which applies it only to the exact request it is waiting on; the list of your past decisions is kept on the phone only. Notifications show at most the tool and the program’s name, never the full command (only “Unlock to see the request” if your phone hides sensitive content on the lock screen); the full command is on the approval screen. Extras are off by default and each has its own switch on the computer: session details, answers to Claude’s questions, file changes, plan usage, your services, and chat. With chat on, your messages go from the phone to your computer, which sends them to the AI provider you chose with the key stored on the computer (the key never reaches the phone), as its own chat does; that provider’s privacy policy applies.</p>
+<p>The app has no ads, no analytics and no crash reporting, and it turns Android backups off for its data. The pairing, chat and approval screens can’t be captured. Uninstalling the app deletes everything it stored; turning the phone link off on your computer stops everything on that side.</p>
+
+<h2>11. Children</h2>
 <p>Coucou is a developer tool and is not directed at children.</p>
 
-<h2>11. Your rights</h2>
+<h2>12. Your rights</h2>
 <p>Since we hold no personal data about you (the relay keeps nothing), there is nothing for us to access, correct or delete. For data held by a service you connected, please contact that service. If you live in the EU, you can also contact your data protection authority (in France: the <a href="https://www.cnil.fr">CNIL</a>).</p>
 
-<h2>12. Changes</h2>
+<h2>13. Changes</h2>
 <p>If this policy changes, the new version will be published on this page with a new date.</p>
 </section>
 
 <hr>
 <section id="fr" lang="fr">
 <h1>Politique de confidentialité</h1>
-<div class="meta">Dernière mise à jour : 5 octobre 2026</div>
+<div class="meta">Dernière mise à jour : 11 octobre 2026</div>
 <div class="card"><b>En bref :</b> Coucou n’a ni compte, ni statistiques, ni publicité, ni pistage. Le développeur ne reçoit aucune de tes données. Tout reste sur ton ordinateur (Mac ou PC), sauf ce que tu choisis d’envoyer aux services que tu connectes toi-même.</div>
 
 <h2>1. Responsable</h2>
@@ -121,13 +127,19 @@
 <p>Quand tu ouvres un service sur l’iPhone (GitHub, Vercel, Stripe, Resend, Cal.com, n8n, Notion), l’iPhone demande à ton Mac, via ton iCloud privé, de le lire ; ton Mac appelle son API avec la clé de son trousseau et réécrit ce qu’il a lu dans iCloud, chiffré. De là, tu peux demander à ton Mac de redéployer ou d’annuler un build Vercel, de relancer des jobs GitHub en échec, d’approuver ou de merger une pull request, ou d’activer ou de couper un workflow n8n ou de relancer une exécution, toujours après Face ID. Rien qui déplace de l’argent ou envoie un e-mail ne peut être demandé depuis l’iPhone, et aucune clé d’API ne quitte ton Mac.</p>
 <p>Si tu actives aussi <b>Mochi passe sur l’île dynamique de l’iPhone quand le Mac est verrouillé</b>, alors pendant que ton Mac est verrouillé et qu’un agent travaille, ton Mac envoie le nom et l’état de l’agent (par exemple « VS Code · working 3/7 ») et le jeton push Live Activity de ton iPhone au relais Coucou, un petit serveur exploité par le développeur sur Cloudflare, qui le transmet au service de notifications d’Apple pour mettre à jour la Live Activity. Le relais ne reçoit jamais de nom de projet, de commande, de chemin ni de message, ne stocke rien et ne tient aucun journal.</p>
 
-<h2>10. Enfants</h2>
+<h2>10. App Android</h2>
+<p>Coucou for Android (par Rhytam Biswas, partie de Coucou) communique avec Coucou sur ton ordinateur Windows ou Linux, <b>directement sur ton réseau local</b>. Aucun serveur Coucou n’intervient et le développeur ne reçoit rien. Le lien est désactivé par défaut : rien n’écoute sur ton ordinateur tant que tu n’actives pas <b>Réglages → Android phone → Phone link</b>, et pendant qu’il est actif, ton ordinateur ne s’annonce que sur ton réseau local (son nom et un court morceau de l’empreinte de son certificat, pour que le téléphone le retrouve).</p>
+<p>Le téléphone s’associe en scannant un QR code avec sa caméra : la caméra n’est utilisée que sur cet écran, et l’image n’est ni stockée ni envoyée. Le code d’association et l’empreinte du certificat de l’ordinateur sont stockés sur le téléphone, chiffrés avec une clé du Keystore Android ; sur l’ordinateur, la clé du certificat et le code d’association restent dans le Gestionnaire d’identification Windows ou le Secret Service Linux. La connexion est chiffrée (TLS) et vérifiée avec le certificat associé. <b>Associer à nouveau</b> remplace le code et déconnecte tous les téléphones.</p>
+<p>Ton ordinateur envoie au téléphone l’état de tes sessions d’agents et tes demandes de permission. Quand tu autorises ou refuses une demande sur le téléphone (autoriser demande ton empreinte ou le verrouillage de l’écran), la décision repart vers ton ordinateur, qui ne l’applique qu’à la demande exacte qu’il attend ; la liste de tes décisions passées reste sur le téléphone uniquement. Les notifications affichent au plus l’outil et le nom du programme, jamais la commande complète (seulement « Unlock to see the request » si ton téléphone masque le contenu sensible sur l’écran verrouillé) ; la commande complète est sur l’écran d’approbation. Les extras sont désactivés par défaut et ont chacun leur interrupteur sur l’ordinateur : détails des sessions, réponses aux questions de Claude, fichiers modifiés, consommation du forfait, tes services et le chat. Avec le chat, tes messages vont du téléphone à ton ordinateur, qui les envoie au fournisseur d’IA que tu as choisi avec la clé enregistrée sur l’ordinateur (la clé n’arrive jamais sur le téléphone), comme son propre chat ; la politique de confidentialité de ce fournisseur s’applique.</p>
+<p>L’app n’a ni publicité, ni analytique, ni rapport de plantage, et elle désactive les sauvegardes Android pour ses données. Les écrans d’association, de chat et d’approbation ne peuvent pas être capturés. Désinstaller l’app supprime tout ce qu’elle a stocké ; couper le lien sur ton ordinateur arrête tout de ce côté.</p>
+
+<h2>11. Enfants</h2>
 <p>Coucou est un outil pour développeurs, il ne s’adresse pas aux enfants.</p>
 
-<h2>11. Tes droits</h2>
+<h2>12. Tes droits</h2>
 <p>Le développeur ne détenant aucune donnée personnelle te concernant (le relais ne garde rien), il n’y a rien à consulter, corriger ou supprimer de son côté. Pour les données détenues par un service que tu as connecté, contacte ce service. Tu peux aussi saisir la <a href="https://www.cnil.fr">CNIL</a>.</p>
 
-<h2>12. Modifications</h2>
+<h2>13. Modifications</h2>
 <p>En cas de changement, la nouvelle version sera publiée sur cette page avec une nouvelle date.</p>
 </section>
 <footer>© 2026 Louis Raillé · Coucou’s code is open source (MIT) · <a href="https://github.com/Louis-CFM/coucou">GitHub</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="legal.html">Legal notice</a></footer></div></body></html>
