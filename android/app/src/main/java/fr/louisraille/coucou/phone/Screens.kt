@@ -213,20 +213,21 @@ fun HomeScreen(vm: CoucouViewModel) {
                     }
                 }
 
-                // One section per CLI — each opens its full chat history.
-                box?.state?.chatSessions.orEmpty()
-                    .groupBy { it.agent }
-                    .toSortedMap()
-                    .forEach { (agent, list) ->
-                        item {
-                            AgentSection(
-                                agent = agent,
-                                sessions = list.sortedByDescending { it.at },
-                                onPick = { s -> vm.selectSession(s); vm.navigate(CoucouViewModel.Screen.CHAT) },
-                                onAll = { vm.openPicker(agent) },
-                            )
-                        }
+                // One CLI at a time — the header's ▾ switches which agent shows.
+                run {
+                    val all = box?.state?.chatSessions.orEmpty()
+                    val agents = (listOf("devin", "claude", "codex", "opencode") + all.map { it.agent }).distinct()
+                    item {
+                        AgentSection(
+                            agent = vm.pickerAgent,
+                            agents = agents,
+                            sessions = all.filter { it.agent == vm.pickerAgent }.sortedByDescending { it.at },
+                            onAgent = { vm.pickAgent(it) },
+                            onPick = { s -> vm.selectSession(s); vm.navigate(CoucouViewModel.Screen.CHAT) },
+                            onAll = { vm.openPicker(vm.pickerAgent) },
+                        )
                     }
+                }
 
                 if (sessions.isEmpty() && card == null) {
                     item { EmptyCard(box != null) }
@@ -423,14 +424,17 @@ private fun ChatEntryCard(tail: List<Relay.ChatLine>, onOpen: () -> Unit) {
     }
 }
 
-/** One agent's section on Home: header + its three newest CLI sessions. */
+/** One agent's section on Home: ▾-switchable header + its three newest sessions. */
 @Composable
 private fun AgentSection(
     agent: String,
+    agents: List<String>,
     sessions: List<Relay.ChatSession>,
+    onAgent: (String) -> Unit,
     onPick: (Relay.ChatSession) -> Unit,
     onAll: () -> Unit,
 ) {
+    var menu by remember { mutableStateOf(false) }
     Column {
         Row(
             Modifier
@@ -438,13 +442,37 @@ private fun AgentSection(
                 .padding(start = 4.dp, bottom = 6.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                agentTitle(agent),
-                color = Coucou.Secondary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-            )
+            Box {
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { menu = true }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        agentTitle(agent),
+                        color = Coucou.Secondary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(" ▾", color = Coucou.Tertiary, fontSize = 13.sp)
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    agents.forEach { a ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    agentTitle(a),
+                                    fontWeight = if (a == agent) FontWeight.Bold else FontWeight.Normal,
+                                )
+                            },
+                            onClick = { onAgent(a); menu = false },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.weight(1f))
             Text(
                 "All ${sessions.size} ›",
                 color = Coucou.Tertiary,
@@ -457,6 +485,14 @@ private fun AgentSection(
         }
         CoucouCard(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
+                if (sessions.isEmpty()) {
+                    Text(
+                        "No ${agentTitle(agent)} chats on this PC",
+                        color = Coucou.Tertiary,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 14.dp),
+                    )
+                }
                 sessions.take(3).forEachIndexed { i, s ->
                     CliSessionRow(s, onClick = { onPick(s) })
                     if (i < sessions.take(3).size - 1) {
