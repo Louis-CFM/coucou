@@ -540,6 +540,7 @@ final class HookServer: @unchecked Sendable {
             } else {
                 setPillBadge(id: agentId, badge: .finished)
             }
+            let badgeAtStop = badgeSeq[agentId]
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
                 // A newer event may already have moved the pill past .finished —
                 // pulling a live session back to idle, or dropping its pill,
@@ -551,7 +552,10 @@ final class HookServer: @unchecked Sendable {
                 } else if stillFinished {
                     AppState.shared.updateTask(id: agentId, state: .idle)
                 }
-                self.clearPillBadge(id: agentId)
+                // …but the badge itself is only removed when it is still the
+                // one this Stop set — never a newer alert (error, a later
+                // finished, an approval) that arrived inside the window.
+                if self.badgeSeq[agentId] == badgeAtStop { self.clearPillBadge(id: agentId) }
             }
 
         case "StopFailure":
@@ -575,7 +579,16 @@ final class HookServer: @unchecked Sendable {
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
-            state.removeTask(id: agentId)
+            if state.pendingApproval?.pillId == agentId {
+                // A different session of this agent still has a permission card
+                // up — its own SessionEnd dismisses it above and clears
+                // pendingApproval first, so reaching here means this end belongs
+                // to a sibling session. Removing the shared pill would orphan
+                // the card; keep the pill and let it show the pending state.
+                state.updateTask(id: agentId, state: .approval)
+            } else {
+                state.removeTask(id: agentId)
+            }
             RecapStore.shared.sessionEnd(sessionId: recapSessionId)
 
         case "SubagentStart":
@@ -1016,10 +1029,16 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Badge helpers
 
+    /// Per-pill badge sequence: every set bumps it, so a delayed cleanup can
+    /// tell "the badge I set is still the one shown" apart from "a newer event
+    /// already replaced it" — without guessing from the badge value.
+    @MainActor private var badgeSeq: [String: Int] = [:]
+
     @MainActor
     private func setPillBadge(id: String, badge: PillBadge) {
         let state = AppState.shared
         guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
+        badgeSeq[id, default: 0] += 1
         state.tasks[idx].pillBadge = badge
     }
 

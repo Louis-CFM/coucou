@@ -414,10 +414,12 @@ struct CountdownBar: View {
                 .cornerRadius(2)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .onAppear { startTimer(); syncTimer() }
-        .onDisappear { timer?.invalidate() }
-        // The bar only counts down while the island is expanded — paused, the
-        // 10 Hz tick costs nothing while it is collapsed or hidden. (isPinned
+        .onAppear { syncTimer() }
+        .onDisappear { timer?.invalidate(); timer = nil }
+        // The bar only counts down while the island is expanded — the 10 Hz
+        // tick is dropped entirely while collapsed or hidden by tearing the
+        // timer down rather than pausing it (Foundation.Timer has no isPaused;
+        // invalidate + recreate is the reliable way to start/stop). (isPinned
         // is not @Published; updateBar still guards on it inside.)
         .onChange(of: state.mode) { _, _ in syncTimer() }
     }
@@ -428,10 +430,13 @@ struct CountdownBar: View {
         }
     }
 
+    /// Keeps exactly one timer alive while expanded and none otherwise: the old
+    /// timer is always invalidated before a new one is scheduled, so there can
+    /// never be two ticking or a stale callback.
     private func syncTimer() {
-        let active = state.mode == .expanded
-        timer?.isPaused = !active
-        if !active { barWidth = 0 }
+        timer?.invalidate()
+        timer = nil
+        if state.mode == .expanded { startTimer() } else { barWidth = 0 }
     }
 
     private func updateBar() {

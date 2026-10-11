@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/coucou-project-colors.XXXXXX")"
+trap 'rm -rf "$TEST_DIR"' EXIT
+swiftc NotchBuddy/Sources/CoucouKit/IslandTypes.swift \
+    NotchBuddy/Sources/CoucouKit/IslandScreenGeometry.swift \
+    tests/ProjectColorFoldTests.swift -o "$TEST_DIR/project-colors-tests"
+"$TEST_DIR/project-colors-tests"
