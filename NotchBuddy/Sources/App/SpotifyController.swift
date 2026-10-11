@@ -158,8 +158,11 @@ final class SpotifyController: ObservableObject {
         guard isPillActive else { return }
         if state == "Stopped" { clearState(); return }
 
+        let wasPlaying = isPlaying
+        var newSong = false
         if let trackId, !trackId.isEmpty {
             let same = track?.id == trackId
+            newSong = !same && !trackId.hasPrefix("spotify:ad:")
             let newTrack = SpotifyTrack(
                 id: trackId,
                 title: Self.shortTitle(name ?? ""),
@@ -172,6 +175,9 @@ final class SpotifyController: ObservableObject {
         }
         if let position { anchor(position) }
         setPlaying(state == "Playing")
+        if newSong && wasPlaying && isPlaying {
+            AppState.shared.openForAlert("integration_spotify", pill: "integration_spotify")
+        }
 
         // The notification carries no artwork, shuffle, repeat or volume: read them when we may,
         // otherwise find the artwork through Spotify's public oEmbed.

@@ -92,3 +92,31 @@ test("an integration alert peeks, or opens its pill's card when asked", () => {
   assert.deepEqual(asked, ["alert:overview"]);
   assert.equal(State.focusId, VERCEL);
 });
+
+test("a new song while music plays opens the Spotify card when asked, an ad never does", async () => {
+  const { applySpotify } = await import("../src/island/spotify.ts");
+  const { Spotify } = await import("../src/core/spotify.ts");
+  const host = { ...island, revealSilently: () => asked.push("revealSilently") };
+  const play = (id) => ({ ...Spotify.state, running: true, playing: true, track: { id, title: id, artist: "", album: "", duration: 200, artUrl: null } });
+  const withSpotify = () => {
+    State.os = "linux";
+    State.settings.activeIntegrations = [...State.settings.activeIntegrations, "integration_spotify"];
+    State.loadIntegrationTasks();
+  };
+  withSpotify();
+  State.mode = "compact";
+  applySpotify(host, play("spotify:track:a"));
+  asked = [];
+  applySpotify(host, play("spotify:track:b"));
+  assert.deepEqual(asked, []);
+
+  expandOn("integration_spotify");
+  withSpotify();
+  applySpotify(host, play("spotify:track:c"));
+  assert.deepEqual(asked, ["alert:overview"]);
+  asked = [];
+  State.mode = "compact";
+  applySpotify(host, play("spotify:track:c"));
+  applySpotify(host, play("spotify:ad:x"));
+  assert.deepEqual(asked, []);
+});

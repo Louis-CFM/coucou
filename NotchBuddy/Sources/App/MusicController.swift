@@ -137,6 +137,7 @@ final class MusicController: ObservableObject {
 
         let playing = playerState == "Playing"
         let wasPlaying = AppState.shared.musicPlaying
+        let previousTitle = trackTitle
 
         trackTitle = name.map { Self.shortTitle($0) }.flatMap { $0.isEmpty ? nil : $0 }
         artist     = inputArtist.map { Self.shortArtist($0) }.flatMap { $0.isEmpty ? nil : $0 }
@@ -148,6 +149,9 @@ final class MusicController: ObservableObject {
         // Reveal only on transition from not-playing → playing
         if playing && !wasPlaying && !AppState.shared.openForAlert("integration_music", pill: "integration_music") {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
+        }
+        if playing && wasPlaying && trackTitle != nil && trackTitle != previousTitle {
+            AppState.shared.openForAlert("integration_music", pill: "integration_music")
         }
     }
 
@@ -177,6 +181,7 @@ final class MusicController: ObservableObject {
             guard case .success(let values) = result, values.count >= 4 else { return }
             let playing    = values[0] == "playing"
             let wasPlaying = AppState.shared.musicPlaying
+            let previousTitle = trackTitle
             trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
             artist     = values[2].isEmpty ? nil : Self.shortArtist(values[2])
             album      = values[3].isEmpty ? nil : values[3]
@@ -184,6 +189,9 @@ final class MusicController: ObservableObject {
             syncTaskName()
             if playing && !wasPlaying && !AppState.shared.openForAlert("integration_music", pill: "integration_music") {
                 NotificationCenter.default.post(name: .musicReveal, object: nil)
+            }
+            if playing && wasPlaying && trackTitle != nil && trackTitle != previousTitle {
+                AppState.shared.openForAlert("integration_music", pill: "integration_music")
             }
         }
     }

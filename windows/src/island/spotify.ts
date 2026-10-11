@@ -31,8 +31,13 @@ export function registerSpotifyHandlers(island: SpotifyHost) {
 /** A report from Rust (or the answer to a refresh). */
 export function applySpotify(island: SpotifyHost, next: SpotifyState) {
   const wasPlaying = State.spotifyPlaying;
+  const previousId = Spotify.state.track?.id;
   Spotify.state = next;
   syncPillName();
+  const newSong = wasPlaying && State.spotifyPlaying && !!next.track && next.track.id !== previousId && !isAd(next.track);
+  if (newSong) {
+    openForAlert(island, SPOTIFY_ID, SPOTIFY_ID, "overview");
+  }
   // Only on not playing → playing (SpotifyController.setPlaying).
   if (!wasPlaying && State.spotifyPlaying && !openForAlert(island, SPOTIFY_ID, SPOTIFY_ID, "overview") &&
     !State.paused && State.mode === "hidden") {
