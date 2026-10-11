@@ -412,6 +412,8 @@ final class AppState: ObservableObject {
 
     // The Claude Code session the last finished card belongs to, for its "Open terminal"
     var finishedLink: SessionLink? = nil
+    // The session that asked the question on the card, for "jump to terminal"
+    var questionLink: SessionLink? = nil
 
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
@@ -585,7 +587,7 @@ final class AppState: ObservableObject {
     var cardLink: SessionLink? {
         switch view {
         case .approval: pendingApproval?.link
-        case .question: pendingQuestion?.link
+        case .question: questionLink
         case .finished: finishedLink
         default:        nil
         }

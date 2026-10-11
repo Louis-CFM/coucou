@@ -26,7 +26,6 @@ extension AskQuestionItem {
 
 struct AskQuestion: Equatable {
     var questions: [AskQuestionItem]   // 1–4 questions
-    var link: SessionLink? = nil       // the session that asked, for "jump to terminal"
 
     /// Island height that fits the tallest question without truncation (rough estimate, text wraps at ~500 pt).
     var estimatedIslandHeight: CGFloat {

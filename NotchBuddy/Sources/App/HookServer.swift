@@ -1012,9 +1012,8 @@ final class HookServer: @unchecked Sendable {
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
-        var question = parsed
-        question.link = SessionLink(hostApp: terminalHost?.bundleId, hostURL: ClaudeHost.sessionURL(from: payload))
-        state.pendingQuestion = question
+        state.pendingQuestion = parsed
+        state.questionLink = SessionLink(hostApp: terminalHost?.bundleId, hostURL: ClaudeHost.sessionURL(from: payload))
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
