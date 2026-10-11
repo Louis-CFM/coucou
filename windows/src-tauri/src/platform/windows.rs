@@ -362,6 +362,39 @@ pub fn pipe_client_pid(handle: RawHandle) -> Option<u32> {
     (pid != 0).then_some(pid)
 }
 
+/// True when `pid` is the deployed relay binary — the only process allowed to
+/// raise an Allow/Deny card on the island (see pipe.rs). Compared by resolved
+/// image path, case-insensitively.
+pub fn exe_is_hook(pid: u32) -> bool {
+    use ::windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    let Some(want) = std::fs::canonicalize(crate::settings::hook_exe_path()).ok() else {
+        return false;
+    };
+    unsafe {
+        let Ok(proc) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
+            return false;
+        };
+        let mut buf = vec![0u16; 32768];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(proc, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(proc);
+        if !ok {
+            return false;
+        }
+        let got = PathBuf::from(String::from_utf16_lossy(&buf[..len as usize]));
+        // canonicalize() emits \\?\C:\… — QueryFullProcessImageNameW does not.
+        let strip = |p: &std::path::Path| {
+            p.to_string_lossy()
+                .trim_start_matches(r"\\?\")
+                .to_lowercase()
+        };
+        strip(&got) == strip(&want)
+    }
+}
+
 /// Every process, by ID: its parent and its executable's name.
 fn process_table() -> HashMap<u32, Proc> {
     let mut out = HashMap::new();
