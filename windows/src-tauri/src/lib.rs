@@ -191,6 +191,18 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     island::apply_geometry(&app, &pref, collapsed);
 }
 
+/// Sets the calling page's zoom. The island asks for this at launch when the
+/// desktop's text scaling has zoomed the whole page (see fitPageToWindow in
+/// main.ts); anything outside a sane range is ignored.
+#[tauri::command]
+fn set_page_zoom(window: tauri::WebviewWindow, zoom: f64) {
+    if zoom.is_finite() && (0.25..=4.0).contains(&zoom) {
+        if let Err(err) = window.set_zoom(zoom) {
+            log::line(format!("page zoom {zoom}: {err}"));
+        }
+    }
+}
+
 /// The displays the island can be pinned to, for Settings.
 #[tauri::command]
 fn list_monitors(app: AppHandle) -> Vec<island::MonitorChoice> {
@@ -681,6 +693,7 @@ pub fn run() {
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
             boot,
+            set_page_zoom,
             save_settings,
             set_system_languages,
             set_collapsed,
