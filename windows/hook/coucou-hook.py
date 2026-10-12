@@ -98,6 +98,23 @@ def mark_answered(key):
         pass
 
 
+def claude_session_name(home, session_id):
+    """The name given with /rename, from Claude Code's session registry."""
+    if not home or not isinstance(session_id, str) or not session_id:
+        return ""
+    folder = os.path.join(home, ".claude", "sessions")
+    try:
+        for f in os.listdir(folder):
+            if f.endswith(".json"):
+                with open(os.path.join(folder, f)) as fh:
+                    s = json.load(fh)
+                if s.get("sessionId") == session_id:
+                    return str(s.get("name") or "")
+    except (OSError, ValueError):
+        pass
+    return ""
+
+
 def prepare(raw, arg_event, env, cwd):
     """(line, event name, AskUserQuestion input, answered key) to forward, or None."""
     if raw.startswith(b"\xef\xbb\xbf"):
@@ -122,6 +139,12 @@ def prepare(raw, arg_event, env, cwd):
         payload.pop(field, None)
     if not payload.get("cwd") and cwd:
         payload["cwd"] = cwd
+    # The session's own name (Claude Code's /rename) and the home folder, for the pill's name.
+    name_given = claude_session_name(env.get("HOME", ""), payload.get("session_id"))
+    if name_given:
+        payload["session_name"] = name_given
+    if env.get("HOME"):
+        payload["home"] = env["HOME"]
     for field, var in (("term_program", "TERM_PROGRAM"), ("wt_session", "WT_SESSION"),
                      ("term_session_id", "TERM_SESSION_ID"), ("vscode_pid", "VSCODE_PID"),
                      ("session_pid", "CLAUDE_CODE_SSE_PORT")):
