@@ -240,12 +240,12 @@ export const Bridge = {
   /** The conversation is over: the wake word listener takes the mic back. */
   voiceConversationEnded: () => call<void>("voice_conversation_ended"),
   /** A one-time WebSocket URL for the user's ElevenLabs agent (eleven.rs). */
-  elevenSignedUrl: (agentId: string | null) => call<string>("eleven_signed_url", { agentId }),
+  elevenSignedUrl: (agentId: string | null) => callOrThrow<string>("eleven_signed_url", { agentId }),
   /** The agent's ask_hermes tool: one request to Hermes on this PC. */
-  askHermes: (request: string) => call<string>("ask_hermes", { request }),
+  askHermes: (request: string) => callOrThrow<string>("ask_hermes", { request }),
   /** An installed app by name, from the Start menu (Store apps too); its name. */
-  openApp: (name: string) => call<string>("open_app", { name }),
-  lockScreen: () => call<void>("lock_screen"),
+  openApp: (name: string) => callOrThrow<string>("open_app", { name }),
+  lockScreen: () => callOrThrow<void>("lock_screen"),
   /** The volume keys' own step: up, down or mute, with the island's HUD. */
   volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */

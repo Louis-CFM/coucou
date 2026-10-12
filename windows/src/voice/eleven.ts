@@ -196,8 +196,14 @@ export async function startConversation(liveHost: LiveHost, agentId: string) {
   try {
     url = await Bridge.elevenSignedUrl(agentId || null);
   } catch (e) {
+    url = null;
     caption(String(e).replace(/^Error:\s*/, ""));
-    window.setTimeout(ended, 4000);
+  }
+  if (!url) {
+    // The bridge can swallow the error: say what failed instead of a dead socket.
+    if (Live.current?.text === t("Connecting…")) caption(t("ElevenLabs refused the key or the agent."));
+    Sound.play("close");
+    window.setTimeout(ended, 6000);
     return;
   }
   let stream: MediaStream;

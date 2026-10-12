@@ -15,7 +15,7 @@ use crate::i18n::t;
 
 pub const KEY: &str = "elevenlabs-api-key";
 /// The agent created for Maki on the user's ElevenLabs account.
-pub const DEFAULT_AGENT: &str = "agent_1001m4q3zm64emqtn3ay9jk246m8";
+pub const DEFAULT_AGENT: &str = "agent_8401m4q6khr6f6xsz32805aq1fve";
 const HERMES_TIMEOUT: Duration = Duration::from_secs(115);
 const HERMES_MAX: usize = 4000;
 
@@ -126,7 +126,7 @@ static APPS: std::sync::Mutex<Vec<(String, String)>> = std::sync::Mutex::new(Vec
 /// Every app in the Start menu, desktop and Store, as (name, AppID).
 fn start_apps() -> Vec<(String, String)> {
     let mut cmd = Command::new("powershell.exe");
-    cmd.args(["-NoProfile", "-NonInteractive", "-Command", "Get-StartApps | ForEach-Object { $_.Name + \"`t\" + $_.AppID }"])
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", "Get-StartApps | ForEach-Object { $_.Name + [char]9 + $_.AppID }"])
         .stdin(Stdio::null())
         .stderr(Stdio::null());
     crate::platform::no_console(&mut cmd);
