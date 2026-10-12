@@ -1,10 +1,9 @@
-// The Spotify pill on the page: what src-tauri/src/spotify.rs reports (Linux,
-// through MPRIS), and the pure rules the views and Mochi follow — ports of
+// The Spotify pill on the page: what src-tauri/src/spotify.rs reports (Linux
+// through MPRIS, Windows through SMTC), and the pure rules the views and Mochi follow — ports of
 // SpotifyController.swift, NowPlayingViews.swift and the Mac's dance rules
 // (BotCanvasView, DesktopMochi.swift).
 //
-// Windows has no music source yet: nothing ever reports a track there, so
-// nothing plays and Mochi never dances, through the same code.
+// SMTC has no volume, so on Windows the volume stays where it is.
 
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 

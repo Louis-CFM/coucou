@@ -59,6 +59,14 @@ windows = { version = "0.61", features = [
   "Win32_System_Pipes",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
+  # The Spotify pill reads Spotify's media session (spotify_windows.rs): SMTC,
+  # its cover stream, and the WinRT apartment its thread needs.
+  "Win32_System_WinRT",
+  "Foundation",
+  "Foundation_Collections",
+  "Media",
+  "Media_Control",
+  "Storage_Streams",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }

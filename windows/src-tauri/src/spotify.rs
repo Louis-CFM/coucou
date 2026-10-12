@@ -1,4 +1,4 @@
-// The Spotify pill — port of SpotifyController.swift, Linux only.
+// The Spotify pill — port of SpotifyController.swift, for Linux and Windows.
 //
 // The Mac listens to Spotify's distributed notification and drives it over
 // AppleScript. Linux has MPRIS instead: Spotify owns
@@ -13,9 +13,11 @@
 // the card comes on screen; the page runs it on from a timestamp while playing,
 // as the Mac's `position(at:)` does. Turning the pill off ends the thread.
 //
-// Windows has no music source yet: the commands answer "nothing playing".
+// Windows has SMTC instead (spotify_windows.rs): Spotify publishes its track,
+// playback status, shuffle and repeat to the system media transport controls,
+// and takes play/pause, skip and seek from them. SMTC has no volume.
 
-// The pure parts below are only reached from the Linux client and the tests.
+// The pure parts below are only reached from the Linux and Windows clients and the tests.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
 use serde::Serialize;
@@ -23,6 +25,9 @@ use tauri::AppHandle;
 
 pub const PILL_ID: &str = "integration_spotify";
 /// Where "Get Spotify" leads when it isn't installed.
+#[cfg(windows)]
+pub const DOWNLOAD_URL: &str = "https://www.spotify.com/download/windows/";
+#[cfg(not(windows))]
 pub const DOWNLOAD_URL: &str = "https://www.spotify.com/download/linux/";
 /// Island events: the player's state, and a track's cover as a data URL.
 const STATE_EVENT: &str = "spotify";
@@ -340,6 +345,79 @@ pub fn short_artist(raw: &str) -> String {
     raw.to_string()
 }
 
+// ── SMTC values (Windows) ─────────────────────────────────────────────────────
+
+/// Whether a media session belongs to Spotify, from its AppUserModelId:
+/// `Spotify.exe` for the desktop build, `SpotifyAB.SpotifyMusic_…!Spotify` for
+/// the Store one. Browsers and other players are never taken for it.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn is_spotify_source(app_user_model_id: &str) -> bool {
+    app_user_model_id.to_ascii_lowercase().contains("spotify")
+}
+
+/// SMTC gives no track id, and Spotify's ads come with this title and artist.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn is_smtc_ad(title: &str, artist: &str) -> bool {
+    title.trim().eq_ignore_ascii_case("advertisement") && artist.trim().eq_ignore_ascii_case("spotify")
+}
+
+/// FNV-1a: a stable key for "this title, by this artist, on this album".
+#[cfg_attr(not(windows), allow(dead_code))]
+fn smtc_key(title: &str, artist: &str, album: &str) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for part in [title, artist, album] {
+        for byte in part.bytes().chain(std::iter::once(0)) {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    }
+    format!("{hash:016x}")
+}
+
+/// SMTC's media properties → the track, or None when nothing is loaded. The id
+/// is made up (`smtc:<key>`, or `spotify:ad:smtc` for an ad) and so is the
+/// cover's key: the picture itself is read from the session, not fetched.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn smtc_track(title: &str, artist: &str, album: &str, duration: f64, has_cover: bool) -> Option<Track> {
+    if title.trim().is_empty() {
+        return None;
+    }
+    let ad = is_smtc_ad(title, artist);
+    let key = smtc_key(title, artist, album);
+    Some(Track {
+        id: if ad { "spotify:ad:smtc".to_string() } else { format!("smtc:{key}") },
+        title: short_title(title),
+        artist: short_artist(artist),
+        album: album.to_string(),
+        duration: duration.max(0.0),
+        art_url: has_cover.then(|| format!("{SMTC_ART_SCHEME}{key}")),
+        object_path: String::new(),
+    })
+}
+
+/// The `art_url` of a cover that comes from SMTC.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub const SMTC_ART_SCHEME: &str = "smtc-art:";
+
+/// Windows ticks (100 ns since 1601-01-01, a `DateTime.UniversalTime`) → Unix ms.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn universal_ticks_to_unix_ms(ticks: i64) -> Option<f64> {
+    const EPOCH_DIFF_MS: f64 = 11_644_473_600_000.0;
+    (ticks > 0).then(|| ticks as f64 / 10_000.0 - EPOCH_DIFF_MS)
+}
+
+/// SMTC reports the position as it was at `last_updated_ms`; while playing it has
+/// run on since. Without a usable timestamp the position is taken as it is.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn smtc_position(position: f64, last_updated_ms: Option<f64>, playing: bool, now_ms: f64, duration: f64) -> f64 {
+    let elapsed = match last_updated_ms {
+        Some(at) if playing && now_ms > at => (now_ms - at) / 1000.0,
+        _ => 0.0,
+    };
+    let p = (position + elapsed).max(0.0);
+    if duration > 0.0 { p.min(duration) } else { p }
+}
+
 // ── Artwork ───────────────────────────────────────────────────────────────────
 
 /// Where a cover may be read from. The URL comes from another program: only
@@ -424,7 +502,11 @@ pub async fn spotify_refresh(app: AppHandle) -> Option<PlayerState> {
     {
         tauri::async_runtime::spawn_blocking(move || linux::refresh(&linux::Out::App(app))).await.ok().flatten()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(move || windows_smtc::refresh(&app)).await.ok().flatten()
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = app;
         None
@@ -439,7 +521,11 @@ pub async fn spotify_control(app: AppHandle, action: String, value: Option<f64>)
     {
         tauri::async_runtime::spawn_blocking(move || linux::control(&linux::Out::App(app), &action, value)).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(move || windows_smtc::control(&app, &action, value)).await.unwrap_or(false)
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = (app, action, value);
         false
@@ -454,7 +540,11 @@ pub async fn spotify_open() -> bool {
     {
         tauri::async_runtime::spawn_blocking(linux::open).await.unwrap_or(false)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(windows_smtc::open).await.unwrap_or(false)
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         false
     }
@@ -467,7 +557,11 @@ pub fn spotify_installed() -> bool {
     {
         linux::installed()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    {
+        windows_smtc::installed()
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         false
     }
@@ -478,9 +572,17 @@ pub fn spotify_installed() -> bool {
 pub fn sync(app: &AppHandle, active_integrations: &[String]) {
     #[cfg(target_os = "linux")]
     linux::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
+    windows_smtc::sync(app, active_integrations.iter().any(|id| id == PILL_ID));
+    #[cfg(not(any(target_os = "linux", windows)))]
     let _ = (app, active_integrations);
 }
+
+// ── Windows: SMTC ─────────────────────────────────────────────────────────────
+
+#[cfg(windows)]
+#[path = "spotify_windows.rs"]
+mod windows_smtc;
 
 // ── Linux: MPRIS over D-Bus ───────────────────────────────────────────────────
 
@@ -1321,6 +1423,76 @@ mod linux {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_spotify_sessions_are_taken_for_spotify() {
+        assert!(is_spotify_source("Spotify.exe"));
+        assert!(is_spotify_source("SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify"));
+        assert!(!is_spotify_source("chrome.exe"));
+        assert!(!is_spotify_source("Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic"));
+        assert!(!is_spotify_source(""));
+    }
+
+    #[test]
+    fn an_smtc_track_gets_a_stable_made_up_id_and_cover_key() {
+        let a = smtc_track("Get Lucky - Radio Edit", "Daft Punk feat. Pharrell", "RAM", 248.0, true).unwrap();
+        let b = smtc_track("Get Lucky - Radio Edit", "Daft Punk feat. Pharrell", "RAM", 248.0, true).unwrap();
+        let other = smtc_track("Lose Yourself to Dance", "Daft Punk feat. Pharrell", "RAM", 353.0, true).unwrap();
+        assert_eq!(a.id, b.id);
+        assert_eq!(a.art_url, b.art_url);
+        assert_ne!(a.id, other.id);
+        assert_ne!(a.art_url, other.art_url);
+        assert!(a.id.starts_with("smtc:"));
+        assert!(a.art_url.as_deref().unwrap().starts_with(SMTC_ART_SCHEME));
+        assert_eq!((a.title.as_str(), a.artist.as_str()), ("Get Lucky", "Daft Punk"));
+        assert_eq!(a.duration, 248.0);
+        assert!(a.object_path.is_empty());
+    }
+
+    #[test]
+    fn an_smtc_track_without_a_cover_has_no_cover_key() {
+        assert_eq!(smtc_track("Song", "Artist", "", 10.0, false).unwrap().art_url, None);
+    }
+
+    #[test]
+    fn nothing_loaded_is_no_track() {
+        assert_eq!(smtc_track("", "Artist", "Album", 10.0, true), None);
+        assert_eq!(smtc_track("   ", "", "", 0.0, false), None);
+    }
+
+    #[test]
+    fn a_spotify_ad_is_recognised_as_one() {
+        let ad = smtc_track("Advertisement", "Spotify", "", 30.0, true).unwrap();
+        assert_eq!(ad.id, "spotify:ad:smtc");
+        let song = smtc_track("Advertisement", "A band", "", 200.0, true).unwrap();
+        assert!(song.id.starts_with("smtc:"));
+    }
+
+    #[test]
+    fn the_key_does_not_confuse_field_boundaries() {
+        assert_ne!(smtc_key("ab", "c", ""), smtc_key("a", "bc", ""));
+    }
+
+    #[test]
+    fn windows_ticks_become_unix_milliseconds() {
+        // 1970-01-01 is 11 644 473 600 s after 1601-01-01.
+        assert_eq!(universal_ticks_to_unix_ms(116_444_736_000_000_000), Some(0.0));
+        assert_eq!(universal_ticks_to_unix_ms(116_444_736_010_000_000), Some(1000.0));
+        assert_eq!(universal_ticks_to_unix_ms(0), None);
+        assert_eq!(universal_ticks_to_unix_ms(-5), None);
+    }
+
+    #[test]
+    fn the_smtc_position_runs_on_while_playing_and_stays_put_otherwise() {
+        assert_eq!(smtc_position(10.0, Some(1_000.0), true, 4_000.0, 200.0), 13.0);
+        assert_eq!(smtc_position(10.0, Some(1_000.0), false, 4_000.0, 200.0), 10.0);
+        assert_eq!(smtc_position(10.0, None, true, 4_000.0, 200.0), 10.0);
+        // A timestamp from the future (clock skew) never moves it backwards.
+        assert_eq!(smtc_position(10.0, Some(9_000.0), true, 4_000.0, 200.0), 10.0);
+        // Capped at the end of the track.
+        assert_eq!(smtc_position(198.0, Some(0.0), true, 10_000.0, 200.0), 200.0);
+        assert_eq!(smtc_position(-3.0, None, false, 0.0, 0.0), 0.0);
+    }
 
     fn s(v: &str) -> Value {
         Value::Str(v.into())
