@@ -57,6 +57,12 @@
             "value": " готов."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " đã sẵn sàng."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -119,6 +125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — открыть Spotify"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — mở Spotify"
           }
         },
         "zh-Hans": {
@@ -185,6 +197,12 @@
             "value": "своих: %lld"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tùy chỉnh"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -247,6 +265,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "АВТО"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TỰ ĐỘNG"
           }
         },
         "zh-Hans": {
@@ -313,6 +337,12 @@
             "value": "Активные вкладки"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các pill đang bật"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -375,6 +405,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Активность"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoạt động"
           }
         },
         "zh-Hans": {
@@ -441,6 +477,12 @@
             "value": "Реклама"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quảng cáo"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -503,6 +545,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Агенты"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
           }
         },
         "zh-Hans": {
@@ -569,6 +617,12 @@
             "value": "Разрешить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho phép"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -631,6 +685,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрешить Coucou управлять Music"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho phép Coucou điều khiển Music"
           }
         },
         "zh-Hans": {
@@ -697,6 +757,12 @@
             "value": "Разрешить Coucou управлять Spotify"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho phép Coucou điều khiển Spotify"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -759,6 +825,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Всегда"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luôn luôn"
           }
         },
         "zh-Hans": {
@@ -825,6 +897,12 @@
             "value": "Применится при следующем запуске"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áp dụng ở lần khởi động sau"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -887,6 +965,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Спросить Claude"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hỏi Claude"
           }
         },
         "zh-Hans": {
@@ -953,6 +1037,12 @@
             "value": "Задать вопрос"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt câu hỏi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1015,6 +1105,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Задать вопрос"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt câu hỏi về tệp này"
           }
         },
         "zh-Hans": {
@@ -1081,6 +1177,12 @@
             "value": "Спроси меня о чём угодно…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hỏi tớ gì cũng được…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1143,6 +1245,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автозакрытие · %lld с"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tự đóng · %lld giây"
           }
         },
         "zh-Hans": {
@@ -1209,6 +1317,12 @@
             "value": "Автоматизация не разрешена"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không được phép tự động hóa"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1271,6 +1385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Поведение"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hành vi"
           }
         },
         "zh-Hans": {
@@ -1337,6 +1457,12 @@
             "value": "Отмена"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1399,6 +1525,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Чат"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat"
           }
         },
         "zh-Hans": {
@@ -1465,6 +1597,12 @@
             "value": "Чат с %@"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat với %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1527,6 +1665,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выбери инструменты, которые ты используешь. Coucou показывает только то, что ты здесь объявишь."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn các công cụ bạn dùng. Coucou chỉ hiện những gì bạn khai báo ở đây."
           }
         },
         "zh-Hans": {
@@ -1593,6 +1737,12 @@
             "value": "Claude Code завершил"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code xong việc rồi!"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1655,6 +1805,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code спрашивает"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code đang hỏi"
           }
         },
         "zh-Hans": {
@@ -1721,6 +1877,12 @@
             "value": "Claude читает %@…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude đang đọc %@…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1783,6 +1945,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude ищет…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude đang tìm kiếm…"
           }
         },
         "zh-Hans": {
@@ -1849,6 +2017,12 @@
             "value": "Очистить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -1911,6 +2085,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Очистить историю"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa lịch sử"
           }
         },
         "zh-Hans": {
@@ -1977,6 +2157,12 @@
             "value": "Закрыть"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2039,6 +2225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закрыть через"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng sau"
           }
         },
         "zh-Hans": {
@@ -2105,6 +2297,12 @@
             "value": "Цвет"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Màu"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2167,6 +2365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скоро"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp có"
           }
         },
         "zh-Hans": {
@@ -2233,6 +2437,12 @@
             "value": "Завершено успешно."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hoàn thành."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2295,6 +2505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключено"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối"
           }
         },
         "zh-Hans": {
@@ -2361,6 +2577,12 @@
             "value": "Подключено · %@"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối · %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2423,6 +2645,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключено · загрузка…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối · đang tải…"
           }
         },
         "zh-Hans": {
@@ -2489,6 +2717,12 @@
             "value": "Продолжить…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2551,6 +2785,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скопировать"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép"
           }
         },
         "zh-Hans": {
@@ -2617,6 +2857,12 @@
             "value": "По умолчанию"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mặc định"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2628,12 +2874,6 @@
     "Demo mode": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo mode"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -2644,6 +2884,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো মোড"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo mode"
           }
         },
         "es": {
@@ -2680,6 +2926,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демо-режим"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chế độ demo"
           }
         },
         "zh-Hans": {
@@ -2746,6 +2998,12 @@
             "value": "Отклонено"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã từ chối"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2808,6 +3066,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отклонить"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ chối"
           }
         },
         "zh-Hans": {
@@ -2874,6 +3138,12 @@
             "value": "Деплои"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Triển khai"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -2936,6 +3206,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Diff слишком большой"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff quá lớn"
           }
         },
         "zh-Hans": {
@@ -3002,6 +3278,12 @@
             "value": "Черновик"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bản nháp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3064,6 +3346,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Положите в папку звуков файл с именем одного из звуков Mochi (finish.wav, approval.mp3, greet.m4a…), чтобы заменить его, затем перезагрузите."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thả một tệp đặt tên giống một trong các âm thanh của Mochi (finish.wav, approval.mp3, greet.m4a…) vào thư mục sounds để thay thế, rồi bấm Tải lại."
           }
         },
         "zh-Hans": {
@@ -3130,6 +3418,12 @@
             "value": "Брось файл или окно, или спроси меня о чём угодно."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thả một tệp hoặc cửa sổ, hoặc hỏi tôi bất cứ điều gì."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3192,6 +3486,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перетащите файлы сюда"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thả tệp của bạn vào đây"
           }
         },
         "zh-Hans": {
@@ -3258,6 +3558,12 @@
             "value": "Письма"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3320,6 +3626,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Включить звуки"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật âm thanh"
           }
         },
         "zh-Hans": {
@@ -3386,6 +3698,12 @@
             "value": "Включить голосовые команды"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật lệnh thoại"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3448,6 +3766,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ошибка"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thất bại"
           }
         },
         "zh-Hans": {
@@ -3514,6 +3838,12 @@
             "value": "В избранное"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu thích"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3576,6 +3906,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Основные"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chung"
           }
         },
         "zh-Hans": {
@@ -3642,6 +3978,12 @@
             "value": "Скачать Spotify"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải Spotify"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3704,6 +4046,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Секунду — вернусь к работе через три секунды."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho tớ 3 giây nha, rồi mình làm tiếp!"
           }
         },
         "zh-Hans": {
@@ -3770,6 +4118,12 @@
             "value": "Узел Gmail завершился по таймауту через 30с. Повторите или откройте n8n."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Node Gmail hết thời gian chờ sau 30 giây. Thử lại hoặc mở n8n."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3832,6 +4186,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрешено"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cấp"
           }
         },
         "zh-Hans": {
@@ -3898,6 +4258,12 @@
             "value": "Скрыть через"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn sau"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -3960,6 +4326,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрывать названия проектов в изображениях"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn tên dự án trong ảnh chia sẻ"
           }
         },
         "zh-Hans": {
@@ -4026,6 +4398,12 @@
             "value": "Хуки установлены"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài hook"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4088,6 +4466,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки не установлены"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa cài hook"
           }
         },
         "zh-Hans": {
@@ -4154,6 +4538,12 @@
             "value": "Горячая клавиша"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phím tắt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4216,6 +4606,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rê chuột lên island để mở; island thu lại ngay sau khi con trỏ rời đi. Bấm vào trong để giữ mở."
           }
         },
         "zh-Hans": {
@@ -4282,6 +4678,12 @@
             "value": "Интеграции"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tích hợp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4344,6 +4746,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хранить историю сессий"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu lịch sử các phiên lập trình của tôi"
           }
         },
         "zh-Hans": {
@@ -4410,6 +4818,12 @@
             "value": "Ключ настроен · %@"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cấu hình khóa · %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4472,6 +4886,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ключ не настроен"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa cấu hình khóa"
           }
         },
         "zh-Hans": {
@@ -4538,6 +4958,12 @@
             "value": "Язык"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngôn ngữ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4600,6 +5026,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запускать при старте Mac"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi động cùng máy Mac"
           }
         },
         "zh-Hans": {
@@ -4666,6 +5098,12 @@
             "value": "Слушаю…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang lắng nghe…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4728,6 +5166,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Загрузка моделей…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tải model…"
           }
         },
         "zh-Hans": {
@@ -4794,6 +5238,12 @@
             "value": "Загрузка…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tải…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4856,6 +5306,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Почта недоступна."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail không khả dụng."
           }
         },
         "zh-Hans": {
@@ -4922,6 +5378,12 @@
             "value": "Главный"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chính"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -4984,6 +5446,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Микрофон недоступен"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrô không khả dụng"
           }
         },
         "zh-Hans": {
@@ -5050,6 +5518,12 @@
             "value": "Микрофон:"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrô:"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5112,6 +5586,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Получатель не указан."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiếu người nhận."
           }
         },
         "zh-Hans": {
@@ -5178,6 +5658,12 @@
             "value": "Мои PR"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PR của tôi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5240,6 +5726,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новое письмо"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email mới"
           }
         },
         "zh-Hans": {
@@ -5306,6 +5798,12 @@
             "value": "Далее"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5368,6 +5866,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет звонков"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có lịch hẹn nào"
           }
         },
         "zh-Hans": {
@@ -5434,6 +5938,12 @@
             "value": "Нет изменений"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có thay đổi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5498,6 +6008,12 @@
             "value": "Нет вкладов"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có đóng góp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5509,12 +6025,6 @@
     "No error details available.": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No error details available."
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -5525,6 +6035,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "কোনো ত্রুটির বিবরণ পাওয়া যায়নি।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No error details available."
           }
         },
         "es": {
@@ -5561,6 +6077,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет подробностей об ошибке."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có chi tiết lỗi."
           }
         },
         "zh-Hans": {
@@ -5627,6 +6149,12 @@
             "value": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có model nhận dạng giọng nói trên thiết bị này. Hãy cài trong Cài đặt Hệ thống → Bàn phím → Đọc chính tả."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5689,6 +6217,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не подключено"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa kết nối"
           }
         },
         "zh-Hans": {
@@ -5755,6 +6289,12 @@
             "value": "Не установлено"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa cài"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5817,6 +6357,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не воспроизводится"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không phát nhạc"
           }
         },
         "zh-Hans": {
@@ -5883,6 +6429,12 @@
             "value": "Не запрошено"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa yêu cầu"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -5945,6 +6497,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ничего нет"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có gì ở đây nè."
           }
         },
         "zh-Hans": {
@@ -6011,6 +6569,12 @@
             "value": "Сейчас ничего не запущено."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện không có gì đang chạy."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6073,6 +6637,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ОК"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
           }
         },
         "zh-Hans": {
@@ -6139,6 +6709,12 @@
             "value": "Открыть"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6201,6 +6777,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở %@"
           }
         },
         "zh-Hans": {
@@ -6267,6 +6849,12 @@
             "value": "Открыть Codex"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Codex"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6329,6 +6917,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Coucou"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Coucou"
           }
         },
         "zh-Hans": {
@@ -6395,6 +6989,12 @@
             "value": "Открыть Cursor"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cursor"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6457,6 +7057,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Music"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Music"
           }
         },
         "zh-Hans": {
@@ -6523,6 +7129,12 @@
             "value": "Открыть настройки…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cài đặt…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6585,6 +7197,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Spotify"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Spotify"
           }
         },
         "zh-Hans": {
@@ -6651,6 +7269,12 @@
             "value": "Открыть Visual Studio Code"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Visual Studio Code"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6713,6 +7337,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть в n8n"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở trong n8n"
           }
         },
         "zh-Hans": {
@@ -6779,6 +7409,12 @@
             "value": "Открывать при наведении"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở khi rê chuột"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6841,6 +7477,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть папку звуков"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở thư mục âm thanh"
           }
         },
         "zh-Hans": {
@@ -6907,6 +7549,12 @@
             "value": "Открыть терминал"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở terminal"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -6969,6 +7617,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Другое…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khác…"
           }
         },
         "zh-Hans": {
@@ -7035,6 +7689,12 @@
             "value": "Обзор"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng quan"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7097,6 +7757,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пауза"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm dừng"
           }
         },
         "zh-Hans": {
@@ -7163,6 +7829,12 @@
             "value": "Платежи"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7225,6 +7897,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрешения"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quyền"
           }
         },
         "zh-Hans": {
@@ -7291,6 +7969,12 @@
             "value": "Воспроизвести"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phát"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7353,6 +8037,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Играет · %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang phát · %@"
           }
         },
         "zh-Hans": {
@@ -7419,6 +8109,12 @@
             "value": "Плагин не установлен"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa cài plugin"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7481,6 +8177,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Предыдущий"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trước"
           }
         },
         "zh-Hans": {
@@ -7547,6 +8249,12 @@
             "value": "Выход"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thoát"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7609,6 +8317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Недавние"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gần đây"
           }
         },
         "zh-Hans": {
@@ -7675,6 +8389,12 @@
             "value": "Обновить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm mới"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7737,6 +8457,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перезагрузить звуки"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải lại âm thanh"
           }
         },
         "zh-Hans": {
@@ -7803,6 +8529,12 @@
             "value": "Убрать из избранного"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ khỏi yêu thích"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7865,6 +8597,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторять все"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lặp tất cả"
           }
         },
         "zh-Hans": {
@@ -7931,6 +8669,12 @@
             "value": "Повтор выкл."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tắt lặp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -7993,6 +8737,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повтор вкл."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật lặp"
           }
         },
         "zh-Hans": {
@@ -8059,6 +8809,12 @@
             "value": "Повторять один"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lặp một bài"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8121,6 +8877,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ответить в терминале"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trả lời trong terminal"
           }
         },
         "zh-Hans": {
@@ -8187,6 +8949,12 @@
             "value": "Запросить разрешения"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu quyền"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8249,6 +9017,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторить"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend"
           }
         },
         "zh-Hans": {
@@ -8315,6 +9089,12 @@
             "value": "Перезапустить Coucou"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi động lại Coucou"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8377,6 +9157,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторить"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử lại"
           }
         },
         "zh-Hans": {
@@ -8443,6 +9229,12 @@
             "value": "Сохранить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8505,6 +9297,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сохранить…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu…"
           }
         },
         "zh-Hans": {
@@ -8571,6 +9369,12 @@
             "value": "Скажите команду"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nói lệnh của bạn"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8633,6 +9437,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Расписание"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch hẹn"
           }
         },
         "zh-Hans": {
@@ -8699,6 +9509,12 @@
             "value": "Отправить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8761,6 +9577,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправить по email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi qua email"
           }
         },
         "zh-Hans": {
@@ -8827,6 +9649,12 @@
             "value": "Отправка…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang gửi…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -8889,6 +9717,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сессия завершена"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên đã kết thúc"
           }
         },
         "zh-Hans": {
@@ -8955,6 +9789,12 @@
             "value": "Настройки…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài đặt…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9017,6 +9857,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Поделиться…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chia sẻ…"
           }
         },
         "zh-Hans": {
@@ -9083,6 +9929,12 @@
             "value": "Сочетание клавиш"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phím tắt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9145,6 +9997,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Горячие клавиши"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phím tắt"
           }
         },
         "zh-Hans": {
@@ -9211,6 +10069,12 @@
             "value": "Показывать остров горячей клавишей"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện island bằng phím tắt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9273,6 +10137,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перемешивание выкл."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tắt trộn bài"
           }
         },
         "zh-Hans": {
@@ -9339,6 +10209,12 @@
             "value": "Перемешивание вкл."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật trộn bài"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9401,6 +10277,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Звук"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm thanh"
           }
         },
         "zh-Hans": {
@@ -9467,6 +10349,12 @@
             "value": "Распознавание речи:"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận dạng giọng nói:"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9529,6 +10417,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotify не установлен"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa cài Spotify"
           }
         },
         "zh-Hans": {
@@ -9595,6 +10489,12 @@
             "value": "Запуск"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi động"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9657,6 +10557,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хранится локально на Mac. Ничего не покидает Mac. Хранится 12 недель."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu cục bộ trên máy Mac của bạn. Không có gì rời khỏi máy Mac. Giữ trong 12 tuần."
           }
         },
         "zh-Hans": {
@@ -9723,6 +10629,12 @@
             "value": "Тема"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiêu đề"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9785,6 +10697,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Успешно"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành công"
           }
         },
         "zh-Hans": {
@@ -9851,6 +10769,12 @@
             "value": "Системный"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hệ thống"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -9913,6 +10837,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Кому"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đến"
           }
         },
         "zh-Hans": {
@@ -9979,6 +10909,12 @@
             "value": "На ревью"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần duyệt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10041,6 +10977,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Слишком много нажатий подряд."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tương tác dồn dập quá!"
           }
         },
         "zh-Hans": {
@@ -10107,6 +11049,12 @@
             "value": "Неизвестно"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không rõ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10169,6 +11117,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Загружается %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tải lên %@"
           }
         },
         "zh-Hans": {
@@ -10235,6 +11189,12 @@
             "value": "Голос"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giọng nói"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10297,6 +11257,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Громкость"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm lượng"
           }
         },
         "zh-Hans": {
@@ -10363,6 +11329,12 @@
             "value": "Громкость %lld%%"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm lượng %lld%"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10425,6 +11397,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Гардероб"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tủ đồ"
           }
         },
         "zh-Hans": {
@@ -10491,6 +11469,12 @@
             "value": "Наблюдение: %lld из %lld"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang theo dõi %lld/%lld"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10553,6 +11537,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Итоги недели"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng kết tuần"
           }
         },
         "zh-Hans": {
@@ -10619,6 +11609,12 @@
             "value": "Что вы хотите с ним сделать?"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn muốn làm gì với nó?"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10681,6 +11677,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Когда включено, Coucou слушает слово активации « OK Coucou ». Распознавание речи работает полностью на устройстве — никакие аудиозаписи или транскрипции не покидают ваш Mac."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khi bật, Coucou lắng nghe từ đánh thức « OK Coucou ». Nhận dạng giọng nói chạy hoàn toàn trên máy — không âm thanh hay bản ghi nào rời khỏi máy Mac của bạn."
           }
         },
         "zh-Hans": {
@@ -10747,6 +11749,12 @@
             "value": "Во время прослушивания macOS отображает оранжевую точку микрофона в правом верхнем углу строки меню. Это нормальное поведение системы."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trong lúc lắng nghe, macOS hiện chấm micrô màu cam ở góc trên bên phải thanh menu. Đây là hành vi bình thường của hệ thống."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10809,6 +11817,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Рабочий процесс остановлен."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflow đã dừng."
           }
         },
         "zh-Hans": {
@@ -10875,6 +11889,12 @@
             "value": "Твой ответ…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Câu trả lời của bạn…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -10937,6 +11957,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запишет:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (резервная копия создаётся сначала)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (tạo bản sao lưu trước)"
           }
         },
         "zh-Hans": {
@@ -11003,6 +12029,12 @@
             "value": "Установить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài đặt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11065,6 +12097,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установить хуки Coucou в ~/.claude?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài hook Coucou vào ~/.claude?"
           }
         },
         "zh-Hans": {
@@ -11131,6 +12169,12 @@
             "value": "Anthropic API"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Anthropic"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11193,6 +12237,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ключ API (sk-ant-…)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khóa API (sk-ant-…)"
           }
         },
         "zh-Hans": {
@@ -11259,6 +12309,12 @@
             "value": "Ключ API (AI Studio)"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khóa API (AI Studio)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11321,6 +12377,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ключ API (sk-…)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khóa API (sk-…)"
           }
         },
         "zh-Hans": {
@@ -11387,6 +12449,12 @@
             "value": "Подключить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11449,6 +12517,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключение…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kết nối…"
           }
         },
         "zh-Hans": {
@@ -11515,6 +12589,12 @@
             "value": "Отключить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11574,6 +12654,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google AI"
+          }
+        },
+        "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Google AI"
@@ -11643,6 +12729,12 @@
             "value": "Подключись к локальному серверу моделей. API-ключ не нужен."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối tới server model cục bộ. Không cần khóa API."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11705,6 +12797,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Локальные модели"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model cục bộ"
           }
         },
         "zh-Hans": {
@@ -11771,6 +12869,12 @@
             "value": "Модель"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11833,6 +12937,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Свой…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tùy chỉnh…"
           }
         },
         "zh-Hans": {
@@ -11899,6 +13009,12 @@
             "value": "ID модели (напр. claude-sonnet-4-6)"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID model (ví dụ claude-sonnet-4-6)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -11963,6 +13079,12 @@
             "value": "Используется чатом. Список берётся из твоего аккаунта Anthropic."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng cho chat. Danh sách lấy từ tài khoản Anthropic của bạn."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12022,6 +13144,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI"
+          }
+        },
+        "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI"
@@ -12091,6 +13219,12 @@
             "value": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để dùng Google Gemini hoặc OpenAI trong chat. Khóa được lưu trong Keychain."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12155,6 +13289,12 @@
             "value": "Чат — другие провайдеры"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat — nhà cung cấp khác"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12166,12 +13306,6 @@
     "demo.description": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explore all features without an API key or Claude Code. Nothing is written to disk."
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -12182,6 +13316,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API কী বা Claude Code ছাড়াই সমস্ত ফিচার এক্সপ্লোর করুন। ডিস্কে কিছু লেখা হয় না।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore all features without an API key or Claude Code. Nothing is written to disk."
           }
         },
         "es": {
@@ -12220,6 +13360,12 @@
             "value": "Изучи все функции без API-ключа и Claude Code. Ничего не записывается на диск."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khám phá mọi tính năng mà không cần khóa API hay Claude Code. Không có gì được ghi lên đĩa."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12231,12 +13377,6 @@
     "demo.groupbox.title": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -12247,6 +13387,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
           }
         },
         "es": {
@@ -12285,6 +13431,12 @@
             "value": "Демо"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12296,12 +13448,6 @@
     "demo.start": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try demo mode"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -12312,6 +13458,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো মোড চেষ্টা করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try demo mode"
           }
         },
         "es": {
@@ -12350,6 +13502,12 @@
             "value": "Попробовать демо"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử chế độ demo"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12361,12 +13519,6 @@
     "demo.stop": {
       "extractionState": "manual",
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stop demo"
-          }
-        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -12377,6 +13529,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ডেমো বন্ধ করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop demo"
           }
         },
         "es": {
@@ -12413,6 +13571,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Остановить демо"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dừng demo"
           }
         },
         "zh-Hans": {
@@ -12479,6 +13643,12 @@
             "value": "%@ готов."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ đã sẵn sàng."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12541,6 +13711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены — перезапусти Antigravity для активации"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài hook — khởi động lại Antigravity để kích hoạt"
           }
         },
         "zh-Hans": {
@@ -12607,6 +13783,12 @@
             "value": "Хуки Antigravity"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook Antigravity"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12669,6 +13851,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки Claude Code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook Claude Code"
           }
         },
         "zh-Hans": {
@@ -12735,6 +13923,12 @@
             "value": "Хуки установлены — открой Codex и выполни /hooks или открой Hooks в настройках приложения, чтобы подтвердить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài hook — mở Codex và chạy /hooks hoặc mở Hooks trong cài đặt ứng dụng để phê duyệt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12797,6 +13991,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки Codex"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook Codex"
           }
         },
         "zh-Hans": {
@@ -12863,6 +14063,12 @@
             "value": "Подтвердить и записать"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận và ghi thay đổi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -12925,6 +14131,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены — перезапусти Copilot CLI для активации"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài hook — khởi động lại Copilot CLI để kích hoạt"
           }
         },
         "zh-Hans": {
@@ -12991,6 +14203,12 @@
             "value": "Хуки GitHub Copilot CLI"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook GitHub Copilot CLI"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13053,6 +14271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки установлены — перезапусти Gemini CLI для активации"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài hook — khởi động lại Gemini CLI để kích hoạt"
           }
         },
         "zh-Hans": {
@@ -13119,6 +14343,12 @@
             "value": "Хуки Gemini CLI"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook Gemini CLI"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13181,6 +14411,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установить хуки"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài hook"
           }
         },
         "zh-Hans": {
@@ -13247,6 +14483,12 @@
             "value": "Хуки установлены — перезапусти Muse Code для активации"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài hook — khởi động lại Muse Code để kích hoạt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13309,6 +14551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хуки Muse Code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook Muse Code"
           }
         },
         "zh-Hans": {
@@ -13375,6 +14623,12 @@
             "value": "Хуки устарели — обнови их, чтобы отвечать на вопросы Claude из ноча"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook đã cũ — cập nhật để trả lời câu hỏi của Claude từ notch"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13437,6 +14691,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Просмотри JSON ниже перед подтверждением."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem lại JSON bên dưới trước khi xác nhận."
           }
         },
         "zh-Hans": {
@@ -13503,6 +14763,12 @@
             "value": "Удалить"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ cài đặt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13565,6 +14831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновить хуки"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cập nhật hook"
           }
         },
         "zh-Hans": {
@@ -13631,6 +14903,12 @@
             "value": "Классический токен с правом repo или гранулярный с доступом на чтение к Pull requests, Commit statuses и Actions."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token cổ điển với quyền repo, hoặc token chi tiết với quyền đọc Pull requests, trạng thái commit và Actions."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13693,6 +14971,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Проекты"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dự án"
           }
         },
         "zh-Hans": {
@@ -13759,6 +15043,12 @@
             "value": "Сохранить интеграции"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu tích hợp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13821,6 +15111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Рабочие процессы"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workflow"
           }
         },
         "zh-Hans": {
@@ -13887,6 +15183,12 @@
             "value": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ thị gửi từ iPhone dùng model đang mở trong chat. Prompt hệ thống và lịch sử hội thoại vẫn được áp dụng. Chỉ thị gửi khi Coucou không chạy sẽ được xếp hàng đợi và thực thi ở lần khởi động sau."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -13949,6 +15251,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Позволять iPhone отправлять инструкции в Claude Code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho iPhone gửi chỉ thị tới Claude Code"
           }
         },
         "zh-Hans": {
@@ -14015,6 +15323,12 @@
             "value": "Проходит через ретранслятор Coucou к сервису push Apple. Отправляются только имя и состояние агента: без имени проекта, команды или пути."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đi qua relay của Coucou tới dịch vụ push của Apple. Chỉ tên agent và trạng thái được gửi: không gửi tên dự án, lệnh hay đường dẫn."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14077,6 +15391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Переносить Mochi на Dynamic Island моего iPhone, когда Mac заблокирован"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển Mochi sang Dynamic Island trên iPhone khi khóa máy Mac"
           }
         },
         "zh-Hans": {
@@ -14143,6 +15463,12 @@
             "value": "Отправляет твои сессии в личный iCloud для приложения Coucou на iPhone. Имена проектов, команды и вопросы шифруются твоими ключами iCloud. Отключение удаляет их из iCloud."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi các phiên của bạn tới iCloud riêng tư để dùng với ứng dụng Coucou trên iPhone. Tên dự án, lệnh và câu hỏi được mã hóa bằng khóa iCloud của bạn. Tắt sẽ xóa dữ liệu khỏi iCloud."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14205,6 +15531,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывать мои сессии агента на iPhone"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện các phiên agent trên iPhone của tôi"
           }
         },
         "zh-Hans": {
@@ -14271,6 +15603,12 @@
             "value": "с %@"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "với %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14333,6 +15671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "мин без активности"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "phút không di chuyển"
           }
         },
         "zh-Hans": {
@@ -14399,6 +15743,12 @@
             "value": "требует разрешения"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cần quyền"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14461,6 +15811,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "5 часов"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 giờ"
           }
         },
         "zh-Hans": {
@@ -14527,6 +15883,12 @@
             "value": "План Claude"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gói Claude"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14589,6 +15951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывает использование плана Claude (лимиты на 5 часов и на неделю) в шапке нотча. Coucou добавляет ретранслятор строки статуса в ~/.claude/settings.json. Если строка статуса уже есть, она продолжит работать как прежде. Только для планов Pro и Max."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện mức dùng gói Claude (giới hạn 5 giờ và hàng tuần) ở đầu notch. Coucou thêm một relay status line vào ~/.claude/settings.json. Nếu bạn đã có status line, nó vẫn hoạt động như cũ. Chỉ dành cho gói Pro và Max."
           }
         },
         "zh-Hans": {
@@ -14655,6 +16023,12 @@
             "value": "%lld ч назад"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giờ trước"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14717,6 +16091,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "только что"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vừa xong"
           }
         },
         "zh-Hans": {
@@ -14783,6 +16163,12 @@
             "value": "%lld мин назад"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld phút trước"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14845,6 +16231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установить ретранслятор"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài relay"
           }
         },
         "zh-Hans": {
@@ -14911,6 +16303,12 @@
             "value": "Ретранслятор: установлен"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay: đã cài"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -14973,6 +16371,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ретранслятор: не установлен"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay: chưa cài"
           }
         },
         "zh-Hans": {
@@ -15039,6 +16443,12 @@
             "value": "Удалить ретранслятор"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ relay"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15101,6 +16511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "через %lld ч %lld мин"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "trong %lld giờ %lld phút"
           }
         },
         "zh-Hans": {
@@ -15167,6 +16583,12 @@
             "value": "через %lld мин"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "trong %lld phút"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15229,6 +16651,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сброс…"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang đặt lại…"
           }
         },
         "zh-Hans": {
@@ -15295,6 +16723,12 @@
             "value": "Показывать в нотче"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện trong notch"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15357,6 +16791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Использование плана"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức dùng gói"
           }
         },
         "zh-Hans": {
@@ -15423,6 +16863,12 @@
             "value": "Ожидание ответа Claude Code"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ phản hồi từ Claude Code"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15485,6 +16931,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Неделя"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần"
           }
         },
         "zh-Hans": {
@@ -15551,6 +17003,12 @@
             "value": "Плагин установлен — перезапусти Amp для активации"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài plugin — khởi động lại Amp để kích hoạt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15613,6 +17071,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Плагин Amp"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin Amp"
           }
         },
         "zh-Hans": {
@@ -15679,6 +17143,12 @@
             "value": "Показывать запросы подтверждения в notch"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện yêu cầu phê duyệt trong notch"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15741,6 +17211,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запросы подтверждения обрабатывает Hermes (терминал или шлюз)."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu phê duyệt do Hermes xử lý (terminal hoặc gateway)."
           }
         },
         "zh-Hans": {
@@ -15807,6 +17283,12 @@
             "value": "Запросы подтверждения отображаются в notch. Если Coucou не запущен, Hermes использует собственный prompt."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu phê duyệt hiện trong notch. Nếu Coucou không chạy, Hermes quay về dùng prompt riêng của nó."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15871,6 +17353,12 @@
             "value": "✓ Плагин Hermes установлен в ~/.hermes/plugins/coucou/"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài plugin Hermes vào ~/.hermes/plugins/coucou/"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -15930,6 +17418,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hermes Agent"
+          }
+        },
+        "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Hermes Agent"
@@ -15999,6 +17493,12 @@
             "value": "Установить плагин"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài plugin"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16061,6 +17561,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Плагин установлен — перезапусти OpenCode для активации"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cài plugin — khởi động lại OpenCode để kích hoạt"
           }
         },
         "zh-Hans": {
@@ -16127,6 +17633,12 @@
             "value": "Плагин OpenCode"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin OpenCode"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16189,6 +17701,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Просмотри содержимое ниже перед подтверждением."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem lại nội dung bên dưới trước khi xác nhận."
           }
         },
         "zh-Hans": {
@@ -16255,6 +17773,12 @@
             "value": "нажми → остров открывается"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nhấn cái này → island mở"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16317,6 +17841,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "программирования"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lập trình"
           }
         },
         "zh-Hans": {
@@ -16383,6 +17913,12 @@
             "value": "команды"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lệnh"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16445,6 +17981,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "файл"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tệp"
           }
         },
         "zh-Hans": {
@@ -16511,6 +18053,12 @@
             "value": "файлы"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tệp"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16573,6 +18121,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Одобрено"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cho phép"
           }
         },
         "zh-Hans": {
@@ -16639,6 +18193,12 @@
             "value": "Самый насыщенный день"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày bận nhất"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16701,6 +18261,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "КОМАНДЫ"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LỆNH"
           }
         },
         "zh-Hans": {
@@ -16767,6 +18333,12 @@
             "value": "Отклонено"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã từ chối"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16829,6 +18401,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ФАЙЛЫ"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TỆP"
           }
         },
         "zh-Hans": {
@@ -16895,6 +18473,12 @@
             "value": "Самая долгая сессия"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên dài nhất"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -16957,6 +18541,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "СЕССИИ"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PHIÊN"
           }
         },
         "zh-Hans": {
@@ -17023,6 +18613,12 @@
             "value": "ВРЕМЯ КОДИНГА"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THỜI GIAN LẬP TRÌNH"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17085,6 +18681,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Топ агент"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent hoạt động nhiều nhất"
           }
         },
         "zh-Hans": {
@@ -17151,6 +18753,12 @@
             "value": "Топ проект"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dự án hoạt động nhiều nhất"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17213,6 +18821,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "На прошлой неделе активности не было"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần trước chưa có hoạt động nào nè."
           }
         },
         "zh-Hans": {
@@ -17279,6 +18893,12 @@
             "value": "сессия"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "phiên"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17341,6 +18961,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "сессии"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "phiên"
           }
         },
         "zh-Hans": {
@@ -17407,6 +19033,12 @@
             "value": "Поделиться картинкой"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chia sẻ ảnh"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17469,6 +19101,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Итоги недели"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng kết tuần"
           }
         },
         "zh-Hans": {
@@ -17535,6 +19173,12 @@
             "value": "с без активности"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giây không hoạt động"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17597,6 +19241,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Главный"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chính"
           }
         },
         "zh-Hans": {
@@ -17663,6 +19313,12 @@
             "value": "%lld/4 слотов занято"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã dùng %lld/4 vị trí"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17725,6 +19381,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Настройки — Coucou"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài đặt — Coucou"
           }
         },
         "zh-Hans": {
@@ -17791,6 +19453,12 @@
             "value": "Прикрепить переднее окно"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đính kèm cửa sổ đang hoạt động"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17853,6 +19521,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дублирующийся"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhân bản"
           }
         },
         "zh-Hans": {
@@ -17919,6 +19593,12 @@
             "value": "Системный конфликт"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xung đột hệ thống"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -17981,6 +19661,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mochi на рабочем столе вкл / выкл"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật/tắt Mochi trên desktop"
           }
         },
         "zh-Hans": {
@@ -18047,6 +19733,12 @@
             "value": "Перейти к уведомлению"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem cảnh báo"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18109,6 +19801,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Глобальные сочетания — работают из любого приложения"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phím tắt toàn cục — dùng được từ mọi ứng dụng"
           }
         },
         "zh-Hans": {
@@ -18175,6 +19873,12 @@
             "value": "Сочетания нотча — работают когда нотч в фокусе"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phím tắt notch — dùng được khi notch ở phía trước"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18237,6 +19941,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перейти на вкладку по номеру"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tới tab theo số"
           }
         },
         "zh-Hans": {
@@ -18303,6 +20013,12 @@
             "value": "Закрыть нотч (если не закреплён)"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng notch (nếu chưa ghim)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18365,6 +20081,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть / закрыть текущий diff"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở / đóng diff hiện tại"
           }
         },
         "zh-Hans": {
@@ -18431,6 +20153,12 @@
             "value": "Навигация по элементам списка"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di chuyển trong danh sách"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18493,6 +20221,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новый разговор"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hội thoại mới"
           }
         },
         "zh-Hans": {
@@ -18559,6 +20293,12 @@
             "value": "Следующая / предыдущая вкладка"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab tiếp / trước"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18621,6 +20361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть выбранный элемент"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở mục đang chọn"
           }
         },
         "zh-Hans": {
@@ -18687,6 +20433,12 @@
             "value": "Закрепить / открепить нотч"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghim / bỏ ghim notch"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18749,6 +20501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправить сообщение в чат"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi tin nhắn chat"
           }
         },
         "zh-Hans": {
@@ -18815,6 +20573,12 @@
             "value": "Открыть настройки"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở cài đặt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -18877,6 +20641,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перейти в терминал"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển sang terminal"
           }
         },
         "zh-Hans": {
@@ -18943,6 +20713,12 @@
             "value": "Выключить / включить звук"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tắt / bật âm thanh"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19005,6 +20781,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Следующая вкладка"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab tiếp"
           }
         },
         "zh-Hans": {
@@ -19071,6 +20853,12 @@
             "value": "Открыть чат"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở chat"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19133,6 +20921,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть / закрыть нотч"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở / đóng notch"
           }
         },
         "zh-Hans": {
@@ -19199,6 +20993,12 @@
             "value": "Предыдущая вкладка"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab trước"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19261,6 +21061,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сбросить всё к значениям по умолчанию"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lại tất cả về mặc định"
           }
         },
         "zh-Hans": {
@@ -19327,6 +21133,12 @@
             "value": "Открыть / закрыть гардероб"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở / đóng tủ đồ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19389,6 +21201,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Antigravity установлены в ~/.gemini/config/hooks.json"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook Antigravity vào ~/.gemini/config/hooks.json"
           }
         },
         "zh-Hans": {
@@ -19455,6 +21273,12 @@
             "value": "✓ Хуки Antigravity удалены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ hook Antigravity."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19517,6 +21341,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Плагин Amp установлен в ~/.config/amp/plugins/coucou.ts"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài plugin Amp vào ~/.config/amp/plugins/coucou.ts"
           }
         },
         "zh-Hans": {
@@ -19583,6 +21413,12 @@
             "value": "✓ Плагин Amp удалён."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ plugin Amp."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19645,6 +21481,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Codex установлены — выполни /hooks в Codex или открой Hooks в настройках приложения, чтобы подтвердить."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook Codex — chạy /hooks trong Codex hoặc mở Hooks trong cài đặt ứng dụng để phê duyệt."
           }
         },
         "zh-Hans": {
@@ -19711,6 +21553,12 @@
             "value": "✓ Хуки Codex удалены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ hook Codex."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19773,6 +21621,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Copilot CLI установлены в ~/.copilot/hooks/coucou.json"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook Copilot CLI vào ~/.copilot/hooks/coucou.json"
           }
         },
         "zh-Hans": {
@@ -19839,6 +21693,12 @@
             "value": "✓ Хуки Copilot CLI удалены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ hook Copilot CLI."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -19901,6 +21761,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Gemini CLI установлены в ~/.gemini/settings.json"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook Gemini CLI vào ~/.gemini/settings.json"
           }
         },
         "zh-Hans": {
@@ -19967,6 +21833,12 @@
             "value": "✓ Хуки Gemini CLI удалены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ hook Gemini CLI."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20029,6 +21901,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Ключ Google сохранён."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã lưu khóa Google."
           }
         },
         "zh-Hans": {
@@ -20095,6 +21973,12 @@
             "value": "✓ Плагин Hermes установлен"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài plugin Hermes"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20157,6 +22041,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Плагин Hermes удалён."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gỡ plugin Hermes"
           }
         },
         "zh-Hans": {
@@ -20223,6 +22113,12 @@
             "value": "✓ Хуки установлены — перезапусти VS Code для активации."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook — khởi động lại VS Code để kích hoạt."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20285,6 +22181,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки установлены в ~/.claude/settings.json"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook vào ~/.claude/settings.json"
           }
         },
         "zh-Hans": {
@@ -20351,6 +22253,12 @@
             "value": "✓ Хуки удалены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ hook."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20415,6 +22323,12 @@
             "value": "✓ Ключи интеграции сохранены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã lưu khóa tích hợp."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20477,6 +22391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Ключ сохранён."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã lưu khóa."
           }
         },
         "zh-Hans": {
@@ -20651,6 +22571,24 @@
             }
           }
         },
+        "vi": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Đã kết nối · %lld model"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "✓ Đã kết nối · %lld model"
+                }
+              }
+            }
+          }
+        },
         "zh-Hans": {
           "variations": {
             "plural": {
@@ -20727,6 +22665,12 @@
             "value": "LM Studio отключён."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã ngắt kết nối LM Studio."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20789,6 +22733,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет моделей — скачай одну в %@ сначала."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có model — hãy tải một model trong %@ trước."
           }
         },
         "zh-Hans": {
@@ -20855,6 +22805,12 @@
             "value": "Ollama отключён."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã ngắt kết nối Ollama."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -20917,6 +22873,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось подключиться к %1$@ по адресу %2$@. Он запущен?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được %1$@ tại %2$@. Nó có đang chạy không?"
           }
         },
         "zh-Hans": {
@@ -20983,6 +22945,12 @@
             "value": "Поддерживаются только URL с http:// и https://."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ chấp nhận URL http:// và https://."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21045,6 +23013,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Хуки Muse Code установлены в ~/.config/muse/settings.json"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài hook Muse Code vào ~/.config/muse/settings.json"
           }
         },
         "zh-Hans": {
@@ -21111,6 +23085,12 @@
             "value": "✓ Хуки Muse Code удалены."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ hook Muse Code."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21173,6 +23153,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Ключ OpenAI сохранён."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã lưu khóa OpenAI."
           }
         },
         "zh-Hans": {
@@ -21239,6 +23225,12 @@
             "value": "✓ Плагин OpenCode установлен в ~/.config/opencode/plugins/coucou.js"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài plugin OpenCode vào ~/.config/opencode/plugins/coucou.js"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21301,6 +23293,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Плагин OpenCode удалён."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ plugin OpenCode."
           }
         },
         "zh-Hans": {
@@ -21367,6 +23365,12 @@
             "value": "❌ Выбери папку .claude (скрытая, в домашнем каталоге)."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "❌ Chọn thư mục .claude (thư mục ẩn, trong thư mục Home của bạn)."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21429,6 +23433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "✓ Строка статуса установлена."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã cài status line."
           }
         },
         "zh-Hans": {
@@ -21495,6 +23505,12 @@
             "value": "✓ Строка статуса удалена."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Đã gỡ status line."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21557,6 +23573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Агент"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
           }
         },
         "zh-Hans": {
@@ -21623,6 +23645,12 @@
             "value": "Редактирует"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉnh sửa"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21685,6 +23713,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Получает"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải về"
           }
         },
         "zh-Hans": {
@@ -21751,6 +23785,12 @@
             "value": "Перечисляет"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liệt kê"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21813,6 +23853,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notebook"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sổ tay"
           }
         },
         "zh-Hans": {
@@ -21879,6 +23925,12 @@
             "value": "Читает"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đọc"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -21941,6 +23993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запускает"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy"
           }
         },
         "zh-Hans": {
@@ -22007,6 +24065,12 @@
             "value": "Ищет"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm kiếm"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22069,6 +24133,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Задачи"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tác vụ"
           }
         },
         "zh-Hans": {
@@ -22135,6 +24205,12 @@
             "value": "Тестирует"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm thử"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22197,6 +24273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ищет в сети"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm kiếm trên web"
           }
         },
         "zh-Hans": {
@@ -22263,6 +24345,12 @@
             "value": "Записывает"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22327,6 +24415,12 @@
             "value": "с"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "với"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22389,6 +24483,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "« OK Coucou » — голосовая активация"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« OK Coucou » — từ đánh thức thoại"
           }
         },
         "zh-Hans": {
@@ -22456,6 +24556,12 @@
             "value": "Говорить с Coucou"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nói chuyện với Coucou"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22518,6 +24624,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "4 активно — что удалить?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có 4 cái đang bật — bỏ cái nào?"
           }
         },
         "zh-Hans": {
@@ -22584,6 +24696,12 @@
             "value": "Не найдено: %@"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy: %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22648,6 +24766,12 @@
             "value": "Открытие Apple Music…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang mở Apple Music…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22710,6 +24834,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Следующий трек"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài kế tiếp"
           }
         },
         "zh-Hans": {
@@ -22777,6 +24907,12 @@
             "value": "Нет музыкального приложения"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có ứng dụng nhạc nào đang chạy"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22839,6 +24975,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пауза"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tạm dừng"
           }
         },
         "zh-Hans": {
@@ -22905,6 +25047,12 @@
             "value": "Воспроизведение"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang phát"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -22967,6 +25115,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Предыдущий трек"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài trước"
           }
         },
         "zh-Hans": {
@@ -23033,6 +25187,12 @@
             "value": "Тише"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giảm âm lượng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23095,6 +25255,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Громкость: %d%%"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm lượng: %d%"
           }
         },
         "zh-Hans": {
@@ -23161,6 +25327,12 @@
             "value": "Громче"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tăng âm lượng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23223,6 +25395,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ добавлено"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thêm %@"
           }
         },
         "zh-Hans": {
@@ -23289,6 +25467,12 @@
             "value": "Уже активно"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã bật sẵn"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23351,6 +25535,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Главный: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chính: %@"
           }
         },
         "zh-Hans": {
@@ -23418,6 +25608,12 @@
             "value": "%@ добавлено — хуки не установлены"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thêm %@ — chưa cài hook"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23480,6 +25676,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не активно"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa bật"
           }
         },
         "zh-Hans": {
@@ -23546,6 +25748,12 @@
             "value": "Только: %@"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ: %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23610,6 +25818,12 @@
             "value": "%@ удалено"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã bỏ %@"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23669,6 +25883,12 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        },
+        "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ → %@"
@@ -23738,6 +25958,12 @@
             "value": "Хорошо, оставляю как есть"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK, để nguyên vậy"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23800,6 +26026,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Команда не распознана"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không nhận ra lệnh"
           }
         },
         "zh-Hans": {
@@ -23866,6 +26098,12 @@
             "value": "Непонятно: « %@ »"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không nhận ra: « %@ »"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -23928,6 +26166,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coucou отвечает вслух"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou trả lời thành tiếng"
           }
         },
         "zh-Hans": {
@@ -23994,6 +26238,12 @@
             "value": "Coucou зачитывает результаты на языке команды. Всё на устройстве."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou đọc lại kết quả bằng ngôn ngữ bạn nói, dùng giọng tổng hợp. 100% trên máy."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24056,6 +26306,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет в библиотеке, открыл поиск для %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có trong thư viện, đã mở tìm kiếm cho %@"
           }
         },
         "zh-Hans": {
@@ -24122,6 +26378,12 @@
             "value": "Локальная модель ИИ: доступна"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI cục bộ: sẵn sàng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24184,6 +26446,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Локальная модель ИИ: требуется macOS 26 или новее"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI cục bộ: cần macOS 26 trở lên"
           }
         },
         "zh-Hans": {
@@ -24250,6 +26518,12 @@
             "value": "Локальная модель ИИ: Apple Intelligence отключена"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI cục bộ: Apple Intelligence đang tắt"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24312,6 +26586,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Локальная модель ИИ: язык не поддерживается"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI cục bộ: không hỗ trợ ngôn ngữ này"
           }
         },
         "zh-Hans": {
@@ -24379,6 +26659,12 @@
             "value": "Недавно услышанные фразы"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cụm từ vừa nghe"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24442,6 +26728,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Субтитры под вырезом"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ đề dưới notch"
           }
         },
         "zh-Hans": {
@@ -24509,6 +26801,12 @@
             "value": "Слушаю…"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang lắng nghe…"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24572,6 +26870,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Прости, можешь повторить?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ơ, tớ nghe chưa rõ. Bạn nói lại nhé?"
           }
         },
         "zh-Hans": {
@@ -24639,6 +26943,12 @@
             "value": "Какую пилюлю добавить?"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn muốn thêm pill nào?"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24702,6 +27012,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Какую пилюлю убрать?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn muốn bỏ pill nào?"
           }
         },
         "zh-Hans": {
@@ -24769,6 +27085,12 @@
             "value": "Какой плейлист?"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danh sách phát nào?"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24832,6 +27154,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Погода голосом"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời tiết bằng giọng nói"
           }
         },
         "zh-Hans": {
@@ -24899,6 +27227,12 @@
             "value": "Город"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành phố"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -24962,6 +27296,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Из Open-Meteo для этого города, только когда спрашиваешь."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ Open-Meteo cho thành phố này, chỉ khi bạn hỏi."
           }
         },
         "zh-Hans": {
@@ -25029,6 +27369,12 @@
             "value": "Coucou отвечает на"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou trả lời bằng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25092,6 +27438,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Голос"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giọng nói"
           }
         },
         "zh-Hans": {
@@ -25159,6 +27511,12 @@
             "value": "Голос Mac"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giọng Mac"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25222,6 +27580,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API-ключ ElevenLabs"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khóa API ElevenLabs"
           }
         },
         "zh-Hans": {
@@ -25289,6 +27653,12 @@
             "value": "Ключ сохранён в Связке ключей"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu khóa trong Keychain"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25352,6 +27722,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тип голоса"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loại giọng"
           }
         },
         "zh-Hans": {
@@ -25419,6 +27795,12 @@
             "value": "Женский"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nữ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25482,6 +27864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Мужской"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nam"
           }
         },
         "zh-Hans": {
@@ -25549,6 +27937,12 @@
             "value": "Проверить голос"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử giọng nói"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25612,6 +28006,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ты говоришь"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn nói"
           }
         },
         "zh-Hans": {
@@ -25679,6 +28079,12 @@
             "value": "Автоматически (язык диктовки Mac)"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tự động (theo ngôn ngữ đọc chính tả của Mac)"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25742,6 +28148,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Используется голос: %@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giọng đang dùng: %@"
           }
         },
         "zh-Hans": {
@@ -25809,6 +28221,12 @@
             "value": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский)."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để giọng tự nhiên hơn, hãy tải một giọng Premium: Cài đặt Hệ thống → Trợ năng → Nội dung đọc → Giọng hệ thống → Quản lý giọng. Với tiếng Anh: Ava cho giọng nữ, Jamie cho giọng nam (Anh)."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -25872,6 +28290,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Универсальный доступ"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở cài đặt Trợ năng"
           }
         },
         "zh-Hans": {
@@ -25939,6 +28363,12 @@
             "value": "Высота голоса"
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cao độ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -26002,6 +28432,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude — мозг Coucou"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude làm bộ não của Coucou"
           }
         },
         "zh-Hans": {
@@ -26069,6 +28505,12 @@
             "value": "После «OK Coucou» сказанное уходит в Claude по твоему ключу Anthropic API вместе с тем, что Coucou читает для ответа (твои пилюли, данные твоих сервисов, адрес контакта). Он действует и ищет в интернете. Звук — никогда."
           }
         },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sau khi bạn nói «OK Coucou», điều bạn nói sẽ được gửi tới Claude bằng khóa API Anthropic của bạn, kèm những gì Coucou đọc để trả lời (các pill của bạn, dữ liệu dịch vụ, địa chỉ liên hệ). Nó có thể hành động và tìm kiếm web. Không bao giờ gửi âm thanh."
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
@@ -26132,6 +28574,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сначала добавь ключ Anthropic API в Настройки → Чат."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãy thêm khóa API Anthropic trong Cài đặt → Chat trước."
           }
         },
         "zh-Hans": {

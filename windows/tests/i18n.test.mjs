@@ -109,6 +109,7 @@ test("System follows the system's language when Coucou has it, else English", ()
   assert.equal(resolveLanguage("", ["zh-CN"]), "zh-Hans");
   assert.equal(resolveLanguage("", ["zh-TW"]), "en"); // Traditional is not one of ours
   assert.equal(resolveLanguage("", ["ar-EG"]), "ar");
+  assert.equal(resolveLanguage("", ["vi-VN"]), "vi");
   assert.equal(resolveLanguage("", ["de-DE"]), "en");
   assert.equal(resolveLanguage("", []), "en");
   // A picked language wins; one this build doesn't know means System.
@@ -116,8 +117,8 @@ test("System follows the system's language when Coucou has it, else English", ()
   assert.equal(resolveLanguage("xx", ["bn-IN"]), "bn");
 });
 
-test("the picker offers the Mac's ten languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"]);
+test("the picker offers the Mac's languages, Arabic reads right to left", () => {
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "vi"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });
@@ -152,6 +153,42 @@ test("a language change relabels what was built, in place, and says so once", ()
 test("strings.json is what the generator makes of the Mac's catalog", () => {
   const catalog = JSON.parse(readFileSync(join(WINDOWS, "../NotchBuddy/Resources/Localizable.xcstrings"), "utf8"));
   assert.deepEqual(generate(catalog), MAC);
+});
+
+test("CFBundleLocalizations declares every language in the catalog", () => {
+  // The Mac app advertises its languages through CFBundleLocalizations; a catalog
+  // language missing there is a localization that will not be offered. The plist
+  // and both XcodeGen targets must agree with the catalog.
+  const catalog = JSON.parse(readFileSync(join(WINDOWS, "../NotchBuddy/Resources/Localizable.xcstrings"), "utf8"));
+  const langs = new Set();
+  for (const entry of Object.values(catalog.strings ?? {})) {
+    for (const lang of Object.keys(entry.localizations ?? {})) langs.add(lang);
+  }
+  const read = (rel) => readFileSync(join(WINDOWS, "..", rel), "utf8");
+
+  const yml = read("NotchBuddy/project.yml");
+  const ymlArrays = [...yml.matchAll(/CFBundleLocalizations:\n((?:[ \t]+-[^\n]*\n)+)/g)].map(
+    (m) => new Set([...m[1].matchAll(/-[ \t]+(\S+)/g)].map((x) => x[1])),
+  );
+  assert.ok(ymlArrays.length >= 1, "project.yml has no CFBundleLocalizations");
+  for (const set of ymlArrays) {
+    for (const lang of langs) assert.ok(set.has(lang), `project.yml CFBundleLocalizations is missing ${lang}`);
+  }
+
+  // Every target's plist that advertises localizations: Info.plist (Coucou),
+  // InfoAppStore.plist (CoucouAppStore), and any future one.
+  const resDir = join(WINDOWS, "..", "NotchBuddy/Resources");
+  let checked = 0;
+  for (const name of readdirSync(resDir).filter((f) => f.endsWith(".plist"))) {
+    const text = readFileSync(join(resDir, name), "utf8");
+    if (!text.includes("CFBundleLocalizations")) continue;
+    const block = text.match(/CFBundleLocalizations[\s\S]*?<array>([\s\S]*?)<\/array>/);
+    assert.ok(block, `${name} has CFBundleLocalizations without an array`);
+    const set = new Set([...block[1].matchAll(/<string>([^<]+)<\/string>/g)].map((x) => x[1]));
+    for (const lang of langs) assert.ok(set.has(lang), `${name} CFBundleLocalizations is missing ${lang}`);
+    checked += 1;
+  }
+  assert.ok(checked >= 1, "no plist declares CFBundleLocalizations");
 });
 
 test("the generator turns format specifiers into placeholders", () => {

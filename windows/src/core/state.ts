@@ -143,7 +143,7 @@ export interface Settings {
   pillColors: Record<string, string>;
   /**
    * Interface language: "" follows the system (when Coucou has its language,
-   * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
+   * else English), or one of src/i18n's language codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
   /**

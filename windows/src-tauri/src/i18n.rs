@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 11] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "vi"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -151,7 +151,7 @@ fn lookup_in(lang: &str, key: &str) -> Option<&'static Value> {
 /// CLDR plural category of `n` (whole numbers) in `lang`.
 fn plural_category(lang: &str, n: u64) -> &'static str {
     match lang {
-        "zh-Hans" | "id" => "other",
+        "zh-Hans" | "id" | "vi" => "other",
         "fr" | "pt-BR" | "hi" | "bn" => {
             if n <= 1 { "one" } else { "other" }
         }
@@ -257,6 +257,10 @@ mod tests {
         assert_eq!(t("Open Coucou"), "Ouvrir Coucou");
         assert_eq!(t("A string nobody translated"), "A string nobody translated");
         assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Ouvrir Vercel");
+        set_for_test("vi");
+        assert_eq!(t("Allow"), "Cho phép");
+        assert_eq!(t("Open the chat"), "Mở chat");
+        assert_eq!(tf("Chat with {name}", &[("name", "Claude")]), "Chat với Claude");
         set_for_test("en");
         assert_eq!(t("Allow"), "Allow");
         assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Open Vercel");
