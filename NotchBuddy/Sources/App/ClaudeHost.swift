@@ -84,6 +84,11 @@ struct ClaudeHost: Equatable {
 
     /// Puts the app's window titled `title` in front of its other windows (needs Accessibility).
     private static func raiseWindow(titled title: String, bundleId: String) {
+        // Without Accessibility no window can be raised: ask once, the system shows where to allow it.
+        guard AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary) else {
+            appendAppLog("nb.log", "Open terminal: Accessibility is not allowed, the window cannot be raised")
+            return
+        }
         guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { return }
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         var value: CFTypeRef?
