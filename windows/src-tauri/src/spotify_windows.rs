@@ -12,8 +12,8 @@
 // plays: the page runs it on from a timestamp, as it does on Linux.
 //
 // What SMTC does not have, and so what is different from the Mac and Linux:
-// - no volume: the slider is shown but `volume` is not applied (the mixer's
-//   per-app volume would be a separate source);
+// - no volume: it is Spotify's slider in the Windows volume mixer instead
+//   (mixer below), which only exists while Spotify has an audio session;
 // - no track id: `smtc:<hash of title, artist, album>` stands in for it, and an
 //   ad is recognised by its title and artist (spotify:ad:smtc);
 // - a session exists once Spotify has something loaded, so "running" means that.
@@ -61,10 +61,19 @@ struct Shared {
     state: PlayerState,
     /// The cover on screen: its key (`Track::art_url`) and the data URL.
     cover: Option<(String, String)>,
+    /// A volume asked for while Spotify had no audio session, applied once it has one.
+    pending_volume: Option<f32>,
 }
 
 static SHARED: LazyLock<Mutex<Shared>> = LazyLock::new(|| {
-    Mutex::new(Shared { generation: 0, active: false, wake: None, state: PlayerState::default(), cover: None })
+    Mutex::new(Shared {
+        generation: 0,
+        active: false,
+        wake: None,
+        state: PlayerState::default(),
+        cover: None,
+        pending_volume: None,
+    })
 });
 
 /// WinRT wants every thread that calls it to be initialised.
@@ -160,12 +169,20 @@ fn read_cover(thumb: &IRandomAccessStreamReference) -> Option<Vec<u8>> {
 fn update(app: &AppHandle, generation: u64, session: Option<&Session>) -> Option<PlayerState> {
     let now = now_ms();
     let read = session.and_then(|s| read_session(s, now));
+    // The volume is not in SMTC: it is the mixer's. A volume asked for while
+    // Spotify had no audio session goes in first.
+    let pending = SHARED.lock().unwrap().pending_volume;
+    let applied = pending.is_some_and(|level| mixer::set(level).unwrap_or(false));
+    let mixer_volume = mixer::get();
     let state = {
         let mut shared = SHARED.lock().unwrap();
         if !(shared.active && shared.generation == generation) {
             return None;
         }
-        let volume = shared.state.volume;
+        if applied {
+            shared.pending_volume = None;
+        }
+        let volume = mixer_volume.unwrap_or(shared.state.volume);
         let installed = shared.state.installed || session.is_some();
         shared.state = match &read {
             Some(r) => PlayerState {
@@ -349,6 +366,7 @@ pub fn sync(app: &AppHandle, on: bool) {
         shared.generation += 1;
         shared.state = PlayerState { installed: installed(), ..PlayerState::default() };
         shared.cover = None;
+        shared.pending_volume = None;
         let stale = shared.wake.take();
         let channel = on.then(mpsc::channel::<Msg>);
         shared.wake = channel.as_ref().map(|(tx, _)| tx.clone());
@@ -400,8 +418,11 @@ pub fn control(app: &AppHandle, action: &str, value: Option<f64>) -> bool {
         shared.state.clone()
     };
     init_winrt();
-    let Some(session) = request_manager().ok().and_then(|m| find_session(&m)) else { return false };
     let v = value.unwrap_or(0.0);
+    if action == "volume" {
+        return set_volume(app, v);
+    }
+    let Some(session) = request_manager().ok().and_then(|m| find_session(&m)) else { return false };
     let seek_to = state.track.as_ref().map(|t| v.clamp(0.0, (t.duration - 1.0).max(0.0)));
     let repeat_mode = if v != 0.0 { MediaPlaybackAutoRepeatMode::List } else { MediaPlaybackAutoRepeatMode::None };
     let done = (|| -> windows::core::Result<bool> {
@@ -415,7 +436,6 @@ pub fn control(app: &AppHandle, action: &str, value: Option<f64>) -> bool {
             },
             "shuffle" => session.TryChangeShuffleActiveAsync(v != 0.0)?.get()?,
             "repeat" => session.TryChangeAutoRepeatModeAsync(repeat_mode)?.get()?,
-            // SMTC has no volume.
             _ => false,
         })
     })()
@@ -442,6 +462,96 @@ pub fn control(app: &AppHandle, action: &str, value: Option<f64>) -> bool {
     };
     emit_state(app, &next);
     true
+}
+
+/// The volume slider: Spotify's volume in the Windows mixer. Shown at once; if
+/// Spotify has no audio session right now (nothing has played for a while),
+/// it is kept and applied as soon as it has one.
+fn set_volume(app: &AppHandle, percent: f64) -> bool {
+    let level = (percent / 100.0).clamp(0.0, 1.0) as f32;
+    let applied = mixer::set(level).unwrap_or(false);
+    let next = {
+        let mut shared = SHARED.lock().unwrap();
+        shared.state.volume = level_to_percent(level);
+        shared.pending_volume = if applied { None } else { Some(level) };
+        shared.state.clone()
+    };
+    emit_state(app, &next);
+    true
+}
+
+// ── The volume mixer ──────────────────────────────────────────────────────────
+
+/// Spotify's entry in the Windows volume mixer: the audio sessions of the
+/// default output whose process is `Spotify.exe`. Nothing here is cached: a
+/// session comes and goes with the audio, so it is looked for each time.
+mod mixer {
+    use super::{is_spotify_exe, level_to_percent};
+    use windows::core::{Interface, PWSTR};
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::Media::Audio::{
+        eConsole, eRender, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume,
+        MMDeviceEnumerator,
+    };
+    use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    fn is_spotify_process(pid: u32) -> bool {
+        if pid == 0 {
+            return false;
+        }
+        unsafe {
+            let Ok(process) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else { return false };
+            let mut buffer = [0u16; 1024];
+            let mut len = buffer.len() as u32;
+            let read = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(buffer.as_mut_ptr()), &mut len);
+            let _ = CloseHandle(process);
+            read.is_ok() && is_spotify_exe(&String::from_utf16_lossy(&buffer[..len as usize]))
+        }
+    }
+
+    fn sessions() -> windows::core::Result<Vec<ISimpleAudioVolume>> {
+        unsafe {
+            let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+            let output = devices.GetDefaultAudioEndpoint(eRender, eConsole)?;
+            let manager: IAudioSessionManager2 = output.Activate(CLSCTX_ALL, None)?;
+            let list = manager.GetSessionEnumerator()?;
+            let mut found = Vec::new();
+            for i in 0..list.GetCount()? {
+                let session = list.GetSession(i)?;
+                let Ok(info) = session.cast::<IAudioSessionControl2>() else { continue };
+                if info.GetProcessId().is_ok_and(is_spotify_process) {
+                    if let Ok(volume) = session.cast::<ISimpleAudioVolume>() {
+                        found.push(volume);
+                    }
+                }
+            }
+            Ok(found)
+        }
+    }
+
+    /// Spotify's volume, 0…100: the loudest of its sessions. None without a session.
+    pub fn get() -> Option<i32> {
+        let found = sessions().ok()?;
+        let level = found.iter().filter_map(|v| unsafe { v.GetMasterVolume().ok() }).fold(None, |best: Option<f32>, v| {
+            Some(best.map_or(v, |b| b.max(v)))
+        })?;
+        Some(level_to_percent(level))
+    }
+
+    /// Sets it on every Spotify session. `Ok(false)`: there is none to set.
+    pub fn set(level: f32) -> windows::core::Result<bool> {
+        let found = sessions()?;
+        let mut any = false;
+        for volume in &found {
+            if unsafe { volume.SetMasterVolume(level.clamp(0.0, 1.0), std::ptr::null()) }.is_ok() {
+                any = true;
+            }
+        }
+        Ok(any)
+    }
 }
 
 // ── Launching ─────────────────────────────────────────────────────────────────
@@ -473,5 +583,24 @@ pub fn open() -> bool {
     } else {
         crate::platform::open_url(DOWNLOAD_URL);
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Needs Spotify running with an audio session (it has played): reads its
+    /// volume in the mixer and writes the same value back. `cargo test -- --ignored`.
+    #[test]
+    #[ignore = "needs a running Spotify"]
+    fn the_mixer_reads_and_writes_spotifys_volume() {
+        init_winrt();
+        let before = mixer::get().expect("Spotify has no audio session: play something first");
+        assert!((0..=100).contains(&before));
+        assert_eq!(mixer::set(before as f32 / 100.0).unwrap(), true);
+        let after = mixer::get().unwrap();
+        assert!((after - before).abs() <= 1, "{before} then {after}");
+        println!("Spotify volume in the mixer: {before}%");
     }
 }

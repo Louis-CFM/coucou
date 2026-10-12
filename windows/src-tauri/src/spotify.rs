@@ -418,6 +418,19 @@ pub fn smtc_position(position: f64, last_updated_ms: Option<f64>, playing: bool,
     if duration > 0.0 { p.min(duration) } else { p }
 }
 
+/// Whether an executable path is Spotify's (the desktop and the Store builds
+/// both run `Spotify.exe`): the volume mixer's sessions are told apart by process.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn is_spotify_exe(path: &str) -> bool {
+    path.rsplit(['\\', '/']).next().is_some_and(|name| name.eq_ignore_ascii_case("spotify.exe"))
+}
+
+/// The mixer's 0.0…1.0 → the island's 0…100.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn level_to_percent(level: f32) -> i32 {
+    ((level as f64) * 100.0).round().clamp(0.0, 100.0) as i32
+}
+
 // ── Artwork ───────────────────────────────────────────────────────────────────
 
 /// Where a cover may be read from. The URL comes from another program: only
@@ -1466,6 +1479,27 @@ mod tests {
         assert_eq!(ad.id, "spotify:ad:smtc");
         let song = smtc_track("Advertisement", "A band", "", 200.0, true).unwrap();
         assert!(song.id.starts_with("smtc:"));
+    }
+
+    #[test]
+    fn spotify_is_told_apart_by_its_executable() {
+        assert!(is_spotify_exe(r"C:\Users\me\AppData\Roaming\Spotify\Spotify.exe"));
+        assert!(is_spotify_exe(r"C:\Program Files\WindowsApps\SpotifyAB.SpotifyMusic_1.2_x64__zpdn\Spotify.exe"));
+        assert!(is_spotify_exe("spotify.exe"));
+        assert!(!is_spotify_exe(r"C:\Program Files\Google\Chrome\Application\chrome.exe"));
+        assert!(!is_spotify_exe(r"C:\tools\not-spotify.exe"));
+        assert!(!is_spotify_exe(r"C:\Spotify\updater.exe"));
+        assert!(!is_spotify_exe(""));
+    }
+
+    #[test]
+    fn the_mixer_level_becomes_a_percentage() {
+        assert_eq!(level_to_percent(0.0), 0);
+        assert_eq!(level_to_percent(0.5), 50);
+        assert_eq!(level_to_percent(0.336), 34);
+        assert_eq!(level_to_percent(1.0), 100);
+        assert_eq!(level_to_percent(1.7), 100);
+        assert_eq!(level_to_percent(-0.2), 0);
     }
 
     #[test]

@@ -419,8 +419,11 @@ own window.
   pause, previous, next, seek, shuffle and repeat, and Mochi dances while it
   plays. Nothing is polled: one thread waits for Windows' own events while the
   pill is declared. Both the desktop Spotify and the Microsoft Store one work.
-  What SMTC doesn't have: **the volume** (the slider is shown and does
-  nothing) and a track id, so an ad is recognised by its title and artist.
+  SMTC has no volume, so the volume slider is Spotify's own entry in the
+  Windows volume mixer (it moves with the mixer's slider for Spotify); it only
+  exists while Spotify has an audio session, so a volume set before anything
+  has played is applied as soon as it starts. SMTC has no track id either, so an
+  ad is recognised by its title and artist.
   **Open Spotify** starts it, or brings the running one forward, through the
   `spotify:` link; without Spotify, **Get Spotify** opens its download page.
 - Not in this version: sending a dropped file by email and dragging Mochi onto

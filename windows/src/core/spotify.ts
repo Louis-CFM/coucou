@@ -3,7 +3,7 @@
 // SpotifyController.swift, NowPlayingViews.swift and the Mac's dance rules
 // (BotCanvasView, DesktopMochi.swift).
 //
-// SMTC has no volume, so on Windows the volume stays where it is.
+// SMTC has no volume: on Windows it is Spotify's entry in the volume mixer.
 
 import type { BotStateName, IslandMode, IslandViewName } from "./layout";
 
