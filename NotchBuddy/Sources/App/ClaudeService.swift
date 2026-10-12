@@ -64,6 +64,9 @@ final class KeychainStore: @unchecked Sendable {
         "anthropic-api-key",
         "google-api-key",
         "openai-api-key",
+        "deepseek-api-key",
+        "qwen-api-key",
+        "moonshot-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -71,6 +74,13 @@ final class KeychainStore: @unchecked Sendable {
         "stripe-api-key",
         "calcom-api-key",
         "notion-api-key",
+        "elevenlabs-api-key",
+        // Portfolio exchange credentials
+        "portfolio-binance-key",  "portfolio-binance-secret",
+        "portfolio-okx-key",      "portfolio-okx-secret",      "portfolio-okx-passphrase",
+        "portfolio-bybit-key",    "portfolio-bybit-secret",
+        "portfolio-kraken-key",   "portfolio-kraken-secret",
+        "portfolio-coinbase-key", "portfolio-coinbase-secret",  "portfolio-coinbase-passphrase",
     ]
 
     private init() {
@@ -173,6 +183,21 @@ final class ClaudeService {
             }
             .sorted { $0.created > $1.created }
             .map { (id: $0.id, label: $0.id) }
+    }
+
+    /// Fetches models from any OpenAI-compatible `/v1/models` endpoint.
+    static func fetchOpenAICompatibleModels(baseURL: String, apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "\(baseURL)/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let id = item["id"] as? String else { return nil }
+            return (id: id, label: id)
+        }
     }
 
     /// Chosen in Settings; falls back to the default when the field is left empty.
@@ -283,8 +308,11 @@ final class ClaudeService {
             baseURL = LocalChat.normaliseURL(state.lmstudioServerURL)
         } else {
             switch provider {
-            case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-            case .openai:  baseURL = "https://api.openai.com/v1"
+            case .google:    baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+            case .openai:    baseURL = "https://api.openai.com/v1"
+            case .deepseek:  baseURL = "https://api.deepseek.com/v1"
+            case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }
@@ -349,7 +377,7 @@ final class ClaudeService {
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
 
-        let useStream = provider.isLocal
+        let useStream = provider.isLocal || provider == .deepseek || provider == .qwen || provider == .moonshot
         var body: [String: Any] = [
             "model": state.activeChatModel,
             "max_tokens": 4096,
@@ -404,9 +432,13 @@ final class ClaudeService {
                 let msg: String
                 switch e {
                 case .serverUnreachable:
-                    msg = provider == .ollama
-                        ? "Ollama isn't running. Open it, then ask again."
-                        : "Start the local server in LM Studio, then ask again."
+                    if provider == .ollama {
+                        msg = "Ollama isn't running. Open it, then ask again."
+                    } else if provider == .lmstudio {
+                        msg = "Start the local server in LM Studio, then ask again."
+                    } else {
+                        msg = "\(provider.displayName) is unreachable. Check your connection and API key."
+                    }
                 case .modelNotFound(let m):
                     msg = "\(m) isn't installed. Pick another model above the chat box."
                 case .serverError(let s):
@@ -499,6 +531,93 @@ final class ClaudeService {
             await showError(error.localizedDescription, state: state)
         }
     }
+
+    #if !APPSTORE
+    // MARK: - Voice brain turn (Claude with Coucou's tools)
+
+    /// One Messages API call for the voice brain: returns the assistant content blocks and
+    /// the stop reason. The fast model first, the Settings model if the key can't use it.
+    func voiceTurn(system: String, messages: [[String: Any]], tools: [[String: Any]])
+        async -> (content: [[String: Any]], stopReason: String)? {
+        guard let key = apiKey, !key.isEmpty else { return nil }
+        func body(_ model: String) -> [String: Any] {
+            ["model": model, "max_tokens": 2048, "system": system, "tools": tools, "messages": messages]
+        }
+        let data: Data
+        do {
+            data = try await callAPI(body: body(Self.voiceModel), key: key, beta: "web-search-2025-03-05")
+        } catch {
+            guard let retry = try? await callAPI(body: body(model), key: key, beta: "web-search-2025-03-05") else {
+                appendAppLog("nb.log", "[Voice] Claude turn failed: \(error.localizedDescription)")
+                return nil
+            }
+            data = retry
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = json["content"] as? [[String: Any]] else { return nil }
+        return (content, json["stop_reason"] as? String ?? "end_turn")
+    }
+
+    // MARK: - Voice answer (Coucou's voice, web search)
+
+    /// Fast model for spoken answers; the chat model from Settings when it is unavailable.
+    private static let voiceModel = "claude-haiku-4-5"
+
+    /// A short answer Coucou can say aloud, with web search, in the answer language.
+    /// `history` holds the previous exchanges of this voice conversation (memory only).
+    /// nil on any failure: no key, network, quota.
+    func voiceAnswer(_ question: String, history: [VoiceWebTurn], french: Bool) async -> String? {
+        guard let key = apiKey, !key.isEmpty else { return nil }
+        let today = Date().formatted(.dateTime.weekday(.wide).day().month(.wide).year()
+            .locale(Locale(identifier: french ? "fr_FR" : "en_US")))
+        let system = french
+            ? """
+              Tu es Coucou, un assistant vocal dans le notch du Mac. Nous sommes le \(today). \
+              Ta réponse est lue à voix haute : 2 à 4 phrases courtes, en français, sans markdown, sans liste, \
+              sans lien, sans citer tes sources. Cherche sur le web dès que la réponse peut avoir changé \
+              (actualité, résultats, prix, horaires, météo, personnes). Donne directement les faits utiles. \
+              S'il y a clairement plus à raconter, termine par une seule courte question pour proposer la suite.
+              """
+            : """
+              You are Coucou, a voice assistant in the Mac's notch. Today is \(today). \
+              Your answer is read aloud: 2 to 4 short sentences in English, no markdown, no lists, no links, \
+              never cite sources. Search the web whenever the answer may have changed (news, scores, prices, \
+              opening hours, weather, people). Give the useful facts straight away. \
+              When there is clearly more worth telling, end with one short question offering to go on.
+              """
+        var messages: [[String: Any]] = []
+        for turn in history {
+            messages.append(["role": "user", "content": turn.question])
+            messages.append(["role": "assistant", "content": turn.answer])
+        }
+        messages.append(["role": "user", "content": question])
+
+        var search: [String: Any] = ["type": "web_search_20250305", "name": "web_search", "max_uses": 3]
+        var location: [String: Any] = ["type": "approximate", "timezone": TimeZone.current.identifier]
+        if let country = Locale.current.region?.identifier, country.count == 2 { location["country"] = country }
+        search["user_location"] = location
+
+        func body(_ model: String) -> [String: Any] {
+            ["model": model, "max_tokens": 700, "system": system, "tools": [search], "messages": messages]
+        }
+        let data: Data
+        do {
+            data = try await callAPI(body: body(Self.voiceModel), key: key, beta: "web-search-2025-03-05")
+        } catch {
+            // The fast model is not available to this key: the Settings model instead.
+            guard let retry = try? await callAPI(body: body(model), key: key, beta: "web-search-2025-03-05") else {
+                appendAppLog("nb.log", "[Voice] web answer failed")
+                return nil
+            }
+            data = retry
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = json["content"] as? [[String: Any]],
+              let text = claudeResponseText(fromContent: content) else { return nil }
+        let spoken = VoiceQuery.spokenText(text)
+        return spoken.isEmpty ? nil : spoken
+    }
+    #endif
 
     // MARK: - API call
 

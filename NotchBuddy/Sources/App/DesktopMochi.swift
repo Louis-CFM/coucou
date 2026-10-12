@@ -12,6 +12,8 @@ final class DesktopBotViewState: ObservableObject {
     @Published var isSleeping: Bool = false
     /// Pause entirely (screen sleep / lock).
     @Published var paused: Bool = false
+    /// Mouse is over Mochi's body — drives hover scale animation.
+    @Published var isHovered: Bool = false
     /// Bot center in the same coord space as AppState.mousePosition (DesktopSpace, y-down).
     /// Updated every poll frame; Canvas reads it inside TimelineView — @Published not needed.
     var lookOrigin: CGPoint = .zero
@@ -27,13 +29,9 @@ struct DesktopBotView: View {
     @ObservedObject var viewState: DesktopBotViewState
 
     var body: some View {
-        TimelineView(.animation(
-            minimumInterval: viewState.isSleeping ? 1.0 / 10.0 : 1.0 / 30.0,
-            paused: viewState.paused
-        )) { timeline in
+        TimelineView(.animation(paused: viewState.paused)) { timeline in
             Canvas { ctx, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                let dt  = min(0.05, now - engine.lastTime)
+                _ = timeline.date   // force redraw every tick (see BotCanvasView)
 
                 // Eye tracking based on the panel's own screen position
                 engine.lookX = tanh((appState.mousePosition.x - viewState.lookOrigin.x) / 260)
@@ -56,7 +54,7 @@ struct DesktopBotView: View {
                     #endif
                 }()
                 engine.setDancing(dancing)
-                engine.update(dt: dt)
+                MochiFrameClock.advance(engine)
 
                 var c = ctx
                 engine.applyDance(&c, size: size)
@@ -81,6 +79,8 @@ struct DesktopBotView: View {
                 engine.drawHandsAndExtras(context: c, size: size)
             }
         }
+        .scaleEffect(viewState.isHovered ? 1.07 : 1.0)
+        .animation(.spring(response: 0.25, dampingFraction: 0.6), value: viewState.isHovered)
         .onChange(of: appState.effectiveState) { _, newState in
             engine.setState(newState)
         }
@@ -487,20 +487,42 @@ final class DesktopMochiController {
         }
     }
 
-    // MARK: - 60 Hz polling (only while panel is live)
+    // MARK: - 30 Hz polling (only while panel is live and the screen is on)
+    // Mochi is drawn at 30 fps (10 asleep): polling faster bought nothing. It also feeds
+    // the eye tracking (AppState.mousePosition), so the island poll can idle meanwhile.
+
+    /// True between startPolling and stopPolling, whatever the screen does meanwhile.
+    private var pollingWanted = false
 
     private func startPolling() {
         frameTimer?.invalidate()
-        frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in self.pollFrame() }
+        frameTimer = nil
+        pollingWanted = true
+        guard !screenSleeping else { return }
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            // On the main run loop: already on the main actor, no Task per tick.
+            MainActor.assumeIsolated { self?.pollFrame() }
         }
-        RunLoop.main.add(frameTimer!, forMode: .common)
+        timer.tolerance = 0.005
+        RunLoop.main.add(timer, forMode: .common)
+        frameTimer = timer
     }
 
     private func stopPolling() {
+        pollingWanted = false
         frameTimer?.invalidate()
         frameTimer = nil
+    }
+
+    private func pausePollingForScreen() {
+        frameTimer?.invalidate()
+        frameTimer = nil
+    }
+
+    /// Only when it was polling before the screen went off.
+    private func resumePollingForScreen() {
+        guard pollingWanted, panel != nil, frameTimer == nil else { return }
+        startPolling()
     }
 
     private func pollFrame() {
@@ -517,8 +539,15 @@ final class DesktopMochiController {
             p.ignoresMouseEvents = !needsMouse
         }
 
+        // Hover scale animation
+        let hovering = overBody && !isDragging
+        if viewState?.isHovered != hovering { viewState?.isHovered = hovering }
+
         // Update eye-tracking origin every frame
         viewState?.lookOrigin = lookOriginFor(panel: p)
+        let pos = DesktopSpace.topDown(mouse, desktopTop: IslandWindowController.desktopTop)
+        let cur = AppState.shared.mousePosition
+        if abs(pos.x - cur.x) > 1 || abs(pos.y - cur.y) > 1 { AppState.shared.mousePosition = pos }
 
         // Sleep detection
         let agentActive = AppState.shared.effectiveState != .idle &&
@@ -661,6 +690,7 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = true
                 self?.viewState?.paused = true
+                self?.pausePollingForScreen()
             }
         }
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -669,6 +699,7 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = false
                 self?.viewState?.paused = false
+                self?.resumePollingForScreen()
             }
         }
     }
@@ -682,6 +713,7 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = true
                 self?.viewState?.paused = true
+                self?.pausePollingForScreen()
             }
         }
         DistributedNotificationCenter.default().addObserver(
@@ -690,6 +722,7 @@ final class DesktopMochiController {
             Task { @MainActor in
                 self?.screenSleeping = false
                 self?.viewState?.paused = false
+                self?.resumePollingForScreen()
             }
         }
     }

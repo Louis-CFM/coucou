@@ -106,9 +106,10 @@ struct VolumeMiniBot: View {
 
     var body: some View {
         TimelineView(.animation) { timeline in
+            let frame = timeline.date   // see BotCanvasView: redraw on every tick
             Canvas { context, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                engine.update(dt: min(0.05, now - engine.lastTime))
+                _ = frame
+                MochiFrameClock.advance(engine)
                 engine.draw(context: context, size: size)
             }
         }
