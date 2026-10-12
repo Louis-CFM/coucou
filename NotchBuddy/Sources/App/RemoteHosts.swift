@@ -43,6 +43,11 @@ enum RemoteSSH {
         #"set -e; d=$HOME/.local/share/coucou/bin; mkdir -p "$d"; t=$d/\#(name).new; cat > "$t"; chmod 755 "$t"; mv -f "$t" "$d/\#(name)""#
     }
 
+    /// Replaces a relay file only where the hooks are installed, so the host runs this version's relay.
+    static func refreshRelayFile(_ name: String) -> String {
+        #"set -e; d=$HOME/.local/share/coucou/bin; [ -f "$d/\#(name)" ] || { cat > /dev/null; exit 0; }; t=$d/\#(name).new; cat > "$t"; chmod 755 "$t"; mv -f "$t" "$d/\#(name)""#
+    }
+
     /// Takes the new settings.json on stdin; backs up the old one first (printing
     /// where) and writes through a symlink, keeping the file's mode.
     static func putSettings(stamp: String) -> String {
@@ -200,7 +205,13 @@ final class RemoteTunnel: @unchecked Sendable {
         self.local = local
     }
 
-    func start() { Thread.detachNewThread { self.loop() } }
+    func start() {
+        Thread.detachNewThread {
+            _ = RemoteSSH.run(self.host, RemoteSSH.refreshRelayFile("nb-hook.py"), input: Data(nbHookPythonGitHub.utf8))
+            _ = RemoteSSH.run(self.host, RemoteSSH.refreshRelayFile("nb-hook"), input: Data(RemoteSSH.remoteWrapper.utf8))
+            self.loop()
+        }
+    }
 
     func stop() {
         lock.lock()
