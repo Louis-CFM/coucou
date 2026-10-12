@@ -108,6 +108,12 @@ fn status_line_is_ours(v: &Value) -> bool {
 /// `hooks` (or one of its events) that is not what Claude Code documents is
 /// refused rather than replaced.
 fn merged(existing: &Value) -> Result<Value, String> {
+    merged_with(existing, &hook_command)
+}
+
+/// `merged` with the command to write for each event: the Windows relay's, or
+/// the one a WSL distro runs it by (wsl.rs).
+fn merged_with(existing: &Value, command: &dyn Fn(&str) -> String) -> Result<Value, String> {
     let mut root = existing.as_object().cloned().unwrap_or_default();
     let mut hooks = match root.get("hooks") {
         None => Map::new(),
@@ -125,7 +131,7 @@ fn merged(existing: &Value) -> Result<Value, String> {
         list.push(json!({
             "hooks": [{
                 "type": "command",
-                "command": hook_command(event),
+                "command": command(event),
                 "timeout": timeout,
             }]
         }));
@@ -225,6 +231,49 @@ fn plan_to_preview(plan: config_file::Plan) -> HookPreview {
 /// changed in between is refused rather than overwritten (see config_file).
 pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
     let backups = config_file::apply(&edits(install), fingerprint)?;
+    Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
+}
+
+// ── Claude Code in WSL ────────────────────────────────────────────────────────
+//
+// The same hooks, written in a WSL distro's own ~/.claude/settings.json, which
+// Windows reaches as \\wsl.localhost\<distro>\home\<user>\.claude\. Only the
+// command differs: it starts coucou-hook.exe through WSL interop (wsl.rs). The
+// reading, the diff, the dated backup and the fingerprint are the same code.
+
+/// Whether a settings.json holds Coucou's hooks. Read-only; a file that is
+/// missing or unreadable has none.
+pub fn settings_file_has_ours(path: &Path) -> bool {
+    config_file::read(path)
+        .ok()
+        .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json").ok())
+        .and_then(|v| v.get("hooks").and_then(Value::as_object).cloned())
+        .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(entry_is_ours))
+}
+
+fn wsl_edits(target: &crate::wsl::Target, install: bool) -> Vec<FileEdit<'static>> {
+    let relay = target.relay.clone();
+    vec![FileEdit {
+        path: target.settings_path.clone(),
+        edit: config_file::json_edit("settings.json".into(), move |current| {
+            if install {
+                merged_with(current, &|event| crate::wsl::relay_command(&relay, event)).map(Some)
+            } else {
+                without_ours(current).map(Some)
+            }
+        }),
+    }]
+}
+
+pub fn wsl_preview(distro: &str, user: &str, install: bool) -> Result<HookPreview, String> {
+    let target = crate::wsl::resolve(distro, user)?;
+    Ok(plan_to_preview(config_file::preview(&wsl_edits(&target, install))?))
+}
+
+/// As `write`, for a distro's settings.json; returns where the backup went.
+pub fn wsl_write(distro: &str, user: &str, install: bool, fingerprint: &str) -> Result<String, String> {
+    let target = crate::wsl::resolve(distro, user)?;
+    let backups = config_file::apply(&wsl_edits(&target, install), fingerprint)?;
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
@@ -425,6 +474,54 @@ fn install_relay(src: &Path, dest: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_wsl_hooks_sit_beside_the_users_own_and_go_again_cleanly() {
+        let relay = "/mnt/c/Users/Me/AppData/Local/Coucou/bin/coucou-hook.exe";
+        let command = |event: &str| crate::wsl::relay_command(relay, event);
+        let theirs = json!({
+            "model": "opus",
+            "statusLine": { "type": "command", "command": "~/bin/line" },
+            "hooks": {
+                "PreToolUse": [{ "hooks": [{ "type": "command", "command": "rtk hook claude" }] }],
+                "Stop": [{ "hooks": [{ "type": "command", "command": "/home/me/pulse/notify.sh" }] }],
+            }
+        });
+        let after = merged_with(&theirs, &command).unwrap();
+        // Everything that was there is still there, in its place.
+        assert_eq!(after["model"], "opus");
+        assert_eq!(after["statusLine"], theirs["statusLine"]);
+        assert_eq!(after["hooks"]["PreToolUse"][0], theirs["hooks"]["PreToolUse"][0]);
+        assert_eq!(after["hooks"]["Stop"][0], theirs["hooks"]["Stop"][0]);
+        // Ours is added to every event, with the WSL command and the right timeout.
+        for (event, timeout) in HOOK_EVENTS {
+            let list = after["hooks"][event].as_array().unwrap();
+            let ours = list.last().unwrap();
+            assert!(entry_is_ours(ours), "{event}");
+            assert_eq!(ours["hooks"][0]["command"], command(event));
+            assert_eq!(ours["hooks"][0]["timeout"], *timeout);
+        }
+        // Again: still one of ours per event.
+        let twice = merged_with(&after, &command).unwrap();
+        assert_eq!(twice, after);
+        // Removing it gives back exactly what the user had.
+        assert_eq!(without_ours(&after).unwrap(), theirs);
+    }
+
+    #[test]
+    fn a_settings_file_is_read_for_our_hooks_without_being_touched() {
+        let dir = config_file::tests::scratch("wsl-has-ours");
+        let path = dir.join("settings.json");
+        assert!(!settings_file_has_ours(&path));
+        let relay = "/mnt/c/x/coucou-hook.exe";
+        let ours = merged_with(&json!({}), &|e| crate::wsl::relay_command(relay, e)).unwrap();
+        std::fs::write(&path, serde_json::to_vec(&ours).unwrap()).unwrap();
+        assert!(settings_file_has_ours(&path));
+        std::fs::write(&path, br#"{ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "x.sh" }] }] } }"#).unwrap();
+        assert!(!settings_file_has_ours(&path));
+        std::fs::write(&path, b"not json").unwrap();
+        assert!(!settings_file_has_ours(&path));
+    }
 
     #[test]
     fn the_hooks_leave_the_status_line_alone() {

@@ -37,6 +37,7 @@ mod tray;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
+mod wsl;
 
 use std::process::Command;
 use std::sync::atomic::Ordering;
@@ -378,6 +379,31 @@ fn hooks_apply(
     };
     let _ = app.emit("settings-changed", updated);
     Ok(backup)
+}
+
+// ── Claude Code in WSL ───────────────────────────────────────────────────────
+
+/// The WSL distros, and for each running one the users who have a ~/.claude.
+/// Asks `wsl.exe` and reads a few directories, so off the main thread.
+#[tauri::command]
+async fn wsl_hooks_list() -> Vec<wsl::WslDistro> {
+    tauri::async_runtime::spawn_blocking(wsl::list).await.unwrap_or_default()
+}
+
+/// The diff the user has to look at before anything is written to a distro.
+#[tauri::command]
+async fn wsl_hooks_preview(distro: String, user: String, install: bool) -> Result<HookPreview, String> {
+    tauri::async_runtime::spawn_blocking(move || hooks::wsl_preview(&distro, &user, install))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Only ever called from an explicit click, and only for the diff that was shown.
+#[tauri::command]
+async fn wsl_hooks_apply(distro: String, user: String, install: bool, fingerprint: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || hooks::wsl_write(&distro, &user, install, &fingerprint))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 // ── Other agents' hooks and plugins ──────────────────────────────────────────
@@ -749,6 +775,9 @@ pub fn run() {
             agent_hooks_status,
             hooks_preview,
             hooks_apply,
+            wsl_hooks_list,
+            wsl_hooks_preview,
+            wsl_hooks_apply,
             agent_hooks_list,
             agent_hooks_preview,
             agent_hooks_apply,
