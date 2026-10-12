@@ -229,6 +229,87 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
+// ── Claude Code in WSL ────────────────────────────────────────────────────────
+
+/**
+ * The same hooks, in a WSL distro's own settings.json (src-tauri/src/wsl.rs).
+ * The words of the change are the Windows ones; only where it goes differs.
+ */
+function wslChange(distro: string, user: string): Change {
+  return {
+    preview: (install) => Bridge.wslHooksPreview(distro, user, install),
+    apply: (install, fingerprint) => Bridge.wslHooksApply(distro, user, install, fingerprint),
+    get installText() { return HOOKS_CHANGE.installText; },
+    get removeText() { return HOOKS_CHANGE.removeText; },
+    get installButton() { return HOOKS_CHANGE.installButton; },
+    get removeButton() { return HOOKS_CHANGE.removeButton; },
+    done: (backup) => backup
+      ? t("Done. Previous settings saved as {backup}. Open a new Claude Code session in WSL to pick the hooks up.", { backup })
+      : t("Done. Open a new Claude Code session in WSL to pick the hooks up."),
+  };
+}
+
+/** One row of the section: a distro's user, or a distro that is not running. */
+function wslSection(hookReady: boolean): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h("section", { style: "display:none" }, h("h2", {}, h("span", { text: t("Claude Code in WSL") })), body);
+
+  const redraw = () => {
+    clear(body);
+    void load();
+  };
+
+  async function load() {
+    const distros = (await Bridge.wslHooksList()) ?? [];
+    // Nobody with WSL, nothing to show.
+    if (distros.length === 0) return;
+    section.style.display = "";
+    clear(body);
+    body.append(h("div", {
+      class: "hint",
+      text: t("Claude Code sessions that run in WSL show up in the island too, and you can approve them there. Coucou adds its hooks to the distro's own ~/.claude/settings.json; they start the Windows relay through WSL."),
+    }));
+    for (const distro of distros) {
+      if (!distro.running) {
+        body.append(h("div", { class: "row" },
+          h("label", { text: distro.name }),
+          h("span", { class: "path", text: t("{distro} is not running — start it to set its hooks up.", { distro: distro.name }) }),
+        ));
+        continue;
+      }
+      for (const user of distro.users) {
+        const row = h("div", { class: "row" },
+          statusDot(user.installed),
+          h("label", { text: `${distro.name} · ${user.name}` }),
+          h("span", { class: "path", text: user.settingsPath }),
+        );
+        const change = wslChange(distro.name, user.name);
+        const install = h("button", {
+          class: "primary",
+          text: user.installed ? t("Reinstall hooks…") : t("Install hooks…"),
+          onclick: () => void reviewChange(body, change, true, redraw, redraw),
+        });
+        if (!hookReady) {
+          install.disabled = true;
+          install.title = t("The relay isn't installed yet.");
+        }
+        const actions = h("div", { class: "row" }, install);
+        if (user.installed) {
+          actions.append(h("button", {
+            class: "danger",
+            text: t("Uninstall hooks…"),
+            onclick: () => void reviewChange(body, change, false, redraw, redraw),
+          }));
+        }
+        body.append(row, actions);
+      }
+    }
+  }
+
+  void load();
+  return section;
+}
+
 // ── Plan usage section ────────────────────────────────────────────────────────
 
 /**
@@ -1363,6 +1444,7 @@ async function render() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    wslSection(status.hookReady),
     agentsSection(agents),
     planSection(status),
     apiSection(hasKey),

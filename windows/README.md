@@ -156,6 +156,33 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+### Claude Code in WSL
+
+A session that runs inside a WSL distro is Linux: it reads the distro's own
+`~/.claude/settings.json` and cannot see the island's named pipe. What it can
+do is start a Windows program, and `coucou-hook.exe` is one, so the hooks of
+such a session run it through WSL. It reads the event on its standard input,
+talks to the island, and prints its answer, so **Allow and Deny clicked in the
+island reach the session in WSL** like any other. A call costs about 60 ms, nearly
+all of it WSL starting a Windows process.
+
+Open **Settings… → Claude Code in WSL**. The section only appears when WSL has
+distros. Each running distro lists the Linux users who have a `~/.claude`, with
+**Install hooks…** and **Uninstall hooks…**, which show the diff and take a
+dated backup exactly as above (the file is reached as
+`\\wsl.localhost\<distro>\home\<user>\.claude\settings.json`). A distro that
+isn't running is listed but left alone: reading its files would start it.
+
+The command written is the relay's path as the distro sees it
+(`/mnt/c/Users/…/coucou-hook.exe`, from the distro's own automount root in
+`/etc/wsl.conf`), guarded so that a session never reports a failing hook:
+`[ -x '<relay>' ] && '<relay>' <Event> || true`. If Windows interop is turned off
+in the distro, the hooks do nothing. Your own hooks stay as they are.
+
+Not done yet for WSL: paths in a session are Linux paths, so a diff's ↗ and
+"Open terminal" don't reach the Windows side, and the plan usage gauge isn't
+set up (that is the Windows status line).
+
 ### Plan usage
 
 As on the Mac, the island's header can show your plan limits: a small pill
