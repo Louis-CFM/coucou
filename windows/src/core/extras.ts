@@ -31,18 +31,29 @@ export interface Todo {
   id: number;
   text: string;
   done: boolean;
+  /** A reminder: when it rings (ms). Rung ones are marked done. */
+  due?: number;
 }
 
 const TODO_KEY = "coucou.todos";
 // ponytail: kept in the island's web storage (survives restarts, this PC only); a file under config_dir if it ever needs syncing.
 export const Todos = {
   items: load<Todo[]>(TODO_KEY, []),
-  add(text: string) {
+  add(text: string, due?: number) {
     const t = text.trim();
     if (!t) return;
     const id = Math.max(0, ...this.items.map((x) => x.id)) + 1;
-    this.items = [...this.items, { id, text: t.slice(0, 200), done: false }];
+    this.items = [...this.items, { id, text: t.slice(0, 200), done: false, ...(due ? { due } : {}) }];
     this.save();
+  },
+  /** Reminders whose time has come, marked done so each rings once. */
+  takeDue(now = Date.now()): Todo[] {
+    const due = this.items.filter((x) => !x.done && x.due != null && x.due <= now);
+    if (due.length) {
+      this.items = this.items.map((x) => (due.includes(x) ? { ...x, done: true } : x));
+      this.save();
+    }
+    return due;
   },
   toggle(id: number) {
     this.items = this.items.map((x) => (x.id === id ? { ...x, done: !x.done } : x));

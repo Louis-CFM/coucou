@@ -243,6 +243,9 @@ export const Bridge = {
   elevenSignedUrl: (agentId: string | null) => call<string>("eleven_signed_url", { agentId }),
   /** The agent's ask_hermes tool: one request to Hermes on this PC. */
   askHermes: (request: string) => call<string>("ask_hermes", { request }),
+  /** An installed app by name, from the Start menu (Store apps too); its name. */
+  openApp: (name: string) => call<string>("open_app", { name }),
+  lockScreen: () => call<void>("lock_screen"),
   /** The volume keys' own step: up, down or mute, with the island's HUD. */
   volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */

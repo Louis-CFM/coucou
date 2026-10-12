@@ -168,7 +168,8 @@ function todoCard(): ExtraCard {
         });
         const del = h("button", { class: "x-del", title: t("Delete"), text: "×" });
         del.addEventListener("click", () => Todos.remove(item.id));
-        list.append(h("div", { class: `x-row${item.done ? " done" : ""}` }, box, h("span", { class: "x-text", text: item.text }), del));
+        const when = item.due ? `⏰ ${new Date(item.due).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ` : "";
+        list.append(h("div", { class: `x-row${item.done ? " done" : ""}` }, box, h("span", { class: "x-text", text: when + item.text }), del));
       }
     },
   };
@@ -248,8 +249,20 @@ export function scheduleResetAlerts(windows: { fiveHour?: { usedPct: number; res
 }
 
 /** Back at the keyboard after a while: what came meanwhile (notify.rs). */
+/** A reminder rings: sound, the island, and the phone. */
+function ringReminders() {
+  for (const r of Todos.takeDue()) {
+    Sound.play("finish");
+    if (host) showLive(host, { kind: "focus", level: 1, muted: false, charging: false, text: t("Reminder: {0}", { 0: r.text }) }, 15_000);
+    void Bridge.phonePush(t("Reminder"), r.text, false, false);
+  }
+}
+
 export function registerExtras(liveHost: LiveHost) {
   host = liveHost;
+  // Reminders live in the to-do list, so they survive a restart; missed ones ring at start.
+  ringReminders();
+  window.setInterval(ringReminders, 5000);
   void onEvent<number>("user-back", (awaySecs) => {
     const { calls, messages } = Inbox.since(Date.now() - awaySecs * 1000);
     if (calls + messages === 0) return;

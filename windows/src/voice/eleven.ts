@@ -18,6 +18,8 @@ import { agentsText, planText } from "./voice";
 import { t } from "../i18n/i18n";
 
 let ws: WebSocket | null = null;
+/** The user asked for music during the conversation: leave it as they set it. */
+let touchedMusic: (() => void) | null = null;
 let host: LiveHost | null = null;
 
 /** One line in the island: who spoke last and what. */
@@ -62,11 +64,14 @@ interface CoucouParams {
 /** The agent's `coucou` tool: what it did, in a few words for the agent to say. */
 async function coucouTool(p: CoucouParams): Promise<string> {
   const playing = Spotify.state.playing;
+  if (/track|play_pause/.test(p.action)) touchedMusic?.();
   switch (p.action) {
     case "play_pause":
       if (!Spotify.state.track) return "Nothing is loaded in a music player.";
       await Bridge.spotifyControl("playPause");
-      return playing ? "Paused." : "Playing.";
+      // Music on and the mic open don't mix: say it, then hang up.
+      if (!playing) window.setTimeout(endConversation, 4000);
+      return playing ? "Paused." : "Playing. The conversation ends in a few seconds so the music doesn't drown the mic.";
     case "next_track":
       await Bridge.spotifyControl("next");
       return "Skipped to the next track.";
@@ -94,19 +99,17 @@ async function coucouTool(p: CoucouParams): Promise<string> {
       stopFocus();
       return "Focus stopped.";
     case "timer": {
-      const m = Math.max(1, Math.min(600, Math.round(p.value ?? 5)));
+      const m = Math.max(1, Math.min(1440, Math.round(p.value ?? 5)));
       const label = p.label?.trim() || "Timer";
-      window.setTimeout(() => {
-        Sound.play("finish");
-        if (host) showLive(host, { kind: "focus", level: 1, muted: false, charging: false, text: label }, 8000);
-        void Bridge.phonePush(t("Reminder"), label, false, false);
-      }, m * 60_000);
-      return `Timer set for ${m} minutes${p.label ? ` to ${p.label}` : ""}.`;
+      const due = Date.now() + m * 60_000;
+      Todos.add(label, due);
+      const at = new Date(due).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return `Reminder "${label}" set for ${at} (in ${m} minutes); it's in the to-do list.`;
     }
     case "add_todo":
       if (!p.label?.trim()) return "Tell me what to add.";
       Todos.add(p.label);
-      return `Added "${p.label.trim()}" to the to-do list.`;
+      return `Added "${p.label.trim()}" to the to-do list (${Todos.open} open).`;
     case "list_todos": {
       const open = Todos.items.filter((x) => !x.done).map((x) => x.text);
       return open.length ? `Open to-dos: ${open.join("; ")}.` : "The to-do list is empty.";
@@ -115,15 +118,37 @@ async function coucouTool(p: CoucouParams): Promise<string> {
       return planText();
     case "agents_status":
       return agentsText();
+    case "open_app": {
+      if (!p.label?.trim()) return "Tell me which app.";
+      // An installed app by name (Start menu, Store apps too); never a web search.
+      return `Opened ${await Bridge.openApp(p.label)}.`;
+    }
     case "open": {
       if (!p.label?.trim()) return "Tell me what to open.";
       const where = openTarget(p.label);
-      if ("url" in where) void Bridge.openUrl(where.url);
-      else if (where.app === "phoneLink") void Bridge.openPhoneLink();
+      if ("url" in where) {
+        // A bare name isn't a website: try it as an app before searching the web.
+        if (where.url.startsWith("https://www.google.com/search")) {
+          try {
+            return `Opened ${await Bridge.openApp(p.label)}.`;
+          } catch {
+            /* not an app: search */
+          }
+        }
+        void Bridge.openUrl(where.url);
+      } else if (where.app === "phoneLink") void Bridge.openPhoneLink();
       else if (where.app === "settings") void Bridge.openSettingsWindow();
       else void Bridge.spotifyOpen();
       return `Opened ${p.label}.`;
     }
+    case "web_search":
+      if (!p.label?.trim()) return "Tell me what to search.";
+      void Bridge.openUrl(`https://www.google.com/search?q=${encodeURIComponent(p.label.trim())}`);
+      return `Searched the web for ${p.label}.`;
+    case "lock_screen":
+      // After the agent's goodbye has been heard.
+      window.setTimeout(() => void Bridge.lockScreen(), 2500);
+      return "Locking the screen in two seconds.";
     default:
       return `I can't do "${p.action}".`;
   }
@@ -157,6 +182,12 @@ export async function startConversation(liveHost: LiveHost, agentId: string) {
   if (ws) return;
   host = liveHost;
   caption(t("Connecting…"));
+  // The speakers aren't this page's audio, so echo cancellation can't remove
+  // the music: Maki would hear the song as you talking. Paused while she
+  // listens, back on after unless you changed it.
+  let resume = Spotify.state.playing;
+  if (resume) void Bridge.spotifyControl("playPause");
+  touchedMusic = () => (resume = false);
   const ended = () => {
     void Bridge.voiceConversationEnded();
     if (Live.current?.kind === "voice") endLive(liveHost);
@@ -282,6 +313,8 @@ export async function startConversation(liveHost: LiveHost, agentId: string) {
     for (const tr of stream.getTracks()) tr.stop();
     void ctx.close();
     ws = null;
+    touchedMusic = null;
+    if (resume && !Spotify.state.playing) void Bridge.spotifyControl("playPause");
     Sound.play("close");
     ended();
   };

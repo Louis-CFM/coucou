@@ -794,6 +794,10 @@ pub fn run() {
             #[cfg(windows)]
             eleven::ask_hermes,
             #[cfg(windows)]
+            eleven::open_app,
+            #[cfg(windows)]
+            eleven::lock_screen,
+            #[cfg(windows)]
             sysevents::volume_key_action,
             #[cfg(windows)]
             notify::open_phone_link,
