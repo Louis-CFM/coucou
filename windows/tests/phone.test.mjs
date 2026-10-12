@@ -140,3 +140,13 @@ test("a multi-select answer from the phone reaches the relay as a list", () => {
   assert.deepEqual(sent("approval_answer"), [{ requestId: "q-r2", answers: { "Extras?": ["Tests", "Docs"] }, other: [] }]);
   assert.equal(closed, 1);
 });
+
+test("each CLI's session goes to its own commands; unknown agents fall back to Devin", async () => {
+  for (const [agent, cmd] of [["claude", "claude_resume"], ["codex", "codex_resume"], ["opencode", "opencode_resume"], ["devin", "devin_resume"]]) {
+    resetPhoneState();
+    respond(`${agent}_sessions`, () => [{ id: "s1", title: "t", dir: "/p", lastActivityAt: 1 }]);
+    emit("phone-remote", [{ type: "chat", at: 1, text: "hi", sessionId: "s1", agent }]);
+    await settle();
+    assert.deepEqual(sent(cmd).at(-1), { sessionId: "s1", text: "hi" }, agent);
+  }
+});

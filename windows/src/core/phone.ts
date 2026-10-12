@@ -111,24 +111,23 @@ function snapshot() {
   return { sessions, awaiting, chatTail };
 }
 
-/** Session list, transcript and resume — routed by which CLI owns the id. */
-function agentTranscript(agent: string, id: string) {
-  switch (agent) {
-    case "claude": return Bridge.claudeTranscript(id);
-    case "codex": return Bridge.codexTranscript(id);
-    case "opencode": return Bridge.opencodeTranscript(id);
-    default: return Bridge.devinTranscript(id);
-  }
-}
+type SessionList = () => Promise<{ id: string; title: string; dir: string; lastActivityAt: number }[] | null>;
 
-function agentResume(agent: string, id: string, text: string) {
-  switch (agent) {
-    case "claude": return Bridge.claudeResume(id, text);
-    case "codex": return Bridge.codexResume(id, text);
-    case "opencode": return Bridge.opencodeResume(id, text);
-    default: return Bridge.devinResume(id, text);
-  }
-}
+/** Each CLI's session store, by the agent id the phone sends. */
+const SESSION_SOURCES: Record<string, {
+  list: SessionList;
+  transcript: (id: string) => Promise<ChatLine[] | null>;
+  resume: (id: string, text: string) => Promise<string>;
+}> = {
+  devin: { list: Bridge.devinSessions, transcript: Bridge.devinTranscript, resume: Bridge.devinResume },
+  claude: { list: Bridge.claudeSessions, transcript: Bridge.claudeTranscript, resume: Bridge.claudeResume },
+  codex: { list: Bridge.codexSessions, transcript: Bridge.codexTranscript, resume: Bridge.codexResume },
+  opencode: { list: Bridge.opencodeSessions, transcript: Bridge.opencodeTranscript, resume: Bridge.opencodeResume },
+};
+
+const source = (agent: string) => SESSION_SOURCES[agent] ?? SESSION_SOURCES.devin;
+const agentTranscript = (agent: string, id: string) => source(agent).transcript(id);
+const agentResume = (agent: string, id: string, text: string) => source(agent).resume(id, text);
 
 /** CLI sessions + the selected transcript — fetched lazily, cached briefly. */
 async function remoteSessions() {
@@ -144,13 +143,10 @@ async function remoteSessions() {
         at: s.lastActivityAt,
         agent,
       }));
-    const [devin, claude, codex, opencode] = await Promise.all([
-      fetch(Bridge.devinSessions, "devin"),
-      fetch(Bridge.claudeSessions, "claude"),
-      fetch(Bridge.codexSessions, "codex"),
-      fetch(Bridge.opencodeSessions, "opencode"),
-    ]);
-    sessionsCache = [...devin, ...claude, ...codex, ...opencode];
+    const lists = await Promise.all(
+      Object.entries(SESSION_SOURCES).map(([agent, s]) => fetch(s.list, agent)),
+    );
+    sessionsCache = lists.flat();
     sessionsFetchedAt = Date.now();
   }
   if (selectedSession && Date.now() - transcriptFetchedAt > 5_000) {
