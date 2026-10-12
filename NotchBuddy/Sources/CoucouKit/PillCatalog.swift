@@ -56,6 +56,7 @@ struct PillDefinition {
         case "integration_claude": return "Claude Code"
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
+        case "agent_pi":           return "Pi"
         case "agent_hermes":       return "Hermes"
         case "agent_claude-desktop": return "Claude Desktop"
         default:                   return "Agent"
@@ -87,6 +88,8 @@ enum PillCatalog {
         .init(id: "agent_opencode",      name: "OpenCode",    color: "#4ADE80",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         .init(id: "agent_amp",           name: "Amp",         color: "#F59E0B",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_pi",            name: "Pi",          color: "#6366F1",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
