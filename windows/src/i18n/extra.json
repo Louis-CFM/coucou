@@ -4714,6 +4714,17 @@
    "ru": "После слова активации говорите свободно со своим агентом ElevenLabs: он отвечает вслух, выполняет действия Coucou и передаёт настоящую работу Hermes на этом ПК. После пробуждения Maki ваш голос уходит в ElevenLabs; расходуются кредиты ElevenLabs.",
    "id": "Setelah kata pemicu, bicaralah bebas dengan agen ElevenLabs-mu: ia menjawab dengan suara, menjalankan aksi Coucou dan menyerahkan pekerjaan nyata ke Hermes di PC ini. Suaramu dikirim ke ElevenLabs setelah Maki bangun; memakai kredit ElevenLabs-mu."
   },
+  "Hermes is working…": {
+   "zh-Hans": "Hermes 正在处理…",
+   "hi": "Hermes काम कर रहा है…",
+   "es": "Hermes está trabajando…",
+   "ar": "Hermes يعمل…",
+   "fr": "Hermes travaille…",
+   "bn": "Hermes কাজ করছে…",
+   "pt-BR": "O Hermes está trabalhando…",
+   "ru": "Hermes работает…",
+   "id": "Hermes sedang bekerja…"
+  },
   "Asking Hermes…": {
    "zh-Hans": "正在询问 Hermes…",
    "hi": "Hermes से पूछ रहा है…",

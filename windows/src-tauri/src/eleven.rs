@@ -16,7 +16,8 @@ use crate::i18n::t;
 pub const KEY: &str = "elevenlabs-api-key";
 /// The agent created for Maki on the user's ElevenLabs account.
 pub const DEFAULT_AGENT: &str = "agent_8401m4q6khr6f6xsz32805aq1fve";
-const HERMES_TIMEOUT: Duration = Duration::from_secs(115);
+// Maki calls back with the answer, so no call is held open while Hermes works.
+const HERMES_TIMEOUT: Duration = Duration::from_secs(300);
 const HERMES_MAX: usize = 4000;
 
 /// A one-time WebSocket URL for the agent, signed with the user's key.
@@ -51,6 +52,67 @@ fn hermes_exe() -> Option<std::path::PathBuf> {
     exe.is_file().then_some(exe).or_else(|| crate::platform::find_on_path("hermes"))
 }
 
+/// Reads Hermes' session store while it works and prints one line per step
+/// (the command it runs, the page it reads…): `hermes -z` itself is silent
+/// until the answer. Runs on Hermes' own Python, which has sqlite3 built in.
+// ponytail: polls Hermes' state.db schema (sessions/messages); if Hermes changes it, only the live steps go quiet.
+const WATCHER: &str = r#"
+import sqlite3, sys, time, json, os
+sys.stdout.reconfigure(encoding="utf-8")
+since = float(sys.argv[1]); db = os.path.expandvars(r"%LOCALAPPDATA%\hermes\state.db")
+sid = None; last = 0; quiet = 0
+def short(s, n=90):
+    s = " ".join(str(s).split()); return s if len(s) <= n else s[:n-1] + "\u2026"
+while True:
+    time.sleep(1); quiet += 1
+    try:
+        c = sqlite3.connect("file:" + db + "?mode=ro", uri=True, timeout=2)
+        if sid is None:
+            r = c.execute("select id from sessions where started_at >= ? order by started_at desc limit 1", (since,)).fetchone()
+            sid = r and r[0]
+        if sid:
+            for mid, role, content, calls, tool in c.execute("select id, role, content, tool_calls, tool_name from messages where session_id=? and id>? order by id", (sid, last)).fetchall():
+                last = mid
+                if role == "assistant" and calls:
+                    for k in json.loads(calls):
+                        f = k.get("function", k); args = f.get("arguments") or "{}"
+                        try: a = json.loads(args)
+                        except Exception: a = {}
+                        what = next((a[x] for x in ("command", "query", "url", "path", "action", "text") if x in a), "")
+                        print(short(f.get("name", "tool") + (": " + str(what) if what else "")), flush=True); quiet = 0
+                elif role == "tool" and content:
+                    print(short("\u2192 " + content, 70), flush=True); quiet = 0
+        c.close()
+    except Exception:
+        pass
+    if quiet and quiet % 10 == 0:
+        print("thinking\u2026", flush=True)
+"#;
+
+/// Hermes' Python, next to hermes.exe.
+fn hermes_python(exe: &std::path::Path) -> Option<std::path::PathBuf> {
+    let py = exe.with_file_name("python.exe");
+    py.is_file().then_some(py)
+}
+
+/// Streams Hermes' steps to the island and the log until `child` is dropped.
+fn watch_hermes(exe: &std::path::Path) -> Option<std::process::Child> {
+    let since = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()?.as_secs_f64() - 2.0;
+    let mut cmd = Command::new(hermes_python(exe)?);
+    cmd.args(["-I", "-c", WATCHER, &since.to_string()]).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+    crate::platform::no_console(&mut cmd);
+    let mut child = cmd.spawn().ok()?;
+    let out = child.stdout.take()?;
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        for line in std::io::BufReader::new(out).lines().map_while(Result::ok) {
+            crate::log::line(format!("hermes: {line}"));
+            crate::voice::emit("hermes-progress", line);
+        }
+    });
+    Some(child)
+}
+
 /// Trims what Hermes prints to the answer itself, capped.
 pub fn hermes_answer(stdout: &str) -> String {
     let text = stdout.trim();
@@ -64,6 +126,7 @@ pub async fn ask_hermes(request: String) -> Result<String, String> {
     let Some(exe) = hermes_exe() else { return Err(t("Hermes isn't installed on this PC.")) };
     let request: String = request.chars().take(4000).collect();
     tauri::async_runtime::spawn_blocking(move || {
+        let exe_path = exe.clone();
         let mut cmd = Command::new(exe);
         // Voice requests get a lean toolset: the full one makes the prompt so big
         // the free model took ~106 s for a one-line command; this takes ~35 s.
@@ -74,6 +137,8 @@ pub async fn ask_hermes(request: String) -> Result<String, String> {
         crate::platform::no_console(&mut cmd);
         let mut child = cmd.spawn().map_err(|e| format!("hermes: {e}"))?;
         let started = Instant::now();
+        crate::voice::emit("hermes-progress", t("Hermes is working…"));
+        let mut watcher = watch_hermes(&exe_path);
         let mut stdout = child.stdout.take().ok_or("hermes: no output")?;
         // Read on a thread so a hung Hermes can be stopped at the timeout.
         let reader = std::thread::spawn(move || {
@@ -81,11 +146,18 @@ pub async fn ask_hermes(request: String) -> Result<String, String> {
             let _ = stdout.read_to_string(&mut s);
             s
         });
+        let stop_watcher = |w: &mut Option<std::process::Child>| {
+            if let Some(w) = w.as_mut() {
+                let _ = w.kill();
+            }
+        };
         loop {
             if let Ok(Some(_)) = child.try_wait() {
+                stop_watcher(&mut watcher);
                 break;
             }
             if started.elapsed() > HERMES_TIMEOUT {
+                stop_watcher(&mut watcher);
                 let _ = child.kill();
                 crate::log::line("eleven: hermes timed out");
                 return Err(t("Hermes took too long."));

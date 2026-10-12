@@ -7,7 +7,7 @@
 // ends when the agent hangs up (it does on "bye" and after 20 s of silence),
 // or on a click on the card; the wake word listener then takes the mic back.
 
-import { Bridge } from "../core/bridge";
+import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { Spotify } from "../core/spotify";
 import { Todos } from "../core/extras";
@@ -145,6 +145,10 @@ async function coucouTool(p: CoucouParams): Promise<string> {
       if (!p.label?.trim()) return "Tell me what to search.";
       void Bridge.openUrl(`https://www.google.com/search?q=${encodeURIComponent(p.label.trim())}`);
       return `Searched the web for ${p.label}.`;
+    case "notify_phone":
+      if (!p.label?.trim()) return "Tell me what to send.";
+      await Bridge.phonePush("Maki", p.label.trim(), false, true);
+      return `Sent to your phone: ${p.label.trim()}`;
     case "lock_screen":
       // After the agent's goodbye has been heard.
       window.setTimeout(() => void Bridge.lockScreen(), 2500);
@@ -160,6 +164,7 @@ async function runTool(name: string, params: Record<string, unknown>): Promise<{
       // Hermes takes minutes; an open call bills every one of them. It works
       // in the background and Maki calls back with the answer.
       caption(t("Asking Hermes…"));
+      watchHermes();
       void Bridge.askHermes(String(params.request ?? "")).then(
         (answer) => hermesBack(answer),
         (e) => hermesBack(`it failed: ${String(e).replace(/^Error:\s*/, "")}`),
@@ -184,6 +189,18 @@ export function endConversation() {
 }
 
 let lastAgent = "";
+let watching = false;
+
+/** Hermes' steps (eleven.rs reads them from its session store) in the island,
+ *  unless a conversation is showing its own lines. */
+function watchHermes() {
+  if (watching) return;
+  watching = true;
+  void onEvent<string>("hermes-progress", (line) => {
+    if (!host || ws) return;
+    showLive(host, { kind: "voice", level: null, muted: false, charging: false, text: `Hermes · ${line}` }, 20_000);
+  });
+}
 
 /** Hermes finished: told in the call if one is on, else Maki calls back. */
 function hermesBack(answer: string) {

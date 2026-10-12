@@ -47,7 +47,7 @@ struct Config {
     commands: Vec<String>,
 }
 
-fn emit<S: serde::Serialize + Clone>(event: &str, payload: S) {
+pub(crate) fn emit<S: serde::Serialize + Clone>(event: &str, payload: S) {
     if let Some(app) = APP.get() {
         let _ = app.emit_to(crate::island::WINDOW_LABEL, event, payload);
     }
