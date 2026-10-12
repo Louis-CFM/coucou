@@ -345,7 +345,8 @@ final class AppState: ObservableObject {
                 githubActivity = nil
             }
             if activeIntegrations.contains(CalendarWatcher.pillId) && !oldValue.contains(CalendarWatcher.pillId) {
-                CalendarWatcher.shared.refresh()
+                // Also set while AppState.shared is being made, which refresh() reads.
+                DispatchQueue.main.async { CalendarWatcher.shared.refresh() }
             }
         }
     }
