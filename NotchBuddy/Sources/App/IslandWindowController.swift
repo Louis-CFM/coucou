@@ -19,6 +19,7 @@ final class IslandWindowController: NSWindowController {
     private var autoCloseSubscription: AnyCancellable?
     private var absenceSubscription: AnyCancellable?
     private var openOnHoverSubscription: AnyCancellable?
+    private var callSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -257,6 +258,23 @@ final class IslandWindowController: NSWindowController {
         relocate(to: target)
     }
 
+    /// On: the island goes away, an approval already on screen excepted. Off: back, folded.
+    private func pauseForCall(_ on: Bool) {
+        fsm.paused = on
+        if on {
+            guard fsm.isHeldOpen?() != true else { return }
+            fsm.forceHidden()
+            setMode(.hidden)
+            window?.alphaValue = 0
+        } else {
+            window?.alphaValue = 1
+            guard state.mode == .hidden, !state.tasks.isEmpty else { return }
+            silentNextReveal = true
+            fsm.reveal()
+            silentNextReveal = false
+        }
+    }
+
     // MARK: - FSM wiring
 
     private func wireFSM() {
@@ -269,6 +287,9 @@ final class IslandWindowController: NSWindowController {
         }
         openOnHoverSubscription = state.$openOnHover.sink { [weak self] on in
             self?.fsm.openOnHover = on
+        }
+        callSubscription = state.$inCall.dropFirst().removeDuplicates().sink { [weak self] on in
+            DispatchQueue.main.async { self?.pauseForCall(on) }
         }
 
         fsm.onTransition = { [weak self] from, to in
@@ -862,7 +883,7 @@ final class IslandWindowController: NSWindowController {
 
         // Hook server expand requests (alerts only)
         NotificationCenter.default.addObserver(forName: .hookExpand, object: nil, queue: .main) { [weak self] note in
-            guard let self, let view = note.object as? IslandView else { return }
+            guard let self, let view = note.object as? IslandView, !self.state.inCall else { return }
             self.fsm.openedExternally()
             self.expand(to: view)
         }

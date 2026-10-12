@@ -45,6 +45,8 @@ final class IslandStateMachine {
     /// Opt-in (Settings → General → Behavior): hovering the island opens it, and an island
     /// opened that way folds shortly after the pointer leaves. Off: hover only peeks (petit).
     var openOnHover = false
+    /// A call is on (Settings → General → Calls): nothing reveals, hover and click do nothing.
+    var paused = false
     /// Grace period after the pointer leaves a hover-opened island (no flicker at the edge).
     var hoverCloseDelay: TimeInterval = 0.6
     /// True while the island is open because of a hover, until the user clicks inside it.
@@ -65,6 +67,7 @@ final class IslandStateMachine {
 
     /// Mouse entered the island notch area
     func mouseEntered() {
+        guard !paused else { return }
         if openOnHover, state == .hidden || state == .petit, isHeldOpen?() != true {
             cancelTimers()
             openedByHover = true
@@ -126,6 +129,7 @@ final class IslandStateMachine {
     /// Also accepts `.listening`: the user can open the island while voice is active; voice
     /// continues uninterrupted and the island expands to the overview.
     func click() {
+        guard !paused else { return }
         openedByHover = false
         guard state == .petit || state == .hidden || state == .listening else { return }
         cancelTimers()
@@ -138,6 +142,13 @@ final class IslandStateMachine {
     func hiddenExternally() {
         guard state == .petit else { return }
         cancelTimers()
+        state = .hidden
+    }
+
+    /// A call started: the island is gone whatever it was doing, timers off.
+    func forceHidden() {
+        cancelTimers()
+        openedByHover = false
         state = .hidden
     }
 
@@ -201,7 +212,7 @@ final class IslandStateMachine {
 
     /// Non-alert work event: show compact from hidden (HookServer reveal)
     func reveal() {
-        guard state == .hidden else { return }
+        guard state == .hidden, !paused else { return }
         cancelTimers()
         transition(to: .petit)
         schedulePetitHide()

@@ -864,6 +864,15 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        // On a call the island stays away: the terminal takes the question at once.
+        if AppState.shared.inCall {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
+
         let command = toolInput["command"] as? String ?? tool
 
         // Several requests can wait at once (several sessions or agents): they queue, the
@@ -964,6 +973,13 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func processQuestionRequest(fd: Int32, parsed: AskQuestion, payload: [String: Any]) {
         let state = AppState.shared
+        if state.inCall {
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+            }
+            return
+        }
         let sessionId = payload["session_id"] as? String
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
