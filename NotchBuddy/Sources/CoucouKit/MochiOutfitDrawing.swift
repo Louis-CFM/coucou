@@ -34,7 +34,7 @@ struct MochiH {
     }
 }
 
-// MARK: - EyeFrame  (replaces mochiEyePositions)
+// MARK: - EyeFrame
 
 struct EyeFrame {
     let sd: CGFloat   // -1 left, +1 right
@@ -64,13 +64,6 @@ func mEyeFrames(_ H: MochiH) -> [EyeFrame] {
         ))
     }
     return out
-}
-
-/// Backward-compat shim (used by existing callers that haven't been updated yet).
-func mochiEyePositions(yaw: CGFloat, pitch: CGFloat, rx: CGFloat, ry: CGFloat)
-    -> [(ex: CGFloat, ey: CGFloat, fx: CGFloat, fy: CGFloat)] {
-    let H = MochiH(R: rx / 1.14, yaw: yaw, pitch: pitch)
-    return mEyeFrames(H).filter { $0.visible }.map { (ex: $0.x, ey: $0.y, fx: $0.fx, fy: $0.fy) }
 }
 
 // MARK: - P3  (projected screen point with depth)
@@ -200,13 +193,6 @@ func mochiOutfitPath(_ rx: CGFloat, _ ry: CGFloat) -> Path {
     return p
 }
 
-// ringPoints — all 120+1 projected points on ring (full circle, for frontRun)
-private func mRingPoints(_ H: MochiH, y: CGFloat, s: CGFloat, n: Int = 72) -> [P3] {
-    (0...n).map { i -> P3 in
-        let lon = -.pi + CGFloat(i) / CGFloat(n) * 2 * .pi
-        return mProj(H, mSurf(y, lon, s))
-    }
-}
 
 // MARK: - pompom
 

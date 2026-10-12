@@ -1401,13 +1401,6 @@ struct SettingsView: View {
     }
 
     #if !APPSTORE
-    private func localModelStatusLabel(_ status: LocalModelStatus) -> String {
-        switch status {
-        case .available:            return String(localized: "voice.model-available")
-        case .notMacOS26:           return String(localized: "voice.model-not-macos26")
-        case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
-        }
-    }
     #endif
 
     // MARK: - Transcript history debug view (in-memory, cleared on close)

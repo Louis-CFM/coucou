@@ -563,25 +563,6 @@ private func drawParticles(_ ctx: CGContext, t: Double, tc: Double, p: GreetPose
     }
 }
 
-private func drawHeader(_ ctx: CGContext, alpha: Double) {
-    guard alpha > 0 else { return }
-    ctx.saveGState()
-    ctx.setAlpha(CGFloat(alpha))
-    gRR(ctx, 18, 4, 44, 26, 13)
-    ctx.setFillColor(gHex("#1D1F23")); ctx.fillPath()
-    ctx.setFillColor(gHex("#F5F6F8"))
-    ctx.beginPath()
-    ctx.move(to: CGPoint(x: 33, y: 20)); ctx.addLine(to: CGPoint(x: 40, y: 13))
-    ctx.addLine(to: CGPoint(x: 47, y: 20)); ctx.addLine(to: CGPoint(x: 47, y: 25))
-    ctx.addLine(to: CGPoint(x: 33, y: 25)); ctx.closePath(); ctx.fillPath()
-    ctx.setFillColor(gHex("#8E939C"))
-    ctx.addEllipse(in: CGRect(x: 75.5, y: 10.5, width: 13, height: 13)); ctx.fillPath()
-    ctx.addEllipse(in: CGRect(x: 572, y: 11, width: 12, height: 12)); ctx.fillPath()
-    ctx.setFillColor(gHex("#000000"))
-    ctx.addEllipse(in: CGRect(x: 575.6, y: 14.6, width: 4.8, height: 4.8)); ctx.fillPath()
-    ctx.restoreGState()
-}
-
 private let miniColors = ["#E86A6A","#3E86E0","#EFAE5A","#8C73F2"]
 
 private func drawMinis(_ ctx: CGContext, alpha: Double, compact: IslandRestingLayout) {

@@ -571,13 +571,6 @@ final class IslandWindowController: NSWindowController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.9, execute: item)
     }
 
-    private func scheduleHover(after delay: TimeInterval, action: @escaping () -> Void) {
-        hoverTimer?.cancel()
-        let item = DispatchWorkItem(block: action)
-        hoverTimer = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
-    }
-
     // MARK: - Mode transitions
 
     private func modeLevel(_ m: IslandMode) -> Int {
@@ -1246,31 +1239,9 @@ final class IslandWindowController: NSWindowController {
         return state.tasks.isEmpty ? .empty : .overview
     }
 
-    func baseMode() -> IslandMode {
-        guard state.isPresent else { return .hidden }
-        return state.tasks.isEmpty ? .hidden : .compact
-    }
-
     // MARK: - Activity reset (call on any user interaction in island)
 
-    func resetActivity() {
-        state.lastActivity = .now
-    }
-
     // MARK: - Finished task pin (5.2s)
-
-    func pinForFinished(taskId: String) {
-        state.isPinned = true
-        finishedPinTimer?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.state.removeTask(id: taskId)
-            self.state.isPinned = false
-            self.collapse()
-        }
-        finishedPinTimer = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.2, execute: item)
-    }
 
     // MARK: - Dizzy recovery (triggered by BotEngine.slap via .botDizzy)
 
@@ -1734,18 +1705,6 @@ extension IslandWindowController {
         } else {
             speakAndContinueConversation(result)
         }
-    }
-
-    @MainActor
-    private func showVoiceResult(_ result: VoiceActionResult, emote: BotEmote? = nil) {
-        if let emote = emote {
-            NotificationCenter.default.post(name: .triggerEmote, object: emote)
-        } else if result.outcome == .failure {
-            voiceMissReaction()
-        }
-        AppState.shared.voiceResult = result
-        expand(to: .voiceResult)
-        scheduleVoiceDismiss(delay: 2.0)
     }
 
     /// Speak the result, then stop listening — unless the answer is a question, in which
