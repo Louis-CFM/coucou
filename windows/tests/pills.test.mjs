@@ -327,7 +327,7 @@ test("the Claude Code idle card keeps the agent title when the task has a projec
   assert.ok(card.textContent.includes("Open Visual Studio Code"));
 });
 
-test("the folded grid puts alerts and running sessions first", () => {
+test("both grids put alerts and running sessions first", () => {
   State.settings.activeIntegrations = ["integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github"];
   State.loadIntegrationTasks();
   State.setFocus("integration_claude");
