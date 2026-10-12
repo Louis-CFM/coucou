@@ -94,6 +94,15 @@ pub struct PlusPrefs {
     pub push_only_when_away: bool,
     /// Other apps' notifications (Phone Link's calls and messages) in the island.
     pub notifications: bool,
+    /// Voice: say the wake word, then a command (voice.rs, src/voice/).
+    pub voice: bool,
+    pub wake_word: String,
+    /// A BCP-47 tag ("en-IN"); empty is Windows' speech language.
+    pub voice_language: String,
+    /// Maki says its answers out loud, besides showing them.
+    pub speak_answers: bool,
+    /// The Windows voice to speak with; empty is the default one.
+    pub voice_name: String,
 }
 
 impl Default for PlusPrefs {
@@ -104,6 +113,11 @@ impl Default for PlusPrefs {
             share_copies_to_iphone: false,
             push_only_when_away: true,
             notifications: false,
+            voice: false,
+            wake_word: "Maki".into(),
+            voice_language: String::new(),
+            speak_answers: true,
+            voice_name: String::new(),
         }
     }
 }
@@ -439,7 +453,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true }
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true, "voice": true, "wakeWord": "Jarvis", "voiceLanguage": "en-GB", "speakAnswers": false, "voiceName": "Microsoft Hazel" }
 }"##;
 
     fn custom() -> Value {

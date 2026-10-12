@@ -473,6 +473,19 @@ pub fn remember(text: String) {
     }
 }
 
+/// Maki's "volume up / down / mute": the same step and HUD as the keys.
+#[tauri::command]
+pub fn volume_key_action(action: String) -> bool {
+    let vk = match action.as_str() {
+        "up" => VK_VOLUME_UP,
+        "down" => VK_VOLUME_DOWN,
+        "mute" => VK_VOLUME_MUTE,
+        _ => return false,
+    };
+    std::thread::spawn(move || volume_key(vk));
+    true
+}
+
 #[tauri::command]
 pub fn clipboard_history() -> Vec<Clip> {
     CLIPS.lock().unwrap().iter().cloned().collect()

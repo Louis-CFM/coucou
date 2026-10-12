@@ -11,6 +11,7 @@ import { registerShortcutHandlers } from "./island/shortcuts";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { registerLiveHandlers } from "./island/live";
 import { registerExtras } from "./views/extras";
+import { registerVoice } from "./voice/voice";
 import { isMusicPill } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
@@ -106,6 +107,7 @@ async function main() {
   const liveHost = { peek: (ms: number) => island.peekLive(ms), resize: () => island.liveResized() };
   registerLiveHandlers(liveHost);
   registerExtras(liveHost);
+  registerVoice({ ...liveHost, alert: (v) => island.alert(v) });
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.some(isMusicPill)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));

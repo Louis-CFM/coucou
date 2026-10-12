@@ -52,7 +52,7 @@ function stopTicker() {
   ticker = null;
 }
 
-function startFocus(minutes: number) {
+export function startFocus(minutes: number) {
   Focus.minutes = minutes;
   Focus.endsAt = Date.now() + minutes * 60_000;
   Focus.pausedLeft = null;
@@ -74,7 +74,7 @@ function pauseFocus() {
   State.notify();
 }
 
-function stopFocus() {
+export function stopFocus() {
   Focus.endsAt = null;
   Focus.pausedLeft = null;
   stopTicker();

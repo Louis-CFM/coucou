@@ -173,11 +173,22 @@ export interface PlusPrefs {
   pushOnlyWhenAway: boolean;
   /** Other apps' notifications (Phone Link's calls and messages) in the island. */
   notifications: boolean;
+  /** Voice: the wake word, then a command (src/voice/). */
+  voice: boolean;
+  wakeWord: string;
+  /** BCP-47 ("en-IN"); "" is Windows' speech language. */
+  voiceLanguage: string;
+  speakAnswers: boolean;
+  voiceName: string;
 }
+
+/** The on/off ones, for the toggles in Settings. */
+export type PlusSwitch = { [K in keyof PlusPrefs]: PlusPrefs[K] extends boolean ? K : never }[keyof PlusPrefs];
 
 export const DEFAULT_PLUS: PlusPrefs = {
   volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: false,
   icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true, notifications: false,
+  voice: false, wakeWord: "Maki", voiceLanguage: "", speakAnswers: true, voiceName: "",
 };
 
 export const DEFAULT_SETTINGS: Settings = {

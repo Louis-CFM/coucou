@@ -184,6 +184,61 @@ pub async fn send(
     Ok(ChatReply { text: answer })
 }
 
+/// Maki's brain for what the built-in commands don't cover: one question to
+/// Claude (the user's plan, through Claude Code), with what Coucou knows right
+/// now as context, answered in a few spoken sentences. No tools, no history
+/// kept: each question stands alone, with the last few exchanges passed in.
+#[tauri::command]
+pub async fn voice_ask(question: String, context: String) -> Result<String, String> {
+    let Some(exe) = cli() else {
+        return Err(t("Claude Code isn't installed. Install it from claude.com/code, run `claude` once and log in with your Claude account."));
+    };
+    let system = "You are Maki, a voice assistant living in the user's notch on Windows. \
+Answer in the user's language, in one to three short spoken sentences: no Markdown, no lists, no code blocks, \
+no URLs read out. If you don't know something current, say so briefly. Use the context Coucou gives you \
+about the user's PC (music, Claude plan usage, agents, to-dos, time) when it answers the question."
+        .to_string();
+    let input: String = format!("Context from Coucou:\n{context}\n\nQuestion: {question}").chars().take(8000).collect();
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = std::env::temp_dir().join("coucou-chat");
+        let _ = std::fs::create_dir_all(&dir);
+        let mut cmd = Command::new(exe);
+        cmd.args([
+            "-p",
+            "--output-format",
+            "json",
+            "--model",
+            "haiku",
+            "--tools",
+            "",
+            "--setting-sources",
+            "local",
+            "--strict-mcp-config",
+            "--no-session-persistence",
+            "--append-system-prompt",
+            &system,
+        ])
+        .current_dir(&dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+        crate::platform::no_console(&mut cmd);
+        let mut child = cmd.spawn().map_err(|e| format!("claude: {e}"))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(input.as_bytes());
+        }
+        let out = child.wait_with_output().map_err(|e| format!("claude: {e}"))?;
+        let j: Value = serde_json::from_slice(&out.stdout).map_err(|_| t("No response text."))?;
+        let text = j["result"].as_str().unwrap_or_default().trim().to_string();
+        if j["is_error"].as_bool().unwrap_or(false) || text.is_empty() {
+            return Err(if text.contains("/login") { t("Claude Code isn't logged in. Open a terminal, run `claude`, then type /login and sign in with your Claude account.") } else { text });
+        }
+        Ok(text)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// The plan's usage, as Claude Code's own `/usage` prints it. A slash command:
 /// no model call, no tokens. The text goes to the page, which reads the
 /// percentages and reset times out of it (core/plan.ts parseUsageText).

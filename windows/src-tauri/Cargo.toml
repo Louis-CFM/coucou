@@ -29,6 +29,8 @@ keyring = { version = "3", features = ["windows-native"] }
 # Same versions as wry, so nothing new is compiled.
 webview2-com = "0.39"
 wv2_core = { package = "windows-core", version = "0.62" }
+# The voice grammar's phrase list (voice.rs); the version the windows crate already uses.
+windows-collections = "0.2"
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
@@ -68,6 +70,9 @@ windows = { version = "0.61", features = [
   "ApplicationModel",
   "UI_Notifications",
   "UI_Notifications_Management",
+  # Voice: the wake word on the device, then one dictation turn (voice.rs).
+  "Globalization",
+  "Media_SpeechRecognition",
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

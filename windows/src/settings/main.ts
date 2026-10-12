@@ -9,7 +9,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_PLUS, DEFAULT_SETTINGS, type PlusPrefs, type Settings } from "../core/state";
+import { DEFAULT_PLUS, DEFAULT_SETTINGS, type PlusPrefs, type PlusSwitch, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
   HOST_OS, MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -977,7 +977,7 @@ function generalSection(): HTMLElement {
 /** Settings → Island extras (Windows): the live activities and the clipboard. */
 function islandExtrasSection(): HTMLElement {
   const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
-  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+  const item = (key: PlusSwitch, label: string, hint: string) => [
     h("div", { class: "row" },
       h("label", { text: t(label) }),
       toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
@@ -996,13 +996,50 @@ function islandExtrasSection(): HTMLElement {
   );
 }
 
+/** Settings → Voice (Windows): the wake word, the language, the voice that answers. */
+function voiceSection(): HTMLElement {
+  const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
+  const wake = h("input", { type: "text", value: plus().wakeWord || "Maki", maxlength: "24", style: "width:140px" }) as HTMLInputElement;
+  wake.addEventListener("change", () => { plus().wakeWord = wake.value.trim() || "Maki"; void save(); });
+  const lang = h("select", {}) as HTMLSelectElement;
+  for (const [v, label] of [["", N_("Windows' speech language")], ["en-IN", "English (India)"], ["en-US", "English (US)"], ["en-GB", "English (UK)"]]) {
+    lang.append(h("option", { value: v, text: v ? label : t(label) }));
+  }
+  lang.value = plus().voiceLanguage;
+  lang.addEventListener("change", () => { plus().voiceLanguage = lang.value; void save(); });
+  const voicePick = h("select", {}) as HTMLSelectElement;
+  const fillVoices = () => {
+    const voices = typeof speechSynthesis === "undefined" ? [] : speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
+    voicePick.replaceChildren(h("option", { value: "", text: t("Default voice") }), ...voices.map((v) => h("option", { value: v.name, text: v.name })));
+    voicePick.value = plus().voiceName;
+  };
+  fillVoices();
+  if (typeof speechSynthesis !== "undefined") speechSynthesis.addEventListener("voiceschanged", fillVoices);
+  voicePick.addEventListener("change", () => { plus().voiceName = voicePick.value; void save(); });
+  const speechSettings = h("button", { text: t("Open Windows speech settings") });
+  speechSettings.addEventListener("click", () => void Bridge.openUrl("ms-settings:privacy-speech"));
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Voice") })),
+    h("div", { class: "row" }, h("label", { text: t("Voice") }), toggle(plus().voice, (v) => { plus().voice = v; void save(); })),
+    h("div", { class: "hint", text: t("Say the wake word, then what you want: “pause the music”, “start a focus for 45 minutes”, “add buy milk to my to-do list”, “remind me in 20 minutes to call Mom”, “how much of my Claude plan is left?”. Anything else goes to Claude (your plan). The wake word is heard on your PC; only the command after it goes to Microsoft's online speech recognition. Nothing is recorded. It can decline a permission, never approve one.") }),
+    h("div", { class: "row" }, h("label", { text: t("Wake word") }), wake),
+    h("div", { class: "row" }, h("label", { text: t("Language") }), lang),
+    h("div", { class: "row" }, h("label", { text: t("Speak answers") }), toggle(plus().speakAnswers, (v) => { plus().speakAnswers = v; void save(); })),
+    h("div", { class: "row" }, h("label", { text: t("Voice") }), voicePick),
+    h("div", { class: "row" }, speechSettings),
+    h("div", { class: "hint", text: t("Commands need Windows' online speech recognition: turn it on in Settings → Privacy & security → Speech.") }),
+  );
+}
+
 /**
  * Settings → iPhone (Windows): links both ways through iCloud Drive, and
  * alerts on the phone through ntfy. No Mac and no Apple account here.
  */
 function iphoneSection(): HTMLElement {
   const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
-  const item = (key: keyof PlusPrefs, label: string, hint: string) => [
+  const item = (key: PlusSwitch, label: string, hint: string) => [
     h("div", { class: "row" },
       h("label", { text: t(label) }),
       toggle(plus()[key], (v) => { plus()[key] = v; void save(); }),
@@ -1460,7 +1497,7 @@ async function render() {
     activePillsSection(connected),
     integrationsSection(present),
     generalSection(),
-    ...(HOST_OS === "windows" ? [islandExtrasSection(), iphoneSection()] : []),
+    ...(HOST_OS === "windows" ? [islandExtrasSection(), voiceSection(), iphoneSection()] : []),
     shortcutsSection(shortcutReport),
     h("div", {
       class: "hint",

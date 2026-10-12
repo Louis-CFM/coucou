@@ -42,6 +42,8 @@ mod phone;
 mod notify;
 #[cfg(windows)]
 mod callctl;
+#[cfg(windows)]
+mod voice;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -131,6 +133,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     phone::apply(&settings.plus);
     #[cfg(windows)]
     notify::apply(settings.plus.notifications);
+    #[cfg(windows)]
+    voice::apply(settings.plus.voice, &settings.plus.wake_word, &settings.plus.voice_language);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -774,6 +778,11 @@ pub fn run() {
             #[cfg(windows)]
             sysevents::clipboard_copy,
             claude_cli::claude_usage_text,
+            claude_cli::voice_ask,
+            #[cfg(windows)]
+            voice::voice_listen_now,
+            #[cfg(windows)]
+            sysevents::volume_key_action,
             #[cfg(windows)]
             notify::open_phone_link,
             #[cfg(windows)]
@@ -827,6 +836,8 @@ pub fn run() {
             phone::start(&handle, &loaded.plus);
             #[cfg(windows)]
             notify::start(&handle, loaded.plus.notifications);
+            #[cfg(windows)]
+            voice::start(&handle, loaded.plus.voice, &loaded.plus.wake_word, &loaded.plus.voice_language);
             // Started by `coucou --notify "…"` itself: send it too.
             #[cfg(windows)]
             if let Some(message) = notify_arg(&std::env::args().collect::<Vec<_>>()) {

@@ -118,6 +118,8 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabFocus = extraTab("focus", N_("Focus"), ICONS.timer);
   const tabTodo = extraTab("todo", N_("To-do"), ICONS.check, 2.4);
   const tabInbox = extraTab("inbox", N_("Inbox"), ICONS.phone, 2);
+  const tabMic = h("button", { class: "tab", title: tl(N_("Talk to Maki")), onclick: () => { actions.blip(); void Bridge.voiceListenNow(); } },
+    svg(ICONS.mic, 13, { stroke: 2 }));
   const inboxDot = h("i", { class: "tab-dot" });
   tabInbox.append(inboxDot);
 
@@ -137,7 +139,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const el = h(
     "div",
     { id: "header" },
-    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, h("span", { class: "tab-sep" }), tabFocus, tabTodo, tabInbox),
+    h("div", { class: "tabs" }, tabHome, tabChat, tabDrop, h("span", { class: "tab-sep" }), tabFocus, tabTodo, tabInbox, tabMic),
     h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
@@ -155,6 +157,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
       // A running timer and unread calls show on their buttons.
       tabFocus.classList.toggle("live", Focus.active);
       inboxDot.style.display = Inbox.unseen > 0 ? "" : "none";
+      tabMic.style.display = State.settings.plus?.voice ? "" : "none";
       gearBtn.classList.toggle("on", v === "settings");
       clear(gearBtn);
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));

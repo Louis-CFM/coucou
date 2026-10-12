@@ -229,6 +229,12 @@ export const Bridge = {
   openPhoneLink: () => call<boolean>("open_phone_link"),
   /** Claude Code's `/usage` text: the plan's numbers, fetched on demand (claude_cli.rs). */
   claudeUsageText: () => call<string>("claude_usage_text"),
+  /** Maki: a question to Claude with Coucou's context, answered in a few spoken sentences. */
+  voiceAsk: (question: string, context: string) => call<string>("voice_ask", { question, context }),
+  /** Maki: listen for a command now, without the wake word. */
+  voiceListenNow: () => call<boolean>("voice_listen_now"),
+  /** The volume keys' own step: up, down or mute, with the island's HUD. */
+  volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */
   callAction: (answer: boolean) => call<boolean>("call_action", { answer }),
   spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),

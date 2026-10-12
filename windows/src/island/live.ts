@@ -20,7 +20,7 @@ import { N_, t } from "../i18n/i18n";
 export const LIVE_TEXTS = [N_("Charging"), N_("On battery"), N_("Low battery")];
 
 export interface LiveEvent {
-  kind: "volume" | "brightness" | "battery" | "phone" | "call" | "message" | "app" | "focus";
+  kind: "volume" | "brightness" | "battery" | "phone" | "call" | "message" | "app" | "focus" | "voice";
   /** 0…1. */
   level: number | null;
   muted: boolean;
@@ -29,7 +29,7 @@ export interface LiveEvent {
 }
 
 /** How long each kind stays, ms. */
-const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000, call: 12000, message: 5000, app: 4500, focus: 1500 };
+const DURATION: Record<LiveEvent["kind"], number> = { volume: 1500, brightness: 1500, battery: 2600, phone: 5000, call: 12000, message: 5000, app: 4500, focus: 1500, voice: 20000 };
 
 /** The compact island's width while a live activity shows. */
 export const LIVE_W = 336;
@@ -153,6 +153,8 @@ function iconFor(e: LiveEvent): { path: string; stroke: number } {
       return { path: ICONS.sun, stroke: 2 };
     case "focus":
       return { path: ICONS.timer, stroke: 0 };
+    case "voice":
+      return { path: ICONS.mic, stroke: 2 };
     case "battery":
       return e.charging ? { path: ICONS.bolt, stroke: 0 } : { path: ICONS.battery, stroke: 2 };
     default: {
@@ -172,6 +174,7 @@ function colorFor(e: LiveEvent): string {
   if (e.kind === "phone") return "#60A5FA";
   if (e.kind === "call") return "#34D399";
   if (e.kind === "focus") return "#F97316";
+  if (e.kind === "voice") return "#C084FC";
   if (e.kind === "message") return "#60A5FA";
   if (e.kind === "app") return "#C5C8CD";
   return e.muted ? "#6B7079" : "#F5F6F8";
@@ -218,7 +221,7 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
         icon.append(svg(path, 15, stroke ? { stroke } : {}));
         icon.style.color = color;
       }
-      const isText = e.kind === "phone" || e.kind === "call" || e.kind === "message" || e.kind === "app";
+      const isText = e.kind === "phone" || e.kind === "call" || e.kind === "message" || e.kind === "app" || e.kind === "voice";
       el.classList.toggle("phone", isText);
       const ringingCall = e.kind === "call";
       yes.style.display = ringingCall && !e.muted ? "" : "none";
