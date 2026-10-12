@@ -44,7 +44,6 @@ object Coucou {
 
     // Shape — iOS uses 22/26/28
     val CornerCard = 22.dp
-    val CornerPanel = 26.dp
     val CornerIsland = 28.dp
     val CornerTile = 11.dp
 

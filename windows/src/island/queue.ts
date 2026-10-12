@@ -1,5 +1,4 @@
-// The wait line of permission requests — a port of ApprovalQueue.swift (#157).
-// Pure FIFO, no I/O: approvals.ts owns the timers, the bridge calls and the
+// The wait line of permission requests (#157). Pure FIFO, no I/O: approvals.ts owns the timers, the bridge calls and the
 // island, and mutates this value only. The head is the request the card shows;
 // State.pendingApproval is always a projection of it.
 

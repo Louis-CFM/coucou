@@ -1,4 +1,4 @@
-// The live agent sessions behind each pill — a port of PillSessionRegistry.swift (#245).
+// The live agent sessions behind each pill (#245).
 //
 // A pill is picked from the client that sent the event — the terminal app or
 // `coucou_agent` — never from the session. Two `claude` started in two projects

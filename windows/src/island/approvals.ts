@@ -1,6 +1,6 @@
-// The approval wait line — the Windows/Linux counterpart of HookServer's
-// approvalQueue + refreshApprovalCard (Mac #157). queue.ts holds the FIFO
-// order; this file owns the per-request timers, the bridge answers and the
+// The approval wait line. The Mac keeps a single pending request (HookServer.swift
+// pendingApprovalFD); this port queues up to ApprovalQueue.maxPending instead (#157).
+// queue.ts holds the FIFO order; this file owns the per-request timers, the bridge answers and the
 // card on screen. `State.pendingApproval` is always a projection of the queue
 // head: the request the card answers is the request it showed.
 
