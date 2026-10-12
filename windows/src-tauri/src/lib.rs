@@ -295,8 +295,23 @@ fn open_gitea_url(url: String) {
     }
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to the file manager otherwise.
+/// The editor "Open terminal" and the diff card's ↗ hand a folder or a file to:
+/// `code` when it is on PATH, else Zed. Zed's launcher is `zeditor` on NixOS,
+/// Arch and most packages, and `zed` from its own installer, which puts it in
+/// the user's home. A bare `zed` elsewhere is not taken: ZFS ships a daemon of
+/// that name.
+fn editor_launcher() -> Option<std::path::PathBuf> {
+    platform::find_on_path("code")
+        .or_else(|| platform::find_on_path("zeditor"))
+        .or_else(|| platform::find_on_path("zed").filter(|p| zed_is_the_users_own(p, &platform::home_dir())))
+}
+
+fn zed_is_the_users_own(launcher: &std::path::Path, home: &std::path::Path) -> bool {
+    launcher.starts_with(home)
+}
+
+/// "Open terminal" opens the working folder in VS Code (or Zed) when `code` (or
+/// `zeditor`) is on PATH, and falls back to the file manager otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
@@ -313,7 +328,7 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
+    if let Some(code) = editor_launcher() {
         let mut cmd = Command::new(code);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
@@ -375,13 +390,13 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
+/// The diff card's ↗: opens the edited file in VS Code (or Zed) when `code` is on PATH,
 /// otherwise shows its folder. The file itself is never opened by its type —
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
+    if let Some(code) = editor_launcher() {
         let mut cmd = Command::new(code);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
@@ -1167,7 +1182,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{diff_file, is_forge_instance_url};
+    use super::{diff_file, is_forge_instance_url, zed_is_the_users_own};
 
     #[test]
     fn forge_links_stay_on_the_configured_instance() {
@@ -1184,6 +1199,15 @@ mod tests {
             &reqwest::Url::parse("https://evil.example/team/me/project").unwrap(),
             &instance,
         ));
+    }
+
+    #[test]
+    fn a_bare_zed_is_only_taken_from_the_users_own_folders() {
+        let home = std::path::Path::new("/home/me");
+        assert!(zed_is_the_users_own(std::path::Path::new("/home/me/.local/bin/zed"), home));
+        // ZFS ships a daemon called zed.
+        assert!(!zed_is_the_users_own(std::path::Path::new("/run/current-system/sw/bin/zed"), home));
+        assert!(!zed_is_the_users_own(std::path::Path::new("/home/mellow/bin/zed"), home));
     }
 
     #[test]
