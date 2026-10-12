@@ -72,6 +72,7 @@ final class MacDictation: @unchecked Sendable {
         candidates = built
         lead = 0
         isRecording = true
+        NotificationCenter.default.post(name: .dictationDidStart, object: nil)
         for (index, candidate) in built.enumerated() {
             candidate.task = Self.recognize(candidate) { [weak self] words, confidence, final, failed in
                 Task { @MainActor in
@@ -124,6 +125,7 @@ final class MacDictation: @unchecked Sendable {
         candidates.forEach { $0.request.endAudio(); $0.task?.cancel() }
         candidates = []
         lead = 0
+        NotificationCenter.default.post(name: .dictationDidEnd, object: nil)
         isRecording = false
         isFinishing = false
         resumeFinishing()
@@ -286,5 +288,13 @@ final class MacDictation: @unchecked Sendable {
         guard speech else { return false }
         return await AVAudioApplication.requestRecordPermission()
     }
+}
+
+// MARK: - Dictation notification names
+// Defined here so both MacDictation and VoiceEngine can reference them without
+// cross-file ordering issues in SourceKit.
+extension Notification.Name {
+    static let dictationDidStart = Notification.Name("notchBuddy.dictationDidStart")
+    static let dictationDidEnd   = Notification.Name("notchBuddy.dictationDidEnd")
 }
 #endif

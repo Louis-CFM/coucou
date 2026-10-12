@@ -20,8 +20,28 @@ tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Phone link (phone_link/): a TLS server for the Android app, off unless the user
+# turns it on. Every crate here is justified in docs/ANDROID_LINK.md.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+ring = "0.17"
+rcgen = { version = "0.13", default-features = false, features = ["ring"] }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+# The phone finds this computer by itself when its address changes: it is announced on the local network
+# (mDNS / DNS-SD, `_coucou._tcp`) only while the phone link is on (phone_link/discovery.rs). Pure Rust,
+# Apache-2.0 OR MIT, no async runtime or logger (default features off); it adds five small crates
+# (mdns-sd, flume, if-addrs, socket-pktinfo, spin). See docs/ANDROID_LINK.md.
+mdns-sd = { version = "0.21", default-features = false }
+# Phone link through a relay (phone_link/relay_client.rs; docs/RELAY_LINK.md): the computer opens an outbound
+# WebSocket to the user's own relay, only while "Away from home Wi-Fi" is on. tokio-tungstenite is the WebSocket
+# framing only (no TLS feature: the TLS is the tokio-rustls/ring already here, with the web roots reqwest already
+# pulls in), so no second crypto provider is added. MIT.
+tokio-tungstenite = { version = "0.26", default-features = false, features = ["handshake"] }
+webpki-roots = "1"
+# Stream/Sink traits for the WebSocket (already in the tree through tokio-tungstenite and tauri).
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

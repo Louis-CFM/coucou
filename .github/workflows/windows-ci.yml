@@ -26,20 +26,20 @@ jobs:
         working-directory: windows
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       # The tests run the TypeScript sources directly, which needs Node 22.18
       # or newer; 24 is the version they are run with locally.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: windows/package-lock.json
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry

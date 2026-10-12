@@ -204,9 +204,31 @@ final class MusicController: ObservableObject {
 
     // MARK: - Playback controls
 
+    func getVolume() async -> Int? {
+        guard isMusicRunning() else { return nil }
+        let result = await runAppleScript(#"tell application id "com.apple.Music" to return sound volume"#)
+        if case .success(let vals) = result, let str = vals.first, let v = Int(str) { return v }
+        return nil
+    }
+
     func playPause() {
         guard isMusicRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.apple.Music" to playpause"#) }
+    }
+
+    func play() {
+        guard isMusicRunning() else { return }
+        Task { await runAppleScript(#"tell application id "com.apple.Music" to play"#) }
+    }
+
+    func pause() {
+        guard isMusicRunning() else { return }
+        Task { await runAppleScript(#"tell application id "com.apple.Music" to pause"#) }
+    }
+
+    func setVolume(_ pct: Int) {
+        let clamped = max(0, min(100, pct))
+        Task { await runAppleScript(#"tell application id "com.apple.Music" to set sound volume to \#(clamped)"#) }
     }
 
     func nextTrack() {
@@ -217,6 +239,62 @@ final class MusicController: ObservableObject {
     func previousTrack() {
         guard isMusicRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.apple.Music" to back track"#) }
+    }
+
+    func adjustVolume(by delta: Int) {
+        Task {
+            let result = await runAppleScript(
+                #"tell application id "com.apple.Music" to set sound volume to (sound volume + \#(delta))"#
+            )
+            _ = result
+        }
+    }
+
+    func playArtist(_ name: String) async -> Bool {
+        let escaped = name
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let result = await runAppleScript("""
+            tell application id "com.apple.Music"
+                try
+                    set tr to (first track of library playlist 1 whose artist contains "\(escaped)")
+                    play tr
+                    return "ok"
+                on error
+                    return "notfound"
+                end try
+            end tell
+        """)
+        if case .success(let vals) = result, vals.first == "ok" { return true }
+        return false
+    }
+
+    func playSearch(_ query: String) async -> Bool {
+        let escaped = query
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let result = await runAppleScript("""
+            tell application id "com.apple.Music"
+                try
+                    set tr to (first track of library playlist 1 whose name contains "\(escaped)" or artist contains "\(escaped)")
+                    play tr
+                    return "ok"
+                on error
+                    return "notfound"
+                end try
+            end tell
+        """)
+        if case .success(let vals) = result, vals.first == "ok" { return true }
+        return false
+    }
+
+    func playPlaylist(_ name: String) async -> Bool {
+        let escaped = name
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let result = await runAppleScript(#"tell application id "com.apple.Music" to play playlist "\#(escaped)""#)
+        if case .success(_) = result { return true }
+        return false
     }
 
     func openMusic() {
