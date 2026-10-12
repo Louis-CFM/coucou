@@ -859,11 +859,15 @@ final class IslandWindowController: NSWindowController {
             }
         }
 
-        // Hook server expand requests (alerts only)
+        // Hook server expand requests: an alert holds the island, a followed edit closes like any open island.
         NotificationCenter.default.addObserver(forName: .hookExpand, object: nil, queue: .main) { [weak self] note in
             guard let self, let view = note.object as? IslandView else { return }
             self.fsm.openedExternally()
             self.expand(to: view)
+            switch view {
+            case .approval, .question, .finished, .error, .confused: break
+            default: if !self.wasInIsland { self.fsm.mouseLeft() }
+            }
         }
 
         // Hook server compact reveal (non-alert work events: session start, tool use, etc.)
