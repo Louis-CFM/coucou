@@ -165,10 +165,11 @@ pub fn list_recent() -> Vec<SessionMeta> {
 /// (compact cards on the phone, same as Devin's). Sidechains (sub-agent
 /// Task branches) and local-command chatter are filtered out.
 pub fn transcript(session_id: &str) -> Vec<ChatLine> {
-    let Some(path) = find_file(session_id) else {
-        return Vec::new();
-    };
-    let Ok(raw) = std::fs::read_to_string(&path) else {
+    find_file(session_id).map(|path| transcript_at(&path)).unwrap_or_default()
+}
+
+fn transcript_at(path: &std::path::Path) -> Vec<ChatLine> {
+    let Some(raw) = crate::cli_sessions::read_tail_lossy(path, crate::cli_sessions::TRANSCRIPT_TAIL) else {
         return Vec::new();
     };
     let mut lines: Vec<ChatLine> = Vec::new();
@@ -347,4 +348,36 @@ pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
     cmd.current_dir(&dir).args(["-p", prompt.as_str(), "--resume", session_id]);
     let out = cli_chat::run(cmd, "the Claude CLI").await?;
     crate::cli_sessions::answer(&out, "The Claude CLI")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_transcript_keeps_prompts_answers_and_tool_calls() {
+        let dir = std::env::temp_dir().join(format!("coucou-claude-tr-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("s.jsonl");
+        let mut bytes = concat!(
+            r#"{"type":"user","message":{"content":"fix the bug"}}"#, "\n",
+            r#"{"type":"user","message":{"content":"<command-name>/clear</command-name>"}}"#, "\n",
+            r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Done — café"},{"type":"tool_use","name":"Bash","input":{"command":"cargo test"}}]}}"#, "\n",
+            r#"{"type":"assistant","isSidechain":true,"message":{"content":[{"type":"text","text":"side"}]}}"#, "\n",
+        )
+        .to_string()
+        .into_bytes();
+        bytes.extend_from_slice(&[0xE2, 0x82]);
+        std::fs::write(&path, bytes).unwrap();
+
+        let got: Vec<(String, String)> = transcript_at(&path).into_iter().map(|l| (l.role, l.text)).collect();
+        assert_eq!(
+            got,
+            vec![
+                ("user".into(), "fix the bug".into()),
+                ("assistant".into(), "Done — café".into()),
+                ("tool".into(), "cargo test".into()),
+            ]
+        );
+    }
 }

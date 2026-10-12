@@ -6,7 +6,10 @@
 // session's own folder under the user's real config — hooks included.
 
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// Longest session_meta line read (it carries AGENTS.md and can be long).
+const META_MAX: u64 = 4 * 1024 * 1024;
 use std::time::UNIX_EPOCH;
 
 use serde_json::Value;
@@ -51,24 +54,12 @@ fn session_files() -> Vec<PathBuf> {
 
 /// The rollout's thread id — what `codex exec resume` takes. Forks share the
 /// parent's session_id, so we list the session once (newest file wins).
-fn session_id_of(path: &PathBuf) -> Option<String> {
-    let h = meta_head(path);
-    let v = serde_json::from_str::<Value>(h.lines().next()?).ok()?;
+fn session_id_of(path: &Path) -> Option<String> {
+    let v = serde_json::from_str::<Value>(&crate::cli_sessions::first_line(path, META_MAX)?).ok()?;
     v.pointer("/payload/session_id")
         .or_else(|| v.pointer("/payload/id"))
         .and_then(|s| s.as_str())
         .map(str::to_string)
-}
-
-/// Just enough for the session_meta line (~20KB) — used while scanning many
-/// files, where reading each file's full head would cost real IO.
-fn meta_head(path: &PathBuf) -> String {
-    let Ok(mut f) = std::fs::File::open(path) else {
-        return String::new();
-    };
-    let mut buf = vec![0u8; 65536];
-    let n = f.read(&mut buf).unwrap_or(0);
-    String::from_utf8_lossy(&buf[..n]).to_string()
 }
 
 fn file_for(session_id: &str) -> Option<PathBuf> {
@@ -142,18 +133,24 @@ pub fn list_recent() -> Vec<SessionMeta> {
 
 /// Fallback title for sessions with no plain-text prompt (exec runs carry the
 /// task inside <skill>/<image> wrappers): "Codex 10/10 21:57" from the stamp.
-fn file_stamp(path: &PathBuf) -> String {
+fn file_stamp(path: &Path) -> String {
     let stem = path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or_default()
         .trim_start_matches("rollout-");
-    // rollout-2026-10-10T21-57-47-<id> → "Codex 10/10 21:57"
-    let nice = stem.get(..16).map(|s| {
-        format!("{} {}/{} {}", "Codex", &s[5..7], &s[8..10], s[11..16].replace('-', ":"))
-    });
-    nice.filter(|_| stem.len() >= 16 && stem.as_bytes()[4] == b'-')
-        .unwrap_or_else(|| format!("Codex {}", stem))
+    let b = stem.as_bytes();
+    let dated = b.len() >= 16
+        && b[..16].iter().enumerate().all(|(i, c)| match i {
+            4 | 7 | 13 => *c == b'-',
+            10 => *c == b'T',
+            _ => c.is_ascii_digit(),
+        });
+    if dated {
+        format!("Codex {}/{} {}:{}", &stem[5..7], &stem[8..10], &stem[11..13], &stem[14..16])
+    } else {
+        format!("Codex {stem}")
+    }
 }
 
 /// The tail of a session: user prompts, assistant answers, tool calls as
@@ -163,7 +160,7 @@ pub fn transcript(session_id: &str) -> Vec<ChatLine> {
     let Some(path) = file_for(session_id) else {
         return Vec::new();
     };
-    let Ok(raw) = std::fs::read_to_string(&path) else {
+    let Some(raw) = crate::cli_sessions::read_tail_lossy(&path, crate::cli_sessions::TRANSCRIPT_TAIL) else {
         return Vec::new();
     };
     let mut lines: Vec<ChatLine> = Vec::new();
@@ -292,15 +289,14 @@ fn is_real_user(text: &str) -> bool {
 }
 
 /// The session's folder from its session_meta line, else the private dir.
-fn session_dir(path: &PathBuf) -> Option<PathBuf> {
-    let h = meta_head(path);
-    let dir = h.lines().find_map(|line| {
-        let v = serde_json::from_str::<Value>(line).ok()?;
-        v.pointer("/payload/cwd")
-            .and_then(|c| c.as_str())
-            .map(str::to_string)
-    });
-    dir.map(PathBuf::from)
+fn session_dir(path: &Path) -> Option<PathBuf> {
+    let line = crate::cli_sessions::first_line(path, META_MAX)?;
+    let dir = serde_json::from_str::<Value>(&line)
+        .ok()?
+        .pointer("/payload/cwd")
+        .and_then(|c| c.as_str())
+        .map(PathBuf::from);
+    dir
         .filter(|p| p.is_dir())
         .or_else(|| cli_chat::workdir("codex-chat").ok())
 }
@@ -320,4 +316,28 @@ pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
     cmd.current_dir(&dir).args(["exec", "resume", session_id, prompt.as_str()]);
     let out = cli_chat::run(cmd, "the Codex CLI").await?;
     crate::cli_sessions::answer(&out, "The Codex CLI")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn rollout_names_become_short_titles_and_odd_names_never_panic() {
+        assert_eq!(file_stamp(Path::new("rollout-2026-10-10T21-57-47-0199a.jsonl")), "Codex 10/10 21:57");
+        assert_eq!(file_stamp(Path::new("rollout-éééééééééé.jsonl")), "Codex éééééééééé");
+        assert_eq!(file_stamp(Path::new("rollout-short.jsonl")), "Codex short");
+    }
+
+    #[test]
+    fn a_session_whose_meta_line_is_huge_keeps_its_id() {
+        let dir = std::env::temp_dir().join(format!("coucou-codex-meta-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("rollout-2026-01-01T00-00-00-aaa.jsonl");
+        let meta = format!(r#"{{"payload":{{"id":"aaa","cwd":"/p","instructions":"{}"}}}}"#, "i".repeat(150_000));
+        std::fs::write(&path, format!("{meta}\n")).unwrap();
+        assert_eq!(session_id_of(&path).as_deref(), Some("aaa"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
