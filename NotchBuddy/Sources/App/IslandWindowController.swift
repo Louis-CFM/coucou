@@ -18,6 +18,7 @@ final class IslandWindowController: NSWindowController {
     private var displaySubscription: AnyCancellable?
     private var autoCloseSubscription: AnyCancellable?
     private var openOnHoverSubscription: AnyCancellable?
+    private var autoHideSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -265,6 +266,14 @@ final class IslandWindowController: NSWindowController {
         }
         openOnHoverSubscription = state.$openOnHover.sink { [weak self] on in
             self?.fsm.openOnHover = on
+        }
+        // Applied at once; a later change also shows or starts hiding the island.
+        fsm.autoHide = state.autoHide
+        autoHideSubscription = state.$autoHide.dropFirst().sink { [weak self] on in
+            guard let self, on != self.fsm.autoHide else { return }
+            self.fsm.autoHide = on
+            if !on { self.fsm.reveal() }
+            if self.fsm.state == .petit && !self.wasInIsland { self.fsm.mouseLeft() }
         }
 
         fsm.onTransition = { [weak self] from, to in

@@ -24387,6 +24387,134 @@
         }
       }
     },
+    "Auto-hide": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إخفاء تلقائي"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয়ভাবে লুকান"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto-hide"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar automáticamente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masquer automatiquement"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अपने-आप छिपाएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sembunyikan otomatis"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar automaticamente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоскрытие"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动隐藏"
+          }
+        }
+      }
+    },
+    "The small island hides a minute after the last activity. Off: it stays at the top of the screen.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يختفي الشريط الصغير بعد دقيقة من آخر نشاط. عند الإيقاف: يبقى أعلى الشاشة."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শেষ কাজের এক মিনিট পরে ছোট আইল্যান্ড লুকিয়ে যায়। বন্ধ থাকলে এটি স্ক্রিনের উপরে থাকে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The small island hides a minute after the last activity. Off: it stays at the top of the screen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La isla pequeña se oculta un minuto después de la última actividad. Desactivado: se queda en la parte superior de la pantalla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La petite île se cache une minute après la dernière activité. Désactivé : elle reste en haut de l'écran."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आख़िरी गतिविधि के एक मिनट बाद छोटा आइलैंड छिप जाता है। बंद होने पर यह स्क्रीन के ऊपर बना रहता है।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulau kecil bersembunyi satu menit setelah aktivitas terakhir. Mati: tetap di bagian atas layar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A ilha pequena se esconde um minuto após a última atividade. Desligado: ela fica no topo da tela."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Маленький остров прячется через минуту после последней активности. Выключено: он остаётся вверху экрана."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后一次活动一分钟后，小岛会隐藏。关闭后，它会留在屏幕顶部。"
+          }
+        }
+      }
+    },
     "voice.setting-captions": {
       "extractionState": "manual",
       "localizations": {

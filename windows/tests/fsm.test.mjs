@@ -377,3 +377,23 @@ test("open on hover: an island opened by an alert keeps the normal delay", () =>
   seconds(2);
   assert.equal(fsm.state, "petit");
 });
+
+test("with auto-hide off the island stays compact instead of hiding", () => {
+  fsm.autoHide = false;
+  fsm.reveal();
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+  fsm.mouseEntered();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+});
+
+test("turning auto-hide back on lets the next countdown hide it", () => {
+  fsm.autoHide = false;
+  fsm.reveal();
+  fsm.autoHide = true;
+  fsm.mouseLeft();
+  seconds(60);
+  assert.equal(fsm.state, "hidden");
+});

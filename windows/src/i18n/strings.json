@@ -376,6 +376,17 @@
    "ru": "Автозакрытие · {seconds} с",
    "id": "Tutup otomatis · {seconds}dt"
   },
+  "Auto-hide": {
+   "zh-Hans": "自动隐藏",
+   "hi": "अपने-आप छिपाएँ",
+   "es": "Ocultar automáticamente",
+   "ar": "إخفاء تلقائي",
+   "fr": "Masquer automatiquement",
+   "bn": "স্বয়ংক্রিয়ভাবে লুকান",
+   "pt-BR": "Ocultar automaticamente",
+   "ru": "Автоскрытие",
+   "id": "Sembunyikan otomatis"
+  },
   "Automatic (your Mac’s dictation language)": {
    "zh-Hans": "自动（Mac 听写语言）",
    "hi": "स्वचालित (Mac की डिक्टेशन भाषा)",
@@ -3400,6 +3411,17 @@
    "pt-BR": "Testa",
    "ru": "Тестирует",
    "id": "Menguji"
+  },
+  "The small island hides a minute after the last activity. Off: it stays at the top of the screen.": {
+   "zh-Hans": "最后一次活动一分钟后，小岛会隐藏。关闭后，它会留在屏幕顶部。",
+   "hi": "आख़िरी गतिविधि के एक मिनट बाद छोटा आइलैंड छिप जाता है। बंद होने पर यह स्क्रीन के ऊपर बना रहता है।",
+   "es": "La isla pequeña se oculta un minuto después de la última actividad. Desactivado: se queda en la parte superior de la pantalla.",
+   "ar": "يختفي الشريط الصغير بعد دقيقة من آخر نشاط. عند الإيقاف: يبقى أعلى الشاشة.",
+   "fr": "La petite île se cache une minute après la dernière activité. Désactivé : elle reste en haut de l'écran.",
+   "bn": "শেষ কাজের এক মিনিট পরে ছোট আইল্যান্ড লুকিয়ে যায়। বন্ধ থাকলে এটি স্ক্রিনের উপরে থাকে।",
+   "pt-BR": "A ilha pequena se esconde um minuto após a última atividade. Desligado: ela fica no topo da tela.",
+   "ru": "Маленький остров прячется через минуту после последней активности. Выключено: он остаётся вверху экрана.",
+   "id": "Pulau kecil bersembunyi satu menit setelah aktivitas terakhir. Mati: tetap di bagian atas layar."
   },
   "To": {
    "zh-Hans": "收件人",
