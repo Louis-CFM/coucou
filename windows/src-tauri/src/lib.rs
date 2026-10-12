@@ -2,6 +2,7 @@
 
 mod agent_hooks;
 mod agents;
+mod calls;
 mod chat;
 mod claude;
 mod codex_plan;
@@ -773,6 +774,7 @@ pub fn run() {
             sounds::custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
+            calls::call_sensors,
             spotify::spotify_refresh,
             spotify::spotify_control,
             spotify::spotify_open,
@@ -816,6 +818,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            calls::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

@@ -1198,7 +1198,21 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.syncCall();
     State.notify();
+  }
+
+  /** A call started: the island goes away, a card waiting for an answer excepted. Ended: back, folded. */
+  syncCall() {
+    const on = State.inCall;
+    if (on === this.fsm.paused) return;
+    this.fsm.paused = on;
+    Sound.quiet = on;
+    if (on) {
+      if (!State.pendingApproval) this.fsm.forceHidden();
+    } else if (State.mode === "hidden" && State.tasks.length > 0) {
+      this.revealSilently();
+    }
   }
 
   get panelSize() {

@@ -357,6 +357,8 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+  /** `cam`, `mic`, `scr` held by another app (calls.rs); updates come as "call-sensors". */
+  callSensors: () => call<string[]>("call_sensors"),
 
   // ── Global shortcuts ──────────────────────────────────────────────────────
   /** How each global shortcut went when Rust last registered them. */

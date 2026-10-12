@@ -415,6 +415,10 @@ own window.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
   is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
   nothing to read it from yet.
+- Settings → General → Calls reads PipeWire on Linux (`pw-dump --monitor`):
+  another app's stream on a microphone, on a PipeWire camera, or on a shared
+  screen. A camera opened directly as `/dev/video*`, outside PipeWire, is not
+  seen. Windows has nothing behind it yet, so no call is ever detected there.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
