@@ -360,7 +360,11 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent || ownSession) {
-      if (ownSession) State.upsertExternalAgent(agentId, projectName, colorForProject(projectName));
+      if (ownSession) {
+        State.upsertExternalAgent(agentId, projectName, colorForProject(projectName));
+        const pill = State.tasks.find((t) => t.id === agentId);
+        if (pill) pill.name = projectName;
+      }
       else State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
       const t = State.tasks.find((x) => x.id === agentId);
       if (t && cwd) t.sessionCwd = cwd;

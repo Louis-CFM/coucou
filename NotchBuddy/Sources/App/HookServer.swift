@@ -653,6 +653,7 @@ final class HookServer: @unchecked Sendable {
         upsertExternalAgent(id: id, name: projectName)
         let state = AppState.shared
         guard let idx = state.tasks.firstIndex(where: { $0.id == id }) else { return }
+        if state.tasks[idx].name != projectName { state.tasks[idx].name = projectName }
         if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
         if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
     }

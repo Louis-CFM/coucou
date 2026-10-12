@@ -702,6 +702,13 @@ const SESSION_A = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SESSION_B = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const sessionPill = (id) => `session_${id}`;
 
+test("a session pill takes the name of the session's later events", () => {
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/coucou" });
+  hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/api" });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: SESSION_B, cwd: "/home/me/web" });
+  assert.equal(task(sessionPill(SESSION_B)).name, "web");
+});
+
 test("a second Claude Code session gets its own pill, named after its folder", () => {
   hook({ hook_event_name: "SessionStart", session_id: SESSION_A, cwd: "/home/me/coucou" });
   hook({ hook_event_name: "SessionStart", session_id: SESSION_B, cwd: "/home/me/api" });
