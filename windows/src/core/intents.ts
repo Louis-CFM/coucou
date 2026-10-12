@@ -149,3 +149,11 @@ export function voicePhrases(pills: readonly string[]): string[] {
   }
   return out;
 }
+
+/** The opening line of Maki's callback: Hermes' answer, short enough to say. */
+export function callbackLine(answer: string): string {
+  const plain = answer.replace(/[*_`#>|]/g, "").replace(/\s+/g, " ").trim();
+  const two = plain.match(/^(.+?[.!?])(\s+.+?[.!?])?(?=\s|$)/)?.[0] ?? plain;
+  const short = two.length > 300 ? `${two.slice(0, 297).trimEnd()}…` : two.trim();
+  return `Hermes is back. ${short}`;
+}

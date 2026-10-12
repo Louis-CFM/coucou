@@ -11,7 +11,7 @@ import { Bridge } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { Spotify } from "../core/spotify";
 import { Todos } from "../core/extras";
-import { openTarget } from "../core/intents";
+import { callbackLine, openTarget } from "../core/intents";
 import { endLive, showLive, Live, type LiveHost } from "../island/live";
 import { startFocus, stopFocus } from "../views/extras";
 import { agentsText, planText } from "./voice";
@@ -157,9 +157,14 @@ async function coucouTool(p: CoucouParams): Promise<string> {
 async function runTool(name: string, params: Record<string, unknown>): Promise<{ result: string; error: boolean }> {
   try {
     if (name === "ask_hermes") {
+      // Hermes takes minutes; an open call bills every one of them. It works
+      // in the background and Maki calls back with the answer.
       caption(t("Asking Hermes…"));
-      const answer = await Bridge.askHermes(String(params.request ?? ""));
-      return { result: answer ?? "", error: false };
+      void Bridge.askHermes(String(params.request ?? "")).then(
+        (answer) => hermesBack(answer),
+        (e) => hermesBack(`it failed: ${String(e).replace(/^Error:\s*/, "")}`),
+      );
+      return { result: "Hermes is on it. Coucou will call the user back with the answer; you can end this call.", error: false };
     }
     if (name === "coucou") return { result: await coucouTool(params as unknown as CoucouParams), error: false };
     return { result: `Unknown tool ${name}.`, error: true };
@@ -178,9 +183,22 @@ export function endConversation() {
   ws?.close();
 }
 
-export async function startConversation(liveHost: LiveHost, agentId: string) {
+let lastAgent = "";
+
+/** Hermes finished: told in the call if one is on, else Maki calls back. */
+function hermesBack(answer: string) {
+  void Bridge.log("eleven: hermes is back");
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "contextual_update", text: `Hermes answered: ${answer.slice(0, 4000)}` }));
+    return;
+  }
+  if (host) void startConversation(host, lastAgent, callbackLine(answer));
+}
+
+export async function startConversation(liveHost: LiveHost, agentId: string, firstMessage?: string) {
   if (ws) return;
   host = liveHost;
+  lastAgent = agentId;
   caption(t("Connecting…"));
   // The speakers aren't this page's audio, so echo cancellation can't remove
   // the music: Maki would hear the song as you talking. Paused while she
@@ -251,7 +269,10 @@ export async function startConversation(liveHost: LiveHost, agentId: string) {
 
   socket.onopen = () => {
     void Bridge.log("eleven: conversation open");
-    socket.send(JSON.stringify({ type: "conversation_initiation_client_data" }));
+    socket.send(JSON.stringify({
+      type: "conversation_initiation_client_data",
+      ...(firstMessage ? { conversation_config_override: { agent: { first_message: firstMessage } } } : {}),
+    }));
     caption(t("Listening…"));
   };
   socket.onmessage = (ev) => {

@@ -65,7 +65,9 @@ pub async fn ask_hermes(request: String) -> Result<String, String> {
     let request: String = request.chars().take(4000).collect();
     tauri::async_runtime::spawn_blocking(move || {
         let mut cmd = Command::new(exe);
-        cmd.arg("-z").arg(&request).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+        // Voice requests get a lean toolset: the full one makes the prompt so big
+        // the free model took ~106 s for a one-line command; this takes ~35 s.
+        cmd.arg("-z").arg(&request).args(["-t", "terminal,file,web,memory,computer_use"]).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
         if let Some(home) = std::env::var_os("USERPROFILE") {
             cmd.current_dir(home);
         }

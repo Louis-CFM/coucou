@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { minutesIn, openTarget, parseIntent, voicePhrases } from "../src/core/intents.ts";
+import { callbackLine, minutesIn, openTarget, parseIntent, voicePhrases } from "../src/core/intents.ts";
 
 const k = (s) => parseIntent(s);
 
@@ -57,4 +57,10 @@ test("every phrase Maki listens for is a command, never a question", () => {
     const i = parseIntent(p);
     assert.ok(i && i.kind !== "ask", `"${p}" → ${JSON.stringify(i)}`);
   }
+});
+
+test("Hermes callbacks open with two plain sentences", () => {
+  assert.equal(callbackLine("**Build passed.** All 12 tests green. Logs are in out.txt."), "Hermes is back. Build passed. All 12 tests green.");
+  assert.equal(callbackLine("done"), "Hermes is back. done");
+  assert.ok(callbackLine("x".repeat(900)).length < 320);
 });
