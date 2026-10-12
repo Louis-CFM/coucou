@@ -23,7 +23,6 @@ pub struct SessionMeta {
     pub id: String,
     pub title: String,
     pub dir: String,
-    pub model: String,
     pub last_activity_at: i64,
 }
 
@@ -75,7 +74,7 @@ pub fn list_recent() -> Vec<SessionMeta> {
 
 fn list_recent_in(conn: &Connection) -> Vec<SessionMeta> {
     let mut stmt = match conn.prepare(
-        "SELECT id, title, working_directory, model, last_activity_at \
+        "SELECT id, title, working_directory, last_activity_at \
          FROM sessions WHERE hidden = 0 ORDER BY last_activity_at DESC LIMIT 96",
     ) {
         Ok(s) => s,
@@ -92,8 +91,7 @@ fn list_recent_in(conn: &Connection) -> Vec<SessionMeta> {
                 .filter(|t| !t.trim().is_empty())
                 .unwrap_or_else(|| id.clone()),
             dir: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
-            model: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
-            last_activity_at: r.get::<_, Option<i64>>(4)?.unwrap_or(0),
+            last_activity_at: r.get::<_, Option<i64>>(3)?.unwrap_or(0),
             id,
         })
     });

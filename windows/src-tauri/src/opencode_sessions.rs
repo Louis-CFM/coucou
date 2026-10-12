@@ -53,7 +53,6 @@ pub fn list_recent() -> Vec<SessionMeta> {
             title: r.get::<_, Option<String>>(1)?.unwrap_or_else(|| id.clone()),
             id,
             dir: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
-            model: String::new(),
             last_activity_at: r.get::<_, Option<i64>>(3)?.unwrap_or(0) / 1000,
         })
     });

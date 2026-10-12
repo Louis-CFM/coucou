@@ -164,7 +164,7 @@ export const Bridge = {
   // ── Devin sessions (the phone picks one to read & continue) ───────────────
   /** Every session in Devin's global sessions.db, newest first. */
   devinSessions: () =>
-    call<{ id: string; title: string; dir: string; model: string; lastActivityAt: number }[]>(
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>(
       "devin_sessions",
     ),
   /** The transcript tail of one session — chat lines plus tool calls. */
@@ -176,7 +176,7 @@ export const Bridge = {
 
   // ── Claude Code sessions (~/.claude/projects/*.jsonl) ─────────────────────
   claudeSessions: () =>
-    call<{ id: string; title: string; dir: string; model: string; lastActivityAt: number }[]>(
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>(
       "claude_sessions",
     ),
   claudeTranscript: (sessionId: string) =>

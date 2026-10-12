@@ -148,46 +148,12 @@ fn lookup_in(lang: &str, key: &str) -> Option<&'static Value> {
     table().get(key)?.get(lang)
 }
 
-/// CLDR plural category of `n` (whole numbers) in `lang`.
-fn plural_category(lang: &str, n: u64) -> &'static str {
-    match lang {
-        "zh-Hans" | "id" => "other",
-        "fr" | "pt-BR" | "hi" | "bn" => {
-            if n <= 1 { "one" } else { "other" }
-        }
-        "ru" => {
-            let (m10, m100) = (n % 10, n % 100);
-            if m10 == 1 && m100 != 11 {
-                "one"
-            } else if (2..=4).contains(&m10) && !(12..=14).contains(&m100) {
-                "few"
-            } else {
-                "many"
-            }
-        }
-        "ar" => match (n, n % 100) {
-            (0, _) => "zero",
-            (1, _) => "one",
-            (2, _) => "two",
-            (_, 3..=10) => "few",
-            (_, 11..=99) => "many",
-            _ => "other",
-        },
-        // Czech (and Slovak): 1 is one, 2–4 few, 0 and 5+ other; "many" is
-        // only for fractions, which whole counts never hit.
-        "cs" => {
-            if n == 1 {
-                "one"
-            } else if (2..=4).contains(&n) {
-                "few"
-            } else {
-                "other"
-            }
-        }
-        _ => {
-            if n == 1 { "one" } else { "other" }
-        }
-    }
+
+/// Marks an English key for a table built before it is shown (the tray's
+/// labels): the code translates it with `t` when it shows it. The i18n test
+/// (tests/i18n.test.mjs) finds the keys through it.
+pub const fn n_(key: &'static str) -> &'static str {
+    key
 }
 
 fn pick_plural(forms: &Map<String, Value>, category: &str) -> Option<String> {
@@ -197,13 +163,6 @@ fn pick_plural(forms: &Map<String, Value>, category: &str) -> Option<String> {
         .or_else(|| forms.values().next())
         .and_then(Value::as_str)
         .map(str::to_string)
-}
-
-/// Marks an English key for a table built before it is shown (the tray's
-/// labels): the code translates it with `t` when it shows it. The i18n test
-/// (tests/i18n.test.mjs) finds the keys through it.
-pub const fn n_(key: &'static str) -> &'static str {
-    key
 }
 
 /// `key` (English text) in the shown language, else the English text.
@@ -220,22 +179,6 @@ pub fn tf(key: &str, vars: &[(&str, &str)]) -> String {
         _ => key.to_string(),
     };
     interpolate(&text, vars)
-}
-
-/// A count with its words: `tn("{count} file", "{count} files", n, &[])`.
-#[allow(dead_code)]
-pub fn tn(one: &str, other: &str, count: u64, vars: &[(&str, &str)]) -> String {
-    let lang = current();
-    let n = count.to_string();
-    let mut all: Vec<(&str, &str)> = vars.to_vec();
-    all.push(("count", &n));
-    let text = match lookup_in(lang, other) {
-        Some(Value::Object(forms)) => pick_plural(forms, plural_category(lang, count)),
-        Some(Value::String(s)) => Some(s.clone()),
-        _ => None,
-    };
-    let text = text.unwrap_or_else(|| if count == 1 { one.to_string() } else { other.to_string() });
-    interpolate(&text, &all)
 }
 
 #[cfg(test)]
@@ -271,21 +214,6 @@ mod tests {
         set_for_test("en");
         assert_eq!(t("Allow"), "Allow");
         assert_eq!(tf("Open {name}", &[("name", "Vercel")]), "Open Vercel");
-    }
-
-    #[test]
-    fn plurals_follow_the_language() {
-        set_for_test("en");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1, &[]), "✓ Connected · 1 model");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 3, &[]), "✓ Connected · 3 models");
-        set_for_test("es");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 1, &[]), "✓ Conectado · 1 modelo");
-        assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", 4, &[]), "✓ Conectado · 4 modelos");
-        assert_eq!(plural_category("ru", 21), "one");
-        assert_eq!(plural_category("ru", 23), "few");
-        assert_eq!(plural_category("ru", 25), "many");
-        assert_eq!(plural_category("ar", 2), "two");
-        set_for_test("en");
     }
 
     #[test]

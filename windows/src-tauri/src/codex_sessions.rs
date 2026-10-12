@@ -124,7 +124,6 @@ pub fn list_recent() -> Vec<SessionMeta> {
             id,
             title: if title.is_empty() { file_stamp(&path) } else { title },
             dir,
-            model: String::new(),
             last_activity_at: at,
         });
     }
