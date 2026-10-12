@@ -41,6 +41,11 @@ pub struct WslUser {
     pub settings_path: String,
     /// Coucou's hooks are in that settings.json.
     pub installed: bool,
+    /// The relay is Coucou's status line there (the plan usage gauge).
+    pub plan_installed: bool,
+    /// Coucou's commands there start a relay that is not the current one (the
+    /// app moved or was reinstalled elsewhere): they would do nothing.
+    pub stale: bool,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -141,6 +146,98 @@ fn sh_quote(s: &str) -> String {
 pub fn relay_command(relay: &str, event: &str) -> String {
     let relay = sh_quote(relay);
     format!("[ -x {relay} ] && {relay} {event} || true")
+}
+
+// ── What a distro's settings.json says about Coucou ───────────────────────────
+
+/// The status line command in a distro's settings.json. Claude Code hands the
+/// session's JSON to it on standard input and shows what it prints. The input is
+/// read once, sent to the relay in the background (it only wants the plan limits,
+/// and must never delay the line) and handed to the user's own status line, run
+/// here in the distro, so it keeps working as before. With none of their own,
+/// nothing is printed. The whole background group lets go of standard output:
+/// one that kept it would hold the line back until the relay had finished.
+pub fn status_line_command(relay: &str, previous: Option<&str>) -> String {
+    let relay = sh_quote(relay);
+    let own = match previous.map(str::trim) {
+        Some(command) if !command.is_empty() => format!("{{ {command}\n}}"),
+        _ => ":".to_string(),
+    };
+    format!(
+        "input=$(cat); {{ [ -x {relay} ] && printf '%s' \"$input\" | {relay} --statusline --no-previous; }} >/dev/null 2>&1 & \
+         printf '%s' \"$input\" | {own}"
+    )
+}
+
+/// The first single-quoted word of a shell command, unquoted: the relay's path in
+/// the commands Coucou writes (`[ -x '<relay>' ] && '<relay>' <Event> || true`).
+pub fn first_quoted(command: &str) -> Option<String> {
+    let start = command.find('\'')?;
+    let rest: Vec<char> = command[start + 1..].chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    loop {
+        while i < rest.len() && rest[i] != '\'' {
+            out.push(rest[i]);
+            i += 1;
+        }
+        if i >= rest.len() {
+            return None;
+        }
+        // `'\''` is a quote inside the word: close, escaped quote, open again.
+        if rest.get(i + 1..i + 4) == Some(&['\\', '\'', '\''][..]) {
+            out.push('\'');
+            i += 4;
+            continue;
+        }
+        return Some(out);
+    }
+}
+
+/// What Coucou has in a settings.json read from a distro.
+#[derive(Debug, Default, PartialEq)]
+pub struct Found {
+    pub installed: bool,
+    pub plan: bool,
+    pub stale: bool,
+}
+
+/// Whether the hooks and the status line in `settings` are Coucou's, and whether
+/// the relay they start is `expected` (as the distro writes its path). A relay
+/// that is not a Windows program (a Coucou for Linux in the distro, say) is
+/// somebody's own install and is left alone, never called stale.
+pub fn inspect(settings: &serde_json::Value, expected: Option<&str>) -> Found {
+    const MARKER: &str = "coucou-hook";
+    let mut found = Found::default();
+    let mut check = |command: &str, plan: bool| {
+        if !command.contains(MARKER) {
+            return;
+        }
+        if plan {
+            found.plan = true;
+        } else {
+            found.installed = true;
+        }
+        let ours = first_quoted(command).filter(|p| p.to_ascii_lowercase().ends_with(".exe"));
+        if let (Some(ours), Some(expected)) = (ours, expected) {
+            if ours != expected {
+                found.stale = true;
+            }
+        }
+    };
+    if let Some(hooks) = settings.get("hooks").and_then(serde_json::Value::as_object) {
+        for group in hooks.values().filter_map(serde_json::Value::as_array).flatten() {
+            for hook in group.get("hooks").and_then(serde_json::Value::as_array).into_iter().flatten() {
+                if let Some(command) = hook.get("command").and_then(serde_json::Value::as_str) {
+                    check(command, false);
+                }
+            }
+        }
+    }
+    if let Some(command) = settings.get("statusLine").and_then(|v| v.get("command")).and_then(serde_json::Value::as_str) {
+        check(command, true);
+    }
+    found
 }
 
 // ── A session's Linux paths, seen from Windows ───────────────────────────────
@@ -305,19 +402,25 @@ pub fn remote_wsl_installed() -> bool {
     has_remote_wsl(&names)
 }
 
-/// The distros, and for each running one its users with whether Coucou's hooks
-/// are in their settings.json. Read-only.
+/// The distros, and for each running one its users with what Coucou has in their
+/// settings.json. Read-only.
 pub fn list() -> Vec<WslDistro> {
     distros()
         .into_iter()
         .map(|(name, running)| {
             let users = if running {
+                let expected = to_wsl_path(&crate::settings::hook_exe_path().to_string_lossy(), &automount_root(&name));
                 users(&name)
                     .into_iter()
                     .map(|user| {
                         let path = settings_of(&name, &user);
+                        let found = crate::hooks::read_settings_lossy_at(&path)
+                            .map(|settings| inspect(&settings, expected.as_deref()))
+                            .unwrap_or_default();
                         WslUser {
-                            installed: crate::hooks::settings_file_has_ours(&path),
+                            installed: found.installed,
+                            plan_installed: found.plan,
+                            stale: found.stale,
                             settings_path: path.to_string_lossy().to_string(),
                             name: user,
                         }
@@ -329,6 +432,24 @@ pub fn list() -> Vec<WslDistro> {
             WslDistro { name, running, users }
         })
         .collect()
+}
+
+/// Whether Claude Code in some running distro reaches Coucou: its hooks are in a
+/// user's settings.json and start the current relay. Answers from what it knew
+/// half a minute ago: it asks `wsl.exe` and reads files over the share, and the
+/// island asks every time it opens.
+pub fn hooks_connected() -> bool {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static CACHE: Mutex<Option<(Instant, bool)>> = Mutex::new(None);
+    if let Some((at, connected)) = *CACHE.lock().unwrap_or_else(|e| e.into_inner()) {
+        if at.elapsed() < Duration::from_secs(30) {
+            return connected;
+        }
+    }
+    let connected = list().iter().flat_map(|d| &d.users).any(|u| u.installed && !u.stale);
+    *CACHE.lock().unwrap_or_else(|e| e.into_inner()) = Some((Instant::now(), connected));
+    connected
 }
 
 /// The settings.json and relay path for `distro` and `user`, after checking
@@ -480,6 +601,68 @@ mod tests {
     }
 
     #[test]
+    fn the_relay_is_read_back_out_of_a_command() {
+        assert_eq!(first_quoted("[ -x '/mnt/c/a/coucou-hook.exe' ] && '/mnt/c/a/coucou-hook.exe' Stop || true").as_deref(), Some("/mnt/c/a/coucou-hook.exe"));
+        assert_eq!(first_quoted(r"'/mnt/c/O'\''Neil/x.exe' Stop").as_deref(), Some("/mnt/c/O'Neil/x.exe"));
+        assert_eq!(first_quoted("echo 'a b' 'c'").as_deref(), Some("a b"));
+        // Nothing quoted, or never closed.
+        assert_eq!(first_quoted("bash ~/.claude/statusline.sh"), None);
+        assert_eq!(first_quoted("echo 'open"), None);
+        assert_eq!(first_quoted(""), None);
+        // It is what relay_command wrote.
+        let odd = "/mnt/c/Users/O'Neil Jr/bin/coucou-hook.exe";
+        assert_eq!(first_quoted(&relay_command(odd, "Stop")).as_deref(), Some(odd));
+        assert_eq!(first_quoted(&status_line_command(odd, Some("bash x.sh"))).as_deref(), Some(odd));
+    }
+
+    #[test]
+    fn a_distros_settings_say_whether_coucou_is_there_and_whether_it_would_run() {
+        use serde_json::json;
+        let current = "/mnt/c/Users/Me/AppData/Local/Coucou/bin/coucou-hook.exe";
+        let moved = "/mnt/d/Coucou/bin/coucou-hook.exe";
+        let theirs = json!({ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "/home/me/pulse/notify.sh" }] }] } });
+        assert_eq!(inspect(&theirs, Some(current)), Found::default());
+        assert_eq!(inspect(&json!({}), Some(current)), Found::default());
+
+        let hooks = |relay: &str| json!({ "hooks": { "Stop": [{ "hooks": [{ "command": relay_command(relay, "Stop") }] }] } });
+        assert_eq!(inspect(&hooks(current), Some(current)), Found { installed: true, plan: false, stale: false });
+        // The relay is somewhere else now: still there, but it would do nothing.
+        assert_eq!(inspect(&hooks(moved), Some(current)), Found { installed: true, plan: false, stale: true });
+        // Nothing to compare with (the relay is not on a drive): not called stale.
+        assert!(!inspect(&hooks(moved), None).stale);
+
+        // The status line counts apart, and goes stale on its own.
+        let line = |relay: &str| json!({ "statusLine": { "type": "command", "command": status_line_command(relay, None) } });
+        assert_eq!(inspect(&line(current), Some(current)), Found { installed: false, plan: true, stale: false });
+        assert_eq!(inspect(&line(moved), Some(current)), Found { installed: false, plan: true, stale: true });
+        // Somebody's own status line is not ours.
+        assert_eq!(inspect(&json!({ "statusLine": { "command": "bash ~/.claude/statusline.sh" } }), Some(current)), Found::default());
+
+        // A Coucou for Linux inside the distro is its own install, not a stale one.
+        let native = json!({ "hooks": { "Stop": [{ "hooks": [{ "command": "'/home/me/.local/share/coucou/bin/coucou-hook' Stop" }] }] } });
+        assert_eq!(inspect(&native, Some(current)), Found { installed: true, plan: false, stale: false });
+    }
+
+    #[test]
+    fn the_status_line_runs_the_users_own_in_the_distro_and_feeds_the_relay_beside_it() {
+        let relay = "/mnt/c/Users/Me/AppData/Local/Coucou/bin/coucou-hook.exe";
+        let with = status_line_command(relay, Some("bash ~/.claude/statusline.sh"));
+        assert!(with.starts_with("input=$(cat); "), "{with}");
+        assert!(with.contains("'/mnt/c/Users/Me/AppData/Local/Coucou/bin/coucou-hook.exe' --statusline --no-previous; }"), "{with}");
+        // In the background, with no hold on the output, so it never delays the
+        // line; and the user's command last.
+        assert!(with.contains("; } >/dev/null 2>&1 & "), "{with}");
+        assert!(with.trim_end().ends_with("{ bash ~/.claude/statusline.sh\n}"), "{with}");
+        // None of their own: nothing printed.
+        for none in [None, Some(""), Some("   ")] {
+            let c = status_line_command(relay, none);
+            assert!(c.ends_with("| :"), "{c}");
+        }
+        // The marker the rest of Coucou recognises its entries by.
+        assert!(with.contains("coucou-hook"));
+    }
+
+    #[test]
     fn the_settings_are_reached_through_the_distros_share() {
         assert_eq!(
             settings_of("Ubuntu", "me"),
@@ -502,7 +685,11 @@ mod tests {
         let target = resolve(&distro, &user).unwrap();
         println!("relay as {distro} writes it: {}", target.relay);
         let preview = crate::hooks::wsl_preview(&distro, &user, true).unwrap();
+        // Empty when the hooks are already in, as an install changes nothing then.
         println!("backup would go to: {}\n{}", preview.backup, preview.diff);
-        assert!(preview.diff.contains("coucou-hook"));
+        println!("connected: {}", hooks_connected());
+        let line = crate::hooks::wsl_status_line_preview(&distro, &user, true).unwrap();
+        println!("status line diff:\n{}", line.diff);
+        assert!(line.diff.contains("--no-previous"));
     }
 }

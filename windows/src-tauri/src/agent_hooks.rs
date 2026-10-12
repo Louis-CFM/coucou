@@ -52,7 +52,9 @@ fn read_json(path: &PathBuf) -> Value {
 
 /// Pill ID → connected, for every hook-driven pill.
 pub fn status() -> HashMap<String, bool> {
-    let claude = claude_hooks_present(&read_json(&crate::hooks::settings_path()));
+    // Claude Code in WSL reaches Coucou through the hooks in its distro's own
+    // settings.json (wsl.rs); either way the pill is connected.
+    let claude = claude_hooks_present(&read_json(&crate::hooks::settings_path())) || crate::wsl::hooks_connected();
     let mut out = HashMap::new();
     out.insert("integration_claude".to_string(), claude);
     for agent in crate::agents::list() {
