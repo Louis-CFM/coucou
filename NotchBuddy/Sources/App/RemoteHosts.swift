@@ -543,8 +543,7 @@ enum RemoteTerminal {
     }
 
     /// False when the pill shows no remote session. On this same Mac its own terminal comes
-    /// forward; else the local terminal already ssh'd into its host; else a new one opens,
-    /// in iTerm2 when it runs, else Terminal.
+    /// forward; else the local terminal already ssh'd into its host; else a new one opens.
     @discardableResult
     static func open(pillId: String) -> Bool {
         guard let place = places[pillId],
@@ -583,7 +582,23 @@ enum RemoteTerminal {
         return true
     }
 
+    /// A new terminal on the host: in WezTerm when it runs, else iTerm2 when it runs, else Terminal.
     private static func openNew(_ cmd: String) {
+        if let wezterm = NSRunningApplication.runningApplications(withBundleIdentifier: TerminalTarget.weztermId).first,
+           let url = wezterm.bundleURL {
+            let p = Process()
+            p.executableURL = url.appendingPathComponent("Contents/MacOS/wezterm")
+            p.arguments = ["cli", "spawn", "--new-window", "--", "/bin/sh", "-c", cmd]
+            p.standardOutput = FileHandle.nullDevice
+            p.standardError = FileHandle.nullDevice
+            if (try? p.run()) != nil {
+                p.waitUntilExit()
+                if p.terminationStatus == 0 {
+                    NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+                    return
+                }
+            }
+        }
         let iterm = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.googlecode.iterm2").isEmpty
         let script = iterm
             ? """

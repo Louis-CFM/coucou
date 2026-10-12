@@ -47,6 +47,10 @@ struct LocalSSHTests {
         let host = LocalSSH.destination("ssh://deploy@localhost:2222")!
         func same(_ line: String, _ want: LocalSSH.Destination) -> Bool { LocalSSH.same(call(line)!.0, want) }
         check(same("ssh -p 2222 deploy@localhost", host), "the host as typed")
+        let ip = LocalSSH.Resolved(user: "me", port: 22, addresses: ["192.0.2.7"])
+        check(LocalSSH.sameAddress(ip, LocalSSH.Resolved(user: "me", port: 22, addresses: ["192.0.2.7", "::1"])), "an alias of the same address")
+        check(!LocalSSH.sameAddress(ip, LocalSSH.Resolved(user: "me", port: 2222, addresses: ["192.0.2.7"])), "same address, another port")
+        check(!LocalSSH.sameAddress(ip, nil), "unresolved")
         check(same("ssh -p 2222 LOCALHOST", host), "no user named: any")
         check(!same("ssh deploy@localhost", host), "another port")
         check(!same("ssh -p 2222 root@localhost", host), "another user")
