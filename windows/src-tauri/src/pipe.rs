@@ -214,7 +214,8 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .unwrap_or_default()
         .to_string();
 
-    note_session_window(&pipe, &payload, &event);
+    let session = payload.get("session_id").and_then(Value::as_str).map(str::to_string);
+    let relay_pid = pipe.client_pid();
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -225,6 +226,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         }
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         pipe.finish();
+        remember_session_window(relay_pid, session, &event);
         return;
     }
 
@@ -238,75 +240,127 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     payload["request_id"] = json!(id);
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+    remember_session_window(relay_pid, session, &event);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    let outcome = wait_for_decision(&id, &mut rx, peer_closed(&mut pipe)).await;
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
-    // No decision: say nothing at all. coucou-hook then writes nothing to stdout
-    // and Claude Code asks in the terminal, exactly as if Coucou were closed.
-    if let Some(d) = decision {
-        let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
-        let _ = pipe.flush().await;
+    match outcome {
+        // What we write is a bare word or the answers line; coucou-hook turns it into the agent's JSON.
+        Outcome::Decision(d) => {
+            let _ = pipe.write_all(format!("{d}\n").as_bytes()).await;
+            let _ = pipe.flush().await;
+        }
+        // The island said so itself. No decision: say nothing at all, and the
+        // agent asks in its terminal exactly as if Coucou were closed.
+        Outcome::Declined => {}
+        // The card may still be up for a request nobody waits on any more.
+        Outcome::TimedOut | Outcome::Gone => {
+            let _ = app.emit_to(WINDOW_LABEL, "approval-released", json!({ "requestId": id }));
+        }
     }
     pipe.finish();
 }
 
-/// Finds, once per session, the window it runs in — see session_window.rs.
-///
-/// Only while the session is unknown, so the process snapshot is not taken on
-/// every event. The relay must still be running for its parents to be found:
-/// a permission request always is (it waits for us), a quick event may already
-/// have exited, and then a later event of the session tries again.
-fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
-    let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
+/// Finds, once per session, the window it runs in (session_window.rs). The
+/// process snapshot runs on the blocking pool after the island has the event:
+/// taken before, it held the event back while a later one from a faster relay
+/// went ahead. Only while the session is unknown; the relay must still be
+/// running for its parents to be found, otherwise a later event tries again.
+fn remember_session_window(relay: Option<u32>, session: Option<String>, event: &str) {
+    let Some(session) = session else { return };
     if event == "SessionEnd" {
-        session_window::forget(session);
+        session_window::forget(&session);
         return;
     }
-    if session_window::known(session) {
+    if session_window::known(&session) {
         return;
     }
-    let Some(relay) = pipe.client_pid() else { return };
-    let ancestors = crate::platform::process_ancestors(relay);
-    // No ancestors: the relay was already gone, so try again next time. Some,
-    // but none with a window (a classic console): settled, VS Code it is.
-    if !ancestors.is_empty() {
-        session_window::remember(session, crate::platform::window_owners(&ancestors));
-    }
+    let Some(relay) = relay else { return };
+    tauri::async_runtime::spawn_blocking(move || {
+        let ancestors = crate::platform::process_ancestors(relay);
+        // No ancestors: the relay was already gone, so try again next time.
+        // Some, but none with a window (a classic console): settled.
+        if !ancestors.is_empty() {
+            session_window::remember(&session, crate::platform::window_owners(&ancestors));
+        }
+    });
 }
 
-/// Two waits: a short one for "the card is up", then the long one for a human.
-async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {
-    match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
+/// How a held permission request ended.
+#[derive(Debug, PartialEq)]
+enum Outcome {
+    /// A human clicked: what goes back to the relay.
+    Decision(String),
+    /// The island said nobody can act on it (paused, full queue, "answer in terminal").
+    Declined,
+    /// No ack, or no click before the deadline.
+    TimedOut,
+    /// The relay hung up: the agent stopped waiting (answered in the terminal, gave up).
+    Gone,
+}
+
+/// Two waits: a short one for "the card is up", then the long one for a human —
+/// either cut short by the relay going away.
+async fn wait_for_decision(
+    id: &str,
+    rx: &mut mpsc::Receiver<Reply>,
+    gone: impl std::future::Future<Output = ()>,
+) -> Outcome {
+    tokio::pin!(gone);
+    let first = tokio::select! {
+        r = tokio::time::timeout(ACK_TIMEOUT, rx.recv()) => r,
+        () = &mut gone => {
+            log::line(format!("hook id={id} relay gone before the card was up"));
+            return Outcome::Gone;
+        }
+    };
+    match first {
         Ok(Some(Reply::Ack)) => {}
         // A click that beats the ack is still a click.
         Ok(Some(Reply::Decision(d))) => {
             log::line(format!("hook id={id} answered {}", loggable(&d)));
-            return Some(d);
+            return Outcome::Decision(d);
         }
-        Ok(Some(Reply::Decline)) => {
+        Ok(Some(Reply::Decline)) | Ok(None) => {
             log::line(format!("hook id={id} not shown — terminal takes over"));
-            return None;
+            return Outcome::Declined;
         }
-        Ok(None) => return None,
         Err(_) => {
             log::line(format!("hook id={id} island never acknowledged — terminal takes over"));
-            return None;
+            return Outcome::TimedOut;
         }
     }
+    tokio::select! {
+        r = tokio::time::timeout(DECISION_TIMEOUT, rx.recv()) => match r {
+            Ok(Some(Reply::Decision(d))) => {
+                log::line(format!("hook id={id} answered {}", loggable(&d)));
+                Outcome::Decision(d)
+            }
+            Ok(Some(Reply::Decline)) => {
+                log::line(format!("hook id={id} released without a decision"));
+                Outcome::Declined
+            }
+            _ => {
+                log::line(format!("hook id={id} timed out — terminal takes over"));
+                Outcome::TimedOut
+            }
+        },
+        () = &mut gone => {
+            log::line(format!("hook id={id} relay gone — answered in the terminal"));
+            Outcome::Gone
+        }
+    }
+}
 
-    match tokio::time::timeout(DECISION_TIMEOUT, rx.recv()).await {
-        Ok(Some(Reply::Decision(d))) => {
-            log::line(format!("hook id={id} answered {}", loggable(&d)));
-            Some(d)
-        }
-        Ok(Some(Reply::Decline)) => {
-            log::line(format!("hook id={id} released without a decision"));
-            None
-        }
-        _ => {
-            log::line(format!("hook id={id} timed out — terminal takes over"));
-            None
+/// Resolves when the relay closed its end. It never sends anything after its
+/// event, so any read that returns is either nothing (closed) or noise.
+async fn peer_closed(pipe: &mut impl Relay) {
+    let mut buf = [0u8; 64];
+    loop {
+        match pipe.read(&mut buf).await {
+            Ok(0) | Err(_) => return,
+            Ok(_) => {}
         }
     }
 }
@@ -367,4 +421,52 @@ pub fn answer_question(
     // newline typed in a free-text answer).
     let line = json!({ "answers": answers, "other": other }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    #[test]
+    fn a_relay_that_goes_away_releases_its_card() {
+        block_on(async {
+            let (_tx, mut rx) = mpsc::channel::<Reply>(4);
+            let gone = tokio::time::sleep(Duration::from_millis(20));
+            assert_eq!(wait_for_decision("t1", &mut rx, gone).await, Outcome::Gone);
+        });
+    }
+
+    #[test]
+    fn an_acknowledged_card_waits_for_the_click() {
+        block_on(async {
+            let (tx, mut rx) = mpsc::channel::<Reply>(4);
+            tx.send(Reply::Ack).await.unwrap();
+            tx.send(Reply::Decision("allow".into())).await.unwrap();
+            let outcome = wait_for_decision("t2", &mut rx, std::future::pending::<()>()).await;
+            assert_eq!(outcome, Outcome::Decision("allow".into()));
+        });
+    }
+
+    #[test]
+    fn answered_in_the_terminal_after_the_card_was_up() {
+        block_on(async {
+            let (tx, mut rx) = mpsc::channel::<Reply>(4);
+            tx.send(Reply::Ack).await.unwrap();
+            let gone = tokio::time::sleep(Duration::from_millis(20));
+            assert_eq!(wait_for_decision("t3", &mut rx, gone).await, Outcome::Gone);
+        });
+    }
+
+    #[test]
+    fn a_decline_is_no_decision() {
+        block_on(async {
+            let (tx, mut rx) = mpsc::channel::<Reply>(4);
+            tx.send(Reply::Decline).await.unwrap();
+            assert_eq!(wait_for_decision("t4", &mut rx, std::future::pending::<()>()).await, Outcome::Declined);
+        });
+    }
 }
