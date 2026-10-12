@@ -24,6 +24,14 @@ Check auto-close timing and live setting changes:
 bash scripts/test-auto-close.sh
 ```
 
+Check the custom chat providers (URL rules, model lists, storage, the bundled catalog):
+
+```bash
+bash scripts/test-custom-providers.sh
+```
+
+The provider list in `NotchBuddy/Resources/providers.json` is a snapshot of models.dev. Refresh it with `python3 scripts/update-providers.py`; the app itself never downloads it.
+
 ## Good first contributions
 
 - A new service integration (a poller + an entry in `PillCatalog.swift` in the `.service` category + a detail card). Look at `StripePoller.swift` for a compact example.

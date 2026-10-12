@@ -109,7 +109,7 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 |---|---|---|---|---|
 | `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
 | `agent` | Agents | Gemini CLI *(GitHub only)*, Copilot CLI *(GitHub only)*, Muse Code *(GitHub only)*, OpenCode *(GitHub only)*, Amp *(GitHub only)*, Hermes *(GitHub only)* | Agent | Agent |
-| `ai` | AI for the chat | Anthropic, Google AI, OpenAI, Ollama, LM Studio | Chat | — |
+| `ai` | AI for the chat | Anthropic, Google AI, OpenAI, Ollama, LM Studio (+ fournisseurs ajoutés, sans pastille : INTEGRATIONS §5quater) | Chat | — |
 | `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)*, Spotify *(GitHub only)* | Integration | — |
 
 Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, Copilot CLI `#818CF8`, Muse Code `#38BDF8`, OpenCode `#4ADE80`, Amp `#F59E0B`, Hermes `#C084FC`, pastilles IA = `ChatProvider.accentHex` (Ollama `#FACC15`, LM Studio `#A3E635`).
@@ -234,6 +234,8 @@ Fenêtre Réglages (SwiftUI, simple), sections dans l'ordre d'affichage :
 - **Anthropic API** : clé (Trousseau), modèle (défaut `claude-sonnet-4-6` ; liste depuis l'API, voir INTEGRATIONS §5).
 - **Chat — other providers** : clé Google AI (Trousseau) ; clé OpenAI (Trousseau). Les modèles se choisissent dans le chat (voir INTEGRATIONS §5bis).
 - **Local models** : URL du serveur Ollama (défaut `http://127.0.0.1:11434`) et/ou LM Studio (défaut `http://127.0.0.1:1234`). Bouton **Connect** : vérifie la joignabilité et sauvegarde l'URL. Bouton **Disconnect** : efface l'URL et le cache. Aucune clé requise (voir INTEGRATIONS §5ter).
+- **Connected on this Mac** : détection automatique (au lancement, à l'ouverture de la section, bouton **Scan again**) de Claude Code, GitHub Copilot CLI, Gemini CLI, Codex et opencode connectés (Gemini CLI et opencode non testés) et des serveurs locaux ; ils deviennent des puces du sélecteur de modèle sans clé à coller. Les cases de clés d'API sont repliées dans « Use an API key instead » (dépliées si rien n'est connecté).
+- **More providers** : fournisseurs compatibles OpenAI ajoutés par l'utilisateur (catalogue embarqué de ~190 ou URL libre). Chaque fournisseur ajouté devient une puce dans le sélecteur de modèle. Voir INTEGRATIONS §5quater.
 - **Claude Code Hooks** : état des hooks, bouton Installer / Désinstaller.
 - **Plan usage** : toggle **Show in the notch** + bouton **Install relay** / **Uninstall relay**. Voir INTEGRATIONS §1bis. **Jauge de forfait Claude** *(GitHub only)* : petit pill dans l'en-tête de l'île (vue home uniquement). Activé via `showPlanInNotch` (UserDefaults) + `HookServer.statusLineInstalled()`. Couleur = `ClaudePlanGauge.color(for: dominantPct)`. Clic → `showingPlanDetail` bascule et `ClaudePlanCardView` s'affiche à la place de la carte en cours. `showingPlanDetail` se remet à false au changement de focusId, de vue ou de mode. Grand Mochi prend la couleur de l'usage quand `showingPlanDetail == true`.
 - **Gemini CLI Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.

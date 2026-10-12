@@ -20,6 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        // Connect the AI tools and servers already on this Mac to the chat (no key to paste).
+        Task { await AutoConnect.scan(force: false) }
         #if DEBUG
         let debugMenu = NSMenu(title: "Debug")
         debugMenu.addItem(NSMenuItem(title: "Render recap image", action: #selector(renderRecapImage), keyEquivalent: ""))

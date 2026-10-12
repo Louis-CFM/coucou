@@ -140,20 +140,24 @@ enum LocalChat {
         return try await streamChat(baseURL: baseURL, encodedBody: bodyData, model: model, onToken: onToken)
     }
 
+    /// `completionsURL` and `authorization` are for custom providers, whose API root has its own
+    /// version path and which want a real key; the defaults keep Ollama and LM Studio as before.
     static func streamChat(
         baseURL: String,
         encodedBody: Data,
         model: String,
+        completionsURL: URL? = nil,
+        authorization: String = "Bearer ollama",
         onToken: @MainActor @escaping (String) -> Void
     ) async throws -> String {
-        guard let url = URL(string: "\(baseURL)/v1/chat/completions") else {
+        guard let url = completionsURL ?? URL(string: "\(baseURL)/v1/chat/completions") else {
             throw LocalChatError.serverUnreachable(baseURL)
         }
 
         var req = URLRequest(url: url, timeoutInterval: 300)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer ollama", forHTTPHeaderField: "Authorization")
+        req.setValue(authorization, forHTTPHeaderField: "Authorization")
         req.httpBody = encodedBody
 
         let bytes: URLSession.AsyncBytes
