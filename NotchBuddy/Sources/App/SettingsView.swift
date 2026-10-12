@@ -121,6 +121,16 @@ struct SettingsView: View {
     @State private var n8nWorkflows: [String] = []
     @State private var loadingN8n: Bool = false
 
+    // One alert key of state.expandOnAlert as a switch
+    private func alertBinding(_ key: String) -> Binding<Bool> {
+        Binding(
+            get: { state.expandOnAlert.contains(key) },
+            set: { on in
+                if on { state.expandOnAlert.insert(key) } else { state.expandOnAlert.remove(key) }
+            }
+        )
+    }
+
     // Bindings in minutes for the absence field
     private var absenceMinutes: Binding<Double> {
         Binding(
@@ -329,6 +339,14 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Open on hover", isOn: $state.openOnHover)
                     .help("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.")
+                Text("Alerts that open the island")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Toggle("Agent finished", isOn: alertBinding(AlertExpansion.agentFinished))
+                Toggle("Agent error", isOn: alertBinding(AlertExpansion.agentError))
+                ForEach(PillCatalog.available.filter { AlertExpansion.pills.contains($0.id) }, id: \.id) { def in
+                    Toggle(def.name, isOn: alertBinding(def.id))
+                }
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)

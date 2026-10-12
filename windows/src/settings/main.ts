@@ -9,6 +9,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
+import { AGENT_ERROR, AGENT_FINISHED, ALERT_PILLS } from "../core/alerts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
@@ -952,6 +953,7 @@ function generalSection(): HTMLElement {
       toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
+    ...alertRows(),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
@@ -1201,6 +1203,27 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
     h("div", { class: "subhead", text: SHORTCUTS_UI.island }),
     islandList,
   );
+}
+
+/** Settings → General: the alerts that open the island instead of peeking (core/alerts.ts). */
+function alertRows(): HTMLElement[] {
+  const alerts: [string, string][] = [
+    [AGENT_FINISHED, t("Agent finished")],
+    [AGENT_ERROR, t("Agent error")],
+    ...availablePills().filter((p) => ALERT_PILLS.includes(p.id)).map((p): [string, string] => [p.id, p.name]),
+  ];
+  return [
+    h("div", { class: "subhead", text: t("Alerts that open the island") }),
+    ...alerts.map(([key, label]) =>
+      h("div", { class: "row" },
+        h("label", { text: label }),
+        toggle(settings.expandOnAlert.includes(key), (on) => {
+          const others = settings.expandOnAlert.filter((k) => k !== key);
+          settings.expandOnAlert = on ? [...others, key] : others;
+          void save();
+        }),
+      )),
+  ];
 }
 
 /** Settings → General → Weekly recap. The prefs live with the history in Rust. */

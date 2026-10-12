@@ -237,6 +237,7 @@ final class N8nPoller: @unchecked Sendable {
             state.tasks[idx].pillBadge = success ? .finished : .error
         }
         SoundEngine.shared.play(success ? "finish" : "error")
+        state.openForAlert("integration_n8n", pill: "integration_n8n")
 
         // Auto-clear after 60s (user needs time to read detail)
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) {

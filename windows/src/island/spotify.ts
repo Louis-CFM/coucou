@@ -4,13 +4,14 @@
 // card reads the player again whenever it comes on screen (seeks made in
 // Spotify's own window are never signalled).
 
+import { openForAlert, type AlertHost } from "../core/alerts";
 import { Bridge, onEvent } from "../core/bridge";
 import { pillDefinition } from "../core/pills";
 import { SPOTIFY_ID, Spotify, isAd, type SpotifyState } from "../core/spotify";
 import { State } from "../core/state";
 import { t } from "../i18n/i18n";
 
-export interface SpotifyHost {
+export interface SpotifyHost extends AlertHost {
   /** Compact island from hidden, no peek sound. */
   revealSilently(): void;
 }
@@ -30,10 +31,16 @@ export function registerSpotifyHandlers(island: SpotifyHost) {
 /** A report from Rust (or the answer to a refresh). */
 export function applySpotify(island: SpotifyHost, next: SpotifyState) {
   const wasPlaying = State.spotifyPlaying;
+  const previousId = Spotify.state.track?.id;
   Spotify.state = next;
   syncPillName();
+  const newSong = wasPlaying && State.spotifyPlaying && !!next.track && next.track.id !== previousId && !isAd(next.track);
+  if (newSong) {
+    openForAlert(island, SPOTIFY_ID, SPOTIFY_ID, "overview");
+  }
   // Only on not playing → playing (SpotifyController.setPlaying).
-  if (!wasPlaying && State.spotifyPlaying && !State.paused && State.mode === "hidden") {
+  if (!wasPlaying && State.spotifyPlaying && !openForAlert(island, SPOTIFY_ID, SPOTIFY_ID, "overview") &&
+    !State.paused && State.mode === "hidden") {
     island.revealSilently();
   }
   State.notify();

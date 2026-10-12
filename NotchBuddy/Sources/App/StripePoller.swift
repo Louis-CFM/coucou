@@ -142,6 +142,7 @@ final class StripePoller: @unchecked Sendable {
         state.tasks[idx].steps = [newest.description ?? newest.amountFormatted]
         if !focused { state.tasks[idx].pillBadge = .finished }
         SoundEngine.shared.play("finish")
+        state.openForAlert("integration_stripe", pill: "integration_stripe")
 
         // 2. After slide settles, count up balance
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

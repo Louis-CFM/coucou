@@ -861,6 +861,14 @@ final class IslandWindowController: NSWindowController {
             self.expand(to: view)
         }
 
+        // An alert Settings asks to open the island for: same auto-close as any open island.
+        NotificationCenter.default.addObserver(forName: .alertExpand, object: nil, queue: .main) { [weak self] note in
+            guard let self, let view = note.object as? IslandView else { return }
+            self.fsm.openedExternally()
+            self.expand(to: view)
+            if !self.wasInIsland { self.fsm.mouseLeft() }
+        }
+
         // Hook server compact reveal (non-alert work events: session start, tool use, etc.)
         NotificationCenter.default.addObserver(forName: .hookReveal, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
@@ -2011,6 +2019,7 @@ extension Notification.Name {
     static let islandActivateCardSelection = Notification.Name("notchBuddy.islandActivateCardSelection")
     static let openFullSettings    = Notification.Name("notchBuddy.openFullSettings")
     static let hookReveal       = Notification.Name("notchBuddy.hookReveal")
+    static let alertExpand      = Notification.Name("notchBuddy.alertExpand")
     static let musicReveal      = Notification.Name("notchBuddy.musicReveal")
     // Greeting ↔ IslandWindowController
     static let greetComplete    = Notification.Name("notchBuddy.greetComplete")
