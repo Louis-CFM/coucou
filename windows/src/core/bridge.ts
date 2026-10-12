@@ -246,6 +246,8 @@ export const Bridge = {
   /** An installed app by name, from the Start menu (Store apps too); its name. */
   openApp: (name: string) => callOrThrow<string>("open_app", { name }),
   lockScreen: () => callOrThrow<void>("lock_screen"),
+  /** Plays a song: the top YouTube result, or the song in Apple Music. What it found. */
+  playSong: (query: string, apple: boolean, country: string) => callOrThrow<string>("play_song", { query, apple, country }),
   /** The ElevenLabs credits this month (eleven.rs); null without a key. */
   elevenUsage: () => call<{ used: number; limit: number; resets_at: number }>("eleven_usage"),
   /** The volume keys' own step: up, down or mute, with the island's HUD. */

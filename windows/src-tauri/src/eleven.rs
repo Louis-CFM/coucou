@@ -77,6 +77,66 @@ pub async fn eleven_usage() -> Result<ElevenUsage, String> {
     })
 }
 
+/// The first video on a YouTube results page: (id, title).
+pub fn first_video(html: &str) -> Option<(String, String)> {
+    let at = html.find("\"videoId\":\"")? + 11;
+    let id: String = html.get(at..at + 11)?.to_string();
+    if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return None;
+    }
+    let title = html[at..]
+        .find("\"title\":{\"runs\":[{\"text\":\"")
+        .map(|i| at + i + 26)
+        .and_then(|s| html[s..].find('"').map(|e| html[s..s + e].to_string()))
+        .unwrap_or_default();
+    Some((id, title))
+}
+
+/// Maki's "play X by Y": the top YouTube result in the browser, or the song
+/// in the Apple Music app (found through the public iTunes search). Says what
+/// it found.
+#[tauri::command]
+pub async fn play_song(query: String, apple: bool, country: String) -> Result<String, String> {
+    let query: String = query.chars().take(200).collect();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+    if apple {
+        let country = if country.len() == 2 && country.chars().all(|c| c.is_ascii_alphabetic()) { country.to_lowercase() } else { "us".into() };
+        let j: serde_json::Value = client
+            .get("https://itunes.apple.com/search")
+            .query(&[("term", query.as_str()), ("entity", "song"), ("limit", "1"), ("country", country.as_str())])
+            .send()
+            .await
+            .map_err(|_| "Can't reach Apple Music.".to_string())?
+            .json()
+            .await
+            .map_err(|e| e.to_string())?;
+        let song = &j["results"][0];
+        let url = song["trackViewUrl"].as_str().unwrap_or_default();
+        // Only Apple's own song pages, opened in the app.
+        let Some(rest) = url.strip_prefix("https://music.apple.com/") else { return Err(format!("Apple Music has no song called {query}.")) };
+        crate::platform::open_url(&format!("musics://music.apple.com/{rest}"));
+        return Ok(format!("{} by {}", song["trackName"].as_str().unwrap_or(&query), song["artistName"].as_str().unwrap_or("")));
+    }
+    let html = client
+        .get("https://www.youtube.com/results")
+        .query(&[("search_query", query.as_str())])
+        .header("Accept-Language", "en")
+        .send()
+        .await
+        .map_err(|_| "Can't reach YouTube.".to_string())?
+        .text()
+        .await
+        .map_err(|e| e.to_string())?;
+    let Some((id, title)) = first_video(&html) else { return Err(format!("YouTube found nothing for {query}.")) };
+    crate::platform::open_url(&format!("https://www.youtube.com/watch?v={id}"));
+    crate::log::line(format!("eleven: playing {id} on YouTube"));
+    Ok(if title.is_empty() { query } else { title })
+}
+
 fn hermes_exe() -> Option<std::path::PathBuf> {
     let local = std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from)?;
     let exe = local.join("hermes").join("hermes-agent").join(".venv").join("Scripts").join("hermes.exe");
@@ -137,7 +197,11 @@ fn watch_hermes(exe: &std::path::Path) -> Option<std::process::Child> {
     std::thread::spawn(move || {
         use std::io::BufRead;
         for line in std::io::BufReader::new(out).lines().map_while(Result::ok) {
-            crate::log::line(format!("hermes: {line}"));
+            // What Hermes ran goes in the log; what came back (file contents,
+            // maybe secrets) only flashes in the island.
+            if !line.starts_with('→') {
+                crate::log::line(format!("hermes: {line}"));
+            }
             crate::voice::emit("hermes-progress", line);
         }
     });
@@ -276,6 +340,14 @@ pub fn lock_screen() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_first_youtube_result_is_picked() {
+        let html = r#"x "videoId":"abc-DEF_123","thumbnail":{},"title":{"runs":[{"text":"Drake - Solar Eclipse"}]} "videoId":"zzzzzzzzzzz""#;
+        assert_eq!(first_video(html), Some(("abc-DEF_123".into(), "Drake - Solar Eclipse".into())));
+        assert_eq!(first_video(r#""videoId":"bad id!!!!!!""#), None);
+        assert_eq!(first_video("nothing"), None);
+    }
 
     #[test]
     fn apps_are_found_by_spoken_name() {

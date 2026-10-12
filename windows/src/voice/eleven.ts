@@ -65,7 +65,7 @@ interface CoucouParams {
 /** The agent's `coucou` tool: what it did, in a few words for the agent to say. */
 async function coucouTool(p: CoucouParams): Promise<string> {
   const playing = Spotify.state.playing;
-  if (/track|play_pause/.test(p.action)) touchedMusic?.();
+  if (/track|play_pause|play_song/.test(p.action)) touchedMusic?.();
   switch (p.action) {
     case "play_pause":
       if (!Spotify.state.track) return "Nothing is loaded in a music player.";
@@ -124,6 +124,25 @@ async function coucouTool(p: CoucouParams): Promise<string> {
     }
     case "agents_status":
       return agentsText();
+    case "play_song": {
+      if (!p.label?.trim()) return "Tell me the song.";
+      const apple = p.value === 1;
+      if (playing) await Bridge.spotifyControl("playPause");
+      const region = (navigator.language.split("-")[1] ?? "us").toLowerCase();
+      const found = await Bridge.playSong(p.label.trim(), apple, region);
+      // The music would drown the mic: say it, then hang up.
+      window.setTimeout(endConversation, 4000);
+      if (!apple) return `Playing ${found} on YouTube.`;
+      // Apple Music opens the song's page; start it if it didn't start itself.
+      await new Promise((r) => window.setTimeout(r, 3500));
+      const tr = Spotify.state.track;
+      const title = found.split(" by ")[0].toLowerCase();
+      if (tr && tr.title.toLowerCase().includes(title)) {
+        if (!Spotify.state.playing) await Bridge.spotifyControl("playPause");
+        return `Playing ${found} in Apple Music.`;
+      }
+      return `Opened ${found} in Apple Music; if it isn't playing, tap play on the song.`;
+    }
     case "open_app": {
       if (!p.label?.trim()) return "Tell me which app.";
       // An installed app by name (Start menu, Store apps too); never a web search.

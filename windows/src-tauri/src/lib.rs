@@ -798,6 +798,8 @@ pub fn run() {
             #[cfg(windows)]
             eleven::eleven_usage,
             #[cfg(windows)]
+            eleven::play_song,
+            #[cfg(windows)]
             eleven::lock_screen,
             #[cfg(windows)]
             sysevents::volume_key_action,
