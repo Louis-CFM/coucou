@@ -99,6 +99,15 @@ impl PollGate {
         }
     }
 
+    /// Blocks while the island is open (the cursor poll is active): what only
+    /// matters to a hidden island waits here at no cost.
+    pub(crate) fn wait_until_inactive(&self) {
+        let mut guard = self.active.lock().unwrap();
+        while *guard {
+            guard = self.cv.wait(guard).unwrap();
+        }
+    }
+
     pub(crate) fn is_active(&self) -> bool {
         *self.active.lock().unwrap()
     }
@@ -346,8 +355,20 @@ fn place(app: &AppHandle, pref: &str, lw: f64, lh: f64) {
 /// strip is a 6 px line at the very top of the screen: nobody drops a file
 /// there. While the island is hidden and a drag may be in flight, the strip
 /// becomes an invisible zone as wide as the panel; the file entering it wakes
-/// the island exactly as the strip would have. One GetAsyncKeyState every 50 ms
-/// while hidden; window moves and resizes are left alone.
+/// the island exactly as the strip would have. One GetAsyncKeyState every 120 ms
+/// while hidden (50 ms while a button is held), parked while the island is
+/// open; window moves and resizes are left alone.
+/// How long the hidden island's watch sleeps between looks at the mouse
+/// button: quickly while one is held (a drag may be under way), otherwise
+/// slower — a drag needs longer than this to reach the top of the screen.
+fn watch_period(button_down: bool, zone_up: bool) -> Duration {
+    if button_down || zone_up {
+        Duration::from_millis(50)
+    } else {
+        Duration::from_millis(120)
+    }
+}
+
 pub fn spawn_drop_zone_watch(app: AppHandle, gate: Arc<PollGate>) {
     if !platform::CURSOR_POLL {
         return; // Linux: no global button state to watch.
@@ -360,13 +381,15 @@ pub fn spawn_drop_zone_watch(app: AppHandle, gate: Arc<PollGate>) {
         // up under it, or the button release would land on us and be lost.
         let mut armed_at: Option<(f64, f64)> = None;
         loop {
-            std::thread::sleep(Duration::from_millis(50));
             if !gate.collapsed.load(Ordering::Relaxed) {
                 zone_up = false; // the island took over
                 was_down = false;
                 armed_at = None;
+                // Open, the island takes drops itself: nothing to watch until it hides.
+                gate.wait_until_inactive();
                 continue;
             }
+            std::thread::sleep(watch_period(was_down, zone_up));
             let down = left_button_down();
             if !down && !was_down {
                 continue; // the common case: nothing held, nothing to do
@@ -600,5 +623,17 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
+    }
+}
+
+#[cfg(test)]
+mod drop_watch_tests {
+    use super::*;
+
+    #[test]
+    fn the_watch_only_hurries_while_a_button_is_held() {
+        assert_eq!(watch_period(true, false), Duration::from_millis(50));
+        assert_eq!(watch_period(false, true), Duration::from_millis(50));
+        assert_eq!(watch_period(false, false), Duration::from_millis(120));
     }
 }
