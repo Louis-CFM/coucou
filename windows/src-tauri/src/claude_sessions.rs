@@ -58,6 +58,9 @@ fn file_id(path: &PathBuf) -> String {
 
 /// Find the jsonl for a session id (files are named by it).
 fn find_file(session_id: &str) -> Option<PathBuf> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return None;
+    }
     let name = format!("{session_id}.jsonl");
     let root = projects_dir()?;
     for dir in std::fs::read_dir(&root).into_iter().flatten().flatten() {
@@ -332,24 +335,16 @@ fn session_dir(path: &PathBuf) -> Option<PathBuf> {
 /// <id>` under the user's real config so hooks fire and the session appears
 /// live in the island.
 pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return Err("Unknown session".into());
+    }
     let cli = cli_chat::find_cli(&["claude", "claude-code"])
         .ok_or("Claude CLI not found. Install Claude Code, then run `claude` once.")?;
     let file = find_file(session_id).ok_or("Unknown session")?;
     let dir = session_dir(&file).ok_or("No folder to run the session in")?;
+    let prompt = crate::cli_sessions::prompt_arg(query, &cli);
     let mut cmd = cli_chat::command(&cli);
-    cmd.current_dir(&dir)
-        .args(["-p", query, "--resume", session_id]);
+    cmd.current_dir(&dir).args(["-p", prompt.as_str(), "--resume", session_id]);
     let out = cli_chat::run(cmd, "the Claude CLI").await?;
-    if out.status.success() {
-        let text = cli_chat::strip_ansi(&String::from_utf8_lossy(&out.stdout))
-            .trim()
-            .to_string();
-        return if text.is_empty() { Err("No response text.".into()) } else { Ok(text) };
-    }
-    let stderr = cli_chat::strip_ansi(&String::from_utf8_lossy(&out.stderr));
-    Err(stderr
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("The Claude CLI failed.")
-        .to_string())
+    crate::cli_sessions::answer(&out, "The Claude CLI")
 }

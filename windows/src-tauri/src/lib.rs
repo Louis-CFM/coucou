@@ -7,6 +7,7 @@ mod claude;
 mod claude_cli;
 mod claude_sessions;
 mod cli_chat;
+mod cli_sessions;
 mod codex_chat;
 mod codex_plan;
 mod codex_sessions;

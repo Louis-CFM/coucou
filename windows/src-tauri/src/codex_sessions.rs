@@ -308,24 +308,16 @@ fn session_dir(path: &PathBuf) -> Option<PathBuf> {
 /// A phone-sent message inside a picked session:
 /// `codex exec resume <session_id> <text>` under the user's real config.
 pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return Err("Unknown session".into());
+    }
     let cli = cli_chat::find_cli(&["codex", "codex-cli"])
         .ok_or("Codex CLI not found. Install it, then run `codex login`.")?;
     let file = file_for(session_id).ok_or("Unknown session")?;
     let dir = session_dir(&file).ok_or("No folder to run the session in")?;
+    let prompt = crate::cli_sessions::prompt_arg(query, &cli);
     let mut cmd = cli_chat::command(&cli);
-    cmd.current_dir(&dir)
-        .args(["exec", "resume", session_id, query]);
+    cmd.current_dir(&dir).args(["exec", "resume", session_id, prompt.as_str()]);
     let out = cli_chat::run(cmd, "the Codex CLI").await?;
-    if out.status.success() {
-        let text = cli_chat::strip_ansi(&String::from_utf8_lossy(&out.stdout))
-            .trim()
-            .to_string();
-        return if text.is_empty() { Err("No response text.".into()) } else { Ok(text) };
-    }
-    let stderr = cli_chat::strip_ansi(&String::from_utf8_lossy(&out.stderr));
-    Err(stderr
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("The Codex CLI failed.")
-        .to_string())
+    crate::cli_sessions::answer(&out, "The Codex CLI")
 }

@@ -64,6 +64,9 @@ pub fn list_recent() -> Vec<SessionMeta> {
 /// compact lines (OpenCode's `state.title` is already a one-line summary).
 /// Messages and parts join on message_id, ordered by their own timestamps.
 pub fn transcript(session_id: &str) -> Vec<ChatLine> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return Vec::new();
+    }
     let Ok(conn) = open() else { return Vec::new() };
     let mut stmt = match conn.prepare(
         "SELECT m.data, p.data FROM message m \
@@ -153,23 +156,16 @@ fn session_dir(conn: &Connection, session_id: &str) -> Option<PathBuf> {
 /// A phone-sent message inside a picked session:
 /// `opencode run -s <id> <text>` under the user's real config.
 pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return Err("Unknown session".into());
+    }
     let cli = cli_chat::find_cli(&["opencode"])
         .ok_or("OpenCode CLI not found. Install it, then run `opencode` once.")?;
     let conn = open()?;
     let dir = session_dir(&conn, session_id).ok_or("No folder to run the session in")?;
+    let prompt = crate::cli_sessions::prompt_arg(query, &cli);
     let mut cmd = cli_chat::command(&cli);
-    cmd.current_dir(&dir).args(["run", "-s", session_id, query]);
+    cmd.current_dir(&dir).args(["run", "-s", session_id, prompt.as_str()]);
     let out = cli_chat::run(cmd, "the OpenCode CLI").await?;
-    if out.status.success() {
-        let text = cli_chat::strip_ansi(&String::from_utf8_lossy(&out.stdout))
-            .trim()
-            .to_string();
-        return if text.is_empty() { Err("No response text.".into()) } else { Ok(text) };
-    }
-    let stderr = cli_chat::strip_ansi(&String::from_utf8_lossy(&out.stderr));
-    Err(stderr
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("The OpenCode CLI failed.")
-        .to_string())
+    crate::cli_sessions::answer(&out, "The OpenCode CLI")
 }

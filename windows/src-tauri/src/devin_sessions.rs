@@ -121,6 +121,9 @@ fn resolve_id(conn: &Connection, session_id: &str) -> Option<String> {
 /// main_chain_id leaf up to the root, read depth-first so it comes out
 /// chronological. `chat_message` is a JSON blob {role, content, tool_calls?}.
 pub fn transcript(session_id: &str) -> Vec<ChatLine> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return Vec::new();
+    }
     let Ok(conn) = open() else { return Vec::new() };
     let Some(session_id) = resolve_id(&conn, session_id) else {
         return Vec::new();
@@ -259,13 +262,17 @@ fn session_dir(session_id: &str) -> Option<PathBuf> {
 /// the point: hooks fire, the session appears in the island, and its saved
 /// permission mode applies.
 pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
+    if !crate::cli_sessions::valid_id(session_id) {
+        return Err("Unknown session".into());
+    }
     let cli = devin_chat::cli_path_pub()
         .ok_or("Devin CLI not found. Install it, then run `devin auth login`.")?;
     let dir = session_dir(session_id)
         .or_else(|| cli_chat::workdir("devin-chat").ok())
         .ok_or("No folder to run the session in")?;
     let mut cmd = cli_chat::command(&cli);
-    cmd.current_dir(&dir).args(["-p", query, "-r", session_id]);
+    let prompt = crate::cli_sessions::prompt_arg(query, &cli);
+    cmd.current_dir(&dir).args(["-p", prompt.as_str(), "-r", session_id]);
     let out = cli_chat::run(cmd, "the Devin CLI").await?;
     devin_chat::parse_answer_pub(out.status.success(), &out.stdout, &out.stderr)
 }
