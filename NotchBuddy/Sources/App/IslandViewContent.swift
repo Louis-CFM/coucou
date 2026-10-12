@@ -3965,7 +3965,7 @@ struct AgentPillsView: View {
     @State private var swapping = false
 
     private var others: [AgentTask] {
-        state.tasks.filter { $0.id != state.focusId }
+        state.othersByActivity
     }
 
     private let columns = [

@@ -305,7 +305,7 @@ test("toggling declares any number of pills and never the main one", () => {
   assert.equal(State.focusId, "integration_claude");
 });
 
-test("the folded grid puts alerts and running sessions first", () => {
+test("both grids put alerts and running sessions first", () => {
   State.settings.activeIntegrations = ["integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github"];
   State.loadIntegrationTasks();
   State.setFocus("integration_claude");
