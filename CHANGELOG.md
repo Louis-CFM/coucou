@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Zed on Hyprland** *(Linux)* — "Open terminal" now brings the session's window forward on Hyprland, native Wayland windows such as Zed's included (it used to reach only X11 and KDE windows). Without `code`, "Open terminal" and the diff card's ↗ open the folder or file in Zed (`zeditor`, or `zed` installed in your home folder)
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
 
 ## Windows and Linux 0.4.0 — October 11, 2026
