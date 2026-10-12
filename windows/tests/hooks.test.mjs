@@ -875,3 +875,33 @@ test("a session with a card asking keeps the pill busy past another's stop", () 
   seconds(5.2);
   assert.equal(task().state, "approval");
 });
+
+// ── Late events and released requests ────────────────────────────────────────
+
+test("a tool event older than the turn's Stop does not wake the pill back up", () => {
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p/app", coucou_ts: 1000 });
+  hook({ hook_event_name: "Stop", session_id: "s1", cwd: "/p/app", coucou_ts: 3000 });
+  // Sent by its relay before the Stop, delivered after it.
+  hook({ hook_event_name: "PostToolUse", session_id: "s1", cwd: "/p/app", tool_name: "Read", coucou_ts: 2000 });
+  assert.equal(task().state, "finished");
+  seconds(6);
+  assert.equal(task().state, "idle");
+});
+
+test("a new turn after the Stop is not mistaken for a late event", () => {
+  hook({ hook_event_name: "Stop", session_id: "s1", cwd: "/p/app", coucou_ts: 3000 });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/p/app", coucou_ts: 4000 });
+  hook({ hook_event_name: "PreToolUse", session_id: "s1", cwd: "/p/app", tool_name: "Bash", coucou_ts: 4100 });
+  assert.equal(task().state, "working");
+});
+
+test("a request the agent stopped waiting for leaves the card without a decline", () => {
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r1", session_id: "s1",
+    cwd: "/p/app", tool_name: "Bash", tool_input: { command: "ls" },
+  });
+  assert.equal(State.pendingApproval?.requestId, "r1");
+  emit("approval-released", { requestId: "r1" });
+  assert.equal(State.pendingApproval, null);
+  assert.deepEqual(sent("approval_decline"), []);
+});

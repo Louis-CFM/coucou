@@ -151,3 +151,12 @@ test("an anonymous end is the one live session's, but never a guess in a crowd",
   assert.equal(reg.liveCount(CLAUDE), 2);
   assert.equal(reg.endTurn(CLAUDE, ""), "sessionOnly");
 });
+
+test("an event the relay sent before the session's Stop is recognised as late", () => {
+  const reg = new SessionRegistry();
+  reg.note(CLAUDE, display("s1", "app", "/p"), true, 0);
+  reg.endTurn(CLAUDE, "s1", 10, 3000);
+  assert.equal(reg.sentBeforeTurnEnded(CLAUDE, "s1", 2000), true);
+  assert.equal(reg.sentBeforeTurnEnded(CLAUDE, "s1", 4000), false);
+  assert.equal(reg.sentBeforeTurnEnded(CLAUDE, "other", 2000), false);
+});

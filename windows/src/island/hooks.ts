@@ -11,7 +11,7 @@ import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
-import { enqueueApproval, resetApprovals, resolveApprovals } from "./approvals";
+import { enqueueApproval, releaseApproval, resetApprovals, resolveApprovals } from "./approvals";
 import { approvalInputKey } from "./queue";
 import { SessionRegistry } from "./sessions";
 import type { Island } from "./island";
@@ -24,6 +24,11 @@ const CURSOR_ID = "agent_cursor";
 
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
+
+/** Events that only continue a turn: one stamped before the session's Stop is late, not new. */
+const TURN_EVENTS = new Set([
+  "PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification", "SubagentStart", "SubagentStop",
+]);
 
 /**
  * The live sessions behind each pill (Mac #245). A pill is picked from the
@@ -50,6 +55,8 @@ function cancelStopTimer(id: string): boolean {
 
 interface HookPayload {
   hook_event_name?: string;
+  /** When the relay process saw the event (ms since the epoch): orders events that arrive out of order. */
+  coucou_ts?: number;
   request_id?: string;
   session_id?: string;
   cwd?: string;
@@ -250,6 +257,8 @@ export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  // The relay stopped waiting for a request (src-tauri/src/pipe.rs): its card goes.
+  void onEvent<{ requestId: string }>("approval-released", (p) => releaseApproval(island, p.requestId));
 }
 
 function handleHook(island: Island, payload: HookPayload) {
@@ -282,6 +291,10 @@ function handleHook(island: Island, payload: HookPayload) {
   const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
+  const relayTs = typeof payload.coucou_ts === "number" ? payload.coucou_ts : undefined;
+  if (relayTs !== undefined && TURN_EVENTS.has(name) && sessions.sentBeforeTurnEnded(agentId, sessionId, relayTs)) {
+    return; // belongs to a turn that is already over
+  }
 
   // Several sessions can share one pill — it is chosen from the client, not
   // from the session. The registry tells a terminal event whether it may touch
@@ -416,7 +429,7 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
-      const scope = sessions.endTurn(agentId, sessionId);
+      const scope = sessions.endTurn(agentId, sessionId, Date.now(), relayTs);
       // Claude Code puts the turn's answer in the Stop payload itself, so there is
       // no transcript to read (the relay does not even forward its path). Other
       // agents report their last words the same way (Hermes, Codex) or as
@@ -456,14 +469,14 @@ function handleHook(island: Island, payload: HookPayload) {
     case "Interrupt":
       // Codex: the user stopped the turn. Back to idle, nothing to celebrate —
       // unless a sibling session behind this pill is still working.
-      if (sessions.endTurn(agentId, sessionId) !== "pill") break;
+      if (sessions.endTurn(agentId, sessionId, Date.now(), relayTs) !== "pill") break;
       supersedeStop();
       State.updateTask(agentId, "idle");
       State.setPillBadge(agentId, null);
       break;
 
     case "StopFailure":
-      if (sessions.endTurn(agentId, sessionId) !== "pill") break;
+      if (sessions.endTurn(agentId, sessionId, Date.now(), relayTs) !== "pill") break;
       supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");

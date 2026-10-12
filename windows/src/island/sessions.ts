@@ -18,6 +18,8 @@ interface LiveSession {
   cwd: string;
   isWorking: boolean;
   lastSeen: number;
+  /** The relay's clock (`coucou_ts`) at this session's last Stop, when it sent one. */
+  endedAt?: number;
 }
 
 interface PillSessions {
@@ -82,7 +84,7 @@ export class SessionRegistry {
    * and the user can send another prompt right after. A session we have never
    * seen stays untracked — Coucou can start in the middle of one.
    */
-  endTurn(pill: string, session: string, now = Date.now()): TerminalScope {
+  endTurn(pill: string, session: string, now = Date.now(), relayTs?: number): TerminalScope {
     const p = this.pills.get(pill) ?? { order: [], sessions: new Map() };
     sweep(p, now);
     // An event that names no session cannot be picked out of a crowd, but a
@@ -94,6 +96,7 @@ export class SessionRegistry {
     if (s) {
       s.isWorking = false;
       s.lastSeen = now;
+      if (relayTs !== undefined) s.endedAt = relayTs;
     }
     if (p.order.length === 0) this.pills.delete(pill);
     else this.pills.set(pill, p);
@@ -150,6 +153,16 @@ export class SessionRegistry {
     const p = this.pills.get(pill);
     if (!p) return 0;
     return [...p.sessions.values()].filter((s) => s.isWorking).length;
+  }
+
+  /**
+   * True for an event its relay stamped before this session's last Stop: each
+   * event has its own relay process, and a quick one can overtake a slow one,
+   * so a turn's last PostToolUse may reach the island after its Stop.
+   */
+  sentBeforeTurnEnded(pill: string, session: string, relayTs: number): boolean {
+    const endedAt = this.pills.get(pill)?.sessions.get(session)?.endedAt;
+    return endedAt !== undefined && relayTs < endedAt;
   }
 
   clear(): void {

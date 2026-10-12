@@ -167,6 +167,26 @@ export function settleApproval(island: Island): void {
 }
 
 /**
+ * The relay stopped waiting for this request — answered in the terminal, the
+ * agent gave up, or the relay's own deadline passed. Its card goes and the next
+ * request takes its place; nothing is sent back, nobody is left to answer.
+ */
+export function releaseApproval(island: Island, requestId: string): void {
+  const entry = queue.byRequestId(requestId);
+  if (!entry) return;
+  const wasHead = queue.head?.id === entry.id;
+  removeEntry(entry);
+  syncBadge(entry.pillId);
+  if (wasHead) {
+    refreshApprovals(island, entry.pillId);
+    return;
+  }
+  const head = queue.head;
+  if (head && State.pendingApproval?.id === head.id) showApprovalCard(island, head, false);
+  State.notify();
+}
+
+/**
  * Entries made moot by a later hook event of the same agent — a turn over,
  * or the PostToolUse of the very tool call the request asked about. Matching
  * is per request (session + pill, plus tool and input for PostToolUse), so a
