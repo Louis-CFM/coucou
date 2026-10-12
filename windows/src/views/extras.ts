@@ -81,8 +81,39 @@ export function stopFocus() {
   State.notify();
 }
 
+const RING_R = 25;
+const RING_C = 2 * Math.PI * RING_R;
+
+/** The ring around the time: how much of the session is done. */
+function focusRing(): { el: SVGSVGElement; set(done: number, paused: boolean): void } {
+  const ns = "http://www.w3.org/2000/svg";
+  const el = document.createElementNS(ns, "svg");
+  el.setAttribute("viewBox", "0 0 60 60");
+  el.setAttribute("class", "x-ring");
+  const track = document.createElementNS(ns, "circle");
+  const arc = document.createElementNS(ns, "circle");
+  for (const c of [track, arc]) {
+    c.setAttribute("cx", "30");
+    c.setAttribute("cy", "30");
+    c.setAttribute("r", String(RING_R));
+    el.append(c);
+  }
+  track.setAttribute("class", "x-ring-track");
+  arc.setAttribute("class", "x-ring-arc");
+  arc.setAttribute("stroke-dasharray", String(RING_C));
+  return {
+    el,
+    set(done, paused) {
+      arc.setAttribute("stroke-dashoffset", String(RING_C * (1 - Math.max(0, Math.min(1, done)))));
+      el.classList.toggle("paused", paused);
+    },
+  };
+}
+
 function focusCard(): ExtraCard {
-  const big = h("div", { class: "x-clock" });
+  const ring = focusRing();
+  const time = h("span", { class: "x-ring-time" });
+  const dial = h("div", { class: "x-dial" }, ring.el, time);
   // Any length, typed in (1 min to 10 h), or one of the usual two.
   const minutes = h("input", { class: "x-input x-min", type: "number", min: "1", max: "600", placeholder: t("min") }) as HTMLInputElement;
   const startTyped = () => {
@@ -102,28 +133,36 @@ function focusCard(): ExtraCard {
     if (e.key === "Enter") startTyped();
     else if (e.key === "Escape") minutes.blur();
   });
-  const startRow = h("div", { class: "int-actions x-start" },
+  const chip = (m: number, label: string) => h("button", { class: "x-chip", onclick: () => startFocus(m) }, label);
+  const startRow = h("div", { class: "x-row-actions" },
+    chip(25, t("25 min")), chip(50, t("50 min")),
+    h("span", { class: "x-sep" }),
     minutes,
-    h("button", { class: "link-btn", onclick: startTyped }, t("Start")),
-    h("button", { class: "link-btn", onclick: () => startFocus(25) }, t("25 min")),
-    h("button", { class: "link-btn", onclick: () => startFocus(50) }, t("50 min")),
+    h("button", { class: "x-btn primary", onclick: startTyped }, t("Start")),
   );
-  const pauseBtn = h("button", { class: "link-btn", onclick: pauseFocus });
-  const runRow = h("div", { class: "int-actions" }, pauseBtn,
-    h("button", { class: "link-btn", onclick: stopFocus }, t("Stop")));
+  const pauseBtn = h("button", { class: "x-btn", onclick: pauseFocus });
+  const runRow = h("div", { class: "x-row-actions" }, pauseBtn,
+    h("button", { class: "x-btn danger", onclick: stopFocus }, t("Stop")));
+  const status = h("div", { class: "x-status" });
   const sub = h("span");
-  const el = h("div", { class: "int-card" },
+  const el = h("div", { class: "int-card x-focus" },
     h("div", { class: "int-head" }, dot("#F97316", 7), h("b", { text: t("Focus") }), sub),
-    big, startRow, runRow);
+    h("div", { class: "x-focus-body" }, dial, h("div", { class: "x-focus-side" }, status, startRow, runRow)));
   return {
     el,
     sync() {
       const active = Focus.active;
-      big.textContent = clock(active ? Focus.left() : Focus.minutes * 60_000);
+      const paused = Focus.pausedLeft != null;
+      const left = active ? Focus.left() : Focus.minutes * 60_000;
+      time.textContent = clock(left);
+      ring.set(active ? 1 - left / (Focus.minutes * 60_000) : 0, paused);
+      el.classList.toggle("x-on", Focus.running);
       startRow.style.display = active ? "none" : "";
       runRow.style.display = active ? "" : "none";
-      pauseBtn.textContent = Focus.pausedLeft != null ? t("Resume") : t("Pause");
-      sub.textContent = active ? t("Notifications held, calls still ring") : t("Type minutes, or pick one");
+      pauseBtn.textContent = paused ? t("Resume") : t("Pause");
+      const ends = new Date(Date.now() + left).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      status.textContent = !active ? t("Type minutes, or pick one") : paused ? t("Paused") : t("Ends at {0}", { 0: ends });
+      sub.textContent = active ? t("Notifications held, calls still ring") : "";
     },
   };
 }
@@ -177,12 +216,21 @@ function todoCard(): ExtraCard {
 
 // ── Inbox ─────────────────────────────────────────────────────────────────────
 
+/** A steady colour per person, so the same sender always looks the same. */
+function avatarColor(name: string): string {
+  const hues = ["#F472B6", "#60A5FA", "#34D399", "#F59E0B", "#A78BFA", "#22D3EE", "#FB7185", "#4ADE80"];
+  let n = 0;
+  for (const c of name) n = (n * 31 + c.charCodeAt(0)) >>> 0;
+  return hues[n % hues.length];
+}
+
 function inboxCard(): ExtraCard {
-  const list = h("div", { class: "x-list" });
+  const list = h("div", { class: "x-list x-inbox" });
+  const count = h("span", { class: "x-count" });
   const sub = h("span");
-  const clearBtn = h("button", { class: "link-btn", onclick: () => { Inbox.items = []; Inbox.unseen = 0; State.notify(); } }, t("Clear"));
+  const clearBtn = h("button", { class: "x-btn ghost", onclick: () => { Inbox.items = []; Inbox.unseen = 0; State.notify(); } }, t("Clear"));
   const el = h("div", { class: "int-card" },
-    h("div", { class: "int-head" }, dot("#60A5FA", 7), h("b", { text: t("Inbox") }), sub, h("span", { class: "grow" }), clearBtn),
+    h("div", { class: "int-head" }, dot("#60A5FA", 7), h("b", { text: t("Inbox") }), count, sub, h("span", { class: "grow" }), clearBtn),
     list);
   let key = "";
   return {
@@ -190,16 +238,27 @@ function inboxCard(): ExtraCard {
     sync() {
       // Looking at the card is reading it.
       Inbox.unseen = 0;
-      sub.textContent = t("Calls and messages");
+      sub.textContent = Inbox.items.length ? "" : t("Calls and messages");
+      count.textContent = Inbox.items.length ? String(Inbox.items.length) : "";
+      clearBtn.style.visibility = Inbox.items.length ? "" : "hidden";
       const k = `${Inbox.items.length}:${Inbox.items[0]?.at ?? 0}:${Math.floor(Date.now() / 60000)}`;
       if (k === key) return;
       key = k;
       clear(list);
-      if (Inbox.items.length === 0) list.append(h("div", { class: "int-empty", text: t("Nothing missed") }));
+      if (Inbox.items.length === 0) {
+        list.append(h("div", { class: "x-empty" }, h("span", { class: "x-empty-icon", text: "✓" }), t("Nothing missed")));
+      }
       for (const it of Inbox.items) {
-        list.append(h("div", { class: "x-row" },
-          h("span", { class: "x-kind", text: it.kind === "call" ? "📞" : "💬" }),
-          h("span", { class: "x-text", text: it.body ? `${it.who}: ${it.body}` : it.who }),
+        const call = it.kind === "call";
+        const avatar = h("span", { class: "x-avatar", text: (it.who.trim()[0] ?? "?").toUpperCase() },
+          h("i", { class: `x-badge ${call ? "call" : "msg"}` }));
+        avatar.style.background = avatarColor(it.who);
+        list.append(h("div", { class: "x-row x-msg" },
+          avatar,
+          h("span", { class: "x-text" },
+            h("b", { text: it.who }),
+            h("span", { class: `x-body${call ? " missed" : ""}`, text: call ? t("Missed call") : it.body }),
+          ),
           h("span", { class: "int-ago", text: ago(it.at) }),
         ));
       }

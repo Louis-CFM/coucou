@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { callbackLine, minutesIn, openTarget, parseIntent, voicePhrases } from "../src/core/intents.ts";
+import { callbackLine, moodOf, minutesIn, openTarget, parseIntent, voicePhrases } from "../src/core/intents.ts";
 
 const k = (s) => parseIntent(s);
 
@@ -63,4 +63,12 @@ test("Hermes callbacks open with two plain sentences", () => {
   assert.equal(callbackLine("**Build passed.** All 12 tests green. Logs are in out.txt."), "Hermes is back. Build passed. All 12 tests green.");
   assert.equal(callbackLine("done"), "Hermes is back. done");
   assert.ok(callbackLine("x".repeat(900)).length < 320);
+});
+
+test("Maki's mood tags drive Mochi and leave the caption", () => {
+  assert.deepEqual(moodOf("[happy] Alright, playing your music!"), { clean: "Alright, playing your music!", mood: { emote: "happy" } });
+  assert.deepEqual(moodOf("[laughs] [surprised] No way"), { clean: "No way", mood: { emote: "happy" } });
+  assert.deepEqual(moodOf("[sad] Hmm, that failed."), { clean: "Hmm, that failed.", mood: { eye: "tired" } });
+  assert.deepEqual(moodOf("[whispers] ok"), { clean: "ok", mood: null });
+  assert.deepEqual(moodOf("plain"), { clean: "plain", mood: null });
 });

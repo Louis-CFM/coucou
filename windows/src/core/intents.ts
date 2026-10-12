@@ -157,3 +157,31 @@ export function callbackLine(answer: string): string {
   const short = two.length > 300 ? `${two.slice(0, 297).trimEnd()}…` : two.trim();
   return `Hermes is back. ${short}`;
 }
+
+/** What a spoken mood tag does to Mochi: an emote, or a passing eye shape. */
+export interface MochiMood {
+  emote?: "love" | "surprised" | "proud" | "wink" | "yawn" | "happy";
+  eye?: "tired" | "wide";
+}
+
+const MOOD_TAGS: [RegExp, MochiMood][] = [
+  [/^(happy|cheerful|excited|laughs?|laughing|giggles?|chuckles?|joyful|delighted|enthusiastic)$/, { emote: "happy" }],
+  [/^(love|loving|warm|warmly|affectionate|sweet|tender)$/, { emote: "love" }],
+  [/^(surprised|gasps?|amazed|shocked|astonished|wow)$/, { emote: "surprised" }],
+  [/^(proud|confident|triumphant|satisfied)$/, { emote: "proud" }],
+  [/^(playful|mischievous|teasing|winks?|sarcastic|smirks?|cheeky)$/, { emote: "wink" }],
+  [/^(tired|sleepy|yawns?|bored)$/, { emote: "yawn" }],
+  [/^(sad|sorry|sighs?|disappointed|apologetic|concerned|worried|upset)$/, { eye: "tired" }],
+  [/^(curious|intrigued|interested|thoughtful|hmm)$/, { eye: "wide" }],
+];
+
+/** Pulls the [mood] tags out of what Maki says: the clean caption and the first mood that maps. */
+export function moodOf(text: string): { clean: string; mood: MochiMood | null } {
+  let mood: MochiMood | null = null;
+  const clean = text.replace(/\[([a-zA-Z][a-zA-Z ]{0,30})\]\s*/g, (_, tag: string) => {
+    const t = tag.trim().toLowerCase();
+    if (!mood) mood = MOOD_TAGS.find(([re]) => re.test(t))?.[1] ?? null;
+    return "";
+  }).trim();
+  return { clean, mood };
+}

@@ -5329,6 +5329,39 @@
    "pt-BR": "O Hermes não respondeu.",
    "ru": "Hermes не ответил.",
    "id": "Hermes tidak memberi jawaban."
+  },
+  "Paused": {
+   "zh-Hans": "已暂停",
+   "hi": "रुका हुआ",
+   "es": "En pausa",
+   "ar": "متوقف مؤقتًا",
+   "fr": "En pause",
+   "bn": "বিরতিতে",
+   "pt-BR": "Pausado",
+   "ru": "На паузе",
+   "id": "Dijeda"
+  },
+  "Ends at {0}": {
+   "zh-Hans": "{0} 结束",
+   "hi": "{0} पर खत्म",
+   "es": "Termina a las {0}",
+   "ar": "ينتهي في {0}",
+   "fr": "Fin à {0}",
+   "bn": "{0}-এ শেষ",
+   "pt-BR": "Termina às {0}",
+   "ru": "Закончится в {0}",
+   "id": "Selesai pukul {0}"
+  },
+  "Missed call": {
+   "zh-Hans": "未接来电",
+   "hi": "मिस्ड कॉल",
+   "es": "Llamada perdida",
+   "ar": "مكالمة فائتة",
+   "fr": "Appel manqué",
+   "bn": "মিসড কল",
+   "pt-BR": "Chamada perdida",
+   "ru": "Пропущенный звонок",
+   "id": "Panggilan tak terjawab"
   }
  }
 }

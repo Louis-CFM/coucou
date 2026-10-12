@@ -189,6 +189,8 @@ function colorFor(e: LiveEvent): string {
 /** The element the island places; `sync()` repaints it from Live.current. */
 export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } {
   const icon = h("span", { class: "live-icon" });
+  // Maki talking or listening: three bars on --maki-level (voice/eleven.ts).
+  const bars = h("span", { class: "maki-bars" }, h("i"), h("i"), h("i"));
   const fill = h("i", { class: "live-fill" });
   const bar = h("div", { class: "live-bar" }, fill);
   const label = h("span", { class: "live-label" });
@@ -208,7 +210,7 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
   };
   const yes = callBtn(true);
   const no = callBtn(false);
-  const el = h("div", { id: "live" }, icon, bar, label, yes, no);
+  const el = h("div", { id: "live" }, icon, bars, bar, label, yes, no);
   let shownIcon = "";
 
   return {
@@ -229,6 +231,7 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
       }
       const isText = e.kind === "phone" || e.kind === "call" || e.kind === "message" || e.kind === "app" || e.kind === "voice";
       el.classList.toggle("phone", isText);
+      el.classList.toggle("voice", e.kind === "voice");
       const ringingCall = e.kind === "call";
       yes.style.display = ringingCall && !e.muted ? "" : "none";
       no.style.display = ringingCall ? "" : "none";

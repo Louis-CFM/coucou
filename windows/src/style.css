@@ -3020,3 +3020,264 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* ── Focus tab: ring + time, chips, status (views/extras.ts) ─────────────── */
+.x-focus .int-head > span {
+  margin-left: auto;
+  font-size: 10px;
+}
+.x-focus-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+.x-dial {
+  position: relative;
+  flex: none;
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+}
+.x-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.x-ring circle {
+  fill: none;
+  stroke-width: 4;
+}
+.x-ring-track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+.x-ring-arc {
+  stroke: #f97316;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s linear, stroke 0.3s;
+}
+.x-ring.paused .x-ring-arc {
+  stroke: var(--dim-3);
+}
+.x-focus.x-on .x-dial {
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.35));
+}
+.x-ring-time {
+  position: relative;
+  font: 600 14px var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+.x-focus-side {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.x-status {
+  font: 500 12px var(--font);
+  color: var(--ink);
+}
+.x-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.x-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 2px;
+}
+.x-row-actions .x-min {
+  width: 58px;
+  flex: none;
+  padding: 3px 8px;
+}
+.x-chip,
+.x-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font: 500 11px var(--font);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.x-chip:hover,
+.x-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.x-chip:active,
+.x-btn:active {
+  transform: scale(0.96);
+}
+.x-btn.primary {
+  background: #f97316;
+  border-color: #f97316;
+  color: #1a0d03;
+  font-weight: 600;
+}
+.x-btn.primary:hover {
+  background: #fb8a3c;
+}
+.x-btn.danger:hover {
+  background: rgba(244, 80, 94, 0.18);
+  border-color: rgba(244, 80, 94, 0.45);
+  color: var(--red-text);
+}
+.x-btn.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--dim);
+  padding: 2px 8px;
+}
+.x-btn.ghost:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+.x-chip:focus-visible,
+.x-btn:focus-visible {
+  outline: 2px solid rgba(249, 115, 22, 0.7);
+  outline-offset: 1px;
+}
+
+/* ── Inbox tab: avatar, who + what, time ─────────────────────────────────── */
+.x-count {
+  font: 600 10px var(--font) !important;
+  color: #0b1220 !important;
+  background: #60a5fa;
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 15px;
+}
+.x-count:empty {
+  display: none;
+}
+.extra-view .x-inbox {
+  max-height: 72px;
+  gap: 2px;
+  margin-top: 5px;
+}
+.x-msg {
+  min-height: 21px;
+  gap: 8px;
+  padding: 2px 6px 2px 2px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.x-msg:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.x-avatar {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 10px var(--font);
+  color: rgba(0, 0, 0, 0.72);
+}
+.x-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--card);
+}
+.x-badge.call {
+  background: var(--red);
+}
+.x-badge.msg {
+  background: #60a5fa;
+}
+.x-msg .x-text {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.x-msg .x-text b {
+  font: 600 11px var(--font);
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.x-body {
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.x-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 12px var(--font);
+  color: var(--dim);
+  padding: 10px 0 4px;
+}
+.x-empty-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--green-2);
+  font-size: 11px;
+}
+.x-body.missed {
+  color: var(--red-text);
+}
+.x-inbox {
+  scrollbar-width: none;
+}
+.x-inbox::-webkit-scrollbar {
+  display: none;
+}
+
+/* Maki's voice card: bars on the voice instead of a mic (island/live.ts). */
+.maki-bars {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  height: 14px;
+  flex: none;
+}
+#live.voice .maki-bars {
+  display: inline-flex;
+}
+#live.voice .live-icon {
+  display: none;
+}
+.maki-bars i {
+  width: 3px;
+  border-radius: 2px;
+  background: #c084fc;
+  height: calc(3px + var(--maki-level, 0) * 11px);
+  transition: height 0.09s ease-out;
+}
+.maki-bars i:nth-child(2) {
+  height: calc(4px + var(--maki-level, 0) * 10px * 1.0);
+  animation: maki-idle 1.6s ease-in-out infinite;
+}
+.maki-bars i:nth-child(1),
+.maki-bars i:nth-child(3) {
+  height: calc(3px + var(--maki-level, 0) * 7px);
+}
+@keyframes maki-idle {
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .maki-bars i { transition: none; animation: none; }
+}

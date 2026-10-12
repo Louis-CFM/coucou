@@ -1,7 +1,7 @@
 // The island: DOM shell, sizing animation, Mochi placement, mouse handling.
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
-import { Tracked, Spring, clamp } from "../core/anim";
+import { Ease, Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -504,6 +504,38 @@ export class Island {
 
   emote(name: BotEmoteName) {
     this.engine.triggerEmote(name);
+    this.ensureRunning();
+  }
+
+  // ── Maki (voice/eleven.ts): Mochi is the one talking ────────────────────────
+
+  /** Listening (cyan, all ears), thinking (purple), working (blue), speaking (himself). */
+  voiceMood(mood: "listening" | "thinking" | "working" | "speaking" | null) {
+    const state = mood === "listening" ? "question" : mood === "thinking" ? "thinking" : mood === "working" ? "working" : null;
+    State.stateOverride = mood == null ? null : (state ?? "idle");
+    this.engine.setState(State.effectiveState);
+    // Listening: dots, not the "?" of a question.
+    if (mood === "listening") this.engine.setBadge({ kind: "dots", color: [0.133, 0.827, 0.933] });
+    this.ensureRunning();
+  }
+
+  /** One beat of the voice: Mochi bobs with Maki's words, widens his eyes at yours. */
+  voicePulse(level: number, user: boolean) {
+    const v = clamp(level, 0, 1);
+    if (user) {
+      this.engine.anim("es", [[1 + 0.18 * v, 70, Ease.out], [1, 160, Ease.inOut]]);
+    } else {
+      this.engine.anim("sy", [[1 + 0.09 * v, 70, Ease.out], [1, 150, Ease.inOut]]);
+      this.engine.anim("sx", [[1 - 0.04 * v, 70, Ease.out], [1, 150, Ease.inOut]]);
+      this.engine.anim("oy", [[-0.07 * v, 70, Ease.out], [0, 150, Ease.inOut]]);
+    }
+    this.ensureRunning();
+  }
+
+  /** A passing eye shape for moods without an emote (sad, curious). */
+  voiceEye(eye: "tired" | "wide", seconds = 1.8) {
+    this.engine.eyeOverride = eye;
+    this.engine.eyeOverrideUntil = performance.now() / 1000 + seconds;
     this.ensureRunning();
   }
 

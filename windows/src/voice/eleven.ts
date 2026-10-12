@@ -11,7 +11,7 @@ import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { Spotify } from "../core/spotify";
 import { Todos } from "../core/extras";
-import { callbackLine, openTarget } from "../core/intents";
+import { callbackLine, moodOf, openTarget, type MochiMood } from "../core/intents";
 import { endLive, showLive, Live, type LiveHost } from "../island/live";
 import { startFocus, stopFocus } from "../views/extras";
 import { agentsText, planText } from "./voice";
@@ -19,6 +19,30 @@ import { elevenUsage, refreshElevenUsage } from "../views/usage";
 import { t } from "../i18n/i18n";
 
 let ws: WebSocket | null = null;
+
+/** Mochi is Maki: the island's face follows the conversation (main.ts wires it). */
+export interface MochiFace {
+  mood(m: "listening" | "thinking" | "working" | "speaking" | null): void;
+  pulse(level: number, user: boolean): void;
+  emote(e: NonNullable<MochiMood["emote"]>): void;
+  eye(e: NonNullable<MochiMood["eye"]>): void;
+}
+let mochi: MochiFace | null = null;
+export function setMochiFace(f: MochiFace) {
+  mochi = f;
+}
+/** Hermes is working in the background: Mochi stays busy until it's back. */
+let hermesRunning = false;
+
+function showMood(m: MochiMood | null) {
+  if (m?.emote) mochi?.emote(m.emote);
+  else if (m?.eye) mochi?.eye(m.eye);
+}
+
+/** The voice card's bars follow whoever is talking (style.css reads it). */
+function setLevel(v: number) {
+  document.documentElement.style.setProperty("--maki-level", v.toFixed(2));
+}
 /** The user asked for music during the conversation: leave it as they set it. */
 let touchedMusic: (() => void) | null = null;
 let host: LiveHost | null = null;
@@ -190,6 +214,7 @@ async function runTool(name: string, params: Record<string, unknown>): Promise<{
       // in the background and Maki calls back with the answer.
       caption(t("Asking Hermes…"));
       watchHermes();
+      hermesRunning = true;
       void Bridge.askHermes(String(params.request ?? "")).then(
         (answer) => hermesBack(answer),
         (e) => hermesBack(`it failed: ${String(e).replace(/^Error:\s*/, "")}`),
@@ -230,6 +255,8 @@ function watchHermes() {
 /** Hermes finished: told in the call if one is on, else Maki calls back. */
 function hermesBack(answer: string) {
   void Bridge.log("eleven: hermes is back");
+  hermesRunning = false;
+  if (!ws) mochi?.mood(null);
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "contextual_update", text: `Hermes answered: ${answer.slice(0, 4000)}` }));
     return;
@@ -242,6 +269,7 @@ export async function startConversation(liveHost: LiveHost, agentId: string, fir
   host = liveHost;
   lastAgent = agentId;
   caption(t("Connecting…"));
+  mochi?.mood("listening");
   // The speakers aren't this page's audio, so echo cancellation can't remove
   // the music: Maki would hear the song as you talking. Paused while she
   // listens, back on after unless you changed it.
@@ -283,14 +311,47 @@ export async function startConversation(liveHost: LiveHost, agentId: string, fir
   let outRate = 16000;
   let playAt = 0;
   const playing = new Set<AudioBufferSourceNode>();
+  const out = ctx.createAnalyser();
+  out.fftSize = 512;
+  out.connect(ctx.destination);
+  const wave = new Float32Array(out.fftSize);
+  let micLevel = 0;
+  let speaking = false;
+  let quietSince = 0;
+  // ~11 beats a second: Mochi bobs while Maki talks, listens when she stops.
+  const beat = window.setInterval(() => {
+    out.getFloatTimeDomainData(wave);
+    let sum = 0;
+    for (const x of wave) sum += x * x;
+    const outLevel = Math.sqrt(sum / wave.length);
+    const now = performance.now();
+    if (outLevel > 0.012) {
+      if (!speaking) mochi?.mood("speaking");
+      speaking = true;
+      quietSince = now;
+      mochi?.pulse(Math.min(1, outLevel * 7), false);
+      setLevel(Math.min(1, outLevel * 7));
+    } else {
+      if (speaking && now - quietSince > 350) {
+        speaking = false;
+        mochi?.mood("listening");
+      }
+      if (!speaking && micLevel > 0.02) mochi?.pulse(Math.min(1, micLevel * 10), true);
+      setLevel(speaking ? 0.2 : Math.min(1, micLevel * 10));
+    }
+  }, 90);
   const source = ctx.createMediaStreamSource(stream);
   // ponytail: ScriptProcessor (deprecated, main thread) — an AudioWorklet needs a module URL the CSP doesn't allow.
   const proc = ctx.createScriptProcessor(2048, 1, 1);
   const mute = ctx.createGain();
   mute.gain.value = 0;
   proc.onaudioprocess = (e) => {
+    const data = e.inputBuffer.getChannelData(0);
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) sum += data[i] * data[i];
+    micLevel = Math.sqrt(sum / (data.length / 4));
     if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ user_audio_chunk: toBase64(floatToPcm16(e.inputBuffer.getChannelData(0))) }));
+      socket.send(JSON.stringify({ user_audio_chunk: toBase64(floatToPcm16(data)) }));
     }
   };
   source.connect(proc);
@@ -342,7 +403,7 @@ export async function startConversation(liveHost: LiveHost, agentId: string, fir
         buf.copyToChannel(data, 0);
         const node = ctx.createBufferSource();
         node.buffer = buf;
-        node.connect(ctx.destination);
+        node.connect(out);
         playAt = Math.max(playAt, ctx.currentTime + 0.02);
         node.start(playAt);
         playAt += buf.duration;
@@ -355,16 +416,25 @@ export async function startConversation(liveHost: LiveHost, agentId: string, fir
         break;
       case "user_transcript": {
         const text = msg.user_transcription_event?.user_transcript;
-        if (text) caption(`${t("You")}: ${text}`);
+        if (text) {
+          caption(`${t("You")}: ${text}`);
+          if (!speaking) mochi?.mood("thinking");
+        }
         break;
       }
       case "agent_response": {
         const text = msg.agent_response_event?.agent_response;
-        if (text) caption(`Maki: ${text}`);
+        if (text) {
+          // "[happy] Alright…": the mood is Mochi's face, not part of the caption.
+          const { clean, mood } = moodOf(String(text));
+          showMood(mood);
+          if (clean) caption(`Maki: ${clean}`);
+        }
         break;
       }
       case "client_tool_call": {
         const call = msg.client_tool_call ?? {};
+        mochi?.mood("working");
         void runTool(String(call.tool_name ?? ""), call.parameters ?? {}).then(({ result, error }) => {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: "client_tool_result", tool_call_id: call.tool_call_id, result, is_error: error }));
@@ -376,6 +446,9 @@ export async function startConversation(liveHost: LiveHost, agentId: string, fir
   };
   socket.onclose = (ev) => {
     void Bridge.log(`eleven: conversation closed (${ev.code})`);
+    window.clearInterval(beat);
+    setLevel(0);
+    mochi?.mood(hermesRunning ? "working" : null);
     stopPlayback();
     proc.disconnect();
     source.disconnect();
