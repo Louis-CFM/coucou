@@ -46,10 +46,6 @@ export class ApprovalQueue {
     return this.list;
   }
 
-  contains(id: string): boolean {
-    return this.list.some((e) => e.id === id);
-  }
-
   /** The entry carrying this relay request id, if still waiting. */
   byRequestId(requestId: string): QueuedApproval | undefined {
     if (!requestId) return undefined;
@@ -83,10 +79,6 @@ export class ApprovalQueue {
     const at = this.list.findIndex((e) => e.id === id);
     if (at < 0) return undefined;
     return this.list.splice(at, 1)[0];
-  }
-
-  shift(): QueuedApproval | undefined {
-    return this.list.shift();
   }
 
   /**

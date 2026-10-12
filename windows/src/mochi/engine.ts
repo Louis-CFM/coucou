@@ -105,13 +105,6 @@ export const BOT_STATES: Record<BotStateName, BotStateCfg> = {
   dizzy: { ...base, color: C.dizzy, tint: 0.7, eye: "spiral", badge: null },
 };
 
-/** State → sound, as in BotStateCfg.sound. */
-export const STATE_SOUND: Partial<Record<BotStateName, string>> = {
-  working: "work", thinking: "think", searching: "search", approval: "approval",
-  question: "question", error: "error", finished: "finish", ratelimit: "rate",
-  sleeping: "sleep", dizzy: "dizzy",
-};
-
 const EMOTE_EYE: Record<BotEmoteName, EyeShape> = {
   love: "heart", surprised: "dot", proud: "star", wink: "wink",
   yawn: "tired", happy: "happy", annoyed: "line",

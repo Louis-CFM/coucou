@@ -64,9 +64,6 @@ export const EXPANDED_W = 640;
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;
 
-/** Invisible hover strip that wakes the island when hidden. */
-export const WAKE_STRIP_W = 240;
-export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
@@ -207,34 +204,6 @@ export function botGlowOpacity(s: BotStateName): number {
     default:
       return 0.65;
   }
-}
-
-// Project colours (IslandConst.projectColors)
-const PROJECT_COLORS: Record<string, string> = {
-  korus: "#FF5A4E",
-  "sbe hub": "#2EC4A0",
-  "morning ai brief": "#F29B38",
-  "publication ig": "#7C5CFF",
-  "ig post": "#7C5CFF",
-  "louisraille.fr": "#38BDF8",
-  louisraille: "#38BDF8",
-  "notch buddy": "#EC4899",
-  "notch-buddy": "#EC4899",
-  notchbuddy: "#EC4899",
-};
-
-const FALLBACK_COLORS = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"];
-
-export function colorForProject(name: string): string {
-  const key = name.toLowerCase().trim();
-  const exact = PROJECT_COLORS[key];
-  if (exact) return exact;
-  for (const [k, c] of Object.entries(PROJECT_COLORS)) {
-    if (key.startsWith(k) || key.includes(k)) return c;
-  }
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
-  return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
 }
 
 // Card wash colours (CardBackground.washColor)

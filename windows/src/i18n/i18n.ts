@@ -257,11 +257,6 @@ export function dayMonth(month: number, day: number): string {
   return intl({ month: "short", day: "numeric" }, new Date(Date.UTC(2024, month, day))) ?? `${EN_MONTHS[month] ?? ""} ${day}`;
 }
 
-/** Every key of both tables, for the tests. */
-export function allKeys(): string[] {
-  return Object.keys(TABLE);
-}
-
 /** True when `key` has a translation in every language but English. */
 export function isComplete(key: string): boolean {
   const entry = TABLE[key];

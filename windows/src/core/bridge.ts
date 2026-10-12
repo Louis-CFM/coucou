@@ -212,10 +212,10 @@ export const Bridge = {
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
   /** Models this provider refused (404 for a model its list offers) and that have not answered since. */
   chatRefused: (provider: string) => call<string[]>("chat_refused", { provider }),
-  /** Settings → Local models → Connect: does the server answer, and with which models? */
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
 
+  /** Settings → Local models → Connect: does the server answer, and with which models? */
   localConnect: (provider: "ollama" | "lmstudio" | "custom", url: string) =>
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
@@ -422,12 +422,6 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
   if (!IS_TAURI) throw new Error("not running inside Coucou");
   return invoke<T>(cmd, args);
 }
-
-export type BridgeEvent =
-  | { name: "cursor"; payload: { x: number; y: number } }
-  | { name: "tray"; payload: string }
-  | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";
