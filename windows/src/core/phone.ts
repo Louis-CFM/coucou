@@ -12,10 +12,11 @@ interface RemoteItem {
   at: number;
   requestId?: string;
   decision?: string;
-  answers?: Record<string, string>;
+  /** Question text → the label picked, or the labels for a multi-select question. */
+  answers?: Record<string, string | string[]>;
   text?: string;
   sessionId?: string;
-  /** Which CLI the session belongs to — "devin" | "claude" (default devin). */
+  /** Which CLI the session belongs to — "devin" | "claude" | "codex" | "opencode" (default devin). */
   agent?: string;
 }
 
@@ -36,6 +37,25 @@ let sessionsFetchedAt = 0;
 let selectedSession: { agent: string; id: string } | null = null;
 let transcriptCache: { id: string; lines: ChatLine[] } | null = null;
 let transcriptFetchedAt = 0;
+/** The last state the relay accepted, as sent: an unchanged one is not sent again. */
+let lastSent = "";
+
+/** CLI sessions a phone message is running in right now, as "agent:id". */
+const running = new Set<string>();
+
+/** Test seam: forgets what was pushed, offered and selected. */
+export function resetPhoneState(): void {
+  if (pushTimer !== undefined) clearTimeout(pushTimer);
+  pushTimer = undefined;
+  lastAlerted = null;
+  lastSent = "";
+  running.clear();
+  sessionsCache = [];
+  sessionsFetchedAt = 0;
+  selectedSession = null;
+  transcriptCache = null;
+  transcriptFetchedAt = 0;
+}
 
 export function wirePhone(island: Island) {
   if (wired) return;
@@ -73,6 +93,7 @@ function snapshot() {
     const questions = (req.questions ?? []).map((q) => ({
       q: q.question,
       options: q.options.map((o) => o.label),
+      multi: q.multiSelect,
     }));
     awaiting = {
       requestId: req.requestId,
@@ -142,20 +163,33 @@ async function remoteSessions() {
     }
   }
   if (!selectedSession) transcriptCache = null;
+  return cachedSessions();
+}
+
+/** What is already known of the CLI sessions, without asking for more. */
+function cachedSessions() {
   return {
     chatSessions: sessionsCache,
     chatSel: selectedSession?.id ?? "",
-    chatTranscript: transcriptCache,
+    chatTranscript: selectedSession ? transcriptCache : null,
   };
 }
 
 async function push() {
-  const state = { ...snapshot(), ...(await remoteSessions()) };
-  // A fresh card is the only thing that may wake the phone.
-  const alertId = state.awaiting?.requestId ?? null;
+  const base = snapshot();
+  const alertId = base.awaiting?.requestId ?? null;
   const alert = alertId !== null && alertId !== lastAlerted;
-  if (alertId !== lastAlerted) lastAlerted = alertId;
-  await Bridge.phoneState(state, alert);
+  // A card wakes the phone now; the session lists are read for the next push.
+  const state = { ...base, ...(alert ? cachedSessions() : await remoteSessions()) };
+  const body = JSON.stringify(state);
+  if (!alert && body === lastSent) return;
+  // Not delivered: lastSent and lastAlerted stay as they were, so the next change retries.
+  if ((await Bridge.phoneState(state, alert)) !== true) return;
+  lastSent = body;
+  if (alert) {
+    lastAlerted = alertId;
+    schedulePush();
+  }
 }
 
 /** Phone → island. Answers only ever apply to the card actually waiting. */
@@ -196,18 +230,31 @@ function applyRemote(island: Island, items: RemoteItem[]) {
  */
 async function remoteChat(text: string, sessionId?: string, agent = "devin") {
   if (sessionId) {
+    // The id came over the network: only a session the phone was offered.
+    const offered = () => sessionsCache.some((s) => s.id === sessionId && s.agent === agent);
+    if (!offered()) {
+      sessionsFetchedAt = 0;
+      await remoteSessions();
+    }
+    if (!offered()) {
+      void Bridge.log(`phone chat for a ${agent} session it was not offered — ignored`);
+      return;
+    }
+    const key = `${agent}:${sessionId}`;
+    if (running.has(key)) {
+      appendTranscriptNote(sessionId, "(still answering the previous message)");
+      void push();
+      return;
+    }
+    running.add(key);
     try {
       await agentResume(agent, sessionId, text);
       const lines = (await agentTranscript(agent, sessionId)) ?? [];
       transcriptCache = { id: sessionId, lines };
     } catch (e) {
-      transcriptCache = {
-        id: sessionId,
-        lines: [
-          ...(transcriptCache?.id === sessionId ? transcriptCache.lines : []),
-          { role: "assistant", text: `(${e instanceof Error ? e.message : "the CLI could not be reached"})` },
-        ],
-      };
+      appendTranscriptNote(sessionId, `(${e instanceof Error ? e.message : "the CLI could not be reached"})`);
+    } finally {
+      running.delete(key);
     }
     transcriptFetchedAt = Date.now();
     void push();
@@ -228,4 +275,12 @@ async function remoteChat(text: string, sessionId?: string, agent = "devin") {
     });
   }
   State.notify();
+}
+
+/** One assistant line of ours at the end of the session's transcript on the phone. */
+function appendTranscriptNote(sessionId: string, text: string) {
+  transcriptCache = {
+    id: sessionId,
+    lines: [...(transcriptCache?.id === sessionId ? transcriptCache.lines : []), { role: "assistant", text }],
+  };
 }

@@ -159,7 +159,7 @@ export const Bridge = {
   phoneUnpair: () => call<void>("phone_unpair"),
   /** The island's visible state, pushed after each change. */
   phoneState: (payload: unknown, alert: boolean) =>
-    call<void>("phone_state", { payload, alert }),
+    call<boolean>("phone_state", { payload, alert }),
 
   // ── Devin sessions (the phone picks one to read & continue) ───────────────
   /** Every session in Devin's global sessions.db, newest first. */

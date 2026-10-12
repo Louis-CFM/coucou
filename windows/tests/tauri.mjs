@@ -7,6 +7,18 @@ export const calls = [];
 
 const listeners = new Map();
 
+const responders = new Map();
+
+/** Makes `cmd` answer with `fn(args)` (a value or a promise) instead of null. */
+export function respond(cmd, fn) {
+  responders.set(cmd, fn);
+}
+
+/** Every command answers null again. */
+export function resetResponders() {
+  responders.clear();
+}
+
 export const internals = {
   transformCallback: (callback) => callback,
   invoke: async (cmd, args) => {
@@ -15,7 +27,7 @@ export const internals = {
       return listeners.size;
     }
     calls.push([cmd, args]);
-    return null;
+    return responders.has(cmd) ? responders.get(cmd)(args) : null;
   },
 };
 
