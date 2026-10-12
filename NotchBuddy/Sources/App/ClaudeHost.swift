@@ -87,15 +87,20 @@ struct ClaudeHost: Equatable {
         guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { return }
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value) == .success,
-              let windows = value as? [AXUIElement] else { return }
-        for window in windows {
-            var titleValue: CFTypeRef?
-            AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
-            if titleValue as? String == title {
-                AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-                return
+        // A title just set takes a moment to reach the window.
+        for _ in 0..<30 {
+            if AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value) == .success,
+               let windows = value as? [AXUIElement] {
+                for window in windows {
+                    var titleValue: CFTypeRef?
+                    AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
+                    if titleValue as? String == title {
+                        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                        return
+                    }
+                }
             }
+            usleep(50_000)
         }
     }
 
@@ -115,8 +120,10 @@ struct ClaudeHost: Equatable {
                 for candidate in TerminalTarget.tabTTYs(for: tty) where ClaudeHost.isTTY(candidate) {
                     if bundleId == TerminalTarget.weztermId {
                         let cli = url.appendingPathComponent("Contents/MacOS/wezterm").path
-                        guard let title = TerminalTarget.activateWezTermPane(tty: candidate, cli: cli) else { continue }
-                        raiseWindow(titled: title, bundleId: bundleId)
+                        let marker = "coucou-" + UUID().uuidString
+                        guard let title = TerminalTarget.activateWezTermPane(tty: candidate, cli: cli, marker: marker) else { continue }
+                        raiseWindow(titled: marker, bundleId: bundleId)
+                        TerminalTarget.setTitle(title, tty: candidate)
                         break
                     }
                     guard let source = TerminalTarget.tabScript(bundleId: bundleId, tty: candidate) else { break }

@@ -99,13 +99,22 @@ enum TerminalTarget {
         return (id, pane["title"] as? String ?? "")
     }
 
-    /// Makes the pane on `tty` the active one in its WezTerm window; returns that window's title.
-    /// The CLI does not raise the window itself.
-    static func activateWezTermPane(tty: String, cli: String) -> String? {
+    /// Makes the pane on `tty` the active one in its WezTerm window, which the CLI does not raise,
+    /// and titles the pane `marker` so its window can be told from others with the same title.
+    /// Returns the title to put back once the window is up.
+    static func activateWezTermPane(tty: String, cli: String, marker: String) -> String? {
         guard FileManager.default.isExecutableFile(atPath: cli),
               let pane = weztermPane(tty: tty, listing: run(cli, ["cli", "list", "--format", "json"])) else { return nil }
         _ = run(cli, ["cli", "activate-pane", "--pane-id", String(pane.id)])
+        setTitle(marker, tty: tty)
         return pane.title
+    }
+
+    /// OSC 2 on the pane's own tty: the terminal shows it as the pane's title.
+    static func setTitle(_ title: String, tty: String) {
+        guard let handle = FileHandle(forWritingAtPath: tty) else { return }
+        handle.write(Data("\u{1B}]2;\(title)\u{07}".utf8))
+        try? handle.close()
     }
 
     private static func run(_ exe: String, _ args: [String]) -> String {
