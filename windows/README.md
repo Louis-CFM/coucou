@@ -192,8 +192,21 @@ isn't looked in (it would start), and a path that exists in two running distros
 goes to the first. The path still has to be an existing file or folder, given in
 full.
 
-Not done yet for WSL: the plan usage gauge isn't set up (that is the Windows
-status line).
+**Plan usage.** Under each user, **Plan usage → Install relay…** puts the relay in
+as the distro's status line, with the same diff and backup. Claude Code hands the
+status line the session's JSON, so the command reads it once, gives it to the
+relay in the background (`coucou-hook --statusline --no-previous`, which only
+sends the plan limits and never delays the line) and to **your own status line**,
+which is run in the distro as before, so it keeps working. The one you had is
+saved beside `settings.json` (`coucou-statusline-previous.json`) and put back
+when you uninstall.
+
+**Stale hooks.** If Coucou moved or was reinstalled somewhere else, the commands
+written in a distro start a relay that is no longer there and do nothing, without
+an error. Settings checks that the relay in each command is the current one and
+says so (the dot goes red and a note asks to reinstall); the Claude Code pill is
+only "connected" when the hooks in WSL would actually run. A Coucou for Linux
+installed inside the distro is its own install and is never called stale.
 
 ### Plan usage
 

@@ -368,8 +368,9 @@ fn hooks_status() -> HookStatus {
 
 /// Pill ID → whether that agent's hooks reach Coucou. Read-only.
 #[tauri::command]
-fn agent_hooks_status() -> std::collections::HashMap<String, bool> {
-    agent_hooks::status()
+async fn agent_hooks_status() -> std::collections::HashMap<String, bool> {
+    // WSL's hooks are looked for too (wsl.exe and a few files over the share).
+    tauri::async_runtime::spawn_blocking(agent_hooks::status).await.unwrap_or_default()
 }
 
 /// Returns the diff the user has to look at before anything is written.
@@ -414,6 +415,22 @@ async fn wsl_hooks_list() -> Vec<wsl::WslDistro> {
 #[tauri::command]
 async fn wsl_hooks_preview(distro: String, user: String, install: bool) -> Result<HookPreview, String> {
     tauri::async_runtime::spawn_blocking(move || hooks::wsl_preview(&distro, &user, install))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// The plan usage gauge's status line in a distro: the diff to look at first.
+#[tauri::command]
+async fn wsl_status_line_preview(distro: String, user: String, install: bool) -> Result<HookPreview, String> {
+    tauri::async_runtime::spawn_blocking(move || hooks::wsl_status_line_preview(&distro, &user, install))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Only ever called from an explicit click, and only for the diff that was shown.
+#[tauri::command]
+async fn wsl_status_line_apply(distro: String, user: String, install: bool, fingerprint: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || hooks::wsl_status_line_write(&distro, &user, install, &fingerprint))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -771,6 +788,8 @@ pub fn run() {
             wsl_hooks_list,
             wsl_hooks_preview,
             wsl_hooks_apply,
+            wsl_status_line_preview,
+            wsl_status_line_apply,
             agent_hooks_list,
             agent_hooks_preview,
             agent_hooks_apply,

@@ -778,7 +778,8 @@ function buildSettings(actions: ViewActions): ViewHost {
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
       clear(claudeBadge);
       claudeBadge.append(
-        dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
+        // The pill's own state, which also counts Claude Code in WSL.
+        dot((State.integrations["integration_claude"]?.configured ?? s.hooksInstalled) ? "#22C55E" : "#F4505E", 6),
         h("span", { text: "Claude Code" }),
       );
       clear(apiBadge);

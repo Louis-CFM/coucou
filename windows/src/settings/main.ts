@@ -249,6 +249,19 @@ function wslChange(distro: string, user: string): Change {
   };
 }
 
+/** The plan usage gauge's status line in a distro; the words are the Windows ones. */
+function wslStatusLineChange(distro: string, user: string): Change {
+  return {
+    preview: (install) => Bridge.wslStatusLinePreview(distro, user, install),
+    apply: (install, fingerprint) => Bridge.wslStatusLineApply(distro, user, install, fingerprint),
+    get installText() { return STATUS_LINE_CHANGE.installText; },
+    get removeText() { return STATUS_LINE_CHANGE.removeText; },
+    get installButton() { return STATUS_LINE_CHANGE.installButton; },
+    get removeButton() { return STATUS_LINE_CHANGE.removeButton; },
+    done: (backup) => STATUS_LINE_CHANGE.done(backup),
+  };
+}
+
 /** One row of the section: a distro's user, or a distro that is not running. */
 function wslSection(hookReady: boolean): HTMLElement {
   const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
@@ -278,11 +291,20 @@ function wslSection(hookReady: boolean): HTMLElement {
         continue;
       }
       for (const user of distro.users) {
+        const name = `${distro.name} · ${user.name}`;
+        // Present but starting a relay that is not this one (Coucou moved or was
+        // reinstalled): they would do nothing, so the dot is not green.
         const row = h("div", { class: "row" },
-          statusDot(user.installed),
-          h("label", { text: `${distro.name} · ${user.name}` }),
+          statusDot(user.installed && !user.stale),
+          h("label", { text: name }),
           h("span", { class: "path", text: user.settingsPath }),
         );
+        if (user.stale) {
+          body.append(h("div", {
+            class: "notice warn",
+            text: t("Coucou in {name} starts a relay that is not the current one (it moved or was reinstalled), so it does nothing. Reinstall it.", { name }),
+          }));
+        }
         const change = wslChange(distro.name, user.name);
         const install = h("button", {
           class: "primary",
@@ -301,7 +323,25 @@ function wslSection(hookReady: boolean): HTMLElement {
             onclick: () => void reviewChange(body, change, false, redraw, redraw),
           }));
         }
-        body.append(row, actions);
+        // The plan usage gauge: the relay as this user's status line, which keeps
+        // running their own.
+        const lineChange = wslStatusLineChange(distro.name, user.name);
+        const line = h("div", { class: "row" },
+          h("label", { text: t("Plan usage") }),
+          statusDot(user.planInstalled && !user.stale),
+          h("span", { class: "hint", text: user.planInstalled ? t("installed") : t("not installed") }),
+        );
+        const lineButton = h("button", {
+          class: user.planInstalled ? "danger" : "primary",
+          text: user.planInstalled ? t("Uninstall relay…") : t("Install relay…"),
+          onclick: () => void reviewChange(body, lineChange, !user.planInstalled, redraw, redraw),
+        });
+        if (!hookReady && !user.planInstalled) {
+          lineButton.disabled = true;
+          lineButton.title = t("The relay isn't installed yet.");
+        }
+        line.append(lineButton);
+        body.append(row, actions, line);
       }
     }
   }
