@@ -366,6 +366,9 @@ struct SettingsView: View {
                 Toggle("Show the number only", isOn: $state.compactAgentsNumberOnly)
                     .disabled(!state.compactShowAgents)
                     .padding(.leading, 20)
+                Toggle("Count working agents only", isOn: $state.compactAgentsWorkingOnly)
+                    .disabled(!state.compactShowAgents)
+                    .padding(.leading, 20)
                 #if !APPSTORE
                 Toggle("Show plan usage in the folded island", isOn: $state.compactShowPlan)
                 #endif

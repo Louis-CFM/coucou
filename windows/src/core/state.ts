@@ -122,6 +122,8 @@ export interface Settings {
   showCodexPlanInNotch: boolean;
   compactShowAgents: boolean;
   compactAgentsNumberOnly: boolean;
+  /** The agents count leaves out idle ones. */
+  compactAgentsWorkingOnly: boolean;
   compactShowPlan: boolean;
   /** Who the chat talks to (see core/providers.ts); picked in the chat view. */
   chatProvider: ProviderId;
@@ -186,6 +188,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showCodexPlanInNotch: false,
   compactShowAgents: true,
   compactAgentsNumberOnly: false,
+  compactAgentsWorkingOnly: false,
   compactShowPlan: true,
   chatProvider: "anthropic",
   chatModels: {},

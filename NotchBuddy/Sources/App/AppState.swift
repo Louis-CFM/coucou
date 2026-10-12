@@ -281,6 +281,10 @@ final class AppState: ObservableObject {
     @Published var compactAgentsNumberOnly: Bool = false {
         didSet { UserDefaults.standard.set(compactAgentsNumberOnly, forKey: "compactAgentsNumberOnly") }
     }
+    // The agents count leaves out idle ones — persisted, off by default
+    @Published var compactAgentsWorkingOnly: Bool = false {
+        didSet { UserDefaults.standard.set(compactAgentsWorkingOnly, forKey: "compactAgentsWorkingOnly") }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
@@ -521,6 +525,7 @@ final class AppState: ObservableObject {
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "compactShowAgents") as? Bool { compactShowAgents = v }
         if let v = ud.object(forKey: "compactAgentsNumberOnly") as? Bool { compactAgentsNumberOnly = v }
+        if let v = ud.object(forKey: "compactAgentsWorkingOnly") as? Bool { compactAgentsWorkingOnly = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }

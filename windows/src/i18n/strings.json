@@ -838,6 +838,17 @@
    "ru": "Coucou отвечает вслух",
    "id": "Coucou merespons dengan suara"
   },
+  "Count working agents only": {
+   "zh-Hans": "只计算工作中的智能体",
+   "hi": "केवल काम कर रहे एजेंट गिनें",
+   "es": "Contar solo los agentes trabajando",
+   "ar": "عدّ الوكلاء العاملين فقط",
+   "fr": "Ne compter que les agents au travail",
+   "bn": "শুধু কাজরত এজেন্ট গণনা করুন",
+   "pt-BR": "Contar só os agentes trabalhando",
+   "ru": "Считать только работающих агентов",
+   "id": "Hitung agen yang bekerja saja"
+  },
   "Custom…": {
    "zh-Hans": "自定义…",
    "hi": "कस्टम…",

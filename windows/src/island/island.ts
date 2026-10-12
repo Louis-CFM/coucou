@@ -1198,7 +1198,7 @@ export class Island {
 
     // Compact stats: agent session count beside Mochi, plan % beside the mini grid
     // (the last text stays while it fades out).
-    const count = showGrid && State.settings.compactShowAgents ? State.tasks.filter((t) => t.source !== "n8n").length : 0;
+    const count = showGrid && State.settings.compactShowAgents ? State.tasks.filter((t) => t.source !== "n8n" && (!State.settings.compactAgentsWorkingOnly || t.state !== "idle")).length : 0;
     const windows = showGrid ? compactPlanWindows() : [];
     if (count || windows.length) {
       this.compactStats.replaceChildren(

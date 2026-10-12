@@ -778,7 +778,7 @@ struct CompactStats: View {
 extension AppState {
     /// Agents and workspaces; services and chat providers are .n8n.
     private var compactAgentStat: CompactStat? {
-        let agents = tasks.filter { $0.source != .n8n }.count
+        let agents = tasks.filter { $0.source != .n8n && (!compactAgentsWorkingOnly || $0.state != .idle) }.count
         guard compactShowAgents, agents > 0 else { return nil }
         let label = compactAgentsNumberOnly ? "" : String(localized: "Agents")
         return CompactStat(label: label, value: "\(agents)", color: "#F5F6F8")
