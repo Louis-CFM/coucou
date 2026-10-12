@@ -242,25 +242,55 @@ fn open_in_vscode(path: Option<String>) -> bool {
     // It arrives in a hook payload: only an existing folder, given by its full
     // path, goes any further. `code` would read `--something` as an option, and
     // xdg-open would launch a file with whatever handles its type.
-    if let Some(p) = path.as_deref() {
-        let p = std::path::Path::new(p);
-        if !(p.is_absolute() && p.is_dir()) {
-            return false;
-        }
-    }
+    let opening = match path.as_deref() {
+        Some(p) => match editor_target(p, true) {
+            Some(opening) => Some(opening),
+            None => return false,
+        },
+        None => None,
+    };
     if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
-        if let Some(p) = path.as_deref() {
-            cmd.arg(p);
+        if let Some(opening) = &opening {
+            cmd.args(&opening.args);
         }
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
         }
     }
-    if let Some(p) = path.as_deref() {
-        platform::reveal_folder(p);
+    if let Some(opening) = &opening {
+        platform::reveal_folder(&opening.local.to_string_lossy());
     }
     false
+}
+
+/// Where a path from a hook payload is, and what `code` is given for it.
+struct EditorTarget {
+    /// The path as this machine reaches it: the one that was given, or for a
+    /// session in WSL its place on the distro's network share.
+    local: std::path::PathBuf,
+    /// The arguments for `code`.
+    args: Vec<std::ffi::OsString>,
+}
+
+/// The target for `path`, if it may go to the editor: an existing folder (or,
+/// with `folder` false, an existing regular file) given by its full path. On
+/// Windows a path that starts with `/` is a session in WSL's: it is looked for in
+/// the running distros and handed over as the distro sees it when VS Code can
+/// open it there (wsl.rs).
+fn editor_target(path: &str, folder: bool) -> Option<EditorTarget> {
+    let exists = |p: &std::path::Path| if folder { p.is_dir() } else { p.is_file() };
+    #[cfg(windows)]
+    if path.starts_with('/') {
+        let (distro, unc) = wsl::resolve_linux_path(path)?;
+        if !exists(&unc) {
+            return None;
+        }
+        let args = wsl::editor_args(&distro, path, &unc, wsl::remote_wsl_installed());
+        return Some(EditorTarget { local: unc, args });
+    }
+    let p = std::path::Path::new(path);
+    (p.is_absolute() && exists(p)).then(|| EditorTarget { local: p.to_path_buf(), args: vec![p.as_os_str().to_owned()] })
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session
@@ -320,28 +350,22 @@ fn open_claude_desktop() -> bool {
     platform::open_claude_desktop()
 }
 
-/// The file behind a live diff, if it may be handed to the editor: an existing
-/// regular file given by its full path. Anything else — a relative path, a
-/// folder, a path `code` could read as an option — goes no further.
-fn diff_file(path: &str) -> Option<&std::path::Path> {
-    let p = std::path::Path::new(path);
-    (p.is_absolute() && p.is_file()).then_some(p)
-}
-
 /// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
 /// otherwise shows its folder. The file itself is never opened by its type —
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
-    let Some(file) = diff_file(&path) else { return false };
+    // A relative path, a folder or a path `code` could read as an option goes no
+    // further; one from a session in WSL is turned into its place on the distro.
+    let Some(file) = editor_target(&path, false) else { return false };
     if let Some(code) = platform::find_on_path("code") {
         let mut cmd = Command::new(code);
-        cmd.arg(file);
+        cmd.args(&file.args);
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
         }
     }
-    if let Some(folder) = file.parent().filter(|d| d.is_dir()) {
+    if let Some(folder) = file.local.parent().filter(|d| d.is_dir()) {
         platform::reveal_folder(&folder.to_string_lossy());
     }
     false
@@ -977,7 +1001,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::diff_file;
+    use super::editor_target;
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
@@ -986,14 +1010,38 @@ mod tests {
         let file = dir.join("edited.ts");
         std::fs::write(&file, "x").unwrap();
 
-        assert!(diff_file(&file.to_string_lossy()).is_some());
+        assert!(editor_target(&file.to_string_lossy(), false).is_some());
         // A folder, a missing file, a relative path or an option never pass.
-        assert!(diff_file(&dir.to_string_lossy()).is_none());
-        assert!(diff_file(&dir.join("missing.ts").to_string_lossy()).is_none());
-        assert!(diff_file("edited.ts").is_none());
-        assert!(diff_file("--help").is_none());
-        assert!(diff_file("").is_none());
+        assert!(editor_target(&dir.to_string_lossy(), false).is_none());
+        assert!(editor_target(&dir.join("missing.ts").to_string_lossy(), false).is_none());
+        assert!(editor_target("edited.ts", false).is_none());
+        assert!(editor_target("--help", false).is_none());
+        assert!(editor_target("", false).is_none());
+
+        // The same rule for a folder ("Open terminal"'s fallback): an existing one.
+        assert!(editor_target(&dir.to_string_lossy(), true).is_some());
+        assert!(editor_target(&file.to_string_lossy(), true).is_none());
+        assert!(editor_target(&dir.join("missing").to_string_lossy(), true).is_none());
+        assert!(editor_target("--help", true).is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Needs a running WSL distro that has the folder and the file below.
+    /// Resolves them as "Open terminal" and the diff's ↗ would, without opening
+    /// anything. `cargo test -- --ignored`.
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "needs a running WSL distro"]
+    fn a_real_wsl_folder_and_file_reach_the_editor() {
+        let folder = editor_target("/home/seguineaud/projets/coucou", true).expect("the folder is found");
+        println!("folder: {:?}\nargs: {:?}", folder.local, folder.args);
+        let file = editor_target("/home/seguineaud/projets/coucou/CHANGELOG.md", false).expect("the file is found");
+        println!("file: {:?}\nargs: {:?}", file.local, file.args);
+        println!("Remote - WSL installed: {}", crate::wsl::remote_wsl_installed());
+        // A file is not a folder, and the other way round; a path nowhere is nothing.
+        assert!(editor_target("/home/seguineaud/projets/coucou/CHANGELOG.md", true).is_none());
+        assert!(editor_target("/home/seguineaud/projets/coucou", false).is_none());
+        assert!(editor_target("/home/seguineaud/nowhere", true).is_none());
     }
 }
