@@ -536,6 +536,8 @@ final class HookServer: @unchecked Sendable {
             }
             RecapStore.shared.userPromptSubmit(sessionId: recapSessionId, pillId: agentId, project: projectName)
             NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
+            // A new turn: the finished card would show the prompt as if it were the answer.
+            if state.mode == .expanded && state.view == .finished && state.focusId == agentId { state.view = .overview }
             if state.isPresent { expandIfNeeded(to: .overview) }
 
         case "PreToolUse":
