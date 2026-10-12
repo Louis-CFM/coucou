@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **"Open terminal" finds the right tab** *(Windows)* — the relay now sends its own parent processes with a session's first events, so the session's window is found even for events that don't wait for an answer, and for sessions in WSL; in Windows Terminal Coucou remembers the tab a prompt was sent from and brings it forward selected
 - **Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL installs the hooks in a distro's own `~/.claude/settings.json`; they run `coucou-hook.exe` through WSL, so sessions in WSL show up in the island and their permissions are answered there. Same diff and dated backup as on Windows, your own hooks stay untouched
 - **Spotify pill on Windows** — the track, the cover, play/pause, previous, next, seek, shuffle, repeat, the volume (Spotify's slider in the Windows volume mixer), and Mochi dances to it, read from Windows' media session (SMTC)
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)

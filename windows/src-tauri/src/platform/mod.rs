@@ -6,6 +6,8 @@
 use std::path::PathBuf;
 
 #[cfg(windows)]
+mod uia;
+#[cfg(windows)]
 mod windows;
 #[cfg(windows)]
 pub use self::windows::*;
@@ -28,6 +30,12 @@ pub struct LocalTime {
     pub hour: u32,
     pub minute: u32,
     pub second: u32,
+}
+
+/// `pid:exe` for each, for the log. Only Windows keeps the names around.
+#[cfg(not(windows))]
+pub fn describe_processes(pids: &[u32]) -> String {
+    pids.iter().map(u32::to_string).collect::<Vec<_>>().join(" ")
 }
 
 /// The user's home directory, where `.claude/settings.json` lives.

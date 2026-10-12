@@ -179,9 +179,10 @@ The command written is the relay's path as the distro sees it
 `[ -x '<relay>' ] && '<relay>' <Event> || true`. If Windows interop is turned off
 in the distro, the hooks do nothing. Your own hooks stay as they are.
 
-Not done yet for WSL: paths in a session are Linux paths, so a diff's ↗ and
-"Open terminal" don't reach the Windows side, and the plan usage gauge isn't
-set up (that is the Windows status line).
+"Open terminal" works for these sessions too, down to the tab (see below). Not
+done yet for WSL: paths in a session are Linux paths, so a diff's ↗ doesn't
+reach the Windows side, and the plan usage gauge isn't set up (that is the
+Windows status line).
 
 ### Plan usage
 
@@ -429,7 +430,15 @@ own window.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
-  process to the terminal or editor that runs it. A session in a classic
+  process to the terminal or editor that runs it. The relay takes that chain
+  itself, while it is alive, and sends it with the session's first events, so it
+  also works for events that don't wait for an answer, and for sessions in WSL
+  (the chain goes through `wsl.exe` up to the terminal). In **Windows Terminal**
+  a window holds many tabs: when a prompt is submitted, the window in front is
+  the session's terminal, so Coucou remembers its selected tab (through UI
+  Automation) and "Open terminal" brings that window forward with that tab
+  selected, found by its runtime ID or, failing that, by a title that is its
+  alone. Elsewhere, only the window comes forward. A session in a classic
   console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
   as it does when `code` is on your `PATH` and nothing was found. Linux walks

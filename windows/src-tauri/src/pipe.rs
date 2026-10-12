@@ -249,28 +249,74 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     pipe.finish();
 }
 
-/// Finds, once per session, the window it runs in — see session_window.rs.
+/// Finds, once per session, the window it runs in — see session_window.rs —
+/// and, in a terminal with tabs, the tab it is in.
 ///
-/// Only while the session is unknown, so the process snapshot is not taken on
-/// every event. The relay must still be running for its parents to be found:
-/// a permission request always is (it waits for us), a quick event may already
-/// have exited, and then a later event of the session tries again.
+/// The relay's parents come with the event (`coucou_procs`): a relay that does
+/// not wait for an answer has exited by the time the event is handled, and a
+/// snapshot taken here would find nothing. An older relay sends nothing, and
+/// then the process is looked at here, as before: that works while it is still
+/// alive, as a permission request's always is.
 fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
     if event == "SessionEnd" {
         session_window::forget(session);
         return;
     }
-    if session_window::known(session) {
-        return;
+    if !session_window::known(session) {
+        find_session_window(pipe, payload, session);
     }
-    let Some(relay) = pipe.client_pid() else { return };
-    let ancestors = crate::platform::process_ancestors(relay);
+    note_session_tab(payload, event, session);
+}
+
+fn find_session_window(pipe: &impl Relay, payload: &Value, session: &str) {
+    let ancestors = match session_window::procs_from_payload(payload) {
+        Some((relay, procs)) => session_window::ancestors(&procs, relay),
+        None => match pipe.client_pid() {
+            Some(relay) => crate::platform::process_ancestors(relay),
+            None => Vec::new(),
+        },
+    };
     // No ancestors: the relay was already gone, so try again next time. Some,
     // but none with a window (a classic console): settled, VS Code it is.
     if !ancestors.is_empty() {
-        session_window::remember(session, crate::platform::window_owners(&ancestors));
+        let owners = crate::platform::window_owners(&ancestors);
+        crate::log::line(format!(
+            "terminal: session {} walks up {} — window of {}",
+            &session[..session.len().min(8)],
+            crate::platform::describe_processes(&ancestors),
+            if owners.is_empty() { "nobody".to_string() } else { crate::platform::describe_processes(&owners) },
+        ));
+        session_window::remember(session, owners);
     }
+}
+
+/// When a prompt is submitted, the window in front is the session's terminal and
+/// its selected tab is the session's. Remembered again at every prompt: a tab
+/// can be moved to another window or recreated. Only when the window in front is
+/// the one the session was found in, so a prompt sent while looking elsewhere
+/// (an editor's terminal panel, a remote shell) never overwrites a tab.
+fn note_session_tab(payload: &Value, event: &str, session: &str) {
+    if !matches!(event, "UserPromptSubmit" | "SessionStart") {
+        return;
+    }
+    let Some((front_pid, hwnd)) = session_window::foreground_from_payload(payload) else { return };
+    let Some(owners) = session_window::lookup(session) else { return };
+    if owners.first() != Some(&front_pid) {
+        return;
+    }
+    #[cfg(windows)]
+    {
+        let session = session.to_string();
+        // UI Automation can take a while on a window with many tabs.
+        tauri::async_runtime::spawn_blocking(move || {
+            if let Some(tab) = crate::platform::capture_tab(hwnd) {
+                session_window::remember_tab(&session, tab);
+            }
+        });
+    }
+    #[cfg(not(windows))]
+    let _ = hwnd;
 }
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
