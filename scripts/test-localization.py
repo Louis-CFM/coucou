@@ -8,7 +8,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "NotchBuddy/Resources/Localizable.xcstrings"
-FORMAT = re.compile(r"%(?:\d+\$)?[-+# 0]*(?:\d+|\*)?(?:\.(?:\d+|\*))?(?:hh|ll|[hljztL])?[@diuoxXfFeEgGaAcCsSp]")
+# shortcut: No catalog placeholder uses the space flag; support it when one is added.
+FORMAT = re.compile(r"%(?:\d+\$)?[-+#0]*(?:\d+|\*)?(?:\.(?:\d+|\*))?(?:hh|ll|[hljztL])?[@diuoxXfFeEgGaAcCsSp]")
 
 
 def units(node, path=()):
@@ -54,6 +55,7 @@ def main():
         for literal in re.findall(r'String\(localized:\s*"((?:\\.|[^"\\])*)"', path.read_text()):
             if "\\(" in literal:  # Xcode generates interpolation keys; format arguments are checked above.
                 continue
+            literal = re.sub(r"\\u\{([0-9a-fA-F]+)\}", lambda match: json.dumps(chr(int(match[1], 16)))[1:-1], literal)
             key = json.loads('"' + literal + '"')
             if key not in catalog["strings"]:
                 errors.append(f"{path.name}: localized key {key!r} is missing from the catalog")
