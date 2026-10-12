@@ -88,6 +88,13 @@ function btn(
   );
 }
 
+/** The last component of a session's folder, either separator; "" without one. */
+function folderOf(cwd: string | null | undefined): string {
+  const cleaned = (cwd ?? "").replace(/[\\/]+$/, "");
+  const idx = Math.max(cleaned.lastIndexOf("\\"), cleaned.lastIndexOf("/"));
+  return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
+}
+
 /** AgentWho — coloured dot + task name + grey label. */
 function agentWho(task: AgentTask | null, label: string): HTMLElement {
   const row = h("div", { class: "who-row" });
@@ -347,11 +354,11 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          // The terminal's own title when the app found the window (Windows):
-          // Claude Code keeps a one-line summary of the session there, which
-          // says more than the kind of pill.
+          // Named after the terminal's title when the app found the window
+          // (Windows), the pill says what the session is about; the project
+          // folder then goes where the kind of pill was.
           task.windowTitle
-            ? h("span", { class: "tool title", text: task.windowTitle })
+            ? h("span", { class: "tool title", text: folderOf(task.sessionCwd) || t(sessionSubtitle(task.id)) })
             : h("span", { class: "tool", text: t(sessionSubtitle(task.id)) }),
         );
         if (task.steps.length > 1) {

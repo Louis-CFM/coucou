@@ -267,12 +267,46 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     if session_window::known(session) {
         return;
     }
-    let Some(relay) = pipe.client_pid() else { return };
-    let ancestors = crate::platform::process_ancestors(relay);
+    // The relay lists its own ancestors in the event (`coucou_ancestors`): it
+    // has usually exited by now — only a permission request waits for us — and
+    // walking up from its PID then found nothing, event after event, so a
+    // session without a permission request never had a window. The list is the
+    // same walk, done while the relay was alive; an older relay is still looked
+    // up by PID.
+    // Windows reads the list; Linux still walks from the relay's PID (the list
+    // is sent there too, for when its focus code takes it up).
+    #[cfg(windows)]
+    let listed: Vec<u32> = payload
+        .get("coucou_ancestors")
+        .and_then(Value::as_array)
+        .map(|list| list.iter().filter_map(Value::as_u64).map(|p| p as u32).collect())
+        .unwrap_or_default();
+    #[cfg(not(windows))]
+    let listed: Vec<u32> = Vec::new();
+    let ancestors = if listed.is_empty() {
+        let Some(relay) = pipe.client_pid() else { return };
+        crate::platform::process_ancestors(relay)
+    } else {
+        #[cfg(windows)]
+        {
+            crate::platform::below_tree_tops(&listed)
+        }
+        #[cfg(not(windows))]
+        {
+            Vec::new()
+        }
+    };
     // No ancestors: the relay was already gone, so try again next time. Some,
     // but none with a window (a classic console): settled, VS Code it is.
     if !ancestors.is_empty() {
-        session_window::remember(session, crate::platform::window_owners(&ancestors));
+        let owners = crate::platform::window_owners(&ancestors);
+        // Once per session, worth a line: "Open terminal" and the title in the
+        // card both depend on it, and a miss is otherwise silent.
+        log::line(match owners.first() {
+            Some(pid) => format!("session window: found, owner pid {pid} (ancestors {ancestors:?})"),
+            None => format!("session window: not found among {ancestors:?}, VS Code or the folder instead"),
+        });
+        session_window::remember(session, owners);
     }
 }
 

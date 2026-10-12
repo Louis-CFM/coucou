@@ -56,7 +56,7 @@ Same pattern with the Linux relay. Coucou copies the relay to `~/.local/share/co
 
 ## Payload format
 
-The relay adds `coucou_agent` to the JSON it forwards. You can also add it yourself if you talk to the socket directly:
+The relay adds `coucou_agent` to the JSON it forwards, and `coucou_ancestors` (Windows, Linux): the PIDs of the processes it runs under, nearest first, so the app can find the terminal window of the session even after the relay has exited. A tool that talks to the socket directly may add it too; without it the app walks up from the sender's PID while it lives. You can also add `coucou_agent` yourself if you talk to the socket directly:
 
 ```json
 {

@@ -393,6 +393,11 @@ pub fn process_ancestors(pid: u32) -> Vec<u32> {
     session_window::ancestors(&process_table(), pid)
 }
 
+/// The ancestors the relay listed, cut below the desktop shell and the services.
+pub fn below_tree_tops(listed: &[u32]) -> Vec<u32> {
+    session_window::below_tops(&process_table(), listed)
+}
+
 /// Visible top-level windows that are nobody's dialog and have a title:
 /// (handle, process ID, title).
 fn top_windows() -> Vec<(isize, u32, String)> {

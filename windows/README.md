@@ -401,8 +401,10 @@ own window.
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
-- "Open terminal" finds the session's window by walking up from the relay's
-  process to the terminal or editor that runs it. When no ancestor owns a
+- "Open terminal" finds the session's window among the processes the relay
+  runs under — the relay lists them with every event (`coucou_ancestors`),
+  since it has usually exited by the time the app looks — up to the terminal
+  or editor that runs the session. When no ancestor owns a
   window — a PowerShell started from the Start menu has Explorer as parent,
   and Windows Terminal only hosts it as Windows 11's default console; a classic
   console window belongs to conhost — the app attaches to the session's

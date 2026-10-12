@@ -297,10 +297,15 @@ function handleHook(island: Island, payload: HookPayload) {
       if (t && cwd) t.sessionCwd = cwd;
       if (t && sessionId) t.sessionId = sessionId;
     } else {
-      upsert(agentId, projectName, cwd, sessionId);
+      // The pill is named after the terminal's title when the app found the
+      // window (Claude Code keeps a one-line summary of the session there),
+      // after the project folder otherwise. The title follows the session as
+      // Claude Code rewrites it: the newest one wins, an event without it keeps
+      // the last known one.
+      const known = State.tasks.find((x) => x.id === agentId);
+      const title = windowTitle ?? (known?.sessionId === sessionId ? known?.windowTitle : null) ?? null;
+      upsert(agentId, title ?? projectName, cwd, sessionId);
     }
-    // The terminal's title follows the session (Claude Code rewrites it as it
-    // works): the newest one wins, an event without it changes nothing.
     if (windowTitle) {
       const t = State.tasks.find((x) => x.id === agentId);
       if (t) t.windowTitle = windowTitle;
