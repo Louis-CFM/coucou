@@ -63,6 +63,30 @@ pub fn install(app: &AppHandle) {
         if let Err(err) = core.add_WebMessageReceived(&handler, &mut token) {
             crate::log::line(format!("file drop: cannot listen: {err}"));
         }
+        // The Maki conversation (src/voice/eleven.ts) needs the microphone. The
+        // island only ever shows Coucou's own page, so its request is granted
+        // without WebView2's pop-up, which a notch window can't show; nothing
+        // else is.
+        let permission = webview2_com::PermissionRequestedEventHandler::create(Box::new(|_, args| {
+            use webview2_com::Microsoft::Web::WebView2::Win32::{
+                COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+            };
+            let Some(args) = args else { return Ok(()) };
+            let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+            args.PermissionKind(&mut kind)?;
+            let mut uri = PWSTR::null();
+            args.Uri(&mut uri)?;
+            let uri = take_pwstr(uri);
+            let ours = uri.starts_with("http://tauri.localhost") || uri.starts_with("tauri://") || uri.starts_with("http://localhost:1420");
+            if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE && ours {
+                args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+            }
+            Ok(())
+        }));
+        let mut ptoken = 0i64;
+        if let Err(err) = core.add_PermissionRequested(&permission, &mut ptoken) {
+            crate::log::line(format!("microphone: cannot listen: {err}"));
+        }
     });
     if let Err(err) = result {
         crate::log::line(format!("file drop: {err}"));

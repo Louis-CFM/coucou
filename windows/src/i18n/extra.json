@@ -4680,6 +4680,138 @@
    "pt-BR": "Desculpe, não entendi. Tente “Maki, pause the music” ou “Maki, what time is it”.",
    "ru": "Извините, не расслышал. Попробуйте «Maki, pause the music» или «Maki, what time is it».",
    "id": "Maaf, aku tidak menangkapnya. Coba “Maki, pause the music” atau “Maki, what time is it”."
+  },
+  "ElevenLabs API key": {
+   "zh-Hans": "ElevenLabs API 密钥",
+   "hi": "ElevenLabs API कुंजी",
+   "es": "Clave de API de ElevenLabs",
+   "ar": "مفتاح ElevenLabs API",
+   "fr": "Clé API ElevenLabs",
+   "bn": "ElevenLabs API কী",
+   "pt-BR": "Chave de API da ElevenLabs",
+   "ru": "API-ключ ElevenLabs",
+   "id": "Kunci API ElevenLabs"
+  },
+  "ElevenLabs agent": {
+   "zh-Hans": "ElevenLabs 代理",
+   "hi": "ElevenLabs एजेंट",
+   "es": "Agente de ElevenLabs",
+   "ar": "وكيل ElevenLabs",
+   "fr": "Agent ElevenLabs",
+   "bn": "ElevenLabs এজেন্ট",
+   "pt-BR": "Agente da ElevenLabs",
+   "ru": "Агент ElevenLabs",
+   "id": "Agen ElevenLabs"
+  },
+  "After the wake word, talk freely with your ElevenLabs agent: it answers out loud, runs Coucou's actions and hands real work to Hermes on this PC. Your voice goes to ElevenLabs once Maki is awake; uses your ElevenLabs credits.": {
+   "zh-Hans": "唤醒词之后，与你的 ElevenLabs 代理自由交谈：它会出声回答、执行 Coucou 的操作，并把实际工作交给这台电脑上的 Hermes。Maki 被唤醒后，你的声音会发送到 ElevenLabs；会消耗你的 ElevenLabs 额度。",
+   "hi": "वेक वर्ड के बाद अपने ElevenLabs एजेंट से खुलकर बात करें: यह बोलकर जवाब देता है, Coucou के काम करता है और असली काम इस PC पर Hermes को देता है। Maki जागने के बाद आपकी आवाज़ ElevenLabs को जाती है; आपके ElevenLabs क्रेडिट इस्तेमाल होते हैं।",
+   "es": "Tras la palabra de activación, habla libremente con tu agente de ElevenLabs: responde en voz alta, ejecuta acciones de Coucou y pasa el trabajo real a Hermes en este PC. Tu voz va a ElevenLabs cuando Maki despierta; usa tus créditos de ElevenLabs.",
+   "ar": "بعد كلمة التنبيه، تحدّث بحرية مع وكيل ElevenLabs: يجيب بصوت عالٍ وينفّذ إجراءات Coucou ويُسلّم العمل الفعلي إلى Hermes على هذا الحاسوب. يذهب صوتك إلى ElevenLabs بعد أن يستيقظ Maki؛ ويستهلك رصيد ElevenLabs.",
+   "fr": "Après le mot de réveil, parlez librement à votre agent ElevenLabs : il répond à voix haute, lance les actions de Coucou et confie le vrai travail à Hermes sur ce PC. Votre voix part chez ElevenLabs une fois Maki réveillé ; utilise vos crédits ElevenLabs.",
+   "bn": "ওয়েক ওয়ার্ডের পর আপনার ElevenLabs এজেন্টের সাথে খোলাখুলি কথা বলুন: এটি জোরে উত্তর দেয়, Coucou-র কাজ চালায় এবং আসল কাজ এই PC-র Hermes-কে দেয়। Maki জেগে উঠলে আপনার কণ্ঠ ElevenLabs-এ যায়; আপনার ElevenLabs ক্রেডিট খরচ হয়।",
+   "pt-BR": "Depois da palavra de ativação, converse à vontade com seu agente da ElevenLabs: ele responde em voz alta, executa ações do Coucou e passa o trabalho de verdade ao Hermes neste PC. Sua voz vai para a ElevenLabs quando a Maki desperta; usa seus créditos da ElevenLabs.",
+   "ru": "После слова активации говорите свободно со своим агентом ElevenLabs: он отвечает вслух, выполняет действия Coucou и передаёт настоящую работу Hermes на этом ПК. После пробуждения Maki ваш голос уходит в ElevenLabs; расходуются кредиты ElevenLabs.",
+   "id": "Setelah kata pemicu, bicaralah bebas dengan agen ElevenLabs-mu: ia menjawab dengan suara, menjalankan aksi Coucou dan menyerahkan pekerjaan nyata ke Hermes di PC ini. Suaramu dikirim ke ElevenLabs setelah Maki bangun; memakai kredit ElevenLabs-mu."
+  },
+  "Asking Hermes…": {
+   "zh-Hans": "正在询问 Hermes…",
+   "hi": "Hermes से पूछ रहा है…",
+   "es": "Preguntando a Hermes…",
+   "ar": "أسأل Hermes…",
+   "fr": "Je demande à Hermes…",
+   "bn": "Hermes-কে জিজ্ঞেস করছি…",
+   "pt-BR": "Perguntando ao Hermes…",
+   "ru": "Спрашиваю Hermes…",
+   "id": "Bertanya ke Hermes…"
+  },
+  "Coucou can't use the microphone.": {
+   "zh-Hans": "Coucou 无法使用麦克风。",
+   "hi": "Coucou माइक्रोफ़ोन इस्तेमाल नहीं कर पा रहा।",
+   "es": "Coucou no puede usar el micrófono.",
+   "ar": "لا يستطيع Coucou استخدام الميكروفون.",
+   "fr": "Coucou ne peut pas utiliser le micro.",
+   "bn": "Coucou মাইক্রোফোন ব্যবহার করতে পারছে না।",
+   "pt-BR": "O Coucou não consegue usar o microfone.",
+   "ru": "Coucou не может использовать микрофон.",
+   "id": "Coucou tidak bisa memakai mikrofon."
+  },
+  "You": {
+   "zh-Hans": "你",
+   "hi": "आप",
+   "es": "Tú",
+   "ar": "أنت",
+   "fr": "Vous",
+   "bn": "আপনি",
+   "pt-BR": "Você",
+   "ru": "Вы",
+   "id": "Kamu"
+  },
+  "No ElevenLabs API key — add it in Settings → Voice.": {
+   "zh-Hans": "没有 ElevenLabs API 密钥 — 请在“设置 → 语音”中添加。",
+   "hi": "ElevenLabs API कुंजी नहीं है — सेटिंग्स → आवाज़ में जोड़ें।",
+   "es": "No hay clave de API de ElevenLabs: añádela en Ajustes → Voz.",
+   "ar": "لا يوجد مفتاح ElevenLabs API — أضفه في الإعدادات ← الصوت.",
+   "fr": "Pas de clé API ElevenLabs — ajoutez-la dans Réglages → Voix.",
+   "bn": "ElevenLabs API কী নেই — সেটিংস → ভয়েস-এ যোগ করুন।",
+   "pt-BR": "Sem chave de API da ElevenLabs — adicione em Ajustes → Voz.",
+   "ru": "Нет API-ключа ElevenLabs — добавьте его в Настройки → Голос.",
+   "id": "Tidak ada kunci API ElevenLabs — tambahkan di Setelan → Suara."
+  },
+  "Can't reach ElevenLabs.": {
+   "zh-Hans": "无法连接 ElevenLabs。",
+   "hi": "ElevenLabs तक नहीं पहुँच पा रहे।",
+   "es": "No se puede conectar con ElevenLabs.",
+   "ar": "تعذّر الوصول إلى ElevenLabs.",
+   "fr": "Impossible de joindre ElevenLabs.",
+   "bn": "ElevenLabs-এ পৌঁছানো যাচ্ছে না।",
+   "pt-BR": "Não foi possível conectar à ElevenLabs.",
+   "ru": "Не удаётся связаться с ElevenLabs.",
+   "id": "Tidak bisa menjangkau ElevenLabs."
+  },
+  "ElevenLabs refused the key or the agent.": {
+   "zh-Hans": "ElevenLabs 拒绝了密钥或代理。",
+   "hi": "ElevenLabs ने कुंजी या एजेंट को अस्वीकार कर दिया।",
+   "es": "ElevenLabs rechazó la clave o el agente.",
+   "ar": "رفض ElevenLabs المفتاح أو الوكيل.",
+   "fr": "ElevenLabs a refusé la clé ou l'agent.",
+   "bn": "ElevenLabs কী বা এজেন্ট প্রত্যাখ্যান করেছে।",
+   "pt-BR": "A ElevenLabs recusou a chave ou o agente.",
+   "ru": "ElevenLabs отклонил ключ или агента.",
+   "id": "ElevenLabs menolak kunci atau agennya."
+  },
+  "Hermes isn't installed on this PC.": {
+   "zh-Hans": "这台电脑上没有安装 Hermes。",
+   "hi": "इस PC पर Hermes इंस्टॉल नहीं है।",
+   "es": "Hermes no está instalado en este PC.",
+   "ar": "Hermes غير مثبّت على هذا الحاسوب.",
+   "fr": "Hermes n'est pas installé sur ce PC.",
+   "bn": "এই PC-তে Hermes ইনস্টল করা নেই।",
+   "pt-BR": "O Hermes não está instalado neste PC.",
+   "ru": "Hermes не установлен на этом ПК.",
+   "id": "Hermes belum terpasang di PC ini."
+  },
+  "Hermes took too long.": {
+   "zh-Hans": "Hermes 用时太久。",
+   "hi": "Hermes ने बहुत देर लगा दी।",
+   "es": "Hermes tardó demasiado.",
+   "ar": "استغرق Hermes وقتًا طويلًا.",
+   "fr": "Hermes a mis trop de temps.",
+   "bn": "Hermes খুব দেরি করেছে।",
+   "pt-BR": "O Hermes demorou demais.",
+   "ru": "Hermes слишком долго отвечал.",
+   "id": "Hermes terlalu lama."
+  },
+  "Hermes gave no answer.": {
+   "zh-Hans": "Hermes 没有给出回答。",
+   "hi": "Hermes ने कोई जवाब नहीं दिया।",
+   "es": "Hermes no respondió.",
+   "ar": "لم يُجب Hermes.",
+   "fr": "Hermes n'a pas répondu.",
+   "bn": "Hermes কোনো উত্তর দেয়নি।",
+   "pt-BR": "O Hermes não respondeu.",
+   "ru": "Hermes не ответил.",
+   "id": "Hermes tidak memberi jawaban."
   }
  }
 }

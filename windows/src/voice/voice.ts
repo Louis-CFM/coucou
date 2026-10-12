@@ -13,8 +13,9 @@ import { Spotify } from "../core/spotify";
 import { Todos } from "../core/extras";
 import { parseIntent, openTarget, voicePhrases, type Intent } from "../core/intents";
 import { availablePills } from "../core/pills";
-import { Live, endLive, showLive, type LiveHost } from "../island/live";
+import { Live, endLive, setVoiceClick, showLive, type LiveHost } from "../island/live";
 import { startFocus, stopFocus } from "../views/extras";
+import { endConversation, startConversation, talking } from "./eleven";
 import { t } from "../i18n/i18n";
 
 export interface VoiceHost extends LiveHost {
@@ -59,7 +60,7 @@ function findPill(name: string): string | null {
   return (exact ?? all.find((p) => p.name.toLowerCase().replace(/[^a-z0-9]+/g, "").includes(n)))?.id ?? null;
 }
 
-function planText(): string {
+export function planText(): string {
   const u = State.planUsage;
   if (!u?.fiveHour && !u?.sevenDay) return t("I don't have your Claude plan numbers yet. Open the plan card and tap refresh.");
   const mins = (at: number) => Math.max(0, Math.round((at - Date.now()) / 60000));
@@ -69,7 +70,7 @@ function planText(): string {
   return parts.join(" ");
 }
 
-function agentsText(): string {
+export function agentsText(): string {
   const busy = State.tasks.filter((x) => !x.isIntegration && x.state !== "idle");
   if (busy.length === 0) return t("No agent is working right now.");
   return busy.map((x) => `${x.name}: ${x.steps.at(-1) ?? x.state}`).join(". ");
@@ -183,8 +184,25 @@ async function run(intent: Intent, heard: string) {
 
 // ── Events from voice.rs ──────────────────────────────────────────────────────
 
+/** The ElevenLabs agent answers when its key is set and Settings → Voice says so. */
+async function syncConverse() {
+  const plus = State.settings.plus;
+  const on = !!plus?.eleven && (await Bridge.secretPresent("elevenlabs-api-key")) === true;
+  void Bridge.voiceConverse(on);
+}
+
 export function registerVoice(h: VoiceHost) {
   host = h;
+  void syncConverse();
+  setVoiceClick(() => {
+    if (talking()) endConversation();
+  });
+  void onEvent("settings-changed", () => void syncConverse());
+  // The wake word, with the ElevenLabs agent on: a conversation instead of a command.
+  void onEvent<string>("voice-wake", () => {
+    Sound.play("peek");
+    void startConversation(h, State.settings.plus?.elevenAgent ?? "");
+  });
   // The on-device recogniser only hears these; pills come and go with the build.
   void Bridge.voiceSetPhrases(voicePhrases(availablePills().map((p) => p.name)));
   void onEvent<string>("voice-state", (s) => {

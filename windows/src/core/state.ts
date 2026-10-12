@@ -180,6 +180,10 @@ export interface PlusPrefs {
   voiceLanguage: string;
   speakAnswers: boolean;
   voiceName: string;
+  /** Maki talks through the user's ElevenLabs agent (key in the credential store). */
+  eleven: boolean;
+  /** That agent's id; "" is the one made for Maki. */
+  elevenAgent: string;
 }
 
 /** The on/off ones, for the toggles in Settings. */
@@ -189,6 +193,7 @@ export const DEFAULT_PLUS: PlusPrefs = {
   volumeHud: true, brightnessHud: true, batteryAlerts: true, clipboardHistory: true, alwaysVisible: false,
   icloudBridge: false, shareCopiesToIphone: false, pushOnlyWhenAway: true, notifications: false,
   voice: false, wakeWord: "Maki", voiceLanguage: "", speakAnswers: true, voiceName: "",
+  eleven: false, elevenAgent: "",
 };
 
 export const DEFAULT_SETTINGS: Settings = {

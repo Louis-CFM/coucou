@@ -996,6 +996,22 @@ function islandExtrasSection(): HTMLElement {
   );
 }
 
+/** The ElevenLabs API key, kept in the credential store like every key. */
+function elevenKeyRow(): HTMLElement {
+  const input = h("input", { type: "password", placeholder: t("ElevenLabs API key"), autocomplete: "off", spellcheck: "false", style: "flex:1 1 auto;min-width:0" }) as HTMLInputElement;
+  const dotEl = statusDot(false);
+  void Bridge.secretPresent("elevenlabs-api-key").then((ok) => { dotEl.style.background = ok ? "#22c55e" : "#f4505e"; });
+  const saveBtn = h("button", { text: t("Save") });
+  saveBtn.addEventListener("click", async () => {
+    const value = input.value.trim();
+    await Bridge.secretSet("elevenlabs-api-key", value);
+    input.value = "";
+    dotEl.style.background = value ? "#22c55e" : "#f4505e";
+    void save();
+  });
+  return h("div", { class: "row" }, h("label", { text: t("API key") }), input, saveBtn, dotEl);
+}
+
 /** Settings → Voice (Windows): the wake word, the language, the voice that answers. */
 function voiceSection(): HTMLElement {
   const plus = (): PlusPrefs => (settings.plus = { ...DEFAULT_PLUS, ...settings.plus });
@@ -1029,6 +1045,9 @@ function voiceSection(): HTMLElement {
     h("div", { class: "row" }, h("label", { text: t("Speak answers") }), toggle(plus().speakAnswers, (v) => { plus().speakAnswers = v; void save(); })),
     h("div", { class: "row" }, h("label", { text: t("Voice") }), voicePick),
     h("div", { class: "row" }, speechSettings),
+    h("div", { class: "row" }, h("label", { text: t("ElevenLabs agent") }), toggle(plus().eleven, (v) => { plus().eleven = v; void save(); })),
+    h("div", { class: "hint", text: t("After the wake word, talk freely with your ElevenLabs agent: it answers out loud, runs Coucou's actions and hands real work to Hermes on this PC. Your voice goes to ElevenLabs once Maki is awake; uses your ElevenLabs credits.") }),
+    elevenKeyRow(),
     h("div", { class: "hint", text: t("Commands need Windows' online speech recognition: turn it on in Settings → Privacy & security → Speech.") }),
   );
 }

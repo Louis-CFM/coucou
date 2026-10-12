@@ -103,6 +103,10 @@ pub struct PlusPrefs {
     pub speak_answers: bool,
     /// The Windows voice to speak with; empty is the default one.
     pub voice_name: String,
+    /// Maki talks through the user's ElevenLabs agent (eleven.rs).
+    pub eleven: bool,
+    /// That agent's id; empty is the one made for Maki.
+    pub eleven_agent: String,
 }
 
 impl Default for PlusPrefs {
@@ -118,6 +122,8 @@ impl Default for PlusPrefs {
             voice_language: String::new(),
             speak_answers: true,
             voice_name: String::new(),
+            eleven: false,
+            eleven_agent: String::new(),
         }
     }
 }
@@ -453,7 +459,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
-  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true, "voice": true, "wakeWord": "Jarvis", "voiceLanguage": "en-GB", "speakAnswers": false, "voiceName": "Microsoft Hazel" }
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true, "voice": true, "wakeWord": "Jarvis", "voiceLanguage": "en-GB", "speakAnswers": false, "voiceName": "Microsoft Hazel", "eleven": true, "elevenAgent": "agent_x" }
 }"##;
 
     fn custom() -> Value {

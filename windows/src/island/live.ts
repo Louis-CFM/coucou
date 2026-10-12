@@ -74,6 +74,12 @@ export function showLive(host: LiveHost, e: LiveEvent, duration?: number) {
   State.notify();
 }
 
+/** Set by voice.ts: a click on the conversation card. */
+export let onVoiceClick: (() => void) | null = null;
+export function setVoiceClick(f: () => void) {
+  onVoiceClick = f;
+}
+
 /** Set by registerLiveHandlers: the call was answered from the island. */
 let onAnswered: (() => void) | null = null;
 /** Who the ringing call is from. */
@@ -230,7 +236,8 @@ export function buildLive(): { el: HTMLElement; sync(expanded: boolean): void } 
         label.textContent = e.text;
         // A call opens Phone Link, where it is answered or declined.
         el.title = e.text;
-        el.onclick = null;
+        // A conversation with Maki: a click on the card ends it.
+        el.onclick = e.kind === "voice" ? () => onVoiceClick?.() : null;
         return;
       }
       if (e.kind === "phone") {

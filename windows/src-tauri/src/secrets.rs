@@ -22,6 +22,7 @@ pub const KNOWN_KEYS: &[&str] = &[
     "calcom-api-key",
     "calendar-ics-url",
     "ntfy-topic",
+    "elevenlabs-api-key",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

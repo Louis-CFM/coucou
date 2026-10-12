@@ -235,6 +235,14 @@ export const Bridge = {
   voiceListenNow: () => call<boolean>("voice_listen_now"),
   /** Maki: the phrases the on-device recogniser listens for. */
   voiceSetPhrases: (phrases: string[]) => call<void>("voice_set_phrases", { phrases }),
+  /** Maki talks through the ElevenLabs agent (true) or the phrase list (false). */
+  voiceConverse: (on: boolean) => call<void>("voice_converse", { on }),
+  /** The conversation is over: the wake word listener takes the mic back. */
+  voiceConversationEnded: () => call<void>("voice_conversation_ended"),
+  /** A one-time WebSocket URL for the user's ElevenLabs agent (eleven.rs). */
+  elevenSignedUrl: (agentId: string | null) => call<string>("eleven_signed_url", { agentId }),
+  /** The agent's ask_hermes tool: one request to Hermes on this PC. */
+  askHermes: (request: string) => call<string>("ask_hermes", { request }),
   /** The volume keys' own step: up, down or mute, with the island's HUD. */
   volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */

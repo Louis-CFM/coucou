@@ -44,6 +44,8 @@ mod notify;
 mod callctl;
 #[cfg(windows)]
 mod voice;
+#[cfg(windows)]
+mod eleven;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -783,6 +785,14 @@ pub fn run() {
             voice::voice_listen_now,
             #[cfg(windows)]
             voice::voice_set_phrases,
+            #[cfg(windows)]
+            voice::voice_converse,
+            #[cfg(windows)]
+            voice::voice_conversation_ended,
+            #[cfg(windows)]
+            eleven::eleven_signed_url,
+            #[cfg(windows)]
+            eleven::ask_hermes,
             #[cfg(windows)]
             sysevents::volume_key_action,
             #[cfg(windows)]

@@ -34,6 +34,10 @@ static GENERATION: AtomicU64 = AtomicU64::new(0);
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(Default::default);
 /// The island asked to listen now (its mic button), without the wake word.
 static ASK: AtomicBool = AtomicBool::new(false);
+/// Maki talks through the ElevenLabs agent: the wake word opens a conversation.
+static CONVERSE: AtomicBool = AtomicBool::new(false);
+/// A conversation is on: the mic is the page's until it ends.
+static TALKING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Default)]
 struct Config {
@@ -152,7 +156,18 @@ fn run(generation: u64) -> windows::core::Result<()> {
     crate::log::line(format!("voice: listening for the wake word ({} commands)", config.commands.len()));
     emit("voice-state", "waiting");
     while current(generation) {
-        match listen(&config, generation)? {
+        let heard = listen(&config, generation)?;
+        if heard.is_some() && CONVERSE.load(Ordering::SeqCst) {
+            // The page opens the conversation; the listener waits it out.
+            TALKING.store(true, Ordering::SeqCst);
+            crate::log::line("voice: conversation");
+            emit("voice-wake", heard.clone().unwrap_or_default());
+            while TALKING.load(Ordering::SeqCst) && current(generation) {
+                std::thread::sleep(Duration::from_millis(150));
+            }
+            continue;
+        }
+        match heard {
             None => break,
             // The wake word and a command in one breath.
             Some(rest) if !rest.is_empty() => {
@@ -277,6 +292,18 @@ pub fn voice_set_phrases(phrases: Vec<String>) {
         c.commands = list;
     }
     restart();
+}
+
+/// The page talks through the ElevenLabs agent (true) or the phrase list (false).
+#[tauri::command]
+pub fn voice_converse(on: bool) {
+    CONVERSE.store(on, Ordering::SeqCst);
+}
+
+/// The conversation is over: the wake word listener takes the mic back.
+#[tauri::command]
+pub fn voice_conversation_ended() {
+    TALKING.store(false, Ordering::SeqCst);
 }
 
 /// The island's mic button: listen for a command now, without the wake word.
