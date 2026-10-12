@@ -12679,6 +12679,34 @@
         }
       }
     },
+    "hooks.codex.approvals": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "الرد على موافقات Codex في Coucou" } },
+        "bn": { "stringUnit": { "state": "translated", "value": "Coucou-তে Codex অনুমোদনের উত্তর দিন" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Answer Codex approvals in Coucou" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Responder aprobaciones de Codex en Coucou" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Répondre aux autorisations Codex dans Coucou" } },
+        "hi": { "stringUnit": { "state": "translated", "value": "Coucou में Codex अनुमोदनों का जवाब दें" } },
+        "id": { "stringUnit": { "state": "translated", "value": "Jawab persetujuan Codex di Coucou" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Responder às aprovações do Codex no Coucou" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Отвечать на запросы Codex в Coucou" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "在 Coucou 中处理 Codex 审批" } }
+      }
+    },
+    "hooks.codex.approvals.description": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "عند إيقافه، يحتفظ Codex بتدفق الموافقات والمراجعة التلقائية الخاص به. عند تشغيله، يعرض Coucou خياري السماح أو الرفض لكل طلب." } },
+        "bn": { "stringUnit": { "state": "translated", "value": "বন্ধ থাকলে Codex তার নিজস্ব অনুমোদন ও স্বয়ংক্রিয় পর্যালোচনা ব্যবহার করে। চালু থাকলে Coucou প্রতিটি অনুরোধে অনুমতি বা প্রত্যাখ্যান দেখায়।" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Off keeps Codex’s native approval and auto-review flow. On lets Coucou show Allow or Deny for each request." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Desactivado conserva el flujo nativo de aprobación y revisión automática de Codex. Activado permite que Coucou muestre Permitir o Denegar para cada solicitud." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Désactivé, Codex conserve son flux natif d’autorisation et de révision automatique. Activé, Coucou affiche Autoriser ou Refuser pour chaque demande." } },
+        "hi": { "stringUnit": { "state": "translated", "value": "बंद होने पर Codex अपनी मूल अनुमति और स्वचालित समीक्षा प्रक्रिया रखता है। चालू होने पर Coucou हर अनुरोध के लिए अनुमति दें या अस्वीकार करें दिखाता है।" } },
+        "id": { "stringUnit": { "state": "translated", "value": "Saat nonaktif, Codex tetap memakai alur persetujuan dan tinjauan otomatis bawaannya. Saat aktif, Coucou menampilkan Izinkan atau Tolak untuk setiap permintaan." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Desativado mantém o fluxo nativo de aprovação e revisão automática do Codex. Ativado permite que o Coucou mostre Permitir ou Negar para cada solicitação." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Если выключено, Codex использует собственные подтверждения и автоматическую проверку. Если включено, Coucou показывает Разрешить или Отклонить для каждого запроса." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "关闭时保留 Codex 原生审批和自动审查流程。开启后，Coucou 会为每个请求显示允许或拒绝。" } }
+      }
+    },
     "hooks.codex.installed": {
       "localizations": {
         "ar": {
