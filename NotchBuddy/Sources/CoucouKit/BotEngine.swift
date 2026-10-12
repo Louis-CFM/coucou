@@ -1334,7 +1334,13 @@ final class BotEngine: ObservableObject {
 
     // MARK: - Private draw helpers
 
+    private var cachedBodyPath: (rx: CGFloat, ry: CGFloat, morph: CGFloat, R: CGFloat, path: Path)?
+
     private func mochiPath(rx: CGFloat, ry: CGFloat, morph: CGFloat, R: CGFloat) -> Path {
+        if let cached = cachedBodyPath,
+           cached.rx == rx, cached.ry == ry, cached.morph == morph, cached.R == R {
+            return cached.path
+        }
         let n = 72
         let expN: CGFloat = 2.0 / 2.7
         // Target mailbox dims (spec: 1.0R wide, 0.94R tall, 0.42R corner radius)
@@ -1360,6 +1366,7 @@ final class BotEngine: ObservableObject {
             else { path.addLine(to: CGPoint(x: px, y: py)) }
         }
         path.closeSubpath()
+        cachedBodyPath = (rx, ry, morph, R, path)
         return path
     }
 
