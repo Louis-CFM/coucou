@@ -493,6 +493,7 @@ own window.
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
+
 - **Music** (Settings → Integrations, Windows only) takes the Mac's Apple Music
   pill and shows whatever plays in the system media controls: Spotify, Apple
   Music, YouTube Music or any other player, with play/pause and skip. Mochi
@@ -528,6 +529,20 @@ own window.
   see `android/README.md` and `relay/README.md`. Settings → Phone also offers
   the upstream phone link: an encrypted LAN pairing for the official
   `com.coucou.android` app (`phone_link/`).
+
+- Apple Music, the one pill from the Mac catalog with nothing behind it here,
+  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
+  nothing to read it from yet.
+- Settings → General → Calls reads PipeWire on Linux (`pw-dump --monitor`):
+  another app's stream on a microphone, on a PipeWire camera, or on a shared
+  screen. A camera opened directly as `/dev/video*`, outside PipeWire, is not
+  seen. Windows has nothing behind it yet, so no call is ever detected there.
+- Not in this version: sending a dropped file by email and dragging Mochi onto
+  a window to attach it as context. On the Mac, email goes through Resend or
+  Apple Mail's scripting; neither has a safe equivalent that attaches a file
+  here, and the drop card would need a third button it doesn't have.
+- Cal.com shows the next bookings as a list rather than the Mac's calendar.
+
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is

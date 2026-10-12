@@ -116,12 +116,15 @@ class SoundEngine {
     if (this.master) this.master.gain.value = this.volume;
   }
 
+  /** A call is on: no sound at all until it ends. */
+  quiet = false;
+
   setEnabled(on: boolean) {
     this.enabled = on;
   }
 
   play(name: SoundName | string) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.quiet) return;
     const ctx = this.ctx;
     const master = this.master;
     const buf = this.buffers.get(name);

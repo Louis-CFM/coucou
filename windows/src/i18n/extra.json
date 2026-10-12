@@ -5701,6 +5701,18 @@
       "ru": "Сдвиньте остров влево или вправо или перетащите его мышью туда, где удобно, чтобы он не закрывал вкладки браузера или заголовок окна. «По центру» возвращает его наверх.",
       "id": "Geser pulau ke kiri atau kanan, atau seret dengan mouse ke tempat yang Anda suka, menjauh dari tab browser atau judul jendela. Ke tengah mengembalikannya ke atas.",
       "cs": "Posuňte ostrůvek doleva nebo doprava, nebo ho přetáhněte myší tam, kam vám vyhovuje, mimo cestu záložkám prohlížeče nebo titulku okna. „Na střed\" ho vrátí nahoru."
+    },
+    "The island hides and goes silent while one of these is in use.": {
+      "zh-Hans": "其中任何一项使用时，岛会隐藏并保持静音。",
+      "hi": "इनमें से कोई भी उपयोग में होने पर आइलैंड छिप जाता है और शांत रहता है।",
+      "es": "La isla se oculta y queda en silencio mientras uno de estos está en uso.",
+      "ar": "تختفي الجزيرة وتصمت أثناء استخدام أي من هذه.",
+      "fr": "L'île se cache et se tait tant que l'un de ces éléments est utilisé.",
+      "bn": "এগুলোর কোনোটি ব্যবহৃত হলে আইল্যান্ড লুকিয়ে থাকে এবং নীরব থাকে।",
+      "pt-BR": "A ilha se esconde e fica em silêncio enquanto um destes está em uso.",
+      "ru": "Остров скрывается и молчит, пока что-то из этого используется.",
+      "id": "Pulau bersembunyi dan diam selama salah satunya digunakan.",
+      "cs": "Ostrůvek se skryje a ztlumí, dokud je některá z těchto věcí v provozu."
     }
   }
 }

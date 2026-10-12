@@ -49014,6 +49014,12 @@
             "state": "translated",
             "value": "由同时使用麦克风或摄像头的应用共享的屏幕。录屏或截图工具不算。"
           }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obrazovka sdílená aplikací, která zároveň používá mikrofon nebo kameru. Rekorder nebo nástroj na snímky obrazovky se nepočítá."
+          }
         }
       }
     },
@@ -49077,6 +49083,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "通话"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hovory"
           }
         }
       }
@@ -49142,6 +49154,12 @@
             "state": "translated",
             "value": "摄像头开启"
           }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera zapnutá"
+          }
         }
       }
     },
@@ -49205,6 +49223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "麦克风开启"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon zapnutý"
           }
         }
       }
@@ -49270,6 +49294,12 @@
             "state": "translated",
             "value": "屏幕共享"
           }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sdílení obrazovky"
+          }
         }
       }
     },
@@ -49333,6 +49363,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "其中任何一项使用时，岛会隐藏并保持静音。数据来自菜单栏的摄像头、麦克风和屏幕指示器。"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostrůvek se skryje a ztlumí, dokud je některá z těchto věcí v provozu. Čte se z indikátorů kamery, mikrofonu a obrazovky v řádku nabídek."
           }
         }
       }

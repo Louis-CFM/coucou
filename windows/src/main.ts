@@ -96,6 +96,7 @@ async function main() {
     }
   });
 
+
   const checkZoom = async () => {
     const dpr = window.devicePixelRatio || 1;
     await Bridge.fitZoom(dpr);
@@ -123,6 +124,16 @@ async function main() {
   });
   // The screenshot roam is over: Mochi is back, with the screenshot if it took one.
   await onEvent<string | null>("roam-end", (path) => island.onRoamEnd(path));
+
+  // A call on another app: the island stays away and quiet (calls.rs).
+  const onCallSensors = (held: string[] | null) => {
+    State.callSensors = new Set(held ?? []);
+    island.syncCall();
+  };
+  await onEvent<string[]>("call-sensors", onCallSensors);
+  void Bridge.callSensors().then(onCallSensors).catch(() => {});
+
+  
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.
   await onEvent<null>("sounds-changed", () => {

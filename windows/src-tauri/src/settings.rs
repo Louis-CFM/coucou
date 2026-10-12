@@ -165,6 +165,11 @@ pub struct Settings {
     /// speech, 3D, or speech-to-text for the chat's mic (media.rs). Each has
     /// its endpoint; its key is per host (secrets::endpoint_key).
     pub models: Vec<ModelEntry>,
+    /// Settings → General → Calls: the island hides and goes silent while one
+    /// of these is in use. On by default.
+    pub quiet_on_camera: bool,
+    pub quiet_on_mic: bool,
+    pub quiet_on_screen_share: bool,
 }
 
 /// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
@@ -214,6 +219,7 @@ impl ModelEntry {
     pub fn is_text(&self) -> bool {
         matches!(self.output.as_str(), "" | "text")
     }
+
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -300,6 +306,9 @@ impl Default for Settings {
             text_only_models: Vec::new(),
             keep_mic_on: false,
             models: Vec::new(),
+            quiet_on_camera: true,
+            quiet_on_mic: true,
+            quiet_on_screen_share: true,
         }
     }
 }
@@ -733,7 +742,10 @@ mod tests {
   "textOnlyModels": ["custom/llama-3.3"],
   "keepMicOn": true,
   "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
-    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }]
+    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }],
+  "quietOnCamera": false,
+  "quietOnMic": false,
+  "quietOnScreenShare": false
 }"##;
 
     fn custom() -> Value {
@@ -1261,6 +1273,9 @@ mod tests {
                 "textOnlyModels",
                 "keepMicOn",
                 "models",
+                "quietOnCamera",
+                "quietOnMic",
+                "quietOnScreenShare",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

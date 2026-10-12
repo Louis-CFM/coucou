@@ -34,6 +34,7 @@ beforeEach(() => {
   State.mode = "hidden";
   State.view = "overview";
   State.paused = false;
+  State.callSensors = new Set();
   State.isPinned = false;
   State.pendingApproval = null;
   State.settings = { ...DEFAULT_SETTINGS };
@@ -67,6 +68,31 @@ test("a paused island ignores every other event", () => {
   assert.equal(task().name, "Claude Code");
   assert.deepEqual(asked, []);
   assert.deepEqual(calls, []);
+});
+
+// ── On a call ─────────────────────────────────────────────────────────────────
+
+test("on a call a permission request goes straight back to the terminal", () => {
+  State.callSensors = new Set(["mic"]);
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", tool_name: "Bash" });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+  assert.deepEqual(sent("approval_ack"), []);
+  assert.equal(State.pendingApproval, null);
+  assert.deepEqual(asked, []);
+});
+
+test("on a call work still updates the pill, but nothing reveals the island", () => {
+  State.callSensors = new Set(["cam"]);
+  hook({ hook_event_name: "SessionStart", cwd: "/home/me/proj" });
+  assert.equal(task().name, "proj");
+  assert.deepEqual(asked, []);
+});
+
+test("a sensor whose switch is off is no call", () => {
+  State.settings = { ...DEFAULT_SETTINGS, quietOnMic: false };
+  State.callSensors = new Set(["mic"]);
+  hook({ hook_event_name: "SessionStart", cwd: "/home/me/proj" });
+  assert.deepEqual(asked, ["reveal"]);
 });
 
 // ── Session and work events ───────────────────────────────────────────────────

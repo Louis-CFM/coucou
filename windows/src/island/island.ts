@@ -1770,8 +1770,22 @@ export class Island {
     this.animateGeometry(false);
     this.updateBotTargets();
     this.applyGeometry();
+    this.syncCall();
     State.notify();
     this.syncClock();
+  }
+
+  /** A call started: the island goes away, a card waiting for an answer excepted. Ended: back, folded. */
+  syncCall() {
+    const on = State.inCall;
+    if (on === this.fsm.paused) return;
+    this.fsm.paused = on;
+    Sound.quiet = on;
+    if (on) {
+      if (!State.pendingApproval) this.fsm.forceHidden();
+    } else if (State.mode === "hidden" && State.tasks.length > 0) {
+      this.revealSilently();
+    }
   }
 
   get panelSize() {

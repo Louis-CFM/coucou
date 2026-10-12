@@ -3,6 +3,7 @@
 mod agent_hooks;
 mod awake;
 mod agents;
+mod calls;
 mod chat;
 mod claude;
 mod claude_cli;
@@ -1210,6 +1211,7 @@ pub fn run() {
             sounds::custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
+            calls::call_sensors,
             spotify::spotify_refresh,
             spotify::spotify_control,
             spotify::spotify_open,
@@ -1311,6 +1313,7 @@ pub fn run() {
             music::start(handle.clone());
             // Sound, a call or the camera keeps the Mochis awake.
             awake::start(handle.clone());
+            calls::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:

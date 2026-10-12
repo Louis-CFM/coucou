@@ -86,6 +86,18 @@
    "id": "7 hari",
    "cs": "7 dní"
   },
+  "A screen shared by an app that is also on the mic or the camera. A recorder or a screenshot tool does not count.": {
+   "zh-Hans": "由同时使用麦克风或摄像头的应用共享的屏幕。录屏或截图工具不算。",
+   "hi": "ऐसे ऐप द्वारा साझा स्क्रीन जो माइक या कैमरे का भी उपयोग कर रहा हो। रिकॉर्डर या स्क्रीनशॉट टूल नहीं गिना जाता।",
+   "es": "Una pantalla compartida por una app que también usa el micrófono o la cámara. Un grabador o una herramienta de capturas no cuenta.",
+   "ar": "شاشة يشاركها تطبيق يستخدم أيضًا الميكروفون أو الكاميرا. لا يُحتسب مسجّل الشاشة أو أداة لقطات الشاشة.",
+   "fr": "Un écran partagé par une app qui utilise aussi le micro ou la caméra. Un enregistreur ou un outil de capture ne compte pas.",
+   "bn": "এমন অ্যাপের শেয়ার করা স্ক্রিন যা মাইক বা ক্যামেরাও ব্যবহার করছে। রেকর্ডার বা স্ক্রিনশট টুল গণ্য হয় না।",
+   "pt-BR": "Uma tela compartilhada por um app que também usa o microfone ou a câmera. Um gravador ou uma ferramenta de captura não conta.",
+   "ru": "Экран, который показывает приложение, также использующее микрофон или камеру. Запись экрана и скриншоты не считаются.",
+   "id": "Layar yang dibagikan oleh aplikasi yang juga memakai mikrofon atau kamera. Perekam atau alat tangkapan layar tidak dihitung.",
+   "cs": "Obrazovka sdílená aplikací, která zároveň používá mikrofon nebo kameru. Rekorder nebo nástroj na snímky obrazovky se nepočítá."
+  },
   "A wrong word, or the wrong person? Fix it from the line's ⋯ menu. Words you correct are remembered for your next calls.": {
    "zh-Hans": "词听错了，或说话人不对？在该行的 ⋯ 菜单里修改。你改正的词会被记住，用于之后的通话。",
    "hi": "कोई शब्द गलत है, या व्यक्ति गलत? पंक्ति के ⋯ मेनू से ठीक करें। आप जो शब्द सुधारते हैं, वे अगली कॉल के लिए याद रखे जाते हैं।",
@@ -757,6 +769,30 @@
    "ru": "Звонок · {0}",
    "id": "Panggilan · {0}",
    "cs": "Hovor · {0}"
+  },
+  "Calls": {
+   "zh-Hans": "通话",
+   "hi": "कॉल",
+   "es": "Llamadas",
+   "ar": "المكالمات",
+   "fr": "Appels",
+   "bn": "কল",
+   "pt-BR": "Chamadas",
+   "ru": "Звонки",
+   "id": "Panggilan",
+   "cs": "Hovory"
+  },
+  "Camera on": {
+   "zh-Hans": "摄像头开启",
+   "hi": "कैमरा चालू",
+   "es": "Cámara activada",
+   "ar": "الكاميرا قيد الاستخدام",
+   "fr": "Caméra allumée",
+   "bn": "ক্যামেরা চালু",
+   "pt-BR": "Câmera ligada",
+   "ru": "Камера включена",
+   "id": "Kamera menyala",
+   "cs": "Kamera zapnutá"
   },
   "Can't reach {name} at {url}. Is it running?": {
    "zh-Hans": "无法访问 {name}（{url}）。它正在运行吗？",
@@ -3134,6 +3170,18 @@
    "id": "Memori menipis",
    "cs": "Paměti je málo"
   },
+  "Microphone on": {
+   "zh-Hans": "麦克风开启",
+   "hi": "माइक्रोफ़ोन चालू",
+   "es": "Micrófono activado",
+   "ar": "الميكروفون قيد الاستخدام",
+   "fr": "Micro allumé",
+   "bn": "মাইক্রোফোন চালু",
+   "pt-BR": "Microfone ligado",
+   "ru": "Микрофон включён",
+   "id": "Mikrofon menyala",
+   "cs": "Mikrofon zapnutý"
+  },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
    "hi": "माइक्रोफ़ोन उपलब्ध नहीं",
@@ -5222,6 +5270,18 @@
    "id": "Jadwal",
    "cs": "Rozvrh"
   },
+  "Screen sharing": {
+   "zh-Hans": "屏幕共享",
+   "hi": "स्क्रीन साझा करना",
+   "es": "Compartir pantalla",
+   "ar": "مشاركة الشاشة",
+   "fr": "Partage d'écran",
+   "bn": "স্ক্রিন শেয়ারিং",
+   "pt-BR": "Compartilhamento de tela",
+   "ru": "Демонстрация экрана",
+   "id": "Berbagi layar",
+   "cs": "Sdílení obrazovky"
+  },
   "Screenshot": {
    "zh-Hans": "截图",
    "hi": "स्क्रीनशॉट",
@@ -5965,6 +6025,18 @@
    "ru": "История, статистика и заметки хранятся на этом Mac, в папке Coucou. Диктовки никогда не сохраняются как аудио; запись звонка удаляется, как только готова расшифровка.",
    "id": "Riwayat, statistik, dan catatanmu tetap di Mac ini, di folder Coucou. Dikte tidak pernah disimpan sebagai audio; audio panggilan dihapus begitu transkripnya selesai ditulis.",
    "cs": "Historie, statistiky a vaše poznámky zůstávají na tomto Macu ve složce Coucou. Diktování se nikdy neukládá jako audio; zvuk hovoru se smaže, jakmile je přepsán."
+  },
+  "The island hides and goes silent while one of these is in use. Read from the menu bar's camera, microphone and screen indicators.": {
+   "zh-Hans": "其中任何一项使用时，岛会隐藏并保持静音。数据来自菜单栏的摄像头、麦克风和屏幕指示器。",
+   "hi": "इनमें से कोई भी उपयोग में होने पर आइलैंड छिप जाता है और शांत रहता है। मेनू बार के कैमरा, माइक्रोफ़ोन और स्क्रीन संकेतकों से पढ़ा जाता है।",
+   "es": "La isla se oculta y queda en silencio mientras uno de estos está en uso. Se lee de los indicadores de cámara, micrófono y pantalla de la barra de menús.",
+   "ar": "تختفي الجزيرة وتصمت أثناء استخدام أي من هذه. تُقرأ من مؤشرات الكاميرا والميكروفون والشاشة في شريط القوائم.",
+   "fr": "L'île se cache et se tait tant que l'un de ces éléments est utilisé. Lu dans les indicateurs caméra, micro et écran de la barre des menus.",
+   "bn": "এগুলোর কোনোটি ব্যবহৃত হলে আইল্যান্ড লুকিয়ে থাকে এবং নীরব থাকে। মেনু বারের ক্যামেরা, মাইক্রোফোন ও স্ক্রিন সূচক থেকে পড়া হয়।",
+   "pt-BR": "A ilha se esconde e fica em silêncio enquanto um destes está em uso. Lido dos indicadores de câmera, microfone e tela da barra de menus.",
+   "ru": "Остров скрывается и молчит, пока что-то из этого используется. Читается из индикаторов камеры, микрофона и экрана в строке меню.",
+   "id": "Pulau bersembunyi dan diam selama salah satunya digunakan. Dibaca dari indikator kamera, mikrofon, dan layar di bilah menu.",
+   "cs": "Ostrůvek se skryje a ztlumí, dokud je některá z těchto věcí v provozu. Čte se z indikátorů kamery, mikrofonu a obrazovky v řádku nabídek."
   },
   "The keys that open the notch and its actions.": {
    "zh-Hans": "打开刘海及其操作的按键。",
@@ -7370,7 +7442,6 @@
    "id": "{0} → {1}",
    "cs": "{0} → {1}"
   },
-
   "{name} is ready.": {
    "zh-Hans": "{name} 已就绪。",
    "hi": "{name} तैयार है।",
