@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
@@ -16,14 +17,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class CoucouViewModel(app: Application) : AndroidViewModel(app) {
+class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : AndroidViewModel(app) {
 
     enum class Screen { PAIR, HOME, PICKER, CHAT }
 
-    var screen by mutableStateOf(if (Prefs.load(app) != null) Screen.HOME else Screen.PAIR)
+    var screen by mutableStateOf(initialScreen(app))
         private set
     /** Agent the PICKER screen lists sessions for ("devin", "claude", …). */
-    var pickerAgent by mutableStateOf("devin")
+    var pickerAgent by mutableStateOf(saved.get<String>(K_AGENT) ?: "devin")
         private set
     var box by mutableStateOf<Relay.Fetch?>(null)
         private set
@@ -50,23 +51,47 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
 
     private var pollJob: Job? = null
 
-    fun navigate(to: Screen) {
+    private fun initialScreen(app: Application): Screen {
+        val paired = Prefs.load(app) != null
+        val restored = saved.get<String>(K_SCREEN)?.let { runCatching { Screen.valueOf(it) }.getOrNull() }
+        return when {
+            !paired -> Screen.PAIR
+            restored != null && restored != Screen.PAIR -> restored
+            else -> Screen.HOME
+        }
+    }
+
+    private fun show(to: Screen) {
         screen = to
+        saved[K_SCREEN] = to.name
+    }
+
+    private companion object {
+        const val K_SCREEN = "screen"
+        const val K_AGENT = "pickerAgent"
+    }
+
+    fun navigate(to: Screen) {
+        show(to)
     }
 
     /** Home → an agent's session list. */
     fun openPicker(agent: String) {
         pickerAgent = agent
-        screen = Screen.PICKER
+        saved[K_AGENT] = agent
+        show(Screen.PICKER)
     }
 
     /** The picker's agent dropdown switches which CLI's history it lists. */
     fun pickAgent(agent: String) {
         pickerAgent = agent
+        saved[K_AGENT] = agent
     }
 
     fun onForeground() {
-        if (Prefs.load(getApplication()) == null || pollJob?.isActive == true) return
+        val p = Prefs.load(getApplication()) ?: return
+        syncToken(p)
+        if (pollJob?.isActive == true) return
         pollJob = viewModelScope.launch {
             while (isActive) {
                 refresh()
@@ -74,6 +99,27 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    /**
+     * Claims the box again when FCM rotated this phone's token since the last
+     * claim that got through: a refresh the service could not deliver (offline,
+     * relay down) is caught up the next time the app comes forward.
+     */
+    private fun syncToken(p: Prefs.Pairing) {
+        viewModelScope.launch {
+            try {
+                val token = withContext(Dispatchers.IO) { Tasks.await(FirebaseMessaging.getInstance().token) }
+                if (!TokenSync.shouldClaim(Prefs.claimedToken(getApplication()), token)) return@launch
+                withContext(Dispatchers.IO) { Relay.claim(p, token) }
+                Prefs.setClaimedToken(getApplication(), token)
+            } catch (e: Relay.Http) {
+                if (e.code == 409) lineError = "Another phone has taken this box over — pair again from the PC."
+            } catch (_: Exception) {
+                // Offline or no Play services: tried again next time the app comes forward.
+            }
+        }
+    }
+
 
     fun onBackground() {
         pollJob?.cancel()
@@ -109,7 +155,7 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
             box = null
             pollJob?.cancel()
             pairError = "This box no longer knows the phone — pair again."
-            screen = Screen.PAIR
+            show(Screen.PAIR)
         } catch (e: Exception) {
             lineError = "Can't reach the relay — ${e.message ?: e.javaClass.simpleName}"
         }
@@ -133,17 +179,18 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
                 busy = true
                 pairError = null
                 viewModelScope.launch {
-                    val pairing = Prefs.Pairing(workerUrl, id.lowercase(), secret.lowercase(), name)
+                    val pairing = Prefs.Pairing(workerUrl, id.lowercase(), secret.lowercase(), name, DeviceId.new())
                     try {
                         val token = withContext(Dispatchers.IO) {
                             Tasks.await(FirebaseMessaging.getInstance().token)
                         }
                         withContext(Dispatchers.IO) { Relay.claim(pairing, token) }
                         Prefs.save(getApplication(), pairing)
+                        Prefs.setClaimedToken(getApplication(), token)
                         worker = pairing.worker
                         pairError = null
                         busy = false
-                        screen = Screen.HOME
+                        show(Screen.HOME)
                         refresh()
                         onForeground()
                     } catch (e: Relay.Forbidden) {
@@ -158,7 +205,7 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun decide(card: Relay.Card, decision: String, answers: Map<String, String>? = null) {
+    fun decide(card: Relay.Card, decision: String, answers: Map<String, Any>? = null) {
         val p = Prefs.load(getApplication()) ?: return
         answeredId = card.requestId
         answeredDecision = decision
@@ -222,7 +269,7 @@ class CoucouViewModel(app: Application) : AndroidViewModel(app) {
             Prefs.clear(getApplication())
             box = null
             worker = ""
-            screen = Screen.PAIR
+            show(Screen.PAIR)
         }
     }
 }

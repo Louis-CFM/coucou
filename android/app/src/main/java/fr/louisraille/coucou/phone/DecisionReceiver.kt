@@ -20,9 +20,12 @@ class DecisionReceiver : BroadcastReceiver() {
         Thread {
             try {
                 Relay.decide(p, requestId, decision, null)
-            } catch (_: Exception) { /* a stale card is simply ignored by the PC */ }
-            Notifier.cancelCard(context)
-            pending.finish()
+            } catch (_: Exception) {
+                // A stale card is simply ignored by the PC.
+            } finally {
+                Notifier.cancelCard(context)
+                pending.finish()
+            }
         }.start()
     }
 }

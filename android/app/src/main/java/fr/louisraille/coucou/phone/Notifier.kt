@@ -13,6 +13,9 @@ object Notifier {
     const val CHANNEL = "coucou-alerts"
     const val CARD_ID = 7001
 
+    /** The PC holds a card for 108 s (pipe.rs DECISION_TIMEOUT); after that its buttons do nothing. */
+    private const val CARD_TTL_MS = 108_000L
+
     fun ensureChannel(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
@@ -47,9 +50,16 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(tap)
+            .setTimeoutAfter(CARD_TTL_MS)
         // Approvals get inline buttons; questions need the app's option UI, tap opens it.
         if (!card.isQuestion) {
-            b.addAction(0, ctx.getString(R.string.allow), decisionPending(ctx, card, "allow", 1))
+            // Allow first unlocks the phone, as the in-app Allow asks for the
+            // fingerprint (gateWithBiometrics). Deny stays a plain tap there too.
+            b.addAction(
+                NotificationCompat.Action.Builder(0, ctx.getString(R.string.allow), decisionPending(ctx, card, "allow", 1))
+                    .setAuthenticationRequired(true)
+                    .build(),
+            )
             b.addAction(0, ctx.getString(R.string.deny), decisionPending(ctx, card, "deny", 2))
         }
         try {

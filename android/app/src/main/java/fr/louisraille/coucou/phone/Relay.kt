@@ -29,7 +29,7 @@ object Relay {
     /** Any other non-2xx from the relay. */
     class Http(val code: Int) : Exception("http $code")
 
-    data class Question(val q: String, val options: List<String>)
+    data class Question(val q: String, val options: List<String>, val multi: Boolean = false)
 
     data class Card(
         val requestId: String,
@@ -107,7 +107,9 @@ object Relay {
         .put("secret", p.secret)
 
     fun claim(p: Prefs.Pairing, fcmToken: String) {
-        post(p.worker, "claim", auth(p).put("token", fcmToken).put("name", p.deviceName))
+        val body = auth(p).put("token", fcmToken).put("name", p.deviceName)
+        if (p.deviceId.isNotEmpty()) body.put("device", p.deviceId)
+        post(p.worker, "claim", body)
     }
 
     fun fetch(p: Prefs.Pairing): Fetch {
@@ -120,10 +122,12 @@ object Relay {
         )
     }
 
-    fun decide(p: Prefs.Pairing, requestId: String, decision: String, answers: Map<String, String>?) {
+    fun decide(p: Prefs.Pairing, requestId: String, decision: String, answers: Map<String, Any>?) {
         val body = auth(p).put("requestId", requestId).put("decision", decision)
         if (answers != null) {
-            body.put("answers", JSONObject().apply { answers.forEach { (k, v) -> put(k, v) } })
+            body.put("answers", JSONObject().apply {
+                answers.forEach { (k, v) -> put(k, if (v is List<*>) JSONArray(v) else v) }
+            })
         }
         post(p.worker, "decide", body)
     }
@@ -159,7 +163,7 @@ object Relay {
         questions = o.optJSONArray("questions").let { arr ->
             (0 until (arr?.length() ?: 0)).map { i ->
                 val q = arr!!.getJSONObject(i)
-                Question(q.optString("q"), q.optJSONArray("options").toStrings())
+                Question(q.optString("q"), q.optJSONArray("options").toStrings(), q.optBoolean("multi"))
             }
         },
     )

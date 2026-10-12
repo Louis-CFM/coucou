@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -332,11 +333,6 @@ private fun sessionsSummary(box: Relay.Fetch?): String? {
     }
 }
 
-private fun urgencyOf(state: String): Int = when (state) {
-    "approval" -> 5; "question" -> 4; "error" -> 3
-    "working" -> 2; "thinking" -> 2; "searching" -> 2; "ratelimit" -> 2
-    "finished" -> 1; else -> 0
-}
 
 /** The CLI's display name — ids come from the PC ("devin", "claude", …). */
 private fun agentTitle(agent: String): String = when (agent) {
@@ -638,7 +634,7 @@ private fun ApprovalButtons(card: Relay.Card, vm: CoucouViewModel) {
 
 @Composable
 private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
-    val answers = remember(card.requestId) { mutableStateMapOf<String, String>() }
+    val picked = remember(card.requestId) { mutableStateMapOf<String, List<String>>() }
     val groups = card.questions.ifEmpty { listOf(Relay.Question(card.title, card.options)) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -650,8 +646,9 @@ private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
                 q.options.forEach { opt ->
                     OptionRow(
                         label = opt,
-                        selected = answers[q.q] == opt,
-                        onClick = { answers[q.q] = opt },
+                        selected = opt in picked[q.q].orEmpty(),
+                        onClick = { picked[q.q] = QuestionAnswers.toggle(picked[q.q].orEmpty(), opt, q.multi) },
+                        role = if (q.multi) Role.Checkbox else Role.RadioButton,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -659,9 +656,9 @@ private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
         }
         PillButton(
             "Answer",
-            onClick = { vm.decide(card, "answer", answers.toMap()) },
+            onClick = { vm.decide(card, "answer", QuestionAnswers.toAnswers(groups, picked)) },
             filled = true,
-            enabled = groups.all { answers[it.q] != null },
+            enabled = QuestionAnswers.complete(groups, picked),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -787,7 +784,9 @@ fun ChatScreen(vm: CoucouViewModel) {
     val lines = if (selected != null) state?.chatTranscript.orEmpty() else state?.chatTail.orEmpty()
     var draft by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
-    LaunchedEffect(lines.size) {
+    // The transcript is capped at 40 lines: once full its size stays the same
+    // while new lines arrive, so the newest line's text is part of the key.
+    LaunchedEffect(lines.size, lines.lastOrNull()?.text) {
         if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1)
     }
 

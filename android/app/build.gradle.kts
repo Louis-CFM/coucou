@@ -73,4 +73,6 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
     implementation("com.google.firebase:firebase-messaging")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // JVM unit tests (src/test) — never shipped.
+    testImplementation("junit:junit:4.13.2")
 }

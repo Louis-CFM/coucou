@@ -238,6 +238,7 @@ fun OptionRow(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    role: Role = Role.RadioButton,
 ) {
     Row(
         modifier
@@ -247,7 +248,7 @@ fun OptionRow(
                 if (selected) Modifier.border(1.dp, Coucou.Question.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                 else Modifier
             )
-            .clickable(role = Role.RadioButton) { onClick() }
+            .clickable(role = role) { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

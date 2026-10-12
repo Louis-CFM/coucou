@@ -113,14 +113,18 @@ fun Mochi(
 
     if (animate) {
         LaunchedEffect(visible) {
+            // Out of sight, no frame is asked for at all; back in sight, the
+            // pose carries on from where it stopped.
+            if (!visible) return@LaunchedEffect
+            val base = time
             val start = System.nanoTime()
             var last = 0L
             while (isActive) {
                 withFrameNanos { now ->
                     // ~30 fps is plenty for a tile; also cheap on 120 Hz screens.
-                    if (visible && now - last >= 33_000_000L) {
+                    if (now - last >= 33_000_000L) {
                         last = now
-                        time = (now - start) / 1e9f
+                        time = base + (now - start) / 1e9f
                     }
                 }
             }

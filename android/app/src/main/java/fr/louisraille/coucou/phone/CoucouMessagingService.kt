@@ -12,25 +12,26 @@ import com.google.firebase.messaging.RemoteMessage
 class CoucouMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
-        // Rotated token: re-claim the same box so the PC keeps reaching us.
+        // Called on FCM's background thread, with time to finish: no Thread{}
+        // the system may freeze before the claim goes out.
         val p = Prefs.load(this) ?: return
-        Thread {
-            try {
-                Relay.claim(p, token)
-            } catch (_: Exception) { /* next claim attempt happens on app open */ }
-        }.start()
+        try {
+            Relay.claim(p, token)
+            Prefs.setClaimedToken(this, token)
+        } catch (_: Exception) {
+            // The app claims it the next time it comes forward (TokenSync).
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        // Already on FCM's background thread, which waits for us: returning
+        // early (a Thread{}) let the system freeze the app mid-fetch.
         val p = Prefs.load(this) ?: return
-        Thread {
-            try {
-                val f = Relay.fetch(p)
-                val card = f.pending
-                if (card != null) Notifier.showCard(this, card) else Notifier.cancelCard(this)
-            } catch (e: Exception) {
-                if (BuildConfig.DEBUG) Log.w("CoucouPush", "fetch failed", e)
-            }
-        }.start()
+        try {
+            val card = Relay.fetch(p).pending
+            if (card != null) Notifier.showCard(this, card) else Notifier.cancelCard(this)
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) Log.w("CoucouPush", "fetch failed", e)
+        }
     }
 }
