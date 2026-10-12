@@ -202,10 +202,21 @@ The command written is the relay's path as the distro sees it
 `[ -x '<relay>' ] && '<relay>' <Event> || true`. If Windows interop is turned off
 in the distro, the hooks do nothing. Your own hooks stay as they are.
 
-"Open terminal" works for these sessions too, down to the tab (see below). Not
-done yet for WSL: paths in a session are Linux paths, so a diff's ↗ doesn't
-reach the Windows side, and the plan usage gauge isn't set up (that is the
-Windows status line).
+"Open terminal" works for these sessions too, down to the tab (see below).
+
+**Paths.** A session in WSL reports Linux paths (`/home/me/proj`). For a diff's ↗
+and for "Open terminal"'s fallback, Coucou looks the path up in the running
+distros and turns it into its place on the distro's share
+(`\\wsl.localhost\<distro>\home\me\proj`), which is what Explorer and `code`
+understand. With VS Code's **Remote - WSL** extension installed, the file or
+folder opens in a window that runs in the distro (`code --remote wsl+<distro>
+<path>`); without it, VS Code opens the network path. A distro that isn't running
+isn't looked in (it would start), and a path that exists in two running distros
+goes to the first. The path still has to be an existing file or folder, given in
+full.
+
+Not done yet for WSL: the plan usage gauge isn't set up (that is the Windows
+status line).
 
 ### Plan usage
 
