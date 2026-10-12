@@ -398,7 +398,8 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        if name != "SessionEnd" { followActivity(pill: agentId) }
+        // The agent's activity, never the user's own prompt or session start.
+        if !["SessionEnd", "SessionStart", "UserPromptSubmit"].contains(name) { followActivity(pill: agentId) }
         let focused = state.focusId == agentId
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.

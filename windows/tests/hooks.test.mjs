@@ -717,6 +717,16 @@ test("following, the agent that did something last takes the card", () => {
   assert.ok(!asked.includes("alert:overview"), "the island opens only with its own switch");
 });
 
+test("following leaves the user's own prompt alone", () => {
+  State.settings.followActivity = true;
+  gemini("SessionStart");
+  State.setFocus(CLAUDE);
+  gemini("UserPromptSubmit");
+  assert.equal(State.focusId, CLAUDE);
+  gemini();
+  assert.equal(State.focusId, "agent_gemini");
+});
+
 test("with its switch, new activity opens the island on that card", () => {
   State.settings.followActivity = true;
   State.settings.expandOnActivity = true;

@@ -325,7 +325,8 @@ function handleHook(island: Island, payload: HookPayload) {
 
   // Read after the card above is dropped: its pill may have handed the front
   // back to the pill you were on.
-  if (name !== "SessionEnd") followActivity(island, agentId);
+  // The agent's activity, never the user's own prompt or session start.
+  if (name !== "SessionEnd" && name !== "SessionStart" && name !== "UserPromptSubmit") followActivity(island, agentId);
   const focused = State.focusId === agentId;
 
   switch (name) {
