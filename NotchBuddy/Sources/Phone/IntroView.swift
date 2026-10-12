@@ -61,7 +61,7 @@ private struct IntroLandingModifier: ViewModifier {
 
 struct IntroView: View {
     /// True once the first iCloud fetch is over.
-    let ready: Bool
+    let ready: @MainActor () -> Bool
     let onFinished: () -> Void
 
     @State private var flightStart: Date?
@@ -103,7 +103,7 @@ struct IntroView: View {
         .task {
             try? await Task.sleep(for: .seconds(minimum))
             var waited = minimum
-            while !ready && waited < maximum {
+            while !ready() && waited < maximum {
                 try? await Task.sleep(for: .milliseconds(100))
                 waited += 0.1
             }
