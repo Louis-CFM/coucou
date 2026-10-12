@@ -88,6 +88,13 @@ test("a prompt sent while the finished card shows takes the card back to the ove
   assert.ok(asked.includes("setView:overview"));
 });
 
+test("a named session goes by its name, and the home folder is ~", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "/home/me", home: "/home/me" });
+  assert.equal(task().name, "~");
+  hook({ hook_event_name: "SessionStart", cwd: "/home/me", home: "/home/me", session_name: "coucou-mac" });
+  assert.equal(task().name, "coucou-mac");
+});
+
 test("known project folders get their display name, and no folder is a Session", () => {
   hook({ hook_event_name: "SessionStart", cwd: "/home/me/notch-buddy" });
   assert.equal(task().name, "Notch Buddy");

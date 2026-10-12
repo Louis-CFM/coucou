@@ -441,8 +441,7 @@ final class HookServer: @unchecked Sendable {
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
         let cwd = payload["cwd"] as? String ?? ""
-        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let projectName = sessionName(payload, cwd: cwd)
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
@@ -785,8 +784,7 @@ final class HookServer: @unchecked Sendable {
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let projectName = sessionName(payload, cwd: cwd)
 
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"] as? String ?? ""
@@ -970,8 +968,7 @@ final class HookServer: @unchecked Sendable {
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let projectName = sessionName(payload, cwd: cwd)
 
         let rawAgent    = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"]  as? String ?? ""
@@ -1161,6 +1158,14 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Project name alias mapping
+
+    /// The session's own name (Claude Code's /rename, read by the hook), else its folder, `~` at home.
+    private func sessionName(_ payload: [String: Any], cwd: String) -> String {
+        if let name = payload["session_name"] as? String, !name.isEmpty { return name }
+        if !cwd.isEmpty, cwd == (payload["home"] as? String ?? NSHomeDirectory()) { return "~" }
+        let folder = URL(fileURLWithPath: cwd).lastPathComponent
+        return aliasProjectName(folder.isEmpty ? "Session" : folder)
+    }
 
     private func aliasProjectName(_ name: String) -> String {
         let aliases: [String: String] = [
@@ -3496,6 +3501,23 @@ def cap_payload(payload):
         out['coucou_diff_truncated'] = True
     return out
 
+def claude_session_name(sid):
+    # The name given with /rename, from Claude Code's session registry
+    if not sid:
+        return ''
+    try:
+        d = os.path.expanduser('~/.claude/sessions')
+        for f in os.listdir(d):
+            if not f.endswith('.json'):
+                continue
+            with open(os.path.join(d, f)) as fh:
+                s = json.load(fh)
+            if s.get('sessionId') == sid:
+                return str(s.get('name') or '')
+    except Exception:
+        pass
+    return ''
+
 def main():
     raw = b''
     payload = {}
@@ -3566,6 +3588,8 @@ def main():
                 payload['cwd'] = paths[0]
             else:
                 payload['cwd'] = os.getcwd()
+        payload['session_name'] = claude_session_name(payload.get('session_id', ''))
+        payload['home'] = os.path.expanduser('~')
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(1.0)
@@ -3626,6 +3650,8 @@ def main():
             payload['cwd'] = paths[0]
         else:
             payload['cwd'] = os.getcwd()
+    payload['session_name'] = claude_session_name(payload.get('session_id', ''))
+    payload['home'] = os.path.expanduser('~')
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:

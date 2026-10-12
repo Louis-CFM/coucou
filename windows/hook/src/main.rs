@@ -141,7 +141,11 @@ fn main() {
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
+<<<<<<< HEAD
     let Some(event) = prepare(&raw, &args, &env, &cwd, now_ms) else {
+=======
+    let Some(event) = prepare(&raw, &args, &env, &cwd, &claude_session_name) else {
+>>>>>>> 1c1ca5c (Name session pills after the session)
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -213,7 +217,12 @@ fn print(line: Option<String>) {
 
 /// The payload to forward, from the raw stdin bytes. `env` reads an environment
 /// variable and `cwd` is the working directory, so tests stay pure.
+<<<<<<< HEAD
 fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str, now_ms: u64) -> Option<Event> {
+=======
+fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str,
+           names: &dyn Fn(&str) -> Option<String>) -> Option<Event> {
+>>>>>>> 1c1ca5c (Name session pills after the session)
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     if headless(env) {
@@ -259,6 +268,14 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     add_terminal_context(map, env);
 
+    // The session's own name (Claude Code's /rename) and the home folder, for the pill's name.
+    if let Some(name) = map.get("session_id").and_then(Value::as_str).and_then(|id| names(id)) {
+        map.insert("session_name".into(), Value::String(name));
+    }
+    if let Some(home) = env("HOME").or_else(|| env("USERPROFILE")) {
+        map.insert("home".into(), Value::String(home));
+    }
+
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
@@ -283,6 +300,24 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 fn headless(env: &dyn Fn(&str) -> Option<String>) -> bool {
     env("CLAUDE_CODE_ENTRYPOINT").is_some_and(|e| e.starts_with("sdk-"))
         && env("COUCOU_WATCHED").as_deref() != Some("1")
+}
+
+/// The name given with /rename, from Claude Code's session registry.
+fn claude_session_name(session_id: &str) -> Option<String> {
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).ok()?;
+    let dir = std::path::Path::new(&home).join(".claude").join("sessions");
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else { continue };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else { continue };
+        if v.get("sessionId").and_then(Value::as_str) == Some(session_id) {
+            return v.get("name").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string);
+        }
+    }
+    None
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -457,9 +492,27 @@ mod tests {
 
     fn run(raw: &str, agent: &str, event: &str) -> (Value, Event) {
         let args = Args { agent: agent.into(), event: event.into() };
+<<<<<<< HEAD
         let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", 1234).expect("forwarded");
+=======
+        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", &|_| None).expect("forwarded");
+>>>>>>> 1c1ca5c (Name session pills after the session)
         let v = serde_json::from_str(ev.line.trim_end()).unwrap();
         (v, ev)
+    }
+
+    #[test]
+    fn session_name_and_home_ride_along() {
+        let args = Args { agent: "".into(), event: "SessionStart".into() };
+        let names = |id: &str| (id == "s1").then(|| "coucou-mac".to_string());
+        let raw = br#"{"session_id":"s1","hook_event_name":"SessionStart","cwd":"/home/me"}"#;
+        let ev = prepare(raw, &args, &env_of(&[("HOME", "/home/me")]), "/home/me", &names).unwrap();
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["session_name"], "coucou-mac");
+        assert_eq!(v["home"], "/home/me");
+        let ev = prepare(raw, &args, &|_| None, "/home/me", &|_| None).unwrap();
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert!(v.get("session_name").is_none());
     }
 
     fn env_of(vars: &'static [(&'static str, &'static str)]) -> impl Fn(&str) -> Option<String> {
@@ -608,12 +661,20 @@ mod tests {
     fn what_cannot_be_read_is_not_forwarded() {
         let args = Args { agent: "copilot".into(), event: "preToolUse".into() };
         for raw in ["", "not json", "[1,2]"] {
+<<<<<<< HEAD
             assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", 1234).is_none());
+=======
+            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", &|_| None).is_none());
+>>>>>>> 1c1ca5c (Name session pills after the session)
         }
         // A BOM is not a reason to drop the event.
         let mut bom = vec![0xEF, 0xBB, 0xBF];
         bom.extend_from_slice(br#"{"hook_event_name":"Stop"}"#);
+<<<<<<< HEAD
         assert!(prepare(&bom, &args, &|_| None, "/", 1234).is_some());
+=======
+        assert!(prepare(&bom, &args, &|_| None, "/", &|_| None).is_some());
+>>>>>>> 1c1ca5c (Name session pills after the session)
     }
 
     #[test]
