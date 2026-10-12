@@ -666,7 +666,9 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: 28px;
   gap: 4px;
-  align-content: center;
+  align-content: safe center;
+  overflow-y: auto;
+  scrollbar-width: none;
   padding: 0 8px;
 }
 
