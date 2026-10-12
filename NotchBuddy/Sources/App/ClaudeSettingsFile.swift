@@ -106,11 +106,15 @@ enum ClaudeSettingsFile {
 
         // Written beside the target and renamed over it: a crash or a full disk
         // leaves the original intact rather than half a file.
+        // A fresh name, created exclusively: never written through a file or symlink planted there first.
         let temp = target.deletingLastPathComponent()
-            .appendingPathComponent("\(target.lastPathComponent).coucou-\(ProcessInfo.processInfo.processIdentifier)")
-        try? fm.removeItem(at: temp)
-        guard fm.createFile(atPath: temp.path, contents: data,
-                            attributes: [.posixPermissions: NSNumber(value: 0o600)]) else {
+            .appendingPathComponent("\(target.lastPathComponent).coucou-\(UUID().uuidString)")
+        let fd = open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
+        guard fd >= 0 else { throw Failure.writeFailed(name) }
+        let written = data.withUnsafeBytes { Darwin.write(fd, $0.baseAddress, data.count) }
+        close(fd)
+        guard written == data.count else {
+            try? fm.removeItem(at: temp)
             throw Failure.writeFailed(name)
         }
         do {
