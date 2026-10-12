@@ -5026,6 +5026,12 @@
     },
     "Listening…": {
       "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poslouchám…"
+          }
+        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -7797,6 +7803,12 @@
     },
     "Permissions": {
       "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oprávnění"
+          }
+        },
         "ar": {
           "stringUnit": {
             "state": "translated",
@@ -24683,6 +24695,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "শুনছি…"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poslouchám…"
           }
         },
         "en": {

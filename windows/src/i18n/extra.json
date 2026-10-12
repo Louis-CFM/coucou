@@ -1549,18 +1549,6 @@
    "id": "Jangan sertakan nama pengguna dan kata sandi di alamat.",
    "cs": "Vynechte z adresy uživatelské jméno a heslo."
   },
-  "Listening…": {
-   "zh-Hans": "正在聆听…",
-   "hi": "सुन रहा है…",
-   "es": "Escuchando…",
-   "ar": "يستمع…",
-   "fr": "À l’écoute…",
-   "bn": "শুনছে…",
-   "pt-BR": "Ouvindo…",
-   "ru": "Слушаю…",
-   "id": "Mendengarkan…",
-   "cs": "Poslouchá…"
-  },
   "Main display": {
    "zh-Hans": "主显示器",
    "hi": "मुख्य डिस्प्ले",
@@ -2136,18 +2124,6 @@
    "ru": "Платёж",
    "id": "Pembayaran",
    "cs": "Platba"
-  },
-  "Permissions": {
-   "zh-Hans": "权限",
-   "hi": "अनुमतियाँ",
-   "es": "Permisos",
-   "ar": "الأذونات",
-   "fr": "Permissions",
-   "bn": "অনুমতি",
-   "pt-BR": "Permissões",
-   "ru": "Разрешения",
-   "id": "Izin",
-   "cs": "Oprávnění"
   },
   "Phone": {
    "zh-Hans": "手机",

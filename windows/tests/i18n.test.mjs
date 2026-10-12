@@ -168,6 +168,9 @@ for (const [name, table] of [["strings.json", MAC.strings], ["extra.json", EXTRA
     for (const [key, entry] of Object.entries(table)) {
       for (const lang of OTHERS) {
         const value = entry[lang];
+        // The Mac catalog is generated, and a string it has not translated yet is
+        // English there too: only the Windows-owned table must be complete.
+        if (value === undefined && table === MAC.strings) continue;
         assert.ok(value !== undefined, `${name}: ${JSON.stringify(key)} has no ${lang}`);
         const forms = typeof value === "string" ? [value] : Object.values(value);
         for (const form of forms) {
