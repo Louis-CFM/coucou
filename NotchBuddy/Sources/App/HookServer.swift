@@ -685,6 +685,37 @@ final class HookServer: @unchecked Sendable {
     /// Session key → the `claude` process its events came from.
     private var sessionPids: [String: Int] = [:]
 
+    /// The app the session on `pill` runs in, and its tty, found from its `claude` process.
+    @MainActor
+    func sessionTerminal(pill: String) -> (bundleId: String, tty: String?)? {
+        guard let sid = sessionPills.first(where: { $0.value == pill })?.key ?? workspaceOwner[pill] else { return nil }
+        let pid = sessionPids[sid] ?? pidSessions.first(where: { $0.value == sid }).flatMap { Int($0.key.dropFirst(4)) }
+        guard let pid else { return nil }
+        return Self.terminal(of: Int32(pid))
+    }
+
+    /// Up from `pid` to the first app with a window: the terminal or editor it runs in.
+    nonisolated static func terminal(of pid: Int32) -> (bundleId: String, tty: String?)? {
+        var current = pid
+        var tty: String?
+        for _ in 0..<16 {
+            var kp = kinfo_proc()
+            var size = MemoryLayout<kinfo_proc>.stride
+            var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, current]
+            guard sysctl(&mib, 4, &kp, &size, nil, 0) == 0, size > 0 else { return nil }
+            if tty == nil, kp.kp_eproc.e_tdev != -1, let name = devname(kp.kp_eproc.e_tdev, S_IFCHR) {
+                tty = "/dev/" + String(cString: name)
+            }
+            if let app = NSRunningApplication(processIdentifier: current), app.activationPolicy == .regular,
+               let id = app.bundleIdentifier {
+                return (id, tty)
+            }
+            current = kp.kp_eproc.e_ppid
+            if current <= 1 { return nil }
+        }
+        return nil
+    }
+
     private struct FoundSession: Sendable {
         let pid: Int32
         let cwd: String
