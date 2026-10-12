@@ -816,7 +816,8 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        if !TerminalTarget.activate(sessionBundleId: state.focusTask?.sessionBundleId) {
+        let found = state.focusTask.flatMap { HookServer.shared.sessionTerminal(pill: $0.id) }
+        if !TerminalTarget.activate(sessionBundleId: found?.bundleId ?? state.focusTask?.sessionBundleId) {
             NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
