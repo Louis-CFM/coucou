@@ -612,18 +612,57 @@ struct ErrorView: View {
     @ObservedObject var state: AppState
 
     var body: some View {
+        let task = state.focusTask
+        let failure = FailureText(task: task)
         ZStack {
             CardBackground(wash: .red)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "n8n")
-                Text("Workflow stopped.")
+                AgentWho(task: task, label: failure.label)
+                Text(failure.title)
                     .font(.system(size: 15, weight: .semibold))
-                Text("Gmail node timed out after 30s. Retry or open n8n.")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "#FF8D97"))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if let detail = failure.detail {
+                    Text(verbatim: detail)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "#FF8D97"))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
                 HStack(spacing: 8) {
-                    PrimaryButton("Retry") { /* retry */ }
-                    SecondaryButton("Open in n8n") { /* open */ }
+                    switch task?.id ?? "" {
+                    case "integration_n8n":
+                        if let s = KeychainStore.shared.get("n8n-url"), let url = safeWebURL(s) {
+                            PrimaryButton("Open in n8n") {
+                                NSWorkspace.shared.open(url)
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                    case "integration_vercel":
+                        PrimaryButton("Open in Vercel") {
+                            NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                    case "agent_claude-desktop":
+                        PrimaryButton("Open Claude") {
+                            openClaudeDesktopApp()
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                    default:
+                        #if !APPSTORE
+                        if task.map({ !$0.isIntegration || $0.id == "integration_claude" }) ?? false {
+                            PrimaryButton("Open terminal") {
+                                openSessionApp(task)
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                        #else
+                        EmptyView()
+                        #endif
+                    }
+                    SecondaryButton("OK") {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }
                 }
             }
             .padding(.leading, 116)
@@ -634,8 +673,70 @@ struct ErrorView: View {
     }
 }
 
+/// What the error card says, from the pill that failed: an n8n workflow, a Vercel
+/// deployment, or an agent's turn (Claude Code tells which API error stopped it).
+struct FailureText {
+    let label: String
+    let title: LocalizedStringKey
+    let detail: String?
+
+    init(task: AgentTask?) {
+        switch task?.id ?? "" {
+        case "integration_n8n":
+            // steps = [workflow name, error detail?]
+            label = "n8n"
+            title = "Workflow stopped."
+            detail = Self.join(task?.steps ?? [])
+        case "integration_vercel":
+            // steps = [project name]
+            label = "Vercel"
+            title = "Deployment failed."
+            detail = Self.join(task?.steps ?? [])
+        default:
+            if let def = task.flatMap({ PillCatalog.definition(for: $0.id) }) {
+                label = def.sessionSubtitle == "Agent" ? def.name : def.sessionSubtitle
+            } else {
+                label = ""
+            }
+            title = Self.title(forError: task?.failure)
+            detail = task?.finalLine ?? task?.steps.last(where: { !$0.isDiffStep })
+        }
+    }
+
+    /// Claude Code's StopFailure error types, in plain words.
+    static func title(forError error: String?) -> LocalizedStringKey {
+        switch error {
+        case "rate_limit":                                  return "Usage limit reached."
+        case "overloaded":                                  return "Claude is overloaded."
+        case "authentication_failed", "oauth_org_not_allowed": return "Sign-in problem."
+        case "account_on_hold":                             return "Account on hold."
+        case "billing_error":                               return "Billing problem."
+        case "invalid_request":                             return "Request rejected."
+        case "model_not_found":                             return "Model not found."
+        case "max_output_tokens":                           return "Reply too long."
+        case "server_error", "cloud_credential_error":      return "API error."
+        default:                                            return "The turn stopped on an error."
+        }
+    }
+
+    private static func join(_ parts: [String]) -> String? {
+        let text = parts.filter { !$0.isEmpty }.joined(separator: " · ")
+        return text.isEmpty ? nil : text
+    }
+}
+
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
+
+#if !APPSTORE
+/// The app the session runs in (its terminal, or VS Code), then any known terminal.
+private func openSessionApp(_ task: AgentTask?) {
+    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+       !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+    }
+}
+#endif
 
 private func openClaudeDesktopApp() {
     if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: claudeDesktopBundleId) {
@@ -671,12 +772,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            // The app the session runs in (its terminal, or VS Code), then any known terminal
-                            let task = state.focusTask
-                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
-                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
-                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                            }
+                            openSessionApp(state.focusTask)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif

@@ -622,6 +622,14 @@ final class HookServer: @unchecked Sendable {
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
             guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
+            // What went wrong: Claude Code sends the error type and the error text it showed
+            // ("You're out of extra usage · resets 10pm"); other agents may send neither.
+            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+                let message = DiffEngine.toOneLine((payload["last_assistant_message"] as? String)
+                                                   ?? (payload["error_details"] as? String) ?? "")
+                state.tasks[idx].failure = payload["error"] as? String
+                state.tasks[idx].finalLine = message.isEmpty ? nil : message
+            }
             state.updateTask(id: agentId, state: .error)
             SoundEngine.shared.play("error")
             if focused {
