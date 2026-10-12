@@ -210,7 +210,7 @@ rest of the differences.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
 - **Fedora / openSUSE**: `sudo dnf install ./Coucou-Linux-*.rpm`
 
-Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD).
+Check a download with `sha256sum -c SHA256SUMS --ignore-missing`. On Arch Linux, build it with the [PKGBUILD](linux/arch/PKGBUILD). On NixOS and Nix, use the [flake](flake.nix): `nix run github:Louis-CFM/coucou`.
 
 The island sits on the top edge on compositors with layer-shell — COSMIC, KDE
 Plasma, Hyprland, Sway and other wlroots compositors. GNOME has no layer-shell,
