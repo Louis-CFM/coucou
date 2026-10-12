@@ -241,14 +241,9 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 // command differs: it starts coucou-hook.exe through WSL interop (wsl.rs). The
 // reading, the diff, the dated backup and the fingerprint are the same code.
 
-/// Whether a settings.json holds Coucou's hooks. Read-only; a file that is
-/// missing or unreadable has none.
-pub fn settings_file_has_ours(path: &Path) -> bool {
-    config_file::read(path)
-        .ok()
-        .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json").ok())
-        .and_then(|v| v.get("hooks").and_then(Value::as_object).cloned())
-        .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(entry_is_ours))
+/// A settings.json as a value; None when it is missing, unreadable or not JSON.
+pub fn read_settings_lossy_at(path: &Path) -> Option<Value> {
+    config_file::read(path).ok().and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json").ok())
 }
 
 fn wsl_edits(target: &crate::wsl::Target, install: bool) -> Vec<FileEdit<'static>> {
@@ -291,8 +286,8 @@ pub fn status_line_previous_path() -> PathBuf {
     settings::hook_exe_path().with_file_name("statusline-previous.json")
 }
 
-fn read_status_line_previous() -> Option<Value> {
-    let bytes = std::fs::read(status_line_previous_path()).ok()?;
+fn read_previous_at(path: &Path) -> Option<Value> {
+    let bytes = std::fs::read(path).ok()?;
     serde_json::from_slice::<Value>(&bytes).ok().filter(Value::is_object)
 }
 
@@ -301,15 +296,33 @@ pub fn plan_relay_installed(settings: &Value) -> bool {
     settings.get("statusLine").is_some_and(status_line_is_ours)
 }
 
+/// The command of the user's own status line, the one that was there before
+/// Coucou's (still in settings.json, or saved when the relay took its place).
+fn own_status_line_command(existing: Option<&Value>, previous: Option<&Value>) -> Option<String> {
+    let command = |v: &Value| v.get("command").and_then(Value::as_str).map(str::to_string);
+    match existing {
+        Some(v) if v.is_object() && !status_line_is_ours(v) => command(v),
+        Some(v) if status_line_is_ours(v) => previous.and_then(command),
+        _ => None,
+    }
+}
+
 /// `statusLine` as it reads after installing or removing the relay. `None`: the
 /// key goes. Installing swaps only `command`, so `padding`, `refreshInterval`
-/// and the rest of the user's status line stay as they were.
-fn status_line_after(existing: Option<&Value>, install: bool, previous: Option<&Value>) -> Option<Value> {
+/// and the rest of the user's status line stay as they were. `command` is what
+/// goes in, given the user's own command (None if they had none).
+fn status_line_after(
+    existing: Option<&Value>,
+    install: bool,
+    previous: Option<&Value>,
+    command: &dyn Fn(Option<&str>) -> String,
+) -> Option<Value> {
     if install {
+        let own = own_status_line_command(existing, previous);
         let mut sl = existing.filter(|v| v.is_object()).cloned().unwrap_or_else(|| json!({}));
         let obj = sl.as_object_mut().expect("an object");
         obj.entry("type").or_insert_with(|| json!("command"));
-        obj.insert("command".into(), json!(hook_command("--statusline")));
+        obj.insert("command".into(), json!(command(own.as_deref())));
         Some(sl)
     } else if existing.is_some_and(status_line_is_ours) {
         previous.cloned()
@@ -318,60 +331,112 @@ fn status_line_after(existing: Option<&Value>, install: bool, previous: Option<&
     }
 }
 
+#[cfg(test)]
 fn status_line_settings(current: &Value, install: bool, previous: Option<&Value>) -> Result<Value, String> {
+    status_line_settings_with(current, install, previous, &|_| hook_command("--statusline"))
+}
+
+fn status_line_settings_with(
+    current: &Value,
+    install: bool,
+    previous: Option<&Value>,
+    command: &dyn Fn(Option<&str>) -> String,
+) -> Result<Value, String> {
     let mut root = current.as_object().cloned().unwrap_or_default();
     // A statusLine that is not an object is something we do not understand:
     // refuse rather than replace it.
     if install && root.get("statusLine").is_some_and(|v| !v.is_object()) {
         return Err(unexpected("\"statusLine\""));
     }
-    match status_line_after(root.get("statusLine"), install, previous) {
+    match status_line_after(root.get("statusLine"), install, previous, command) {
         Some(sl) => root.insert("statusLine".into(), sl),
         None => root.remove("statusLine"),
     };
     Ok(Value::Object(root))
 }
 
-fn status_line_edits(install: bool, previous: Option<Value>) -> Vec<FileEdit<'static>> {
+/// Where the status line goes in and out, and what goes in: Windows' own
+/// settings.json, or a WSL distro's.
+struct StatusLineTarget {
+    settings: PathBuf,
+    /// Where the user's own status line waits while the relay stands in for it.
+    previous: PathBuf,
+    command: Box<dyn Fn(Option<&str>) -> String>,
+}
+
+impl StatusLineTarget {
+    fn windows() -> Self {
+        StatusLineTarget {
+            settings: settings_path(),
+            previous: status_line_previous_path(),
+            command: Box::new(|_| hook_command("--statusline")),
+        }
+    }
+
+    /// A distro's: its command embeds the user's own, which runs in the distro
+    /// (wsl.rs), so what is saved beside settings.json is only for taking the
+    /// relay out again.
+    fn wsl(target: &crate::wsl::Target) -> Self {
+        let relay = target.relay.clone();
+        StatusLineTarget {
+            settings: target.settings_path.clone(),
+            previous: target.settings_path.with_file_name("coucou-statusline-previous.json"),
+            command: Box::new(move |own| crate::wsl::status_line_command(&relay, own)),
+        }
+    }
+}
+
+fn status_line_edits(target: StatusLineTarget, install: bool, previous: Option<Value>) -> Vec<FileEdit<'static>> {
+    let StatusLineTarget { settings, command, .. } = target;
     vec![FileEdit {
-        path: settings_path(),
+        path: settings,
         edit: config_file::json_edit("settings.json".into(), move |current| {
-            Ok(Some(status_line_settings(current, install, previous.as_ref())?))
+            Ok(Some(status_line_settings_with(current, install, previous.as_ref(), &*command)?))
         }),
     }]
 }
 
 /// The diff the user has to look at before the relay goes in or out.
 pub fn status_line_preview(install: bool) -> Result<HookPreview, String> {
-    Ok(plan_to_preview(config_file::preview(&status_line_edits(install, read_status_line_previous()))?))
+    status_line_preview_at(StatusLineTarget::windows(), install)
+}
+
+fn status_line_preview_at(target: StatusLineTarget, install: bool) -> Result<HookPreview, String> {
+    let previous = read_previous_at(&target.previous);
+    Ok(plan_to_preview(config_file::preview(&status_line_edits(target, install, previous))?))
 }
 
 /// Installs or removes the relay, after the same backup and fingerprint checks as
 /// the hooks. Installing first saves a status line of the user's own, removing
 /// puts it back (or removes the key if there was none).
 pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, String> {
-    let before = config_file::read(&settings_path())
+    status_line_write_at(StatusLineTarget::windows(), install, fingerprint)
+}
+
+fn status_line_write_at(target: StatusLineTarget, install: bool, fingerprint: &str) -> Result<String, String> {
+    let before = config_file::read(&target.settings)
         .and_then(|bytes| config_file::parse_json(bytes.as_deref(), "settings.json"))?;
-    let previous = read_status_line_previous();
+    let previous_path = target.previous.clone();
+    let previous = read_previous_at(&previous_path);
     let own = before.get("statusLine").filter(|v| !status_line_is_ours(v)).cloned();
     let saved = match (install, own.as_ref()) {
         (true, Some(own)) => {
-            save_status_line_previous(own).map_err(|_| {
+            save_previous_at(&previous_path, own).map_err(|_| {
                 crate::i18n::t("Could not save your current status line next to the relay; nothing was changed.")
             })?;
             true
         }
         _ => false,
     };
-    let result = config_file::apply(&status_line_edits(install, previous), fingerprint);
+    let result = config_file::apply(&status_line_edits(target, install, previous), fingerprint);
     match &result {
         // Back in settings.json: the saved copy has done its job.
         Ok(_) if !install => {
-            let _ = std::fs::remove_file(status_line_previous_path());
+            let _ = std::fs::remove_file(&previous_path);
         }
         // Nothing was written: do not leave a stale copy behind.
         Err(_) if saved => {
-            let _ = std::fs::remove_file(status_line_previous_path());
+            let _ = std::fs::remove_file(&previous_path);
         }
         _ => {}
     }
@@ -379,12 +444,23 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
-fn save_status_line_previous(status_line: &Value) -> std::io::Result<()> {
-    let path = status_line_previous_path();
+fn save_previous_at(path: &Path, status_line: &Value) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    config_file::write_like(&path, &path, config_file::pretty(status_line).as_bytes())
+    config_file::write_like(path, path, config_file::pretty(status_line).as_bytes())
+}
+
+// ── The plan usage gauge in WSL ───────────────────────────────────────────────
+
+pub fn wsl_status_line_preview(distro: &str, user: &str, install: bool) -> Result<HookPreview, String> {
+    let target = crate::wsl::resolve(distro, user)?;
+    status_line_preview_at(StatusLineTarget::wsl(&target), install)
+}
+
+pub fn wsl_status_line_write(distro: &str, user: &str, install: bool, fingerprint: &str) -> Result<String, String> {
+    let target = crate::wsl::resolve(distro, user)?;
+    status_line_write_at(StatusLineTarget::wsl(&target), install, fingerprint)
 }
 
 /// Copies the relay (coucou-hook.exe / coucou-hook) into the local data dir's
@@ -509,18 +585,31 @@ mod tests {
     }
 
     #[test]
-    fn a_settings_file_is_read_for_our_hooks_without_being_touched() {
-        let dir = config_file::tests::scratch("wsl-has-ours");
-        let path = dir.join("settings.json");
-        assert!(!settings_file_has_ours(&path));
-        let relay = "/mnt/c/x/coucou-hook.exe";
-        let ours = merged_with(&json!({}), &|e| crate::wsl::relay_command(relay, e)).unwrap();
-        std::fs::write(&path, serde_json::to_vec(&ours).unwrap()).unwrap();
-        assert!(settings_file_has_ours(&path));
-        std::fs::write(&path, br#"{ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "x.sh" }] }] } }"#).unwrap();
-        assert!(!settings_file_has_ours(&path));
-        std::fs::write(&path, b"not json").unwrap();
-        assert!(!settings_file_has_ours(&path));
+    fn the_wsl_status_line_embeds_the_users_own_and_gives_it_back() {
+        let relay = "/mnt/c/Users/Me/AppData/Local/Coucou/bin/coucou-hook.exe";
+        let command = |own: Option<&str>| crate::wsl::status_line_command(relay, own);
+        let own = json!({ "type": "command", "command": "bash ~/.claude/statusline.sh", "padding": 1 });
+        let theirs = json!({ "model": "opus", "statusLine": own });
+
+        let installed = status_line_settings_with(&theirs, true, None, &command).unwrap();
+        let line = &installed["statusLine"];
+        assert!(status_line_is_ours(line));
+        assert!(line["command"].as_str().unwrap().contains("bash ~/.claude/statusline.sh"));
+        assert_eq!(line["padding"], 1);
+        assert_eq!(installed["model"], "opus");
+
+        // Installing again keeps their command in it, taken from the saved copy
+        // now that settings.json no longer holds it.
+        let again = status_line_settings_with(&installed, true, Some(&own), &command).unwrap();
+        assert_eq!(again, installed);
+
+        // Taking it out gives back exactly what they had.
+        assert_eq!(status_line_settings_with(&installed, false, Some(&own), &command).unwrap(), theirs);
+
+        // None of their own: the relay alone, and the key goes when it leaves.
+        let bare = status_line_settings_with(&json!({}), true, None, &command).unwrap();
+        assert!(bare["statusLine"]["command"].as_str().unwrap().ends_with("| :"));
+        assert!(status_line_settings_with(&bare, false, None, &command).unwrap().get("statusLine").is_none());
     }
 
     #[test]

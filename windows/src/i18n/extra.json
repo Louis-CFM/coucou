@@ -4482,6 +4482,17 @@
    "pt-BR": "O relay não está em uma unidade local, então o WSL não consegue executá-lo.",
    "ru": "Реле находится не на локальном диске, поэтому WSL не может его запустить.",
    "id": "Relay tidak berada di drive lokal, sehingga WSL tidak dapat menjalankannya."
+  },
+  "Coucou in {name} starts a relay that is not the current one (it moved or was reinstalled), so it does nothing. Reinstall it.": {
+   "zh-Hans": "{name} 中的 Coucou 启动的中继不是当前的（它被移动或重新安装过），因此不起作用。请重新安装。",
+   "hi": "{name} में Coucou एक ऐसा रिले शुरू करता है जो मौजूदा नहीं है (वह हटाया गया या दोबारा इंस्टॉल हुआ), इसलिए वह कुछ नहीं करता। इसे फिर से इंस्टॉल करें।",
+   "es": "Coucou en {name} inicia un relé que no es el actual (se movió o se reinstaló), así que no hace nada. Reinstálalo.",
+   "ar": "يشغّل Coucou في {name} مرحّلًا ليس الحالي (نُقل أو أُعيد تثبيته)، لذلك لا يفعل شيئًا. أعد تثبيته.",
+   "fr": "Coucou dans {name} lance un relais qui n'est pas l'actuel (il a été déplacé ou réinstallé), donc il ne fait rien. Réinstallez-le.",
+   "bn": "{name}-এ Coucou এমন একটি রিলে চালু করে যা বর্তমানটি নয় (এটি সরানো বা আবার ইনস্টল করা হয়েছে), তাই কিছুই করে না। আবার ইনস্টল করুন।",
+   "pt-BR": "O Coucou em {name} inicia um relay que não é o atual (ele foi movido ou reinstalado), então não faz nada. Reinstale-o.",
+   "ru": "Coucou в {name} запускает реле, которое не является текущим (его переместили или переустановили), поэтому ничего не делает. Переустановите его.",
+   "id": "Coucou di {name} menjalankan relay yang bukan yang sekarang (dipindahkan atau diinstal ulang), sehingga tidak berfungsi. Instal ulang."
   }
  }
 }

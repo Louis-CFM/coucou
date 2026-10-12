@@ -260,6 +260,12 @@ export const Bridge = {
   wslHooksApply: (distro: string, user: string, install: boolean, fingerprint: string) =>
     callOrThrow<string>("wsl_hooks_apply", { distro, user, install, fingerprint }),
 
+  /** The plan usage gauge's status line in a distro, same rules as the hooks. */
+  wslStatusLinePreview: (distro: string, user: string, install: boolean) =>
+    callOrThrow<HookPreview>("wsl_status_line_preview", { distro, user, install }),
+  wslStatusLineApply: (distro: string, user: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("wsl_status_line_apply", { distro, user, install, fingerprint }),
+
   // ── Other agents (Gemini CLI, Codex, Cursor…) ─────────────────────────────
   agentHooksList: () => call<AgentHookStatus[]>("agent_hooks_list"),
   /** Diff to show before anything is written. `install: false` previews removal. */
@@ -502,7 +508,16 @@ export interface HookStatus {
 export interface WslDistro {
   name: string;
   running: boolean;
-  users: { name: string; settingsPath: string; installed: boolean }[];
+  users: {
+    name: string;
+    settingsPath: string;
+    /** Coucou's hooks are in that settings.json. */
+    installed: boolean;
+    /** The relay is the status line there (the plan usage gauge). */
+    planInstalled: boolean;
+    /** Coucou's commands there start a relay that is not the current one. */
+    stale: boolean;
+  }[];
 }
 
 /** One agent other than Claude Code, as agents.rs reports it. */
