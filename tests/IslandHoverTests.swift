@@ -55,7 +55,22 @@ enum IslandHoverTests {
         try await Task.sleep(for: .milliseconds(600))
         precondition(alert.state == .home)
 
-        print("Island open on hover: 6 cases passed")
+        // The folded island hides only where there is a notch to hide behind.
+        let bar = IslandStateMachine()
+        bar.petitToHiddenDelay = 0.05
+        bar.canHide = { false }
+        bar.mouseEntered()
+        bar.mouseLeft()
+        try await Task.sleep(for: .milliseconds(300))
+        precondition(bar.state == .petit)
+        let notch = IslandStateMachine()
+        notch.petitToHiddenDelay = 0.05
+        notch.canHide = { true }
+        notch.mouseEntered()
+        notch.mouseLeft()
+        try await waitFor(.hidden, notch, timeout: 5)
+
+        print("Island open on hover: 7 cases passed")
     }
 
     @MainActor

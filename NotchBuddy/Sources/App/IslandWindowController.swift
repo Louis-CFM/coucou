@@ -243,6 +243,12 @@ final class IslandWindowController: NSWindowController {
         // notchWidth/hasNotch are not @Published: tell the views to resize the island.
         NotificationCenter.default.post(name: .islandScreenChanged, object: nil)
         state.objectWillChange.send()
+        // A hidden island landing on a screen without a notch comes back folded.
+        if !hasNotch {
+            silentNextReveal = true
+            fsm.reveal()
+            silentNextReveal = false
+        }
     }
 
     /// Follow-the-mouse mode: hop to the cursor's screen while the island is not open,
@@ -326,6 +332,7 @@ final class IslandWindowController: NSWindowController {
 
         // An approval, or an email prepared by voice, stays open until I click.
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
+        fsm.canHide = { AppState.shared.hasNotch }
 
         // Voice: wake phrase detected → open listening island
         #if !APPSTORE
