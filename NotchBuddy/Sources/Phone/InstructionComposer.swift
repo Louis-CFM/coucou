@@ -212,9 +212,13 @@ final class Dictation: @unchecked Sendable {
     @ObservationIgnored private let engine = AVAudioEngine()
     @ObservationIgnored private var request: SFSpeechAudioBufferRecognitionRequest?
     @ObservationIgnored private var task: SFSpeechRecognitionTask?
+    @ObservationIgnored private var starting = false
 
     @MainActor func toggle(startingFrom text: String) async {
         if isRecording { stop(); return }
+        guard !starting else { return }
+        starting = true
+        defer { starting = false }
         guard await Self.authorized() else { return }
         prefix = text.isEmpty || text.hasSuffix(" ") ? text : text + " "
         transcript = ""
