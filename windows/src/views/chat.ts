@@ -25,6 +25,8 @@ const STRINGS = {
   switchModel: N_("Switch provider or model"),
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
+  searchModels: N_("Search models"),
+  noMatch: N_("No model matches."),
   noKey: N_("No API key — add it in Settings."),
   openSettings: N_("Open Settings"),
 };
@@ -72,11 +74,23 @@ interface Picker {
   readonly isOpen: boolean;
 }
 
+/** A list longer than this gets a search field. */
+const SEARCH_FROM = 10;
+
 /** Provider chips, then the chosen provider's models — ModelPickerView. */
 function buildPicker(onChange: () => void): Picker {
   const chips = h("div", { class: "picker-chips" });
   const list = h("div", { class: "picker-list" });
-  const el = h("div", { class: "picker" }, chips, h("div", { class: "picker-rule" }), list);
+  const search = h("input", {
+    type: "text",
+    class: "picker-search",
+    placeholder: t(STRINGS.searchModels),
+    spellcheck: "false",
+    autocomplete: "off",
+  }) as HTMLInputElement;
+  const el = h("div", { class: "picker" }, chips, h("div", { class: "picker-rule" }), search, list);
+  /** What the list shows, so typing in the search field can filter it. */
+  let shown: { p: ProviderDef; models: ModelInfo[] } | null = null;
 
   /** Models already asked for, by provider; a model server is asked again each time. */
   const cache = new Map<string, ModelInfo[]>();
@@ -122,9 +136,18 @@ function buildPicker(onChange: () => void): Picker {
   }
 
   function drawModels(p: ProviderDef, models: ModelInfo[]) {
+    shown = { p, models };
+    const searchable = models.length > SEARCH_FROM;
+    search.style.display = searchable ? "" : "none";
+    if (searchable && document.activeElement !== search) search.focus();
+    const query = search.value.trim().toLowerCase();
+    const matching = query
+      ? models.filter((m) => m.label.toLowerCase().includes(query) || m.id.toLowerCase().includes(query))
+      : models;
     clear(list);
+    if (matching.length === 0) list.append(h("div", { class: "picker-status", text: t(STRINGS.noMatch) }));
     const current = activeModel(State.settings);
-    for (const m of models) {
+    for (const m of matching) {
       const on = m.id === current;
       const row = h(
         "button",
@@ -174,7 +197,17 @@ function buildPicker(onChange: () => void): Picker {
     }
   }
 
+  search.addEventListener("input", () => {
+    if (shown) drawModels(shown.p, shown.models);
+  });
+  search.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    (list.querySelector(".picker-model") as HTMLElement | null)?.click();
+  });
+
   function open() {
+    search.value = "";
+    shown = null;
     isOpen = true;
     el.classList.add("on");
     drawChips();
@@ -228,6 +261,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
+    if (State.modelPickerOpen !== picker.isOpen) {
+      State.modelPickerOpen = picker.isOpen;
+      onHeightChange();
+    }
   });
   body.append(chipRow, log, picker.el, modelRow, bar);
 
