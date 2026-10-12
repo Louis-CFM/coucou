@@ -46,6 +46,37 @@ pub async fn eleven_signed_url(agent_id: Option<String>) -> Result<String, Strin
     Ok(url)
 }
 
+/// The ElevenLabs credits this month: used, limit, and when they reset.
+#[derive(serde::Serialize)]
+pub struct ElevenUsage {
+    used: u64,
+    limit: u64,
+    /// Unix seconds.
+    resets_at: u64,
+}
+
+#[tauri::command]
+pub async fn eleven_usage() -> Result<ElevenUsage, String> {
+    let key = crate::secrets::get(KEY).ok_or_else(|| t("No ElevenLabs API key — add it in Settings → Voice."))?;
+    let client = reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(|e| e.to_string())?;
+    let res = client
+        .get("https://api.elevenlabs.io/v1/user/subscription")
+        .header("xi-api-key", key)
+        .send()
+        .await
+        .map_err(|_| t("Can't reach ElevenLabs."))?;
+    if !res.status().is_success() {
+        crate::log::line(format!("eleven: usage refused ({})", res.status()));
+        return Err(t("ElevenLabs refused the key or the agent."));
+    }
+    let j: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+    Ok(ElevenUsage {
+        used: j["character_count"].as_u64().unwrap_or(0),
+        limit: j["character_limit"].as_u64().unwrap_or(0),
+        resets_at: j["next_character_count_reset_unix"].as_u64().unwrap_or(0),
+    })
+}
+
 fn hermes_exe() -> Option<std::path::PathBuf> {
     let local = std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from)?;
     let exe = local.join("hermes").join("hermes-agent").join(".venv").join("Scripts").join("hermes.exe");

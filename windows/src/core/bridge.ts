@@ -246,6 +246,8 @@ export const Bridge = {
   /** An installed app by name, from the Start menu (Store apps too); its name. */
   openApp: (name: string) => callOrThrow<string>("open_app", { name }),
   lockScreen: () => callOrThrow<void>("lock_screen"),
+  /** The ElevenLabs credits this month (eleven.rs); null without a key. */
+  elevenUsage: () => call<{ used: number; limit: number; resets_at: number }>("eleven_usage"),
   /** The volume keys' own step: up, down or mute, with the island's HUD. */
   volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */

@@ -15,6 +15,7 @@ import { callbackLine, openTarget } from "../core/intents";
 import { endLive, showLive, Live, type LiveHost } from "../island/live";
 import { startFocus, stopFocus } from "../views/extras";
 import { agentsText, planText } from "./voice";
+import { elevenUsage, refreshElevenUsage } from "../views/usage";
 import { t } from "../i18n/i18n";
 
 let ws: WebSocket | null = null;
@@ -114,8 +115,13 @@ async function coucouTool(p: CoucouParams): Promise<string> {
       const open = Todos.items.filter((x) => !x.done).map((x) => x.text);
       return open.length ? `Open to-dos: ${open.join("; ")}.` : "The to-do list is empty.";
     }
-    case "claude_usage":
-      return planText();
+    case "claude_usage": {
+      await refreshElevenUsage();
+      const e = elevenUsage;
+      const days = e ? Math.max(0, Math.round((e.window.resetsAt - Date.now()) / 86_400_000)) : 0;
+      const credits = e ? ` ElevenLabs: ${e.used.toLocaleString()} of ${e.limit.toLocaleString()} credits used (${Math.round(e.window.usedPct)}%), resets in ${days} days.` : "";
+      return planText() + credits;
+    }
     case "agents_status":
       return agentsText();
     case "open_app": {

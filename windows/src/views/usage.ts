@@ -95,11 +95,25 @@ let codexInFlight = false;
  */
 let claudeRefreshing = false;
 
+/** ElevenLabs credits this month, as a gauge; null until read (or no key). */
+export let elevenUsage: { window: PlanWindow; used: number; limit: number } | null = null;
+
+export function refreshElevenUsage(): Promise<void> {
+  return Bridge.elevenUsage()
+    .then((u) => {
+      if (!u || !u.limit) return;
+      elevenUsage = { window: { usedPct: Math.min(100, (100 * u.used) / u.limit), resetsAt: u.resets_at * 1000 }, used: u.used, limit: u.limit };
+      State.notify();
+    })
+    .catch(() => {});
+}
+
 /** The ↻ on the Claude plan card: Claude Code's /usage, read and applied. */
 export function refreshClaudePlanUsage(): void {
   if (claudeRefreshing) return;
   claudeRefreshing = true;
   State.notify();
+  void refreshElevenUsage();
   void Bridge.claudeUsageText()
     .then((text) => {
       const usage = text ? parseUsageText(text) : null;
@@ -148,6 +162,7 @@ export function buildPlanPill(codex: boolean): PlanPill {
       State.planDetailIsCodex = codex;
       State.showingPlanDetail = !open;
       if (codex) refreshCodexPlanUsage();
+      else if (!open) void refreshElevenUsage();
       State.notify();
     },
   }, dotEl, label);
@@ -203,7 +218,7 @@ export class PlanCard {
   sync(now = Date.now()) {
     const codex = State.planDetailIsCodex;
     const u = codex ? State.codexPlanUsage : State.planUsage;
-    const key = `${language()}|${codex}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
+    const key = `${language()}|${codex}|${JSON.stringify(u)}|${JSON.stringify(elevenUsage)}|${Math.floor(now / 30_000)}`;
     if (key === this.key) return;
     this.key = key;
     clear(this.el);
@@ -226,6 +241,8 @@ export class PlanCard {
       h("div", { class: "plan-rows" },
         gaugeRow(PLAN_TEXT.fiveHours, u?.fiveHour, false, now),
         gaugeRow(PLAN_TEXT.week, u?.sevenDay, true, now),
+        // Maki's voice runs on the user's ElevenLabs credits: shown once read.
+        ...(elevenUsage ? [gaugeRow("ElevenLabs", elevenUsage.window, true, now)] : []),
       ),
     );
   }
