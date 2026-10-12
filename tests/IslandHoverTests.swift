@@ -55,7 +55,26 @@ enum IslandHoverTests {
         try await Task.sleep(for: .milliseconds(600))
         precondition(alert.state == .home)
 
-        print("Island open on hover: 6 cases passed")
+        // A call: nothing reveals, hover and click do nothing, until it ends.
+        let call = machine()
+        call.paused = true
+        call.reveal()
+        call.mouseEntered()
+        call.click()
+        precondition(call.state == .hidden)
+        call.paused = false
+        call.reveal()
+        precondition(call.state == .petit)
+
+        // A call starting mid-way takes the open island down at once.
+        let mid = machine()
+        mid.mouseEntered()
+        precondition(mid.state == .home)
+        mid.paused = true
+        mid.forceHidden()
+        precondition(mid.state == .hidden && !mid.openedByHover)
+
+        print("Island open on hover and calls: 8 cases passed")
     }
 
     @MainActor
