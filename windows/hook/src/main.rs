@@ -25,7 +25,7 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
@@ -35,7 +35,10 @@ mod reply;
 /// Budget for getting a pipe connection. Beyond this the agent wins, always.
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 /// Whole-run budget for an event nobody waits on: connect and write, no more.
-const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
+/// Claude Code waits for this on every tool call, twice.
+const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_millis(500);
+/// Longest wait for the agent to finish writing the event on stdin.
+pub const STDIN_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
 
@@ -75,10 +78,28 @@ struct Args {
     event: String,
 }
 
+/// All of `input`, read on a helper thread; `None` if it is still open after
+/// `budget` (an agent that never closes our stdin must not hold its own turn).
+pub fn read_all_within(mut input: impl Read + Send + 'static, budget: Duration) -> Option<Vec<u8>> {
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut raw = Vec::new();
+        let _ = input.read_to_end(&mut raw);
+        let _ = tx.send(raw);
+    });
+    rx.recv_timeout(budget).ok()
+}
+
+/// The arguments as text; one that is not valid Unicode is read lossily
+/// instead of aborting the relay (`std::env::args` panics on it).
+fn arg_list() -> Vec<String> {
+    std::env::args_os().skip(1).map(|a| a.to_string_lossy().into_owned()).collect()
+}
+
 fn args() -> Args {
     let mut agent = String::new();
     let mut event = String::new();
-    let mut it = std::env::args().skip(1);
+    let mut it = arg_list().into_iter();
     while let Some(arg) = it.next() {
         if arg == "--agent" {
             agent = it.next().unwrap_or_default();
@@ -105,16 +126,16 @@ struct Event {
 }
 
 fn main() {
-    if std::env::args().skip(1).any(|a| a == "--statusline") {
+    if arg_list().iter().any(|a| a == "--statusline") {
         statusline::run();
     }
     let args = args();
-    let mut raw = Vec::new();
-    let _ = std::io::stdin().read_to_end(&mut raw);
+    let raw = read_all_within(std::io::stdin(), STDIN_BUDGET).unwrap_or_default();
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    let Some(event) = prepare(&raw, &args, &env, &cwd) else {
+    let Some(event) = prepare(&raw, &args, &env, &cwd, now_ms) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -158,7 +179,7 @@ fn print(line: Option<String>) {
 
 /// The payload to forward, from the raw stdin bytes. `env` reads an environment
 /// variable and `cwd` is the working directory, so tests stay pure.
-fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str) -> Option<Event> {
+fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str, now_ms: u64) -> Option<Event> {
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
@@ -187,6 +208,9 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     normalize::fields(map, env);
     let name = normalize::refine(normalize::event(&raw_event), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
+    // When this relay saw the event: the island orders by it, since separate
+    // relay processes can reach it out of order (a PostToolUse after the Stop).
+    map.insert("coucou_ts".into(), Value::from(now_ms));
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -381,7 +405,7 @@ mod tests {
 
     fn run(raw: &str, agent: &str, event: &str) -> (Value, Event) {
         let args = Args { agent: agent.into(), event: event.into() };
-        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here").expect("forwarded");
+        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", 1234).expect("forwarded");
         let v = serde_json::from_str(ev.line.trim_end()).unwrap();
         (v, ev)
     }
@@ -489,15 +513,43 @@ mod tests {
     }
 
     #[test]
+    fn every_forwarded_event_carries_the_relays_clock() {
+        let (v, _) = run(r#"{"hook_event_name":"PreToolUse","tool_name":"Bash"}"#, "", "");
+        assert_eq!(v["coucou_ts"], 1234);
+    }
+
+    #[test]
+    fn an_agent_that_never_closes_stdin_does_not_hold_the_relay() {
+        let (reader, writer) = std::io::pipe().unwrap();
+        let started = std::time::Instant::now();
+        assert!(read_all_within(reader, Duration::from_millis(200)).is_none());
+        assert!(started.elapsed() < Duration::from_secs(1));
+        drop(writer);
+    }
+
+    #[test]
+    fn a_closed_stdin_is_read_whole() {
+        let (reader, mut writer) = std::io::pipe().unwrap();
+        writer.write_all(br#"{"a":1}"#).unwrap();
+        drop(writer);
+        assert_eq!(read_all_within(reader, Duration::from_secs(2)).unwrap(), br#"{"a":1}"#);
+    }
+
+    #[test]
+    fn fire_and_forget_events_get_half_a_second() {
+        assert!(FIRE_AND_FORGET_BUDGET <= Duration::from_millis(500));
+    }
+
+    #[test]
     fn what_cannot_be_read_is_not_forwarded() {
         let args = Args { agent: "copilot".into(), event: "preToolUse".into() };
         for raw in ["", "not json", "[1,2]"] {
-            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/").is_none());
+            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", 1234).is_none());
         }
         // A BOM is not a reason to drop the event.
         let mut bom = vec![0xEF, 0xBB, 0xBF];
         bom.extend_from_slice(br#"{"hook_event_name":"Stop"}"#);
-        assert!(prepare(&bom, &args, &|_| None, "/").is_some());
+        assert!(prepare(&bom, &args, &|_| None, "/", 1234).is_some());
     }
 
     #[test]

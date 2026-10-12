@@ -19,7 +19,7 @@ use std::process::{Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::{talk, truncate_strings, CONNECT_TIMEOUT};
+use crate::{read_all_within, talk, truncate_strings, CONNECT_TIMEOUT, STDIN_BUDGET};
 
 /// How long the app may take to take the limits. Same 300 ms as a hook connect.
 const APP_BUDGET: Duration = CONNECT_TIMEOUT;
@@ -38,8 +38,7 @@ const DRAIN_GRACE: Duration = Duration::from_millis(200);
 const PREVIOUS_FILE: &str = "statusline-previous.json";
 
 pub fn run() -> ! {
-    let mut raw = Vec::new();
-    let _ = std::io::stdin().read_to_end(&mut raw);
+    let mut raw = read_all_within(std::io::stdin(), STDIN_BUDGET).unwrap_or_default();
     if raw.starts_with(&[0xEF, 0xBB, 0xBF]) {
         raw.drain(..3);
     }
