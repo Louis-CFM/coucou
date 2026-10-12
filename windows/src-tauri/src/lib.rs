@@ -301,25 +301,16 @@ fn open_session(shared: State<Shared>, session_id: Option<String>, path: Option<
         return open_editor(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
-    #[cfg(windows)]
-    {
-        if platform::focus_session_window(&owners, &folder) {
-            return true;
+    // Finding and raising the window asks the OS about every top-level window
+    // (on Linux the display server, KWin or the terminal): never on the UI
+    // thread a sync command runs on. The editor still opens when nothing could
+    // bring the window forward.
+    std::thread::spawn(move || {
+        if !platform::focus_session_window(&owners, &folder) {
+            open_editor(path);
         }
-        open_editor(path)
-    }
-    // Linux asks the display server, KWin or the terminal, which can take a
-    // moment: never on the UI thread a sync command runs on. The editor still
-    // opens when none of them could bring the window forward.
-    #[cfg(target_os = "linux")]
-    {
-        std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
-                open_editor(path);
-            }
-        });
-        true
-    }
+    });
+    true
 }
 
 /// The Claude Desktop pill's target: the Claude app (Windows only — it has no
@@ -726,10 +717,13 @@ fn cli_login(provider: String) -> Result<(), String> {
     }
 }
 
-/// Copies a dropped file into the inbox and reports its name back.
+/// Copies a dropped file into the inbox and reports its name back — on the
+/// blocking pool: a large file must not freeze the island while it copies.
 #[tauri::command]
-fn ingest_file(path: String) -> Result<DroppedFile, String> {
-    files::ingest(&path)
+async fn ingest_file(path: String) -> Result<DroppedFile, String> {
+    tauri::async_runtime::spawn_blocking(move || files::ingest(&path))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Sends the dropped file through Resend — MailView.sendViaResend on the Mac.
