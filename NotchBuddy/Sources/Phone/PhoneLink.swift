@@ -439,6 +439,7 @@ final class PhoneLink {
         for _ in 0..<3 {
             // Screen left (task cancelled): stop rather than fetch back to back.
             do { try await Task.sleep(for: .seconds(6)) } catch { return false }
+            if let detail = serviceDetails[pillId], detail.fetchedAt != previous { return true }
             _ = await fetchChanges()
             // Only the Mac's answer to this request counts, not an older detail.
             if let detail = serviceDetails[pillId], detail.fetchedAt != previous { return true }
@@ -455,6 +456,7 @@ final class PhoneLink {
         guard await sendServiceRequest(kind: action.kind, target: action.target, pillId: pillId) else { return false }
         for _ in 0..<6 {
             try? await Task.sleep(for: .seconds(5))
+            if let result = serviceDetails[pillId]?.lastAction, result != previous { return result.ok }
             _ = await fetchChanges()
             if let result = serviceDetails[pillId]?.lastAction, result != previous { return result.ok }
         }
