@@ -3965,11 +3965,7 @@ struct AgentPillsView: View {
     @State private var swapping = false
 
     private var others: [AgentTask] {
-        state.tasks.filter { $0.id != state.focusId }
-    }
-
-    private var displayTasks: [AgentTask] {
-        Array(others.prefix(4))
+        state.othersByActivity
     }
 
     private let columns = [
@@ -3978,47 +3974,58 @@ struct AgentPillsView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(displayTasks) { task in
-                    #if !APPSTORE
-                    if task.id == "integration_music" {
-                        MusicPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
-                    } else if task.id == "integration_spotify" {
-                        SpotifyPill(task: task, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
-                    } else {
-                        AgentPill(task: task, state: state, swapping: $swapping) {
-                            swapping = true
-                            state.setFocus(task.id)
-                            SoundEngine.shared.play("blip")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                        }
+        if others.count > 6 {
+            ScrollView(.vertical, showsIndicators: false) {
+                grid.padding(.vertical, 6)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                grid
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var grid: some View {
+        LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(others) { task in
+                #if !APPSTORE
+                if task.id == "integration_music" {
+                    MusicPill(task: task, state: state, swapping: $swapping) {
+                        swapping = true
+                        state.setFocus(task.id)
+                        SoundEngine.shared.play("blip")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
-                    #else
+                } else if task.id == "integration_spotify" {
+                    SpotifyPill(task: task, swapping: $swapping) {
+                        swapping = true
+                        state.setFocus(task.id)
+                        SoundEngine.shared.play("blip")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                    }
+                } else {
                     AgentPill(task: task, state: state, swapping: $swapping) {
                         swapping = true
                         state.setFocus(task.id)
                         SoundEngine.shared.play("blip")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                     }
-                    #endif
                 }
+                #else
+                AgentPill(task: task, state: state, swapping: $swapping) {
+                    swapping = true
+                    state.setFocus(task.id)
+                    SoundEngine.shared.play("blip")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                }
+                #endif
             }
-            .padding(.horizontal, 8)
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 8)
     }
 }
 
@@ -4327,13 +4334,9 @@ struct PillBadgeView: View {
 struct ColumnAgentsView: View {
     @ObservedObject var state: AppState
 
-    var others: [AgentTask] {
-        state.tasks.filter { $0.id != state.focusId }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(Array(others.prefix(4).enumerated()), id: \.1.id) { idx, task in
+            ForEach(Array(state.othersByActivity.prefix(4).enumerated()), id: \.1.id) { idx, task in
                 MiniBotCanvasView(task: task)
                     .frame(width: 16 / 0.6, height: 16 / 0.6)
                     .frame(width: 16, height: 16)

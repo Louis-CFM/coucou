@@ -293,6 +293,23 @@ class AppState {
     return this.tasks.filter((t) => t.id !== this.focusId);
   }
 
+  /**
+   * The pills that are not in front, the ones with something going on first:
+   * an alert, then a running session, then the rest in their usual order.
+   */
+  get othersByActivity(): AgentTask[] {
+    const rank = (t: AgentTask) => {
+      if (t.pillBadge) return 0;
+      if (t.state === "approval" || t.state === "question" || t.state === "error") return 0;
+      if (t.state === "working" || t.state === "thinking" || t.state === "searching") return 1;
+      return 2;
+    };
+    return this.otherTasks
+      .map((t, i) => ({ t, i }))
+      .sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i)
+      .map(({ t }) => t);
+  }
+
   setFocus(id: string) {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
@@ -454,7 +471,7 @@ class AppState {
 
   /**
    * Creates the pill of a tagged agent on its first event; no-op if it exists.
-   * Inserted right after the main pill so it is in the visible slice(0,4). A
+   * Inserted right after the main pill so it is among the first shown. A
    * catalog agent wears its catalog colour, as on macOS.
    */
   upsertExternalAgent(id: string, name: string, color: string) {
@@ -492,7 +509,7 @@ class AppState {
     this.notify();
   }
 
-  /** Declares or undeclares a pill (max 4 next to the main one). */
+  /** Declares or undeclares a pill. */
   toggleIntegration(id: string) {
     const next = toggleDeclared(sanitizeDeclared(this.settings, this.os), id, this.os);
     if (!next) return;

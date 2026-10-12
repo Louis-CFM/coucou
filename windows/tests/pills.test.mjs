@@ -3,7 +3,7 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_MAIN_PILL, MAX_DECLARED, PILL_CATALOG, PILL_CATEGORIES, availablePills, chooseMainPill,
+  DEFAULT_MAIN_PILL, PILL_CATALOG, PILL_CATEGORIES, availablePills, chooseMainPill,
   isComingSoon, isHookPill, mainPillChoices, orderPills, pillDefinition, sanitizeDeclared, sessionSubtitle,
   toggleDeclared,
 } from "../src/core/pills.ts";
@@ -173,14 +173,14 @@ test("a declaration from an older or edited settings file is made usable", () =>
     "integration_claude");
 });
 
-test("up to four pills next to the main one, never the main one itself", () => {
+test("any number of pills next to the main one, never the main one itself", () => {
   const d = {
     mainPill: "integration_claude",
     activeIntegrations: ["integration_n8n", "integration_github", "integration_stripe"],
   };
   const four = toggleDeclared(d, "agent_gemini", "linux");
-  assert.equal(four.length, MAX_DECLARED);
-  assert.equal(toggleDeclared({ ...d, activeIntegrations: four }, "ai_anthropic", "linux"), null);
+  assert.equal(four.length, 4);
+  assert.equal(toggleDeclared({ ...d, activeIntegrations: four }, "ai_anthropic", "linux").length, 5);
   assert.equal(toggleDeclared(d, "integration_claude", "linux"), null);
   assert.equal(toggleDeclared(d, "integration_music", "linux"), null);
   assert.equal(toggleDeclared(d, "agent_claude-desktop", "linux"), null);
@@ -288,14 +288,14 @@ test("a Claude Code session gets its pill even when it is not loaded", () => {
   assert.equal(State.upsertWorkspacePill("not_a_pill", "x", ""), null);
 });
 
-test("toggling declares up to four pills and never the main one", () => {
+test("toggling declares any number of pills and never the main one", () => {
   State.settings.activeIntegrations = [];
   State.loadIntegrationTasks();
   for (const id of ["integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github"]) {
     State.toggleIntegration(id);
   }
   assert.deepEqual(State.settings.activeIntegrations, [
-    "integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe",
+    "integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github",
   ]);
   State.toggleIntegration("integration_claude");
   assert.ok(ids().includes("integration_claude"));
@@ -303,4 +303,16 @@ test("toggling declares up to four pills and never the main one", () => {
   State.toggleIntegration("agent_gemini");
   assert.ok(!ids().includes("agent_gemini"));
   assert.equal(State.focusId, "integration_claude");
+});
+
+test("both grids put alerts and running sessions first", () => {
+  State.settings.activeIntegrations = ["integration_n8n", "agent_gemini", "ai_anthropic", "integration_stripe", "integration_github"];
+  State.loadIntegrationTasks();
+  State.setFocus("integration_claude");
+  const byId = (id) => State.tasks.find((t) => t.id === id);
+  byId("integration_github").state = "working";
+  byId("integration_stripe").pillBadge = "finished";
+  assert.deepEqual(State.othersByActivity.map((t) => t.id).slice(0, 2), ["integration_stripe", "integration_github"]);
+  assert.deepEqual(State.othersByActivity.slice(2).map((t) => t.id),
+    State.otherTasks.filter((t) => t.id !== "integration_stripe" && t.id !== "integration_github").map((t) => t.id));
 });

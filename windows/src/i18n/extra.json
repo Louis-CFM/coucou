@@ -1651,16 +1651,16 @@
    "ru": "Выберите модель {name} над полем чата.",
    "id": "Pilih model {name} di atas kotak obrolan."
   },
-  "Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.": {
-   "zh-Hans": "最多选择 {max} 个标签显示在 Mochi 旁边 — 已用 {used}/{max}。密钥保存在 {store} 中，绝不写入磁盘。",
-   "hi": "Mochi के बगल में दिखाने के लिए अधिकतम {max} टैब चुनें — {used}/{max} उपयोग में। कुंजियाँ {store} में रखी जाती हैं, डिस्क पर कभी नहीं।",
-   "es": "Elige hasta {max} pestañas para mostrar junto a Mochi — {used}/{max} en uso. Las claves se guardan en {store}, nunca en el disco.",
-   "ar": "اختر حتى {max} تبويبات لعرضها بجانب Mochi — {used}/{max} مستخدمة. تُحفظ المفاتيح في {store}، ولا تُكتب على القرص أبدًا.",
-   "fr": "Choisis jusqu'à {max} onglets à afficher à côté de Mochi — {used}/{max} utilisés. Les clés sont stockées dans {store}, jamais sur le disque.",
-   "bn": "Mochi-র পাশে দেখাতে সর্বোচ্চ {max}টি ট্যাব বেছে নিন — {used}/{max} ব্যবহৃত। কী {store}-এ রাখা হয়, কখনো ডিস্কে নয়।",
-   "pt-BR": "Escolha até {max} abas para mostrar ao lado do Mochi — {used}/{max} em uso. As chaves ficam em {store}, nunca no disco.",
-   "ru": "Выберите до {max} вкладок рядом с Mochi — занято {used}/{max}. Ключи хранятся в {store}, никогда на диске.",
-   "id": "Pilih hingga {max} tab untuk ditampilkan di samping Mochi — {used}/{max} terpakai. Kunci disimpan di {store}, tidak pernah di disk."
+  "Keys are stored in the {store}, never on disk.": {
+   "zh-Hans": "密钥保存在 {store} 中，绝不写入磁盘。",
+   "hi": "कुंजियाँ {store} में रखी जाती हैं, डिस्क पर कभी नहीं।",
+   "es": "Las claves se guardan en {store}, nunca en el disco.",
+   "ar": "تُحفظ المفاتيح في {store}، ولا تُكتب على القرص أبدًا.",
+   "fr": "Les clés sont stockées dans {store}, jamais sur le disque.",
+   "bn": "কী {store}-এ রাখা হয়, কখনো ডিস্কে নয়।",
+   "pt-BR": "As chaves ficam em {store}, nunca no disco.",
+   "ru": "Ключи хранятся в {store}, никогда на диске.",
+   "id": "Kunci disimpan di {store}, tidak pernah di disk."
   },
   "Press keys…": {
    "zh-Hans": "请按键…",
@@ -3283,17 +3283,6 @@
    "pt-BR": "{total} no último ano",
    "ru": "{total} за год",
    "id": "{total} setahun terakhir"
-  },
-  "{used}/{max} slots in use — the main tool doesn't take one.": {
-   "zh-Hans": "已用 {used}/{max} 个位置 — 主要工具不占位置。",
-   "hi": "{used}/{max} स्लॉट उपयोग में — मुख्य टूल कोई स्लॉट नहीं लेता।",
-   "es": "{used}/{max} espacios en uso — la herramienta principal no ocupa ninguno.",
-   "ar": "{used}/{max} من الخانات مستخدمة — الأداة الرئيسية لا تشغل خانة.",
-   "fr": "{used}/{max} emplacements utilisés — l'outil principal n'en prend pas.",
-   "bn": "{used}/{max} স্লট ব্যবহৃত — প্রধান টুল কোনো স্লট নেয় না।",
-   "pt-BR": "{used}/{max} espaços em uso — a ferramenta principal não ocupa nenhum.",
-   "ru": "Занято мест: {used}/{max} — основной инструмент место не занимает.",
-   "id": "{used}/{max} slot terpakai — alat utama tidak memakai slot."
   },
   "{what} has an unexpected type — Coucou has not touched it.": {
    "zh-Hans": "{what} 的类型不符合预期 — Coucou 没有修改它。",

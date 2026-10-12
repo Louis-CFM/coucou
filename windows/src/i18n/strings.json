@@ -4072,17 +4072,6 @@
    "ru": "{0} → {1}",
    "id": "{0} → {1}"
   },
-  "{count}/4 slots used": {
-   "zh-Hans": "已用 {count}/4 个插槽",
-   "hi": "{count}/4 स्लॉट उपयोग में",
-   "es": "{count}/4 ranuras usadas",
-   "ar": "{count}/4 فتحات مستخدمة",
-   "fr": "{count}/4 emplacements utilisés",
-   "bn": "{count}/4 স্লট ব্যবহৃত",
-   "pt-BR": "{count}/4 slots usados",
-   "ru": "{count}/4 слотов занято",
-   "id": "{count}/4 slot digunakan"
-  },
   "{name} is ready.": {
    "zh-Hans": "{name} 已就绪。",
    "hi": "{name} तैयार है।",

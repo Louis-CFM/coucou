@@ -335,18 +335,10 @@ select option {
   font-size: 11.5px;
 }
 
-.pill-row.full .name {
-  color: var(--dim-2);
-}
-
 .pill-row .state {
   margin-left: auto;
   font: 400 11.5px var(--font);
   color: var(--dim);
-}
-
-.hint.full {
-  color: var(--amber);
 }
 
 /* Shortcuts section */
