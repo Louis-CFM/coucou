@@ -1044,6 +1044,10 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         if event == "SessionEnd" {
             state.codeSessions[pillId] = nil
+            // The code view has nothing left to show.
+            if state.view == .code, state.codeSessions[state.focusId ?? ""]?.hasContent != true {
+                state.view = state.tasks.isEmpty ? .empty : .overview
+            }
             return
         }
         var session = state.codeSessions[pillId] ?? CodeSession(project: project, root: cwd)
