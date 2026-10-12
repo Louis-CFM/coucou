@@ -639,8 +639,18 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
+            // Like Stop: every session gets its error card and sound, even while another one is
+            // mid-turn behind this pill, and the card names the session that failed.
+            let scope = sessions.endTurn(pill: agentId, session: sessionId)
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
+            if scope == .sessionOnly {
+                nbLog("StopFailure \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
+            }
+            if !isExternalAgent {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp,
+                                    hostURL: display.hostURL, bundleId: bundleId, session: sessionId,
+                                    overridingOwner: true)
+            }
             state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
@@ -651,6 +661,12 @@ final class HookServer: @unchecked Sendable {
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                // A session (this one or a sibling) is mid-turn: the pill goes back to work.
+                guard self.sessions.workingCount(pill: agentId) > 0,
+                      AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .error else { return }
+                AppState.shared.updateTask(id: agentId, state: .working)
             }
 
         case "Interrupt":
