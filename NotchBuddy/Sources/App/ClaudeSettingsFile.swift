@@ -7,6 +7,31 @@ import Foundation
 // exact bytes the user was shown.
 
 enum ClaudeSettingsFile {
+    /// A hook command Coucou wrote: every version has run its relay as `…/nb-hook`.
+    /// Matching "coucou" or "NotchBuddy" also caught the user's own hooks that only
+    /// live under a folder with that name.
+    static func isCoucouHookCommand(_ command: String) -> Bool {
+        command.contains("nb-hook")
+    }
+
+    /// `groups` with Coucou's hook entries taken out. A group left with no hook
+    /// goes; the user's other hooks stay where they were, even in a group they
+    /// share with ours. `changed` is false when nothing of ours was there.
+    static func removingCoucouHooks(from groups: [[String: Any]]) -> (groups: [[String: Any]], changed: Bool) {
+        var changed = false
+        let kept: [[String: Any]] = groups.compactMap { group in
+            guard let hooks = group["hooks"] as? [[String: Any]] else { return group }
+            let mine = hooks.filter { !isCoucouHookCommand($0["command"] as? String ?? "") }
+            if mine.count == hooks.count { return group }
+            changed = true
+            if mine.isEmpty { return nil }
+            var g = group
+            g["hooks"] = mine
+            return g
+        }
+        return (kept, changed)
+    }
+
 
     enum Failure: LocalizedError, Equatable {
         case unreadable(String)

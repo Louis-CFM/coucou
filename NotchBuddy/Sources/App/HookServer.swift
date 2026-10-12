@@ -52,6 +52,8 @@ final class HookServer: @unchecked Sendable {
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
+    /// The return to idle each pill's Stop armed (StopTimerBook).
+    private let stopTimers = StopTimerBook()
 
     private init() {}
 
@@ -225,7 +227,10 @@ final class HookServer: @unchecked Sendable {
         try? FileManager.default.removeItem(atPath: path)
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else { return }
+        guard fd >= 0 else {
+            nbLog("hook server: socket() failed: \(String(cString: strerror(errno)))")
+            return
+        }
         serverFD = fd
 
         var addr = sockaddr_un()
@@ -238,14 +243,35 @@ final class HookServer: @unchecked Sendable {
         let bindRC = withUnsafePointer(to: &addr) { ptr in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
         }
-        guard bindRC == 0 else { close(fd); return }
+        guard bindRC == 0 else {
+            nbLog("hook server: bind \(path) failed: \(String(cString: strerror(errno)))")
+            close(fd)
+            return
+        }
         // Restrict socket to owner only
         chmod(path, 0o600)
-        guard Darwin.listen(fd, 32) == 0 else { close(fd); return }
+        guard Darwin.listen(fd, 32) == 0 else {
+            nbLog("hook server: listen failed: \(String(cString: strerror(errno)))")
+            close(fd)
+            return
+        }
 
         while true {
             let clientFD = Darwin.accept(fd, nil, nil)
-            guard clientFD >= 0 else { break }
+            if clientFD < 0 {
+                let err = errno
+                switch AcceptPolicy.next(afterErrno: err) {
+                case .retry:
+                    continue
+                case .retryAfterPause:
+                    nbLog("hook server: accept: \(String(cString: strerror(err))) — retrying")
+                    usleep(200_000)
+                    continue
+                case .stop:
+                    nbLog("hook server: accept: \(String(cString: strerror(err))) — stopped")
+                    return
+                }
+            }
             // Reject connections from other users (same-UID check)
             var euid: uid_t = 0
             var egid: gid_t = 0
@@ -463,6 +489,7 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "UserPromptSubmit":
+            supersedeStop(agentId)
             activeSessionId = sessionId
             if isExternalAgent { upsertExternalAgent(id: agentId, name: validAgent!) } else { upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp, bundleId: bundleId) }
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
@@ -475,6 +502,7 @@ final class HookServer: @unchecked Sendable {
             if state.isPresent { expandIfNeeded(to: .overview) }
 
         case "PreToolUse":
+            supersedeStop(agentId)
             activeSessionId = sessionId
             let tool = payload["tool_name"] as? String ?? "Tool"
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
@@ -490,6 +518,7 @@ final class HookServer: @unchecked Sendable {
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
+            supersedeStop(agentId)
             state.updateTask(id: agentId, state: .working)
             // Live diff for Edit / MultiEdit / Write
             let diffTool = payload["tool_name"] as? String ?? ""
@@ -502,6 +531,7 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "PostToolUseFailure":
+            supersedeStop(agentId)
             state.updateTask(id: agentId, state: .working)
             appendStep(id: agentId, step: "⚠ failed")
 
@@ -509,9 +539,11 @@ final class HookServer: @unchecked Sendable {
             let message = payload["message"] as? String ?? ""
             let lower = message.lowercased()
             if lower.contains("rate limit") || lower.contains("limite d") {
+                supersedeStop(agentId)
                 state.updateTask(id: agentId, state: .ratelimit)
                 SoundEngine.shared.play("rate")
             } else if message.hasSuffix("?") {
+                supersedeStop(agentId)
                 state.updateTask(id: agentId, state: .question)
                 appendStep(id: agentId, step: message)
             }
@@ -534,16 +566,17 @@ final class HookServer: @unchecked Sendable {
             } else {
                 setPillBadge(id: agentId, badge: .finished)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+            stopTimers.arm(agentId, after: 5.2) { [weak self] in
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
                     AppState.shared.updateTask(id: agentId, state: .idle)
-                    self.clearPillBadge(id: agentId)
+                    self?.clearPillBadge(id: agentId)
                 }
             }
 
         case "StopFailure":
+            supersedeStop(agentId)
             RecapStore.shared.stop(sessionId: recapSessionId)
             state.updateTask(id: agentId, state: .error)
             SoundEngine.shared.play("error")
@@ -554,6 +587,7 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "Interrupt":
+            supersedeStop(agentId)
             // Codex: user stopped the turn
             RecapStore.shared.stop(sessionId: recapSessionId)
             activeSessionId = nil
@@ -561,6 +595,7 @@ final class HookServer: @unchecked Sendable {
             clearPillBadge(id: agentId)
 
         case "SessionEnd":
+            supersedeStop(agentId)
             activeSessionId = nil
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
@@ -720,6 +755,7 @@ final class HookServer: @unchecked Sendable {
         } else {
             pillId = "integration_claude"
         }
+        supersedeStop(pillId)
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
@@ -798,6 +834,10 @@ final class HookServer: @unchecked Sendable {
         source.setCancelHandler { close(fd) }
         source.resume()
         approvalFDSource = source
+        // The card is up: the relay may now wait for a human (HookAck).
+        if HookAck.wanted(payload) {
+            sendLine(fd: fd, text: HookAck.line)
+        }
 
         // Safety timeout — show a note and cancel without sending a decision.
         // nb-hook reads EOF from the cancel handler's close and exits; Claude Code / Codex re-asks.
@@ -907,6 +947,7 @@ final class HookServer: @unchecked Sendable {
         } else {
             pillId = "integration_claude"
         }
+        supersedeStop(pillId)
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
@@ -954,6 +995,10 @@ final class HookServer: @unchecked Sendable {
         source.setCancelHandler { close(fd) }
         source.resume()
         questionFDSource = source
+        // The card is up: the relay may now wait for a human (HookAck).
+        if HookAck.wanted(payload) {
+            sendLine(fd: fd, text: HookAck.line)
+        }
 
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
@@ -1008,6 +1053,13 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Badge helpers
+
+    /// A newer state replaces `finished`: the pending return to idle must not
+    /// land on it, and the badge it was going to clear goes now.
+    @MainActor
+    private func supersedeStop(_ pillId: String) {
+        if stopTimers.cancel(pillId) { clearPillBadge(id: pillId) }
+    }
 
     @MainActor
     private func setPillBadge(id: String, badge: PillBadge) {
@@ -1199,7 +1251,8 @@ final class HookServer: @unchecked Sendable {
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: wrapperURL.path)
         // nb-hook.py: Python relay
         let pyURL = wrapperURL.deletingLastPathComponent().appendingPathComponent("nb-hook.py")
-        try? nbHookPythonGitHub.write(to: pyURL, atomically: true, encoding: .utf8)
+        try? nbHookPython(socket: "~/Library/Application Support/NotchBuddy/nb.sock")
+            .write(to: pyURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
         #endif
     }
@@ -1225,7 +1278,7 @@ final class HookServer: @unchecked Sendable {
                 if let hookList = matcher["hooks"] as? [[String: Any]] {
                     for hook in hookList {
                         if let cmd = hook["command"] as? String,
-                           cmd.contains("NotchBuddy") || cmd.contains("coucou") {
+                           ClaudeSettingsFile.isCoucouHookCommand(cmd) {
                             hasCoucouHooks = true
                             if let timeout = hook["timeout"] as? Int, timeout < 120 { return true }
                         }
@@ -1241,7 +1294,7 @@ final class HookServer: @unchecked Sendable {
                 (m["matcher"] as? String) == "AskUserQuestion"
                 && (m["hooks"] as? [[String: Any]])?.contains {
                     let cmd = $0["command"] as? String ?? ""
-                    return cmd.contains("NotchBuddy") || cmd.contains("coucou")
+                    return ClaudeSettingsFile.isCoucouHookCommand(cmd)
                 } ?? false
             }
             if !hasAskEntry { return true }
@@ -1300,7 +1353,7 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
+            existing = ClaudeSettingsFile.removingCoucouHooks(from: existing).groups
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1312,7 +1365,7 @@ final class HookServer: @unchecked Sendable {
         ])
         hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
-        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         return (data, snapshot.bytes)
     }
 
@@ -1324,19 +1377,14 @@ final class HookServer: @unchecked Sendable {
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
 
         for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
-                    } ?? false
-                }
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
+            if let matchers = hooks[key] as? [[String: Any]] {
+                let (kept, changed) = ClaudeSettingsFile.removingCoucouHooks(from: matchers)
+                guard changed else { continue }
+                if kept.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = kept }
             }
         }
         settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
     }
 
@@ -1403,7 +1451,7 @@ final class HookServer: @unchecked Sendable {
                 updated["command"] = quotedCmd
                 newSL = updated
                 _pendingPreviousData = try? JSONSerialization.data(withJSONObject: existing,
-                                                                   options: [.prettyPrinted, .sortedKeys])
+                                                                   options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
             } else if let existing = oldSL,
                       let cmd = existing["command"] as? String, cmd.contains("nb-hook") {
                 // Already installed — rebuild to update path if needed, keep other fields
@@ -1443,7 +1491,7 @@ final class HookServer: @unchecked Sendable {
         // Build a compact diff: show only the statusLine key before → after
         func slJSON(_ val: [String: Any]?) throws -> String {
             guard let v = val else { return "(none)" }
-            let d = try JSONSerialization.data(withJSONObject: v, options: [.prettyPrinted, .sortedKeys])
+            let d = try JSONSerialization.data(withJSONObject: v, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
             return String(data: d, encoding: .utf8) ?? "(none)"
         }
         let before = try slJSON(oldSL)
@@ -1485,7 +1533,8 @@ final class HookServer: @unchecked Sendable {
         try nbHookShellWrapper.write(to: wrapperURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: wrapperURL.path)
         let pyURL = coucouDir.appendingPathComponent("nb-hook.py")
-        try nbHookPythonAppStore.write(to: pyURL, atomically: true, encoding: .utf8)
+        try nbHookPython(socket: "~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock")
+            .write(to: pyURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
 
         // Write settings.json (with backup)
@@ -1500,19 +1549,14 @@ final class HookServer: @unchecked Sendable {
         var settings = snapshot.object
         guard var hooks = settings["hooks"] as? [String: Any] else { return }
         for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true
-                    } ?? false
-                }
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
+            if let matchers = hooks[key] as? [[String: Any]] {
+                let (kept, changed) = ClaudeSettingsFile.removingCoucouHooks(from: matchers)
+                guard changed else { continue }
+                if kept.isEmpty { hooks.removeValue(forKey: key) } else { hooks[key] = kept }
             }
         }
         settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
         UserDefaults.standard.set(false, forKey: "coucouHooksInstalled")
     }
@@ -1538,10 +1582,7 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false }
+            existing = ClaudeSettingsFile.removingCoucouHooks(from: existing).groups
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1553,7 +1594,7 @@ final class HookServer: @unchecked Sendable {
         ])
         hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
-        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         return (data, snapshot.bytes)
     }
     #endif
@@ -3092,10 +3133,10 @@ exit 0
 
 // MARK: - nb-hook Python relay (GitHub / non-sandboxed version)
 
-private let nbHookPythonGitHub = """
+private let nbHookPythonTemplate = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
-# Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
+# nb-hook.py — Coucou hook relay for Claude Code and third-party agents
+# Reads JSON from stdin, forwards to Coucou via its Unix socket, translates the response.
 import sys, json, os, socket
 
 def normalize_event(name):
@@ -3154,6 +3195,81 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+ACK_BUDGET = 1.5
+
+def wait_reply(s, long_timeout):
+    # The app's answer line. We asked for an ack (coucou_ack): the first line
+    # must be {"ack":true} within ACK_BUDGET, so an app that cannot show the
+    # card (busy, hung) costs the agent 1.5 s, not two minutes. An answer sent
+    # at once (an "ask" for an agent the app does not serve) is the reply.
+    s.settimeout(ACK_BUDGET)
+    acked = False
+    buf = b''
+    while True:
+        while b'\\n' in buf:
+            line, buf = buf.split(b'\\n', 1)
+            text = line.decode('utf-8', 'replace').strip()
+            if not text:
+                continue
+            if not acked:
+                try:
+                    if json.loads(text).get('ack') is True:
+                        acked = True
+                        s.settimeout(long_timeout)
+                        continue
+                except Exception:
+                    pass
+            return text
+        chunk = s.recv(4096)
+        if not chunk:
+            return ''
+        buf += chunk
+
+# What is forwarded to the app is capped like the Windows relay's: each string
+# to MAX_FIELD bytes, except the edit text of a finished Edit / MultiEdit /
+# Write (the live diff needs it), the prompt and the turn's final answer. The
+# app reads at most 1 MiB, and a cut payload used to be dropped whole. The
+# question Claude Code asked is never cut: answers are keyed by its text.
+MAX_FIELD = 2000
+LONG_FIELDS = {'prompt': 65536, 'last_assistant_message': 65536}
+DIFF_TOOLS = ('Edit', 'MultiEdit', 'Write')
+DIFF_FIELDS = ('old_string', 'new_string', 'content')
+MAX_DIFF_FIELD = 256 * 1024
+MAX_DIFF_TOTAL = 512 * 1024
+
+def cut(s, limit):
+    b = s.encode('utf-8')
+    if len(b) <= limit:
+        return s, False
+    return b[:limit].decode('utf-8', 'ignore') + '…', True
+
+def cap(value, key, diff):
+    if isinstance(value, str):
+        if diff is not None and key in DIFF_FIELDS:
+            out, was_cut = cut(value, min(MAX_DIFF_FIELD, diff['budget']))
+            diff['budget'] = max(0, diff['budget'] - len(out.encode('utf-8')))
+            diff['cut'] = diff['cut'] or was_cut
+            return out
+        return cut(value, LONG_FIELDS.get(key, MAX_FIELD))[0]
+    if isinstance(value, dict):
+        return {k: cap(v, k, diff) for k, v in value.items()}
+    if isinstance(value, list):
+        return [cap(v, key, diff) for v in value]
+    return value
+
+def cap_payload(payload):
+    keeps_diff = payload.get('hook_event_name') == 'PostToolUse' and payload.get('tool_name') in DIFF_TOOLS
+    diff = {'budget': MAX_DIFF_TOTAL, 'cut': False} if keeps_diff else None
+    out = {}
+    for k, v in payload.items():
+        if k == 'tool_input' and payload.get('tool_name') == 'AskUserQuestion':
+            out[k] = v
+        else:
+            out[k] = cap(v, k, diff if k == 'tool_input' else None)
+    if diff and diff['cut']:
+        out['coucou_diff_truncated'] = True
+    return out
+
 def main():
     raw = b''
     payload = {}
@@ -3169,7 +3285,7 @@ def main():
             return
 
     socket_path = os.path.expanduser(
-        '~/Library/Application Support/NotchBuddy/nb.sock'
+        '__COUCOU_SOCKET__'
     )
 
     # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
@@ -3223,19 +3339,12 @@ def main():
                 payload['cwd'] = os.getcwd()
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(125)
+            s.settimeout(1.0)
             s.connect(socket_path)
-            s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
+            payload['coucou_ack'] = 1
+            s.sendall((json.dumps(cap_payload(payload)) + '\\n').encode())
+            response = wait_reply(s, 125)
             s.close()
-            response = b''.join(chunks).decode().strip()
             if response:
                 try:
                     resp_obj = json.loads(response)
@@ -3305,19 +3414,12 @@ def main():
         # Block and wait for Coucou's decision (Claude Code allows up to 120s)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(118)
+            s.settimeout(1.0)
             s.connect(socket_path)
-            s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
+            payload['coucou_ack'] = 1
+            s.sendall((json.dumps(cap_payload(payload)) + '\\n').encode())
+            response = wait_reply(s, 118)
             s.close()
-            response = b''.join(chunks).decode().strip()
             if response:
                 try:
                     resp_obj = json.loads(response)
@@ -3376,7 +3478,7 @@ def main():
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.settimeout(0.3)
         s.connect(socket_path)
-        s.sendall((json.dumps(payload) + '\\n').encode())
+        s.sendall((json.dumps(cap_payload(payload)) + '\\n').encode())
         s.close()
     except Exception:
         pass  # Always exit cleanly — never block the agent
@@ -3397,307 +3499,7 @@ except Exception:
 sys.exit(0)
 """
 
-// MARK: - nb-hook Python relay (App Store — socket in sandboxed container)
-
-private let nbHookPythonAppStore = """
-#!/usr/bin/env python3
-# nb-hook.py — Coucou (App Store) hook relay for Claude Code and third-party agents
-# Socket lives inside the sandboxed container; script runs outside the sandbox.
-import sys, json, os, socket
-
-def normalize_event(name):
-    mapping = {
-        'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
-        'AfterTool': 'PostToolUse', 'AfterModel': 'PostToolUse',
-        'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
-        'startup': 'SessionStart', 'exit': 'SessionEnd',
-        'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
-        'pre_tool_use': 'PreToolUse', 'post_tool_use': 'PostToolUse',
-        'user_prompt_submit': 'UserPromptSubmit', 'session_start': 'SessionStart',
-        'session_end': 'SessionEnd', 'stop': 'Stop',
-        'sessionStart': 'SessionStart', 'userPromptSubmitted': 'UserPromptSubmit',
-        'agentStop': 'Stop', 'notification': 'Notification',
-        'preToolUse': 'PreToolUse', 'postToolUse': 'PostToolUse',
-        'permissionRequest': 'PermissionRequest', 'sessionEnd': 'SessionEnd',
-    }
-    return mapping.get(name, name)
-
-def normalize_tool_fields(payload):
-    if 'tool_name' not in payload:
-        # Copilot sends toolName directly; other agents nest in toolCall
-        if payload.get('toolName'):
-            payload['tool_name'] = payload['toolName']
-        else:
-            tool = payload.get('toolCall')
-            if not isinstance(tool, dict):
-                tool = {}
-            name = tool.get('name') or payload.get('tool', '')
-            if name:
-                payload['tool_name'] = name
-    if 'tool_input' not in payload:
-        # Copilot sends toolArgs directly
-        tool_args = payload.get('toolArgs')
-        if isinstance(tool_args, dict):
-            payload['tool_input'] = tool_args
-        else:
-            tool = payload.get('toolCall') or {}
-            if isinstance(tool.get('args'), dict):
-                flat = dict(tool['args'])
-                for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
-                                 ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
-                    if src in flat:
-                        flat[dst] = flat[src]
-                payload['tool_input'] = flat
-    if 'session_id' not in payload:
-        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
-            if payload.get(k):
-                payload['session_id'] = payload[k]
-                break
-        if 'session_id' not in payload:
-            sid = os.environ.get('GEMINI_SESSION_ID', '')
-            if sid:
-                payload['session_id'] = sid
-    # Copilot sends workdir for the current working directory
-    if not payload.get('cwd') and payload.get('workdir'):
-        payload['cwd'] = payload['workdir']
-
-def main():
-    raw = b''
-    payload = {}
-    try:
-        raw = sys.stdin.buffer.read()
-        if not raw:
-            if '--statusline' not in sys.argv[1:]:
-                return
-        else:
-            payload = json.loads(raw)
-    except Exception:
-        if '--statusline' not in sys.argv[1:]:
-            return
-
-    socket_path = os.path.expanduser(
-        '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
-    )
-
-    # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
-    if '--statusline' in sys.argv[1:]:
-        relay = {
-            'coucou_kind': 'statusline',
-            'session_id': payload.get('session_id', ''),
-            'rate_limits': payload.get('rate_limits', {}),
-        }
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(0.3)
-            s.connect(socket_path)
-            s.sendall((json.dumps(relay) + '\\n').encode())
-            s.close()
-        except Exception:
-            pass
-        prev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statusline-previous.json')
-        if os.path.exists(prev_file):
-            try:
-                import subprocess
-                with open(prev_file) as f:
-                    prev = json.load(f)
-                cmd = prev.get('command', '')
-                if cmd:
-                    result = subprocess.run(['/bin/sh', '-c', cmd], input=raw,
-                                             capture_output=True, timeout=10)
-                    if result.stdout:
-                        sys.stdout.buffer.write(result.stdout)
-                        sys.stdout.buffer.flush()
-            except Exception:
-                pass
-        return
-
-    # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
-    if '--ask' in sys.argv[1:]:
-        tool = payload.get('tool_name', '')
-        if tool != 'AskUserQuestion':
-            return  # Not an AskUserQuestion invocation — exit cleanly (no output)
-        payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(125)
-            s.connect(socket_path)
-            s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
-            s.close()
-            response = b''.join(chunks).decode().strip()
-            if response:
-                try:
-                    resp_obj = json.loads(response)
-                    decision = resp_obj.get('permissionDecision', '')
-                except Exception:
-                    decision = ''
-                if decision == 'answer':
-                    answers = resp_obj.get('answers', {})
-                    questions = payload.get('tool_input', {}).get('questions', [])
-                    out = {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                # 'ask' or unknown: fall through → no output → Claude Code asks in terminal
-        except Exception:
-            pass
-        return
-
-    # Parse --agent <name> and optional positional event from argv.
-    # --agent tags the payload with coucou_agent so the app routes to the right pill.
-    # The positional arg is a fallback event name for agents that do not set hook_event_name.
-    args = sys.argv[1:]
-    agent = ''
-    arg_event = ''
-    i = 0
-    while i < len(args):
-        if args[i] == '--agent' and i + 1 < len(args):
-            agent = args[i + 1]
-            i += 2
-        else:
-            if not arg_event:
-                arg_event = args[i]
-            i += 1
-    if agent:
-        payload.setdefault('coucou_agent', agent)
-    # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
-    # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
-    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
-        payload['coucou_agent'] = 'claude-desktop'
-
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
-
-    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
-    try:
-        raw_event = payload.get('hook_event_name', '') or arg_event
-        if raw_event:
-            payload['hook_event_name'] = normalize_event(raw_event)
-        normalize_tool_fields(payload)
-    except Exception:
-        pass
-
-    event = payload.get('hook_event_name', '')
-    # socket_path is already defined above
-
-    if event == 'PermissionRequest':
-        # Block and wait for Coucou's decision (Claude Code allows up to 120s)
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(118)
-            s.connect(socket_path)
-            s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
-            s.close()
-            response = b''.join(chunks).decode().strip()
-            if response:
-                try:
-                    resp_obj = json.loads(response)
-                    decision = resp_obj.get('permissionDecision', '')
-                except Exception:
-                    decision = ''
-                if agent == 'hermes':
-                    hermes_choice = 'once' if decision == 'allow' else decision
-                    if hermes_choice in ('once', 'always', 'deny'):
-                        sys.stdout.write(json.dumps({'choice': hermes_choice}) + '\\n')
-                        sys.stdout.flush()
-                    sys.exit(0)
-                if decision in ('allow', 'always'):
-                    # Copilot/Muse use {"permissionDecision":"allow"} directly
-                    if agent in ('copilot', 'muse'):
-                        out = {'permissionDecision': 'allow'}
-                    elif decision == 'always' and agent != 'codex':
-                        # Let Claude Code persist the rule via updatedPermissions
-                        suggestions = payload.get('permission_suggestions', [])
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
-                    else:
-                        # Claude Code / Codex plain allow
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'deny':
-                    if agent in ('copilot', 'muse'):
-                        out = {'permissionDecision': 'deny'}
-                    else:
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Coucou'}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'answer':
-                    # AskUserQuestion answered from the notch
-                    answers = resp_obj.get('answers', {})
-                    questions = payload.get('tool_input', {}).get('questions', [])
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                # 'ask' or unknown: fall through → no output → agent re-asks
-        except Exception:
-            pass
-        # App unreachable, timed out, or no explicit decision — print nothing
-        # Copilot is fail-closed: must always output valid JSON so it re-asks rather than deny
-        # Hermes: no output → json.loads raises in plugin → transport_fallback: builtin activates
-        if agent == 'copilot':
-            sys.stdout.write('{"permissionDecision":"ask"}\\n')
-            sys.stdout.flush()
-        sys.exit(0)
-
-    try:
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.settimeout(0.3)
-        s.connect(socket_path)
-        s.sendall((json.dumps(payload) + '\\n').encode())
-        s.close()
-    except Exception:
-        pass  # Always exit cleanly — never block the agent
-
-    # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
-    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
-    if agent == 'antigravity' and event == 'PreToolUse':
-        sys.stdout.write('{"decision":"ask"}\\n')
-        sys.stdout.flush()
-    elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
-        sys.stdout.write('{}\\n')
-        sys.stdout.flush()
-
-try:
-    main()
-except Exception:
-    pass
-sys.exit(0)
-"""
+/// The Python relay for the socket at `socket` (the script expands a leading `~`).
+private func nbHookPython(socket: String) -> String {
+    nbHookPythonTemplate.replacingOccurrences(of: "__COUCOU_SOCKET__", with: socket)
+}

@@ -101,6 +101,21 @@ jobs:
       - name: Claude settings file tests
         run: bash scripts/test-claude-settings.sh
 
+      - name: APNs retry tests
+        run: bash scripts/test-apns-retry.sh
+
+      - name: Hook server accept tests
+        run: bash scripts/test-accept-policy.sh
+
+      - name: Stop timer tests
+        run: bash scripts/test-stop-timers.sh
+
+      - name: Hook ack tests
+        run: bash scripts/test-hook-ack.sh
+
+      - name: nb-hook relay tests
+        run: bash scripts/test-nb-hook.sh
+
       - name: Turn end policy tests
         run: bash scripts/test-turn-end-policy.sh
 

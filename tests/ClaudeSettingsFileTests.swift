@@ -27,6 +27,29 @@ enum ClaudeSettingsFileTests {
         try fm.setAttributes([.posixPermissions: NSNumber(value: value)], ofItemAtPath: url.path)
     }
 
+    static func testCoucouHookMarker() {
+        precondition(ClaudeSettingsFile.isCoucouHookCommand("\"/Users/me/Library/Application Support/NotchBuddy/nb-hook\""))
+        precondition(ClaudeSettingsFile.isCoucouHookCommand("/bin/sh \"/Users/me/.claude/coucou/nb-hook\" --ask"))
+        precondition(!ClaudeSettingsFile.isCoucouHookCommand("/Users/me/Desktop/coucou/scripts/lint.sh"))
+        precondition(!ClaudeSettingsFile.isCoucouHookCommand("~/NotchBuddy-tools/notify.sh"))
+
+        let groups: [[String: Any]] = [
+            ["hooks": [["type": "command", "command": "/Users/me/Desktop/coucou/scripts/lint.sh"]]],
+            ["matcher": "Bash", "hooks": [["type": "command", "command": "./mine.sh"],
+                                          ["type": "command", "command": "\"/x/nb-hook\""]]],
+            ["hooks": [["type": "command", "command": "\"/x/nb-hook\""]]],
+        ]
+        let (kept, changed) = ClaudeSettingsFile.removingCoucouHooks(from: groups)
+        precondition(changed)
+        precondition(kept.count == 2, "\(kept)")
+        precondition(((kept[0]["hooks"] as? [[String: Any]])?.first?["command"] as? String) == "/Users/me/Desktop/coucou/scripts/lint.sh")
+        precondition(kept[1]["matcher"] as? String == "Bash")
+        precondition((kept[1]["hooks"] as? [[String: Any]])?.count == 1, "the user's own hook in a shared group stays")
+        let (same, touched) = ClaudeSettingsFile.removingCoucouHooks(from: [groups[0]])
+        precondition(!touched && same.count == 1)
+        print("Coucou hook marker tests passed")
+    }
+
     static func main() throws {
         let dir = fm.temporaryDirectory
             .appendingPathComponent("coucou-settings-\(ProcessInfo.processInfo.processIdentifier)")
@@ -152,6 +175,7 @@ enum ClaudeSettingsFileTests {
         precondition(contents(real) == next)
         precondition(contents(linkBackup) == original)
 
+        testCoucouHookMarker()
         print("Claude settings file: all checks passed")
     }
 }
