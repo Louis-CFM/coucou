@@ -303,13 +303,13 @@ enum MochiFrameClock {
     /// 60 Hz screen). 60 on a 60 Hz screen draws every frame; on ProMotion, one in two.
     static func interval(fps: Double) -> TimeInterval { 0.9 / fps }
 
+    /// One engine step per drawn frame, exactly as before the frame clock (9 October): a
+    /// perfectly regular rhythm. The step-debt version measured the time between renders,
+    /// and its jitter made frames with 0 steps (Mochi froze) and frames with 2 or more
+    /// (Mochi jumped), several times a second: the stutter when the island opens and when
+    /// Mochi follows the pointer. Mochi draws at the display rate, so one step per frame
+    /// is one step per display frame, which is what his motion is tuned to.
     static func advance(_ engine: BotEngine) {
-        let now = CACurrentMediaTime()
-        let elapsed = min(1.0 / 15.0, max(0, now - engine.lastTime))
-        engine.stepDebt += elapsed * displayFPS
-        let steps = min(8, Int(engine.stepDebt))
-        engine.stepDebt -= Double(steps)
-        if steps == 0 { engine.lastTime = now }
-        for _ in 0..<steps { engine.update(dt: 0.05) }
+        engine.update(dt: 0.05)
     }
 }

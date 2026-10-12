@@ -16135,134 +16135,6 @@
         }
       }
     },
-    "plugin.pi.installed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الملحق مثبَّت — أعِد تشغيل Pi للتفعيل"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "প্লাগইন ইনস্টল হয়েছে — সক্রিয় করতে Pi রিস্টার্ট করুন"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin installed — restart Pi to activate it"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin instalado — reinicia Pi para activarlo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin installé — redémarre Pi pour l'activer"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "प्लगइन इंस्टॉल हो गया — सक्रिय करने के लिए Pi रीस्टार्ट करें"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin terpasang — mulai ulang Pi untuk mengaktifkan"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin instalado — reinicie o Pi para ativar"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Плагин установлен — перезапусти Pi для активации"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "插件已安装 — 重启 Pi 以激活"
-          }
-        }
-      }
-    },
-    "plugin.pi.title": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ملحق Pi"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pi প্লাগইন"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pi plugin"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin de Pi"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin Pi"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pi प्लगइन"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin Pi"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plugin do Pi"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Плагин Pi"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pi 插件"
-          }
-        }
-      }
-    },
     "plugin.review-content": {
       "localizations": {
         "ar": {
@@ -19399,71 +19271,6 @@
         }
       }
     },
-    "shortcut.talk-to-coucou": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "التحدث إلى Coucou"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou-এর সাথে কথা বলুন"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Talk to Coucou"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hablar con Coucou"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parler à Coucou"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou से बात करें"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bicara ke Coucou"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Falar com Coucou"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Говорить с Coucou"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "与 Coucou 对话"
-          }
-        }
-      }
-    },
     "shortcut.wardrobe": {
       "localizations": {
         "ar": {
@@ -21504,134 +21311,6 @@
         }
       }
     },
-    "status.pi-extension-installed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ ملحق Pi مثبَّت في ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ ~/.pi/agent/extensions/coucou.ts-এ Pi প্লাগইন ইনস্টল হয়েছে"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Pi plugin installed in ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin de Pi instalado en ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Pi installé dans ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ ~/.pi/agent/extensions/coucou.ts में Pi प्लगइन इंस्टॉल हुआ"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Pi terpasang di ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin do Pi instalado em ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Плагин Pi установлен в ~/.pi/agent/extensions/coucou.ts"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Pi 插件已安装至 ~/.pi/agent/extensions/coucou.ts"
-          }
-        }
-      }
-    },
-    "status.pi-extension-removed": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ تمت إزالة ملحق Pi."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Pi প্লাগইন সরানো হয়েছে।"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Pi plugin removed."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin de Pi eliminado."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Pi supprimé."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Pi प्लगइन हटा दिया गया।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin Pi dihapus."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Plugin do Pi removido."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Плагин Pi удалён."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Pi 插件已移除。"
-          }
-        }
-      }
-    },
     "status.select-claude-folder": {
       "localizations": {
         "ar": {
@@ -22592,262 +22271,195 @@
         }
       }
     },
-    "voice.ask-repeat": {
-      "extractionState": "manual",
+    "with": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "عفوًا، هل يمكنك التكرار؟"
+            "value": "مع"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "দুঃখিত, আবার বলবে?"
+            "value": "সহ"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sorry, can you say that again?"
+            "value": "with"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Perdona, ¿puedes repetir?"
+            "value": "con"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pardon, tu peux répéter ?"
+            "value": "avec"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "माफ़ करना, फिर से बोलोगे?"
+            "value": "के साथ"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maaf, bisa diulang?"
+            "value": "dengan"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desculpa, pode repetir?"
+            "value": "com"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прости, можешь повторить?"
+            "value": "с"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "抱歉，可以再说一遍吗？"
+            "value": "附带"
           }
         }
       }
     },
-    "voice.ask-which-pill-add": {
-      "extractionState": "manual",
+    "« OK Coucou » — voice wake word": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "أي حبة تريد أن تضيف؟"
+            "value": "« OK Coucou » — كلمة التنشيط الصوتية"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কোন পিল যোগ করবে?"
+            "value": "« OK Coucou » — ভয়েস ওয়েক ওয়ার্ড"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Which pill do you want to add?"
+            "value": "« OK Coucou » — voice wake word"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Qué píldora quieres añadir?"
+            "value": "« OK Coucou » — palabra de activación de voz"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quelle pilule tu veux ajouter ?"
+            "value": "« OK Coucou » — commande vocale mains libres"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "कौन-सी पिल जोड़नी है?"
+            "value": "« OK Coucou » — वॉइस वेक वर्ड"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pil mana yang mau ditambahkan?"
+            "value": "« OK Coucou » — kata pengaktif suara"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qual pílula você quer adicionar?"
+            "value": "« OK Coucou » — palavra de ativação de voz"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Какую пилюлю добавить?"
+            "value": "« OK Coucou » — голосовая активация"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "要添加哪个胶囊？"
+            "value": "« OK Coucou » — 语音唤醒词"
           }
         }
       }
     },
-    "voice.ask-which-pill-remove": {
+    "shortcut.talk-to-coucou": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "أي حبة تريد أن تزيل؟"
+            "value": "التحدث إلى Coucou"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কোন পিল সরাবে?"
+            "value": "Coucou-এর সাথে কথা বলুন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Which pill do you want to remove?"
+            "value": "Talk to Coucou"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Qué píldora quieres quitar?"
+            "value": "Hablar con Coucou"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quelle pilule tu veux retirer ?"
+            "value": "Parler à Coucou"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "कौन-सी पिल हटानी है?"
+            "value": "Coucou से बात करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pil mana yang mau dihapus?"
+            "value": "Bicara ke Coucou"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qual pílula você quer remover?"
+            "value": "Falar com Coucou"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Какую пилюлю убрать?"
+            "value": "Говорить с Coucou"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "要移除哪个胶囊？"
-          }
-        }
-      }
-    },
-    "voice.ask-which-playlist": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أي قائمة تشغيل؟"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "কোন প্লেলিস্ট?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Which playlist?"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Qué playlist?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quelle playlist ?"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "कौन-सी प्लेलिस्ट?"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Playlist yang mana?"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qual playlist?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Какой плейлист?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "哪个播放列表？"
+            "value": "与 Coucou 对话"
           }
         }
       }
@@ -22912,782 +22524,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "4 个激活 — 删除哪个？"
-          }
-        }
-      }
-    },
-    "voice.caption-listening": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أنا أستمع…"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "শুনছি…"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Listening…"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Te escucho…"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je t’écoute…"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "सुन रहा हूँ…"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mendengarkan…"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estou ouvindo…"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Слушаю…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "我在听…"
-          }
-        }
-      }
-    },
-    "voice.history-title": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "العبارات المسموعة مؤخرًا"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "সম্প্রতি শোনা বাক্য"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recently heard phrases"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Frases escuchadas recientemente"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dernières phrases entendues"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "हाल में सुने गए वाक्य"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kalimat yang baru didengar"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Frases ouvidas recentemente"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Недавно услышанные фразы"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近听到的语句"
-          }
-        }
-      }
-    },
-    "voice.language": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou يجيب بـ"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou উত্তর দেয়"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou answers in"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou responde en"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou répond en"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou जवाब देता है"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou menjawab dalam"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou responde em"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou отвечает на"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coucou 回答语言"
-          }
-        }
-      }
-    },
-    "voice.listen-auto": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تلقائي (لغة الإملاء في الماك)"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "স্বয়ংক্রিয় (Mac-এর ডিক্টেশনের ভাষা)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatic (your Mac’s dictation language)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automático (idioma de dictado del Mac)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatique (langue de dictée du Mac)"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्वचालित (Mac की डिक्टेशन भाषा)"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otomatis (bahasa dikte Mac)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automático (idioma de ditado do Mac)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Автоматически (язык диктовки Mac)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动（Mac 听写语言）"
-          }
-        }
-      }
-    },
-    "voice.listen-language": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أنت تتحدث"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "তুমি বলো"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You speak"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tú hablas"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu parles"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "आप बोलते हैं"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kamu berbicara"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Você fala"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ты говоришь"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你说的语言"
-          }
-        }
-      }
-    },
-    "voice.mac-voice-current %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الصوت المستخدم: %@"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ব্যবহৃত কণ্ঠ: %@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voice in use: %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voz en uso: %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voix utilisée : %@"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "उपयोग में आवाज़: %@"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suara yang dipakai: %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voz em uso: %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Используется голос: %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当前声音：%@"
-          }
-        }
-      }
-    },
-    "voice.mac-voices-help": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لصوت أكثر طبيعية، نزّل صوتًا Premium: إعدادات النظام ← تسهيلات الاستخدام ← المحتوى المنطوق ← صوت النظام ← إدارة الأصوات. بالإنجليزية: Ava لامرأة، Jamie لرجل (بريطاني)."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "আরও স্বাভাবিক কণ্ঠের জন্য একটি Premium কণ্ঠ ডাউনলোড করো: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। ইংরেজিতে: নারী হলে Ava, পুরুষ হলে Jamie (ব্রিটিশ)।"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British)."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Para una voz más natural, descarga una voz Premium: Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del sistema → Gestionar voces. En inglés: Ava para mujer, Jamie para hombre (británico)."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pour une voix plus naturelle, télécharge une voix Premium : Réglages Système → Accessibilité → Contenu énoncé → Voix du système → Gérer les voix. En anglais : Ava pour une femme, Jamie pour un homme (britannique)."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Untuk suara yang lebih alami, unduh suara Premium: Pengaturan Sistem → Aksesibilitas → Konten Lisan → Suara Sistem → Kelola Suara. Bahasa Inggris: Ava untuk wanita, Jamie untuk pria (Inggris)."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Para uma voz mais natural, baixe uma voz Premium: Ajustes do Sistema → Acessibilidade → Conteúdo Falado → Voz do Sistema → Gerenciar Vozes. Em inglês: Ava para mulher, Jamie para homem (britânico)."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский)."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。"
-          }
-        }
-      }
-    },
-    "voice.mac-voices-open": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "افتح تسهيلات الاستخدام"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accessibility খোলো"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open Accessibility settings"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abrir Accesibilidad"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir Accessibilité"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accessibility खोलें"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buka Aksesibilitas"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abrir Acessibilidade"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Открыть Универсальный доступ"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开辅助功能"
-          }
-        }
-      }
-    },
-    "voice.model-ai-off": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نموذج الذكاء الاصطناعي المحلي: Apple Intelligence معطَّل"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "স্থানীয় AI মডেল: Apple Intelligence বন্ধ আছে"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local AI model: Apple Intelligence is off"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: Apple Intelligence está desactivado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modèle IA local : Apple Intelligence est désactivée"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्थानीय AI मॉडल: Apple Intelligence बंद है"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model AI lokal: Apple Intelligence dimatikan"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: Apple Intelligence está desativado"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локальная модель ИИ: Apple Intelligence отключена"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本地 AI 模型：Apple Intelligence 已关闭"
-          }
-        }
-      }
-    },
-    "voice.model-available": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نموذج الذكاء الاصطناعي المحلي: متاح"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "স্থানীয় AI মডেল: উপলব্ধ"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local AI model: available"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: disponible"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modèle IA local : disponible"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्थानीय AI मॉडल: उपलब्ध"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model AI lokal: tersedia"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: disponível"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локальная модель ИИ: доступна"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本地 AI 模型：可用"
-          }
-        }
-      }
-    },
-    "voice.model-lang": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نموذج الذكاء الاصطناعي المحلي: اللغة غير مدعومة"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "স্থানীয় AI মডেল: ভাষা সমর্থিত নয়"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local AI model: language not supported"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: idioma no compatible"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modèle IA local : langue non prise en charge"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्थानीय AI मॉडल: भाषा समर्थित नहीं है"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model AI lokal: bahasa tidak didukung"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: idioma não suportado"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локальная модель ИИ: язык не поддерживается"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本地 AI 模型：不支持该语言"
-          }
-        }
-      }
-    },
-    "voice.model-not-macos26": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نموذج الذكاء الاصطناعي المحلي: يتطلب macOS 26 أو أحدث"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "স্থানীয় AI মডেল: macOS 26 বা তার পরবর্তী প্রয়োজন"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local AI model: requires macOS 26 or later"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: requiere macOS 26 o posterior"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modèle IA local : nécessite macOS 26 ou plus"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "स्थानीय AI मॉडल: macOS 26 या बाद का संस्करण आवश्यक है"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Model AI lokal: membutuhkan macOS 26 atau lebih baru"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo de IA local: requer macOS 26 ou posterior"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локальная модель ИИ: требуется macOS 26 или новее"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本地 AI 模型：需要 macOS 26 或更高版本"
           }
         }
       }
@@ -24137,70 +22973,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一首"
-          }
-        }
-      }
-    },
-    "voice.music-search-opened": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "غير موجود في مكتبتك، فتحت البحث عن %@"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "তোমার লাইব্রেরিতে নেই, %@ এর জন্য সার্চ খুলেছি"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not in your library, opened search for %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No está en tu biblioteca, abrí la búsqueda de %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Introuvable dans ta bibliothèque, j'ai ouvert la recherche pour %@"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "तुम्हारी लाइब्रेरी में नहीं है, %@ के लिए सर्च खोला"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tidak ada di perpustakaan, membuka pencarian untuk %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Não está na sua biblioteca, abri a busca por %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет в библиотеке, открыл поиск для %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "不在你的资料库中，已打开 %@ 的搜索"
           }
         }
       }
@@ -24974,67 +23746,130 @@
         }
       }
     },
-    "voice.setting-captions": {
-      "extractionState": "manual",
+    "voice.unknown": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ترجمة نصية أسفل النوتش"
+            "value": "الأمر غير مُتعرَّف عليه"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "নচের নিচে সাবটাইটেল"
+            "value": "কমান্ড চেনা যায়নি"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subtitles under the notch"
+            "value": "Command not recognised"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subtítulos bajo el notch"
+            "value": "Comando no reconocido"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sous-titres sous le notch"
+            "value": "Commande non reconnue"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "नॉच के नीचे सबटाइटल"
+            "value": "आदेश पहचाना नहीं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subtitel di bawah notch"
+            "value": "Perintah tidak dikenali"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Legendas abaixo do notch"
+            "value": "Comando não reconhecido"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Субтитры под вырезом"
+            "value": "Команда не распознана"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "刘海下方显示字幕"
+            "value": "无法识别指令"
+          }
+        }
+      }
+    },
+    "voice.unknown-transcript": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير مفهوم: « %@ »"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বোঝা যায়নি: « %@ »"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not recognised: « %@ »"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entendido: « %@ »"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas compris : « %@ »"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "समझ नहीं आया: « %@ »"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak dimengerti: « %@ »"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não entendido: « %@ »"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Непонятно: « %@ »"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法理解：« %@ »"
           }
         }
       }
@@ -25163,6 +23998,781 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coucou 用语音语言朗读结果。完全在设备上处理。"
+          }
+        }
+      }
+    },
+    "voice.music-search-opened": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير موجود في مكتبتك، فتحت البحث عن %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "তোমার লাইব্রেরিতে নেই, %@ এর জন্য সার্চ খুলেছি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not in your library, opened search for %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No está en tu biblioteca, abrí la búsqueda de %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introuvable dans ta bibliothèque, j'ai ouvert la recherche pour %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "तुम्हारी लाइब्रेरी में नहीं है, %@ के लिए सर्च खोला"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada di perpustakaan, membuka pencarian untuk %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não está na sua biblioteca, abri a busca por %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет в библиотеке, открыл поиск для %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不在你的资料库中，已打开 %@ 的搜索"
+          }
+        }
+      }
+    },
+    "voice.model-available": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نموذج الذكاء الاصطناعي المحلي: متاح"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় AI মডেল: উপলব্ধ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local AI model: available"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: disponible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modèle IA local : disponible"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्थानीय AI मॉडल: उपलब्ध"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI lokal: tersedia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: disponível"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальная модель ИИ: доступна"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地 AI 模型：可用"
+          }
+        }
+      }
+    },
+    "voice.model-not-macos26": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نموذج الذكاء الاصطناعي المحلي: يتطلب macOS 26 أو أحدث"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় AI মডেল: macOS 26 বা তার পরবর্তী প্রয়োজন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local AI model: requires macOS 26 or later"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: requiere macOS 26 o posterior"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modèle IA local : nécessite macOS 26 ou plus"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्थानीय AI मॉडल: macOS 26 या बाद का संस्करण आवश्यक है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI lokal: membutuhkan macOS 26 atau lebih baru"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: requer macOS 26 ou posterior"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальная модель ИИ: требуется macOS 26 или новее"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地 AI 模型：需要 macOS 26 或更高版本"
+          }
+        }
+      }
+    },
+    "voice.model-ai-off": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نموذج الذكاء الاصطناعي المحلي: Apple Intelligence معطَّل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় AI মডেল: Apple Intelligence বন্ধ আছে"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local AI model: Apple Intelligence is off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: Apple Intelligence está desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modèle IA local : Apple Intelligence est désactivée"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्थानीय AI मॉडल: Apple Intelligence बंद है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI lokal: Apple Intelligence dimatikan"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: Apple Intelligence está desativado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальная модель ИИ: Apple Intelligence отключена"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地 AI 模型：Apple Intelligence 已关闭"
+          }
+        }
+      }
+    },
+    "voice.model-lang": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نموذج الذكاء الاصطناعي المحلي: اللغة غير مدعومة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় AI মডেল: ভাষা সমর্থিত নয়"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local AI model: language not supported"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: idioma no compatible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modèle IA local : langue non prise en charge"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्थानीय AI मॉडल: भाषा समर्थित नहीं है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model AI lokal: bahasa tidak didukung"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de IA local: idioma não suportado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальная модель ИИ: язык не поддерживается"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地 AI 模型：不支持该语言"
+          }
+        }
+      }
+    },
+    "voice.history-title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العبارات المسموعة مؤخرًا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সম্প্রতি শোনা বাক্য"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recently heard phrases"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frases escuchadas recientemente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernières phrases entendues"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "हाल में सुने गए वाक्य"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalimat yang baru didengar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frases ouvidas recentemente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недавно услышанные фразы"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近听到的语句"
+          }
+        }
+      }
+    },
+    "voice.setting-captions": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة نصية أسفل النوتش"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নচের নিচে সাবটাইটেল"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtitles under the notch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtítulos bajo el notch"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sous-titres sous le notch"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "नॉच के नीचे सबटाइटल"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtitel di bawah notch"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legendas abaixo do notch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Субтитры под вырезом"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刘海下方显示字幕"
+          }
+        }
+      }
+    },
+    "voice.caption-listening": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنا أستمع…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুনছি…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te escucho…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je t’écoute…"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सुन रहा हूँ…"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mendengarkan…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estou ouvindo…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушаю…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我在听…"
+          }
+        }
+      }
+    },
+    "voice.ask-repeat": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عفوًا، هل يمكنك التكرار؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "দুঃখিত, আবার বলবে?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorry, can you say that again?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perdona, ¿puedes repetir?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pardon, tu peux répéter ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "माफ़ करना, फिर से बोलोगे?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maaf, bisa diulang?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desculpa, pode repetir?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прости, можешь повторить?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "抱歉，可以再说一遍吗？"
+          }
+        }
+      }
+    },
+    "voice.ask-which-pill-add": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أي حبة تريد أن تضيف؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোন পিল যোগ করবে?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which pill do you want to add?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué píldora quieres añadir?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle pilule tu veux ajouter ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कौन-सी पिल जोड़नी है?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pil mana yang mau ditambahkan?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qual pílula você quer adicionar?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какую пилюлю добавить?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要添加哪个胶囊？"
+          }
+        }
+      }
+    },
+    "voice.ask-which-pill-remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أي حبة تريد أن تزيل؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোন পিল সরাবে?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which pill do you want to remove?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué píldora quieres quitar?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle pilule tu veux retirer ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कौन-सी पिल हटानी है?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pil mana yang mau dihapus?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qual pílula você quer remover?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какую пилюлю убрать?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要移除哪个胶囊？"
+          }
+        }
+      }
+    },
+    "voice.ask-which-playlist": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أي قائمة تشغيل؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোন প্লেলিস্ট?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which playlist?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué playlist?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle playlist ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कौन-सी प्लेलिस्ट?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist yang mana?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qual playlist?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какой плейлист?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哪个播放列表？"
           }
         }
       }
@@ -25362,6 +24972,981 @@
         }
       }
     },
+    "voice.language": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou يجيب بـ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou উত্তর দেয়"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou answers in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou responde en"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou répond en"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou जवाब देता है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou menjawab dalam"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou responde em"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou отвечает на"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coucou 回答语言"
+          }
+        }
+      }
+    },
+    "voice.tts-engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Голос"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音"
+          }
+        }
+      }
+    },
+    "voice.tts-system": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صوت الماك"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac-এর কণ্ঠ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz del Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix du Mac"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac की आवाज़"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz do Mac"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Голос Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac 语音"
+          }
+        }
+      }
+    },
+    "voice.tts-key": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مفتاح ElevenLabs API"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API কী"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API key"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave API de ElevenLabs"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé API ElevenLabs"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API कुंजी"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunci API ElevenLabs"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave de API ElevenLabs"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-ключ ElevenLabs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API 密钥"
+          }
+        }
+      }
+    },
+    "voice.tts-key-saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المفتاح محفوظ في سلسلة المفاتيح"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কী কিচেইনে সংরক্ষিত"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key saved in Keychain"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave guardada en el llavero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé enregistrée dans le Trousseau"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कुंजी कीचेन में सहेजी गई"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunci tersimpan di Keychain"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave salva nas Chaves"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ сохранён в Связке ключей"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已存入钥匙串"
+          }
+        }
+      }
+    },
+    "voice.tts-gender": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نوع الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠের ধরন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice type"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type de voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ का प्रकार"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jenis suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тип голоса"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音类型"
+          }
+        }
+      }
+    },
+    "voice.tts-female": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امرأة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নারী"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Woman"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mujer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Femme"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "महिला"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wanita"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mulher"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Женский"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "女声"
+          }
+        }
+      }
+    },
+    "voice.tts-male": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رجل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুরুষ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Man"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hombre"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homme"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पुरुष"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pria"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homem"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мужской"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "男声"
+          }
+        }
+      }
+    },
+    "voice.tts-test": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جرّب الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠ পরীক্ষা"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test the voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probar la voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tester la voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ आज़माएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coba suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testar a voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверить голос"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试听声音"
+          }
+        }
+      }
+    },
+    "voice.listen-language": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنت تتحدث"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "তুমি বলো"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You speak"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú hablas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu parles"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आप बोलते हैं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamu berbicara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você fala"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ты говоришь"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你说的语言"
+          }
+        }
+      }
+    },
+    "voice.listen-auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي (لغة الإملاء في الماك)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয় (Mac-এর ডিক্টেশনের ভাষা)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic (your Mac’s dictation language)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático (idioma de dictado del Mac)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatique (langue de dictée du Mac)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्वचालित (Mac की डिक्टेशन भाषा)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatis (bahasa dikte Mac)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático (idioma de ditado do Mac)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически (язык диктовки Mac)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动（Mac 听写语言）"
+          }
+        }
+      }
+    },
+    "voice.mac-voice-current %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصوت المستخدم: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ব্যবহৃত কণ্ঠ: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice in use: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz en uso: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix utilisée : %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "उपयोग में आवाज़: %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara yang dipakai: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz em uso: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Используется голос: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前声音：%@"
+          }
+        }
+      }
+    },
+    "voice.mac-voices-help": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لصوت أكثر طبيعية، نزّل صوتًا Premium: إعدادات النظام ← تسهيلات الاستخدام ← المحتوى المنطوق ← صوت النظام ← إدارة الأصوات. بالإنجليزية: Ava لامرأة، Jamie لرجل (بريطاني)."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আরও স্বাভাবিক কণ্ঠের জন্য একটি Premium কণ্ঠ ডাউনলোড করো: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। ইংরেজিতে: নারী হলে Ava, পুরুষ হলে Jamie (ব্রিটিশ)।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para una voz más natural, descarga una voz Premium: Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del sistema → Gestionar voces. En inglés: Ava para mujer, Jamie para hombre (británico)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour une voix plus naturelle, télécharge une voix Premium : Réglages Système → Accessibilité → Contenu énoncé → Voix du système → Gérer les voix. En anglais : Ava pour une femme, Jamie pour un homme (britannique)."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untuk suara yang lebih alami, unduh suara Premium: Pengaturan Sistem → Aksesibilitas → Konten Lisan → Suara Sistem → Kelola Suara. Bahasa Inggris: Ava untuk wanita, Jamie untuk pria (Inggris)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para uma voz mais natural, baixe uma voz Premium: Ajustes do Sistema → Acessibilidade → Conteúdo Falado → Voz do Sistema → Gerenciar Vozes. Em inglês: Ava para mulher, Jamie para homem (britânico)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。"
+          }
+        }
+      }
+    },
+    "voice.mac-voices-open": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتح تسهيلات الاستخدام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility খোলো"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Accessibility settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Accesibilidad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir Accessibilité"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility खोलें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka Aksesibilitas"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Acessibilidade"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть Универсальный доступ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开辅助功能"
+          }
+        }
+      }
+    },
+    "voice.tts-pitch": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدّة الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠের তীক্ষ্ণতা"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pitch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tono"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauteur"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ की पिच"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tom"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Высота голоса"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音调"
+          }
+        }
+      }
+    },
     "voice.setting-web": {
       "extractionState": "manual",
       "localizations": {
@@ -25557,843 +26142,1411 @@
         }
       }
     },
-    "voice.tts-engine": {
+    "voice.lang-auto": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الصوت"
+            "value": "تلقائي"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কণ্ঠ"
+            "value": "স্বয়ংক্রিয়"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voice"
+            "value": "Automatic"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voz"
+            "value": "Automático"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voix"
+            "value": "Automatique"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आवाज़"
+            "value": "स्वचालित"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suara"
+            "value": "Otomatis"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voz"
+            "value": "Automático"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Голос"
+            "value": "Автоматически"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "声音"
+            "value": "自动"
           }
         }
       }
     },
-    "voice.tts-female": {
-      "extractionState": "manual",
+    "Inbox": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "امرأة"
+            "value": "البريد الوارد"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "নারী"
+            "value": "ইনবক্স"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Woman"
+            "value": "Inbox"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mujer"
+            "value": "Bandeja de entrada"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Femme"
+            "value": "Boîte de réception"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "महिला"
+            "value": "इनबॉक्स"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wanita"
+            "value": "Kotak masuk"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mulher"
+            "value": "Caixa de entrada"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Женский"
+            "value": "Входящие"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "女声"
+            "value": "收件箱"
           }
         }
       }
     },
-    "voice.tts-gender": {
-      "extractionState": "manual",
+    "%lld unread": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "نوع الصوت"
+            "value": "%lld غير مقروءة"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কণ্ঠের ধরন"
+            "value": "%lld অপঠিত"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voice type"
+            "value": "%lld unread"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tipo de voz"
+            "value": "%lld sin leer"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Type de voix"
+            "value": "%lld non lus"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आवाज़ का प्रकार"
+            "value": "%lld अपठित"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jenis suara"
+            "value": "%lld belum dibaca"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tipo de voz"
+            "value": "%lld não lidos"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тип голоса"
+            "value": "Непрочитанных: %lld"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "声音类型"
+            "value": "%lld 封未读"
           }
         }
       }
     },
-    "voice.tts-key": {
-      "extractionState": "manual",
+    "No messages": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مفتاح ElevenLabs API"
+            "value": "لا توجد رسائل"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ElevenLabs API কী"
+            "value": "কোনো বার্তা নেই"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "ElevenLabs API key"
+            "value": "No messages"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clave API de ElevenLabs"
+            "value": "No hay mensajes"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clé API ElevenLabs"
+            "value": "Aucun message"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "ElevenLabs API कुंजी"
+            "value": "कोई संदेश नहीं"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kunci API ElevenLabs"
+            "value": "Tidak ada pesan"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chave de API ElevenLabs"
+            "value": "Nenhuma mensagem"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "API-ключ ElevenLabs"
+            "value": "Нет сообщений"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "ElevenLabs API 密钥"
+            "value": "没有邮件"
           }
         }
       }
     },
-    "voice.tts-key-saved": {
-      "extractionState": "manual",
+    "Open in Mail": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "المفتاح محفوظ في سلسلة المفاتيح"
+            "value": "فتح في Mail"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কী কিচেইনে সংরক্ষিত"
+            "value": "Mail-এ খুলুন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Key saved in Keychain"
+            "value": "Open in Mail"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clave guardada en el llavero"
+            "value": "Abrir en Mail"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clé enregistrée dans le Trousseau"
+            "value": "Ouvrir dans Mail"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "कुंजी कीचेन में सहेजी गई"
+            "value": "Mail में खोलें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kunci tersimpan di Keychain"
+            "value": "Buka di Mail"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chave salva nas Chaves"
+            "value": "Abrir no Mail"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ключ сохранён в Связке ключей"
+            "value": "Открыть в Почте"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密钥已存入钥匙串"
+            "value": "在“邮件”中打开"
           }
         }
       }
     },
-    "voice.tts-male": {
-      "extractionState": "manual",
+    "Reply": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "رجل"
+            "value": "رد"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "পুরুষ"
+            "value": "উত্তর দিন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Man"
+            "value": "Reply"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hombre"
+            "value": "Responder"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Homme"
+            "value": "Répondre"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "पुरुष"
+            "value": "जवाब दें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pria"
+            "value": "Balas"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Homem"
+            "value": "Responder"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Мужской"
+            "value": "Ответить"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "男声"
+            "value": "回复"
           }
         }
       }
     },
-    "voice.tts-pitch": {
-      "extractionState": "manual",
+    "Mark as read": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "حدّة الصوت"
+            "value": "وضع علامة كمقروءة"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কণ্ঠের তীক্ষ্ণতা"
+            "value": "পঠিত হিসেবে চিহ্নিত করুন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pitch"
+            "value": "Mark as read"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tono"
+            "value": "Marcar como leído"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hauteur"
+            "value": "Marquer comme lu"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आवाज़ की पिच"
+            "value": "पढ़ा हुआ चिह्नित करें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nada suara"
+            "value": "Tandai sudah dibaca"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tom"
+            "value": "Marcar como lido"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Высота голоса"
+            "value": "Отметить как прочитанное"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "音调"
+            "value": "标为已读"
           }
         }
       }
     },
-    "voice.tts-system": {
-      "extractionState": "manual",
+    "Mail is closed": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "صوت الماك"
+            "value": "تطبيق Mail مغلق"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mac-এর কণ্ঠ"
+            "value": "Mail বন্ধ আছে"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mac voice"
+            "value": "Mail is closed"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voz del Mac"
+            "value": "Mail está cerrado"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voix du Mac"
+            "value": "Mail est fermé"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mac की आवाज़"
+            "value": "Mail बंद है"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suara Mac"
+            "value": "Mail ditutup"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voz do Mac"
+            "value": "O Mail está fechado"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Голос Mac"
+            "value": "Почта закрыта"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mac 语音"
+            "value": "“邮件”未打开"
           }
         }
       }
     },
-    "voice.tts-test": {
-      "extractionState": "manual",
+    "Open Mail": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "جرّب الصوت"
+            "value": "فتح Mail"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কণ্ঠ পরীক্ষা"
+            "value": "Mail খুলুন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Test the voice"
+            "value": "Open Mail"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Probar la voz"
+            "value": "Abrir Mail"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tester la voix"
+            "value": "Ouvrir Mail"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आवाज़ आज़माएँ"
+            "value": "Mail खोलें"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coba suara"
+            "value": "Buka Mail"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Testar a voz"
+            "value": "Abrir o Mail"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Проверить голос"
+            "value": "Открыть Почту"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "试听声音"
+            "value": "打开“邮件”"
           }
         }
       }
     },
-    "voice.unknown": {
+    "mail.now": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الأمر غير مُتعرَّف عليه"
+            "value": "الآن"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কমান্ড চেনা যায়নি"
+            "value": "এখন"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Command not recognised"
+            "value": "now"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Comando no reconocido"
+            "value": "ahora"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Commande non reconnue"
+            "value": "à l’instant"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आदेश पहचाना नहीं"
+            "value": "अभी"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Perintah tidak dikenali"
+            "value": "baru saja"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Comando não reconhecido"
+            "value": "agora"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Команда не распознана"
+            "value": "сейчас"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法识别指令"
+            "value": "刚刚"
           }
         }
       }
     },
-    "voice.unknown-transcript": {
+    "crypto.exchange": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "غير مفهوم: « %@ »"
+            "value": "المنصة"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "বোঝা যায়নি: « %@ »"
+            "value": "এক্সচেঞ্জ"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not recognised: « %@ »"
+            "value": "Exchange"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No entendido: « %@ »"
+            "value": "Plataforma"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas compris : « %@ »"
+            "value": "Plateforme"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "समझ नहीं आया: « %@ »"
+            "value": "एक्सचेंज"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tidak dimengerti: « %@ »"
+            "value": "Bursa"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não entendido: « %@ »"
+            "value": "Corretora"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Непонятно: « %@ »"
+            "value": "Биржа"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法理解：« %@ »"
+            "value": "交易所"
           }
         }
       }
     },
-    "with": {
+    "crypto.currency": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مع"
+            "value": "العملة"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "সহ"
+            "value": "মুদ্রা"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "with"
+            "value": "Currency"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "con"
+            "value": "Moneda"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "avec"
+            "value": "Monnaie"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "के साथ"
+            "value": "मुद्रा"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "dengan"
+            "value": "Mata uang"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "com"
+            "value": "Moeda"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "с"
+            "value": "Валюта"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "附带"
+            "value": "货币"
           }
         }
       }
     },
-    "« OK Coucou » — voice wake word": {
+    "crypto.coins-placeholder": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — كلمة التنشيط الصوتية"
+            "value": "العملات (BTC, ETH, SOL…)"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — ভয়েস ওয়েক ওয়ার্ড"
+            "value": "কয়েন (BTC, ETH, SOL…)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — voice wake word"
+            "value": "Coins (BTC, ETH, SOL…)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — palabra de activación de voz"
+            "value": "Monedas (BTC, ETH, SOL…)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — commande vocale mains libres"
+            "value": "Cryptos (BTC, ETH, SOL…)"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — वॉइस वेक वर्ड"
+            "value": "कॉइन (BTC, ETH, SOL…)"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — kata pengaktif suara"
+            "value": "Koin (BTC, ETH, SOL…)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — palavra de ativação de voz"
+            "value": "Moedas (BTC, ETH, SOL…)"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — голосовая активация"
+            "value": "Монеты (BTC, ETH, SOL…)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "« OK Coucou » — 语音唤醒词"
+            "value": "币种（BTC, ETH, SOL…）"
+          }
+        }
+      }
+    },
+    "crypto.alert %lld": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نبّهني عندما تتحرك عملة بنسبة %lld %%"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো কয়েন %lld %% ওঠানামা করলে জানাও"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alert me when a coin moves %lld %%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avisarme cuando una moneda se mueva un %lld %%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "M’alerter quand une crypto bouge de %lld %%"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कोई कॉइन %lld %% हिले तो सूचित करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beri tahu saat koin bergerak %lld %%"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avisar quando uma moeda variar %lld %%"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщать, если монета изменится на %lld %%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "币价变动 %lld %% 时提醒我"
+          }
+        }
+      }
+    },
+    "crypto.hint": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أسعار عامة من المنصة: بلا حساب ولا مفتاح. تُقرأ كل دقيقة، فقط حين تكون الحبة مفعّلة."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এক্সচেঞ্জের পাবলিক দাম: কোনো অ্যাকাউন্ট বা কী লাগে না। পিলটি চালু থাকলেই শুধু প্রতি মিনিটে পড়া হয়।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Public prices from the exchange: no account, no key. Read every minute, only while the pill is on."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precios públicos de la plataforma: sin cuenta ni clave. Se leen cada minuto, solo con la píldora activa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cours publics de la plateforme : ni compte ni clé. Lus chaque minute, seulement quand la pilule est active."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "एक्सचेंज की सार्वजनिक कीमतें: न खाता, न कुंजी। पिल चालू होने पर ही हर मिनट पढ़ी जाती हैं।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harga publik dari bursa: tanpa akun, tanpa kunci. Dibaca tiap menit, hanya saat pil aktif."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preços públicos da corretora: sem conta nem chave. Lidos a cada minuto, só com a pílula ativa."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Публичные цены биржи: без аккаунта и ключа. Обновляются раз в минуту, только когда пилюля включена."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自交易所的公开行情：无需账户和密钥。仅在启用该胶囊时每分钟读取一次。"
+          }
+        }
+      }
+    },
+    "crypto.no-coins": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف عملات في الإعدادات ← التكاملات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সেটিংস → ইন্টিগ্রেশনে কয়েন যোগ করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add coins in Settings → Integrations"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade monedas en Ajustes → Integraciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoute des cryptos dans Réglages → Intégrations"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "सेटिंग्स → इंटीग्रेशन में कॉइन जोड़ें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambahkan koin di Pengaturan → Integrasi"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione moedas em Ajustes → Integrações"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавьте монеты в Настройки → Интеграции"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在“设置 → 集成”中添加币种"
+          }
+        }
+      }
+    },
+    "crypto.unavailable %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم يستجب %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ সাড়া দেয়নি"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ did not answer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no respondió"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ n’a pas répondu"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ने जवाब नहीं दिया"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tidak merespons"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ não respondeu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ не отвечает"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 未响应"
+          }
+        }
+      }
+    },
+    "crypto.not-listed %@": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير مدرجة في هذه المنصة: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই এক্সচেঞ্জে নেই: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not on this exchange: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No está en esta plataforma: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Absente de cette plateforme : %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस एक्सचेंज पर नहीं: %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada di bursa ini: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não está nesta corretora: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет на этой бирже: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此交易所没有：%@"
+          }
+        }
+      }
+    },
+    "plugin.pi.installed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الملحق مثبَّت — أعِد تشغيل Pi للتفعيل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্লাগইন ইনস্টল হয়েছে — সক্রিয় করতে Pi রিস্টার্ট করুন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin installed — restart Pi to activate it"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin instalado — reinicia Pi para activarlo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin installé — redémarre Pi pour l'activer"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्लगइन इंस्टॉल हो गया — सक्रिय करने के लिए Pi रीस्टार्ट करें"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin terpasang — mulai ulang Pi untuk mengaktifkan"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin instalado — reinicie o Pi para ativar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плагин установлен — перезапусти Pi для активации"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "插件已安装 — 重启 Pi 以激活"
+          }
+        }
+      }
+    },
+    "plugin.pi.title": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملحق Pi"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pi প্লাগইন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pi plugin"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin de Pi"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin Pi"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pi प्लगइन"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin Pi"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugin do Pi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плагин Pi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pi 插件"
+          }
+        }
+      }
+    },
+    "status.pi-extension-installed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ملحق Pi مثبَّت في ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.pi/agent/extensions/coucou.ts-এ Pi প্লাগইন ইনস্টল হয়েছে"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Pi plugin installed in ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin de Pi instalado en ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Pi installé dans ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ ~/.pi/agent/extensions/coucou.ts में Pi प्लगइन इंस्टॉल हुआ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Pi terpasang di ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin do Pi instalado em ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Плагин Pi установлен в ~/.pi/agent/extensions/coucou.ts"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Pi 插件已安装至 ~/.pi/agent/extensions/coucou.ts"
+          }
+        }
+      }
+    },
+    "status.pi-extension-removed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ تمت إزالة ملحق Pi."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Pi প্লাগইন সরানো হয়েছে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Pi plugin removed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin de Pi eliminado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Pi supprimé."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Pi प्लगइन हटा दिया गया।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin Pi dihapus."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Plugin do Pi removido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Плагин Pi удалён."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Pi 插件已移除。"
           }
         }
       }

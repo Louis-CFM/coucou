@@ -463,10 +463,13 @@ struct CountdownBar: View {
         let window = min(10.0, autoClose * 0.6)
         let elapsed = Date.now.timeIntervalSince(state.lastActivity)
         let remaining = autoClose - elapsed
-        if remaining < window {
-            barWidth = max(0, CGFloat(remaining / window) * 160)
-        } else {
-            barWidth = 0
+        let target: CGFloat = remaining < window ? max(0, CGFloat(remaining / window) * 160) : 0
+        // The timer ticks at 10 Hz; a linear animation over the same 0.1 s glides between ticks,
+        // so the bar shrinks on every display frame instead of in 10 steps a second.
+        if target < barWidth && barWidth - target < 40 {
+            withAnimation(.linear(duration: 0.1)) { barWidth = target }
+        } else if target != barWidth {
+            barWidth = target
         }
     }
 }
@@ -520,14 +523,11 @@ struct IslandContentView: View {
 struct IslandHeader: View {
     @ObservedObject var state: AppState
 
-    // Claude + Codex pills together: tighten the right side so it clears the notch
-    private var bothPlans: Bool {
-        #if !APPSTORE
-        return state.view == .overview && state.showPlanInNotch && state.planRelayInstalled && state.showCodexPlanInNotch
-        #else
-        return false
-        #endif
-    }
+    @State private var closeHovered = false
+
+    /// Pending approval or mail draft: the island refuses to fold (fsm.isHeldOpen), so the
+    /// close cross is not shown.
+    private var heldOpen: Bool { state.pendingApproval != nil || state.voiceMailDraft != nil }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -548,16 +548,17 @@ struct IslandHeader: View {
             Spacer()
 
             // Right: plan pill (GitHub build, home view only) + action icons
-            HStack(spacing: bothPlans ? 5 : 8) {
+            HStack(spacing: 8) {
                 #if !APPSTORE
+                // Claude and Codex both on: only Claude here (two pills and the icons do not
+                // clear the notch); Codex is a row in the Claude plan card.
                 if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
                     ClaudePlanHeaderPill(state: state)
-                }
-                if state.view == .overview && state.showCodexPlanInNotch {
+                } else if state.view == .overview && state.showCodexPlanInNotch {
                     ClaudePlanHeaderPill(state: state, codex: true)
                 }
                 #endif
-                HStack(spacing: bothPlans ? 10 : 14) {
+                HStack(spacing: 14) {
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             state.view = .settings
@@ -575,9 +576,25 @@ struct IslandHeader: View {
                             .foregroundColor(Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+
+                    // Fold back to the compact island now, without waiting for the timer.
+                    if !heldOpen {
+                        Button(action: {
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color(hex: closeHovered ? "#F5F6F8" : "#8E939C"))
+                                .frame(width: 16, height: 16)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "Close"))
+                        .onHover { closeHovered = $0 }
+                    }
                 }
             }
-            .padding(.trailing, bothPlans ? 8 : 16)
+            .padding(.trailing, 16)
         }
         .frame(maxHeight: .infinity)
     }

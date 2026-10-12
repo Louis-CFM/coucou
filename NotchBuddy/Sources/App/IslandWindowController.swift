@@ -904,6 +904,17 @@ final class IslandWindowController: NSWindowController {
             self?.handleDizzy()
         }
 
+        // Eye tracking at the mouse's own rate: Mochi's look target follows every mouse move
+        // instead of the island poll (8 to 20 Hz away from the island, which made the head step).
+        // Nothing runs while the mouse is still, and a hidden island skips the work.
+        NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { _ in
+            MainActor.assumeIsolated { IslandWindowController.trackMouseLook() }
+        }
+        NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { event in
+            MainActor.assumeIsolated { IslandWindowController.trackMouseLook() }
+            return event
+        }
+
         // Window attach drag.
         // Uses MainActor.assumeIsolated (synchronous) to avoid race with pollFrame().
         // Global mouseUp is the reliable fallback when cursor is outside our panel frame.
@@ -1331,6 +1342,15 @@ final class IslandWindowController: NSWindowController {
 
     /// Top of the menu-bar screen in AppKit coordinates: origin of `DesktopSpace`.
     static var desktopTop: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
+
+    /// Mochi's look target from the current mouse position (see the mouse-moved monitors).
+    static func trackMouseLook() {
+        let app = AppState.shared
+        guard app.mode != .hidden || app.mochiOnDesktop else { return }
+        let pos = DesktopSpace.topDown(NSEvent.mouseLocation, desktopTop: desktopTop)
+        let cur = app.mousePosition
+        if abs(pos.x - cur.x) > 1 || abs(pos.y - cur.y) > 1 { app.mousePosition = pos }
+    }
 
     /// Screen the island currently sits on (Settings window, desktop Mochi flights).
     private(set) static var currentScreen: NSScreen?

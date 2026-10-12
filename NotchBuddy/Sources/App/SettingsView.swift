@@ -108,6 +108,11 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @AppStorage(CryptoSettings.exchangeKey)     private var cryptoExchange = CryptoExchange.coinbase.rawValue
+    @AppStorage(CryptoSettings.currencyKey)     private var cryptoCurrency = "EUR"
+    @AppStorage(CryptoSettings.coinsKey)        private var cryptoCoins = CryptoSettings.defaultCoins
+    @AppStorage(CryptoSettings.alertKey)        private var cryptoAlert = false
+    @AppStorage(CryptoSettings.alertPercentKey) private var cryptoAlertPercent = 5.0
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1284,7 +1289,45 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
-                Button(String(localized: "integrations.save")) { saveIntegrations() }
+                // Crypto: public prices, no key. Changes apply at once.
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#F7931A")).frame(width: 8, height: 8)
+                        Text(verbatim: "Crypto").font(.system(size: 12, weight: .semibold))
+                    }
+                    Picker(String(localized: "crypto.exchange"), selection: $cryptoExchange) {
+                        ForEach(CryptoExchange.allCases, id: \.rawValue) { ex in
+                            Text(verbatim: ex.name).tag(ex.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Picker(String(localized: "crypto.currency"), selection: $cryptoCurrency) {
+                        Text(verbatim: "EUR €").tag("EUR")
+                        Text(verbatim: "USD $").tag("USD")
+                    }
+                    .pickerStyle(.segmented)
+                    TextField(String(localized: "crypto.coins-placeholder"), text: $cryptoCoins)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { CryptoController.shared.settingsChanged() }
+                    HStack(spacing: 8) {
+                        Toggle(String(format: String(localized: "crypto.alert %lld"), Int64(cryptoAlertPercent)),
+                               isOn: $cryptoAlert)
+                        if cryptoAlert {
+                            Stepper("", value: $cryptoAlertPercent, in: 1...50, step: 1)
+                                .labelsHidden()
+                        }
+                    }
+                    Text(String(localized: "crypto.hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+                .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
+                .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
+
+                Button(String(localized: "integrations.save")) {
+                    saveIntegrations()
+                    CryptoController.shared.settingsChanged()
+                }
                     .buttonStyle(.borderedProminent)
             }
             .padding(6)
@@ -1297,6 +1340,7 @@ struct SettingsView: View {
     @State private var voicePermissionsGranted: Bool = false
     @ObservedObject private var voiceEngine = VoiceEngine.shared
     @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceListenLanguage") private var listenLanguage: String = "auto"
     @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
     @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
     @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
@@ -1368,6 +1412,40 @@ struct SettingsView: View {
         .onAppear {
             voicePermissionsGranted = VoiceSettings.micStatus == .granted
                 && VoiceSettings.speechStatus == .granted
+        }
+
+        GroupBox(String(localized: "Language")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text(String(localized: "voice.listen-language"))
+                        .frame(width: 130, alignment: .leading)
+                    Picker(String(localized: "voice.listen-language"), selection: $listenLanguage) {
+                        Text(String(localized: "voice.lang-auto")).tag("auto")
+                        Text(verbatim: "Français").tag("fr")
+                        Text(verbatim: "English").tag("en")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 260)
+                }
+                HStack(spacing: 10) {
+                    Text(String(localized: "voice.language"))
+                        .frame(width: 130, alignment: .leading)
+                    Picker(String(localized: "voice.language"), selection: $voiceLanguage) {
+                        Text(verbatim: "Français").tag("fr")
+                        Text(verbatim: "English").tag("en")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 180)
+                    .onChange(of: voiceLanguage) { _, _ in
+                        // Chosen by hand: Coucou no longer offers to switch.
+                        VoiceSettings.languageOfferDone = true
+                        ElevenLabsTTS.shared.reset()
+                    }
+                }
+            }
+            .padding(6)
         }
 
         GroupBox(String(localized: "voice.tts-engine")) {

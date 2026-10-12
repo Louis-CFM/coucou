@@ -120,7 +120,19 @@ struct OverviewView: View {
                         if state.planDetailIsCodex {
                             CodexPlanCardView(usage: state.codexPlanUsage)
                         } else {
-                            ClaudePlanCardView(usage: state.claudePlanUsage)
+                            // Claude and Codex both on: the header shows only the Claude pill,
+                            // Codex is a third row here that opens its own card.
+                            let bothPlans = state.showPlanInNotch && state.planRelayInstalled
+                                && state.showCodexPlanInNotch
+                            ClaudePlanCardView(usage: state.claudePlanUsage,
+                                               codexRow: bothPlans,
+                                               codexUsage: state.codexPlanUsage,
+                                               onCodex: {
+                                                   withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                                       state.planDetailIsCodex = true
+                                                   }
+                                                   state.refreshCodexPlanUsage()
+                                               })
                         }
                     }
                     .transition(.opacity)
@@ -209,6 +221,16 @@ struct OverviewView: View {
             }
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
+        case "integration_mail":
+            #if !APPSTORE
+            MailController.shared.openMail()
+            #endif
+        case "integration_crypto":
+            let exchange = CryptoSettings.exchange
+            if let first = CryptoSettings.coins.first,
+               let url = exchange.tradeURL(exchange.pair(first, CryptoSettings.currency)) {
+                NSWorkspace.shared.open(url)
+            }
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
@@ -311,18 +333,37 @@ struct ApprovalView: View {
 
     var approval: ApprovalInfo? { state.pendingApproval }
 
+    /// The pill, named after the session that asks (several sessions can share a pill).
+    private var asker: AgentTask? {
+        guard var task = state.focusTask else { return nil }
+        if let project = approval?.projectName, !project.isEmpty { task.name = project }
+        return task
+    }
+
     var body: some View {
+        // Captured when the card is drawn: a click answers the request that was on screen,
+        // and is ignored if the card has moved on to the next one since.
+        let shownId = approval?.id
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "needs permission")
+                HStack(spacing: 7) {
+                    AgentWho(task: asker, label: "needs permission")
+                    // Other requests waiting behind this one: "1/3".
+                    if let count = approval?.queueCount, count > 1 {
+                        Text(verbatim: "1/\(count)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                            .monospacedDigit()
+                    }
+                }
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
                 HStack(spacing: 8) {
                     SecondaryButton("Deny") {
-                        HookServer.shared.sendApprovalDecision("deny")
+                        HookServer.shared.sendApprovalDecision("deny", for: shownId)
                     }
                     PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow")
+                        HookServer.shared.sendApprovalDecision("allow", for: shownId)
                     }
                     // Codex, Copilot CLI and Muse Code do not support updatedPermissions
                     let hideAlways = approval?.pillId == "agent_codex"
@@ -330,7 +371,7 @@ struct ApprovalView: View {
                         || approval?.pillId == "agent_muse"
                     if !hideAlways {
                         SecondaryButton("Always") {
-                            HookServer.shared.sendApprovalDecision("always")
+                            HookServer.shared.sendApprovalDecision("always", for: shownId)
                         }
                     }
                 }
@@ -811,12 +852,8 @@ struct ConfusedView: View {
 
 struct UploadView: View {
     @ObservedObject var state: AppState
-    @State private var dashPhase: CGFloat = 0
-    @State private var breathAngle: Double = 0
-    // Timer only runs while this is the active tab — killed on deactivation
-    @State private var animTimer: Timer? = nil
 
-    private var borderOpacity: Double {
+    private func borderOpacity(breathAngle: Double) -> Double {
         let breathe = 0.11 + 0.04 * (sin(breathAngle) * 0.5 + 0.5)
         return state.fileDragOver ? 0.65 : breathe
     }
@@ -825,13 +862,21 @@ struct UploadView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color(hex: "#0E0F11"))
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    state.fileDragOver
-                        ? Color(hex: "#22C55E").opacity(borderOpacity)
-                        : Color.white.opacity(borderOpacity),
-                    style: StrokeStyle(lineWidth: 1.5, dash: [6, 5], dashPhase: dashPhase)
-                )
+            // The dashes march at 20 pt/s and the border breathes at 0.9 rad/s, computed from the
+            // clock on every display frame (it was a 20 Hz timer, visibly stepped). Runs only while
+            // this is the open view.
+            TimelineView(.animation(paused: state.view != .upload || state.mode != .expanded)) { tl in
+                let t = tl.date.timeIntervalSinceReferenceDate
+                let dashPhase = CGFloat((t * 20).truncatingRemainder(dividingBy: 11))
+                let opacity = borderOpacity(breathAngle: t * 0.9)
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        state.fileDragOver
+                            ? Color(hex: "#22C55E").opacity(opacity)
+                            : Color.white.opacity(opacity),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [6, 5], dashPhase: dashPhase)
+                    )
+            }
             RoundedRectangle(cornerRadius: 20)
                 .fill(RadialGradient(
                     colors: [Color(hex: "#22C55E").opacity(state.fileDragOver ? 0.13 : 0), Color.clear],
@@ -855,27 +900,6 @@ struct UploadView: View {
             .padding(.leading, 196)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onChange(of: state.view) { _, newView in
-            newView == .upload ? startTimer() : stopTimer()
-        }
-        .onAppear {
-            if state.view == .upload { startTimer() }
-        }
-        .onDisappear { stopTimer() }
-    }
-
-    private func startTimer() {
-        guard animTimer == nil else { return }
-        // 20 fps — smooth enough for slow dash, 3× lighter than 60fps
-        animTimer = Timer.scheduledTimer(withTimeInterval: 1.0/20.0, repeats: true) { _ in
-            dashPhase  += 1.0          // 20 pt/s march
-            breathAngle += 0.9 / 20.0  // advance sin phase at 0.9 rad/s
-        }
-    }
-
-    private func stopTimer() {
-        animTimer?.invalidate()
-        animTimer = nil
     }
 }
 
@@ -1756,6 +1780,9 @@ struct IntegrationCardView: View {
     var onDiffTap: ((Int) -> Void)? = nil
     @ObservedObject private var appState = AppState.shared
     @State private var githubDetailSection: GitHubDetailSection = .myPRs
+    #if !APPSTORE
+    @ObservedObject private var mailController = MailController.shared
+    #endif
 
     private var isConfigured: Bool {
         switch task.id {
@@ -1825,6 +1852,14 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_mail":
+            #if !APPSTORE
+            return true  // Apple Mail is always installed on macOS: nothing to set up
+            #else
+            return false
+            #endif
+        case "integration_crypto":
+            return true  // public market data: no key, nothing to set up
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
@@ -1916,6 +1951,17 @@ struct IntegrationCardView: View {
         #endif
     }
 
+    // Apple Mail: the message list once Mail is open and allowed (else the idle card says why)
+    private var mailHasData: Bool {
+        #if !APPSTORE
+        guard task.id == "integration_mail" else { return false }
+        let mail = MailController.shared
+        return mail.isMailRunning && !mail.automationDenied
+        #else
+        return false
+        #endif
+    }
+
     // Spotify: its own card for every state (playing, idle, not installed, Automation denied)
     private var isSpotify: Bool {
         #if !APPSTORE
@@ -1932,6 +1978,12 @@ struct IntegrationCardView: View {
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
         #endif
+        #if !APPSTORE
+        if task.id == "integration_mail" {
+            if mailController.automationDenied { return Color(hex: "#F4505E") }
+            return mailController.isMailRunning ? Color(hex: "#22C55E") : Color(hex: "#6B7079")
+        }
+        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1946,6 +1998,12 @@ struct IntegrationCardView: View {
             if appState.musicAutomationDenied { return String(localized: "Automation not allowed") }
             if appState.musicPlaying { return String(format: String(localized: "Playing · %@"), MusicController.shared.trackTitle ?? String(localized: "Unknown")) }
             return String(localized: "Not playing")
+        }
+        #endif
+        #if !APPSTORE
+        if task.id == "integration_mail" {
+            if mailController.automationDenied { return String(localized: "Automation not allowed") }
+            return mailController.isMailRunning ? String(localized: "Loading…") : String(localized: "Mail is closed")
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
@@ -2049,6 +2107,15 @@ struct IntegrationCardView: View {
         } else if musicIsActive {
             #if !APPSTORE
             MusicCardView()
+                .transition(.opacity)
+            #endif
+        } else if task.id == "integration_crypto" {
+            // Its own card in every state (loading, no coins, prices).
+            CryptoCardView()
+                .transition(.opacity)
+        } else if mailHasData {
+            #if !APPSTORE
+            MailCardView()
                 .transition(.opacity)
             #endif
         } else if isSpotify {
@@ -2180,6 +2247,19 @@ struct IntegrationCardView: View {
                                 .buttonStyle(.plain)
                         }
                         #endif
+                    } else if task.id == "integration_mail" {
+                        #if !APPSTORE
+                        Button("Open Mail") { MailController.shared.openMail() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        if mailController.automationDenied {
+                            Button("Open Settings…") { MailController.shared.openAutomationSettings() }
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -2225,7 +2305,8 @@ struct IntegrationCardView: View {
                     if !isConfigured
                        && task.id != "agent_cursor"
                        && task.id != "agent_codex"
-                       && task.id != "integration_music" {
+                       && task.id != "integration_music"
+                       && task.id != "integration_mail" {
                         Button("Settings…") {
                             let section: String
                             switch PillCatalog.definition(for: task.id)?.category {
