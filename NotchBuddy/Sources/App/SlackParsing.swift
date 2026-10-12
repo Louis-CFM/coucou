@@ -72,6 +72,15 @@ enum SlackParsing {
         }
     }
 
+    /// Errors about one conversation or person, not the token.
+    static let missingCodes: Set<String> = ["channel_not_found", "channel_is_limited_access", "user_not_found"]
+
+    /// One conversation or person Slack no longer finds: skip it, keep polling.
+    static func isMissing(_ json: [String: Any]) -> Bool {
+        guard json["ok"] as? Bool != true, let code = json["error"] as? String else { return false }
+        return missingCodes.contains(code)
+    }
+
     /// auth.test
     static func identity(_ json: [String: Any]) -> SlackIdentity? {
         guard json["ok"] as? Bool == true,

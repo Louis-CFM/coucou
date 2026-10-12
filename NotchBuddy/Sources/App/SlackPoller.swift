@@ -118,10 +118,15 @@ final class SlackPoller {
             imsFetchedAt = Date()
         }
         var found: [SlackMessage] = []
+        var gone: Set<String> = []
         for im in SlackParsing.imsToCheck(ims, unread: unreadIms, limit: Self.imsPerPoll) {
-            let json = try await call("conversations.info", ["channel": im.channelId])
+            guard let json = try await callItem("conversations.info", ["channel": im.channelId]) else {
+                gone.insert(im.channelId)
+                continue
+            }
             if let dm = SlackParsing.unreadDM(json, me: me.userId) { found.append(dm) }
         }
+        ims.removeAll { gone.contains($0.channelId) }
         unreadIms = Set(found.map(\.channelId))
         return found
     }
@@ -134,8 +139,8 @@ final class SlackPoller {
 
     private func resolveNames(for ids: [String]) async throws {
         for id in Set(ids) where names[id] == nil && !id.isEmpty {
-            let json = try await call("users.info", ["user": id])
-            names[id] = SlackParsing.userName(json) ?? id
+            let json = try await callItem("users.info", ["user": id])
+            names[id] = json.flatMap(SlackParsing.userName) ?? id
         }
     }
 
@@ -195,6 +200,20 @@ final class SlackPoller {
     }
 
     private func call(_ method: String, _ params: [String: String] = [:]) async throws -> [String: Any] {
+        let json = try await send(method, params)
+        if let error = SlackParsing.error(json) { throw SlackError(message: error) }
+        return json
+    }
+
+    /// A call about one conversation or person: nil when Slack no longer finds it.
+    private func callItem(_ method: String, _ params: [String: String]) async throws -> [String: Any]? {
+        let json = try await send(method, params)
+        if SlackParsing.isMissing(json) { return nil }
+        if let error = SlackParsing.error(json) { throw SlackError(message: error) }
+        return json
+    }
+
+    private func send(_ method: String, _ params: [String: String]) async throws -> [String: Any] {
         guard let token else { throw SlackError(message: "Invalid token") }
         var components = URLComponents(string: "https://slack.com/api/\(method)")!
         if !params.isEmpty {
@@ -213,7 +232,6 @@ final class SlackPoller {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw SlackError(message: "API error \(http?.statusCode ?? 0)")
         }
-        if let error = SlackParsing.error(json) { throw SlackError(message: error) }
         return json
     }
 }

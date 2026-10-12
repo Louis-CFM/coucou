@@ -14,6 +14,12 @@ enum SlackParsingTests {
                      == "Missing scope: search:read")
         precondition(SlackParsing.error(json(#"{"ok":false,"error":"ratelimited"}"#)) == "Slack error: ratelimited")
 
+        // One conversation or person Slack no longer finds is skipped, not an error
+        precondition(SlackParsing.isMissing(json(#"{"ok":false,"error":"channel_not_found"}"#)))
+        precondition(SlackParsing.isMissing(json(#"{"ok":false,"error":"user_not_found"}"#)))
+        precondition(!SlackParsing.isMissing(json(#"{"ok":false,"error":"invalid_auth"}"#)))
+        precondition(!SlackParsing.isMissing(json(#"{"ok":true}"#)))
+
         // auth.test
         let me = SlackParsing.identity(json(#"""
         {"ok":true,"url":"https://subarachnoid.slack.com/","team":"Subarachnoid Workspace",

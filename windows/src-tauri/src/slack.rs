@@ -84,6 +84,15 @@ pub fn api_error(json: &Value) -> Option<String> {
     })
 }
 
+/// Errors about one conversation or person, not the token.
+const MISSING: [&str; 3] = ["channel_not_found", "channel_is_limited_access", "user_not_found"];
+
+/// One conversation or person Slack no longer finds: skip it, keep polling.
+pub fn is_missing(json: &Value) -> bool {
+    json.get("ok").and_then(Value::as_bool) != Some(true)
+        && json.get("error").and_then(Value::as_str).is_some_and(|c| MISSING.contains(&c))
+}
+
 /// auth.test
 pub fn parse_identity(json: &Value) -> Option<Identity> {
     if json.get("ok").and_then(Value::as_bool) != Some(true) {
@@ -299,7 +308,7 @@ fn retry_after(header: Option<&str>) -> Duration {
     header.and_then(|v| v.trim().parse().ok()).map_or(DEFAULT_RETRY, |s| Duration::from_secs(s).min(MAX_RETRY))
 }
 
-async fn call(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Value, Failure> {
+async fn send(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Value, Failure> {
     let response = client()
         .get(format!("https://slack.com/api/{method}"))
         .header("Authorization", format!("Bearer {token}"))
@@ -316,10 +325,26 @@ async fn call(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Valu
     if status != 200 {
         return Err(Failure(format!("API error {status}")));
     }
-    let json: Value = response.json().await.map_err(|e| Failure(e.to_string()))?;
+    response.json().await.map_err(|e| Failure(e.to_string()))
+}
+
+async fn call(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Value, Failure> {
+    let json = send(token, method, params).await?;
     match api_error(&json) {
         Some(e) => Err(Failure(e)),
         None => Ok(json),
+    }
+}
+
+/// A call about one conversation or person: None when Slack no longer finds it.
+async fn call_item(token: &str, method: &str, params: &[(&str, &str)]) -> Result<Option<Value>, Failure> {
+    let json = send(token, method, params).await?;
+    if is_missing(&json) {
+        return Ok(None);
+    }
+    match api_error(&json) {
+        Some(e) => Err(Failure(e)),
+        None => Ok(Some(json)),
     }
 }
 
@@ -391,13 +416,21 @@ async fn fetch(token: &str) -> Result<(Identity, Vec<Message>, i64, usize), Fail
         ims_to_check(&cache.ims, &cache.unread, IMS_PER_POLL)
     };
     let mut dms = Vec::new();
+    let mut gone = HashSet::new();
     for im in to_check {
-        let json = call(token, "conversations.info", &[("channel", &im.channel_id)]).await?;
+        let Some(json) = call_item(token, "conversations.info", &[("channel", &im.channel_id)]).await? else {
+            gone.insert(im.channel_id);
+            continue;
+        };
         if let Some(dm) = parse_unread_dm(&json, me) {
             dms.push(dm);
         }
     }
-    CACHE.lock().unwrap().unread = dms.iter().map(|d| d.channel_id.clone()).collect();
+    {
+        let mut cache = CACHE.lock().unwrap();
+        cache.ims.retain(|im| !gone.contains(&im.channel_id));
+        cache.unread = dms.iter().map(|d| d.channel_id.clone()).collect();
+    }
 
     let query = format!("<@{me}>");
     let json = call(token, "search.messages", &[("query", &query), ("sort", "timestamp"), ("sort_dir", "desc"), ("count", "20")]).await?;
@@ -413,8 +446,8 @@ async fn fetch(token: &str) -> Result<(Identity, Vec<Message>, i64, usize), Fail
         if id.is_empty() || CACHE.lock().unwrap().names.contains_key(&id) {
             continue;
         }
-        let json = call(token, "users.info", &[("user", &id)]).await?;
-        let name = parse_user_name(&json).unwrap_or_else(|| id.clone());
+        let json = call_item(token, "users.info", &[("user", &id)]).await?;
+        let name = json.as_ref().and_then(parse_user_name).unwrap_or_else(|| id.clone());
         CACHE.lock().unwrap().names.insert(id, name);
     }
 
@@ -535,6 +568,14 @@ mod tests {
             Some("Missing scope: search:read"),
         );
         assert_eq!(api_error(&json!({ "ok": false, "error": "ratelimited" })).as_deref(), Some("Slack error: ratelimited"));
+    }
+
+    #[test]
+    fn a_missing_conversation_or_person_is_skipped() {
+        assert!(is_missing(&json!({ "ok": false, "error": "channel_not_found" })));
+        assert!(is_missing(&json!({ "ok": false, "error": "user_not_found" })));
+        assert!(!is_missing(&json!({ "ok": false, "error": "invalid_auth" })));
+        assert!(!is_missing(&json!({ "ok": true })));
     }
 
     #[test]
