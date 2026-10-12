@@ -16,7 +16,14 @@
 //   `\\wsl.localhost\<distro>\…` path Windows reaches it by;
 // * the relay's path as the distro writes it (`/mnt/c/Users/…`), from the
 //   distro's own automount root;
-// * the one shell command that goes in the settings.
+// * the one shell command that goes in the settings;
+// * the Windows form of a Linux path from a session in WSL (`/home/me/proj` →
+//   `\\wsl.localhost\Ubuntu\home\me\proj`), for the diff's ↗ and "open the
+//   folder", which hand the path to VS Code or Explorer on the Windows side.
+
+// Only Windows hands a session's Linux path to an editor; the rest is still built
+// (and tested) everywhere.
+#![cfg_attr(not(windows), allow(dead_code))]
 
 use std::path::PathBuf;
 
@@ -136,6 +143,58 @@ pub fn relay_command(relay: &str, event: &str) -> String {
     format!("[ -x {relay} ] && {relay} {event} || true")
 }
 
+// ── A session's Linux paths, seen from Windows ───────────────────────────────
+
+/// `\\wsl.localhost\<distro>\home\me\proj` for `/home/me/proj`. Only a full
+/// Linux path with nothing in it that could lead elsewhere: no `..`, no NUL, no
+/// backslash (a Linux file name may hold one, a Windows path would read it as a
+/// separator).
+pub fn unc_path(distro: &str, linux_path: &str) -> Option<PathBuf> {
+    if !is_safe_name(distro) || !linux_path.starts_with('/') {
+        return None;
+    }
+    if linux_path.contains(['\\', '\0']) || linux_path.split('/').any(|part| part == "..") {
+        return None;
+    }
+    let mut path = root(distro);
+    for part in linux_path.split('/').filter(|p| !p.is_empty() && *p != ".") {
+        path.push(part);
+    }
+    Some(path)
+}
+
+/// Which of `distros` has `linux_path`, and where it is seen from Windows. The
+/// first that has it: two distros with the very same folder cannot be told apart
+/// from the path alone.
+pub fn locate(linux_path: &str, distros: &[String], exists: impl Fn(&std::path::Path) -> bool) -> Option<(String, PathBuf)> {
+    distros.iter().find_map(|distro| {
+        let unc = unc_path(distro, linux_path)?;
+        exists(&unc).then(|| (distro.clone(), unc))
+    })
+}
+
+/// Whether VS Code's Remote - WSL extension is installed, from the names in
+/// `~/.vscode/extensions`: with it a WSL folder opens in a window that runs in
+/// the distro (its terminal, its extensions), without it as a plain network path.
+pub fn has_remote_wsl(extension_dirs: &[String]) -> bool {
+    // `remote-wsl-0.88.5`, not `remote-wsl-recommender-0.0.19`: a version follows.
+    extension_dirs.iter().any(|name| {
+        name.to_ascii_lowercase()
+            .strip_prefix("ms-vscode-remote.remote-wsl-")
+            .and_then(|rest| rest.chars().next())
+            .is_some_and(|c| c.is_ascii_digit())
+    })
+}
+
+/// The arguments `code` gets for a path in a distro.
+pub fn editor_args(distro: &str, linux_path: &str, unc: &std::path::Path, remote: bool) -> Vec<std::ffi::OsString> {
+    if remote {
+        vec!["--remote".into(), format!("wsl+{distro}").into(), linux_path.into()]
+    } else {
+        vec![unc.as_os_str().to_owned()]
+    }
+}
+
 // ── Where things are (Windows) ────────────────────────────────────────────────
 
 fn root(distro: &str) -> PathBuf {
@@ -208,6 +267,42 @@ fn automount_root(distro: &str) -> String {
     std::fs::read_to_string(root(distro).join("etc").join("wsl.conf"))
         .map(|text| parse_automount_root(&text))
         .unwrap_or_else(|_| "/mnt/".to_string())
+}
+
+/// The running distros, asked of `wsl.exe` at most every half minute.
+fn running_distros() -> Vec<String> {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static CACHE: Mutex<Option<(Instant, Vec<String>)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, list)) = cache.as_ref() {
+        if at.elapsed() < Duration::from_secs(30) {
+            return list.clone();
+        }
+    }
+    let list: Vec<String> = wsl_output(&["-l", "--running", "-q"])
+        .map(|b| parse_distro_list(&b))
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|name| is_safe_name(name))
+        .collect();
+    *cache = Some((Instant::now(), list.clone()));
+    list
+}
+
+/// A path that came from a session in WSL, as a distro and a Windows path.
+/// Only running distros are looked in: reading a stopped one would start it.
+pub fn resolve_linux_path(linux_path: &str) -> Option<(String, PathBuf)> {
+    locate(linux_path, &running_distros(), |p| std::fs::metadata(p).is_ok())
+}
+
+/// Remote - WSL is among VS Code's extensions (see `has_remote_wsl`).
+pub fn remote_wsl_installed() -> bool {
+    let dir = crate::platform::home_dir().join(".vscode").join("extensions");
+    let names: Vec<String> = std::fs::read_dir(dir)
+        .map(|entries| entries.flatten().filter_map(|e| e.file_name().into_string().ok()).collect())
+        .unwrap_or_default();
+    has_remote_wsl(&names)
 }
 
 /// The distros, and for each running one its users with whether Coucou's hooks
@@ -338,6 +433,50 @@ mod tests {
         for bad in ["", ".", "..", "a/b", r"a\b", "a:b", "x\n", "..\\..", "a|b", "*", "a\"b"] {
             assert!(!is_safe_name(bad), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_linux_path_becomes_a_path_on_the_distros_share() {
+        assert_eq!(
+            unc_path("Ubuntu", "/home/me/proj/src/main.rs"),
+            Some(PathBuf::from(r"\\wsl.localhost\Ubuntu").join("home").join("me").join("proj").join("src").join("main.rs"))
+        );
+        assert_eq!(unc_path("Ubuntu", "/"), Some(PathBuf::from(r"\\wsl.localhost\Ubuntu")));
+        // Doubled and dotted separators are tidied.
+        assert_eq!(unc_path("Ubuntu", "/home//me/./x"), unc_path("Ubuntu", "/home/me/x"));
+        // Not a full Linux path, or one that could lead elsewhere.
+        for bad in ["home/me", "", "C:\\Users\\me", "/home/../etc", "/home/me/..", "/a\\b", "/a\0b"] {
+            assert_eq!(unc_path("Ubuntu", bad), None, "{bad:?}");
+        }
+        assert_eq!(unc_path("../x", "/home"), None);
+        assert_eq!(unc_path("", "/home"), None);
+    }
+
+    #[test]
+    fn the_distro_that_has_the_path_is_the_one_used() {
+        let distros = ["Debian".to_string(), "Ubuntu".to_string()];
+        let only_ubuntu = |p: &std::path::Path| p.to_string_lossy().contains("Ubuntu");
+        let (distro, unc) = locate("/home/me/proj", &distros, only_ubuntu).unwrap();
+        assert_eq!(distro, "Ubuntu");
+        assert_eq!(Some(unc), unc_path("Ubuntu", "/home/me/proj"));
+        // Both have it: the first. None has it, or there is no distro: nothing.
+        assert_eq!(locate("/home/me", &distros, |_| true).unwrap().0, "Debian");
+        assert_eq!(locate("/home/me", &distros, |_| false), None);
+        assert_eq!(locate("/home/me", &[], |_| true), None);
+        assert_eq!(locate("../x", &distros, |_| true), None);
+    }
+
+    #[test]
+    fn code_opens_a_distros_path_in_its_remote_window_when_it_can() {
+        let unc = PathBuf::from(r"\\wsl.localhost\Ubuntu").join("home").join("me");
+        let remote = editor_args("Ubuntu", "/home/me", &unc, true);
+        assert_eq!(remote, vec!["--remote", "wsl+Ubuntu", "/home/me"]);
+        let plain = editor_args("Ubuntu", "/home/me", &unc, false);
+        assert_eq!(plain, vec![unc.as_os_str().to_owned()]);
+        let names = |l: &[&str]| l.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(has_remote_wsl(&names(&["ms-python.python-2024.1", "ms-vscode-remote.remote-wsl-0.88.5"])));
+        assert!(!has_remote_wsl(&names(&["ms-vscode-remote.remote-ssh-0.100.0", "ms-vscode-remote.remote-wsl-recommender-0.0.1x"])));
+        assert!(!has_remote_wsl(&[]));
     }
 
     #[test]

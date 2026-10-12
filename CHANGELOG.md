@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Diffs and folders of sessions in WSL** *(Windows)* — the diff's ↗ and "Open terminal"'s fallback now work for sessions in WSL: their Linux paths are turned into the distro's `\\wsl.localhost\…` share, and opened in VS Code's Remote - WSL window when that extension is installed
 - **"Open terminal" finds the right tab** *(Windows)* — the relay now sends its own parent processes with a session's first events, so the session's window is found even for events that don't wait for an answer, and for sessions in WSL; in Windows Terminal Coucou remembers the tab a prompt was sent from and brings it forward selected. With several sessions, the pill follows the one that spoke last (a Stop used to leave the previous one on it), and a session ending no longer resets the pill of another
 - **Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL installs the hooks in a distro's own `~/.claude/settings.json`; they run `coucou-hook.exe` through WSL, so sessions in WSL show up in the island and their permissions are answered there. Same diff and dated backup as on Windows, your own hooks stay untouched
 - **Spotify pill on Windows** — the track, the cover, play/pause, previous, next, seek, shuffle, repeat, the volume (Spotify's slider in the Windows volume mixer), and Mochi dances to it, read from Windows' media session (SMTC)
