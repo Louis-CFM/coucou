@@ -244,7 +244,7 @@ fn open_in_vscode(path: Option<String>) -> bool {
 struct ClaudeProcess {
     pid: u32,
     cwd: String,
-    /// What to call it: the tmux session the user named, else its folder.
+    /// What to call it: its Claude Code name, else the tmux session the user named, else its folder.
     name: String,
 }
 
@@ -261,7 +261,8 @@ async fn claude_sessions() -> Vec<ClaudeProcess> {
                 let mut owners = vec![pid];
                 owners.extend(platform::window_owners(&platform::process_ancestors(pid)));
                 session_window::remember(&format!("pid-{pid}"), owners);
-                let name = platform::tmux_session_name(pid)
+                let name = claude_session_name(pid)
+                    .or_else(|| platform::tmux_session_name(pid))
                     .unwrap_or_else(|| session_window::folder_name(&cwd).to_string());
                 ClaudeProcess { pid, cwd, name }
             })
@@ -269,6 +270,14 @@ async fn claude_sessions() -> Vec<ClaudeProcess> {
     })
     .await
     .unwrap_or_default()
+}
+
+/// The name `/rename` gave the session, from Claude Code's own `~/.claude/sessions/<pid>.json`.
+fn claude_session_name(pid: u32) -> Option<String> {
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).ok()?;
+    let path = std::path::Path::new(&home).join(".claude").join("sessions").join(format!("{pid}.json"));
+    let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
+    v.get("name").and_then(|n| n.as_str()).filter(|n| !n.is_empty()).map(str::to_string)
 }
 
 /// "Open terminal": brings forward the terminal or editor window the session

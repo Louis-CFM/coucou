@@ -798,9 +798,18 @@ final class HookServer: @unchecked Sendable {
                 if let session = panes[current] { tmux = session; break }
                 walk = parent[current]
             }
-            found.append(FoundSession(pid: pid, cwd: cwd, name: tmux))
+            found.append(FoundSession(pid: pid, cwd: cwd, name: claudeSessionName(pid: pid) ?? tmux))
         }
         return found.sorted { $0.pid < $1.pid }
+    }
+
+    /// The name `/rename` gave the session, from Claude Code's own `~/.claude/sessions/<pid>.json`.
+    nonisolated static func claudeSessionName(pid: Int32) -> String? {
+        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/sessions/\(pid).json")
+        guard let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let name = json["name"] as? String, !name.isEmpty else { return nil }
+        return name
     }
 
     /// The `claude` process that ran a hook: the farthest one up from the hook's parent, else
