@@ -34,6 +34,8 @@ export class IslandStateMachine {
    * General → Open on hover, off by default), as IslandStateMachine.openOnHover.
    */
   openOnHover = false;
+  /** A call is on (Settings → General → Calls): nothing reveals, hover and click do nothing. */
+  paused = false;
   /** Grace period after the pointer leaves a hover-opened island, seconds. */
   hoverCloseDelay = 0.6;
   /** Open because of a hover, until the user clicks inside it. */
@@ -62,6 +64,7 @@ export class IslandStateMachine {
   }
 
   mouseEntered() {
+    if (this.paused) return;
     if (this.openOnHover && (this.state === "hidden" || this.state === "petit") && !this.pinned) {
       this.cancelTimers();
       this.byHover = true;
@@ -103,6 +106,7 @@ export class IslandStateMachine {
   }
 
   click() {
+    if (this.paused) return;
     this.byHover = false;
     if (this.state !== "petit") return;
     this.cancelTimers();
@@ -117,7 +121,7 @@ export class IslandStateMachine {
 
   /** Non-alert work event: show compact from hidden. */
   reveal() {
-    if (this.state !== "hidden") return;
+    if (this.state !== "hidden" || this.paused) return;
     this.cancelTimers();
     this.transition("petit");
     this.schedulePetitHide();

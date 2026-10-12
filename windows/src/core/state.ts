@@ -146,6 +146,10 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /** Settings → General → Calls: the island hides and goes silent while one of these is in use. */
+  quietOnCamera: boolean;
+  quietOnMic: boolean;
+  quietOnScreenShare: boolean;
   /**
    * The phone link for Coucou for Android is on. Rust owns it (only the switch in
    * Settings → Android phone turns it on): whatever the page sends back is ignored.
@@ -190,7 +194,17 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  quietOnCamera: true,
+  quietOnMic: true,
+  quietOnScreenShare: true,
 };
+
+/** A call is on: one of `cam`, `mic`, `scr` held by another app, with its switch on. */
+export function callOn(settings: Settings, sensors: ReadonlySet<string>): boolean {
+  return (settings.quietOnCamera && sensors.has("cam"))
+    || (settings.quietOnMic && sensors.has("mic"))
+    || (settings.quietOnScreenShare && sensors.has("scr"));
+}
 
 type Listener = () => void;
 
@@ -215,6 +229,12 @@ class AppState {
 
   isPinned = false;
   paused = false;
+  /** `cam`, `mic`, `scr` held by another app right now (calls.rs). */
+  callSensors: ReadonlySet<string> = new Set();
+  /** A call is on: nothing reveals, no alert, no sound, until it ends. */
+  get inCall(): boolean {
+    return callOn(this.settings, this.callSensors);
+  }
 
   uploadProgress = 0;
   uploadDuration = 2.4;

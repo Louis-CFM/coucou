@@ -377,3 +377,14 @@ test("open on hover: an island opened by an alert keeps the normal delay", () =>
   seconds(2);
   assert.equal(fsm.state, "petit");
 });
+
+test("on a call nothing reveals, hover and click do nothing, until it ends", () => {
+  fsm.paused = true;
+  fsm.reveal();
+  fsm.mouseEntered();
+  fsm.click();
+  assert.equal(fsm.state, "hidden");
+  fsm.paused = false;
+  fsm.reveal();
+  assert.equal(fsm.state, "petit");
+});

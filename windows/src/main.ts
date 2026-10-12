@@ -79,6 +79,14 @@ async function main() {
     }
   });
 
+  // A call on another app: the island stays away and quiet (calls.rs).
+  const onCallSensors = (held: string[] | null) => {
+    State.callSensors = new Set(held ?? []);
+    island.syncCall();
+  };
+  await onEvent<string[]>("call-sensors", onCallSensors);
+  void Bridge.callSensors().then(onCallSensors).catch(() => {});
+
   await onEvent<null>("screen-changed", () => void Bridge.reposition());
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.

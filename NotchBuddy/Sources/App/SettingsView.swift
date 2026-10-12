@@ -325,6 +325,22 @@ struct SettingsView: View {
             .padding(6)
         }
 
+        #if !APPSTORE
+        GroupBox("Calls") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("The island hides and goes silent while one of these is in use. Read from the menu bar's camera, microphone and screen indicators.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Camera on", isOn: $state.quietOnCamera)
+                Toggle("Microphone on", isOn: $state.quietOnMic)
+                Toggle("Screen sharing", isOn: $state.quietOnScreenShare)
+                    .help("A screen shared by an app that is also on the mic or the camera. A recorder or a screenshot tool does not count.")
+            }
+            .padding(6)
+        }
+        #endif
+
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Open on hover", isOn: $state.openOnHover)
