@@ -233,6 +233,8 @@ export const Bridge = {
   voiceAsk: (question: string, context: string) => call<string>("voice_ask", { question, context }),
   /** Maki: listen for a command now, without the wake word. */
   voiceListenNow: () => call<boolean>("voice_listen_now"),
+  /** Maki: the phrases the on-device recogniser listens for. */
+  voiceSetPhrases: (phrases: string[]) => call<void>("voice_set_phrases", { phrases }),
   /** The volume keys' own step: up, down or mute, with the island's HUD. */
   volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
   /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */

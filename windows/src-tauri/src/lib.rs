@@ -782,6 +782,8 @@ pub fn run() {
             #[cfg(windows)]
             voice::voice_listen_now,
             #[cfg(windows)]
+            voice::voice_set_phrases,
+            #[cfg(windows)]
             sysevents::volume_key_action,
             #[cfg(windows)]
             notify::open_phone_link,

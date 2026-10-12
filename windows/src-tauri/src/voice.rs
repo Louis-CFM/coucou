@@ -1,36 +1,35 @@
-// Voice: say "Maki", then what you want. Windows only.
+// Voice: "Maki, pause the music". Windows only.
 //
-// Two Windows speech recognisers, one after the other, never both at once:
-// - The wake listener runs on the device (the OneCore speech engine of the
-//   chosen language) with a tiny grammar: the wake word and its "hey" / "ok"
-//   forms. Nothing leaves the PC while it waits.
-// - Once it hears the wake word, one dictation turn (Microsoft's online speech
-//   service — Settings → Privacy → Speech → Online speech recognition) takes
-//   the command, with the words so far streamed to the island, and ends on a
-//   pause. Then the wake listener comes back.
+// Everything runs on the device, on Windows' own speech engine with a list of
+// phrases: the wake word alone, the wake word followed by a command ("maki
+// next song"), and — after the wake word alone — the commands by themselves.
+// The page (src/core/intents.ts voicePhrases) hands over that command list;
+// a phrase the list doesn't hold is never heard, so nothing else is
+// transcribed and nothing is sent anywhere. (Windows' online dictation, the
+// only free-form recogniser, ends every turn empty for a desktop app without
+// a package identity: it was tried.)
 //
 // No audio is ever written anywhere, and transcripts are never logged. What
-// the command means and what Coucou does about it is the page's job
+// a command means and what Coucou does about it is the page's job
 // (src/voice/), which can't approve anything (CLAUDE.md).
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{LazyLock, Mutex, OnceLock};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter};
 use windows::core::HSTRING;
-use windows_collections::IIterable;
 use windows::Foundation::{TimeSpan, TypedEventHandler};
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
     SpeechContinuousRecognitionResultGeneratedEventArgs, SpeechContinuousRecognitionSession,
-    SpeechRecognitionConfidence, SpeechRecognitionHypothesisGeneratedEventArgs, SpeechRecognitionListConstraint,
-    SpeechRecognitionResultStatus, SpeechRecognitionScenario, SpeechRecognitionTopicConstraint, SpeechRecognizer,
+    SpeechRecognitionConfidence, SpeechRecognitionListConstraint, SpeechRecognitionResultStatus, SpeechRecognizer,
 };
+use windows_collections::IIterable;
 
 static APP: OnceLock<AppHandle> = OnceLock::new();
 static ON: AtomicBool = AtomicBool::new(false);
-/// Bumped by every settings change: an old listener sees it and stops.
+/// Bumped by every settings or phrase change: an old listener sees it and stops.
 static GENERATION: AtomicU64 = AtomicU64::new(0);
 static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(Default::default);
 /// The island asked to listen now (its mic button), without the wake word.
@@ -40,6 +39,8 @@ static ASK: AtomicBool = AtomicBool::new(false);
 struct Config {
     wake_word: String,
     language: String,
+    /// The commands the page understands, lower case.
+    commands: Vec<String>,
 }
 
 fn emit<S: serde::Serialize + Clone>(event: &str, payload: S) {
@@ -48,11 +49,34 @@ fn emit<S: serde::Serialize + Clone>(event: &str, payload: S) {
     }
 }
 
-/// The phrases the wake listener knows: "maki", "hey maki", "ok maki"…
-pub fn wake_phrases(word: &str) -> Vec<String> {
-    let w = word.trim().to_lowercase();
-    let w = if w.is_empty() { "maki".to_string() } else { w };
+fn word(w: &str) -> String {
+    let w = w.trim().to_lowercase();
+    if w.is_empty() { "maki".to_string() } else { w }
+}
+
+/// The wake word with its greetings: "maki", "hey maki", "ok maki"…
+pub fn wake_phrases(wake: &str) -> Vec<String> {
+    let w = word(wake);
     ["", "hey ", "ok ", "okay ", "hi "].iter().map(|p| format!("{p}{w}")).collect()
+}
+
+/// What the listener waits for: the wake word alone, or with a command.
+pub fn wake_grammar(wake: &str, commands: &[String]) -> Vec<String> {
+    let w = word(wake);
+    let mut all = wake_phrases(wake);
+    for c in commands {
+        all.push(format!("{w} {c}"));
+        all.push(format!("hey {w} {c}"));
+    }
+    all
+}
+
+/// "hey maki next song" → Some("next song"); "maki" → Some(""); else None.
+pub fn after_wake(heard: &str, wake: &str) -> Option<String> {
+    let h = heard.trim().to_lowercase();
+    let w = word(wake);
+    let rest = ["hey ", "ok ", "okay ", "hi ", ""].iter().find_map(|p| h.strip_prefix(&format!("{p}{w}")))?;
+    Some(rest.trim().to_string())
 }
 
 fn span(ms: i64) -> TimeSpan {
@@ -68,83 +92,90 @@ pub fn start(app: &AppHandle, on: bool, wake_word: &str, language: &str) {
 
 /// Settings saved: the listener restarts with the new word or language, or stops.
 pub fn apply(on: bool, wake_word: &str, language: &str) {
-    *CONFIG.lock().unwrap() = Config { wake_word: wake_word.to_string(), language: language.to_string() };
+    {
+        let mut c = CONFIG.lock().unwrap();
+        c.wake_word = wake_word.to_string();
+        c.language = language.to_string();
+    }
     ON.store(on, Ordering::SeqCst);
+    restart();
+}
+
+fn restart() {
     let generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
-    if on {
-        let _ = std::thread::Builder::new().name("coucou-voice".into()).spawn(move || {
-            // Windows refuses until online speech recognition is on (0x80045509,
-            // "speech privacy policy not accepted"): try again now and then, so
-            // turning it on is all it takes.
-            let mut told = false;
-            while current(generation) {
-                match run(generation) {
-                    Ok(()) => break,
-                    Err(e) => {
-                        if !told {
-                            crate::log::line(format!("voice: {e}"));
-                            emit("voice-state", "needs-online");
-                            told = true;
+    if !ON.load(Ordering::SeqCst) {
+        emit("voice-state", "off");
+        return;
+    }
+    let _ = std::thread::Builder::new().name("coucou-voice".into()).spawn(move || {
+        let mut told = false;
+        while current(generation) {
+            match run(generation) {
+                Ok(()) => break,
+                Err(e) => {
+                    // Windows refuses until its speech privacy policy is
+                    // accepted (0x80045509): try again now and then.
+                    if !told {
+                        crate::log::line(format!("voice: {e}"));
+                        emit("voice-state", "needs-online");
+                        told = true;
+                    }
+                    for _ in 0..200 {
+                        if !current(generation) {
+                            return;
                         }
-                        for _ in 0..200 {
-                            if !current(generation) {
-                                return;
-                            }
-                            std::thread::sleep(Duration::from_millis(100));
-                        }
+                        std::thread::sleep(Duration::from_millis(100));
                     }
                 }
             }
-        });
-    } else {
-        emit("voice-state", "off");
-    }
+        }
+    });
 }
 
 fn current(generation: u64) -> bool {
     ON.load(Ordering::SeqCst) && GENERATION.load(Ordering::SeqCst) == generation
 }
 
-fn recognizer(language: &str) -> windows::core::Result<SpeechRecognizer> {
-    if language.is_empty() {
-        return SpeechRecognizer::new();
+fn recognizer(language: &str, phrases: &[String]) -> windows::core::Result<SpeechRecognizer> {
+    let rec = match (!language.is_empty()).then(|| Language::CreateLanguage(&HSTRING::from(language))) {
+        Some(Ok(lang)) => SpeechRecognizer::Create(&lang).or_else(|_| SpeechRecognizer::new())?,
+        _ => SpeechRecognizer::new()?,
+    };
+    let list: Vec<HSTRING> = phrases.iter().map(HSTRING::from).collect();
+    rec.Constraints()?.Append(&SpeechRecognitionListConstraint::Create(&IIterable::<HSTRING>::from(list))?)?;
+    let compiled = rec.CompileConstraintsAsync()?.get()?;
+    if compiled.Status()? != SpeechRecognitionResultStatus::Success {
+        crate::log::line(format!("voice: grammar didn't compile ({:?})", compiled.Status()?));
+        return Err(windows::core::Error::from_hresult(windows::core::HRESULT(-1)));
     }
-    match Language::CreateLanguage(&HSTRING::from(language)) {
-        Ok(lang) => SpeechRecognizer::Create(&lang).or_else(|_| SpeechRecognizer::new()),
-        Err(_) => SpeechRecognizer::new(),
-    }
+    Ok(rec)
 }
 
 fn run(generation: u64) -> windows::core::Result<()> {
     let config = CONFIG.lock().unwrap().clone();
-    crate::log::line("voice: listening for the wake word");
+    crate::log::line(format!("voice: listening for the wake word ({} commands)", config.commands.len()));
     emit("voice-state", "waiting");
     while current(generation) {
-        let heard = wait_for_wake(&config, generation)?;
-        if !current(generation) {
-            break;
-        }
-        if heard {
-            command_turn(&config)?;
+        match listen(&config, generation)? {
+            None => break,
+            // The wake word and a command in one breath.
+            Some(rest) if !rest.is_empty() => {
+                crate::log::line("voice: command heard");
+                emit("voice-command", rest);
+            }
+            // The wake word alone (or the mic button): the command comes next.
+            Some(_) => command_turn(&config)?,
         }
     }
     Ok(())
 }
 
-/// Blocks until the wake word (true), an island request (true) or a settings
-/// change (false). On the device: a list grammar, nothing sent anywhere.
-fn wait_for_wake(config: &Config, generation: u64) -> windows::core::Result<bool> {
-    let rec = recognizer(&config.language)?;
-    let phrases: Vec<HSTRING> = wake_phrases(&config.wake_word).iter().map(HSTRING::from).collect();
-    let list = SpeechRecognitionListConstraint::Create(&IIterable::<HSTRING>::from(phrases))?;
-    rec.Constraints()?.Append(&list)?;
-    let compiled = rec.CompileConstraintsAsync()?.get()?;
-    if compiled.Status()? != SpeechRecognitionResultStatus::Success {
-        crate::log::line(format!("voice: wake grammar didn't compile ({:?})", compiled.Status()?));
-        return Err(windows::core::Error::from_hresult(windows::core::HRESULT(-1)));
-    }
-    let woke = std::sync::Arc::new(AtomicBool::new(false));
-    let w = woke.clone();
+/// Waits for the wake word, alone or with a command. None: settings changed.
+fn listen(config: &Config, generation: u64) -> windows::core::Result<Option<String>> {
+    let rec = recognizer(&config.language, &wake_grammar(&config.wake_word, &config.commands))?;
+    let heard: Arc<Mutex<Option<String>>> = Arc::default();
+    let h = heard.clone();
+    let wake = config.wake_word.clone();
     let session: SpeechContinuousRecognitionSession = rec.ContinuousRecognitionSession()?;
     session.ResultGenerated(&TypedEventHandler::<SpeechContinuousRecognitionSession, SpeechContinuousRecognitionResultGeneratedEventArgs>::new(
         move |_, args| {
@@ -152,83 +183,75 @@ fn wait_for_wake(config: &Config, generation: u64) -> windows::core::Result<bool
                 let r = args.Result()?;
                 let sure = matches!(r.Confidence()?, SpeechRecognitionConfidence::High | SpeechRecognitionConfidence::Medium);
                 if sure && r.Status()? == SpeechRecognitionResultStatus::Success {
-                    w.store(true, Ordering::SeqCst);
+                    if let Some(rest) = after_wake(&r.Text()?.to_string(), &wake) {
+                        *h.lock().unwrap() = Some(rest);
+                    }
                 }
             }
             Ok(())
         },
     ))?;
     session.StartAsync()?.get()?;
-    let asked = loop {
-        if woke.load(Ordering::SeqCst) {
-            break true;
+    let out = loop {
+        if let Some(rest) = heard.lock().unwrap().take() {
+            break Some(rest);
         }
         if ASK.swap(false, Ordering::SeqCst) {
-            break true;
+            break Some(String::new());
         }
         if !current(generation) {
-            break false;
+            break None;
         }
-        std::thread::sleep(Duration::from_millis(80));
+        std::thread::sleep(Duration::from_millis(60));
     };
     let _ = session.StopAsync().and_then(|a| a.get());
-    // Let go of the microphone before the command's recogniser takes it: two
-    // recognisers on one mic make the second one end at once ("unknown").
+    // Let go of the microphone before the next recogniser takes it.
     let _ = rec.Close();
-    drop(rec);
-    if asked {
-        crate::log::line("voice: woke");
-        std::thread::sleep(Duration::from_millis(250));
-    }
-    Ok(asked)
+    Ok(out)
 }
 
-/// One command: dictation until a pause, the words so far sent as they come.
+/// After the wake word alone: one command from the list, until a pause.
 fn command_turn(config: &Config) -> windows::core::Result<()> {
     emit("voice-state", "listening");
-    let rec = recognizer(&config.language)?;
-    let topic = SpeechRecognitionTopicConstraint::Create(SpeechRecognitionScenario::Dictation, &HSTRING::new())?;
-    rec.Constraints()?.Append(&topic)?;
-    let compiled = rec.CompileConstraintsAsync()?.get()?;
-    if compiled.Status()? != SpeechRecognitionResultStatus::Success {
-        // Usually: online speech recognition is off in Windows' privacy settings.
-        crate::log::line(format!("voice: dictation unavailable ({:?})", compiled.Status()?));
-        emit("voice-state", "needs-online");
-        std::thread::sleep(Duration::from_millis(1500));
-        emit("voice-state", "waiting");
-        return Ok(());
-    }
+    std::thread::sleep(Duration::from_millis(200));
+    let rec = recognizer(&config.language, &config.commands)?;
     let timeouts = rec.Timeouts()?;
-    timeouts.SetInitialSilenceTimeout(span(5000))?;
-    timeouts.SetEndSilenceTimeout(span(1200))?;
-    timeouts.SetBabbleTimeout(span(15000))?;
-    rec.HypothesisGenerated(&TypedEventHandler::<SpeechRecognizer, SpeechRecognitionHypothesisGeneratedEventArgs>::new(|_, args| {
-        if let Some(args) = args.as_ref() {
-            let text = args.Hypothesis()?.Text()?.to_string();
-            emit("voice-partial", text);
-        }
-        Ok(())
-    }))?;
+    timeouts.SetInitialSilenceTimeout(span(6000))?;
+    timeouts.SetEndSilenceTimeout(span(900))?;
     let result = rec.RecognizeAsync()?.get();
     let _ = rec.Close();
     match result {
-        Ok(r) if r.Status()? == SpeechRecognitionResultStatus::Success => {
-            let text = r.Text()?.to_string();
-            // That something was heard, never what.
+        Ok(r) if r.Status()? == SpeechRecognitionResultStatus::Success
+            && !r.Text()?.is_empty()
+            && r.Confidence()? != SpeechRecognitionConfidence::Rejected =>
+        {
             crate::log::line("voice: command heard");
-            emit("voice-command", text);
+            emit("voice-command", r.Text()?.to_string());
         }
-        Ok(r) => {
-            crate::log::line(format!("voice: no command ({:?})", r.Status()?));
-            emit("voice-command", String::new());
-        }
-        Err(e) => {
-            crate::log::line(format!("voice: dictation failed ({e})"));
-            emit("voice-state", "needs-online");
+        _ => {
+            crate::log::line("voice: no command understood");
+            emit("voice-command", String::from("?"));
         }
     }
     emit("voice-state", "waiting");
     Ok(())
+}
+
+/// The page's commands (lower case): the listener restarts with them.
+#[tauri::command]
+pub fn voice_set_phrases(phrases: Vec<String>) {
+    let mut list: Vec<String> = phrases.into_iter().map(|p| p.trim().to_lowercase()).filter(|p| !p.is_empty() && p.len() <= 80).collect();
+    list.sort();
+    list.dedup();
+    list.truncate(1500);
+    {
+        let mut c = CONFIG.lock().unwrap();
+        if c.commands == list {
+            return;
+        }
+        c.commands = list;
+    }
+    restart();
 }
 
 /// The island's mic button: listen for a command now, without the wake word.
@@ -249,5 +272,15 @@ mod tests {
     fn the_wake_word_comes_with_its_greetings() {
         assert_eq!(wake_phrases("Maki"), ["maki", "hey maki", "ok maki", "okay maki", "hi maki"]);
         assert_eq!(wake_phrases(" ")[0], "maki");
+    }
+
+    #[test]
+    fn a_command_can_ride_with_the_wake_word() {
+        let g = wake_grammar("Maki", &["next song".to_string()]);
+        assert!(g.contains(&"maki next song".to_string()));
+        assert!(g.contains(&"hey maki next song".to_string()));
+        assert_eq!(after_wake("Hey Maki next song", "Maki").as_deref(), Some("next song"));
+        assert_eq!(after_wake("maki", "Maki").as_deref(), Some(""));
+        assert_eq!(after_wake("next song", "Maki"), None);
     }
 }

@@ -121,3 +121,31 @@ export function openTarget(target: string): { url: string } | { app: "music" | "
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/.test(host)) return { url: `https://${host}` };
   return { url: `https://www.google.com/search?q=${encodeURIComponent(target)}` };
 }
+
+/**
+ * Every phrase Maki listens for (src-tauri/src/voice.rs): the speech engine
+ * on the device only hears what's on this list, each one a command
+ * parseIntent understands. `pills` are the pill names this build offers.
+ */
+export function voicePhrases(pills: readonly string[]): string[] {
+  const out: string[] = [
+    "pause", "pause the music", "stop the music", "play", "play the music", "resume", "resume the music",
+    "next", "next song", "next track", "skip", "skip this", "previous", "previous song", "go back",
+    "volume up", "volume down", "louder", "quieter", "turn it up", "turn it down", "mute", "unmute",
+    "start focus", "start a focus", "focus", "stop focus", "end focus",
+    "what's on my to do list", "read my to do list",
+    "how much of my claude plan is left", "what's my claude usage", "how much claude usage is left",
+    "what is claude doing", "what are my agents doing", "what time is it",
+    "deny", "decline", "deny it", "approve", "allow it", "cancel", "never mind",
+  ];
+  for (let v = 0; v <= 100; v += 10) out.push(`set volume to ${v}`, `volume ${v}`);
+  for (const n of [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 90, 120]) out.push(`start a focus for ${n} minutes`, `focus for ${n} minutes`);
+  for (const n of [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 45, 60]) out.push(`set a timer for ${n} minutes`, `${n} minute timer`);
+  for (const site of ["youtube", "gmail", "github", "calendar", "claude", "chatgpt", "whatsapp", "google", "linkedin", "instagram",
+    "spotify", "apple music", "phone link", "settings"]) out.push(`open ${site}`);
+  for (const p of pills) {
+    const name = p.toLowerCase();
+    out.push(`add the ${name} pill`, `remove the ${name} pill`, `add ${name}`, `remove ${name}`);
+  }
+  return out;
+}

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { minutesIn, openTarget, parseIntent } from "../src/core/intents.ts";
+import { minutesIn, openTarget, parseIntent, voicePhrases } from "../src/core/intents.ts";
 
 const k = (s) => parseIntent(s);
 
@@ -48,4 +48,13 @@ test("open goes to apps, known sites, a domain or a search", () => {
   assert.deepEqual(openTarget("github dot com"), { url: "https://github.com" });
   assert.deepEqual(openTarget("Apple Music"), { app: "music" });
   assert.deepEqual(openTarget("vector calculus notes"), { url: "https://www.google.com/search?q=vector%20calculus%20notes" });
+});
+
+test("every phrase Maki listens for is a command, never a question", () => {
+  const phrases = voicePhrases(["Spotify", "GitHub", "Calendar"]);
+  assert.ok(phrases.length > 100);
+  for (const p of phrases) {
+    const i = parseIntent(p);
+    assert.ok(i && i.kind !== "ask", `"${p}" → ${JSON.stringify(i)}`);
+  }
 });

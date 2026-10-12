@@ -11,7 +11,7 @@ import { State } from "../core/state";
 import { Sound } from "../core/sound";
 import { Spotify } from "../core/spotify";
 import { Todos } from "../core/extras";
-import { parseIntent, openTarget, type Intent } from "../core/intents";
+import { parseIntent, openTarget, voicePhrases, type Intent } from "../core/intents";
 import { availablePills } from "../core/pills";
 import { Live, endLive, showLive, type LiveHost } from "../island/live";
 import { startFocus, stopFocus } from "../views/extras";
@@ -185,6 +185,8 @@ async function run(intent: Intent, heard: string) {
 
 export function registerVoice(h: VoiceHost) {
   host = h;
+  // The on-device recogniser only hears these; pills come and go with the build.
+  void Bridge.voiceSetPhrases(voicePhrases(availablePills().map((p) => p.name)));
   void onEvent<string>("voice-state", (s) => {
     if (s === "listening") {
       Sound.play("peek");
@@ -200,6 +202,11 @@ export function registerVoice(h: VoiceHost) {
     const heard = text.trim();
     if (!heard) {
       if (Live.current?.kind === "voice") endLive(h);
+      return;
+    }
+    if (heard === "?") {
+      if (Live.current?.kind === "voice") endLive(h);
+      answer(t("Sorry, I didn't catch that. Try “Maki, pause the music” or “Maki, what time is it”."));
       return;
     }
     const intent = parseIntent(heard);
