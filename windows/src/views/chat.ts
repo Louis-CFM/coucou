@@ -26,11 +26,13 @@ const STRINGS = {
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
-  noAnswer: N_("No answer came within two minutes — try again."),
+  noAnswer: N_("No answer came within two minutes. Try again."),
   openSettings: N_("Open Settings"),
 };
 
 let nextId = 1;
+/** How long the island waits for an answer that does not move. */
+const NO_ANSWER_MS = 120_000;
 
 function bubble(message: ChatMessage): HTMLElement {
   if (message.role === "user") {
@@ -236,6 +238,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
+  /** When the answer last moved: a streaming model that is still talking is not stuck. */
+  let lastActivity = 0;
   /** chatEpoch the log was last fully rendered for; -1 forces a rebuild. */
   let renderedEpoch = -1;
   /** Bubbles in the log (the typing dots do not count). */
@@ -260,6 +264,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
   void onEvent<string>("chat-delta", (text) => {
     if (!sending || !text) return; // nothing visible yet: the dots stay
+    lastActivity = performance.now();
     if (!live) {
       live = h("div", { class: "reply" });
       log.querySelector(".typing")?.parentElement?.remove();
@@ -268,6 +273,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     renderMarkdown(live, text);
     log.scrollTop = log.scrollHeight;
   });
+
+  /** Rejects once the answer has not moved for NO_ANSWER_MS; settles silently when the send ends. */
+  function stalled(): Promise<never> {
+    return new Promise((_, reject) => {
+      const timer = window.setInterval(() => {
+        if (sending && performance.now() - lastActivity < NO_ANSWER_MS) return;
+        window.clearInterval(timer);
+        if (sending) reject(new Error(t(STRINGS.noAnswer)));
+      }, 1000);
+    });
+  }
 
   async function submit() {
     const query = input.value.trim();
@@ -290,12 +306,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     try {
       // A provider that never answers must not latch the input: the island
       // cannot cancel the call, so it stops waiting instead.
-      const reply = await Promise.race([
-        Bridge.chatSend(query, context),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(t(STRINGS.noAnswer))), 120_000),
-        ),
-      ]);
+      lastActivity = performance.now();
+      const reply = await Promise.race([Bridge.chatSend(query, context), stalled()]);
       State.addChat({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");

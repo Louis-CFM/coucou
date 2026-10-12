@@ -190,6 +190,20 @@ final class ClaudeService {
         conversationMessages = []
     }
 
+    /// A long conversation stays bounded, as on Windows and Linux: the oldest turns
+    /// go in pairs, so a question never loses its answer.
+    private func trimHistory(state: AppState) {
+        let maxContext = 80, maxBubbles = 100   // 40 turns sent, 100 bubbles shown
+        if conversationMessages.count > maxContext {
+            let drop = conversationMessages.count - maxContext
+            conversationMessages.removeFirst(drop + drop % 2)
+        }
+        if state.chatHistory.count > maxBubbles {
+            let drop = state.chatHistory.count - maxBubbles
+            state.chatHistory.removeFirst(drop + drop % 2)
+        }
+    }
+
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
     private let systemPrompt = ClaudeService.makeSystemPrompt()
@@ -223,6 +237,7 @@ final class ClaudeService {
             state.stateOverride = nil
             return
         }
+        trimHistory(state: state)
         guard state.chatProvider == .anthropic else {
             await chatOpenAICompatible(query: query, context: context, state: state)
             return
