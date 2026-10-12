@@ -19,7 +19,7 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Emitter};
 use windows::core::HSTRING;
-use windows::Foundation::{TimeSpan, TypedEventHandler};
+use windows::Foundation::TypedEventHandler;
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
     SpeechContinuousRecognitionResultGeneratedEventArgs, SpeechContinuousRecognitionSession,
@@ -77,10 +77,6 @@ pub fn after_wake(heard: &str, wake: &str) -> Option<String> {
     let w = word(wake);
     let rest = ["hey ", "ok ", "okay ", "hi ", ""].iter().find_map(|p| h.strip_prefix(&format!("{p}{w}")))?;
     Some(rest.trim().to_string())
-}
-
-fn span(ms: i64) -> TimeSpan {
-    TimeSpan { Duration: ms * 10_000 }
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -181,10 +177,15 @@ fn listen(config: &Config, generation: u64) -> windows::core::Result<Option<Stri
         move |_, args| {
             if let Some(args) = args.as_ref() {
                 let r = args.Result()?;
-                let sure = matches!(r.Confidence()?, SpeechRecognitionConfidence::High | SpeechRecognitionConfidence::Medium);
-                if sure && r.Status()? == SpeechRecognitionResultStatus::Success {
+                let conf = r.Confidence()?;
+                if r.Status()? == SpeechRecognitionResultStatus::Success && conf != SpeechRecognitionConfidence::Rejected {
                     if let Some(rest) = after_wake(&r.Text()?.to_string(), &wake) {
-                        *h.lock().unwrap() = Some(rest);
+                        // The wake word alone must be sure (no false wakes); with a whole
+                        // command after it, the phrase itself is the proof.
+                        let sure = matches!(conf, SpeechRecognitionConfidence::High | SpeechRecognitionConfidence::Medium);
+                        if sure || !rest.is_empty() {
+                            *h.lock().unwrap() = Some(rest);
+                        }
                     }
                 }
             }
@@ -210,25 +211,49 @@ fn listen(config: &Config, generation: u64) -> windows::core::Result<Option<Stri
     Ok(out)
 }
 
-/// After the wake word alone: one command from the list, until a pause.
+/// After the wake word alone: one command from the list, within a few seconds.
+/// The same continuous session as the wake listener: a one-shot RecognizeAsync
+/// ends at once with "unknown" on some PCs, the continuous one doesn't.
 fn command_turn(config: &Config) -> windows::core::Result<()> {
     emit("voice-state", "listening");
-    std::thread::sleep(Duration::from_millis(200));
     let rec = recognizer(&config.language, &config.commands)?;
-    let timeouts = rec.Timeouts()?;
-    timeouts.SetInitialSilenceTimeout(span(6000))?;
-    timeouts.SetEndSilenceTimeout(span(900))?;
-    let result = rec.RecognizeAsync()?.get();
-    let _ = rec.Close();
-    match result {
-        Ok(r) if r.Status()? == SpeechRecognitionResultStatus::Success
-            && !r.Text()?.is_empty()
-            && r.Confidence()? != SpeechRecognitionConfidence::Rejected =>
-        {
-            crate::log::line("voice: command heard");
-            emit("voice-command", r.Text()?.to_string());
+    let heard: Arc<Mutex<Option<String>>> = Arc::default();
+    let h = heard.clone();
+    let session: SpeechContinuousRecognitionSession = rec.ContinuousRecognitionSession()?;
+    session.ResultGenerated(&TypedEventHandler::<SpeechContinuousRecognitionSession, SpeechContinuousRecognitionResultGeneratedEventArgs>::new(
+        move |_, args| {
+            if let Some(args) = args.as_ref() {
+                let r = args.Result()?;
+                // Only listed commands can match at all: low confidence is still one of them.
+                if r.Status()? == SpeechRecognitionResultStatus::Success && r.Confidence()? != SpeechRecognitionConfidence::Rejected {
+                    let text = r.Text()?.to_string();
+                    if !text.is_empty() {
+                        *h.lock().unwrap() = Some(text);
+                    }
+                }
+            }
+            Ok(())
+        },
+    ))?;
+    session.StartAsync()?.get()?;
+    let deadline = std::time::Instant::now() + Duration::from_secs(7);
+    let got = loop {
+        if let Some(text) = heard.lock().unwrap().take() {
+            break Some(text);
         }
-        _ => {
+        if std::time::Instant::now() > deadline {
+            break None;
+        }
+        std::thread::sleep(Duration::from_millis(60));
+    };
+    let _ = session.StopAsync().and_then(|a| a.get());
+    let _ = rec.Close();
+    match got {
+        Some(text) => {
+            crate::log::line("voice: command heard");
+            emit("voice-command", text);
+        }
+        None => {
             crate::log::line("voice: no command understood");
             emit("voice-command", String::from("?"));
         }
