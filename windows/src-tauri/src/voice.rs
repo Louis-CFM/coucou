@@ -22,7 +22,8 @@ use windows::core::HSTRING;
 use windows::Foundation::TypedEventHandler;
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
-    SpeechContinuousRecognitionResultGeneratedEventArgs, SpeechContinuousRecognitionSession,
+    SpeechContinuousRecognitionCompletedEventArgs, SpeechContinuousRecognitionResultGeneratedEventArgs,
+    SpeechContinuousRecognitionSession,
     SpeechRecognitionConfidence, SpeechRecognitionListConstraint, SpeechRecognitionResultStatus, SpeechRecognizer,
 };
 use windows_collections::IIterable;
@@ -58,10 +59,23 @@ fn word(w: &str) -> String {
     if w.is_empty() { "maki".to_string() } else { w }
 }
 
-/// The wake word with its greetings: "maki", "hey maki", "ok maki"…
-pub fn wake_phrases(wake: &str) -> Vec<String> {
+/// What the recogniser may hear for the wake word: "Maki" said with an accent,
+/// or quickly, comes out as "Mackie" or "Macky". A custom word is taken as is.
+pub fn wake_words(wake: &str) -> Vec<String> {
     let w = word(wake);
-    ["", "hey ", "ok ", "okay ", "hi "].iter().map(|p| format!("{p}{w}")).collect()
+    let mut all = vec![w.clone()];
+    if w == "maki" {
+        all.extend(["mackie", "macky", "maky", "makki", "marky", "mokey"].map(String::from));
+    }
+    all
+}
+
+/// The wake word with its greetings: "maki", "hey maki", "ok maki"… (and its sound-alikes).
+pub fn wake_phrases(wake: &str) -> Vec<String> {
+    wake_words(wake)
+        .iter()
+        .flat_map(|w| ["", "hey ", "ok ", "okay ", "hi "].iter().map(move |p| format!("{p}{w}")))
+        .collect()
 }
 
 /// What the listener waits for: the wake word alone, or with a command.
@@ -78,8 +92,13 @@ pub fn wake_grammar(wake: &str, commands: &[String]) -> Vec<String> {
 /// "hey maki next song" → Some("next song"); "maki" → Some(""); else None.
 pub fn after_wake(heard: &str, wake: &str) -> Option<String> {
     let h = heard.trim().to_lowercase();
-    let w = word(wake);
-    let rest = ["hey ", "ok ", "okay ", "hi ", ""].iter().find_map(|p| h.strip_prefix(&format!("{p}{w}")))?;
+    let rest = wake_words(wake).iter().find_map(|w| {
+        ["hey ", "ok ", "okay ", "hi ", ""].iter().find_map(|p| {
+            let r = h.strip_prefix(&format!("{p}{w}"))?;
+            // "maki" must not match the start of "makiko": a word boundary after it.
+            (r.is_empty() || r.starts_with(' ')).then_some(r)
+        })
+    })?;
     Some(rest.trim().to_string())
 }
 
@@ -183,8 +202,16 @@ fn run(generation: u64) -> windows::core::Result<()> {
 
 /// Waits for the wake word, alone or with a command. None: settings changed.
 fn listen(config: &Config, generation: u64) -> windows::core::Result<Option<String>> {
-    let rec = recognizer(&config.language, &wake_grammar(&config.wake_word, &config.commands))?;
+    // With the ElevenLabs agent on, only the wake word matters: a small grammar
+    // makes a bare "Maki" far easier to pick out than among 400 command phrases.
+    let phrases = if CONVERSE.load(Ordering::SeqCst) {
+        wake_phrases(&config.wake_word)
+    } else {
+        wake_grammar(&config.wake_word, &config.commands)
+    };
+    let rec = recognizer(&config.language, &phrases)?;
     let heard: Arc<Mutex<Option<String>>> = Arc::default();
+    let ended = Arc::new(AtomicBool::new(false));
     let h = heard.clone();
     let wake = config.wake_word.clone();
     let session: SpeechContinuousRecognitionSession = rec.ContinuousRecognitionSession()?;
@@ -195,11 +222,14 @@ fn listen(config: &Config, generation: u64) -> windows::core::Result<Option<Stri
                 let conf = r.Confidence()?;
                 if r.Status()? == SpeechRecognitionResultStatus::Success && conf != SpeechRecognitionConfidence::Rejected {
                     if let Some(rest) = after_wake(&r.Text()?.to_string(), &wake) {
-                        // The wake word alone must be sure (no false wakes); with a whole
-                        // command after it, the phrase itself is the proof.
-                        let sure = matches!(conf, SpeechRecognitionConfidence::High | SpeechRecognitionConfidence::Medium);
-                        if sure || !rest.is_empty() {
+                        // The wake word alone must be fairly sure (no false wakes from
+                        // the TV); with a whole command after it, the phrase is the proof.
+                        let raw = r.RawConfidence().unwrap_or(0.0);
+                        if wake_is_sure(conf, raw) || !rest.is_empty() {
                             *h.lock().unwrap() = Some(rest);
+                        } else {
+                            // Only the confidence: never what was said.
+                            crate::log::line(format!("voice: a wake word too unsure to act on ({raw:.2})"));
                         }
                     }
                 }
@@ -207,10 +237,30 @@ fn listen(config: &Config, generation: u64) -> windows::core::Result<Option<Stri
             Ok(())
         },
     ))?;
+    // Windows ends a continuous session after a stretch of silence (or when the
+    // mic hiccups); a listener that doesn't notice is deaf until Coucou restarts.
+    let e = ended.clone();
+    session.Completed(&TypedEventHandler::<SpeechContinuousRecognitionSession, SpeechContinuousRecognitionCompletedEventArgs>::new(
+        move |_, _| {
+            e.store(true, Ordering::SeqCst);
+            Ok(())
+        },
+    ))?;
+    // A day of silence before Windows gives up on its own.
+    let _ = session.SetAutoStopSilenceTimeout(windows::Foundation::TimeSpan { Duration: 24 * 3600 * 10_000_000 });
     session.StartAsync()?.get()?;
     let out = loop {
         if let Some(rest) = heard.lock().unwrap().take() {
             break Some(rest);
+        }
+        if ended.swap(false, Ordering::SeqCst) {
+            crate::log::line("voice: the listening session ended, starting it again");
+            if session.StartAsync().and_then(|a| a.get()).is_err() {
+                // The mic is gone (unplugged, taken): a fresh recogniser on the next round.
+                std::thread::sleep(Duration::from_millis(500));
+                let _ = rec.Close();
+                return listen(config, generation);
+            }
         }
         if ASK.swap(false, Ordering::SeqCst) {
             break Some(String::new());
@@ -297,7 +347,15 @@ pub fn voice_set_phrases(phrases: Vec<String>) {
 /// The page talks through the ElevenLabs agent (true) or the phrase list (false).
 #[tauri::command]
 pub fn voice_converse(on: bool) {
-    CONVERSE.store(on, Ordering::SeqCst);
+    // The grammar depends on it: the listener starts over when it changes.
+    if CONVERSE.swap(on, Ordering::SeqCst) != on {
+        restart();
+    }
+}
+
+/// A bare wake word counts when Windows is fairly sure, or its raw score is decent.
+pub fn wake_is_sure(conf: SpeechRecognitionConfidence, raw: f64) -> bool {
+    matches!(conf, SpeechRecognitionConfidence::High | SpeechRecognitionConfidence::Medium) || raw >= 0.5
 }
 
 /// The conversation is over: the wake word listener takes the mic back.
@@ -322,7 +380,9 @@ mod tests {
 
     #[test]
     fn the_wake_word_comes_with_its_greetings() {
-        assert_eq!(wake_phrases("Maki"), ["maki", "hey maki", "ok maki", "okay maki", "hi maki"]);
+        assert_eq!(wake_phrases("Maki")[..5], ["maki", "hey maki", "ok maki", "okay maki", "hi maki"]);
+        assert!(wake_phrases("Maki").contains(&"hey mackie".to_string()));
+        assert_eq!(wake_phrases("Jarvis").len(), 5);
         assert_eq!(wake_phrases(" ")[0], "maki");
     }
 
@@ -334,5 +394,9 @@ mod tests {
         assert_eq!(after_wake("Hey Maki next song", "Maki").as_deref(), Some("next song"));
         assert_eq!(after_wake("maki", "Maki").as_deref(), Some(""));
         assert_eq!(after_wake("next song", "Maki"), None);
+        assert_eq!(after_wake("Mackie next song", "Maki").as_deref(), Some("next song"));
+        assert_eq!(after_wake("makiko", "Maki"), None);
+        assert!(wake_is_sure(SpeechRecognitionConfidence::Low, 0.6));
+        assert!(!wake_is_sure(SpeechRecognitionConfidence::Low, 0.3));
     }
 }
