@@ -87,7 +87,6 @@ pub fn first_line(path: &Path, max: u64) -> Option<String> {
 
 /// Logs `what` failing, once per run: a CLI whose store changed shape must show
 /// up in coucou.log, not flood it every minute the picker is open.
-#[allow(dead_code)] // used by the Devin/OpenCode readers (Task 2.10)
 pub fn log_once(what: &'static str, err: &str) {
     static SEEN: Mutex<BTreeSet<&'static str>> = Mutex::new(BTreeSet::new());
     if SEEN.lock().unwrap_or_else(|e| e.into_inner()).insert(what) {

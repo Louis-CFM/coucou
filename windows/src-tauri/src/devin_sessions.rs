@@ -67,21 +67,34 @@ fn open() -> Result<Connection, String> {
 
 /// Recent sessions across every folder, newest first — the phone's picker.
 pub fn list_recent() -> Vec<SessionMeta> {
-    let Ok(conn) = open() else { return Vec::new() };
+    match open() {
+        Ok(conn) => list_recent_in(&conn),
+        Err(_) => Vec::new(), // no Devin installed: nothing to say
+    }
+}
+
+fn list_recent_in(conn: &Connection) -> Vec<SessionMeta> {
     let mut stmt = match conn.prepare(
         "SELECT id, title, working_directory, model, last_activity_at \
          FROM sessions WHERE hidden = 0 ORDER BY last_activity_at DESC LIMIT 96",
     ) {
         Ok(s) => s,
-        Err(_) => return Vec::new(),
+        Err(err) => {
+            crate::cli_sessions::log_once("devin sessions", &err.to_string());
+            return Vec::new();
+        }
     };
     let rows = stmt.query_map([], |r| {
+        let id: String = r.get(0)?;
         Ok(SessionMeta {
-            id: r.get(0)?,
-            title: r.get(1)?,
-            dir: r.get(2)?,
+            title: r
+                .get::<_, Option<String>>(1)?
+                .filter(|t| !t.trim().is_empty())
+                .unwrap_or_else(|| id.clone()),
+            dir: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
             model: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
-            last_activity_at: r.get(4)?,
+            last_activity_at: r.get::<_, Option<i64>>(4)?.unwrap_or(0),
+            id,
         })
     });
     match rows {
@@ -128,6 +141,10 @@ pub fn transcript(session_id: &str) -> Vec<ChatLine> {
     let Some(session_id) = resolve_id(&conn, session_id) else {
         return Vec::new();
     };
+    transcript_in(&conn, &session_id)
+}
+
+fn transcript_in(conn: &Connection, session_id: &str) -> Vec<ChatLine> {
     let mut stmt = match conn.prepare(
         "WITH RECURSIVE chain(node_id, parent_node_id, chat_message, depth) AS ( \
              SELECT m.node_id, m.parent_node_id, m.chat_message, 0 \
@@ -140,12 +157,17 @@ pub fn transcript(session_id: &str) -> Vec<ChatLine> {
              FROM message_nodes m JOIN chain c ON m.node_id = c.parent_node_id \
              WHERE m.session_id = ?1 AND c.depth < 500 \
          ) \
-         SELECT chat_message FROM chain ORDER BY depth DESC",
+         SELECT chat_message FROM chain \
+         WHERE json_extract(chat_message, '$.role') IN ('user', 'assistant') \
+         ORDER BY depth DESC",
     ) {
         Ok(s) => s,
-        Err(_) => return Vec::new(),
+        Err(err) => {
+            crate::cli_sessions::log_once("devin transcript", &err.to_string());
+            return Vec::new();
+        }
     };
-    let rows = stmt.query_map([&session_id], |r| r.get::<_, String>(0));
+    let rows = stmt.query_map([session_id], |r| r.get::<_, String>(0));
     let Ok(it) = rows else { return Vec::new() };
     let mut lines: Vec<ChatLine> = Vec::new();
     for raw in it.flatten() {
@@ -275,4 +297,51 @@ pub async fn resume(session_id: &str, query: &str) -> Result<String, String> {
     cmd.current_dir(&dir).args(["-p", prompt.as_str(), "-r", session_id]);
     let out = cli_chat::run(cmd, "the Devin CLI").await?;
     devin_chat::parse_answer_pub(out.status.success(), &out.stdout, &out.stderr)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE sessions (id TEXT, title TEXT, working_directory TEXT, model TEXT,
+                                   last_activity_at INTEGER, hidden INTEGER, main_chain_id INTEGER);
+            CREATE TABLE message_nodes (node_id INTEGER, parent_node_id INTEGER, session_id TEXT, chat_message TEXT);
+            INSERT INTO sessions VALUES ('s-1', NULL, NULL, NULL, NULL, 0, 4);
+            INSERT INTO message_nodes VALUES (1, NULL, 's-1', '{"role":"user","content":"list files"}');
+            INSERT INTO message_nodes VALUES (2, 1, 's-1', '{"role":"assistant","content":"","tool_calls":[{"name":"exec","arguments":{"command":"ls"}}]}');
+            INSERT INTO message_nodes VALUES (3, 2, 's-1', '{"role":"tool","content":"a.txt b.txt"}');
+            INSERT INTO message_nodes VALUES (4, 3, 's-1', '{"role":"assistant","content":"Two files."}');
+            "#,
+        )
+        .unwrap();
+        conn
+    }
+
+    #[test]
+    fn a_session_without_a_title_is_still_listed() {
+        let list = list_recent_in(&db());
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, "s-1");
+        assert_eq!(list[0].title, "s-1");
+        assert_eq!(list[0].dir, "");
+        assert_eq!(list[0].last_activity_at, 0);
+    }
+
+    #[test]
+    fn tool_results_stay_out_of_the_transcript() {
+        let got: Vec<(String, String)> =
+            transcript_in(&db(), "s-1").into_iter().map(|l| (l.role, l.text)).collect();
+        assert_eq!(
+            got,
+            vec![
+                ("user".into(), "list files".into()),
+                ("tool".into(), "ls".into()),
+                ("assistant".into(), "Two files.".into()),
+            ]
+        );
+    }
 }
