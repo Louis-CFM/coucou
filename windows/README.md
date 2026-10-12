@@ -402,11 +402,16 @@ own window.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
-  process to the terminal or editor that runs it. A session in a classic
-  console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
-  ancestor — conhost owns that window — so its folder opens in VS Code instead,
-  as it does when `code` is on your `PATH` and nothing was found. Linux walks
-  the same tree; what it can bring forward depends on the desktop (see Linux).
+  process to the terminal or editor that runs it. When no ancestor owns a
+  window — a PowerShell started from the Start menu has Explorer as parent,
+  and Windows Terminal only hosts it as Windows 11's default console; a classic
+  console window belongs to conhost — the app attaches to the session's
+  console instead and asks Windows which window hosts it, which is the Windows
+  Terminal window or the console's own. Only when neither route finds a window
+  does the folder open in VS Code (if `code` is on your `PATH`) or Explorer.
+  Linux walks the same tree; what it can bring forward depends on the desktop
+  (see Linux). Once the window is known, its title (Claude Code writes its
+  one-line summary of the session there) shows in the session card.
 - Global keyboard shortcuts are hot keys on Windows, key grabs on Linux under
   X11, and go through the desktop's GlobalShortcuts portal under Wayland (see
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in

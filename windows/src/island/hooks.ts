@@ -10,7 +10,7 @@ import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
-import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
+import { APPROVAL_AGENTS, agentColor, agentName, isClaudeAlias, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
@@ -63,6 +63,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Set by the app (Windows) when the session's terminal window was found: its title. */
+  coucou_window_title?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -85,6 +87,18 @@ function lastPathComponent(p: string): string {
   const cleaned = p.replace(/[\\/]+$/, "");
   const idx = Math.max(cleaned.lastIndexOf("\\"), cleaned.lastIndexOf("/"));
   return idx >= 0 ? cleaned.slice(idx + 1) : cleaned;
+}
+
+/**
+ * The terminal window's title as the island shows it: Claude Code prefixes its
+ * summary with a state glyph (◑ ✳ ✶ …) that the pill already conveys, and a
+ * bare shell title (the executable's path) says nothing about the session.
+ */
+function cleanWindowTitle(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const title = raw.replace(/^[^\p{L}\p{N}]+/u, "").trim();
+  if (!title || /\.exe$/i.test(title) || title.length > 120) return null;
+  return title;
 }
 
 /**
@@ -259,7 +273,10 @@ function handleHook(island: Island, payload: HookPayload) {
   const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
   const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
+  // A `claude-*` alias is Claude Code with its own pill: cards and questions as usual.
+  const isClaudeCode = !isExternalAgent || isClaudeAlias(validAgent);
   const sessionId = payload.session_id ?? "";
+  const windowTitle = cleanWindowTitle(payload.coucou_window_title);
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -281,6 +298,12 @@ function handleHook(island: Island, payload: HookPayload) {
       if (t && sessionId) t.sessionId = sessionId;
     } else {
       upsert(agentId, projectName, cwd, sessionId);
+    }
+    // The terminal's title follows the session (Claude Code rewrites it as it
+    // works): the newest one wins, an event without it changes nothing.
+    if (windowTitle) {
+      const t = State.tasks.find((x) => x.id === agentId);
+      if (t) t.windowTitle = windowTitle;
     }
   };
 
@@ -457,7 +480,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
       // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
       // declined at once, so the agent asks in its own terminal.
-      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
+      if (isExternalAgent && !isClaudeCode && !APPROVAL_AGENTS.has(validAgent!)) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }
@@ -478,7 +501,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // Claude Code asking a question is not a permission to grant: the island
       // shows the options and sends back the one that was picked. Only Claude
       // Code asks questions this way.
-      const questions = isExternalAgent ? null : askedQuestions(tool, input);
+      const questions = isClaudeCode ? askedQuestions(tool, input) : null;
       const view = questions ? "question" : "approval";
       // The card always comes up, even over another pill or an island that is
       // already open: its pill comes to the front, and the one you were on

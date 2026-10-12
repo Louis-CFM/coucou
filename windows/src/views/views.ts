@@ -347,7 +347,12 @@ function buildOverview(actions: ViewActions): ViewHost {
         who.append(
           dot(task.color, 7),
           h("span", { class: "name", text: task.name }),
-          h("span", { class: "tool", text: t(sessionSubtitle(task.id)) }),
+          // The terminal's own title when the app found the window (Windows):
+          // Claude Code keeps a one-line summary of the session there, which
+          // says more than the kind of pill.
+          task.windowTitle
+            ? h("span", { class: "tool title", text: task.windowTitle })
+            : h("span", { class: "tool", text: t(sessionSubtitle(task.id)) }),
         );
         if (task.steps.length > 1) {
           who.append(h("span", {

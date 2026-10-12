@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Open terminal finds the window of a shell started from the Start menu** *(Windows)* — a PowerShell opened from the Start menu or the taskbar has Explorer as parent, and Windows Terminal only hosts it as Windows 11's default console: no ancestor owned a window, so the button opened the folder instead. The app now attaches to the session's console and asks Windows which window hosts it (the Windows Terminal window, or a classic console's own), and brings that one forward
+- **The terminal's title in the session card** *(Windows)* — once the session's window is known, the card shows its title, where Claude Code keeps a one-line summary of what it is doing, in place of the kind of pill
+- **Claude Code under another name** *(Windows, Linux)* — `coucou-hook --agent claude-perso` gives a Claude Code profile its own pill, "Claude perso", with Allow / Deny cards and answered questions as for the main one: one pill per account on the same computer (see [`docs/AGENTS.md`](docs/AGENTS.md))
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
 
 ## Windows and Linux 0.4.0 — October 11, 2026

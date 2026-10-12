@@ -213,6 +213,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
+    if event != "StatusLine" {
+        note_window_title(&mut payload);
+    }
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -272,6 +275,29 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
         session_window::remember(session, crate::platform::window_owners(&ancestors));
     }
 }
+
+/// The title of the terminal window the session runs in, for the island to show
+/// next to the project name: Claude Code writes its own summary there. Only for
+/// a session whose window was found; one window enumeration per event, which
+/// is cheap. Windows only so far — Linux asks the display server for windows.
+#[cfg(windows)]
+fn note_window_title(payload: &mut Value) {
+    let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
+    let Some(owners) = session_window::lookup(session) else { return };
+    let folder = payload
+        .get("cwd")
+        .and_then(Value::as_str)
+        .map(session_window::folder_name)
+        .unwrap_or_default()
+        .to_string();
+    let title = crate::platform::session_window_title(&owners, &folder);
+    if let Some(title) = title {
+        payload["coucou_window_title"] = json!(title);
+    }
+}
+
+#[cfg(not(windows))]
+fn note_window_title(_payload: &mut Value) {}
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
 async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {

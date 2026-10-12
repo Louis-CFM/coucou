@@ -27,6 +27,23 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
  */
 export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse"]);
 
+/**
+ * Claude Code under another name: `coucou-hook --agent claude-<something>`
+ * gives a Claude Code session its own pill (one per account, say) that still
+ * behaves as Claude Code's — Allow / Deny card, questions answered from the
+ * island. Same rule as `is_claude_code` in the relay (hook/src/reply.rs);
+ * `claude-desktop` stays what it is, a silent tag for the Claude desktop app.
+ */
+export function isClaudeAlias(agent: string | null): boolean {
+  return agent !== null && agent.startsWith("claude-") && agent !== "claude-desktop";
+}
+
+/** The pill label of a Claude Code alias: "claude-perso" → "Claude perso". */
+function aliasName(id: string): string {
+  const rest = id.slice("claude-".length).replace(/-+/g, " ").trim();
+  return rest ? `Claude ${rest}` : "Claude";
+}
+
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {
   if (!raw || raw.length > 24 || raw === "claude") return null;
@@ -48,5 +65,6 @@ export function agentColor(id: string): string {
 
 /** The pill label: the agent's own name when Coucou knows it, else its id. */
 export function agentName(id: string): string {
-  return KNOWN_AGENTS[id]?.name ?? id;
+  if (KNOWN_AGENTS[id]) return KNOWN_AGENTS[id].name;
+  return isClaudeAlias(id) ? aliasName(id) : id;
 }
