@@ -130,12 +130,12 @@ import Combine
 struct AgentTask { var id:String; var codexManaged:Bool; var codexThreadId:String?; var codexTurnId:String?; var sessionId:String?; var sessionCwd:String?; var state:BotState; var source:TaskSource; var name:String; var color:String; var stepIndex:Int; var steps:[String]; var finalLine:String? }
 enum BotState:String { case idle,finished,sleeping,error,ratelimit,question,working }
 enum TaskSource { case n8n,workspace }
-struct ApprovalInfo:Sendable { var pillId:String; var sessionId:String; var threadId:String?; var turnId:String?; var requestId:String?; var tool:String; var command:String; var inputKey:String }
+struct ApprovalInfo:Sendable { var id:UUID = UUID(); var pillId:String; var sessionId:String; var threadId:String?; var turnId:String?; var requestId:String?; var tool:String; var command:String; var inputKey:String }
 @MainActor final class AppState { static let shared = AppState(); @Published var codexChatBusy = false; @Published var tasks:[AgentTask] = []; @Published var pendingApproval:ApprovalInfo?; @Published var pendingQuestion:AskQuestion? }
 enum PillCatalog { static func isSession(_ id:String) -> Bool { true } }
-@MainActor final class CloudProbe { nonisolated static let containerID = "iCloud.fr.louisraille.Coucou"; static let shared = CloudProbe(); static let isEnabled = false; static var zoneID:CKRecordZone.ID { .init(zoneName:"Coucou", ownerName:CKCurrentUserDefaultName) }; func log(_ message:String) {} }
+@MainActor final class CloudProbe { nonisolated static let containerID = "iCloud.fr.louisraille.Coucou"; static let shared = CloudProbe(); static let isEnabled = false; var lastPushAt:Date?; static var zoneID:CKRecordZone.ID { .init(zoneName:"Coucou", ownerName:CKCurrentUserDefaultName) }; func log(_ message:String) {} }
 @MainActor final class CodexChatService { static let shared = CodexChatService(); var isBusy = false; func owns(threadId:String)->Bool { true }; func sendManagedInstruction(threadId:String,text:String,expectedCwd:String) async throws {} }
-@MainActor final class HookServer { static let shared = HookServer(); var hasRealPendingQuestion=true; func sendQuestionAnswers(_ answers:[String:Any]) {}; func sendApprovalDecision(_ decision:String) {} }
+@MainActor final class HookServer { static let shared = HookServer(); var hasRealPendingQuestion=true; func sendQuestionAnswers(_ answers:[String:Any], for id:String? = nil) {}; func sendApprovalDecision(_ decision:String, for id:UUID? = nil) {} }
 @MainActor final class DemoEngine { static let shared = DemoEngine(); var isActive=false }
 
 @main enum SnapshotCheck {
@@ -157,7 +157,15 @@ enum PillCatalog { static func isSession(_ id:String) -> Bool { true } }
         let secret = AskQuestion(questions: [.init(question: "Sensitive prompt", header: "", options: [], multiSelect: false, id: "q", isOther: false, isSecret: true)], pillId: task.id, threadId: "child", turnId: "t2", requestId: "secret")
         let hidden = SessionSnapshot.all(tasks: [task], approval: nil, question: secret)[task.id]!
         assert(hidden.question.isEmpty && hidden.questionPayload.isEmpty && hidden.questionFingerprint.isEmpty)
-        print("PASS: actual SessionSnapshot stable target, independent busy gate, next-turn identity and secret omission")
+        let approval = ApprovalInfo(pillId: task.id, sessionId: "root", threadId: "child", turnId: "t2", requestId: "r",
+            tool: "Bash", command: "pwd", inputKey: "{}")
+        var repeated = approval
+        repeated.id = UUID()
+        assert(ApprovalRelay.fingerprint(repeated) != ApprovalRelay.fingerprint(approval))
+        repeated = approval
+        repeated.turnId = "t3"
+        assert(ApprovalRelay.fingerprint(repeated) != ApprovalRelay.fingerprint(approval))
+        print("PASS: actual SessionSnapshot target/busy/secret guards and approval UUID/turn fingerprints")
     }
 }
 SWIFT

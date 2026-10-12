@@ -248,6 +248,7 @@ final class CodexChatService: ObservableObject {
                     cwd: cwd, model: chosenModel, canWrite: chosenCanWrite, searchMode: chosenSearchMode))
                 guard revision == current else { throw CancellationError() }
                 guard let thread = response["thread"] as? [String: Any], let id = thread["id"] as? String else { throw CodexServiceError.invalidResponse }
+                if let previous = threadId, previous != id { CodexEventAdapter.shared.unregisterThread(previous) }
                 threadId = id; project = cwd; model = response["model"] as? String ?? chosenModel
                 CodexEventAdapter.shared.registerThread(thread)
                 // An empty picker means the native default. Preserve this choice across turns.
@@ -355,7 +356,7 @@ final class CodexChatService: ObservableObject {
     }
     private func cancel(error: Error) {
         let cancelledThread = threadId, cancelledTurn = turnId
-        if let cancelledThread { HookServer.shared.resolveCodexRequests(threadId: cancelledThread) }
+        if let cancelledThread { CodexEventAdapter.shared.unregisterThread(cancelledThread) }
         // The interrupt may still be awaiting its reply when the next Chat begins.
         // Relinquish this thread now, and reset the visible conversation with it.
         threadId = nil; turnId = nil; project = ""; model = ""; resolvedModel = ""
@@ -391,7 +392,7 @@ final class CodexChatService: ObservableObject {
 
     private func receive(_ method: String, params: [String: Any]) {
         if method == "$connection/disconnected" {
-            if let threadId { HookServer.shared.resolveCodexRequests(threadId: threadId) }
+            if let threadId { CodexEventAdapter.shared.unregisterThread(threadId) }
             if let state = displayState, state.chatProvider == .codex { state.chatHistory = []; state.stateOverride = nil }
             threadId = nil; turnId = nil; displayState = nil; displayMessage = nil
             // The connection is already stopped; only finish local waiters here.

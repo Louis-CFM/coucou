@@ -354,6 +354,16 @@ final class SpotifyController: ObservableObject {
         command("playpause")
     }
 
+    func play() {
+        guard isRunning else { return }
+        Task { await runAppleScript(#"tell application id "com.spotify.client" to play"#) }
+    }
+
+    func pause() {
+        guard isRunning else { return }
+        Task { await runAppleScript(#"tell application id "com.spotify.client" to pause"#) }
+    }
+
     func nextTrack() {
         guard isRunning else { return }
         command("next track")
@@ -362,6 +372,10 @@ final class SpotifyController: ObservableObject {
     func previousTrack() {
         guard isRunning else { return }
         command("previous track")
+    }
+
+    func adjustVolume(by delta: Int) {
+        setVolume(volume + delta)
     }
 
     func seek(to seconds: Double) {

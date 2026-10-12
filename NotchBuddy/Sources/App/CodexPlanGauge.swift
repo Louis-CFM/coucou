@@ -65,7 +65,7 @@ private let resetExpiryFormatter: DateFormatter = {
 
 struct CodexPlanCardView: View {
     @ObservedObject private var info = CodexAgentsInfo.shared
-    private var usage: CodexPlanUsage? { info.planUsage } // nil = loading or unavailable
+    private var usage: CodexPlanUsage? { info.currentPlanUsage } // nil = loading or unavailable
 
     @State private var now = Date()
 
@@ -114,8 +114,7 @@ struct CodexPlanCardView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
         .task {
-            let task = AppState.shared.tasks.first { $0.id == "agent_codex" }
-            await info.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath)
+            AppState.shared.refreshCodexPlanUsage()
         }
         // Update countdown every 30s, only while visible
         .background(

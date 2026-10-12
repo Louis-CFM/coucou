@@ -24,6 +24,13 @@ final class CodexEventAdapter {
         emit("SessionStart", threadId: id, params: [:])
     }
 
+    func unregisterThread(_ id: String) {
+        guard threads[id] != nil else { return }
+        HookServer.shared.resolveCodexRequests(threadId: id)
+        emit("SessionEnd", threadId: id, params: [:])
+        threads.removeValue(forKey: id)
+    }
+
     func isManagedHookSession(_ sessionId: String) -> Bool {
         threads.contains { CodexChatService.shared.owns(threadId: $0.key) && $0.key == sessionId }
     }
@@ -32,7 +39,8 @@ final class CodexEventAdapter {
         let server = HookServer.shared
         if method == "$connection/disconnected" {
             server.resolveCodexRequests()
-            threads.removeAll(); completedItems.removeAll()
+            for threadId in Array(threads.keys) { unregisterThread(threadId) }
+            completedItems.removeAll()
             if let index = AppState.shared.tasks.firstIndex(where: { $0.id == "agent_codex" && $0.codexManaged }) {
                 AppState.shared.tasks[index].codexManaged = false
                 AppState.shared.tasks[index].state = .idle
@@ -54,8 +62,7 @@ final class CodexEventAdapter {
         let turn = params["turn"] as? [String: Any] ?? [:]
         let turnId = params["turnId"] as? String ?? turn["id"] as? String ?? ""
         // An old turn's completion must never dismiss or overwrite a new request/turn.
-        if method != "turn/started", let current = AppState.shared.tasks.first(where: { $0.id == "agent_codex" }),
-           current.codexThreadId == threadId, let observed = current.codexTurnId,
+        if method != "turn/started", let observed = CodexChatService.shared.turnId,
            !turnId.isEmpty, observed != turnId { return }
         var diffs: [FileDiff] = []
         switch method {
@@ -123,9 +130,7 @@ final class CodexEventAdapter {
         case "error":
             if let error = params["error"] as? [String: Any] { showError(error, threadId: threadId) }
         case "thread/closed", "thread/archived":
-            server.resolveCodexRequests(threadId: threadId)
-            emit("SessionEnd", threadId: threadId, params: params)
-            threads.removeValue(forKey: threadId)
+            unregisterThread(threadId)
         default: break
         }
         #if PHONE_LINK

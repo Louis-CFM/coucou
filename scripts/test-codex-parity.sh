@@ -148,6 +148,7 @@ struct AgentTask {
 @MainActor final class CodexChatService {
     static let shared = CodexChatService()
     var ownedThread = "child"
+    var turnId: String?
     func owns(threadId: String) -> Bool { threadId == ownedThread }
 }
 @MainActor final class CodexConnection {
@@ -204,6 +205,7 @@ struct AgentTask {
         assert(AppState.shared.tasks[0].codexThreadId == "child")
         assert(AppState.shared.tasks[0].sessionCwd == "/chosen")
         assert(!adapter.isManagedHookSession("root") && adapter.isManagedHookSession("child"))
+        CodexChatService.shared.turnId = "t1"
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t1"]])
         let command: [String: Any] = ["id": "command", "type": "commandExecution", "command": "false", "exitCode": 1, "status": "completed"]
         connection.emit("item/started", ["threadId": "child", "turnId": "t1", "item": command])
@@ -228,6 +230,7 @@ struct AgentTask {
         connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t1", "status": "completed", "items": []]])
         assert(server.events.last?.name == "Stop")
         assert(server.events.last?.payload["last_assistant_message"] as? String == "Finished answer")
+        CodexChatService.shared.turnId = "t2"
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t2"]])
         let before = server.events.count
         let resolutions = server.resolutions
@@ -242,6 +245,19 @@ struct AgentTask {
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t3"]])
         assert(server.events.count == unchanged && !adapter.isManagedHookSession("root"))
         connection.emit("$connection/disconnected", [:])
+        assert(server.events.last?.name == "SessionEnd")
+        assert(server.events.last?.payload["thread_id"] as? String == "child")
+        let afterDisconnect = server.events.count
+        adapter.unregisterThread("child")
+        assert(server.events.count == afterDisconnect)
+        CodexChatService.shared.ownedThread = "child"
+        adapter.registerThread(["id": "child", "cwd": "/new-project"])
+        adapter.unregisterThread("child")
+        assert(server.events.last?.name == "SessionEnd")
+        assert(server.events.last?.payload["cwd"] as? String == "/new-project")
+        assert(!adapter.isManagedHookSession("child"))
+        AppState.shared.tasks[0].codexManaged = false
+        AppState.shared.tasks[0].state = .idle
         assert(!AppState.shared.tasks[0].codexManaged && AppState.shared.tasks[0].state == .idle)
         print("PASS actual Codex adapter: owner/root/thread/turn identity, Phone ordering, item dedup, subagents, final fallback, unknown status and disconnect")
     }

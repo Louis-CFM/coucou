@@ -49,6 +49,14 @@ final class CodexAgentsInfo: ObservableObject {
     var dominantPercent: Double? { limits.filter { !$0.isExpired }.map(\.usedPercent).max() }
     var isStale: Bool { isStale(at: Date()) }
     func isStale(at date: Date) -> Bool { error != nil || updatedAt.map { date.timeIntervalSince($0) > 300 } ?? true }
+    var currentPlanUsage: CodexPlanUsage? {
+        guard var usage = planUsage else { return nil }
+        let now = Date()
+        guard now.timeIntervalSince(usage.updatedAt) <= 300 else { return nil }
+        if usage.fiveHour.map({ $0.resetsAt <= now }) == true { usage.fiveHour = nil }
+        if usage.sevenDay.map({ $0.resetsAt <= now }) == true { usage.sevenDay = nil }
+        return usage.fiveHour != nil || usage.sevenDay != nil ? usage : nil
+    }
 
     init(connection: CodexConnection = .shared) {
         self.connection = connection

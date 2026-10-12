@@ -32,7 +32,7 @@ final class ApprovalRelay {
 
     /// Stable identifier of one pending request.
     nonisolated static func fingerprint(_ approval: ApprovalInfo) -> String {
-        let raw = [approval.pillId, approval.sessionId, approval.threadId ?? "", approval.turnId ?? "",
+        let raw = [approval.id.uuidString, approval.pillId, approval.sessionId, approval.threadId ?? "", approval.turnId ?? "",
                    approval.requestId ?? "", approval.tool, approval.command, approval.inputKey]
             .joined(separator: "\u{1F}")
         return SHA256.hash(data: Data(raw.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -149,11 +149,11 @@ final class ApprovalRelay {
         switch decision {
         case "allow":
             log("allowed from the iPhone: \(pending.tool)")
-            HookServer.shared.sendApprovalDecision("allow")
+            HookServer.shared.sendApprovalDecision("allow", for: pending.id)
             return true
         case "deny":
             log("denied from the iPhone: \(pending.tool)")
-            HookServer.shared.sendApprovalDecision("deny")
+            HookServer.shared.sendApprovalDecision("deny", for: pending.id)
             return true
         default:
             log("unknown decision '\(decision)', ignored")

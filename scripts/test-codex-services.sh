@@ -20,6 +20,7 @@ pending_interrupt=None
 held_turn=None
 account_update_at=None
 account_epoch=0
+limits_expired=False
 auth_type='chatgpt'
 auth_stale=False
 auth_delay=0
@@ -41,6 +42,7 @@ for line in sys.stdin:
     result={}
     if method=='initialize': result={'userAgent':'codex_cli_rs/0.160.0 (fixture)'}
     elif method=='fixture/armAccountUpdate': account_update_at=request['params']['at']
+    elif method=='fixture/expireLimits': limits_expired=request['params']['expired']
     elif method=='fixture/setAuthentication':
         auth_type=request['params'].get('type','chatgpt')
         auth_stale=request['params'].get('stale',False)
@@ -57,7 +59,7 @@ for line in sys.stdin:
         if account_update_at in ['limits','always']:
             send({'method':'account/updated','params':{'authMode':'chatgpt'}});account_epoch+=1;stale=True
             if account_update_at!='always':account_update_at=None
-        result={'rateLimits':{'primary':{'usedPercent':999 if stale else 35 if account_epoch else 25,'windowDurationMins':300,'resetsAt':int(time.time())+3600}},'rateLimitResetCredits':{'availableCount':2,'credits':[{'status':'available','expiresAt':int(time.time())+86400}]}}
+        result={'rateLimits':{'primary':{'usedPercent':999 if stale else 35 if account_epoch else 25,'windowDurationMins':300,'resetsAt':int(time.time())+(-1 if limits_expired else 3600)}},'rateLimitResetCredits':{'availableCount':2,'credits':[{'status':'available','expiresAt':int(time.time())+86400}]}}
     elif method=='account/usage/read':
         stale=False
         if account_update_at=='usage':
@@ -185,7 +187,15 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
  var resolvedThreads:[String]=[]
  func resolveCodexRequests(threadId:String) { resolvedThreads.append(threadId) }
 }
-@MainActor final class CodexEventAdapter { static let shared=CodexEventAdapter();func registerThread(_ thread:[String:Any]) {} }
+@MainActor final class CodexEventAdapter {
+ static let shared=CodexEventAdapter()
+ var unregisteredThreads:[String]=[]
+ func registerThread(_ thread:[String:Any]) {}
+ func unregisterThread(_ id:String) {
+  unregisteredThreads.append(id)
+  HookServer.shared.resolveCodexRequests(threadId:id)
+ }
+}
 @main struct Tests {
  @MainActor static func waitUntil(_ predicate:()->Bool,_ message:String) async {
   for _ in 0..<400 {
@@ -354,6 +364,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   }
   assert(chat.isBusy && chat.turnId != nil && state.chatHistory.last?.content=="Partial old response")
   chat.cancel()
+  assert(CodexEventAdapter.shared.unregisteredThreads.last=="owned-thread","Cancelled thread kept its registry ownership")
   assert(!chat.owns(threadId:"owned-thread") && chat.turnId==nil,"Cancel retained native ownership")
   assert(state.chatHistory.isEmpty && state.stateOverride==nil,"Cancelled history still suggests a continued native conversation")
   assert(HookServer.shared.resolvedThreads.count==beforeResolve+1 && HookServer.shared.resolvedThreads.last=="owned-thread")
@@ -373,6 +384,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   let beforeInterruptReply=try String(contentsOf:root.appendingPathComponent("thread-before-interrupt-reply"),encoding:.utf8)
   assert(beforeInterruptReply=="owned-thread-2","Regression did not exercise an outstanding interrupt")
   chat.reset();assert(!chat.owns(threadId:"owned-thread-2") && state.chatHistory.isEmpty)
+  assert(CodexEventAdapter.shared.unregisteredThreads.last=="owned-thread-2","Project reset kept the previous display owner")
   assert(HookServer.shared.resolvedThreads.count==beforeResolve+2 && HookServer.shared.resolvedThreads.last=="owned-thread-2")
   for failure in ["start rpc error","start rpc timeout","start malformed response"] {
    await chat.chat(query:failure,context:nil,state:state)
@@ -399,6 +411,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   assert(!state.chatHistory.isEmpty)
   do { _=try await connection.request("exit");assertionFailure("Expected disconnected") } catch CodexServiceError.disconnected {}
   assert(!chat.owns(threadId:disconnectedThread) && chat.threadId==nil && state.chatHistory.isEmpty,"Disconnected history implies retained native context")
+  assert(CodexEventAdapter.shared.unregisteredThreads.last==disconnectedThread,"Disconnect kept the managed display owner")
   state.chatHistory.append(ChatMessage(role:.user,content:"after disconnect"))
   await chat.chat(query:"after disconnect",context:nil,state:state)
   assert(chat.owns(threadId:"owned-thread") && state.chatHistory.count==2 && state.chatHistory.last?.content=="Hello Codex")
@@ -408,6 +421,13 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   let info=CodexAgentsInfo(connection:metadataConnection)
   await info.refresh();assert(info.lifetimeTokens==111 && info.limits.first?.usedPercent==25 && info.updatedAt != nil)
   assert(info.planUsage?.resetCredits==2 && info.planUsage?.fiveHour?.usedPct==25 && info.planUsage?.resetCreditExpiresAt != nil,"Merged Codex plan/reset credits must share the native usage response")
+  assert(info.currentPlanUsage?.fiveHour?.usedPct==25)
+  _=try await metadataConnection.request("fixture/expireLimits",params:["expired":true])
+  await info.refresh()
+  assert(info.planUsage?.fiveHour?.usedPct==25 && info.currentPlanUsage==nil && info.dominantPercent==nil,"Expired Codex quota became a new 0% allowance")
+  _=try await metadataConnection.request("fixture/expireLimits",params:["expired":false])
+  await info.refresh()
+  assert(info.currentPlanUsage?.fiveHour?.usedPct==25)
   var publishedLifetimes:[Int64]=[],publishedPercents:[Double]=[]
   let tokenSubscription=info.$lifetimeTokens.compactMap{$0}.sink{publishedLifetimes.append($0)}
   let quotaSubscription=info.$limits.sink{publishedPercents.append(contentsOf:$0.map(\.usedPercent))}
@@ -427,6 +447,20 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   do { _=try await connection.request("oversized");assertionFailure("Expected output limit") } catch CodexServiceError.oversized {}
   do { _=try await connection.request("exit");assertionFailure("Expected disconnected") } catch CodexServiceError.disconnected {}
   connection.stop()
+  let replacementRoot=root.appendingPathComponent("replacement-case",isDirectory:true)
+  try FileManager.default.createDirectory(at:replacementRoot,withIntermediateDirectories:true)
+  try FileManager.default.copyItem(at:root.appendingPathComponent("server.py"),to:replacementRoot.appendingPathComponent("server.py"))
+  let replacementConnection=CodexConnection(executable:URL(fileURLWithPath:"/usr/bin/python3"),arguments:[replacementRoot.appendingPathComponent("server.py").path])
+  let replacementChat=CodexChatService(connection:replacementConnection)
+  let replacementState=AppState()
+  replacementState.codexProjectPath=root.path
+  await replacementChat.chat(query:"first project",context:nil,state:replacementState)
+  assert(replacementChat.threadId=="owned-thread")
+  let unregisterBefore=CodexEventAdapter.shared.unregisteredThreads.count
+  replacementState.codexProjectPath=replacementRoot.path
+  await replacementChat.chat(query:"second project",context:nil,state:replacementState)
+  assert(replacementChat.threadId=="owned-thread-2" && CodexEventAdapter.shared.unregisteredThreads.count==unregisterBefore+1 && CodexEventAdapter.shared.unregisteredThreads.last=="owned-thread","New project kept the old registry owner")
+  replacementChat.reset();replacementConnection.stop()
   try await authenticationChecks(root:root)
   print("Codex services: connection, cancellation, bounds, hooks, usage, exact rollout, managed Chat and external-writer guards passed (fixtures; no model inference).")
  }
@@ -449,3 +483,111 @@ swiftc -swift-version 6 -parse-as-library \
  NotchBuddy/Sources/App/CodexChatService.swift \
  "$TEST_DIR/tests.swift" -o "$TEST_DIR/tests"
 "$TEST_DIR/tests" "$TEST_DIR"
+
+# Compile the shipped AppState bridge: failed appearances share one attempt,
+# and voice/header reads see the same metadata without a second cache.
+python3 - "$TEST_DIR/PlanBridgeCheck.swift" <<'PYBRIDGE'
+from pathlib import Path
+import sys
+source = Path("NotchBuddy/Sources/App/AppState.swift").read_text()
+start = source.index("    var codexPlanUsage: CodexPlanUsage?")
+end = source.index("    func refreshPlanRelayState()", start)
+bridge = source[start:end].replace("private static var", "static var")
+fixture = r"""
+import Foundation
+struct CodexPlanUsage { var updatedAt: Date; var percent: Int }
+struct AgentTask { var id: String; var codexThreadId: String?; var codexRolloutPath: String? }
+@MainActor final class CodexAgentsInfo {
+    static let shared = CodexAgentsInfo()
+    var planUsage: CodexPlanUsage?
+    var currentPlanUsage: CodexPlanUsage? { planUsage }
+    var attempts = 0
+    var thread: String?
+    var path: String?
+    func refresh(threadId: String?, rolloutPath: String?) async {
+        attempts += 1; thread = threadId; path = rolloutPath
+    }
+}
+@MainActor final class AppState {
+    var tasks = [AgentTask(id: "agent_codex", codexThreadId: "selected", codexRolloutPath: "/fixture")]
+BRIDGE
+}
+@main enum PlanBridgeCheck {
+    @MainActor static func main() async {
+        let state = AppState(), info = CodexAgentsInfo.shared
+        for _ in 0..<5 { state.refreshCodexPlanUsage() }
+        for _ in 0..<100 where info.attempts == 0 { await Task.yield() }
+        assert(info.attempts == 1, "Missing/failed Codex repeatedly fetched from card appearances")
+        assert(info.thread == "selected" && info.path == "/fixture")
+        AppState.lastCodexAttempt = .distantPast
+        info.planUsage = CodexPlanUsage(updatedAt: Date(), percent: 20)
+        state.refreshCodexPlanUsage()
+        await Task.yield()
+        assert(info.attempts == 1, "Fresh shared plan was fetched again")
+        info.planUsage?.percent = 70
+        assert(state.codexPlanUsage?.percent == 70, "Voice/header retained a second stale plan cache")
+        info.planUsage?.updatedAt = Date().addingTimeInterval(-61)
+        state.refreshCodexPlanUsage()
+        for _ in 0..<100 where info.attempts == 1 { await Task.yield() }
+        assert(info.attempts == 2, "Expired shared plan could not refresh")
+        print("PASS actual AppState shared plan bridge, failure throttling and fresh/expired reads")
+    }
+}
+"""
+Path(sys.argv[1]).write_text(fixture.replace("BRIDGE", bridge))
+PYBRIDGE
+swiftc -swift-version 6 -parse-as-library "$TEST_DIR/PlanBridgeCheck.swift" -o "$TEST_DIR/plan-bridge-check"
+"$TEST_DIR/plan-bridge-check"
+
+# Execute the actual routing prefix: a Codex selection in Demo stays local.
+python3 - "$TEST_DIR/CodexRouteCheck.swift" <<'PYROUTE'
+from pathlib import Path
+import sys
+source = Path("NotchBuddy/Sources/App/ClaudeService.swift").read_text()
+start = source.index("    func chat(query: String, context: PromptContext?, state: AppState) async {")
+end = source.index("        guard state.chatProvider == .anthropic else", start)
+route = source[start:end] + "    }\n"
+fixture = r"""
+import Foundation
+enum ChatProvider { case codex, anthropic }
+enum BotState { case thinking }
+struct PromptContext {}
+@MainActor final class AppState {
+    var chatProvider: ChatProvider = .codex
+    var stateOverride: BotState?
+}
+@MainActor final class DemoEngine {
+    static let shared = DemoEngine()
+    var isActive = false
+    var replies = 0
+    func streamChatResponse(for query: String) async { replies += 1 }
+}
+@MainActor final class CodexChatService {
+    static let shared = CodexChatService()
+    var calls = 0
+    func chat(query: String, context: PromptContext?, state: AppState) async { calls += 1 }
+}
+@MainActor final class ClaudeService {
+ROUTE
+}
+@main enum CodexRouteCheck {
+    @MainActor static func main() async {
+        let service = ClaudeService(), state = AppState()
+        DemoEngine.shared.isActive = true
+        await service.chat(query: "demo", context: nil, state: state)
+        assert(DemoEngine.shared.replies == 1 && CodexChatService.shared.calls == 0 && state.stateOverride == nil)
+        DemoEngine.shared.isActive = false
+        await service.chat(query: "native", context: nil, state: state)
+        assert(CodexChatService.shared.calls == 1)
+        DemoEngine.shared.isActive = true
+        state.chatProvider = .anthropic
+        await service.chat(query: "existing demo", context: nil, state: state)
+        assert(DemoEngine.shared.replies == 2 && CodexChatService.shared.calls == 1)
+        print("PASS actual Demo-before-native routing; Codex demo never starts a native request")
+    }
+}
+"""
+Path(sys.argv[1]).write_text(fixture.replace("ROUTE", route))
+PYROUTE
+swiftc -swift-version 6 -parse-as-library "$TEST_DIR/CodexRouteCheck.swift" -o "$TEST_DIR/codex-route-check"
+"$TEST_DIR/codex-route-check"

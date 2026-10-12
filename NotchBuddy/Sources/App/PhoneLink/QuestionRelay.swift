@@ -117,7 +117,7 @@ final class QuestionRelay {
             return false
         }
         log("answered from the iPhone")
-        HookServer.shared.sendQuestionAnswers(AskQuestion.buildAnswers(questions: pending.questions, selections: selections))
+        HookServer.shared.sendQuestionAnswers(AskQuestion.buildAnswers(questions: pending.questions, selections: selections), for: pending.requestId)
         return true
     }
 
