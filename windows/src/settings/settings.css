@@ -94,6 +94,18 @@ section > h2 {
   flex: 1 1 auto;
 }
 
+/* Settings → General → Padding: top and bottom, then left and right. */
+.padding-grid {
+  display: grid;
+  grid-template-columns: auto 56px auto 56px;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.padding-grid input {
+  width: 56px;
+}
+
 .dot {
   width: 8px;
   height: 8px;

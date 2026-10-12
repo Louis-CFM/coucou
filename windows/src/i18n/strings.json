@@ -409,6 +409,17 @@
    "ru": "Поведение",
    "id": "Perilaku"
   },
+  "Bottom": {
+   "zh-Hans": "下",
+   "hi": "नीचे",
+   "es": "Abajo",
+   "ar": "أسفل",
+   "fr": "Bas",
+   "bn": "নিচে",
+   "pt-BR": "Base",
+   "ru": "Снизу",
+   "id": "Bawah"
+  },
   "Busiest day": {
    "zh-Hans": "最忙的一天",
    "hi": "सबसे व्यस्त दिन",
@@ -1564,6 +1575,17 @@
    "ru": "Запускать при старте Mac",
    "id": "Jalankan saat Mac startup"
   },
+  "Left": {
+   "zh-Hans": "左",
+   "hi": "बाएँ",
+   "es": "Izquierda",
+   "ar": "يسار",
+   "fr": "Gauche",
+   "bn": "বামে",
+   "pt-BR": "Esquerda",
+   "ru": "Слева",
+   "id": "Kiri"
+  },
   "Let my iPhone send instructions to Claude Code": {
    "zh-Hans": "允许我的 iPhone 向 Claude Code 发送指令",
    "hi": "मेरे iPhone को Claude Code को निर्देश भेजने दें",
@@ -2477,6 +2499,17 @@
    "ru": "Обзор",
    "id": "Ikhtisar"
   },
+  "Padding": {
+   "zh-Hans": "边距",
+   "hi": "पैडिंग",
+   "es": "Margen",
+   "ar": "الهامش",
+   "fr": "Marges",
+   "bn": "প্যাডিং",
+   "pt-BR": "Margem",
+   "ru": "Отступы",
+   "id": "Jarak"
+  },
   "Pause": {
    "zh-Hans": "暂停",
    "hi": "रोकें",
@@ -2905,6 +2938,17 @@
    "pt-BR": "Revise o conteúdo abaixo antes de confirmar.",
    "ru": "Просмотри содержимое ниже перед подтверждением.",
    "id": "Tinjau konten di bawah sebelum mengonfirmasi."
+  },
+  "Right": {
+   "zh-Hans": "右",
+   "hi": "दाएँ",
+   "es": "Derecha",
+   "ar": "يمين",
+   "fr": "Droite",
+   "bn": "ডানে",
+   "pt-BR": "Direita",
+   "ru": "Справа",
+   "id": "Kanan"
   },
   "Runs": {
    "zh-Hans": "执行",
@@ -3445,6 +3489,17 @@
    "ru": "Слишком много нажатий подряд.",
    "id": "Terlalu banyak ketukan sekaligus."
   },
+  "Top": {
+   "zh-Hans": "上",
+   "hi": "ऊपर",
+   "es": "Arriba",
+   "ar": "أعلى",
+   "fr": "Haut",
+   "bn": "উপরে",
+   "pt-BR": "Topo",
+   "ru": "Сверху",
+   "id": "Atas"
+  },
   "Top agent": {
    "zh-Hans": "最活跃 Agent",
    "hi": "शीर्ष एजेंट",
@@ -3939,6 +3994,17 @@
    "pt-BR": "precisa de permissão",
    "ru": "требует разрешения",
    "id": "butuh izin"
+  },
+  "pixels between the folded island's edges and Mochi or the pills": {
+   "zh-Hans": "收起的岛边缘与 Mochi 或标签页之间的像素",
+   "hi": "मुड़े हुए आइलैंड के किनारों और Mochi या टैब के बीच पिक्सेल",
+   "es": "píxeles entre los bordes de la isla plegada y Mochi o las pestañas",
+   "ar": "بكسلات بين حواف الشريط المطوي وMochi أو التبويبات",
+   "fr": "pixels entre les bords de l'île repliée et Mochi ou les onglets",
+   "bn": "ভাঁজ করা আইল্যান্ডের কিনারা আর Mochi বা ট্যাবের মধ্যে পিক্সেল",
+   "pt-BR": "pixels entre as bordas da ilha recolhida e o Mochi ou as abas",
+   "ru": "пикселей между краями свёрнутого острова и Mochi или вкладками",
+   "id": "piksel antara tepi pulau yang terlipat dan Mochi atau tab"
   },
   "presses this → island opens": {
    "zh-Hans": "按此键 → 岛打开",

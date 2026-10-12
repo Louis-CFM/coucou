@@ -200,7 +200,7 @@ struct BotCanvasView: View {
         }
         let (islandW, islandH) = islandSize(mode: state.mode, view: state.view,
                                              progress: state.uploadProgress,
-                                             nw: state.notchWidth, nh: state.notchHeight)
+                                             nw: state.notchWidth, nh: state.notchHeight, pad: state.compactPadding)
         let screen = IslandWindowController.islandScreen().frame
         let desktopTop = IslandWindowController.desktopTop
         // The pointer read now, not from the island poll (which slows down far from it).
@@ -208,7 +208,8 @@ struct BotCanvasView: View {
         func botPoint(islandH: CGFloat) -> CGPoint {
             let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
                                                     islandW: islandW, islandH: islandH,
-                                                    uploadProgress: state.uploadProgress)
+                                                    uploadProgress: state.uploadProgress,
+                                                    compactPadding: state.compactPadding)
             return DesktopSpace.topDown(CGPoint(x: screen.midX - islandW / 2 + botCx,
                                                 y: screen.maxY - botCy),
                                         desktopTop: desktopTop)

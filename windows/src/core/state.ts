@@ -1,6 +1,6 @@
 // App state — mirror of AppState.swift (the parts the island needs).
 
-import type { BotEmoteName, BotStateName, IslandMode, IslandViewName } from "./layout";
+import { COMPACT_PADDING, type BotEmoteName, type CompactPadding, type BotStateName, type IslandMode, type IslandViewName } from "./layout";
 import type { EyeShape } from "../mochi/engine";
 import {
   DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
@@ -103,6 +103,8 @@ export interface Settings {
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
+  /** Space between the folded island's edges and Mochi or the pills, px. */
+  compactPadding: CompactPadding;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -169,6 +171,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.12,
   autoCloseInterval: 15,
   openOnHover: false,
+  compactPadding: COMPACT_PADDING,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",

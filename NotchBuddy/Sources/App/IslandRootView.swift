@@ -124,7 +124,8 @@ struct IslandContainer: View {
                 if state.mode == .compact {
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
-                        .position(x: islandWidth - 40, y: islandHeight / 2)
+                        .position(x: islandWidth - state.compactPadding.right - IslandConst.miniGridHalf,
+                                  y: compactRowCenterY(islandH: islandHeight, pad: state.compactPadding))
                         .transition(.opacity)
                 }
             }
@@ -136,7 +137,7 @@ struct IslandContainer: View {
             let anim = shrinking ? closeEase : openSpring
             let (w, h) = islandSize(mode: newMode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight, pad: state.compactPadding)
             let cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             let tr: CGFloat = 0
             withAnimation(anim) {
@@ -155,7 +156,7 @@ struct IslandContainer: View {
             }
             let (w, h) = islandSize(mode: .expanded, view: newView,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight, pad: state.compactPadding)
             withAnimation(openSpring) {
                 islandWidth  = w
                 islandHeight = newView == .prompt ? chatPromptHeight : h
@@ -168,7 +169,7 @@ struct IslandContainer: View {
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight, pad: state.compactPadding)
             islandWidth      = w
             islandHeight     = state.view == .prompt ? chatPromptHeight : h
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
@@ -181,7 +182,7 @@ struct IslandContainer: View {
             // New screen, new resting size (notch ↔ bar): snap without animation.
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight, pad: state.compactPadding)
             islandWidth  = w
             islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
         }
@@ -280,7 +281,7 @@ struct BotPlacement: View {
     let islandH: CGFloat
 
     var body: some View {
-        let (cx, cy, diameter, opacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
+        let (cx, cy, diameter, opacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch, compactPadding: state.compactPadding)
         let canvasSize = diameter / 0.6
         let overhang: CGFloat = 40
         let isUploading = state.view == .uploading
@@ -368,13 +369,20 @@ struct BotPlacement: View {
     }
 }
 
-func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: CGFloat, uploadProgress: Double, hasNotch: Bool = true) -> (CGFloat, CGFloat, CGFloat, Double) {
+/// The compact content row sits centred between the top and bottom padding.
+func compactRowCenterY(islandH: CGFloat, pad: CompactPadding) -> CGFloat {
+    pad.top + (islandH - pad.top - pad.bottom) / 2
+}
+
+func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: CGFloat, uploadProgress: Double, hasNotch: Bool = true, compactPadding: CompactPadding = .standard) -> (CGFloat, CGFloat, CGFloat, Double) {
     let resting = IslandRestingLayout(width: islandW, height: islandH)
     switch mode {
     case .hidden:
         return hasNotch ? (46, 16, 6, 0)
             : (islandW / 2, resting.botCenterY, resting.botDiameter, 1)
-    case .compact: return (40, resting.botCenterY, resting.botDiameter, 1)
+    case .compact:
+        return (compactPadding.left + IslandConst.compactBotHalf,
+                compactRowCenterY(islandH: islandH, pad: compactPadding), resting.botDiameter, 1)
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         let diameter = layout.botDiameter

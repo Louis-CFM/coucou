@@ -343,6 +343,24 @@ struct SettingsView: View {
                         .frame(width: 48)
                     Text("min without movement")
                 }
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Padding")
+                    Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                        GridRow {
+                            paddingLabel("Top")
+                            paddingField($state.compactPaddingTop)
+                            paddingLabel("Right")
+                            paddingField($state.compactPaddingRight)
+                        }
+                        GridRow {
+                            paddingLabel("Bottom")
+                            paddingField($state.compactPaddingBottom)
+                            paddingLabel("Left")
+                            paddingField($state.compactPaddingLeft)
+                        }
+                    }
+                }
+                .help("pixels between the folded island's edges and Mochi or the pills")
             }
             .padding(6)
         }
@@ -2086,6 +2104,20 @@ struct SettingsView: View {
                 if names.isEmpty { self.statusMessage = "❌ No n8n workflows found." }
             }
         }.resume()
+    }
+
+    private func paddingLabel(_ label: LocalizedStringKey) -> some View {
+        Text(label).foregroundColor(.secondary).fixedSize()
+    }
+
+    private func paddingField(_ value: Binding<Double>) -> some View {
+        HStack(spacing: 4) {
+            TextField("", value: value, format: .number)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 44)
+            Stepper("", value: value, in: 0...IslandConst.compactPaddingMax, step: 1)
+                .labelsHidden()
+        }
     }
 
     @ViewBuilder

@@ -6,7 +6,7 @@ import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
-  islandSize,
+  COMPACT_BOT_HALF, MINI_GRID_HALF, islandSize,
   QUESTION_PICKER_H,
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
@@ -644,7 +644,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, State.settings.compactPadding);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -676,8 +676,9 @@ export class Island {
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
-    this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    const pad = State.settings.compactPadding;
+    this.miniGrid.style.left = `${w - pad.right - 2 * MINI_GRID_HALF}px`;
+    this.miniGrid.style.top = `${pad.top + COMPACT_BOT_HALF - MINI_GRID_HALF}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
@@ -1013,7 +1014,9 @@ export class Island {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(
+      State.mode, State.view, this.height.value, State.uploadProgress, State.settings.compactPadding,
+    );
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;
@@ -1198,6 +1201,7 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.animateGeometry(false);
     State.notify();
   }
 

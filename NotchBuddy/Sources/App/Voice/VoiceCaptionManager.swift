@@ -221,7 +221,7 @@ final class VoiceCaptionManager {
         guard let p = panel, let screen else { return }
         let app = AppState.shared
         let (_, fixedH) = islandSize(mode: app.mode, view: app.view, progress: app.uploadProgress,
-                                     nw: app.notchWidth, nh: app.notchHeight)
+                                     nw: app.notchWidth, nh: app.notchHeight, pad: app.compactPadding)
         var islandH = fixedH
         if app.mode == .expanded && app.view == .prompt {
             islandH = min(300, 240 + CGFloat(app.chatHistory.count) * 40)
