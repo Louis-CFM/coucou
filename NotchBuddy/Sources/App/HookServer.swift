@@ -531,7 +531,8 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            upsertTask(pill: agentId, display: display, working: true,
+            // A new prompt brings its session onto the pill, even next to an older one.
+            upsertTask(pill: agentId, display: display, working: true, claiming: true,
                        externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
@@ -1057,8 +1058,8 @@ final class HookServer: @unchecked Sendable {
     /// nil for a workspace pill.
     @MainActor
     private func upsertTask(pill: String, display: PillSessionRegistry.Display,
-                            working: Bool, externalAgent: String?) {
-        sessions.note(pill: pill, display: display, working: working)
+                            working: Bool, claiming: Bool = false, externalAgent: String?) {
+        sessions.note(pill: pill, display: display, working: working, claiming: claiming)
         if let externalAgent {
             upsertExternalAgent(id: pill, name: externalAgent)
         } else {
@@ -1085,9 +1086,9 @@ final class HookServer: @unchecked Sendable {
     /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
-    /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
-    /// still running), so a second session under the same client cannot rename the card,
-    /// or send "Open terminal" elsewhere, out from under the first. `overridingOwner` is for
+    /// Name, cwd and terminal belong to the session that owns the pill (the one that last
+    /// got a prompt), so another session's tool calls cannot rename the card, or send
+    /// "Open terminal" elsewhere, out from under it. `overridingOwner` is for
     /// the finished card, which shows the session that finished whichever session owns the pill.
     @MainActor
     private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, hostURL: URL? = nil, bundleId: String = "", session: String,

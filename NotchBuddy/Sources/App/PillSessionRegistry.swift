@@ -71,10 +71,16 @@ struct PillSessionRegistry {
     /// Records the session that sent an event as live behind `pill`.
     /// `working` says whether the event means the session is mid-turn: a
     /// `PreToolUse` does, a `SessionStart` or a stray notification does not.
-    mutating func note(pill: String, display: Display, working: Bool, now: Date = Date()) {
+    /// `claiming` hands the pill to this session: used when the user starts a turn in it,
+    /// so a session opened next to an older one shows up instead of hiding behind it.
+    mutating func note(pill: String, display: Display, working: Bool, claiming: Bool = false,
+                       now: Date = Date()) {
         var p = pills[pill] ?? Pill()
         sweep(&p, now: now)
-        if p.sessions[display.session] == nil {
+        if claiming {
+            p.order.removeAll { $0 == display.session }
+            p.order.insert(display.session, at: 0)
+        } else if p.sessions[display.session] == nil {
             p.order.append(display.session)
         }
         var session = p.sessions[display.session]
