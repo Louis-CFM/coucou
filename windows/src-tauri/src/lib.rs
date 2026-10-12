@@ -274,10 +274,30 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
     #[cfg(windows)]
     {
-        if platform::focus_session_window(&owners, &folder) {
-            return true;
-        }
-        open_in_vscode(path)
+        // The tab, when the session's terminal has tabs; else the window of the
+        // process. UI Automation can take a while, so never on the UI thread a
+        // sync command runs on: VS Code still opens when nothing could be
+        // brought forward.
+        let tab = session_id.as_deref().and_then(session_window::tab_of);
+        std::thread::spawn(move || {
+            let by_tab = tab.as_ref().is_some_and(platform::focus_session_tab);
+            let brought = by_tab || platform::focus_session_window(&owners, &folder);
+            log::line(format!(
+                "terminal: open session {} — window of {} folder {folder:?}, tab {}: {}",
+                session_id.as_deref().map(|s| &s[..s.len().min(8)]).unwrap_or(""),
+                platform::describe_processes(&owners),
+                match (&tab, by_tab) {
+                    (None, _) => "unknown",
+                    (Some(_), true) => "selected",
+                    (Some(_), false) => "not found",
+                },
+                if brought { "brought forward" } else { "not brought forward, VS Code opens" },
+            ));
+            if !brought {
+                open_in_vscode(path);
+            }
+        });
+        true
     }
     // Linux asks the display server, KWin or the terminal, which can take a
     // moment: never on the UI thread a sync command runs on. VS Code still

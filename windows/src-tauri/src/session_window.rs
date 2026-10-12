@@ -152,6 +152,87 @@ pub fn folder_name(path: &str) -> &str {
     path.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or_default()
 }
 
+// ── What the relay sent about its own parents ─────────────────────────────────
+
+/// The relay's chain from the payload (`coucou_procs`: `[[pid, parent, exe], …]`,
+/// the relay first), as the process table `ancestors` walks. The relay takes it
+/// while it is alive: by the time the event is handled it has usually gone, and
+/// a snapshot taken here would find nothing. None for an older relay, or when
+/// the field is not what it should be (it comes from a local program, but is
+/// still read as untrusted).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn procs_from_payload(payload: &serde_json::Value) -> Option<(u32, HashMap<u32, Proc>)> {
+    let rows = payload.get("coucou_procs")?.as_array()?;
+    if rows.is_empty() || rows.len() > 64 {
+        return None;
+    }
+    let mut procs = HashMap::new();
+    let mut first = None;
+    for row in rows {
+        let row = row.as_array()?;
+        let pid = u32::try_from(row.first()?.as_u64()?).ok()?;
+        let parent = u32::try_from(row.get(1)?.as_u64()?).ok()?;
+        let exe = row.get(2)?.as_str()?;
+        if exe.len() > 260 {
+            return None;
+        }
+        first.get_or_insert(pid);
+        procs.insert(pid, Proc { parent, exe: exe.to_string() });
+    }
+    first.map(|start| (start, procs))
+}
+
+/// The window in front when the relay started (`coucou_foreground`: `[pid,
+/// hwnd]`): the process that owns it, and the window.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn foreground_from_payload(payload: &serde_json::Value) -> Option<(u32, isize)> {
+    let pair = payload.get("coucou_foreground")?.as_array()?;
+    let pid = u32::try_from(pair.first()?.as_u64()?).ok()?;
+    let hwnd = isize::try_from(pair.get(1)?.as_i64()?).ok()?;
+    (pid != 0 && hwnd != 0).then_some((pid, hwnd))
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+/// The tab a session is in, inside a terminal window that has tabs (Windows
+/// Terminal): the window, the tab's UI Automation runtime ID — which names it for
+/// as long as it lives — and its title, for when the ID no longer matches.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub struct TabRef {
+    pub hwnd: isize,
+    pub runtime_id: Vec<i32>,
+    pub title: String,
+}
+
+/// A tab's title without the state glyph Claude Code puts in front of it (✳, a
+/// spinner…), which changes while the title does not.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn strip_glyph(title: &str) -> &str {
+    title.trim_start_matches(|c: char| !c.is_alphanumeric())
+}
+
+/// Which of a window's tabs is the one remembered: by runtime ID; failing that,
+/// by title, but only when that names exactly one tab (two tabs called `claude`
+/// would be a guess).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn pick_tab(tabs: &[(Vec<i32>, String)], wanted: &TabRef) -> Option<usize> {
+    if !wanted.runtime_id.is_empty() {
+        if let Some(i) = tabs.iter().position(|(id, _)| *id == wanted.runtime_id) {
+            return Some(i);
+        }
+    }
+    let title = strip_glyph(&wanted.title);
+    if title.is_empty() {
+        return None;
+    }
+    let mut named = tabs.iter().enumerate().filter(|(_, (_, name))| strip_glyph(name) == title);
+    match (named.next(), named.next()) {
+        (Some((i, _)), None) => Some(i),
+        _ => None,
+    }
+}
+
 // ── Sessions seen so far ──────────────────────────────────────────────────────
 
 /// Session ID → the processes that may own its window, nearest first: the one
@@ -194,6 +275,30 @@ pub fn lookup(session: &str) -> Option<Vec<u32>> {
 
 pub fn forget(session: &str) {
     SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+    TABS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+}
+
+/// Session ID → its tab. Kept apart from `SESSIONS`: it is looked at again at
+/// every prompt (the tab may have been moved or recreated), the window is not.
+#[cfg_attr(not(windows), allow(dead_code))]
+static TABS: Mutex<Vec<(String, TabRef)>> = Mutex::new(Vec::new());
+
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn remember_tab(session: &str, tab: TabRef) {
+    if !valid_session(session) {
+        return;
+    }
+    let mut list = TABS.lock().unwrap_or_else(|e| e.into_inner());
+    list.retain(|(s, _)| s != session);
+    list.push((session.to_string(), tab));
+    let excess = list.len().saturating_sub(MAX_SESSIONS);
+    list.drain(..excess);
+}
+
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn tab_of(session: &str) -> Option<TabRef> {
+    let list = TABS.lock().unwrap_or_else(|e| e.into_inner());
+    list.iter().find(|(s, _)| s == session).map(|(_, tab)| tab.clone())
 }
 
 #[cfg(test)]
@@ -205,6 +310,81 @@ mod tests {
             .iter()
             .map(|(pid, parent, exe)| (*pid, Proc { parent: *parent, exe: exe.to_string() }))
             .collect()
+    }
+
+    #[test]
+    fn the_relays_own_chain_becomes_a_process_table() {
+        use serde_json::json;
+        let payload = json!({ "coucou_procs": [
+            [600, 500, "coucou-hook.exe"], [500, 300, "wsl.exe"], [300, 200, "wsl.exe"],
+            [200, 100, "WindowsTerminal.exe"], [100, 4, "explorer.exe"], [4, 0, "System"],
+        ]});
+        let (start, procs) = procs_from_payload(&payload).unwrap();
+        assert_eq!(start, 600);
+        // Walked like a live snapshot: up to the terminal, not into the desktop.
+        assert_eq!(ancestors_below(&procs, start, WINDOWS_TREE_TOPS), [500, 300, 200]);
+        assert_eq!(window_owner(&procs, start, |pid| pid == 200), Some(200));
+        // Absent, empty or malformed: nothing, so the live snapshot is tried.
+        assert!(procs_from_payload(&json!({})).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [] })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": "x" })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [[1, 2]] })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [[-1, 2, "a"]] })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [[1, 2, "a".repeat(300)]] })).is_none());
+        let many: Vec<_> = (1..80).map(|i| json!([i, i + 1, "x.exe"])).collect();
+        assert!(procs_from_payload(&json!({ "coucou_procs": many })).is_none());
+    }
+
+    #[test]
+    fn the_window_in_front_is_read_from_the_payload() {
+        use serde_json::json;
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [200, 853906] })), Some((200, 853906)));
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [0, 853906] })), None);
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [200, 0] })), None);
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [200] })), None);
+        assert_eq!(foreground_from_payload(&json!({})), None);
+    }
+
+    #[test]
+    fn the_state_glyph_in_a_tab_title_is_ignored() {
+        assert_eq!(strip_glyph("✳ Claude Code"), "Claude Code");
+        assert_eq!(strip_glyph("⠂ coucou"), "coucou");
+        assert_eq!(strip_glyph("Ubuntu"), "Ubuntu");
+        assert_eq!(strip_glyph("✳"), "");
+    }
+
+    #[test]
+    fn a_tab_is_found_by_its_id_or_by_a_title_that_is_its_alone() {
+        let tabs = vec![
+            (vec![42, 7, 1], "✳ coucou".to_string()),
+            (vec![42, 7, 2], "pulse".to_string()),
+            (vec![42, 7, 3], "pulse".to_string()),
+        ];
+        let tab = |id: Vec<i32>, title: &str| TabRef { hwnd: 1, runtime_id: id, title: title.into() };
+        // The ID wins, even when the title has changed.
+        assert_eq!(pick_tab(&tabs, &tab(vec![42, 7, 2], "something else")), Some(1));
+        // The ID is gone (tab recreated): the title, glyph or not, if it is unique.
+        assert_eq!(pick_tab(&tabs, &tab(vec![42, 9, 9], "⠂ coucou")), Some(0));
+        // Two tabs with that title, or none: no guess.
+        assert_eq!(pick_tab(&tabs, &tab(vec![42, 9, 9], "pulse")), None);
+        assert_eq!(pick_tab(&tabs, &tab(vec![], "nothing")), None);
+        assert_eq!(pick_tab(&tabs, &tab(vec![], "")), None);
+        assert_eq!(pick_tab(&[], &tab(vec![1], "a")), None);
+    }
+
+    #[test]
+    fn a_session_keeps_its_tab_until_it_ends() {
+        let tab = TabRef { hwnd: 5, runtime_id: vec![1, 2], title: "x".into() };
+        remember_tab("tab-session-1", tab.clone());
+        assert_eq!(tab_of("tab-session-1"), Some(tab.clone()));
+        let moved = TabRef { runtime_id: vec![3], ..tab };
+        remember_tab("tab-session-1", moved.clone());
+        assert_eq!(tab_of("tab-session-1"), Some(moved));
+        forget("tab-session-1");
+        assert_eq!(tab_of("tab-session-1"), None);
+        // Nothing valid to key on, nothing kept.
+        remember_tab("bad id!", TabRef { hwnd: 1, runtime_id: vec![], title: String::new() });
+        assert_eq!(tab_of("bad id!"), None);
     }
 
     #[test]
