@@ -720,7 +720,6 @@ final class AppState: ObservableObject {
             tasks.removeAll { $0.id == id }
             if focusId == id { focusId = mainPillId }
         } else {
-            guard activeIntegrations.count < 4 else { return }
             activeIntegrations.insert(id)
             if let def = PillCatalog.available.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {
@@ -735,6 +734,22 @@ final class AppState: ObservableObject {
 
     /// Sort tasks so catalog pills are in catalog order, undeclared pills sit right after
     /// integration_claude (matching HookServer insertion behaviour), and the rest follows.
+    /// The pills that are not in front, the ones with something going on first:
+    /// an alert, then a running session, then the rest in catalog order.
+    var othersByActivity: [AgentTask] {
+        func rank(_ t: AgentTask) -> Int {
+            if t.pillBadge != nil { return 0 }
+            switch t.state {
+            case .approval, .question, .error: return 0
+            case .working, .thinking, .searching: return 1
+            default: return 2
+            }
+        }
+        return tasks.filter { $0.id != focusId }.enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element)
+    }
+
     private func sortTasksByCatalog() {
         let order = PillCatalog.available.enumerated()
             .reduce(into: [String: Int]()) { $0[$1.element.id] = $1.offset }

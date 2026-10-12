@@ -13,7 +13,7 @@ import {
 import { DEFAULT_MOCHI_NAMES, DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
@@ -541,7 +541,6 @@ function phoneCompanionSection(): HTMLElement {
  * want as pills. Services are declared in Integrations below, next to their keys.
  */
 function activePillsSection(connected: Record<string, boolean>): HTMLElement {
-  const slots = h("div", { class: "hint" });
   const main = h("select", {}) as HTMLSelectElement;
   for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
   main.addEventListener("change", () => {
@@ -565,8 +564,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   function row(def: PillDefinition): HTMLElement {
     const isMain = def.id === settings.mainPill;
     const on = settings.activeIntegrations.includes(def.id);
-    const full = !isMain && !on && settings.activeIntegrations.length >= MAX_ACTIVE;
-    const el = h("div", { class: full ? "pill-row full" : "pill-row" },
+    const el = h("div", { class: "pill-row" },
       colorDot(def, "width:10px;height:10px", () => settings.pillColors, pickColor),
       h("span", { class: "name", text: def.name }),
     );
@@ -577,7 +575,6 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     const why = hint(def);
     el.append(h("span", { class: "state", text: why ?? "" }));
     const sw = h("button", { class: on ? "switch on" : "switch" }) as HTMLButtonElement;
-    sw.disabled = full;
     sw.addEventListener("click", () => {
       const next = toggleDeclared(settings, def.id);
       if (!next) return;
@@ -589,9 +586,6 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   }
 
   function draw() {
-    const used = settings.activeIntegrations.length;
-    slots.textContent = t("{used}/{max} slots in use — the main tool doesn't take one.", { used, max: MAX_ACTIVE });
-    slots.classList.toggle("full", used >= MAX_ACTIVE);
     main.value = settings.mainPill;
     clear(groups);
     for (const cat of PILL_CATEGORIES) {
@@ -609,7 +603,6 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     {},
     h("h2", {}, h("span", { text: t("Active pills") })),
     h("div", { class: "hint", text: t("Choose the tools you use. Coucou only shows what you declare here.") }),
-    slots,
     h("div", { class: "row" }, h("label", { text: t("Main tool") }), main),
     groups,
   );
@@ -1030,7 +1023,6 @@ const INTEGRATIONS: IntegrationDef[] = [
     hint: "Shows what plays in Spotify, Apple Music, YouTube Music or any other player in the Windows media controls, with play, pause and skip. Mochi dances to music, not to videos." },
 ];
 
-const MAX_ACTIVE = MAX_DECLARED;
 
 /** Everything that shows the declared pills, redrawn when any of them changes. */
 const declaredViews: (() => void)[] = [];
@@ -1044,11 +1036,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
   const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
 
-  function updateNote() {
-    const used = settings.activeIntegrations.length;
-    note.textContent = t("Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE });
-  }
-  declaredViews.push(updateNote);
+  note.textContent = t("Keys are stored in the {store}, never on disk.", { store: KEY_STORE });
 
   const offered = new Set(availablePills().map((p) => p.id));
   for (const def of INTEGRATIONS.filter((d) => offered.has(d.id))) {
@@ -1059,7 +1047,6 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       if (on) {
         settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
       } else {
-        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);
@@ -1131,7 +1118,6 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     );
   }
 
-  updateNote();
   return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
 }
 

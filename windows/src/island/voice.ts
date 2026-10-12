@@ -4,7 +4,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { Bridge, IS_TAURI, onEvent } from "../core/bridge";
-import { MAX_DECLARED, availablePills, chooseMainPill, pillDefinition, sanitizeDeclared, toggleDeclared } from "../core/pills";
+import { availablePills, chooseMainPill, pillDefinition, sanitizeDeclared, toggleDeclared } from "../core/pills";
 import { Spotify } from "../core/spotify";
 import { State } from "../core/state";
 import { serviceCards } from "./phone-services";
@@ -37,7 +37,7 @@ function describe(): string {
   return JSON.stringify({
     main: name(d.mainPill),
     shown: d.activeIntegrations.map(name),
-    maxBesidesMain: MAX_DECLARED,
+    maxBesidesMain: null,
     available: all,
   });
 }
@@ -74,7 +74,7 @@ function pills(input: Ask["input"]): string {
     }
     const next = toggleDeclared(d, id, State.os);
     if (!next) {
-      failed.push(action === "add" ? `${label}: already ${MAX_DECLARED} pills, remove one first` : `${label}: the main pill cannot be removed`);
+      failed.push(`${label}: the main pill cannot be removed`);
       continue;
     }
     State.settings.activeIntegrations = next;

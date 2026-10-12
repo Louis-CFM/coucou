@@ -541,10 +541,6 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                Text(String(format: String(localized: "settings.slots-used %lld"), Int64(state.activeIntegrations.count)))
-                    .font(.system(size: 11))
-                    .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
-
                 Picker(String(localized: "settings.main-pill"), selection: $state.mainPillId) {
                     ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
                         Text(def.name).tag(def.id)
@@ -2160,7 +2156,6 @@ struct SettingsView: View {
     private func pillRow(_ def: PillDefinition) -> some View {
         let isMain = def.id == state.mainPillId
         let isOn   = state.activeIntegrations.contains(def.id)
-        let atMax  = state.activeIntegrations.count >= 4 && !isOn && !isMain
         let hint: String? = {
             if isMain { return nil }
             if def.comingSoon { return String(localized: "Coming soon") }
@@ -2214,7 +2209,7 @@ struct SettingsView: View {
             }
             Text(def.name)
                 .font(.system(size: 12))
-                .foregroundColor(atMax ? .secondary : .primary)
+                .foregroundColor(.primary)
             Spacer()
             if isMain {
                 Text("Main")
@@ -2231,7 +2226,6 @@ struct SettingsView: View {
                     set: { _ in state.toggleIntegration(def.id) }
                 ))
                 .labelsHidden()
-                .disabled(atMax)
             }
         }
     }

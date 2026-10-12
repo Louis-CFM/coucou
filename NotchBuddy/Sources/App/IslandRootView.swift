@@ -710,7 +710,7 @@ struct CompactMiniGrid: View {
     @ObservedObject var state: AppState
 
     private var others: [AgentTask] {
-        Array(state.tasks.filter { $0.id != state.focusId }.prefix(4))
+        Array(state.othersByActivity.prefix(4))
     }
 
     var body: some View {
