@@ -131,14 +131,15 @@ enum LocalSSH {
     }
 
     /// Of the ssh processes to a host, with their remote commands: the one running
-    /// the session's tmux session, else the newest.
-    static func pick(_ found: [(Proc, String)], tmux: String) -> Proc? {
-        func namesTmux(_ command: String) -> Bool {
-            !tmux.isEmpty && command.split(whereSeparator: { !($0.isASCII && ($0.isLetter || $0.isNumber) || "._-".contains($0)) })
+    /// the session's tmux session, by its command or its terminal title (`titles` by tty), else the newest.
+    static func pick(_ found: [(Proc, String)], tmux: String, titles: [String: String] = [:]) -> Proc? {
+        func namesTmux(_ text: String) -> Bool {
+            !tmux.isEmpty && text.split(whereSeparator: { !($0.isASCII && ($0.isLetter || $0.isNumber) || "._-".contains($0)) })
                 .contains { $0 == tmux }
         }
+        func runsTmux(_ f: (Proc, String)) -> Bool { namesTmux(f.1) || namesTmux(titles[f.0.tty] ?? "") }
         return found.max { a, b in
-            let (ta, tb) = (namesTmux(a.1), namesTmux(b.1))
+            let (ta, tb) = (runsTmux(a), runsTmux(b))
             return ta != tb ? !ta : a.0.age > b.0.age
         }?.0
     }
@@ -240,7 +241,7 @@ enum LocalSSH {
 
     /// Our processes, and among them the ssh or mosh to `host` on a terminal to bring forward,
     /// Coucou's own left out. nil when there is none.
-    static func find(host: String, tmux: String) -> (ssh: Proc, all: [Proc])? {
+    static func find(host: String, tmux: String, titles: [String: String] = [:]) -> (ssh: Proc, all: [Proc])? {
         guard let want = destination(host) else { return nil }
         let all = ownProcesses()
         let me = ProcessInfo.processInfo.processIdentifier
@@ -250,7 +251,7 @@ enum LocalSSH {
             guard let c = p.name == "ssh" ? call(args) : moshCall(args), same(c.0, want) else { return nil }
             return (p, c.1)
         }
-        guard let ssh = pick(found, tmux: tmux) else { return nil }
+        guard let ssh = pick(found, tmux: tmux, titles: titles) else { return nil }
         return (ssh, all)
     }
 

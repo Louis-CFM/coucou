@@ -61,6 +61,10 @@ struct LocalSSHTests {
         check(LocalSSH.pick(found, tmux: "work-2")?.pid == 12, "the ssh on the session's tmux wins")
         check(LocalSSH.pick(found, tmux: "")?.pid == 11, "else the newest")
         check(LocalSSH.pick([], tmux: "x") == nil, "none")
+        let panes = [(LocalSSH.Proc(pid: 20, ppid: 1, tty: "/dev/ttys005", age: 900, name: "ssh"), ""),
+                     (LocalSSH.Proc(pid: 21, ppid: 1, tty: "/dev/ttys007", age: 5, name: "ssh"), "")]
+        check(LocalSSH.pick(panes, tmux: "work-2", titles: ["/dev/ttys005": "work-2 · claude"])?.pid == 20,
+              "or the one whose terminal title names it")
 
         let ps = """
               812     1 ??        3-01:02:03 launchd

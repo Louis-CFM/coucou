@@ -91,6 +91,21 @@ enum TerminalTarget {
 
     static let weztermId = "com.github.wez.wezterm"
 
+    /// Every WezTerm pane's title by its tty, from `wezterm cli list --format json`.
+    static func weztermTitles(listing: String) -> [String: String] {
+        guard let panes = try? JSONSerialization.jsonObject(with: Data(listing.utf8)) as? [[String: Any]] else { return [:] }
+        var titles: [String: String] = [:]
+        for pane in panes {
+            if let tty = pane["tty_name"] as? String, let title = pane["title"] as? String { titles[tty] = title }
+        }
+        return titles
+    }
+
+    static func weztermTitles(cli: String) -> [String: String] {
+        guard FileManager.default.isExecutableFile(atPath: cli) else { return [:] }
+        return weztermTitles(listing: run(cli, ["cli", "list", "--format", "json"]))
+    }
+
     /// The WezTerm pane on `tty` and its title, from `wezterm cli list --format json`.
     static func weztermPane(tty: String, listing: String) -> (id: Int, title: String)? {
         guard let panes = try? JSONSerialization.jsonObject(with: Data(listing.utf8)) as? [[String: Any]],

@@ -550,10 +550,14 @@ enum RemoteTerminal {
         guard let place = places[pillId],
               let cmd = command(host: place.host, cwd: place.cwd, tmux: place.tmux) else { return false }
         let (host, tmux, local) = (place.host, place.tmux, place.local)
+        // Several ssh to one host with tmux attached after login: the pane title names the tmux session.
+        let wezterm = NSRunningApplication.runningApplications(withBundleIdentifier: TerminalTarget.weztermId).first?
+            .bundleURL?.appendingPathComponent("Contents/MacOS/wezterm").path
         Task.detached {
+            let titles = wezterm.map { TerminalTarget.weztermTitles(cli: $0) } ?? [:]
             let here = local.flatMap { LocalSSH.process(pid: $0.pid, start: $0.start) }
                 .map { (tty: $0.proc.tty, owners: owners(of: $0.proc, in: $0.all)) }
-            let found = LocalSSH.find(host: host, tmux: tmux).map { (tty: $0.ssh.tty, owners: owners(of: $0.ssh, in: $0.all)) }
+            let found = LocalSSH.find(host: host, tmux: tmux, titles: titles).map { (tty: $0.ssh.tty, owners: owners(of: $0.ssh, in: $0.all)) }
             await MainActor.run {
                 if let here, bringForward(here.owners, tty: here.tty) { return }
                 if let found, bringForward(found.owners, tty: found.tty) { return }
