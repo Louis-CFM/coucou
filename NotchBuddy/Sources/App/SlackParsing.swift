@@ -153,6 +153,17 @@ enum SlackParsing {
         }
     }
 
+    /// conversations.info: the newest message the user has read there; nil without access.
+    static func lastRead(_ json: [String: Any]) -> String? {
+        guard json["ok"] as? Bool == true else { return nil }
+        return (json["channel"] as? [String: Any])?["last_read"] as? String
+    }
+
+    /// Mentions newer than what the user has read in their channel; kept when that is unknown.
+    static func unreadMentions(_ mentions: [SlackMessage], lastRead: [String: String]) -> [SlackMessage] {
+        mentions.filter { m in lastRead[m.channelId].map { tsLess($0, m.ts) } ?? true }
+    }
+
     /// users.info: the display name, else the real name, else the username.
     static func userName(_ json: [String: Any]) -> String? {
         guard let user = json["user"] as? [String: Any] else { return nil }

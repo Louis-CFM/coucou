@@ -215,6 +215,7 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
    - `im:read` : liste des messages directs et leur nombre de non-lus (`conversations.list`, `conversations.info`) ;
    - `users:read` : nom des personnes (`users.info`) ;
    - `search:read` : mentions récentes (`search.messages`).
+   - facultatif, `channels:read`, `groups:read`, `mpim:read` : ce qui a déjà été lu dans les canaux (`conversations.info`), pour n'afficher que les mentions non lues. Sans eux, toutes les mentions des dernières 24 h restent.
 3. **Install to Workspace**, autoriser, copier le **User OAuth Token** (`xoxp-…`).
 4. Coucou : Réglages → Integrations → Slack, coller le token, enregistrer. Déclarer la pastille Slack dans Active pills.
 
@@ -230,6 +231,7 @@ Un poll par minute, **uniquement si la pastille Slack est déclarée** (et rien 
 | `conversations.list?types=im` | toutes les 10 min, `limit=200`, sans les archivés | Tier 2 (20+/min) |
 | `conversations.info` | 15 messages directs par poll (les plus proches selon `priority`) + ceux non lus au poll précédent | Tier 3 (50+/min) |
 | `search.messages` `query=<@MOI>`, tri par date | 1 par poll, 20 résultats | Tier 2 (20+/min) |
+| `conversations.info` | 1 par canal où l'on est mentionné, pour son `last_read` | Tier 3 (50+/min) |
 | `users.info` | une fois par personne, gardé en cache | Tier 4 (100+/min) |
 
 HTTP 429 : on respecte `Retry-After` (60 s par défaut) avant toute nouvelle requête.
@@ -240,7 +242,7 @@ HTTP 429 : on respecte `Retry-After` (60 s par défaut) avant toute nouvelle req
 
 ### Affichage
 
-- Carte : « Slack · Messages », compteurs non-lus (bulle) et mentions (`@`), puis 3 lignes : messages directs non lus d'abord, puis mentions des dernières 24 h, chacun du plus récent au plus ancien. Ligne = auteur (ou `auteur · #canal`), extrait du texte (balises `<@U…>`, `<#C…|nom>`, `<url|texte>` rendues lisibles), âge.
+- Carte : « Slack · Messages », compteurs non-lus (bulle) et mentions (`@`), puis 3 lignes : messages directs non lus d'abord, puis mentions non lues des dernières 24 h (plus récentes que le `last_read` du canal), chacun du plus récent au plus ancien. Ligne = auteur (ou `auteur · #canal`), extrait du texte (balises `<@U…>`, `<#C…|nom>`, `<url|texte>` rendues lisibles), âge.
 - Clic sur une ligne : `slack://channel?team=T…&id=C…` si une app gère `slack://` (macOS `urlForApplication(toOpen:)`, Linux `xdg-mime query default x-scheme-handler/slack`, Windows clé `HKCR\slack`), sinon le permalien `https` du message (mentions) ou `https://slack.com/app_redirect?channel=…&team=…` (doc : https://docs.slack.dev/interactivity/deep-linking).
 - Bouton ↗ : `slack://open`, sinon l'URL de l'espace renvoyée par `auth.test`.
 

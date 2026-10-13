@@ -134,7 +134,14 @@ final class SlackPoller {
     private func recentMentions(me: SlackIdentity) async throws -> [SlackMessage] {
         let json = try await call("search.messages", ["query": "<@\(me.userId)>", "sort": "timestamp",
                                                       "sort_dir": "desc", "count": "20"])
-        return SlackParsing.mentions(json, me: me.userId)
+        let found = SlackParsing.mentions(json, me: me.userId)
+        var lastRead: [String: String] = [:]
+        for channel in Set(found.map(\.channelId)) {
+            if let read = SlackParsing.lastRead(try await send("conversations.info", ["channel": channel])) {
+                lastRead[channel] = read
+            }
+        }
+        return SlackParsing.unreadMentions(found, lastRead: lastRead)
     }
 
     private func resolveNames(for ids: [String]) async throws {

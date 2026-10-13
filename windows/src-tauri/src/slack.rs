@@ -203,6 +203,22 @@ pub fn parse_mentions(json: &Value, me: &str, now_secs: f64) -> Vec<Message> {
         .collect()
 }
 
+/// conversations.info: the newest message the user has read there; None without access.
+pub fn parse_last_read(json: &Value) -> Option<String> {
+    if json.get("ok").and_then(Value::as_bool) != Some(true) {
+        return None;
+    }
+    json.pointer("/channel/last_read").and_then(Value::as_str).map(str::to_string)
+}
+
+/// Mentions newer than what the user has read in their channel; kept when that is unknown.
+pub fn unread_mentions(mentions: Vec<Message>, last_read: &HashMap<String, String>) -> Vec<Message> {
+    mentions
+        .into_iter()
+        .filter(|m| last_read.get(&m.channel_id).is_none_or(|read| ts_less(read, &m.ts)))
+        .collect()
+}
+
 /// users.info: the display name, else the real name, else the username.
 pub fn parse_user_name(json: &Value) -> Option<String> {
     let user = json.get("user")?;
@@ -439,7 +455,14 @@ async fn fetch(token: &str) -> Result<(Identity, Vec<Message>, i64, usize), Fail
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs_f64())
         .unwrap_or(0.0);
-    let mentions = parse_mentions(&json, me, now);
+    let found = parse_mentions(&json, me, now);
+    let mut last_read = HashMap::new();
+    for channel in found.iter().map(|m| m.channel_id.clone()).collect::<HashSet<_>>() {
+        if let Some(read) = parse_last_read(&send(token, "conversations.info", &[("channel", &channel)]).await?) {
+            last_read.insert(channel, read);
+        }
+    }
+    let mentions = unread_mentions(found, &last_read);
 
     let mut wanted: HashSet<String> = dms.iter().chain(&mentions).map(|m| m.user_id.clone()).collect();
     wanted.insert(identity.user_id.clone());
@@ -643,6 +666,14 @@ mod tests {
         assert_eq!(mentions.len(), 1);
         assert_eq!(mentions[0].author, "egon");
         assert_eq!(mentions[0].channel_name.as_deref(), Some("general"));
+
+        let read = parse_last_read(&json!({ "ok": true, "channel": { "id": "C12345678", "last_read": "1699999000.000100" } }));
+        assert_eq!(read.as_deref(), Some("1699999000.000100"));
+        assert_eq!(parse_last_read(&json!({ "ok": false, "error": "missing_scope" })), None);
+        let at = |ts: &str| HashMap::from([("C12345678".to_string(), ts.to_string())]);
+        assert!(unread_mentions(mentions.clone(), &at("1699999000.000100")).is_empty());
+        assert_eq!(unread_mentions(mentions.clone(), &at("1699999000.000099")).len(), 1);
+        assert_eq!(unread_mentions(mentions, &HashMap::new()).len(), 1);
     }
 
     #[test]

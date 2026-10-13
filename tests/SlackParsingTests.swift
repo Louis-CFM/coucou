@@ -79,6 +79,13 @@ enum SlackParsingTests {
         precondition(mentions[0].author == "egon" && mentions[0].channelName == "general")
         precondition(mentions[0].permalink?.hasPrefix("https://hitchhikers.slack.com/") == true)
 
+        // conversations.info last_read: only mentions newer than it stay
+        precondition(SlackParsing.lastRead(json(#"{"ok":true,"channel":{"id":"C1","last_read":"1699999000.000100"}}"#)) == "1699999000.000100")
+        precondition(SlackParsing.lastRead(json(#"{"ok":false,"error":"missing_scope"}"#)) == nil)
+        precondition(SlackParsing.unreadMentions(mentions, lastRead: ["C12345678": "1699999000.000100"]).isEmpty)
+        precondition(SlackParsing.unreadMentions(mentions, lastRead: ["C12345678": "1699999000.000099"]).count == 1)
+        precondition(SlackParsing.unreadMentions(mentions, lastRead: [:]).count == 1)
+
         // users.info: display name, falling back to the real name
         precondition(SlackParsing.userName(json(#"""
         {"ok":true,"user":{"id":"W1","name":"spengler","real_name":"Egon Spengler",
