@@ -19,7 +19,7 @@
 // Version stamp — the Tauri installer compares this to detect outdated copies.
 // Bump on any protocol change.
 // COUCOU_PLUGIN_VERSION is matched by src-tauri/src/opencode.rs (do not rename).
-const COUCOU_PLUGIN_VERSION = 1;
+const COUCOU_PLUGIN_VERSION = 2;
 
 // ── Relay resolution ──────────────────────────────────────────────────────────
 
@@ -99,6 +99,25 @@ function sessionIdOf(input, fallback) {
   );
 }
 
+/**
+ * The best one-line summary a lifecycle event can give, or `{}` when it has
+ * none.
+ *
+ * `pick` only yields strings and numbers, so an error object has to be
+ * unwrapped by hand: the SDK puts the human-readable text on
+ * `error.data.message`, never on `error` itself, so `pick(props, ["error"])`
+ * returns "" and the failure reaches the island with no explanation.
+ */
+function eventMessage(props) {
+  const err = props.error;
+  if (err && typeof err === "object") {
+    const text = pick(err, ["data.message", "message"]);
+    if (text) return { message: text };
+  }
+  const message = pick(props, ["message", "summary", "title", "error.message"]);
+  return message ? { message } : {};
+}
+
 // ── Decision translation ─────────────────────────────────────────────────────
 
 /**
@@ -129,34 +148,55 @@ export const CoucouPlugin = async ({ $, directory }) => {
   /** Base payload shared by every event. */
   const base = (extra = {}) => ({ cwd, ...extra });
 
+  // Session and permission lifecycle events are NOT hook keys. opencode only
+  // invokes the keys declared in the Hooks interface — `tool.execute.*`,
+  // `chat.*`, `permission.ask`, `command.execute.before`, `shell.env` and the
+  // rest. Everything else arrives through the single `event` hook and has to be
+  // dispatched here by `event.type`. Registering `session.created` and friends
+  // as top-level keys looks right and is silently never called.
+  const EVENT_MAP = {
+    "session.created": "SessionStart",
+    "session.idle": "Stop",
+    "session.error": "StopFailure",
+    "session.deleted": "SessionEnd",
+  };
+
   return {
-    // ── Sessions ────────────────────────────────────────────────────────────
-    "session.created": async (input) => {
-      fireAndForget("SessionStart", base({ session_id: sessionIdOf(input, "") }), $);
-    },
-    "session.idle": async (input) => {
-      const message = pick(input, ["message", "summary", "title"]);
-      fireAndForget("Stop", base({ session_id: sessionIdOf(input, ""), message }), $);
-    },
-    "session.error": async (input) => {
-      const message = pick(input, ["error.message", "message", "error"]);
-      fireAndForget("StopFailure", base({ session_id: sessionIdOf(input, ""), message }), $);
-    },
-    "session.deleted": async (input) => {
-      fireAndForget("SessionEnd", base({ session_id: sessionIdOf(input, "") }), $);
+    // ── Lifecycle, via the one hook that actually fires ─────────────────────
+    event: async ({ event }) => {
+      const props = event.properties || {};
+      const info = props.info || {};
+      const session_id = sessionIdOf(props, "") || sessionIdOf(info, "");
+
+      const name = EVENT_MAP[event.type];
+      if (name) {
+        fireAndForget(name, base({ session_id, ...eventMessage(props) }), $);
+        return;
+      }
+
+      // The user answered in the TUI (island unreachable or too slow):
+      // clear a stale approval card so it stops lying.
+      if (event.type === "permission.replied") {
+        fireAndForget("PostToolUse", base({ session_id }), $);
+      }
     },
 
-    // User prompt submitted in a session → thinking state + step line.
-    "message.updated": async (input) => {
-      const role = pick(input, ["message.role", "role"]);
-      if (role && role !== "user") return;
-      const prompt = pick(input, ["message.content", "message.text", "content", "text", "prompt"]);
-      if (!prompt) return;
-      fireAndForget(
-        "UserPromptSubmit",
-        base({ session_id: sessionIdOf(input, ""), prompt: prompt.slice(0, 2000) }),
-        $,
-      );
+    // The prompt text is not on the message. `UserMessage` carries only
+    // role/agent/model — the text lives in its parts. `message.updated` hands
+    // over `properties.info`, a Message, so reading text off it finds nothing
+    // and that event could never have carried a prompt. `chat.message` is the
+    // hook that is given the parts.
+    "chat.message": async (input, output) => {
+      const parts = Array.isArray(output?.parts) ? output.parts : [];
+      const text = parts
+        .filter((p) => p && p.type === "text" && typeof p.text === "string" && p.text)
+        .map((p) => p.text)
+        .join("\n")
+        .trim();
+      if (!text) return;
+      const session_id =
+        pick(input, ["sessionID"]) || pick(output?.message || {}, ["id"]) || "";
+      fireAndForget("UserPromptSubmit", base({ session_id, prompt: text.slice(0, 2000) }), $);
     },
 
     // ── Tools ───────────────────────────────────────────────────────────────
@@ -193,7 +233,9 @@ export const CoucouPlugin = async ({ $, directory }) => {
     },
 
     // ── Permission (the only blocking hook) ─────────────────────────────────
-    "permission.asked": async (input, output) => {
+    // The key is `permission.ask`, per the Hooks interface — there is no
+    // `permission.asked`. Signature: (input: Permission, output: { status }).
+    "permission.ask": async (input, output) => {
       const tool = pick(input, ["tool", "toolName", "permission", "name"]) || "Tool";
       const args =
         (output && typeof output.args === "object" && output.args) ||
@@ -219,29 +261,18 @@ export const CoucouPlugin = async ({ $, directory }) => {
       // asks in the TUI — exactly the "ask" behaviour.
       if (!decision) return;
 
-      // Try every known resolver shape; unknown shapes are ignored rather
-      // than throwing, because throwing inside a permission hook denies the
-      // tool and must never happen by accident.
+      // The Hooks interface types this as `output.status: "ask" | "deny" |
+      // "allow"` — there is no `decision` or `behavior` field to write. Assign
+      // only that, and only when it is actually present: touching anything else
+      // here risks denying a tool, which must never happen by accident.
       try {
-        if (output && typeof output === "object") {
-          if ("decision" in output || "behavior" in output) {
-            if ("decision" in output) output.decision = decision;
-            if ("behavior" in output) output.behavior = decision;
-            return;
-          }
+        if (output && typeof output === "object" && "status" in output) {
+          output.status = decision;
         }
       } catch { /* notification-only fallback */ }
       // Returning the bare word covers resolvers that use the return value.
       // Resolvers that ignore it simply ask in the TUI — still correct.
       return decision;
-    },
-    "permission.replied": async (input) => {
-      // The user answered in the TUI (island unreachable or too slow):
-      // clear a stale approval card so it stops lying.
-      const replied = pick(input, ["decision", "reply", "behavior"]);
-      if (replied) {
-        fireAndForget("PostToolUse", base({ session_id: sessionIdOf(input, "") }), $);
-      }
     },
   };
 };

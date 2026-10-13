@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn version_parses_from_bundled_source() {
-        assert_eq!(parse_version(BUNDLED), Some(1));
+        assert_eq!(parse_version(BUNDLED), Some(2));
     }
 
     #[test]
@@ -316,6 +316,45 @@ mod tests {
     fn bundled_source_mentions_relay_and_agent() {
         assert!(BUNDLED.contains("coucou-hook.exe"));
         assert!(BUNDLED.contains("\"agent\": \"opencode\""));
-        assert!(BUNDLED.contains("permission.asked"));
+    }
+
+    /// opencode only invokes the keys declared in the plugin `Hooks` interface.
+    /// Session and permission lifecycle events are not among them: they arrive
+    /// through the single `event` hook and have to be dispatched by
+    /// `event.type`. Registering them as top-level keys is accepted silently
+    /// and never called, which is how v1 of this plugin ended up sending only
+    /// `PreToolUse` to the island.
+    #[test]
+    fn bundled_source_registers_only_real_hook_keys() {
+        for key in [
+            "event:",
+            "\"tool.execute.before\"",
+            "\"tool.execute.after\"",
+            "\"permission.ask\"",
+            "\"chat.message\"",
+        ] {
+            assert!(BUNDLED.contains(key), "missing real hook key: {key}");
+        }
+        // The blocking key is `permission.ask`, not `permission.asked`.
+        assert!(!BUNDLED.contains("\"permission.asked\""));
+
+        // These look like hook keys and are not in the Hooks interface. Guard
+        // against a future edit reintroducing them as top-level keys. Matched
+        // in their `: async` form specifically: the same names legitimately
+        // appear as keys of the EVENT_MAP that dispatches them.
+        for key in [
+            "session.created",
+            "session.idle",
+            "session.error",
+            "session.deleted",
+            "message.updated",
+            "permission.replied",
+        ] {
+            let as_hook = format!("\"{key}\": async");
+            assert!(
+                !BUNDLED.contains(&as_hook),
+                "{key} is not a hook key; it must be dispatched from the event hook"
+            );
+        }
     }
 }
