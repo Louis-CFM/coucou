@@ -354,17 +354,6 @@
    "ru": "Спроси меня о чём угодно…",
    "id": "Tanyakan apa saja…"
   },
-  "Assigned to you": {
-   "zh-Hans": "分配给你",
-   "hi": "आपको सौंपे गए",
-   "es": "Asignadas a ti",
-   "ar": "مُسندة إليك",
-   "fr": "Assignées à vous",
-   "bn": "আপনাকে বরাদ্দ",
-   "pt-BR": "Atribuídas a você",
-   "ru": "Назначены вам",
-   "id": "Ditugaskan kepada Anda"
-  },
   "Attach front window": {
    "zh-Hans": "附加前端窗口",
    "hi": "फ्रंट विंडो अटैच करें",

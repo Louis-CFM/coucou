@@ -4,7 +4,7 @@
 // Cal.com is the one simplification: macOS shows a three-level calendar
 // (month → day → booking); here it is the list of upcoming bookings.
 
-import { h, svg, clear, dot, hexColor } from "./dom";
+import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
@@ -364,19 +364,14 @@ function linearRow(url: unknown, glyph: string, key: unknown, title: unknown, wh
   return row;
 }
 
-/** LinearCardView: unread inbox entries first, assigned issues fill the rows left. */
+/** LinearCardView: the newest unread inbox entries. */
 function linearCard(): HTMLElement {
   const unread = arr("integration_linear", "unread");
-  const issues = arr("integration_linear", "assigned").slice(0, Math.max(0, LINEAR_ROWS - unread.length));
   const rows = h("div", { class: "int-rows tight" });
   for (const n of unread.slice(0, LINEAR_ROWS)) {
     rows.append(linearRow(n.url, LINEAR, n.key, n.title, n.createdAt, n.actor));
   }
-  for (const i of issues) {
-    rows.append(linearRow(i.url, hexColor(i.stateColor, "#8E939C"), i.key, i.title, i.updatedAt, i.stateName));
-  }
-  const subtitle = unread.length > 0 ? t("{count} unread", { count: unread.length }) : t("Assigned to you");
-  return h("div", { class: "int-card" }, header(LINEAR, "Linear", subtitle), rows);
+  return h("div", { class: "int-card" }, header(LINEAR, "Linear", t("{count} unread", { count: unread.length })), rows);
 }
 
 /** The workspace's inbox once the first poll knows the workspace. */

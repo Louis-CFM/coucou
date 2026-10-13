@@ -397,11 +397,6 @@ final class DemoEngine: ObservableObject {
                                    title: "Rate limit the export API", url: "https://linear.app/demo/issue/APP-139",
                                    createdAt: now.addingTimeInterval(-5400)),
             ],
-            assigned: [
-                LinearIssue(id: "lin_demo3", key: "APP-131", title: "Dark mode for settings",
-                            url: "https://linear.app/demo/issue/APP-131", stateName: "In Progress",
-                            stateColor: "#F2C94C", updatedAt: now.addingTimeInterval(-86400)),
-            ],
             inboxURL: "https://linear.app/demo/inbox")
 
         // Inject GitHub pill only — rotating 4th integration added per cycle.

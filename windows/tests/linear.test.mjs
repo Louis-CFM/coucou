@@ -20,11 +20,6 @@ const note = (id, key, title) => ({
   id, reason: "mention", actor: "Ana", key, title,
   url: `https://linear.app/acme/issue/${key ?? id}`, createdAt: new Date().toISOString(),
 });
-const issue = (key, title) => ({
-  id: key, key, title, url: `https://linear.app/acme/issue/${key}`, stateName: "In Progress",
-  stateColor: "#F2C94C", updatedAt: new Date().toISOString(),
-});
-
 function load(data) {
   State.integrations[LINEAR] = { data, error: null, loaded: true, configured: true };
 }
@@ -39,10 +34,9 @@ test("no data yet: the idle card, opening linear.app", () => {
   assert.equal(linearInboxUrl(), "https://linear.app");
 });
 
-test("unread entries first, assigned issues fill the three rows", () => {
+test("the three newest unread entries, counted in the subtitle", () => {
   load({
-    unread: [note("n1", "ENG-12", "Fix login")],
-    assigned: [issue("ENG-2", "Newer"), issue("ENG-1", "Older"), issue("ENG-0", "Oldest")],
+    unread: [note("n1", "ENG-12", "Fix login"), note("n2", "ENG-11", "Two"), note("n3", "ENG-10", "Three"), note("n4", "ENG-9", "Four")],
     inboxUrl: "https://linear.app/acme/inbox",
   });
   assert.equal(hasIntegrationData(LINEAR), true);
@@ -50,33 +44,23 @@ test("unread entries first, assigned issues fill the three rows", () => {
   const rows = rowTexts(card);
   assert.equal(rows.length, 3);
   assert.ok(rows[0].startsWith("ENG-12Fix login"));
-  assert.ok(rows[1].startsWith("ENG-2Newer"));
-  assert.ok(rows[2].startsWith("ENG-1Older"));
-  assert.ok(card.textContent.includes("1 unread"));
+  assert.ok(card.textContent.includes("4 unread"));
   assert.equal(linearInboxUrl(), "https://linear.app/acme/inbox");
 });
 
-test("nothing unread: the subtitle says the rows are assigned issues", () => {
-  load({ unread: [], assigned: [issue("ENG-2", "Newer")], inboxUrl: "https://linear.app/acme/inbox" });
+test("nothing unread: no rows, 0 unread", () => {
+  load({ unread: [], inboxUrl: "https://linear.app/acme/inbox" });
   const card = renderIntegrationCard(task, hooks);
-  assert.ok(card.textContent.includes("Assigned to you"));
-  assert.equal(rowTexts(card).length, 1);
+  assert.ok(card.textContent.includes("0 unread"));
+  assert.equal(rowTexts(card).length, 0);
 });
 
 test("a project entry has no key, a row click opens its link", () => {
-  load({ unread: [note("n5", null, "Q4 launch")], assigned: [], inboxUrl: "https://linear.app/acme/inbox" });
+  load({ unread: [note("n5", null, "Q4 launch")], inboxUrl: "https://linear.app/acme/inbox" });
   const card = renderIntegrationCard(task, hooks);
   const [row] = card.find(".int-page");
   assert.equal(row.find(".int-key").length, 0);
   calls.length = 0;
   row.fire("click");
   assert.deepEqual(sent("open_url"), [{ url: "https://linear.app/acme/issue/n5" }]);
-});
-
-test("a state colour that is not a hex colour never reaches the row's style", () => {
-  const bad = { ...issue("ENG-9", "Styled"), stateColor: "#000;position:fixed;inset:0;opacity:0" };
-  load({ unread: [], assigned: [bad], inboxUrl: "https://linear.app/acme/inbox" });
-  const style = renderIntegrationCard(task, hooks).find(".int-page")[0].find(".dot")[0].getAttribute("style");
-  assert.ok(!style.includes("position"), style);
-  assert.ok(style.includes("background:#8E939C"), style);
 });

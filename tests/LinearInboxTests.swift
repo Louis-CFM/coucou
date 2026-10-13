@@ -17,7 +17,7 @@ enum LinearInboxTests {
     static let validJSON: Data = """
     {
       "data": {
-        "notifications": {
+        "newest": {
           "nodes": [
             {"id": "n1", "category": "mentions", "readAt": null, "snoozedUntilAt": null,
              "createdAt": "2026-10-10T11:00:00.000Z", "actor": {"name": "Ana"},
@@ -38,18 +38,14 @@ enum LinearInboxTests {
              "createdAt": "2026-10-07T12:00:00.000Z", "actor": null}
           ]
         },
-        "viewer": {
-          "organization": {"urlKey": "acme"},
-          "assignedIssues": {
-            "nodes": [
-              {"id": "i1", "identifier": "ENG-1", "title": "Older", "url": "https://linear.app/acme/issue/ENG-1",
-               "updatedAt": "2026-10-01T00:00:00.000Z", "state": {"name": "Todo", "color": "#e2e2e2"}},
-              {"id": "i2", "identifier": "ENG-2", "title": "Newer", "url": "https://linear.app/acme/issue/ENG-2",
-               "updatedAt": "2026-10-09T00:00:00.000Z", "state": {"name": "In Progress", "color": "#f2c94c"}},
-              {"id": "bad", "title": "No identifier"}
-            ]
-          }
-        }
+        "oldest": {
+          "nodes": [
+            {"id": "n1", "category": "mentions", "readAt": null, "snoozedUntilAt": null,
+             "createdAt": "2026-10-10T11:00:00.000Z", "actor": {"name": "Ana"},
+             "issue": {"identifier": "ENG-12", "title": "Fix login", "url": "https://linear.app/acme/issue/ENG-12"}}
+          ]
+        },
+        "viewer": {"organization": {"urlKey": "acme"}}
       }
     }
     """.data(using: .utf8)!
@@ -84,10 +80,6 @@ enum LinearInboxTests {
         check("entry without target opens the workspace inbox", n6?.url == "https://linear.app/acme/inbox")
         check("inbox URL uses the workspace key", inbox.inboxURL == "https://linear.app/acme/inbox")
 
-        check("assigned issues skip malformed rows", inbox.assigned.count == 2)
-        check("assigned sorted by last update", inbox.assigned.map(\.key) == ["ENG-2", "ENG-1"])
-        check("state name and color", inbox.assigned.first?.stateName == "In Progress"
-                                     && inbox.assigned.first?.stateColor == "#f2c94c")
 
         print("LinearInbox.parse errors")
         check("GraphQL errors give nil", LinearInbox.parse(errorJSON, now: now) == nil)

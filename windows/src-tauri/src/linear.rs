@@ -8,29 +8,22 @@ use serde_json::{json, Value};
 pub const ENDPOINT: &str = "https://api.linear.app/graphql";
 
 /// Unread state and snoozing are not filterable server-side: both are applied in
-/// `parse`. The docs do not say which way `first` counts, so a date window bounds
-/// both lists.
+/// `parse`. The docs do not say which way `first` counts, so the window is read
+/// from both ends.
 pub const QUERY: &str = r#"query CoucouInbox {
-  notifications(first: 100, filter: { createdAt: { gt: "-P14D" } }) {
-    nodes {
-      id
-      category
-      readAt
-      snoozedUntilAt
-      createdAt
-      actor { name }
-      ... on IssueNotification { issue { identifier title url } }
-      ... on ProjectNotification { project { name url } }
-    }
-  }
-  viewer {
-    organization { urlKey }
-    assignedIssues(first: 50, orderBy: updatedAt,
-                   filter: { updatedAt: { gt: "-P30D" },
-                             state: { type: { nin: ["completed", "canceled", "duplicate"] } } }) {
-      nodes { id identifier title url updatedAt state { name color } }
-    }
-  }
+  newest: notifications(first: 100, filter: { createdAt: { gt: "-P14D" } }) { nodes { ...Entry } }
+  oldest: notifications(last: 100, filter: { createdAt: { gt: "-P14D" } }) { nodes { ...Entry } }
+  viewer { organization { urlKey } }
+}
+fragment Entry on Notification {
+  id
+  category
+  readAt
+  snoozedUntilAt
+  createdAt
+  actor { name }
+  ... on IssueNotification { issue { identifier title url } }
+  ... on ProjectNotification { project { name url } }
 }"#;
 
 pub fn request_body() -> Value {
@@ -50,7 +43,7 @@ fn reason(category: Option<&str>) -> &'static str {
     }
 }
 
-/// `{ unread, assigned, inboxUrl }`, or None when the response carries GraphQL
+/// `{ unread, inboxUrl }`, or None when the response carries GraphQL
 /// errors or no data. `now` is Unix seconds, for the snooze check.
 pub fn parse(json: &Value, now: i64) -> Option<Value> {
     if json.get("errors").is_some_and(|e| !e.is_null()) {
@@ -64,21 +57,17 @@ pub fn parse(json: &Value, now: i64) -> Option<Value> {
         .map(|key| format!("https://linear.app/{key}/inbox"))
         .unwrap_or_else(|| "https://linear.app".to_string());
 
-    let mut unread: Vec<Value> = data
-        .pointer("/notifications/nodes")
-        .and_then(Value::as_array)
-        .map(|nodes| nodes.iter().filter_map(|n| notification(n, &inbox_url, now)).collect())
-        .unwrap_or_default();
+    let mut seen = HashSet::new();
+    let mut unread: Vec<Value> = ["/newest/nodes", "/oldest/nodes"]
+        .iter()
+        .filter_map(|path| data.pointer(path).and_then(Value::as_array))
+        .flatten()
+        .filter(|n| seen.insert(n.get("id").and_then(Value::as_str).unwrap_or("").to_string()))
+        .filter_map(|n| notification(n, &inbox_url, now))
+        .collect();
     unread.sort_by_key(|n| std::cmp::Reverse(unix_seconds(n["createdAt"].as_str()).unwrap_or(0)));
 
-    let mut assigned: Vec<Value> = viewer
-        .and_then(|v| v.pointer("/assignedIssues/nodes"))
-        .and_then(Value::as_array)
-        .map(|nodes| nodes.iter().filter_map(issue).collect())
-        .unwrap_or_default();
-    assigned.sort_by_key(|i| std::cmp::Reverse(unix_seconds(i["updatedAt"].as_str()).unwrap_or(0)));
-
-    Some(json!({ "unread": unread, "assigned": assigned, "inboxUrl": inbox_url }))
+    Some(json!({ "unread": unread, "inboxUrl": inbox_url }))
 }
 
 fn notification(n: &Value, inbox_url: &str, now: i64) -> Option<Value> {
@@ -115,18 +104,6 @@ fn notification(n: &Value, inbox_url: &str, now: i64) -> Option<Value> {
         return Some(row(None, name, n.pointer("/project/url").and_then(Value::as_str)));
     }
     Some(row(None, &crate::i18n::t("Inbox"), None))
-}
-
-fn issue(i: &Value) -> Option<Value> {
-    Some(json!({
-        "id": i.get("id")?.as_str()?,
-        "key": i.get("identifier")?.as_str()?,
-        "title": i.get("title")?.as_str()?,
-        "url": i.get("url")?.as_str()?,
-        "stateName": i.pointer("/state/name").and_then(Value::as_str).unwrap_or(""),
-        "stateColor": i.pointer("/state/color").and_then(Value::as_str).unwrap_or("#8E939C"),
-        "updatedAt": i.get("updatedAt")?.as_str()?,
-    }))
 }
 
 /// Unread entries the previous poll had not seen; none on the first poll.
@@ -168,7 +145,7 @@ mod tests {
     fn fixture() -> Value {
         json!({
             "data": {
-                "notifications": { "nodes": [
+                "newest": { "nodes": [
                     { "id": "n1", "category": "mentions", "readAt": null, "snoozedUntilAt": null,
                       "createdAt": "2026-10-10T11:00:00.000Z", "actor": { "name": "Ana" },
                       "issue": { "identifier": "ENG-12", "title": "Fix login", "url": "https://linear.app/acme/issue/ENG-12" } },
@@ -188,16 +165,12 @@ mod tests {
                     { "id": "n6", "category": "system", "readAt": null, "snoozedUntilAt": null,
                       "createdAt": "2026-10-07T12:00:00.000Z", "actor": null }
                 ] },
-                "viewer": {
-                    "organization": { "urlKey": "acme" },
-                    "assignedIssues": { "nodes": [
-                        { "id": "i1", "identifier": "ENG-1", "title": "Older", "url": "https://linear.app/acme/issue/ENG-1",
-                          "updatedAt": "2026-10-01T00:00:00.000Z", "state": { "name": "Todo", "color": "#e2e2e2" } },
-                        { "id": "i2", "identifier": "ENG-2", "title": "Newer", "url": "https://linear.app/acme/issue/ENG-2",
-                          "updatedAt": "2026-10-09T00:00:00.000Z", "state": { "name": "In Progress", "color": "#f2c94c" } },
-                        { "id": "bad", "title": "No identifier" }
-                    ] }
-                }
+                "oldest": { "nodes": [
+                    { "id": "n1", "category": "mentions", "readAt": null, "snoozedUntilAt": null,
+                      "createdAt": "2026-10-10T11:00:00.000Z", "actor": { "name": "Ana" },
+                      "issue": { "identifier": "ENG-12", "title": "Fix login", "url": "https://linear.app/acme/issue/ENG-12" } }
+                ] },
+                "viewer": { "organization": { "urlKey": "acme" } }
             }
         })
     }
@@ -216,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn keeps_unread_and_expired_snoozes_newest_first() {
+    fn keeps_unread_and_expired_snoozes_newest_first_once() {
         let inbox = parse(&fixture(), NOW).unwrap();
         assert_eq!(ids(&inbox["unread"]), ["n4", "n1", "n5", "n6"]);
     }
@@ -238,14 +211,6 @@ mod tests {
 
         assert_eq!(inbox["unread"][3]["url"], "https://linear.app/acme/inbox");
         assert_eq!(inbox["inboxUrl"], "https://linear.app/acme/inbox");
-    }
-
-    #[test]
-    fn assigned_issues_skip_bad_rows_and_sort_by_update() {
-        let inbox = parse(&fixture(), NOW).unwrap();
-        let keys: Vec<&str> = inbox["assigned"].as_array().unwrap().iter().map(|i| i["key"].as_str().unwrap()).collect();
-        assert_eq!(keys, ["ENG-2", "ENG-1"]);
-        assert_eq!(inbox["assigned"][0]["stateColor"], "#f2c94c");
     }
 
     #[test]

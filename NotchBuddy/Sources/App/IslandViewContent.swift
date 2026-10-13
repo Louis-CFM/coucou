@@ -3603,16 +3603,8 @@ struct LinearCardView: View {
 
     private var inbox: LinearInbox? { appState.linearInbox }
 
-    /// Unread inbox entries first; assigned issues fill the rows left.
-    private var issues: [LinearIssue] {
-        let room = max(0, Self.rowLimit - (inbox?.unread.count ?? 0))
-        return Array((inbox?.assigned ?? []).prefix(room))
-    }
-
     private var subtitle: String {
-        let unread = inbox?.unread.count ?? 0
-        if unread > 0 { return String(localized: "\(unread) unread") }
-        return String(localized: "Assigned to you")
+        String(localized: "\(inbox?.unread.count ?? 0) unread")
     }
 
     var body: some View {
@@ -3631,12 +3623,6 @@ struct LinearCardView: View {
                             .foregroundColor(Color(hex: Self.accent))
                     }
                     .help(note.actor ?? "")
-                }
-                ForEach(issues) { issue in
-                    row(url: issue.url, key: issue.key, title: issue.title, time: issue.updatedAt) {
-                        Circle().fill(Color(hex: issue.stateColor)).frame(width: 6, height: 6)
-                    }
-                    .help(issue.stateName)
                 }
             }
             .padding(.leading, 102).padding(.trailing, 12).padding(.top, 5)

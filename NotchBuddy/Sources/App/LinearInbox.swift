@@ -43,47 +43,29 @@ struct LinearNotification: Identifiable, Equatable {
     let createdAt: Date
 }
 
-struct LinearIssue: Identifiable, Equatable {
-    let id: String
-    let key: String
-    let title: String
-    let url: String
-    let stateName: String
-    let stateColor: String
-    let updatedAt: Date
-}
-
 struct LinearInbox: Equatable {
     var unread: [LinearNotification]
-    var assigned: [LinearIssue]
     var inboxURL: String
 
     static let endpoint = "https://api.linear.app/graphql"
 
     /// Unread state and snoozing are not filterable server-side: both are applied in `parse`.
-    /// The docs do not say which way `first` counts, so a date window bounds both lists.
+    /// The docs do not say which way `first` counts, so the window is read from both ends.
     static let query = """
     query CoucouInbox {
-      notifications(first: 100, filter: { createdAt: { gt: "-P14D" } }) {
-        nodes {
-          id
-          category
-          readAt
-          snoozedUntilAt
-          createdAt
-          actor { name }
-          ... on IssueNotification { issue { identifier title url } }
-          ... on ProjectNotification { project { name url } }
-        }
-      }
-      viewer {
-        organization { urlKey }
-        assignedIssues(first: 50, orderBy: updatedAt,
-                       filter: { updatedAt: { gt: "-P30D" },
-                                 state: { type: { nin: ["completed", "canceled", "duplicate"] } } }) {
-          nodes { id identifier title url updatedAt state { name color } }
-        }
-      }
+      newest: notifications(first: 100, filter: { createdAt: { gt: "-P14D" } }) { nodes { ...Entry } }
+      oldest: notifications(last: 100, filter: { createdAt: { gt: "-P14D" } }) { nodes { ...Entry } }
+      viewer { organization { urlKey } }
+    }
+    fragment Entry on Notification {
+      id
+      category
+      readAt
+      snoozedUntilAt
+      createdAt
+      actor { name }
+      ... on IssueNotification { issue { identifier title url } }
+      ... on ProjectNotification { project { name url } }
     }
     """
 
@@ -101,15 +83,15 @@ struct LinearInbox: Equatable {
         let urlKey = (viewer?["organization"] as? [String: Any])?["urlKey"] as? String
         let inboxURL = urlKey.map { "https://linear.app/\($0)/inbox" } ?? "https://linear.app"
 
-        let rawNotes = ((root["notifications"] as? [String: Any])?["nodes"] as? [[String: Any]]) ?? []
+        var seen = Set<String>()
+        let rawNotes = ["newest", "oldest"]
+            .flatMap { ((root[$0] as? [String: Any])?["nodes"] as? [[String: Any]]) ?? [] }
+            .filter { seen.insert($0["id"] as? String ?? "").inserted }
         let unread = rawNotes
             .compactMap { parseNotification($0, inboxURL: inboxURL, now: now) }
             .sorted { $0.createdAt > $1.createdAt }
 
-        let rawIssues = (((viewer?["assignedIssues"] as? [String: Any])?["nodes"]) as? [[String: Any]]) ?? []
-        let assigned = rawIssues.compactMap(parseIssue).sorted { $0.updatedAt > $1.updatedAt }
-
-        return LinearInbox(unread: unread, assigned: assigned, inboxURL: inboxURL)
+        return LinearInbox(unread: unread, inboxURL: inboxURL)
     }
 
     private static func parseNotification(_ n: [String: Any], inboxURL: String, now: Date) -> LinearNotification? {
@@ -133,19 +115,6 @@ struct LinearInbox: Equatable {
         }
         return LinearNotification(id: id, reason: reason, actor: actor, key: nil,
                                   title: String(localized: "Inbox"), url: inboxURL, createdAt: createdAt)
-    }
-
-    private static func parseIssue(_ i: [String: Any]) -> LinearIssue? {
-        guard let id = i["id"] as? String,
-              let key = i["identifier"] as? String,
-              let title = i["title"] as? String,
-              let url = i["url"] as? String,
-              let updatedAt = date(i["updatedAt"]) else { return nil }
-        let state = i["state"] as? [String: Any]
-        return LinearIssue(id: id, key: key, title: title, url: url,
-                           stateName: (state?["name"] as? String) ?? "",
-                           stateColor: (state?["color"] as? String) ?? "#8E939C",
-                           updatedAt: updatedAt)
     }
 
     private static func date(_ value: Any?) -> Date? {

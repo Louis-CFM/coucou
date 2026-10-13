@@ -211,11 +211,10 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 ### Données récupérées
 
 Une requête GraphQL (POST `https://api.linear.app/graphql`), validée contre le schéma publié par Linear (`packages/sdk/src/schema.graphql`) :
-- **Boîte de réception** : `notifications(first: 100)` créées depuis 14 jours (`createdAt: { gt: "-P14D" }`) : `id`, `category`, `readAt`, `snoozedUntilAt`, `createdAt`, `actor.name`, et selon le type `issue { identifier title url }` ou `project { name url }`.
-- **Mes tickets** : `viewer.assignedIssues(first: 50)` mis à jour depuis 30 jours, hors états `completed`, `canceled`, `duplicate` : identifiant, titre, URL, `state { name color }`.
+- **Boîte de réception** : `notifications` créées depuis 14 jours, lues par les deux bouts (`first: 100` et `last: 100`, doublons retirés) (`createdAt: { gt: "-P14D" }`) : `id`, `category`, `readAt`, `snoozedUntilAt`, `createdAt`, `actor.name`, et selon le type `issue { identifier title url }` ou `project { name url }`.
 - **Espace** : `viewer.organization.urlKey`, pour ouvrir `https://linear.app/{urlKey}/inbox`.
 
-Les champs `title`, `subtitle`, `url` et `inboxUrl` de `Notification` sont marqués `[Internal]` dans le schéma : non utilisés. La doc ne dit pas dans quel sens `first` compte, d'où les fenêtres de dates ; le tri se fait côté app.
+Les champs `title`, `subtitle`, `url` et `inboxUrl` de `Notification` sont marqués `[Internal]` dans le schéma : non utilisés. La doc ne dit pas dans quel sens `first` compte : en lisant les deux bouts, les 100 plus récentes y sont toujours ; le tri se fait côté app.
 
 Non lu = `readAt` nul et pas reporté (`snoozedUntilAt` absent ou passé). Une entrée archivée n'est pas renvoyée (`includeArchived` faux par défaut).
 
@@ -223,7 +222,7 @@ Non lu = `readAt` nul et pas reporté (`snoozedUntilAt` absent ou passé). Une e
 
 ### Carte
 
-En-tête « Linear · N unread » (ou « Assigned to you » sans non-lu). Trois lignes au plus : les entrées non lues d'abord (les plus récentes), les tickets assignés complètent. Clic sur une ligne → le ticket ou le projet dans le navigateur.
+En-tête « Linear · N unread ». Trois lignes au plus : les entrées non lues les plus récentes. Clic sur une ligne → le ticket ou le projet dans le navigateur.
 
 | `category`           | Icône (Mac)          |
 |----------------------|----------------------|
