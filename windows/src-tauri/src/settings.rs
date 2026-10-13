@@ -27,8 +27,12 @@ pub struct Settings {
     pub screen: String,
     /// Where the island sits along the top edge, as a share of the display's
     /// width: 0 = centred, −50 = left edge, 50 = right edge. Lets it clear a
-    /// browser's tabs or a window title on a screen without a notch.
-    pub island_shift: i32,
+    /// browser's tabs or a window title on a screen without a notch. Fractional
+    /// once the island has been dragged: a slider's step would snap it back.
+    pub island_shift: f64,
+    /// How far down the display the island sits, as a share of its height:
+    /// 0 = the top edge, where it retracts like a notch; more once dragged.
+    pub island_drop: f64,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -157,8 +161,6 @@ pub struct Settings {
     /// speech, 3D, or speech-to-text for the chat's mic (media.rs). Each has
     /// its endpoint; its key is per host (secrets::endpoint_key).
     pub models: Vec<ModelEntry>,
-    /// The date and time in the middle of the compact island. Off by default.
-    pub show_clock: bool,
 }
 
 /// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
@@ -247,7 +249,8 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
-            island_shift: 0,
+            island_shift: 0.0,
+            island_drop: 0.0,
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -292,7 +295,6 @@ impl Default for Settings {
             text_only_models: Vec::new(),
             keep_mic_on: false,
             models: Vec::new(),
-            show_clock: false,
         }
     }
 }
@@ -680,7 +682,8 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
-  "islandShift": -20,
+  "islandShift": -20.5,
+  "islandDrop": 35.0,
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -724,8 +727,7 @@ mod tests {
   "textOnlyModels": ["custom/llama-3.3"],
   "keepMicOn": true,
   "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
-    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }],
-  "showClock": true
+    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }]
 }"##;
 
     fn custom() -> Value {
@@ -1208,6 +1210,7 @@ mod tests {
                 "mainPill",
                 "screen",
                 "islandShift",
+                "islandDrop",
                 "autostart",
                 "hooksInstalled",
                 "model",
@@ -1251,7 +1254,6 @@ mod tests {
                 "textOnlyModels",
                 "keepMicOn",
                 "models",
-                "showClock",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

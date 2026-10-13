@@ -1199,15 +1199,20 @@ function generalSection(): HTMLElement {
 
   // Where along the top edge: a share of the display's width, −50 (left edge)
   // to 50 (right edge), 0 centred where a Mac's notch would be. The window
-  // moves as the slider does, so the right spot is found by eye.
+  // moves as the slider does, so the right spot is found by eye. The island
+  // can also be dragged, which sets a fractional share and a drop from the top
+  // edge (islandDrop): the slider then shows the nearest step, and Centre
+  // brings it back to the top centre.
   const shift = h("input", {
     type: "range", min: "-50", max: "50", step: "1",
-    value: String(Math.max(-50, Math.min(50, Number(settings.islandShift) || 0))),
+    value: String(Math.max(-50, Math.min(50, Math.round(Number(settings.islandShift) || 0)))),
     style: "width:160px",
   }) as HTMLInputElement;
   const shiftLabel = h("span", { class: "hint" });
-  const describeShift = (v: number) =>
-    v === 0 ? t("centred") : v < 0 ? t("{0}% to the left", { 0: String(-v) }) : t("{0}% to the right", { 0: String(v) });
+  const describeShift = (v: number) => {
+    const n = Math.round(v);
+    return n === 0 ? t("centred") : n < 0 ? t("{0}% to the left", { 0: String(-n) }) : t("{0}% to the right", { 0: String(n) });
+  };
   shiftLabel.textContent = describeShift(Number(shift.value));
   shift.addEventListener("input", () => {
     settings.islandShift = Number(shift.value) || 0;
@@ -1218,8 +1223,15 @@ function generalSection(): HTMLElement {
   centreShift.addEventListener("click", () => {
     shift.value = "0";
     settings.islandShift = 0;
+    settings.islandDrop = 0;
     shiftLabel.textContent = describeShift(0);
     void save();
+  });
+  // A drag of the island lands here as settings-changed.
+  declaredViews.push(() => {
+    const v = Math.max(-50, Math.min(50, Math.round(Number(settings.islandShift) || 0)));
+    shift.value = String(v);
+    shiftLabel.textContent = describeShift(v);
   });
 
   return h(
@@ -1268,7 +1280,7 @@ function generalSection(): HTMLElement {
       shiftLabel,
       centreShift,
     ),
-    h("div", { class: "hint", text: t("Slide the island left or right, out of the way of a browser's tabs or a window title.") }),
+    h("div", { class: "hint", text: t("Slide the island left or right, or drag it with the mouse to wherever suits you, out of the way of a browser's tabs or a window title. Centre puts it back at the top.") }),
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),

@@ -193,6 +193,8 @@ export interface Settings {
   screen: string;
   /** Where the island sits along the top edge: share of the width, −50 (left) to 50 (right), 0 centred. */
   islandShift: number;
+  /** How far down the display it sits: share of the height, 0 at the top edge (where it retracts like a notch). */
+  islandDrop: number;
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
@@ -297,6 +299,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mainPill: DEFAULT_MAIN_PILL,
   screen: "primary",
   islandShift: 0,
+  islandDrop: 0,
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",

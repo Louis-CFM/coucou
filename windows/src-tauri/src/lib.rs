@@ -118,8 +118,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // What only Rust changes (the phone pairing and link, the hooks state,
         // Mochi's desktop spot) is not a webview's to say: its copy may be stale.
         let next = current.from_webview(settings);
-        let screen_changed =
-            current.screen != next.screen || current.island_shift != next.island_shift;
+        let screen_changed = current.screen != next.screen
+            || current.island_shift != next.island_shift
+            || current.island_drop != next.island_drop;
         let autostart_changed = current.autostart != next.autostart;
         let shortcuts_changed = current.shortcuts != next.shortcuts;
         *current = next.clone();
@@ -228,6 +229,41 @@ fn fit_zoom(app: AppHandle, dpr: f64) -> bool {
     }
 }
 
+/// The island follows the mouse while it is held: one step of a drag, in
+/// logical pixels. Where it ends up is settled by `island_dropped`.
+#[tauri::command]
+fn nudge_island(app: AppHandle, dx: f64, dy: f64) {
+    let Some(win) = island::window(&app) else { return };
+    let Ok(pos) = win.outer_position() else { return };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let x = pos.x + (dx * scale).round() as i32;
+    let y = pos.y + (dy * scale).round() as i32;
+    let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+}
+
+/// The mouse let go of the island: where it landed becomes its place in the
+/// settings (shares of the display, and the display itself when it changed),
+/// then it is placed again by the rules, which keeps it on the screen.
+#[tauri::command]
+fn island_dropped(app: AppHandle, shared: State<Shared>) {
+    let pref = shared.settings.lock().unwrap().screen.clone();
+    let Some(landing) = island::landing(&app, &pref) else { return };
+    let settings = {
+        let mut current = shared.settings.lock().unwrap();
+        current.island_shift = landing.shift;
+        current.island_drop = landing.drop;
+        if let Some(screen) = landing.screen {
+            current.screen = screen;
+        }
+        current.clone()
+    };
+    if let Err(err) = settings::save(&settings) {
+        log::line(format!("could not save settings: {err}"));
+    }
+    let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+    island::apply_geometry(&app, &settings.screen, collapsed);
+    let _ = app.emit("settings-changed", settings);
+}
 
 /// The displays the island can be pinned to, for Settings.
 #[tauri::command]
@@ -1056,6 +1092,8 @@ pub fn run() {
             focus_window,
             reposition,
             fit_zoom,
+            nudge_island,
+            island_dropped,
             list_monitors,
             open_url,
             open_in_vscode,
