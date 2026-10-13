@@ -11,7 +11,7 @@ import {
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type IslandDock } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -660,8 +660,19 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+  /** The edge the island is against, which is how it is laid out in the window. */
+  private dock(): IslandDock {
+    return State.settings.islandDock ?? "top";
+  }
+
+  /** Against a side: hidden and compact it stands on end (see layout.ts islandSize). */
+  private onEnd(): boolean {
+    const dock = this.dock();
+    return dock === "left" || dock === "right";
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, this.onEnd());
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -687,33 +698,60 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    const dock = this.dock();
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    // Flat along the top edge, where it retracts like a notch; rounded all
-    // round once dragged down from it, where a flat top would look cut off.
-    const top = State.settings.islandDrop > 0 ? r : 0;
-    this.islandEl.style.borderRadius = `${top}px ${top}px ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Flat along the edge it is against, where it retracts like a notch;
+    // rounded all round when afloat, where a flat side would look cut off.
+    const corners =
+      dock === "top" ? [0, 0, r, r]
+      : dock === "bottom" ? [r, r, 0, 0]
+      : dock === "left" ? [0, r, r, 0]
+      : dock === "right" ? [r, 0, 0, r]
+      : [r, r, r, r];
+    this.islandEl.style.borderRadius = corners.map((c) => `${c}px`).join(" ");
+    // Centred along that edge; the edge itself is CSS (#island[data-dock]).
+    this.islandEl.style.transform = this.onEnd() ? "translateY(-50%)" : "translateX(-50%)";
     // These follow the island as it resizes, so they belong here rather than in
-    // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
-    this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    // the state-driven DOM sync. On end, the agents sit below Mochi.
+    if (this.onEnd() && State.mode !== "expanded") {
+      this.miniGrid.style.left = `${w / 2 - 14.5}px`;
+      this.miniGrid.style.top = `${hh - 40 - 14.5}px`;
+    } else {
+      this.miniGrid.style.left = `${w - 40 - 14.5}px`;
+      this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    }
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const rect = this.islandRect();
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (
+      Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.y - rect.y) > 0.5 ||
+      Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5
+    ) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
   }
 
-  /** Island rect in window coordinates (origin top-left of the 720×320 window). */
+  /**
+   * Island rect in window coordinates (origin top-left of the 720×320 window):
+   * against the edge it is docked to, centred along it; afloat, as at the top.
+   */
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    switch (this.dock()) {
+      case "bottom":
+        return { x: (PANEL_W - w) / 2, y: PANEL_H - hh, w, h: hh };
+      case "left":
+        return { x: 0, y: (PANEL_H - hh) / 2, w, h: hh };
+      case "right":
+        return { x: PANEL_W - w, y: (PANEL_H - hh) / 2, w, h: hh };
+      default:
+        return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    }
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -1090,7 +1128,7 @@ export class Island {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress, this.onEnd());
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;
@@ -1275,7 +1313,13 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
-    // The corners follow islandDrop.
+    // The edge the island is against: its anchor in the window (CSS), its
+    // size and corners, where Mochi and the agents sit.
+    const dock = this.dock();
+    this.islandEl.dataset.dock = dock;
+    this.wakeStrip.dataset.dock = dock;
+    this.animateGeometry(false);
+    this.updateBotTargets();
     this.applyGeometry();
     State.notify();
   }

@@ -68,6 +68,27 @@ body {
   background: transparent;
 }
 
+/* The strip lies along the edge the island is against (settings.islandDock);
+   the window shrinks to exactly it, so it must sit on that same edge. */
+#wake-strip[data-dock="bottom"] {
+  top: auto;
+  bottom: 0;
+}
+
+#wake-strip[data-dock="left"],
+#wake-strip[data-dock="right"] {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 240px;
+}
+
+#wake-strip[data-dock="right"] {
+  left: auto;
+  right: 0;
+}
+
 /* ── Island ─────────────────────────────────────────────────────────────── */
 
 #island {
@@ -78,6 +99,24 @@ body {
   border-radius: 0 0 14px 14px;
   overflow: visible;
   will-change: width, height, transform;
+}
+
+/* Against another edge: anchored to it, centred along it (island.ts sets the
+   translate, the size and the corners every frame). */
+#island[data-dock="bottom"] {
+  top: auto;
+  bottom: 0;
+}
+
+#island[data-dock="left"] {
+  top: 50%;
+  left: 0;
+}
+
+#island[data-dock="right"] {
+  top: 50%;
+  left: auto;
+  right: 0;
 }
 
 /* Being dragged across the screen (island.ts carryIsland). */

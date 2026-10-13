@@ -89,6 +89,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed =
             current.screen != settings.screen
+            || current.island_dock != settings.island_dock
             || current.island_shift != settings.island_shift
             || current.island_drop != settings.island_drop;
         let autostart_changed = current.autostart != settings.autostart;
@@ -212,9 +213,11 @@ fn nudge_island(app: AppHandle, dx: f64, dy: f64) {
 #[tauri::command]
 fn island_dropped(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
-    let Some(landing) = island::landing(&app, &pref) else { return };
+    let island = *shared.gate.rect.lock().unwrap();
+    let Some(landing) = island::landing(&app, &pref, island) else { return };
     let settings = {
         let mut current = shared.settings.lock().unwrap();
+        current.island_dock = landing.dock.name().to_string();
         current.island_shift = landing.shift;
         current.island_drop = landing.drop;
         if let Some(screen) = landing.screen {

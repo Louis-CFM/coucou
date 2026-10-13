@@ -307,22 +307,33 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let mp = *m.position();
     let ms = *m.size();
 
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
-    let pw = (lw * scale).round().max(1.0) as u32;
-    let ph = (lh * scale).round().max(1.0) as u32;
-    let panel_h = (PANEL_H * scale).round().max(1.0) as u32;
-    // Centred, then shifted by the user's share of the width and dropped by
-    // their share of the height (Settings → General, or a drag), kept on the
-    // display: a browser's tabs or a title bar may sit where the notch would
-    // be on a Mac.
-    let (shift, drop) = app
+    // Along the top edge by default, shifted by the user's share of the width
+    // and dropped by their share of the height (Settings → General, or a drag),
+    // or against another edge of the display, kept on it: a browser's tabs or a
+    // title bar may sit where the notch would be on a Mac.
+    let (dock, shift, drop) = app
         .try_state::<crate::Shared>()
         .map(|shared| {
             let s = shared.settings.lock().unwrap_or_else(|e| e.into_inner());
-            (s.island_shift, s.island_drop)
+            (Dock::parse(&s.island_dock), s.island_shift, s.island_drop)
         })
-        .unwrap_or((0.0, 0.0));
-    let (dx, dy) = offset_for(ms.width, ms.height, pw, panel_h, shift, drop);
+        .unwrap_or((Dock::Top, 0.0, 0.0));
+    // Against a side, the wake strip stands on end like the island does.
+    let (lw, lh) = match (collapsed, dock.vertical()) {
+        (true, false) => (STRIP_W, STRIP_H),
+        (true, true) => (STRIP_H, STRIP_W),
+        (false, _) => (PANEL_W, PANEL_H),
+    };
+    let pw = (lw * scale).round().max(1.0) as u32;
+    let ph = (lh * scale).round().max(1.0) as u32;
+    let frame = Frame {
+        width: ms.width,
+        height: ms.height,
+        win_w: pw,
+        win_h: ph,
+        panel_h: (PANEL_H * scale).round().max(1.0) as u32,
+    };
+    let (dx, dy) = offset_for(frame, dock, shift, drop);
     let x = mp.x + dx;
     let y = mp.y + dy;
 
@@ -342,50 +353,158 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_always_on_top(true);
 }
 
-/// Where the window's top-left corner goes on a `width`×`height` display, from
-/// the display's origin, in physical pixels: centred, then shifted by `shift`
-/// (a share of the width, −50 to 50) and dropped by `drop` (a share of the
-/// height, 0 to 100). Clamped so the whole panel stays on the display, whatever
-/// the window's current height: the island's top does not move between the wake
-/// strip and the panel.
-fn offset_for(width: u32, height: u32, win_w: u32, panel_h: u32, shift: f64, drop: f64) -> (i32, i32) {
-    let (width, height, win_w, panel_h) = (width as i32, height as i32, win_w as i32, panel_h as i32);
-    let centred = (width - win_w) / 2;
-    let along = (width as f64 * shift.clamp(-50.0, 50.0) / 100.0).round() as i32;
-    let down = (height as f64 * drop.clamp(0.0, 100.0) / 100.0).round() as i32;
-    (
-        (centred + along).clamp(0, (width - win_w).max(0)),
-        down.clamp(0, (height - panel_h).max(0)),
-    )
+/// The edge of the display the island is against, which is also how it is
+/// drawn: along the top or the bottom it is a bar, against a side it stands on
+/// end, and away from every edge (`None`) it floats as a bar.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Dock {
+    Top,
+    Bottom,
+    Left,
+    Right,
+    None,
+}
+
+impl Dock {
+    pub fn parse(name: &str) -> Dock {
+        match name {
+            "bottom" => Dock::Bottom,
+            "left" => Dock::Left,
+            "right" => Dock::Right,
+            "none" => Dock::None,
+            _ => Dock::Top,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Dock::Top => "top",
+            Dock::Bottom => "bottom",
+            Dock::Left => "left",
+            Dock::Right => "right",
+            Dock::None => "none",
+        }
+    }
+
+    pub fn vertical(self) -> bool {
+        matches!(self, Dock::Left | Dock::Right)
+    }
+}
+
+/// Closer than this to an edge, in logical pixels, the island is docked to it.
+const SNAP: f64 = 48.0;
+
+/// A display and the window on it, in physical pixels: the window as it is
+/// now (the wake strip or the panel) and the panel it can grow to.
+#[derive(Clone, Copy)]
+struct Frame {
+    width: u32,
+    height: u32,
+    win_w: u32,
+    win_h: u32,
+    panel_h: u32,
+}
+
+/// Where the window's top-left corner goes, from the display's origin.
+///
+/// Along the top, the bottom or afloat: centred, then shifted by `shift` (a
+/// share of the width, −50 to 50); afloat, also dropped by `drop` (a share of
+/// the height). Against a side: `drop` places it down the side the same way.
+/// Clamped so the whole panel stays on the display, whatever the window's
+/// current size: the island's own edge does not move between the wake strip
+/// and the panel.
+fn offset_for(f: Frame, dock: Dock, shift: f64, drop: f64) -> (i32, i32) {
+    let (w, h) = (f.width as i32, f.height as i32);
+    let (ww, wh) = (f.win_w as i32, f.win_h as i32);
+    let ph = f.panel_h as i32;
+    let along = (w as f64 * shift.clamp(-50.0, 50.0) / 100.0).round() as i32;
+    let down = (h as f64 * drop.clamp(0.0, 100.0) / 100.0).round() as i32;
+    // A bar: the window's centre line follows the shift, so the strip and the
+    // panel (both centred on the island) line up.
+    let x_along = ((w - ww) / 2 + along).clamp(0, (w - ww).max(0));
+    // On end: the panel's slot follows the drop, and the strip sits in the
+    // middle of that slot, where the island's middle is.
+    let y_down = down.clamp(0, (h - ph).max(0)) + (ph - wh) / 2;
+    match dock {
+        Dock::Top => (x_along, 0),
+        Dock::None => (x_along, down.clamp(0, (h - ph).max(0))),
+        Dock::Bottom => (x_along, (h - wh).max(0)),
+        Dock::Left => (0, y_down),
+        Dock::Right => ((w - ww).max(0), y_down),
+    }
 }
 
 /// The reverse: the shares a window whose top-left corner sits `dx`,`dy` from
-/// the display's origin stands for. What `offset_for` gives back for them is
-/// that same corner, kept on the display.
-fn shares_for(width: u32, height: u32, win_w: u32, dx: i32, dy: i32) -> (f64, f64) {
-    let centred = (width as i32 - win_w as i32) / 2;
-    let shift = ((dx - centred) as f64 * 100.0 / width.max(1) as f64).clamp(-50.0, 50.0);
-    let drop = (dy as f64 * 100.0 / height.max(1) as f64).clamp(0.0, 100.0);
-    (shift, drop)
+/// the display's origin stands for, for that dock. What `offset_for` gives
+/// back for them is that same corner, kept on the display.
+fn shares_for(f: Frame, dock: Dock, dx: i32, dy: i32) -> (f64, f64) {
+    let (w, h) = (f.width.max(1) as f64, f.height.max(1) as f64);
+    let centred = (f.width as i32 - f.win_w as i32) / 2;
+    let shift = ((dx - centred) as f64 * 100.0 / w).clamp(-50.0, 50.0);
+    let slot = (f.panel_h as i32 - f.win_h as i32) / 2;
+    let drop = (dy as f64 * 100.0 / h).clamp(0.0, 100.0);
+    let drop_on_end = ((dy - slot) as f64 * 100.0 / h).clamp(0.0, 100.0);
+    match dock {
+        Dock::Top => (shift, 0.0),
+        Dock::Bottom => (shift, 100.0),
+        Dock::None => (shift, drop),
+        Dock::Left => (-50.0, drop_on_end),
+        Dock::Right => (50.0, drop_on_end),
+    }
+}
+
+/// The edge an island whose shape spans `left..right` × `top..bottom` on a
+/// `width`×`height` display (physical pixels) is closest to, when it is within
+/// `snap` of it; the nearest wins, the top on a tie.
+fn dock_for(width: u32, height: u32, shape: (f64, f64, f64, f64), snap: f64) -> Dock {
+    let (left, top, right, bottom) = shape;
+    let gaps = [
+        (Dock::Top, top),
+        (Dock::Bottom, height as f64 - bottom),
+        (Dock::Left, left),
+        (Dock::Right, width as f64 - right),
+    ];
+    let mut nearest = Dock::None;
+    let mut least = snap;
+    for (dock, gap) in gaps {
+        if gap < least {
+            nearest = dock;
+            least = gap;
+        }
+    }
+    nearest
 }
 
 /// Where the island stands now that the user has let go of it: the display it
 /// landed on (None when it is the one `pref` already names, or when `pref`
-/// follows the cursor) and its shares of that display.
+/// follows the cursor), the edge it is against, and its shares of that display.
 pub struct Landing {
     pub screen: Option<String>,
+    pub dock: Dock,
     pub shift: f64,
     pub drop: f64,
 }
 
-pub fn landing(app: &AppHandle, pref: &str) -> Option<Landing> {
+pub fn landing(app: &AppHandle, pref: &str, island: IslandRect) -> Option<Landing> {
     let win = window(app)?;
     let pos = win.outer_position().ok()?;
     let size = win.outer_size().ok()?;
+    let scale = win.scale_factor().unwrap_or(1.0);
+    // The island's shape on the screen; the whole window when none was pushed yet.
+    let shape = if island.w > 0.0 {
+        (
+            pos.x as f64 + island.x * scale,
+            pos.y as f64 + island.y * scale,
+            pos.x as f64 + (island.x + island.w) * scale,
+            pos.y as f64 + (island.y + island.h) * scale,
+        )
+    } else {
+        (pos.x as f64, pos.y as f64, (pos.x + size.width as i32) as f64, (pos.y + size.height as i32) as f64)
+    };
     let monitors = app.available_monitors().ok()?;
-    // The display under the island's top centre: the corner alone could be
-    // just over the edge of the next one.
-    let (cx, cy) = (pos.x as f64 + size.width as f64 / 2.0, pos.y as f64 + 1.0);
+    // The display under the island's centre: a corner alone could be just over
+    // the edge of the next one.
+    let (cx, cy) = ((shape.0 + shape.2) / 2.0, (shape.1 + shape.3) / 2.0);
     let m = monitors
         .iter()
         .find(|m| monitor_contains(m, cx, cy))
@@ -393,53 +512,123 @@ pub fn landing(app: &AppHandle, pref: &str) -> Option<Landing> {
         .or_else(|| target_monitor(app, pref))?;
     let mp = *m.position();
     let ms = *m.size();
-    let (shift, drop) = shares_for(ms.width, ms.height, size.width, pos.x - mp.x, pos.y - mp.y);
+    let on_display = (shape.0 - mp.x as f64, shape.1 - mp.y as f64, shape.2 - mp.x as f64, shape.3 - mp.y as f64);
+    let dock = dock_for(ms.width, ms.height, on_display, SNAP * scale);
+    let frame = Frame {
+        width: ms.width,
+        height: ms.height,
+        win_w: size.width,
+        win_h: size.height,
+        panel_h: (PANEL_H * scale).round().max(1.0) as u32,
+    };
+    let (shift, drop) = shares_for(frame, dock, pos.x - mp.x, pos.y - mp.y);
     let same = target_monitor(app, pref).is_some_and(|t| t.position() == m.position());
     let screen = (pref != "cursor" && !same).then(|| describe(&m).key());
-    Some(Landing { screen, shift, drop })
+    Some(Landing { screen, dock, shift, drop })
 }
 
 #[cfg(test)]
 mod placement_tests {
     use super::*;
 
-    const PANEL: u32 = 320;
+    /// A 1920×1080 display at scale 1, with the window as `w`×`h`.
+    fn f(w: u32, h: u32) -> Frame {
+        Frame { width: 1920, height: 1080, win_w: w, win_h: h, panel_h: 320 }
+    }
+    const PANEL: (u32, u32) = (720, 320);
+    const STRIP: (u32, u32) = (240, 6);
+    const STRIP_ON_END: (u32, u32) = (6, 240);
 
     #[test]
     fn centred_at_the_top_by_default() {
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, 0.0, 0.0), (600, 0));
-        assert_eq!(offset_for(1920, 1080, 240, PANEL, 0.0, 0.0), (840, 0));
+        assert_eq!(offset_for(f(720, 320), Dock::Top, 0.0, 0.0), (600, 0));
+        assert_eq!(offset_for(f(240, 6), Dock::Top, 0.0, 0.0), (840, 0));
     }
 
     #[test]
     fn the_shares_move_it_and_the_edges_stop_it() {
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, -20.0, 0.0), (216, 0));
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, 50.0, 0.0), (1200, 0));
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, -50.0, 0.0), (0, 0));
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, 0.0, 50.0), (600, 540));
+        let panel = f(PANEL.0, PANEL.1);
+        assert_eq!(offset_for(panel, Dock::Top, -20.0, 0.0), (216, 0));
+        assert_eq!(offset_for(panel, Dock::Top, 50.0, 0.0), (1200, 0));
+        assert_eq!(offset_for(panel, Dock::Top, -50.0, 0.0), (0, 0));
+        assert_eq!(offset_for(panel, Dock::None, 0.0, 50.0), (600, 540));
         // The panel's height is what has to fit, even for the 6 px wake strip.
-        assert_eq!(offset_for(1920, 1080, 240, PANEL, 0.0, 100.0), (840, 760));
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, 99.0, 150.0), (1200, 760));
+        assert_eq!(offset_for(f(STRIP.0, STRIP.1), Dock::None, 0.0, 100.0), (840, 760));
+        assert_eq!(offset_for(panel, Dock::None, 99.0, 150.0), (1200, 760));
+        // Along the top, the drop is nothing.
+        assert_eq!(offset_for(panel, Dock::Top, 0.0, 50.0), (600, 0));
+    }
+
+    #[test]
+    fn against_the_bottom_the_window_ends_at_the_edge() {
+        assert_eq!(offset_for(f(PANEL.0, PANEL.1), Dock::Bottom, 0.0, 100.0), (600, 760));
+        assert_eq!(offset_for(f(STRIP.0, STRIP.1), Dock::Bottom, -20.0, 100.0), (456, 1074));
+    }
+
+    #[test]
+    fn against_a_side_the_strip_stands_in_the_middle_of_the_panels_slot() {
+        let panel = f(PANEL.0, PANEL.1);
+        let strip = f(STRIP_ON_END.0, STRIP_ON_END.1);
+        assert_eq!(offset_for(panel, Dock::Left, -50.0, 0.0), (0, 0));
+        assert_eq!(offset_for(strip, Dock::Left, -50.0, 0.0), (0, 40));
+        assert_eq!(offset_for(panel, Dock::Right, 50.0, 50.0), (1200, 540));
+        assert_eq!(offset_for(strip, Dock::Right, 50.0, 50.0), (1914, 580));
+        // Past the bottom, the panel still fits.
+        assert_eq!(offset_for(panel, Dock::Left, -50.0, 100.0), (0, 760));
+        assert_eq!(offset_for(strip, Dock::Left, -50.0, 100.0), (0, 800));
     }
 
     #[test]
     fn where_it_lands_is_where_it_is_put_back() {
+        let panel = f(PANEL.0, PANEL.1);
         for (dx, dy) in [(0, 0), (600, 0), (216, 300), (1200, 760), (37, 1)] {
-            let (shift, drop) = shares_for(1920, 1080, 720, dx, dy);
-            assert_eq!(offset_for(1920, 1080, 720, PANEL, shift, drop), (dx, dy), "{dx},{dy}");
+            let (shift, drop) = shares_for(panel, Dock::None, dx, dy);
+            assert_eq!(offset_for(panel, Dock::None, shift, drop), (dx, dy), "{dx},{dy}");
         }
-        // Across the strip and the panel the top-left corner is the same.
-        let (shift, drop) = shares_for(1920, 1080, 720, 216, 300);
-        assert_eq!(offset_for(1920, 1080, 240, PANEL, shift, drop).1, 300);
+        for dy in [0, 300, 760] {
+            let (shift, drop) = shares_for(panel, Dock::Left, 0, dy);
+            assert_eq!(offset_for(panel, Dock::Left, shift, drop), (0, dy), "left {dy}");
+            let (shift, drop) = shares_for(panel, Dock::Right, 1200, dy);
+            assert_eq!(offset_for(panel, Dock::Right, shift, drop), (1200, dy), "right {dy}");
+        }
+        let (shift, drop) = shares_for(panel, Dock::Bottom, 216, 760);
+        assert_eq!(offset_for(panel, Dock::Bottom, shift, drop), (216, 760));
+        // Across the strip and the panel the island's own edge is the same.
+        let (shift, drop) = shares_for(panel, Dock::None, 216, 300);
+        assert_eq!(offset_for(f(STRIP.0, STRIP.1), Dock::None, shift, drop).1, 300);
     }
 
     #[test]
     fn dropped_past_the_edge_is_put_back_at_the_edge() {
-        let (shift, drop) = shares_for(1920, 1080, 720, -100, -5);
+        let panel = f(PANEL.0, PANEL.1);
+        let (shift, drop) = shares_for(panel, Dock::None, -100, -5);
         assert_eq!(drop, 0.0);
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, shift, drop), (0, 0));
-        let (shift, drop) = shares_for(1920, 1080, 720, 1500, 1000);
-        assert_eq!(offset_for(1920, 1080, 720, PANEL, shift, drop), (1200, 760));
+        assert_eq!(offset_for(panel, Dock::None, shift, drop), (0, 0));
+        let (shift, drop) = shares_for(panel, Dock::None, 1500, 1000);
+        assert_eq!(offset_for(panel, Dock::None, shift, drop), (1200, 760));
+    }
+
+    #[test]
+    fn the_nearest_edge_within_reach_is_the_dock() {
+        // (left, top, right, bottom) of a 288×32 island on the display.
+        assert_eq!(dock_for(1920, 1080, (816.0, 0.0, 1104.0, 32.0), 48.0), Dock::Top);
+        assert_eq!(dock_for(1920, 1080, (816.0, 30.0, 1104.0, 62.0), 48.0), Dock::Top);
+        assert_eq!(dock_for(1920, 1080, (816.0, 500.0, 1104.0, 532.0), 48.0), Dock::None);
+        assert_eq!(dock_for(1920, 1080, (816.0, 1040.0, 1104.0, 1072.0), 48.0), Dock::Bottom);
+        assert_eq!(dock_for(1920, 1080, (10.0, 500.0, 42.0, 788.0), 48.0), Dock::Left);
+        assert_eq!(dock_for(1920, 1080, (1880.0, 500.0, 1912.0, 788.0), 48.0), Dock::Right);
+        // In a corner the nearer edge wins; equally near, the top.
+        assert_eq!(dock_for(1920, 1080, (5.0, 20.0, 293.0, 52.0), 48.0), Dock::Left);
+        assert_eq!(dock_for(1920, 1080, (20.0, 20.0, 308.0, 52.0), 48.0), Dock::Top);
+        assert_eq!(dock_for(1920, 1080, (816.0, 48.0, 1104.0, 80.0), 48.0), Dock::None);
+    }
+
+    #[test]
+    fn a_dock_is_read_back_by_name() {
+        for dock in [Dock::Top, Dock::Bottom, Dock::Left, Dock::Right, Dock::None] {
+            assert_eq!(Dock::parse(dock.name()), dock);
+        }
+        assert_eq!(Dock::parse(""), Dock::Top);
     }
 }
 

@@ -33,6 +33,10 @@ pub struct Settings {
     /// How far down the display the island sits, as a share of its height:
     /// 0 = the top edge, where it retracts like a notch; more once dragged.
     pub island_drop: f64,
+    /// The edge of the display the island is against — "top" (a bar along the
+    /// top, as shipped), "bottom", "left" or "right" (standing on end), or
+    /// "none" (afloat). Set by a drag, read by island::Dock.
+    pub island_dock: String,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -146,6 +150,7 @@ impl Default for Settings {
             screen: "primary".into(),
             island_shift: 0.0,
             island_drop: 0.0,
+            island_dock: "top".into(),
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -435,6 +440,7 @@ mod tests {
   "screen": "cursor",
   "islandShift": -20.5,
   "islandDrop": 35.0,
+  "islandDock": "left",
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -944,6 +950,7 @@ mod tests {
                 "screen",
                 "islandShift",
                 "islandDrop",
+                "islandDock",
                 "autostart",
                 "hooksInstalled",
                 "model",

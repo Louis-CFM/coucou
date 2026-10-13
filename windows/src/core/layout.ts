@@ -107,18 +107,25 @@ export function chatPromptHeight(messageCount: number): number {
   return Math.min(300, 240 + messageCount * 40);
 }
 
+/**
+ * The island's own size. `onEnd` is the island against a side of the display
+ * (settings.islandDock "left" or "right"): hidden and compact it stands on end,
+ * Mochi at the top and the agents below him; expanded it is the same panel as
+ * anywhere else, opening out from the side.
+ */
 export function islandSize(
   mode: IslandMode,
   view: IslandViewName,
   chatCount = 0,
+  onEnd = false,
 ): { w: number; h: number } {
   switch (mode) {
     case "hidden":
       // No notch to hide inside on a PC: the island retracts to zero height and
       // slides into the top edge of the screen instead of sitting there as a bar.
-      return { w: NOTCH_W, h: 0 };
+      return onEnd ? { w: 0, h: NOTCH_W } : { w: NOTCH_W, h: 0 };
     case "compact":
-      return { w: COMPACT_W, h: NOTCH_H };
+      return onEnd ? { w: NOTCH_H, h: COMPACT_W } : { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
       return { w: EXPANDED_W, h };
@@ -133,18 +140,22 @@ export interface BotPlacement {
   opacity: number;
 }
 
-/** IslandRootView.botPosition — cy is measured from the island's top edge. */
+/**
+ * IslandRootView.botPosition — cy is measured from the island's top edge.
+ * `onEnd`: the island stands on end (see islandSize), Mochi near its top.
+ */
 export function botPosition(
   mode: IslandMode,
   view: IslandViewName,
   islandH: number,
   uploadProgress = 0,
+  onEnd = false,
 ): BotPlacement {
   switch (mode) {
     case "hidden":
-      return { cx: 46, cy: 16, diameter: 6, opacity: 0 };
+      return onEnd ? { cx: 16, cy: 46, diameter: 6, opacity: 0 } : { cx: 46, cy: 16, diameter: 6, opacity: 0 };
     case "compact":
-      return { cx: 40, cy: 16, diameter: 20, opacity: 1 };
+      return onEnd ? { cx: 16, cy: 40, diameter: 20, opacity: 1 } : { cx: 40, cy: 16, diameter: 20, opacity: 1 };
     case "expanded": {
       const layout = VIEW_LAYOUTS[view];
       if (view === "uploading") {

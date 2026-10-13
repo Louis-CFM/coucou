@@ -408,11 +408,15 @@ own window.
   top edge** slides it left or right (a share of the display's width, −50 to 50),
   out of the way of a browser's tabs or a window's title; the wake strip follows.
   Or **drag it**: hold the island anywhere that is not a button, a field or
-  text, and drop it where it suits you, on any display. It is kept on the
-  screen, its place is remembered as shares of that display (so it survives a
-  change of resolution), and once below the top edge it is rounded all round.
-  **Centre** puts it back at the top centre. A drag from a control, the chat
-  or Mochi is what it was before: Mochi is still carried out to the desktop.
+  text, and drop it where it suits you, on any display. Dropped within 48 px
+  of an edge it docks to that edge and takes its shape: a bar along the top or
+  the bottom (retracting into that edge), standing on end against the left or
+  right side — Mochi at the top, the agents below him — and opening out from
+  that side as the usual panel. Away from every edge it floats as a bar,
+  rounded all round. It is kept on the screen, and its place is remembered as
+  shares of that display, so it survives a change of resolution. **Centre**
+  puts it back at the top centre. A drag from a control, the chat or Mochi is
+  what it was before: Mochi is still carried out to the desktop.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
