@@ -510,6 +510,21 @@ makepkg -si
 It needs `webkit2gtk-4.1`, `gtk-layer-shell` and `libayatana-appindicator`
 (pulled in as dependencies); store API keys with GNOME Keyring or KWallet.
 
+On NixOS (or any system with Nix), the flake at the root of the repo builds it
+and runs it, Hyprland included:
+
+```bash
+nix run github:Louis-CFM/coucou      # or, in a clone: nix run .
+nix develop                          # a shell for `npm run tauri dev`
+```
+
+On NixOS, add `inputs.coucou.url = "github:Louis-CFM/coucou"` to your flake and
+`inputs.coucou.packages.${pkgs.system}.default` to `environment.systemPackages`.
+The package is marked unfree (the name, Mochi and the sounds are not free to
+redistribute, see `LICENSE-ASSETS.md`), and the flake lets only that package
+through. If the build stops on an npm hash after `package-lock.json` changed,
+copy the hash Nix prints into `linux/nix/package.nix`.
+
 What changes on Linux:
 
 - **The island** is a gtk-layer-shell overlay anchored to the top edge, over any
