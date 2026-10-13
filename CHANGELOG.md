@@ -33,6 +33,10 @@ Coucou becomes a real app: a window in the Dock, dictation everywhere on the Mac
 ## Android 0.1.0 — October 11, 2026
 
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; a signed APK on the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) (#501 by @Rhytam23)
+=======
+- **Font and text size** *(Windows and Linux)* — Settings → General → Font picks any font installed on the PC for the island and the settings window, and Text size scales every text from 85 % to 130 %. Reset puts both back; the defaults leave the look exactly as it was
+- **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
+>>>>>>> 90266d6 (Windows: pick the interface font and text size in Settings)
 
 ## Windows and Linux 0.4.0 — October 11, 2026
 

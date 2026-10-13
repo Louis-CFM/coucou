@@ -1753,18 +1753,6 @@
       "id": "Pilih model {name} di atas kotak obrolan.",
       "cs": "Vyberte model {name} nad chatovým polem."
     },
-    "Keys are stored in the {store}, never on disk.": {
-      "zh-Hans": "密钥保存在 {store} 中，绝不写入磁盘。",
-      "hi": "कुंजियाँ {store} में रखी जाती हैं, डिस्क पर कभी नहीं।",
-      "es": "Las claves se guardan en {store}, nunca en el disco.",
-      "ar": "تُحفظ المفاتيح في {store}، ولا تُكتب على القرص أبدًا.",
-      "fr": "Les clés sont stockées dans {store}, jamais sur le disque.",
-      "bn": "কী {store}-এ রাখা হয়, কখনো ডিস্কে নয়।",
-      "pt-BR": "As chaves ficam em {store}, nunca no disco.",
-      "ru": "Ключи хранятся в {store}, никогда на диске.",
-      "id": "Kunci disimpan di {store}, tidak pernah di disk.",
-      "cs": "Klíče jsou uloženy v {store}, nikdy na disku."
-    },
     "Press keys…": {
       "zh-Hans": "请按键…",
       "hi": "कुंजियाँ दबाएँ…",
@@ -4149,6 +4137,66 @@
       "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
       "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru.",
       "cs": "Tento kód nese také přístupový klíč a end-to-end klíč pro relay {host}. Spárovat znovu vytvoří nový klíč a novou místnost."
+    },
+    "Font": {
+      "zh-Hans": "字体",
+      "hi": "फ़ॉन्ट",
+      "es": "Fuente",
+      "ar": "الخط",
+      "fr": "Police",
+      "bn": "ফন্ট",
+      "pt-BR": "Fonte",
+      "ru": "Шрифт",
+      "id": "Font",
+      "cs": "Písmo"
+    },
+    "Text size": {
+      "zh-Hans": "文字大小",
+      "hi": "टेक्स्ट का आकार",
+      "es": "Tamaño del texto",
+      "ar": "حجم النص",
+      "fr": "Taille du texte",
+      "bn": "লেখার আকার",
+      "pt-BR": "Tamanho do texto",
+      "ru": "Размер текста",
+      "id": "Ukuran teks",
+      "cs": "Velikost textu"
+    },
+    "Reset": {
+      "zh-Hans": "重置",
+      "hi": "रीसेट करें",
+      "es": "Restablecer",
+      "ar": "إعادة الضبط",
+      "fr": "Réinitialiser",
+      "bn": "রিসেট",
+      "pt-BR": "Redefinir",
+      "ru": "Сбросить",
+      "id": "Atur ulang",
+      "cs": "Obnovit"
+    },
+    "Any font installed on this PC. Mochi's drawings keep their own lettering.": {
+      "zh-Hans": "可使用此电脑上安装的任何字体。Mochi 的绘图保留自己的文字样式。",
+      "hi": "इस पीसी पर इंस्टॉल कोई भी फ़ॉन्ट। Mochi के चित्र अपने अक्षर बनाए रखते हैं।",
+      "es": "Cualquier fuente instalada en este PC. Los dibujos de Mochi conservan su propia tipografía.",
+      "ar": "أي خط مثبّت على هذا الكمبيوتر. تحتفظ رسومات Mochi بخطها الخاص.",
+      "fr": "Toute police installée sur ce PC. Les dessins de Mochi gardent leur propre lettrage.",
+      "bn": "এই পিসিতে ইনস্টল করা যেকোনো ফন্ট। Mochi-র আঁকায় তার নিজস্ব লেখা থাকে।",
+      "pt-BR": "Qualquer fonte instalada neste PC. Os desenhos do Mochi mantêm o próprio lettering.",
+      "ru": "Любой шрифт, установленный на этом ПК. Рисунки Mochi сохраняют собственные надписи.",
+      "id": "Font apa pun yang terpasang di PC ini. Gambar Mochi tetap memakai hurufnya sendiri.",
+      "cs": "Libovolné písmo nainstalované v tomto počítači. Mochiho kresby si nechávají vlastní písmo."
+    },
+    "Keys are stored in the {store}, never on disk.": {
+      "zh-Hans": "密钥保存在 {store} 中，绝不写入磁盘。",
+      "hi": "कुंजियाँ {store} में रखी जाती हैं, डिस्क पर कभी नहीं।",
+      "es": "Las claves se guardan en {store}, nunca en el disco.",
+      "ar": "تُحفظ المفاتيح في {store}، ولا تُكتب على القرص أبدًا.",
+      "fr": "Les clés sont stockées dans {store}, jamais sur le disque.",
+      "bn": "কী {store}-এ রাখা হয়, কখনো ডিস্কে নয়।",
+      "pt-BR": "As chaves ficam em {store}, nunca no disco.",
+      "ru": "Ключи хранятся в {store}, никогда на диске.",
+      "id": "Kunci disimpan di {store}, tidak pernah di disk.",
+      "cs": "Klíče jsou uloženy v {store}, nikdy na disku."
     },
     "An email is never sent by Coucou: your mail app opens with it written, and you send it.": {
       "zh-Hans": "Coucou 从不发送邮件：你的邮件应用会打开并填好内容，由你来发送。",

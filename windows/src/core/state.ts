@@ -238,6 +238,13 @@ export interface Settings {
    */
   language: string;
   /**
+   * Interface font: "" keeps the default stack, else a family installed on the
+   * PC. Windows and Linux only; read it through core/font.ts.
+   */
+  fontFamily: string;
+  /** Text size factor, 1 = as shipped (the range is in core/font.ts). Windows and Linux only. */
+  fontScale: number;
+  /**
    * The phone link for Coucou for Android is on. Rust owns it (only the switch in
    * Settings → Android phone turns it on): whatever the page sends back is ignored.
    */
@@ -312,6 +319,8 @@ export const DEFAULT_SETTINGS: Settings = {
   textOnlyModels: [],
   keepMicOn: false,
   models: [],
+  fontFamily: "",
+  fontScale: 1,
 };
 
 type Listener = () => void;
