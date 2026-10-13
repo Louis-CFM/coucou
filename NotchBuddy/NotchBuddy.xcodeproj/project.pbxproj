@@ -46,6 +46,12 @@
 		1C2BB61FA83015C42B321E0E /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		1D23613B270FE8B11C5E27A7 /* IslandDisplayChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A09E73F1E58019EF6EA2A62 /* IslandDisplayChoice.swift */; };
 		1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
+		AA4B191682537CC92C899BC9 /* CryptoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036DE9440154C95E2B90C1EA /* CryptoViews.swift */; };
+		91ECF9F7C5C7E5F6886FA02F /* CryptoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033D87BF740911193C67D94D /* CryptoController.swift */; };
+		AE2F7E3B42815ADC7EE77B8D /* MailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFDE7CC2BD8BCA9A6C9DF45 /* MailViews.swift */; };
+		56D42241B003E714A77CF838 /* MailController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB502629F8A6EE9E8A647B2E /* MailController.swift */; };
+		65F11D3911C3240BD89CF1C5 /* ApprovalQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5077E908D307285474CA87C /* ApprovalQueue.swift */; };
+		9CF7070265B7CDC933FD9776 /* PillSessionRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A2AD5885FA3226E0337D67 /* PillSessionRegistry.swift */; };
 		1DAB0704A136FF8E6FB34191 /* ClaudeResponseText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444604C7E2C530B664849EF9 /* ClaudeResponseText.swift */; };
 		1DCF28998358810CDBC93F91 /* ClaudeHookDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA7D927F6BB2667D37AA963 /* ClaudeHookDetection.swift */; };
 		1E55440B97C640993E93D04D /* DiffEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32FB972D02162720E566674 /* DiffEngine.swift */; };
@@ -125,6 +131,12 @@
 		65CB53E20B2289CA3AC3E8FE /* TurnSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1C4152EBDBD7C24CABFFD7 /* TurnSnapshot.swift */; };
 		6613EB914852E6EEB1FF37BF /* IntentParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39753CFF90B494D449CCD95 /* IntentParser.swift */; };
 		6726F74966EDE7F82BFE89B2 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
+		A42BEDAC04B72921BF113A2C /* CryptoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036DE9440154C95E2B90C1EA /* CryptoViews.swift */; };
+		BA41CE5D1739D3024B4F3214 /* CryptoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033D87BF740911193C67D94D /* CryptoController.swift */; };
+		F6D1C30750D5232B70F678C1 /* MailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFDE7CC2BD8BCA9A6C9DF45 /* MailViews.swift */; };
+		2B2706A9D900EE525E470A6F /* MailController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB502629F8A6EE9E8A647B2E /* MailController.swift */; };
+		3E808AC02E35ABF5801BEBEC /* ApprovalQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5077E908D307285474CA87C /* ApprovalQueue.swift */; };
+		11363898DA837388E2823E7F /* PillSessionRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A2AD5885FA3226E0337D67 /* PillSessionRegistry.swift */; };
 		68A950E3C23FD612639D9776 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
 		68C3ACC708B69035FD0CB8C4 /* TurnSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1C4152EBDBD7C24CABFFD7 /* TurnSnapshot.swift */; };
 		694AB4504CD65662E1681E5C /* ServicePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F0C229BD085D76EB3DD94DF /* ServicePublisher.swift */; };
@@ -436,6 +448,12 @@
 		871CA2BADC67D97C97C7009D /* error.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = error.wav; sourceTree = "<group>"; };
 		8790ACE9F73BD74640A0F20C /* LocalChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalChat.swift; sourceTree = "<group>"; };
 		87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTarget.swift; sourceTree = "<group>"; };
+		036DE9440154C95E2B90C1EA /* CryptoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoViews.swift; sourceTree = "<group>"; };
+		033D87BF740911193C67D94D /* CryptoController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoController.swift; sourceTree = "<group>"; };
+		DCFDE7CC2BD8BCA9A6C9DF45 /* MailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViews.swift; sourceTree = "<group>"; };
+		AB502629F8A6EE9E8A647B2E /* MailController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailController.swift; sourceTree = "<group>"; };
+		E5077E908D307285474CA87C /* ApprovalQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalQueue.swift; sourceTree = "<group>"; };
+		30A2AD5885FA3226E0337D67 /* PillSessionRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillSessionRegistry.swift; sourceTree = "<group>"; };
 		888B3E1420BCB6292BDC8117 /* WeeklyRecapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyRecapView.swift; sourceTree = "<group>"; };
 		8ACB4350729C6513824D1ADF /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
 		8BF22817EC70748F2D1FB2E7 /* ClaudePlanGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudePlanGauge.swift; sourceTree = "<group>"; };
@@ -579,6 +597,12 @@
 				914A792788D403F836BEB570 /* SpotifyViews.swift */,
 				2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */,
 				87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */,
+				036DE9440154C95E2B90C1EA /* CryptoViews.swift */,
+				033D87BF740911193C67D94D /* CryptoController.swift */,
+				DCFDE7CC2BD8BCA9A6C9DF45 /* MailViews.swift */,
+				AB502629F8A6EE9E8A647B2E /* MailController.swift */,
+				E5077E908D307285474CA87C /* ApprovalQueue.swift */,
+				30A2AD5885FA3226E0337D67 /* PillSessionRegistry.swift */,
 				244A7909EEDA4BFF4C2EA9B5 /* TerminalTarget+AppKit.swift */,
 				B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */,
 				6FD65943C32E150F1CD65C31 /* UploadSequenceEngine.swift */,
@@ -1051,6 +1075,12 @@
 				1558BB00C530B721172F6E65 /* StripePoller.swift in Sources */,
 				9EA178EA395B116336C1FA10 /* TerminalTarget+AppKit.swift in Sources */,
 				1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */,
+				AA4B191682537CC92C899BC9 /* CryptoViews.swift in Sources */,
+				91ECF9F7C5C7E5F6886FA02F /* CryptoController.swift in Sources */,
+				AE2F7E3B42815ADC7EE77B8D /* MailViews.swift in Sources */,
+				56D42241B003E714A77CF838 /* MailController.swift in Sources */,
+				65F11D3911C3240BD89CF1C5 /* ApprovalQueue.swift in Sources */,
+				9CF7070265B7CDC933FD9776 /* PillSessionRegistry.swift in Sources */,
 				8551E592C5FFC6A0A7458A26 /* TurnEndPolicy.swift in Sources */,
 				0408FE7F86EBEE61CAED32DA /* TurnRecorder.swift in Sources */,
 				68C3ACC708B69035FD0CB8C4 /* TurnSnapshot.swift in Sources */,
@@ -1243,6 +1273,12 @@
 				E4B9986674F4D425826F15A8 /* StripePoller.swift in Sources */,
 				11F14DB97C93CF84DF9D5C43 /* TerminalTarget+AppKit.swift in Sources */,
 				6726F74966EDE7F82BFE89B2 /* TerminalTarget.swift in Sources */,
+				A42BEDAC04B72921BF113A2C /* CryptoViews.swift in Sources */,
+				BA41CE5D1739D3024B4F3214 /* CryptoController.swift in Sources */,
+				F6D1C30750D5232B70F678C1 /* MailViews.swift in Sources */,
+				2B2706A9D900EE525E470A6F /* MailController.swift in Sources */,
+				3E808AC02E35ABF5801BEBEC /* ApprovalQueue.swift in Sources */,
+				11363898DA837388E2823E7F /* PillSessionRegistry.swift in Sources */,
 				ABE0CEF17018F1BAD8F7DBFA /* TurnEndPolicy.swift in Sources */,
 				CE0A1BD64DF3E08D200691A6 /* TurnRecorder.swift in Sources */,
 				4D34FF10654B19B69FE1964C /* TurnSnapshot.swift in Sources */,
