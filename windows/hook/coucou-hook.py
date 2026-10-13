@@ -119,6 +119,9 @@ def prepare(raw, arg_event, env, cwd):
     """(line, event name, AskUserQuestion input, answered key) to forward, or None."""
     if raw.startswith(b"\xef\xbb\xbf"):
         raw = raw[3:]
+    # claude -p, the SDK and scheduled jobs: no one watches them, so they stay off the island.
+    if env.get("CLAUDE_CODE_ENTRYPOINT", "").startswith("sdk-") and env.get("COUCOU_WATCHED") != "1":
+        return None
     try:
         payload = json.loads(raw)
     except ValueError:
