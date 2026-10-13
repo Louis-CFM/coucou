@@ -1,0 +1,44 @@
+name: Ventura build (unsigned artifact)
+
+# Builds Coucou unsigned and uploads the .app as a downloadable artifact,
+# so it can be installed on macOS 13 (Ventura). Signing is disabled, so the
+# user must remove the quarantine attribute after downloading.
+on:
+  push:
+    branches: [ventura-port]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: cd NotchBuddy && xcodegen
+
+      - name: Build Release (no signing)
+        run: |
+          xcodebuild \
+            -project NotchBuddy/NotchBuddy.xcodeproj \
+            -scheme NotchBuddy \
+            -configuration Release \
+            -derivedDataPath build \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Zip the app
+        run: |
+          APP=$(find build/Build/Products -maxdepth 2 -name "Coucou.app" -type d | head -1)
+          echo "Found app at: $APP"
+          ditto -c -k --keepParent "$APP" Coucou-ventura.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coucou-ventura
+          path: Coucou-ventura.zip
