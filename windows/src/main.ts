@@ -12,6 +12,7 @@ import { registerShortcutHandlers } from "./island/shortcuts";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
+import { applyFont } from "./core/font";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -36,6 +37,7 @@ async function main() {
   // sync. Nothing is rebuilt, so tasks, steps and the chat stay as they are.
   onLanguageChange(() => State.notify());
   applyLanguage();
+  applyFont(State.settings);
   // Rust shows the tray and its errors in the same language as the webview.
   void Bridge.setSystemLanguages(systemLanguages());
   island.applySettings();
@@ -91,6 +93,7 @@ async function main() {
     const previousMain = State.mainPillId;
     State.settings = { ...State.settings, ...s };
     applyLanguage();
+    applyFont(State.settings);
     island.applySettings();
     State.loadIntegrationTasks();
     // A new main tool comes to the front, as on macOS.

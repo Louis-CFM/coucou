@@ -3899,6 +3899,50 @@
    "pt-BR": "Este código também inclui a chave de acesso e a chave de ponta a ponta do relay {host}. «Parear de novo» cria uma chave e uma sala novas.",
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru."
+  },
+  "Font": {
+   "zh-Hans": "字体",
+   "hi": "फ़ॉन्ट",
+   "es": "Fuente",
+   "ar": "الخط",
+   "fr": "Police",
+   "bn": "ফন্ট",
+   "pt-BR": "Fonte",
+   "ru": "Шрифт",
+   "id": "Font"
+  },
+  "Text size": {
+   "zh-Hans": "文字大小",
+   "hi": "टेक्स्ट का आकार",
+   "es": "Tamaño del texto",
+   "ar": "حجم النص",
+   "fr": "Taille du texte",
+   "bn": "লেখার আকার",
+   "pt-BR": "Tamanho do texto",
+   "ru": "Размер текста",
+   "id": "Ukuran teks"
+  },
+  "Reset": {
+   "zh-Hans": "重置",
+   "hi": "रीसेट करें",
+   "es": "Restablecer",
+   "ar": "إعادة الضبط",
+   "fr": "Réinitialiser",
+   "bn": "রিসেট",
+   "pt-BR": "Redefinir",
+   "ru": "Сбросить",
+   "id": "Atur ulang"
+  },
+  "Any font installed on this PC. Mochi's drawings keep their own lettering.": {
+   "zh-Hans": "可使用此电脑上安装的任何字体。Mochi 的绘图保留自己的文字样式。",
+   "hi": "इस पीसी पर इंस्टॉल कोई भी फ़ॉन्ट। Mochi के चित्र अपने अक्षर बनाए रखते हैं।",
+   "es": "Cualquier fuente instalada en este PC. Los dibujos de Mochi conservan su propia tipografía.",
+   "ar": "أي خط مثبّت على هذا الكمبيوتر. تحتفظ رسومات Mochi بخطها الخاص.",
+   "fr": "Toute police installée sur ce PC. Les dessins de Mochi gardent leur propre lettrage.",
+   "bn": "এই পিসিতে ইনস্টল করা যেকোনো ফন্ট। Mochi-র আঁকায় তার নিজস্ব লেখা থাকে।",
+   "pt-BR": "Qualquer fonte instalada neste PC. Os desenhos do Mochi mantêm o próprio lettering.",
+   "ru": "Любой шрифт, установленный на этом ПК. Рисунки Mochi сохраняют собственные надписи.",
+   "id": "Font apa pun yang terpasang di PC ini. Gambar Mochi tetap memakai hurufnya sendiri."
   }
  }
 }
