@@ -131,7 +131,7 @@ struct IslandContainer: View {
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
         }
         .frame(width: islandWidth, height: islandHeight, alignment: .topLeading)
-        .onChange(of: state.mode) { oldMode, newMode in
+        .onChangeCompat(of: state.mode) { oldMode, newMode in
             let shrinking = modeOrder(newMode) < modeOrder(oldMode)
             let anim = shrinking ? closeEase : openSpring
             let (w, h) = islandSize(mode: newMode, view: state.view,
@@ -146,7 +146,7 @@ struct IslandContainer: View {
                 islandTopRadius  = tr
             }
         }
-        .onChange(of: state.view) { _, newView in
+        .onChangeCompat(of: state.view) { _, newView in
             guard state.mode == .expanded else { return }
             // Deactivate engine if user navigates outside the upload flow
             let uploadViews: Set<IslandView> = [.upload, .uploading, .choose]
@@ -161,7 +161,7 @@ struct IslandContainer: View {
                 islandHeight = newView == .prompt ? chatPromptHeight : h
             }
         }
-        .onChange(of: state.chatHistory.count) { _, _ in
+        .onChangeCompat(of: state.chatHistory.count) { _, _ in
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
@@ -433,7 +433,7 @@ struct CountdownBar: View {
         // The bar only exists in the open island: its 10 Hz timer runs only then
         // (CLAUDE.md: 0 % CPU when the island is hidden).
         .onAppear { if state.mode == .expanded { startTimer() } }
-        .onChange(of: state.mode) { _, mode in
+        .onChangeCompat(of: state.mode) { _, mode in
             if mode == .expanded { startTimer() } else { stopTimer() }
         }
         .onDisappear { stopTimer() }

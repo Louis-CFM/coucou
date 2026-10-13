@@ -149,6 +149,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
     private static func observeVoiceChanges() {
         guard !observingVoices else { return }
         observingVoices = true
+        guard #available(macOS 14.0, *) else { return }
         NotificationCenter.default.addObserver(
             forName: AVSpeechSynthesizer.availableVoicesDidChangeNotification, object: nil, queue: .main
         ) { _ in
@@ -162,9 +163,12 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         let exact = loc.region.map { "\(lang)-\($0.identifier)" }
 
         let voices = AVSpeechSynthesisVoice.speechVoices().filter { v in
-            (v.language == lang || v.language.hasPrefix(lang + "-"))
-                && !v.voiceTraits.contains(.isNoveltyVoice)
-                && !v.voiceTraits.contains(.isPersonalVoice)
+            guard v.language == lang || v.language.hasPrefix(lang + "-") else { return false }
+            if #available(macOS 14.0, *) {
+                return !v.voiceTraits.contains(.isNoveltyVoice)
+                    && !v.voiceTraits.contains(.isPersonalVoice)
+            }
+            return true
         }
         guard !voices.isEmpty else { return AVSpeechSynthesisVoice(language: exact ?? lang) }
         let wanted: AVSpeechSynthesisVoiceGender = gender == "male" ? .male : .female

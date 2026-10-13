@@ -1,6 +1,7 @@
 #if !APPSTORE
 import AVFoundation
 import Carbon
+import Combine
 import Speech
 
 /// Speech to text for the notch chat (GitHub build), on-device when the Mac supports it.
@@ -13,30 +14,29 @@ import Speech
 ///
 /// Not main-actor bound, because the audio tap and the recognizers call back on their own
 /// threads; the published values are set on the main actor.
-@Observable
-final class MacDictation: @unchecked Sendable {
+final class MacDictation: ObservableObject, @unchecked Sendable {
     static let automatic = "auto"
     private static let languageKey = "dictationLanguage"
     /// The language that won the last automatic dictation: shown first next time.
     private static let lastHeardKey = "dictationLastLocale"
     private static let maxCandidates = 3
 
-    var isRecording = false
-    var transcript = ""
+    @Published var isRecording = false
+    @Published var transcript = ""
     /// What was typed before dictating, kept in front of the words.
-    var prefix = ""
+    @Published var prefix = ""
     /// `automatic` or a locale identifier (the mic's right-click menu).
-    var language: String = UserDefaults.standard.string(forKey: MacDictation.languageKey) ?? MacDictation.automatic {
+    @Published var language: String = UserDefaults.standard.string(forKey: MacDictation.languageKey) ?? MacDictation.automatic {
         didSet { UserDefaults.standard.set(language, forKey: Self.languageKey) }
     }
 
-    @ObservationIgnored private let engine = AVAudioEngine()
-    @ObservationIgnored private var candidates: [Candidate] = []
+    private let engine = AVAudioEngine()
+    private var candidates: [Candidate] = []
     /// The candidate whose words are shown while speaking.
-    @ObservationIgnored private var lead = 0
-    @ObservationIgnored private var finishing: CheckedContinuation<Void, Never>?
-    @ObservationIgnored private var isFinishing = false
-    @ObservationIgnored private var tapInstalled = false
+    private var lead = 0
+    private var finishing: CheckedContinuation<Void, Never>?
+    private var isFinishing = false
+    private var tapInstalled = false
 
     /// The text field's content: what was typed, then the words heard so far.
     var text: String { prefix + transcript }
@@ -286,7 +286,13 @@ final class MacDictation: @unchecked Sendable {
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
         }
         guard speech else { return false }
-        return await AVAudioApplication.requestRecordPermission()
+        if #available(macOS 14.0, *) {
+            return await AVAudioApplication.requestRecordPermission()
+        } else {
+            return await withCheckedContinuation { continuation in
+                AVCaptureDevice.requestAccess(for: .audio) { continuation.resume(returning: $0) }
+            }
+        }
     }
 }
 

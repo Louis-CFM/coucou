@@ -81,7 +81,7 @@ struct DesktopBotView: View {
         }
         .scaleEffect(viewState.isHovered ? 1.07 : 1.0)
         .animation(.spring(response: 0.25, dampingFraction: 0.6), value: viewState.isHovered)
-        .onChange(of: appState.effectiveState) { _, newState in
+        .onChangeCompat(of: appState.effectiveState) { _, newState in
             engine.setState(newState)
         }
         .onAppear {
