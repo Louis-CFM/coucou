@@ -1332,8 +1332,11 @@ final class HookServer: @unchecked Sendable {
     private func sessionDisplay(payload: [String: Any], session: String, projectName: String,
                                 cwd: String, hostApp: String?) -> PillSessionRegistry.Display {
         let managed = payload["coucou_managed"] as? Bool == true
-        let thread = managed ? payload["thread_id"] as? String : nil
-        return PillSessionRegistry.Display(session: thread ?? session, projectName: projectName, cwd: cwd,
+        let candidate = payload["thread_id"] as? String
+        let thread = (managed || payload["coucou_agent"] as? String == "codex")
+            ? candidate.flatMap { !$0.isEmpty && $0.utf8.count <= 512 && !$0.contains("\0") ? $0 : nil } : nil
+        // External hooks supply a read-only candidate, never native transport ownership.
+        return PillSessionRegistry.Display(session: managed ? thread ?? session : session, projectName: projectName, cwd: cwd,
             hostApp: hostApp, bundleId: SessionTarget.bundleId(payload: payload) ?? hostApp ?? "",
             hookSessionId: session, codexThreadId: thread,
             codexTurnId: managed ? payload["turn_id"] as? String : nil,

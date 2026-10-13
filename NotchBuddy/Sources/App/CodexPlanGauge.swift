@@ -22,15 +22,17 @@ enum CodexPlanGauge {
     static func parse(result: [String: Any]) -> CodexPlanUsage? {
         let buckets = result["rateLimitsByLimitId"] as? [String: Any]
         guard let limits = buckets?["codex"] as? [String: Any] ?? result["rateLimits"] as? [String: Any] else { return nil }
+        let windows = CodexAgentsInfo.parseLimits(result)
+        guard !windows.isEmpty else { return nil }
         var usage = CodexPlanUsage(planType: limits["planType"] as? String, updatedAt: Date())
-        // primary/secondary are not fixed to a window: sort them by duration.
-        for value in CodexAgentsInfo.parseLimits(result) {
+        // Named gauges require exact durations; other windows keep their own labels below.
+        for value in windows {
             guard let reset = value.resetsAt else { continue }
             let window = PlanWindow(usedPct: min(100, value.usedPercent), resetsAt: reset)
-            if let mins = value.windowDurationMins, mins <= 24 * 60 {
-                usage.fiveHour = window
-            } else {
-                usage.sevenDay = window
+            switch value.windowDurationMins {
+            case 300: usage.fiveHour = window
+            case 10_080: usage.sevenDay = window
+            default: break
             }
         }
         if let resets = result["rateLimitResetCredits"] as? [String: Any] {
@@ -40,7 +42,6 @@ enum CodexPlanGauge {
                 .compactMap { CodexAgentsInfo.integer($0["expiresAt"]) }
             usage.resetCreditExpiresAt = expiries.min().map { Date(timeIntervalSince1970: Double($0)) }
         }
-        guard usage.fiveHour != nil || usage.sevenDay != nil else { return nil }
         return usage
     }
 
@@ -94,7 +95,15 @@ struct CodexPlanCardView: View {
                 if usage?.fiveHour != nil {
                     GaugeRowView(label: String(localized: "5 hours"), window: usage?.fiveHour, now: now)
                 }
-                GaugeRowView(label: String(localized: "Week"), window: usage?.sevenDay, now: now, weekly: true)
+                if usage?.sevenDay != nil || info.limits.isEmpty {
+                    GaugeRowView(label: String(localized: "Week"), window: usage?.sevenDay, now: now, weekly: true)
+                }
+                ForEach(info.limits.filter {
+                    ($0.windowDurationMins != 300 || usage?.fiveHour == nil)
+                        && ($0.windowDurationMins != 10_080 || usage?.sevenDay == nil)
+                }) { window in
+                    CodexQuotaRow(window: window)
+                }
                 HStack(spacing: 5) {
                     Text(String(localized: "Resets"))
                         .font(.system(size: 11))
@@ -125,10 +134,12 @@ struct CodexPlanCardView: View {
     }
 
     private var subtitleText: String {
-        guard let usage else { return info.isRefreshing ? String(localized: "Asking Codex…") : String(localized: "codex.usage.unavailable") }
+        guard let updatedAt = usage?.updatedAt ?? info.updatedAt, !info.limits.isEmpty else {
+            return info.isRefreshing ? String(localized: "Asking Codex…") : String(localized: "codex.usage.unavailable")
+        }
         if info.isStale(at: now) { return String(localized: "codex.usage.stale") }
-        let plan = usage.planType.map { "\($0) · " } ?? ""
-        let diff = now.timeIntervalSince(usage.updatedAt)
+        let plan = info.planUsage?.planType.map { "\($0) · " } ?? ""
+        let diff = now.timeIntervalSince(updatedAt)
         if diff < 60 { return plan + String(localized: "just now") }
         let mins = Int(diff / 60)
         if mins < 60 { return plan + String(format: String(localized: "%lld min ago"), Int64(mins)) }
@@ -136,9 +147,11 @@ struct CodexPlanCardView: View {
     }
 
     private var resetsText: String {
-        guard let count = usage?.resetCredits else { return "—" }
+        guard let snapshot = info.planUsage, now.timeIntervalSince(snapshot.updatedAt) <= 300,
+              snapshot.resetCreditExpiresAt.map({ $0 > now }) ?? true,
+              let count = snapshot.resetCredits else { return "—" }
         var text = String(format: String(localized: "%lld available"), Int64(count))
-        if count > 0, let exp = usage?.resetCreditExpiresAt {
+        if count > 0, let exp = snapshot.resetCreditExpiresAt {
             text += String(format: String(localized: " · until %@"), resetExpiryFormatter.string(from: exp))
         }
         return text

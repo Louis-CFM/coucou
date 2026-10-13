@@ -78,6 +78,30 @@ final class CodexConnection {
             .first { FileManager.default.isExecutableFile(atPath: $0.path) }
     }
 
+    nonisolated static func installedIDEVersions(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [(name: String, version: String)] {
+        // shortcut: Standard local extension folders only; add custom/remote paths when the client supplies them.
+        [("VS Code", ".vscode"), ("VS Code Insiders", ".vscode-insiders"), ("VSCodium", ".vscode-oss")].compactMap { name, folder in
+            let root = home.appendingPathComponent(folder).appendingPathComponent("extensions")
+            guard let files = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return nil }
+            let candidates = files.filter { $0.lastPathComponent.hasPrefix("openai.chatgpt-") }
+                .sorted { $0.lastPathComponent.compare($1.lastPathComponent, options: .numeric) == .orderedDescending }
+            let versions = candidates.prefix(32).compactMap { directory -> String? in
+                let package = directory.appendingPathComponent("package.json")
+                guard (try? package.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true,
+                      let handle = try? FileHandle(forReadingFrom: package) else { return nil }
+                defer { try? handle.close() }
+                guard let data = try? handle.read(upToCount: 65_537), data.count <= 65_536,
+                      let metadata = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      (metadata["publisher"] as? String)?.lowercased() == "openai", metadata["name"] as? String == "chatgpt",
+                      let version = metadata["version"] as? String, !version.isEmpty, version.utf8.count <= 64,
+                      !version.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else { return nil }
+                return version
+            }
+            guard let version = versions.max(by: { $0.compare($1, options: .numeric) == .orderedAscending }) else { return nil }
+            return (name, version)
+        }
+    }
+
     @discardableResult func observe(_ callback: @escaping Observer) -> UUID {
         let id = UUID(); observers[id] = callback; return id
     }

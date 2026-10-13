@@ -91,6 +91,7 @@
 		41966EEF7599793AD70DFCEA /* DiffEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32FB972D02162720E566674 /* DiffEngine.swift */; };
 		422C116E73D2D9A96DAE104D /* MochiLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265262A422C270C1798F4A80 /* MochiLive.swift */; };
 		440AAF9FA27CC3DF7CC9EF51 /* MochiStill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045E7300878138F0AC385920 /* MochiStill.swift */; };
+		44C7DD4E6F3527820DE1E4EA /* PortfolioSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0793C2DA3333A385E075A04E /* PortfolioSettingsView.swift */; };
 		4755AAC633DCE5DAA6D54A3C /* ServiceDetailRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6AAC67875F84A862BC2A9AF /* ServiceDetailRunner.swift */; };
 		4778852A12726803BCF8B357 /* SessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A27178AA6007F7B56901750 /* SessionDetailView.swift */; };
 		48FA5A0DE13526F6C2A6B836 /* MailController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F2F18663F42A246DACCD639 /* MailController.swift */; };
@@ -177,6 +178,7 @@
 		868E3EB4A275AA2394EA20BF /* CoucouWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5C3E2269A202B640E7F3B5E0 /* CoucouWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		875FB3F71BD34B53B0524063 /* CoucouWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6723392BE01AF210E484316 /* CoucouWidgets.swift */; };
 		878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
+		884AEF9BAB1C54809C573BB4 /* PortfolioSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0793C2DA3333A385E075A04E /* PortfolioSettingsView.swift */; };
 		8881BC510155DEC038F3B552 /* ServiceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */; };
 		88A88E8704759E7F1F9D52BA /* ClaudeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F0D0F67E7C56B9E37E7648 /* ClaudeHost.swift */; };
 		88A8F2E4E754FAFABF6B1960 /* VoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87F39805C78722F614295B4 /* VoiceAudio.swift */; };
@@ -217,6 +219,7 @@
 		9BCD79FD8CF211DC8FBD2971 /* SearchAndSpotlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE60A834934474CDAE022FF8 /* SearchAndSpotlight.swift */; };
 		9C11C226915DBC97B5CD7953 /* VoiceIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C62058BB0C9D0DF58DCB /* VoiceIntent.swift */; };
 		9C653B8291EFFA414565E8A8 /* MusicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F142FB3952B5F0639383047 /* MusicController.swift */; };
+		9DA7881484E39458D9D157D3 /* PortfolioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0364C7995680F9FA9F85F905 /* PortfolioController.swift */; };
 		9DD56C95ECABDDCE23652D50 /* HookServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */; };
 		9E34044A001B01C3A514D20A /* IslandDisplayChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A09E73F1E58019EF6EA2A62 /* IslandDisplayChoice.swift */; };
 		9EA178EA395B116336C1FA10 /* TerminalTarget+AppKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 244A7909EEDA4BFF4C2EA9B5 /* TerminalTarget+AppKit.swift */; };
@@ -271,6 +274,7 @@
 		C5549C2D60998E297A7DC593 /* TurnSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1C4152EBDBD7C24CABFFD7 /* TurnSnapshot.swift */; };
 		C5737FE7AE6B2BA92B9A8F72 /* ServiceDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F64746B2740D5FE26B7E5A /* ServiceDetail.swift */; };
 		C61DDE2EC5FDDB39E4AA3B34 /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
+		C61E45A1B325BEFBE854AB53 /* PortfolioViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9F0D1E310731155BCB3D89 /* PortfolioViews.swift */; };
 		C67B690DFC0A294C0E65FCBB /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9466FDE02C9B3FB4EF01DFF8 /* IslandScreenGeometry.swift */; };
 		C6EB0156909305CEF8B84A8D /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F289B4DB7C57BC593C2E7B7F /* VoiceDataSources.swift */; };
 		C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */; };
@@ -299,10 +303,12 @@
 		D861479F6E7EAD07A6AC2105 /* ClaudePlanGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BF22817EC70748F2D1FB2E7 /* ClaudePlanGauge.swift */; };
 		D9EEB1079ACBCEEF74439C44 /* ClaudeSettingsFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */; };
 		D9FF132804EB458F6FA69116 /* GitHubActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168A9A73B519018FAB0AA465 /* GitHubActivity.swift */; };
+		DA813AE042EEFD29AD06802A /* PortfolioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0364C7995680F9FA9F85F905 /* PortfolioController.swift */; };
 		DA96FD3A39A3B9E438A158B8 /* CodexUsageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FC9270404E59D25A029D3E /* CodexUsageViews.swift */; };
 		DBA38F8F673F436CE1D4A2E0 /* MochiActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323F242B14A61A7C071EC115 /* MochiActivityAttributes.swift */; };
 		DCAC390FF9EC65B945A15B24 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 506824380E9C80B9BC6DCE72 /* Assets.xcassets */; };
 		DD2EEF113DB5EAA35CD88312 /* MochiOutfitDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84E5D91129352E8A1D32AA4 /* MochiOutfitDrawing.swift */; };
+		DD89FAA8EE64C5FCBBFD9960 /* PortfolioViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9F0D1E310731155BCB3D89 /* PortfolioViews.swift */; };
 		DE05D09A32117582AC93A24A /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
 		DE66BB6D18F467A7F4220CC3 /* SessionPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824E56D2255CA86DAC350DBF /* SessionPublisher.swift */; };
 		DEDE942C3CD3F30B492BEEF5 /* CryptoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73DF398C822D98F541B62F89 /* CryptoController.swift */; };
@@ -382,10 +388,12 @@
 
 /* Begin PBXFileReference section */
 		011D05714C97CF5CAB32DCE7 /* AgentNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentNotifier.swift; sourceTree = "<group>"; };
+		0364C7995680F9FA9F85F905 /* PortfolioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioController.swift; sourceTree = "<group>"; };
 		0365DDE3C554F5E8570055F4 /* IslandTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandTypes.swift; sourceTree = "<group>"; };
 		045E7300878138F0AC385920 /* MochiStill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiStill.swift; sourceTree = "<group>"; };
 		046F9CD91704C34AE5BE9393 /* ElevenLabsTTS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsTTS.swift; sourceTree = "<group>"; };
 		065B61C0809F2E3A461E9466 /* VoiceGenderNames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceGenderNames.swift; sourceTree = "<group>"; };
+		0793C2DA3333A385E075A04E /* PortfolioSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioSettingsView.swift; sourceTree = "<group>"; };
 		08128342A3F894D567AD9E6B /* ServiceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceViews.swift; sourceTree = "<group>"; };
 		097F57179CC066459E64303A /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		0D9CEB5655FCA197D6B10A91 /* CoucouPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoucouPhoneApp.swift; sourceTree = "<group>"; };
@@ -447,6 +455,7 @@
 		681E15F99FCF1E60C2553004 /* AppleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleStyle.swift; sourceTree = "<group>"; };
 		68C3405BCC9BF5F378094BFB /* WakeWindowBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWindowBackoff.swift; sourceTree = "<group>"; };
 		6A9E6EB7C8468A8339CF6A5C /* SpotifyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyController.swift; sourceTree = "<group>"; };
+		6A9F0D1E310731155BCB3D89 /* PortfolioViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioViews.swift; sourceTree = "<group>"; };
 		6C6993B34A0FFF8E3D454ADC /* QuestionPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionPayload.swift; sourceTree = "<group>"; };
 		6E5F9E4BB282FDE68D65FE6B /* TurnArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnArchive.swift; sourceTree = "<group>"; };
 		6F0C229BD085D76EB3DD94DF /* ServicePublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServicePublisher.swift; sourceTree = "<group>"; };
@@ -615,6 +624,9 @@
 				BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */,
 				F56C7E1EBC74664A7F1689CF /* NowPlayingViews.swift */,
 				9EF1D0C0784ED873065DD8C0 /* PillSessionRegistry.swift */,
+				0364C7995680F9FA9F85F905 /* PortfolioController.swift */,
+				0793C2DA3333A385E075A04E /* PortfolioSettingsView.swift */,
+				6A9F0D1E310731155BCB3D89 /* PortfolioViews.swift */,
 				78FB882D49084DEA6A10DB4D /* RecapStore.swift */,
 				61B5FDDE03F5F711146937E2 /* ResendPoller.swift */,
 				B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */,
@@ -1092,6 +1104,9 @@
 				BDD8A210DD6D9DA2D15BC5EE /* PillCatalog.swift in Sources */,
 				07EC91820A69E8BF11EC778D /* PillColors.swift in Sources */,
 				B43ED72DC305F4A70A391094 /* PillSessionRegistry.swift in Sources */,
+				DA813AE042EEFD29AD06802A /* PortfolioController.swift in Sources */,
+				44C7DD4E6F3527820DE1E4EA /* PortfolioSettingsView.swift in Sources */,
+				DD89FAA8EE64C5FCBBFD9960 /* PortfolioViews.swift in Sources */,
 				CD05A497A7D0B3D723D92C06 /* QuestionPayload.swift in Sources */,
 				93AB64BF47D6D1EE7DB4C22B /* QuestionRelay.swift in Sources */,
 				7A449E237CAAB62758508C7C /* RecapStore.swift in Sources */,
@@ -1296,6 +1311,9 @@
 				13663D98590927AF71C17628 /* PillCatalog.swift in Sources */,
 				40F7576FC56ED7BC1D2B717E /* PillColors.swift in Sources */,
 				995B59B7DE9B0537F240047A /* PillSessionRegistry.swift in Sources */,
+				9DA7881484E39458D9D157D3 /* PortfolioController.swift in Sources */,
+				884AEF9BAB1C54809C573BB4 /* PortfolioSettingsView.swift in Sources */,
+				C61E45A1B325BEFBE854AB53 /* PortfolioViews.swift in Sources */,
 				535EC818E1DAF0FA588545D8 /* QuestionPayload.swift in Sources */,
 				9AEFD05D0A39D4AF3C091B3A /* QuestionRelay.swift in Sources */,
 				B69DE31E2B0C2E35594CAA87 /* RecapStore.swift in Sources */,

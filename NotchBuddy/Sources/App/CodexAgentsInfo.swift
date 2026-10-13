@@ -39,12 +39,16 @@ final class CodexAgentsInfo: ObservableObject {
     @Published private(set) var dailyTokens: [CodexDailyTokens] = []
     @Published private(set) var threadTokens: CodexTokenUsage?
     @Published private(set) var threadId: String?
+    @Published private(set) var threadCwd: String?
     @Published private(set) var updatedAt: Date?
     @Published private(set) var error: String?
     @Published private(set) var isRefreshing = false
     @Published private(set) var cliVersion: String?
     private let connection: CodexConnection
     private var accountGeneration = UUID()
+    private var threadSelection: (id: String?, path: String?, cwd: String?) = (nil, nil, nil)
+    private var threadGeneration = UUID()
+    private var confirmedThreadGeneration: UUID?
     private var observer: UUID?
     var dominantPercent: Double? { limits.filter { !$0.isExpired }.map(\.usedPercent).max() }
     var isStale: Bool { isStale(at: Date()) }
@@ -64,8 +68,9 @@ final class CodexAgentsInfo: ObservableObject {
             guard let self else { return }
             if method == "account/updated" {
                 self.accountGeneration = UUID()
+                self.confirmedThreadGeneration = nil
                 self.limits = []; self.planUsage = nil; self.lifetimeTokens = nil; self.dailyTokens = []
-                self.threadTokens = nil; self.threadId = nil; self.updatedAt = nil; self.error = nil
+                self.threadTokens = nil; self.threadId = nil; self.threadCwd = nil; self.updatedAt = nil; self.error = nil
                 return
             }
             if method == "account/rateLimits/updated", let snapshot = params["rateLimits"] as? [String: Any],
@@ -74,7 +79,10 @@ final class CodexAgentsInfo: ObservableObject {
                 self.planUsage = CodexPlanGauge.parse(result: params)
                 if !next.isEmpty { self.limits = next; self.updatedAt = Date() }
             } else if method == "thread/tokenUsage/updated", let thread = params["threadId"] as? String,
-                      CodexChatService.shared.owns(threadId: thread), params["turnId"] as? String == CodexChatService.shared.turnId,
+                      self.threadSelection.id == thread,
+                      self.confirmedThreadGeneration == self.threadGeneration,
+                      CodexChatService.shared.owns(threadId: thread), let currentTurn = CodexChatService.shared.turnId,
+                      params["turnId"] as? String == currentTurn,
                       let usage = params["tokenUsage"] as? [String: Any], let total = usage["total"] as? [String: Any],
                       let input = Self.integer(total["inputTokens"]), let output = Self.integer(total["outputTokens"]),
                       let count = Self.integer(total["totalTokens"]) {
@@ -85,17 +93,23 @@ final class CodexAgentsInfo: ObservableObject {
         }
     }
 
-    func refresh(threadId requestedThreadId: String? = nil, rolloutPath: String? = nil) async {
-        guard !isRefreshing else {
-            if threadId != requestedThreadId { threadId = requestedThreadId; threadTokens = nil }
-            return
+    func refresh(threadId requestedThreadId: String? = nil, rolloutPath: String? = nil, cwd: String? = nil) async {
+        let selection = (id: requestedThreadId, path: rolloutPath, cwd: cwd)
+        if threadSelection != selection {
+            threadSelection = selection; threadGeneration = UUID(); threadTokens = nil
         }
+        threadId = requestedThreadId; threadCwd = selection.cwd.flatMap(Self.normalizedCwd)
+        guard !isRefreshing else { return }
+        let selectedGeneration = threadGeneration
         isRefreshing = true
         error = nil
-        if threadId != requestedThreadId { threadTokens = nil }
-        threadId = requestedThreadId
         let lease = connection.retainConnection()
-        defer { isRefreshing = false; connection.releaseConnection(lease) }
+        defer {
+            isRefreshing = false; connection.releaseConnection(lease)
+            if threadGeneration != selectedGeneration {
+                Task { await refresh(threadId: threadSelection.id, rolloutPath: threadSelection.path, cwd: threadSelection.cwd) }
+            }
+        }
         refreshAttempt: for _ in 0..<2 {
             let generation = accountGeneration
             var failures: [String] = []
@@ -134,29 +148,64 @@ final class CodexAgentsInfo: ObservableObject {
                     guard let date = $0["startDate"] as? String, let count = Self.integer($0["tokens"]) else { return nil }
                     return CodexDailyTokens(date: date, tokens: count)
                 }.sorted { $0.date < $1.date }
-                if let requestedThreadId, threadId == requestedThreadId {
-                    let usage = try await connection.request("account/usage/read", params: ["threadId": requestedThreadId])
-                    guard accountGeneration == generation else { continue refreshAttempt }
-                    guard threadId == requestedThreadId, !Task.isCancelled else { return }
-                    threadTokens = Self.parseThreadTokens(usage, threadId: requestedThreadId)
-                }
             } catch {
                 guard accountGeneration == generation else { continue refreshAttempt }
                 failures.append(String(format: String(localized: "Tokens: %@"), error.localizedDescription))
             }
-            if let requestedThreadId, threadTokens == nil, let rolloutPath, threadId == requestedThreadId {
-                let snapshot = try? await Task.detached(priority: .utility) {
-                    try Self.readRollout(path: rolloutPath, threadId: requestedThreadId)
-                }.value
-                guard accountGeneration == generation else { continue refreshAttempt }
-                guard threadId == requestedThreadId, !Task.isCancelled else { return }
-                threadTokens = snapshot
+            var verifiedPath: String?
+            var verifiedThread = false
+            if let requestedThreadId, threadGeneration == selectedGeneration {
+                confirmedThreadGeneration = nil
+                do {
+                    if let requestedCwd = selection.cwd {
+                        threadTokens = nil
+                        let response = try await connection.request("thread/read", params: ["threadId": requestedThreadId, "includeTurns": false])
+                        guard accountGeneration == generation else { continue refreshAttempt }
+                        guard threadGeneration == selectedGeneration, !Task.isCancelled else { return }
+                        verifiedThread = Self.matchesThread(response, threadId: requestedThreadId, cwd: requestedCwd)
+                        if verifiedThread { verifiedPath = (response["thread"] as? [String: Any])?["path"] as? String }
+                    } else if cwd == nil, CodexChatService.shared.owns(threadId: requestedThreadId) {
+                        verifiedThread = true; verifiedPath = rolloutPath
+                    }
+                    if verifiedThread {
+                        confirmedThreadGeneration = selectedGeneration
+                        let usage = try await connection.request("account/usage/read", params: ["threadId": requestedThreadId])
+                        guard accountGeneration == generation else { continue refreshAttempt }
+                        guard threadGeneration == selectedGeneration, !Task.isCancelled else { return }
+                        threadTokens = Self.parseThreadTokens(usage, threadId: requestedThreadId)
+                    }
+                } catch {
+                    guard accountGeneration == generation else { continue refreshAttempt }
+                    failures.append(String(format: String(localized: "Tokens: %@"), error.localizedDescription))
+                }
+                if verifiedThread, threadTokens == nil, let verifiedPath {
+                    let snapshot = try? await Task.detached(priority: .utility) {
+                        try Self.readRollout(path: verifiedPath, threadId: requestedThreadId, cwd: selection.cwd)
+                    }.value
+                    guard accountGeneration == generation else { continue refreshAttempt }
+                    guard threadGeneration == selectedGeneration, !Task.isCancelled else { return }
+                    threadTokens = snapshot
+                }
+                if threadGeneration == selectedGeneration {
+                    threadId = requestedThreadId; threadCwd = selection.cwd.flatMap(Self.normalizedCwd)
+                }
             }
             updatedAt = Date()
             error = failures.isEmpty ? nil : failures.joined(separator: "\n")
             return
         }
         error = String(localized: "Codex account changed while refreshing. Refresh again.")
+    }
+
+    nonisolated static func normalizedCwd(_ path: String) -> String? {
+        guard path.hasPrefix("/"), !path.contains("\0") else { return nil }
+        return URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    nonisolated static func matchesThread(_ response: [String: Any], threadId: String, cwd: String) -> Bool {
+        guard let thread = response["thread"] as? [String: Any], thread["id"] as? String == threadId,
+              let actualCwd = thread["cwd"] as? String, let expected = normalizedCwd(cwd) else { return false }
+        return normalizedCwd(actualCwd) == expected
     }
 
     nonisolated static func parseHooks(_ response: [String: Any], requiredEvents: [String]) -> (status: CodexHooksStatus, detail: String) {
@@ -218,7 +267,7 @@ final class CodexAgentsInfo: ObservableObject {
     }
 
     /// Caller must supply a path learned from this exact native thread. Never guess the latest rollout.
-    nonisolated static func readRollout(path: String, threadId: String, sessionsRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/sessions")) throws -> CodexTokenUsage? {
+    nonisolated static func readRollout(path: String, threadId: String, sessionsRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/sessions"), cwd: String? = nil) throws -> CodexTokenUsage? {
         let url = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
         let home = sessionsRoot.standardizedFileURL.resolvingSymlinksInPath().path + "/"
         guard url.path.hasPrefix(home), url.pathExtension == "jsonl" else { return nil }
@@ -237,6 +286,10 @@ final class CodexAgentsInfo: ObservableObject {
                       let payload = message["payload"] as? [String: Any] else { continue }
                 if message["type"] as? String == "session_meta" {
                     guard payload["id"] as? String == threadId else { return nil }
+                    if let cwd {
+                        guard let expected = normalizedCwd(cwd), let actualCwd = payload["cwd"] as? String,
+                              normalizedCwd(actualCwd) == expected else { return nil }
+                    }
                     confirmed = true
                 }
                 guard confirmed, message["type"] as? String == "event_msg", payload["type"] as? String == "token_count",

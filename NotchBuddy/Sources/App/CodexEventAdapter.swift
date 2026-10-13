@@ -62,8 +62,14 @@ final class CodexEventAdapter {
         let turn = params["turn"] as? [String: Any] ?? [:]
         let turnId = params["turnId"] as? String ?? turn["id"] as? String ?? ""
         // An old turn's completion must never dismiss or overwrite a new request/turn.
-        if method != "turn/started", let observed = CodexChatService.shared.turnId,
-           !turnId.isEmpty, observed != turnId { return }
+        if method == "turn/started" {
+            guard CodexChatService.shared.isBusy, !turnId.isEmpty,
+                  turnId != CodexChatService.shared.previousTurnId else { return }
+            if let observed = CodexChatService.shared.turnId, observed != turnId { return }
+        }
+        if method != "turn/started", method != "thread/closed", method != "thread/archived" {
+            guard let observed = CodexChatService.shared.turnId, observed == turnId else { return }
+        }
         var diffs: [FileDiff] = []
         switch method {
         case "turn/started":

@@ -69,7 +69,8 @@ struct CodexAgentsUsageView: View {
                 }.font(.system(size: 11)).foregroundColor(.secondary)
             }
             Text(String(localized: "codex.tokens.thread")).font(.system(size: 11, weight: .semibold))
-            if let usage = info.threadTokens, info.threadId == task?.codexThreadId {
+            if let usage = info.threadTokens, info.threadId == task?.codexThreadId,
+               info.threadCwd == task?.sessionCwd.flatMap(CodexAgentsInfo.normalizedCwd) {
                 Text(String(format: String(localized: "codex.tokens.thread-counts %lld %lld %lld"), usage.input, usage.output, usage.total))
                     .font(.system(size: 11)).foregroundColor(.secondary)
                 Text(usage.source).font(.system(size: 10)).foregroundColor(.secondary)
@@ -90,10 +91,11 @@ struct CodexAgentsUsageView: View {
         }
         .task { await refresh() }
         .onChange(of: task?.codexThreadId) { _, _ in Task { await refresh() } }
+        .onChange(of: task?.sessionCwd) { _, _ in Task { await refresh() } }
     }
 
     private func refresh() async {
-        await info.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath)
+        await info.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath, cwd: task?.sessionCwd)
     }
 }
 #endif

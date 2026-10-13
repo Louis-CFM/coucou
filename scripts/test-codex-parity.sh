@@ -148,7 +148,9 @@ struct AgentTask {
 @MainActor final class CodexChatService {
     static let shared = CodexChatService()
     var ownedThread = "child"
+    var isBusy = true
     var turnId: String?
+    var previousTurnId: String?
     func owns(threadId: String) -> Bool { threadId == ownedThread }
 }
 @MainActor final class CodexConnection {
@@ -205,6 +207,14 @@ struct AgentTask {
         assert(AppState.shared.tasks[0].codexThreadId == "child")
         assert(AppState.shared.tasks[0].sessionCwd == "/chosen")
         assert(!adapter.isManagedHookSession("root") && adapter.isManagedHookSession("child"))
+        let awaiting = server.events.count
+        let pendingResolutions = server.resolutions
+        CodexChatService.shared.previousTurnId = "old-turn"
+        connection.emit("turn/started", ["threadId": "child", "turn": ["id": "old-turn"]])
+        connection.emit("item/completed", ["threadId": "child", "turnId": "old-turn", "item": ["id": "old", "type": "agentMessage", "text": "old"]])
+        connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "old-turn", "status": "completed"]])
+        assert(server.events.count == awaiting && server.resolutions == pendingResolutions,
+               "Previous turn reached adapter while a new turn was awaiting its ID")
         CodexChatService.shared.turnId = "t1"
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t1"]])
         let command: [String: Any] = ["id": "command", "type": "commandExecution", "command": "false", "exitCode": 1, "status": "completed"]
@@ -234,12 +244,22 @@ struct AgentTask {
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t2"]])
         let before = server.events.count
         let resolutions = server.resolutions
+        connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t1"]])
+        assert(server.events.count == before && server.resolutions == resolutions,
+               "Delayed turn start cleared the current turn's requests")
         connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t1", "status": "completed"]])
         assert(server.events.count == before && server.resolutions == resolutions)
         connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t2", "status": "future_status"]])
         assert(server.events.count == before && AppState.shared.tasks[0].state == .error)
         connection.emit("serverRequest/resolved", ["requestId": 42])
         assert(server.resolutions > resolutions)
+        CodexChatService.shared.isBusy = false
+        CodexChatService.shared.turnId = nil
+        let idleEvents = server.events.count, idleResolutions = server.resolutions
+        connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t1"]])
+        assert(server.events.count == idleEvents && server.resolutions == idleResolutions,
+               "Delayed start revived an idle native session")
+        CodexChatService.shared.isBusy = true
         CodexChatService.shared.ownedThread = "different"
         let unchanged = server.events.count
         connection.emit("turn/started", ["threadId": "child", "turn": ["id": "t3"]])

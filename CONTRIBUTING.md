@@ -30,6 +30,15 @@ Check hook setup status:
 bash scripts/test-hook-status.sh
 ```
 
+Check local Codex IDE diagnostics and exact external-thread usage mapping:
+
+```bash
+bash scripts/test-codex-ide.sh
+bash scripts/test-codex-thread-usage.sh
+```
+
+These checks use temporary fixtures; they do not sign in or run a model.
+
 ## Good first contributions
 
 - A new service integration (a poller + an entry in `PillCatalog.swift` in the `.service` category + a detail card). Look at `StripePoller.swift` for a compact example.

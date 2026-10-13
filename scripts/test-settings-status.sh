@@ -16,9 +16,13 @@ end = source.index('\n    var body: some View {', start)
 settings = source[start:end].replace('struct SettingsIslandView: View {', 'final class SettingsIslandView {')
 settings = re.sub(r'@(ObservedObject|State)\s+', '', settings).replace('private ', '')
 settings += '\n    init(state: AppState) { self.state = state }\n}\n'
+start = source.index('    private var isChatStreaming: Bool {')
+end = source.index('\n    var body: some View {', start)
+streaming = 'final class PromptView {\n    let state: AppState\n    init(state: AppState) { self.state = state }\n' + source[start:end].replace('private ', '') + '\n}\n'
 types = Path('NotchBuddy/Sources/CoucouKit/IslandTypes.swift').read_text()
 provider = types[types.index('enum ChatProvider:'):types.index('// MARK: - View dimensions')]
 service = Path('NotchBuddy/Sources/App/CodexChatService.swift').read_text()
+streaming_property = next(line.strip() for line in service.splitlines() if 'var isChatStreaming: Bool {' in line)
 authentication = service[service.index('enum CodexAuthenticationStatus'):service.index('/// Owns Coucou-created')]
 Path(sys.argv[1]).write_text('''import Foundation
 enum AgentSource { case claudeCode, n8n, agent }
@@ -40,6 +44,8 @@ final class AppState {
     var chatProvider: ChatProvider = .anthropic
     var ollamaServerURL = ""
     var lmstudioServerURL = ""
+    var stateOverride: String?
+    var codexChatBusy = false
 }
 final class UserDefaults {
     static let standard = UserDefaults()
@@ -70,8 +76,11 @@ final class CodexAgentsInfo {
 final class CodexChatService {
     static let shared = CodexChatService()
     var authenticationStatus = CodexAuthenticationStatus.disconnected
+    var isBusy = false
+    var displayMessage: UUID?
+''' + streaming_property + '''
 }
-''' + provider + authentication + settings + '''
+''' + provider + authentication + settings + streaming + '''
 @main struct Check {
     static func main() async {
         let state = AppState()
@@ -121,10 +130,30 @@ final class CodexChatService {
         assert(view.chatStatus.label == "Chat · ChatGPT · Unable to confirm connection" && view.chatStatus.ok == nil)
         assert(KeychainStore.shared.reads.count == reads)
         #endif
+        let prompt = PromptView(state: state)
+        state.stateOverride = nil
+        state.codexChatBusy = true
+        CodexChatService.shared.isBusy = true
+        assert(!prompt.isChatStreaming, "Phone instruction animated the previous Chat answer")
+        CodexChatService.shared.displayMessage = UUID()
+        #if APPSTORE
+        assert(!prompt.isChatStreaming)
+        #else
+        assert(prompt.isChatStreaming, "Codex cursor disappeared after the first visible token")
+        #endif
+        state.codexChatBusy = false
+        assert(!prompt.isChatStreaming, "Completed Codex response retained a streaming cursor")
+        state.chatProvider = .deepseek
+        state.codexChatBusy = true
+        assert(!prompt.isChatStreaming, "Codex busy state affected another provider")
+        state.stateOverride = "thinking"
+        assert(prompt.isChatStreaming)
+        state.stateOverride = nil
+        assert(!prompt.isChatStreaming)
         state.focusTask = nil
         state.tasks = []
         assert(view.agentStatus.ok == nil)
-        print("PASS agent and Chat status independent; Codex login has no API-key read; unknown state retained")
+        print("PASS independent agent/Chat status; no Codex API-key read; unknown state and provider streaming retained")
     }
 }
 ''')

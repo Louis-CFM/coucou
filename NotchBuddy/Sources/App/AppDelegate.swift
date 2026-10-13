@@ -221,6 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MailController.shared.start()
         #endif
         CryptoController.shared.start()
+        PortfolioController.shared.start()
     }
 }
 

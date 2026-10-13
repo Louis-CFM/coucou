@@ -135,9 +135,18 @@ for a managed turn are combined without counting the same action twice. An exter
 IDE thread remains owned by that IDE; creating a new app-server does not attach to
 its pending questions. See [Codex app-server](https://learn.chatgpt.com/docs/app-server).
 
-The CLI version displayed in Coucou is the executable used for its native
-connection. A VS Code extension may bundle a different version. Verify its hook
-settings when CLI diagnostics succeed but no IDE events arrive.
+Agents shows the CLI version used for Coucou's native connection and the newest
+installed Codex extension found in the standard local VS Code, Insiders and
+VSCodium folders. Installed versions do not prove which profile/version is running;
+custom and remote extension folders are not detected. A client may bundle a different
+CLI. Verify its hook settings when CLI diagnostics succeed but no IDE events arrive.
+
+When an external hook supplies an explicit `thread_id`, Coucou can read that
+thread's token usage after `thread/read` confirms its ID and project directory.
+If account breakdown is unavailable, only the confirmed native rollout path with
+matching session metadata is read. Missing or mismatched identity remains unavailable;
+the session root ID is never assumed to be the current child thread. These reads do
+not resume the external thread or grant it phone continuation/approval ownership.
 
 ### Gemini CLI (macOS)
 

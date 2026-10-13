@@ -64,6 +64,9 @@ final class KeychainStore: @unchecked Sendable {
         "anthropic-api-key",
         "google-api-key",
         "openai-api-key",
+        "deepseek-api-key",
+        "qwen-api-key",
+        "moonshot-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -72,6 +75,12 @@ final class KeychainStore: @unchecked Sendable {
         "calcom-api-key",
         "notion-api-key",
         "elevenlabs-api-key",
+        // Portfolio exchange credentials
+        "portfolio-binance-key",  "portfolio-binance-secret",
+        "portfolio-okx-key",      "portfolio-okx-secret",      "portfolio-okx-passphrase",
+        "portfolio-bybit-key",    "portfolio-bybit-secret",
+        "portfolio-kraken-key",   "portfolio-kraken-secret",
+        "portfolio-coinbase-key", "portfolio-coinbase-secret",  "portfolio-coinbase-passphrase",
     ]
 
     private init() {
@@ -174,6 +183,21 @@ final class ClaudeService {
             }
             .sorted { $0.created > $1.created }
             .map { (id: $0.id, label: $0.id) }
+    }
+
+    /// Fetches models from any OpenAI-compatible `/v1/models` endpoint.
+    static func fetchOpenAICompatibleModels(baseURL: String, apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "\(baseURL)/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let id = item["id"] as? String else { return nil }
+            return (id: id, label: id)
+        }
     }
 
     /// Chosen in Settings; falls back to the default when the field is left empty.
@@ -294,8 +318,11 @@ final class ClaudeService {
         } else {
             switch provider {
             case .codex: return
-            case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-            case .openai:  baseURL = "https://api.openai.com/v1"
+            case .google:    baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+            case .openai:    baseURL = "https://api.openai.com/v1"
+            case .deepseek:  baseURL = "https://api.deepseek.com/v1"
+            case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }
@@ -360,7 +387,7 @@ final class ClaudeService {
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
 
-        let useStream = provider.isLocal
+        let useStream = provider.isLocal || provider == .deepseek || provider == .qwen || provider == .moonshot
         var body: [String: Any] = [
             "model": state.activeChatModel,
             "max_tokens": 4096,
@@ -415,9 +442,13 @@ final class ClaudeService {
                 let msg: String
                 switch e {
                 case .serverUnreachable:
-                    msg = provider == .ollama
-                        ? String(localized: "Ollama isn't running. Open it, then ask again.")
-                        : String(localized: "Start the local server in LM Studio, then ask again.")
+                    if provider == .ollama {
+                        msg = String(localized: "Ollama isn't running. Open it, then ask again.")
+                    } else if provider == .lmstudio {
+                        msg = String(localized: "Start the local server in LM Studio, then ask again.")
+                    } else {
+                        msg = "\(provider.displayName) is unreachable. Check your connection and API key."
+                    }
                 case .modelNotFound(let m):
                     msg = String(format: String(localized: "error.chat.model-not-installed %@"), m)
                 case .serverError(let s):

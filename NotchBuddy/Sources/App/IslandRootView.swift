@@ -522,7 +522,8 @@ struct IslandContentView: View {
 
 struct IslandHeader: View {
     @ObservedObject var state: AppState
-
+    @State private var gearHovered  = false
+    @State private var soundHovered = false
     @State private var closeHovered = false
 
     /// Pending approval or mail draft: the island refuses to fold (fsm.isHeldOpen), so the
@@ -566,16 +567,18 @@ struct IslandHeader: View {
                     }) {
                         Image(systemName: state.view == .settings ? "gearshape.fill" : "gearshape")
                             .font(.system(size: 14))
-                            .foregroundColor(state.view == .settings ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                            .foregroundColor(state.view == .settings || gearHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    .onHover { gearHovered = $0 }
 
                     Button(action: { state.soundEnabled.toggle() }) {
                         Image(systemName: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "#8E939C"))
+                            .foregroundColor(soundHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    .onHover { soundHovered = $0 }
 
                     // Fold back to the compact island now, without waiting for the timer.
                     if !heldOpen {
@@ -583,10 +586,8 @@ struct IslandHeader: View {
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }) {
                             Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Color(hex: closeHovered ? "#F5F6F8" : "#8E939C"))
-                                .frame(width: 16, height: 16)
-                                .contentShape(Rectangle())
+                                .font(.system(size: 14))
+                                .foregroundColor(closeHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
                         }
                         .buttonStyle(.plain)
                         .help(String(localized: "Close"))

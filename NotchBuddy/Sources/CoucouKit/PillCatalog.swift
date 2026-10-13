@@ -126,7 +126,9 @@ enum PillCatalog {
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
         .init(id: "integration_mail",    name: "Mail",        color: "#2F8CFF",
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
-        .init(id: "integration_crypto",  name: "Crypto",      color: "#F7931A",
+        .init(id: "integration_crypto",    name: "Crypto",      color: "#F7931A",
+              category: .service,   subtitle: "Integration",  source: .n8n),
+        .init(id: "integration_portfolio", name: "Portfolio",   color: "#FFD700",
               category: .service,   subtitle: "Integration",  source: .n8n),
     ]
 

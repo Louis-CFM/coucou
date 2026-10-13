@@ -36,6 +36,7 @@ final class CodexChatService: ObservableObject {
     private var lease: UUID?
     private(set) var threadId: String?
     private(set) var turnId: String?
+    private(set) var previousTurnId: String?
     private(set) var isBusy = false
     private var project = ""
     private var model = ""
@@ -52,6 +53,7 @@ final class CodexChatService: ObservableObject {
     private var messageBytes = 0
     private weak var displayState: AppState?
     private var displayMessage: UUID?
+    var isChatStreaming: Bool { isBusy && displayMessage != nil }
     private var temporaryFiles: [URL] = []
     private var attachmentNotice: String?
     private var loginId: String?
@@ -249,6 +251,7 @@ final class CodexChatService: ObservableObject {
                 guard revision == current else { throw CancellationError() }
                 guard let thread = response["thread"] as? [String: Any], let id = thread["id"] as? String else { throw CodexServiceError.invalidResponse }
                 if let previous = threadId, previous != id { CodexEventAdapter.shared.unregisterThread(previous) }
+                if threadId != id { previousTurnId = nil }
                 threadId = id; project = cwd; model = response["model"] as? String ?? chosenModel
                 CodexEventAdapter.shared.registerThread(thread)
                 // An empty picker means the native default. Preserve this choice across turns.
@@ -359,7 +362,7 @@ final class CodexChatService: ObservableObject {
         if let cancelledThread { CodexEventAdapter.shared.unregisterThread(cancelledThread) }
         // The interrupt may still be awaiting its reply when the next Chat begins.
         // Relinquish this thread now, and reset the visible conversation with it.
-        threadId = nil; turnId = nil; project = ""; model = ""; resolvedModel = ""
+        threadId = nil; turnId = nil; previousTurnId = nil; project = ""; model = ""; resolvedModel = ""
         canWrite = false; searchMode = "cached"
         if let state = displayState, state.chatProvider == .codex { state.chatHistory = []; state.stateOverride = nil }
         displayState = nil; displayMessage = nil
@@ -382,6 +385,7 @@ final class CodexChatService: ObservableObject {
     func reset() { cancel() }
 
     private func finishTurnCleanup() {
+        if let turnId, threadId != nil { previousTurnId = turnId }
         deadline?.cancel(); deadline = nil; isBusy = false; turnId = nil
         displayMessage = nil
         if threadId == nil { displayState = nil }
@@ -394,7 +398,7 @@ final class CodexChatService: ObservableObject {
         if method == "$connection/disconnected" {
             if let threadId { CodexEventAdapter.shared.unregisterThread(threadId) }
             if let state = displayState, state.chatProvider == .codex { state.chatHistory = []; state.stateOverride = nil }
-            threadId = nil; turnId = nil; displayState = nil; displayMessage = nil
+            threadId = nil; turnId = nil; previousTurnId = nil; displayState = nil; displayMessage = nil
             // The connection is already stopped; only finish local waiters here.
             finish(.failure(CodexServiceError.disconnected)); finishLogin(.failure(CodexServiceError.disconnected)); return
         }
@@ -425,11 +429,11 @@ final class CodexChatService: ObservableObject {
         }
         guard isBusy, params["threadId"] as? String == threadId else { return }
         if method == "turn/started", let turn = params["turn"] as? [String: Any], let id = turn["id"] as? String {
-            guard turnId == nil || turnId == id else { return }
+            guard id != previousTurnId, turnId == nil || turnId == id else { return }
             turnId = id
         }
         let eventTurn = params["turnId"] as? String ?? (params["turn"] as? [String: Any])?["id"] as? String
-        guard turnId == nil || eventTurn == turnId else { return }
+        guard let turnId, eventTurn == turnId else { return }
         if method == "item/agentMessage/delta", let id = params["itemId"] as? String, let delta = params["delta"] as? String {
             if messages[id] == nil { messageOrder.append(id) }
             let next = (messages[id] ?? "") + delta

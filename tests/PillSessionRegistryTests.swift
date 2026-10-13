@@ -222,6 +222,13 @@ enum PillSessionRegistryTests {
             check("Desktop inherits all action identity", owner?.session == "external" && owner?.bundleId == "com.openai.codex"
                 && owner?.codexManaged == false && owner?.codexThreadId == nil && owner?.codexTurnId == nil)
             check("ended native request identity disappears", reg.display(pill: "agent_codex", session: "child") == nil)
+            var explicit = desktop
+            explicit.codexThreadId = "external-child"
+            reg.note(pill: "agent_codex", display: explicit, working: true)
+            check("external hook keeps an explicit child candidate", reg.displayOwner(of: "agent_codex")?.codexThreadId == "external-child")
+            reg.note(pill: "agent_codex", display: desktop, working: true)
+            check("external event without child identity clears the old candidate", reg.displayOwner(of: "agent_codex")?.codexThreadId == nil
+                && reg.displayOwner(of: "agent_codex")?.session == "external")
         }
 
         print("\nA session moves from terminal to IDE")

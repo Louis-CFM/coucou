@@ -56,6 +56,7 @@ struct SettingsView: View {
     @State private var agyPendingInstall: Bool = true
 
     @State private var codexHooksInstalled: Bool = HookServer.codexHooksInstalled()
+    @State private var codexIDEVersions: [(name: String, version: String)] = []
     @State private var showCodexDiff: Bool = false
     @State private var pendingCodexJSON: String = ""
     @State private var codexPendingInstall: Bool = true
@@ -92,8 +93,11 @@ struct SettingsView: View {
     #endif
 
     // Multi-provider chat keys
-    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
-    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var googleKey: String   = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var openAIKey: String   = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var deepseekKey: String = KeychainStore.shared.get("deepseek-api-key") ?? ""
+    @State private var qwenKey: String     = KeychainStore.shared.get("qwen-api-key") ?? ""
+    @State private var moonshotKey: String = KeychainStore.shared.get("moonshot-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
@@ -732,6 +736,16 @@ struct SettingsView: View {
                 }
                 Text(String(format: String(localized: "codex.version %@"), codexInfo.cliVersion ?? String(localized: "Unknown")))
                     .font(.system(size: 11)).foregroundColor(.secondary)
+                if codexIDEVersions.isEmpty {
+                    Text(String(localized: "codex.vscode.extensions-unavailable", defaultValue: "No local Codex extension was found in the standard VS Code folders."))
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    ForEach(codexIDEVersions, id: \.name) { entry in
+                        Text(String(format: String(localized: "codex.vscode.extension %@ %@", defaultValue: "%@ · installed Codex extension %@"), entry.name, entry.version))
+                            .font(.system(size: 11)).foregroundColor(.secondary)
+                    }
+                }
                 Text(String(localized: "codex.vscode.version-note"))
                     .font(.system(size: 11)).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -906,6 +920,7 @@ struct SettingsView: View {
 
         GroupBox(String(localized: "plugin.hermes.title")) {
             VStack(alignment: .leading, spacing: 10) {
+                hookCompletion(hermesPluginInstalled)
                 Text(hermesPluginInstalled
                      ? String(localized: "plugin.hermes.installed")
                      : "~/.hermes/plugins/coucou/__init__.py")
@@ -1188,6 +1203,48 @@ struct SettingsView: View {
                     statusMessage = String(localized: "status.openai-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#5B8FF9")).frame(width: 8, height: 8)
+                    Text("DeepSeek").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $deepseekKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("deepseek-api-key", value: deepseekKey)
+                    statusMessage = "DeepSeek key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#FF6A00")).frame(width: 8, height: 8)
+                    Text("Qwen (Alibaba)").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $qwenKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("qwen-api-key", value: qwenKey)
+                    statusMessage = "Qwen key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#7C5CFC")).frame(width: 8, height: 8)
+                    Text("Moonshot (Kimi)").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $moonshotKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
+                    statusMessage = "Moonshot key saved."
+                }
+                .buttonStyle(.borderedProminent)
             }
             .padding(.vertical, 4)
         }
@@ -1401,6 +1458,10 @@ struct SettingsView: View {
                 }
                 .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
                 .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
+
+                // Portfolio: exchange accounts + wallets.
+                PortfolioSettingsSection()
+                    .padding(.top, 4)
 
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()
@@ -1691,11 +1752,13 @@ struct SettingsView: View {
         museHooksInstalled = HookServer.museHooksInstalled()
         openCodePluginInstalled = HookServer.openCodePluginInstalled()
         ampPluginInstalled = HookServer.ampPluginInstalled()
+        hermesPluginInstalled = HookServer.hermesPluginInstalled()
         state.refreshPlanRelayState()
         if selectedSection == "agents" {
             Task {
+                codexIDEVersions = await Task.detached(priority: .utility) { CodexConnection.installedIDEVersions() }.value
                 let task = state.tasks.first { $0.id == "agent_codex" }
-                await codexInfo.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath)
+                await codexInfo.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath, cwd: task?.sessionCwd)
             }
         }
         #endif
@@ -2083,7 +2146,7 @@ struct SettingsView: View {
             }
             showHermesPluginDiff = false
             pendingHermesPluginContent = ""
-            hermesPluginInstalled = hermesPluginPendingInstall
+            refreshHookStates()
             statusMessage = hermesPluginPendingInstall
                 ? String(localized: "status.hermes-plugin-installed")
                 : String(localized: "status.hermes-plugin-removed")

@@ -87,9 +87,16 @@ struct PillSessionRegistry {
             session.display.hostApp = display.hostApp
         }
         if let id = display.hookSessionId { session.display.hookSessionId = id }
-        if let id = display.codexThreadId { session.display.codexThreadId = id }
-        if let id = display.codexTurnId, !id.isEmpty { session.display.codexTurnId = id }
-        if let path = display.codexRolloutPath { session.display.codexRolloutPath = path }
+        if display.codexManaged {
+            if let id = display.codexThreadId { session.display.codexThreadId = id }
+            if let id = display.codexTurnId, !id.isEmpty { session.display.codexTurnId = id }
+            if let path = display.codexRolloutPath { session.display.codexRolloutPath = path }
+        } else {
+            // A root hook session can change child threads; absent identity is unavailable.
+            session.display.codexThreadId = display.codexThreadId
+            session.display.codexTurnId = nil
+            session.display.codexRolloutPath = nil
+        }
         if let id = display.sessionTerminalId { session.display.sessionTerminalId = id }
         session.display.codexManaged = display.codexManaged
         if working { session.isWorking = true }

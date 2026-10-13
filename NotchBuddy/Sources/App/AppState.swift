@@ -159,6 +159,15 @@ final class AppState: ObservableObject {
     @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
         didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
     }
+    @Published var deepseekChatModel: String = ChatProvider.deepseek.defaultModel {
+        didSet { UserDefaults.standard.set(deepseekChatModel, forKey: "deepseekChatModel") }
+    }
+    @Published var qwenChatModel: String = ChatProvider.qwen.defaultModel {
+        didSet { UserDefaults.standard.set(qwenChatModel, forKey: "qwenChatModel") }
+    }
+    @Published var moonshotChatModel: String = ChatProvider.moonshot.defaultModel {
+        didSet { UserDefaults.standard.set(moonshotChatModel, forKey: "moonshotChatModel") }
+    }
     @Published var ollamaServerURL: String = "" {
         didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
     }
@@ -260,6 +269,9 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
+            case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
+            case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
             case .codex, .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
@@ -280,6 +292,18 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
+                case .deepseek:
+                    if !models.contains(where: { $0.id == deepseekChatModel }) {
+                        deepseekChatModel = models.first!.id
+                    }
+                case .qwen:
+                    if !models.contains(where: { $0.id == qwenChatModel }) {
+                        qwenChatModel = models.first!.id
+                    }
+                case .moonshot:
+                    if !models.contains(where: { $0.id == moonshotChatModel }) {
+                        moonshotChatModel = models.first!.id
+                    }
                 case .codex, .ollama, .lmstudio: break
                 }
             }
@@ -295,6 +319,9 @@ final class AppState: ObservableObject {
         case .codex:     return codexModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .deepseek:  return deepseekChatModel
+        case .qwen:      return qwenChatModel
+        case .moonshot:  return moonshotChatModel
         }
     }
 
@@ -529,7 +556,7 @@ final class AppState: ObservableObject {
         Self.lastCodexAttempt = Date()
         Task {
             let task = tasks.first { $0.id == "agent_codex" }
-            await CodexAgentsInfo.shared.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath)
+            await CodexAgentsInfo.shared.refresh(threadId: task?.codexThreadId, rolloutPath: task?.codexRolloutPath, cwd: task?.sessionCwd)
         }
     }
     func refreshPlanRelayState() {
@@ -557,6 +584,9 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "deepseekChatModel"), !v.isEmpty { deepseekChatModel = v }
+        if let v = ud.string(forKey: "qwenChatModel"),     !v.isEmpty { qwenChatModel     = v }
+        if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s

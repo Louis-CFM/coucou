@@ -18,6 +18,7 @@ thread_starts=0
 turn_starts=0
 pending_interrupt=None
 held_turn=None
+previous_turn=None
 account_update_at=None
 account_epoch=0
 limits_expired=False
@@ -118,6 +119,13 @@ for line in sys.stdin:
         turn_starts+=1;turn='turn-'+str(turn_starts)
         if len(p['input'])>1: assert 'actual attachment' in p['input'][0]['text']
         if p['input'][0].get('text','').startswith('PDF:'):assert any(item['type']=='localImage' for item in p['input']), 'PDF text-bearing chart image omitted'
+        if previous_turn and previous_turn[0]==thread:
+            old=previous_turn[1]
+            send({'method':'turn/started','params':{'threadId':thread,'turn':{'id':old}}})
+            send({'method':'item/completed','params':{'threadId':thread,'turnId':old,'item':{'id':'late-old','type':'agentMessage','text':'LATE PREVIOUS TURN'}}})
+            send({'method':'turn/completed','params':{'threadId':thread,'turn':{'id':old,'status':'completed'}}})
+            time.sleep(0.02)
+        previous_turn=(thread,turn)
         send({'method':'turn/started','params':{'threadId':thread,'turn':{'id':turn}}})
         query=p['input'][0].get('text')
         if query in ['hold for cancel','start rpc error','start rpc timeout','start malformed response']:
@@ -319,6 +327,19 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   let limits=CodexAgentsInfo.parseLimits(["rateLimitsByLimitId":["codex":["primary":["usedPercent":25,"windowDurationMins":37]]],"rateLimits":["primary":["usedPercent":0]]])
   assert(limits.count==1 && limits[0].usedPercent==25 && limits[0].remainingPercent==75 && limits[0].windowDurationMins==37)
   assert(CodexAgentsInfo.parseLimits(["rateLimits":["primary":["usedPercent":true]]]).isEmpty)
+  let reset=Int(Date().addingTimeInterval(3600).timeIntervalSince1970)
+  let swappedLimits:[String:Any] = ["rateLimits":["primary":["usedPercent":72,"windowDurationMins":10_080,"resetsAt":reset],"secondary":["usedPercent":19,"windowDurationMins":300,"resetsAt":reset]]]
+  let swappedPlan=CodexPlanGauge.parse(result:swappedLimits)
+  assert(swappedPlan?.fiveHour?.usedPct==19 && swappedPlan?.sevenDay?.usedPct==72,"Codex primary/secondary order replaced actual window durations")
+  for duration in [60,37] {
+   let custom:[String:Any] = ["rateLimits":["primary":["usedPercent":81,"windowDurationMins":duration,"resetsAt":reset]],"rateLimitResetCredits":["availableCount":2]]
+   let customPlan=CodexPlanGauge.parse(result:custom)
+   assert(customPlan?.fiveHour==nil && customPlan?.sevenDay==nil && customPlan?.resetCredits==2,"Custom Codex duration was mislabeled or lost reset credits")
+   assert(CodexAgentsInfo.parseLimits(custom).first?.windowDurationMins==duration,"Custom Codex duration disappeared from the detailed quota rows")
+  }
+  let unknown:[String:Any] = ["rateLimits":["primary":["usedPercent":44,"resetsAt":reset]]]
+  assert(CodexPlanGauge.parse(result:unknown)?.fiveHour==nil && CodexPlanGauge.parse(result:unknown)?.sevenDay==nil,"Unknown Codex duration was labeled as a week")
+  assert(CodexAgentsInfo.parseLimits(unknown).count==1 && CodexAgentsInfo.parseLimits(unknown)[0].windowDurationMins==nil,"Unknown Codex window disappeared from the detailed quota rows")
   assert(CodexAgentsInfo.integer(-1)==nil && CodexAgentsInfo.integer(true)==nil)
   let rollout=root.appendingPathComponent("exact.jsonl")
   let records:[[String:Any]]=[
@@ -355,7 +376,11 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   let threadStarts=try String(contentsOf:root.appendingPathComponent("thread-started"),encoding:.utf8)
   assert(threadStarts=="1","Mutable search mode changed the owned-thread snapshot")
   do { try await chat.sendManagedInstruction(threadId:"external-thread",text:"bad",expectedCwd:root.path);assertionFailure("External writer accepted") } catch {}
-  try await chat.sendManagedInstruction(threadId:"owned-thread",text:"continue",expectedCwd:root.path)
+  let phoneTurn=Task { @MainActor in try await chat.sendManagedInstruction(threadId:"owned-thread",text:"continue",expectedCwd:root.path) }
+  await waitUntil({chat.isBusy},"Phone instruction did not begin")
+  assert(!chat.isChatStreaming,"Phone instruction animated the previous Chat answer")
+  try await phoneTurn.value
+  assert(state.chatHistory.last?.content=="Hello Codex", "Previous turn completed the next same-thread request")
   let beforeResolve=HookServer.shared.resolvedThreads.count
   let active=Task { @MainActor in await chat.chat(query:"hold for cancel",context:nil,state:state) }
   for _ in 0..<100 {
@@ -363,6 +388,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
    try? await Task.sleep(for:.milliseconds(5))
   }
   assert(chat.isBusy && chat.turnId != nil && state.chatHistory.last?.content=="Partial old response")
+  assert(chat.isChatStreaming, "Streaming Chat lost its display target")
   chat.cancel()
   assert(CodexEventAdapter.shared.unregisteredThreads.last=="owned-thread","Cancelled thread kept its registry ownership")
   assert(!chat.owns(threadId:"owned-thread") && chat.turnId==nil,"Cancel retained native ownership")
@@ -496,7 +522,7 @@ bridge = source[start:end].replace("private static var", "static var")
 fixture = r"""
 import Foundation
 struct CodexPlanUsage { var updatedAt: Date; var percent: Int }
-struct AgentTask { var id: String; var codexThreadId: String?; var codexRolloutPath: String? }
+struct AgentTask { var id: String; var codexThreadId: String?; var codexRolloutPath: String?; var sessionCwd: String? }
 @MainActor final class CodexAgentsInfo {
     static let shared = CodexAgentsInfo()
     var planUsage: CodexPlanUsage?
@@ -504,12 +530,12 @@ struct AgentTask { var id: String; var codexThreadId: String?; var codexRolloutP
     var attempts = 0
     var thread: String?
     var path: String?
-    func refresh(threadId: String?, rolloutPath: String?) async {
+    func refresh(threadId: String?, rolloutPath: String?, cwd: String? = nil) async {
         attempts += 1; thread = threadId; path = rolloutPath
     }
 }
 @MainActor final class AppState {
-    var tasks = [AgentTask(id: "agent_codex", codexThreadId: "selected", codexRolloutPath: "/fixture")]
+    var tasks = [AgentTask(id: "agent_codex", codexThreadId: "selected", codexRolloutPath: "/fixture", sessionCwd: "/fixture-project")]
 BRIDGE
 }
 @main enum PlanBridgeCheck {
