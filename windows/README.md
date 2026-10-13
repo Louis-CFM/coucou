@@ -608,10 +608,16 @@ What changes on Linux:
   - **KDE Plasma on Wayland**: a few lines of KWin script, loaded over D-Bus
     from `$XDG_RUNTIME_DIR`, activate the window by process ID and are unloaded
     right after; Plasma 5 and 6.
+  - **Hyprland**: `hyprctl -j clients` lists every window with its process ID,
+    native Wayland ones included (Zed, kitty, Alacritty, foot…); the nearest
+    ancestor's window gets a `hyprctl dispatch focuswindow`, which switches to
+    its workspace. `hyprctl` must be on the `PATH` of Coucou's session.
   - **kitty**, anywhere: its tab is selected too when remote control listens on
     a socket (`allow_remote_control` and `listen_on` in kitty.conf).
-  - **GNOME on Wayland** and other Wayland compositors let no app bring another
+  - **GNOME on Wayland** and other Wayland compositors without one of these let no app bring another
     app's native window forward (an XWayland one, such as VS Code's by default,
     still can be). There, and for a session under tmux, screen or ssh, whose
-    terminal is no ancestor, the folder opens in VS Code as before.
+    terminal is no ancestor, the folder opens in VS Code as before — or in Zed
+    when there is no `code` but a `zeditor` (or `zed`, from Zed's own installer
+    in your home folder) on the `PATH`. The diff card's ↗ does the same.
 - No **Claude Desktop** pill: the Claude app has no Linux build.
