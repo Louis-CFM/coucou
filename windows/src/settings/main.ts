@@ -940,7 +940,7 @@ function generalSection(): HTMLElement {
     type: "text",
     placeholder: t("code (or $VISUAL / $EDITOR)"),
     value: settings.editor ?? "",
-    style: "width:180px",
+    style: "min-width:240px;flex:1 1 auto;max-width:320px",
   }) as HTMLInputElement;
   editor.addEventListener("change", () => {
     settings.editor = editor.value.trim() || null;

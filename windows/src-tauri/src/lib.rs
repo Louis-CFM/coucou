@@ -230,6 +230,66 @@ fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
     None
 }
 
+fn is_terminal_editor(editor: &std::path::Path) -> bool {
+    let stem = editor
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    matches!(
+        stem.as_str(),
+        "vi" | "vim" | "nvim" | "nano" | "emacs" | "micro" | "helix" | "hx" | "kak" | "pico"
+    )
+}
+
+fn spawn_editor(editor: &std::path::Path, target: &std::ffi::OsStr) -> bool {
+    #[cfg(windows)]
+    {
+        if is_terminal_editor(editor) {
+            // Terminal editor: launch in Windows Terminal or cmd console
+            if let Some(wt) = platform::find_on_path("wt") {
+                if Command::new(wt)
+                    .args(["--", editor.to_str().unwrap_or("")])
+                    .arg(target)
+                    .spawn()
+                    .is_ok()
+                {
+                    return true;
+                }
+            }
+            let mut cmd = Command::new("cmd.exe");
+            cmd.args(["/c", "start", ""])
+                .arg(editor)
+                .arg(target);
+            return cmd.spawn().is_ok();
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if is_terminal_editor(editor) {
+            for term in &["x-terminal-emulator", "gnome-terminal", "alacritty", "kitty", "konsole", "xterm"] {
+                if let Some(term_bin) = platform::find_on_path(term) {
+                    let mut cmd = Command::new(term_bin);
+                    if *term == "gnome-terminal" {
+                        cmd.arg("--");
+                    } else {
+                        cmd.arg("-e");
+                    }
+                    cmd.arg(editor).arg(target);
+                    if cmd.spawn().is_ok() {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut cmd = Command::new(editor);
+    cmd.arg(target);
+    platform::no_console(&mut cmd).spawn().is_ok()
+}
+
 /// "Open terminal" opens the working folder in the configured editor (or VS Code / $EDITOR),
 /// and falls back to the file manager otherwise.
 #[tauri::command]
@@ -250,12 +310,15 @@ fn open_in_vscode(path: Option<String>) -> bool {
     }
     let custom = settings::load().editor;
     if let Some(editor) = resolve_editor(custom.as_deref()) {
-        let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
-            cmd.arg(p);
-        }
-        if platform::no_console(&mut cmd).spawn().is_ok() {
-            return true;
+            if spawn_editor(&editor, std::ffi::OsStr::new(p)) {
+                return true;
+            }
+        } else {
+            let mut cmd = Command::new(&editor);
+            if platform::no_console(&mut cmd).spawn().is_ok() {
+                return true;
+            }
         }
     }
     if let Some(p) = path.as_deref() {
@@ -317,9 +380,7 @@ fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
     let custom = settings::load().editor;
     if let Some(editor) = resolve_editor(custom.as_deref()) {
-        let mut cmd = Command::new(editor);
-        cmd.arg(file);
-        if platform::no_console(&mut cmd).spawn().is_ok() {
+        if spawn_editor(&editor, file.as_os_str()) {
             return true;
         }
     }
@@ -896,5 +957,16 @@ mod tests {
         let none = resolve_editor(Some(""));
         let spaces = resolve_editor(Some("   "));
         assert_eq!(none, spaces);
+    }
+
+    #[test]
+    fn terminal_editor_detection() {
+        assert!(is_terminal_editor(std::path::Path::new("vim")));
+        assert!(is_terminal_editor(std::path::Path::new("C:\\tools\\nvim.exe")));
+        assert!(is_terminal_editor(std::path::Path::new("/usr/bin/nano")));
+        assert!(is_terminal_editor(std::path::Path::new("hx")));
+        assert!(!is_terminal_editor(std::path::Path::new("code")));
+        assert!(!is_terminal_editor(std::path::Path::new("cursor.cmd")));
+        assert!(!is_terminal_editor(std::path::Path::new("notepad.exe")));
     }
 }
