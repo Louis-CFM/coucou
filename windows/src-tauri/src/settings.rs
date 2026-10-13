@@ -27,8 +27,12 @@ pub struct Settings {
     pub screen: String,
     /// Where the island sits along the top edge, as a share of the display's
     /// width: 0 = centred, −50 = left edge, 50 = right edge. Lets it clear a
-    /// browser's tabs or a window title on a screen without a notch.
-    pub island_shift: i32,
+    /// browser's tabs or a window title on a screen without a notch. Fractional
+    /// once the island has been dragged: a slider's step would snap it back.
+    pub island_shift: f64,
+    /// How far down the display the island sits, as a share of its height:
+    /// 0 = the top edge, where it retracts like a notch; more once dragged.
+    pub island_drop: f64,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -140,7 +144,8 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
-            island_shift: 0,
+            island_shift: 0.0,
+            island_drop: 0.0,
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -428,7 +433,8 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
-  "islandShift": -20,
+  "islandShift": -20.5,
+  "islandDrop": 35.0,
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -937,6 +943,7 @@ mod tests {
                 "mainPill",
                 "screen",
                 "islandShift",
+                "islandDrop",
                 "autostart",
                 "hooksInstalled",
                 "model",

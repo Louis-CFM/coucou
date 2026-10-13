@@ -12,16 +12,16 @@
    "ru": "Вдоль верхнего края",
    "id": "Di sepanjang tepi atas"
   },
-  "Slide the island left or right, out of the way of a browser's tabs or a window title.": {
-   "zh-Hans": "将小岛左右滑动，避开浏览器标签页或窗口标题。",
-   "hi": "आइलैंड को बाएँ या दाएँ खिसकाएँ, ताकि वह ब्राउज़र के टैब या विंडो के शीर्षक के रास्ते में न आए।",
-   "es": "Desliza la isla a la izquierda o a la derecha, lejos de las pestañas del navegador o del título de una ventana.",
-   "ar": "حرّك الجزيرة يمينًا أو يسارًا بعيدًا عن علامات تبويب المتصفح أو عنوان النافذة.",
-   "fr": "Décalez l'îlot vers la gauche ou la droite, hors des onglets du navigateur ou du titre d'une fenêtre.",
-   "bn": "ব্রাউজারের ট্যাব বা উইন্ডোর শিরোনামের পথ থেকে সরাতে আইল্যান্ডটি বাঁয়ে বা ডানে সরান।",
-   "pt-BR": "Deslize a ilha para a esquerda ou para a direita, longe das abas do navegador ou do título de uma janela.",
-   "ru": "Сдвиньте остров влево или вправо, чтобы он не закрывал вкладки браузера или заголовок окна.",
-   "id": "Geser pulau ke kiri atau kanan, menjauh dari tab browser atau judul jendela."
+  "Slide the island left or right, or drag it with the mouse to wherever suits you, out of the way of a browser's tabs or a window title. Centre puts it back at the top.": {
+   "zh-Hans": "将小岛左右滑动，或用鼠标把它拖到任意合适的位置，避开浏览器标签页或窗口标题。“居中”会把它放回顶部。",
+   "hi": "आइलैंड को बाएँ या दाएँ खिसकाएँ, या माउस से खींचकर जहाँ ठीक लगे वहाँ रखें, ताकि वह ब्राउज़र के टैब या विंडो के शीर्षक के रास्ते में न आए। \"केंद्र\" उसे वापस ऊपर ले आता है।",
+   "es": "Desliza la isla a la izquierda o a la derecha, o arrástrala con el ratón a donde mejor te convenga, lejos de las pestañas del navegador o del título de una ventana. Centrar la devuelve arriba.",
+   "ar": "حرّك الجزيرة يمينًا أو يسارًا، أو اسحبها بالفأرة إلى حيث يناسبك، بعيدًا عن علامات تبويب المتصفح أو عنوان النافذة. «توسيط» يعيدها إلى الأعلى.",
+   "fr": "Décalez l'îlot vers la gauche ou la droite, ou déplacez-le à la souris là où il vous convient, hors des onglets du navigateur ou du titre d'une fenêtre. Centrer le remet en haut.",
+   "bn": "ব্রাউজারের ট্যাব বা উইন্ডোর শিরোনামের পথ থেকে সরাতে আইল্যান্ডটি বাঁয়ে বা ডানে সরান, বা মাউস দিয়ে টেনে যেখানে সুবিধা সেখানে রাখুন। \"কেন্দ্রে আনুন\" এটিকে আবার উপরে ফিরিয়ে আনে।",
+   "pt-BR": "Deslize a ilha para a esquerda ou para a direita, ou arraste-a com o mouse para onde for melhor, longe das abas do navegador ou do título de uma janela. Centralizar a devolve ao topo.",
+   "ru": "Сдвиньте остров влево или вправо или перетащите его мышью туда, где удобно, чтобы он не закрывал вкладки браузера или заголовок окна. «По центру» возвращает его наверх.",
+   "id": "Geser pulau ke kiri atau kanan, atau seret dengan mouse ke tempat yang Anda suka, menjauh dari tab browser atau judul jendela. Ke tengah mengembalikannya ke atas."
   },
   "centred": {
    "zh-Hans": "居中",

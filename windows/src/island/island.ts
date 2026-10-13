@@ -28,6 +28,14 @@ import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 
+/** What a press on the island must leave alone: controls, fields, and text to select. */
+const NO_GRAB =
+  "button, a, input, textarea, select, [contenteditable], [role=button], .tab, .link-btn, .chat-row, .reply, .md-p, pre";
+
+function grabsNothing(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(NO_GRAB) != null;
+}
+
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
 /** Extra canvas on each side of Mochi, for the witch hat's brim and the Santa hat's tip. */
@@ -105,6 +113,15 @@ export class Island {
 
   /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
   private botPress: { x: number; y: number } | null = null;
+
+  /** Where a press on the island itself started (screen px): past DRAG_THRESHOLD it carries the island. */
+  private islandPress: { x: number; y: number } | null = null;
+
+  /**
+   * The island being carried: the last pointer position seen in screen px, the
+   * travel not yet sent to Rust, and the frame that will send it.
+   */
+  private islandDrag: { x: number; y: number; dx: number; dy: number; flush: number | null } | null = null;
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
@@ -672,7 +689,10 @@ export class Island {
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    // Flat along the top edge, where it retracts like a notch; rounded all
+    // round once dragged down from it, where a flat top would look cut off.
+    const top = State.settings.islandDrop > 0 ? r : 0;
+    this.islandEl.style.borderRadius = `${top}px ${top}px ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -736,6 +756,10 @@ export class Island {
       // A press on Mochi may become a drag out to the desktop.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
         this.botPress = { x: e.clientX, y: e.clientY };
+      } else if (e.button === 0 && !grabsNothing(e.target)) {
+        // A press anywhere else on the island may become a drag of the island
+        // itself — not from a control or text, which have their own use for one.
+        this.islandPress = { x: e.screenX, y: e.screenY };
       }
       // Right-click on Mochi opens the wardrobe, and closes it again.
       if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
@@ -759,11 +783,28 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
-    // Dragging Mochi out of the island puts him on the desktop.
+    // Dragging Mochi out of the island puts him on the desktop; dragging the
+    // island itself moves it on the screen.
     window.addEventListener("mousemove", (e) => {
       if (this.desktop.carrying) {
         this.desktop.carry(e.clientX, e.clientY);
         return;
+      }
+      if (this.islandDrag) {
+        this.carryIsland(e);
+        return;
+      }
+      const grab = this.islandPress;
+      if (grab) {
+        if (!(e.buttons & 1)) {
+          this.islandPress = null;
+        } else if (Math.hypot(e.screenX - grab.x, e.screenY - grab.y) > DRAG_THRESHOLD) {
+          this.islandPress = null;
+          this.islandDrag = { x: grab.x, y: grab.y, dx: 0, dy: 0, flush: null };
+          this.islandEl.classList.add("carried");
+          this.carryIsland(e);
+          return;
+        }
       }
       const press = this.botPress;
       if (!press) return;
@@ -779,6 +820,8 @@ export class Island {
     });
     window.addEventListener("mouseup", (e) => {
       this.botPress = null;
+      this.islandPress = null;
+      if (this.islandDrag) void this.dropIsland();
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
 
@@ -872,6 +915,40 @@ export class Island {
     }
 
     this.ensureRunning();
+  }
+
+  /**
+   * Moves the window by the pointer's travel since the last step, once a frame:
+   * screen coordinates, since the window moves under the pointer.
+   */
+  private carryIsland(e: MouseEvent) {
+    const drag = this.islandDrag;
+    if (!drag) return;
+    drag.dx += e.screenX - drag.x;
+    drag.dy += e.screenY - drag.y;
+    drag.x = e.screenX;
+    drag.y = e.screenY;
+    State.lastActivity = performance.now();
+    if (drag.flush != null) return;
+    drag.flush = window.requestAnimationFrame(() => {
+      drag.flush = null;
+      const { dx, dy } = drag;
+      drag.dx = 0;
+      drag.dy = 0;
+      if (dx !== 0 || dy !== 0) void Bridge.nudgeIsland(dx, dy);
+    });
+  }
+
+  /** The island is let go: the last of the travel, then Rust settles where it landed. */
+  private async dropIsland() {
+    const drag = this.islandDrag;
+    if (!drag) return;
+    this.islandDrag = null;
+    this.islandEl.classList.remove("carried");
+    if (drag.flush != null) window.cancelAnimationFrame(drag.flush);
+    if (drag.dx !== 0 || drag.dy !== 0) await Bridge.nudgeIsland(drag.dx, drag.dy);
+    await Bridge.islandDropped();
+    State.lastActivity = performance.now();
   }
 
   /** The greeting and the drop sequence draw a Mochi of their own: not that one. */
@@ -1198,6 +1275,8 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    // The corners follow islandDrop.
+    this.applyGeometry();
     State.notify();
   }
 

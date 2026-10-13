@@ -80,6 +80,12 @@ body {
   will-change: width, height, transform;
 }
 
+/* Being dragged across the screen (island.ts carryIsland). */
+#island.carried,
+#island.carried * {
+  cursor: grabbing;
+}
+
 #island-clip {
   position: absolute;
   inset: 0;

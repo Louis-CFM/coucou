@@ -310,18 +310,21 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    // Centred, then shifted by the user's share of the width (Settings →
-    // General), kept on the display: a browser's tabs or a title bar may sit
-    // where the notch would be on a Mac.
-    let shift = app
+    let panel_h = (PANEL_H * scale).round().max(1.0) as u32;
+    // Centred, then shifted by the user's share of the width and dropped by
+    // their share of the height (Settings → General, or a drag), kept on the
+    // display: a browser's tabs or a title bar may sit where the notch would
+    // be on a Mac.
+    let (shift, drop) = app
         .try_state::<crate::Shared>()
-        .map(|shared| shared.settings.lock().unwrap_or_else(|e| e.into_inner()).island_shift)
-        .unwrap_or(0)
-        .clamp(-50, 50);
-    let centred = (ms.width as i32 - pw as i32) / 2;
-    let offset = ((ms.width as i64 * shift as i64) / 100) as i32;
-    let x = mp.x + (centred + offset).clamp(0, (ms.width as i32 - pw as i32).max(0));
-    let y = mp.y;
+        .map(|shared| {
+            let s = shared.settings.lock().unwrap_or_else(|e| e.into_inner());
+            (s.island_shift, s.island_drop)
+        })
+        .unwrap_or((0.0, 0.0));
+    let (dx, dy) = offset_for(ms.width, ms.height, pw, panel_h, shift, drop);
+    let x = mp.x + dx;
+    let y = mp.y + dy;
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -337,6 +340,107 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+}
+
+/// Where the window's top-left corner goes on a `width`×`height` display, from
+/// the display's origin, in physical pixels: centred, then shifted by `shift`
+/// (a share of the width, −50 to 50) and dropped by `drop` (a share of the
+/// height, 0 to 100). Clamped so the whole panel stays on the display, whatever
+/// the window's current height: the island's top does not move between the wake
+/// strip and the panel.
+fn offset_for(width: u32, height: u32, win_w: u32, panel_h: u32, shift: f64, drop: f64) -> (i32, i32) {
+    let (width, height, win_w, panel_h) = (width as i32, height as i32, win_w as i32, panel_h as i32);
+    let centred = (width - win_w) / 2;
+    let along = (width as f64 * shift.clamp(-50.0, 50.0) / 100.0).round() as i32;
+    let down = (height as f64 * drop.clamp(0.0, 100.0) / 100.0).round() as i32;
+    (
+        (centred + along).clamp(0, (width - win_w).max(0)),
+        down.clamp(0, (height - panel_h).max(0)),
+    )
+}
+
+/// The reverse: the shares a window whose top-left corner sits `dx`,`dy` from
+/// the display's origin stands for. What `offset_for` gives back for them is
+/// that same corner, kept on the display.
+fn shares_for(width: u32, height: u32, win_w: u32, dx: i32, dy: i32) -> (f64, f64) {
+    let centred = (width as i32 - win_w as i32) / 2;
+    let shift = ((dx - centred) as f64 * 100.0 / width.max(1) as f64).clamp(-50.0, 50.0);
+    let drop = (dy as f64 * 100.0 / height.max(1) as f64).clamp(0.0, 100.0);
+    (shift, drop)
+}
+
+/// Where the island stands now that the user has let go of it: the display it
+/// landed on (None when it is the one `pref` already names, or when `pref`
+/// follows the cursor) and its shares of that display.
+pub struct Landing {
+    pub screen: Option<String>,
+    pub shift: f64,
+    pub drop: f64,
+}
+
+pub fn landing(app: &AppHandle, pref: &str) -> Option<Landing> {
+    let win = window(app)?;
+    let pos = win.outer_position().ok()?;
+    let size = win.outer_size().ok()?;
+    let monitors = app.available_monitors().ok()?;
+    // The display under the island's top centre: the corner alone could be
+    // just over the edge of the next one.
+    let (cx, cy) = (pos.x as f64 + size.width as f64 / 2.0, pos.y as f64 + 1.0);
+    let m = monitors
+        .iter()
+        .find(|m| monitor_contains(m, cx, cy))
+        .cloned()
+        .or_else(|| target_monitor(app, pref))?;
+    let mp = *m.position();
+    let ms = *m.size();
+    let (shift, drop) = shares_for(ms.width, ms.height, size.width, pos.x - mp.x, pos.y - mp.y);
+    let same = target_monitor(app, pref).is_some_and(|t| t.position() == m.position());
+    let screen = (pref != "cursor" && !same).then(|| describe(&m).key());
+    Some(Landing { screen, shift, drop })
+}
+
+#[cfg(test)]
+mod placement_tests {
+    use super::*;
+
+    const PANEL: u32 = 320;
+
+    #[test]
+    fn centred_at_the_top_by_default() {
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, 0.0, 0.0), (600, 0));
+        assert_eq!(offset_for(1920, 1080, 240, PANEL, 0.0, 0.0), (840, 0));
+    }
+
+    #[test]
+    fn the_shares_move_it_and_the_edges_stop_it() {
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, -20.0, 0.0), (216, 0));
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, 50.0, 0.0), (1200, 0));
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, -50.0, 0.0), (0, 0));
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, 0.0, 50.0), (600, 540));
+        // The panel's height is what has to fit, even for the 6 px wake strip.
+        assert_eq!(offset_for(1920, 1080, 240, PANEL, 0.0, 100.0), (840, 760));
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, 99.0, 150.0), (1200, 760));
+    }
+
+    #[test]
+    fn where_it_lands_is_where_it_is_put_back() {
+        for (dx, dy) in [(0, 0), (600, 0), (216, 300), (1200, 760), (37, 1)] {
+            let (shift, drop) = shares_for(1920, 1080, 720, dx, dy);
+            assert_eq!(offset_for(1920, 1080, 720, PANEL, shift, drop), (dx, dy), "{dx},{dy}");
+        }
+        // Across the strip and the panel the top-left corner is the same.
+        let (shift, drop) = shares_for(1920, 1080, 720, 216, 300);
+        assert_eq!(offset_for(1920, 1080, 240, PANEL, shift, drop).1, 300);
+    }
+
+    #[test]
+    fn dropped_past_the_edge_is_put_back_at_the_edge() {
+        let (shift, drop) = shares_for(1920, 1080, 720, -100, -5);
+        assert_eq!(drop, 0.0);
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, shift, drop), (0, 0));
+        let (shift, drop) = shares_for(1920, 1080, 720, 1500, 1000);
+        assert_eq!(offset_for(1920, 1080, 720, PANEL, shift, drop), (1200, 760));
+    }
 }
 
 /// Position, size and scale of the monitor the island lives on. Any change here

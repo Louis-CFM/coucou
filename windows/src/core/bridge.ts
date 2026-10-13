@@ -200,6 +200,12 @@ export const Bridge = {
 
   reposition: () => call<void>("reposition"),
 
+  /** One step of the island being dragged, in logical pixels. */
+  nudgeIsland: (dx: number, dy: number) => call<void>("nudge_island", { dx, dy }),
+
+  /** The drag ended: Rust reads where the island landed, stores it, places it by the rules. */
+  islandDropped: () => call<void>("island_dropped"),
+
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
 
