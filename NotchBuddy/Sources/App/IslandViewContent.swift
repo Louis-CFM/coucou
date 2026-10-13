@@ -1402,6 +1402,20 @@ struct PromptView: View {
                     .onChange(of: dictation.transcript) { _, _ in
                         if dictation.isRecording { text = dictation.text }
                     }
+
+                    // Hand what was typed to Claude Code in a new iTerm2 tab
+                    if NSWorkspace.shared.urlForApplication(withBundleIdentifier: ItermLaunch.bundleId) != nil {
+                        Button(action: openInClaudeCode) {
+                            Image(systemName: "apple.terminal")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: text.isEmpty ? "#5C6370" : "#8E939C"))
+                                .frame(width: 18, height: 18)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .help(String(localized: "Open in Claude Code (new iTerm2 tab)"))
+                    }
                     #endif
 
                     Button(action: sendMessage) {
@@ -1469,6 +1483,22 @@ struct PromptView: View {
             await MainActor.run { focused = true }
         }
     }
+
+    #if !APPSTORE
+    private func openInClaudeCode() {
+        let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else { return }
+        let fresh = NSRunningApplication.runningApplications(withBundleIdentifier: ItermLaunch.bundleId).isEmpty
+        Task {
+            if let error = await ItermLaunch.run(prompt: prompt, directory: NSHomeDirectory(), freshLaunch: fresh) {
+                state.chatHistory.append(ChatMessage(role: .assistant, content: "iTerm2: \(error)"))
+            } else {
+                text = ""
+                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+            }
+        }
+    }
+    #endif
 }
 
 

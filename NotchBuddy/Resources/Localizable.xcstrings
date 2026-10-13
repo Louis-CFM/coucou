@@ -11019,6 +11019,70 @@
         }
       }
     },
+    "Open in Claude Code (new iTerm2 tab)" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح في Claude Code (علامة تبويب جديدة في iTerm2)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code-এ খুলুন (iTerm2-এ নতুন ট্যাব)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Claude Code (new iTerm2 tab)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir en Claude Code (nueva pestaña de iTerm2)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir dans Claude Code (nouvel onglet iTerm2)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code में खोलें (iTerm2 में नया टैब)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka di Claude Code (tab iTerm2 baru)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir no Claude Code (nova aba do iTerm2)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть в Claude Code (новая вкладка iTerm2)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Claude Code 中打开（新的 iTerm2 标签页）"
+          }
+        }
+      }
+    },
     "Open in Mail" : {
       "localizations" : {
         "ar" : {
