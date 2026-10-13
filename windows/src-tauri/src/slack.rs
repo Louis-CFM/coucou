@@ -80,6 +80,7 @@ pub fn api_error(json: &Value) -> Option<String> {
         "invalid_auth" | "not_authed" | "token_revoked" | "token_expired" | "account_inactive" => {
             "Invalid token".to_string()
         }
+        "not_allowed_token_type" => "Use a user token (xoxp-…)".to_string(),
         _ => format!("Slack error: {code}"),
     })
 }
@@ -563,6 +564,10 @@ mod tests {
     fn errors_name_the_problem() {
         assert_eq!(api_error(&json!({ "ok": true })), None);
         assert_eq!(api_error(&json!({ "ok": false, "error": "invalid_auth" })).as_deref(), Some("Invalid token"));
+        assert_eq!(
+            api_error(&json!({ "ok": false, "error": "not_allowed_token_type" })).as_deref(),
+            Some("Use a user token (xoxp-…)"),
+        );
         assert_eq!(
             api_error(&json!({ "ok": false, "error": "missing_scope", "needed": "search:read" })).as_deref(),
             Some("Missing scope: search:read"),

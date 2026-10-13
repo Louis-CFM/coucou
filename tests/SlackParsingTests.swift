@@ -10,6 +10,7 @@ enum SlackParsingTests {
         // Errors: ok:false with a code, missing scopes named
         precondition(SlackParsing.error(json(#"{"ok":true}"#)) == nil)
         precondition(SlackParsing.error(json(#"{"ok":false,"error":"invalid_auth"}"#)) == "Invalid token")
+        precondition(SlackParsing.error(json(#"{"ok":false,"error":"not_allowed_token_type"}"#)) == "Use a user token (xoxp-…)")
         precondition(SlackParsing.error(json(#"{"ok":false,"error":"missing_scope","needed":"search:read"}"#))
                      == "Missing scope: search:read")
         precondition(SlackParsing.error(json(#"{"ok":false,"error":"ratelimited"}"#)) == "Slack error: ratelimited")

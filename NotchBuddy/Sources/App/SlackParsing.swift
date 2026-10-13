@@ -67,6 +67,8 @@ enum SlackParsing {
         switch code {
         case "invalid_auth", "not_authed", "token_revoked", "token_expired", "account_inactive":
             return "Invalid token"
+        case "not_allowed_token_type":
+            return "Use a user token (xoxp-…)"
         default:
             return "Slack error: \(code)"
         }
