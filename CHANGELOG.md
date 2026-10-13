@@ -2,6 +2,7 @@
 
 ## Windows and Linux 0.5.0 — October 15, 2026
 
+
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
 
 - **Coucou, the app** — Coucou now has its own window and sits in the taskbar. On the left, **Flow** (Dictation, Notetaker, Statistics, Dictionary, Snippets, Styles, Settings), then **Notch** (General, Active pills, Agents, Chat, OK Coucou, Integrations, Android phone, Shortcuts): the settings you had, in the same place as on the Mac, with the little Mochis walking around each page. It opens when you launch Coucou yourself, not when it starts with your computer (Flow → Settings → App)
@@ -33,10 +34,10 @@ Coucou becomes a real app: a window in the Dock, dictation everywhere on the Mac
 ## Android 0.1.0 — October 11, 2026
 
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; a signed APK on the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) (#501 by @Rhytam23)
-=======
-- **Font and text size** *(Windows and Linux)* — Settings → General → Font picks any font installed on the PC for the island and the settings window, and Text size scales every text from 85 % to 130 %. Reset puts both back; the defaults leave the look exactly as it was
-- **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
->>>>>>> 90266d6 (Windows: pick the interface font and text size in Settings)
+- **Font and text size** — Settings → General → Font picks any font installed on the PC for the island and the settings window, and Text size scales every text from 85 % to 130 %. Reset puts both back; the defaults leave the look exactly as it was
+- **The island slides along the top edge** — Settings → General → "Along the top edge": a slider from the left edge to the right one, centred by default, so the island clears a browser's tabs or a window's title on a screen that has no notch. The wake strip follows
+- **What each model takes** *(Claude plan card)* — under the 5-hour and weekly gauges, a row per model with today's and the week's share, from Claude Code's own cost estimates at list price (the relay now forwards the session's model and running total with the limits). A share of your use, not a limit: Claude's limits are not split by model
+
 
 ## Windows and Linux 0.4.0 — October 11, 2026
 

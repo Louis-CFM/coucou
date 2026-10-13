@@ -379,7 +379,17 @@ fn place(app: &AppHandle, pref: &str, lw: f64, lh: f64) {
 
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
+    // Centred, then shifted by the user's share of the width (Settings →
+    // General), kept on the display: a browser's tabs or a title bar may sit
+    // where the notch would be on a Mac.
+    let shift = app
+        .try_state::<crate::Shared>()
+        .map(|shared| shared.settings.lock().unwrap_or_else(|e| e.into_inner()).island_shift)
+        .unwrap_or(0)
+        .clamp(-50, 50);
+    let centred = (ms.width as i32 - pw as i32) / 2;
+    let offset = ((ms.width as i64 * shift as i64) / 100) as i32;
+    let x = mp.x + (centred + offset).clamp(0, (ms.width as i32 - pw as i32).max(0));
     let y = mp.y;
 
     // GTK never sizes a non-resizable window below its natural size (200 px

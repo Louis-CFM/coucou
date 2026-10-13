@@ -188,12 +188,18 @@ As on the Mac, the island's header can show your plan limits: a small pill
 ("Claude 73%", green below 50 %, orange up to 80 %, red above) for the 5-hour and
 weekly Claude limits, and another for Codex. Click one for the details and the
 reset times. Both are off by default; turn them on in **Settings… → Plan usage**.
+The Claude card also lists what each model took today and over the week, from
+Claude Code's own cost estimates at API list price (`cost.total_cost_usd` of
+each session, added as it grows, under the session's model): a share of your
+use, not a limit — Claude's limits are not split by model. Kept locally, eight
+days at most, nothing is sent anywhere.
 
 - **Claude** (Pro and Max plans): the numbers come from Claude Code's own status
   line. **Show in notch** first shows you the diff of the `statusLine` change in
   `%USERPROFILE%\.claude\settings.json`, takes a dated backup and writes only
   after your click, with the same writer as the hooks: the status line becomes `coucou-hook --statusline`, which
-  passes only the limits on (300 ms at most) and runs the status line you had
+  passes only the limits, the session's model and its running cost estimate on
+  (300 ms at most) and runs the status line you had
   before — kept in `statusline-previous.json` next to the relay — with the same
   input, printing what it prints. On Windows that one runs through Git Bash, as
   Claude Code runs it (`CLAUDE_CODE_GIT_BASH_PATH`, then the Git for Windows that
@@ -461,7 +467,9 @@ own window.
   where WebKitGTK has none, `spd-say` (speech-dispatcher) or `espeak-ng`
   speaks if installed.
 - No notch, so the island lives at the top centre of the screen and retracts into
-  the top edge instead of hiding in a notch.
+  the top edge instead of hiding in a notch. **Settings… → General → Along the
+  top edge** slides it left or right (a share of the display's width, −50 to 50),
+  out of the way of a browser's tabs or a window's title; the wake strip follows.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's

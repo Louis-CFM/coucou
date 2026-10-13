@@ -118,7 +118,8 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // What only Rust changes (the phone pairing and link, the hooks state,
         // Mochi's desktop spot) is not a webview's to say: its copy may be stale.
         let next = current.from_webview(settings);
-        let screen_changed = current.screen != next.screen;
+        let screen_changed =
+            current.screen != next.screen || current.island_shift != next.island_shift;
         let autostart_changed = current.autostart != next.autostart;
         let shortcuts_changed = current.shortcuts != next.shortcuts;
         *current = next.clone();

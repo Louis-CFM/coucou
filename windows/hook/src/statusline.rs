@@ -69,8 +69,10 @@ pub fn run() -> ! {
 }
 
 /// The one line the app gets from a status line call: the limits and which
-/// session they came from, nothing else (no cwd, no model, no transcript).
-/// Without limits — API-key users — there is nothing to send.
+/// session they came from, plus the session's model and its estimated cost so
+/// the plan card can show what each model takes — nothing else (no cwd, no
+/// transcript, no prompt). Without limits — API-key users — there is nothing
+/// to send.
 pub fn payload(map: &serde_json::Map<String, serde_json::Value>) -> Option<String> {
     let limits = map.get("rate_limits").filter(|v| v.is_object())?;
     let mut value = serde_json::json!({
@@ -78,6 +80,24 @@ pub fn payload(map: &serde_json::Map<String, serde_json::Value>) -> Option<Strin
         "session_id": map.get("session_id").cloned().unwrap_or(serde_json::Value::Null),
         "rate_limits": limits,
     });
+    // `model.id` / `model.display_name` and `cost.total_cost_usd` (Claude Code's
+    // own estimate at list price), each only when present and of the right type.
+    if let Some(model) = map.get("model").and_then(|m| m.as_object()) {
+        let mut out = serde_json::Map::new();
+        for key in ["id", "display_name"] {
+            if let Some(text) = model.get(key).and_then(|v| v.as_str()) {
+                out.insert(key.into(), serde_json::Value::String(text.to_string()));
+            }
+        }
+        if !out.is_empty() {
+            value["model"] = serde_json::Value::Object(out);
+        }
+    }
+    if let Some(usd) = map.get("cost").and_then(|c| c.get("total_cost_usd")).and_then(|v| v.as_f64()) {
+        if usd.is_finite() && usd >= 0.0 {
+            value["cost_usd"] = serde_json::json!(usd);
+        }
+    }
     truncate_strings(&mut value);
     let mut line = value.to_string();
     line.push('\n');
@@ -228,9 +248,11 @@ mod tests {
     use std::ffi::OsString;
 
     #[test]
-    fn only_the_limits_and_the_session_go_to_the_app() {
+    fn only_the_limits_the_session_the_model_and_the_cost_go_to_the_app() {
         let input = serde_json::json!({
-            "session_id": "s1", "cwd": "/secret", "model": { "id": "x" },
+            "session_id": "s1", "cwd": "/secret",
+            "model": { "id": "claude-opus-5-5", "display_name": "Opus", "extra": { "secret": 1 } },
+            "cost": { "total_cost_usd": 1.25, "total_duration_ms": 999 },
             "transcript_path": "/home/me/.claude/x.jsonl",
             "rate_limits": { "five_hour": { "used_percentage": 42, "resets_at": 1 } }
         });
@@ -240,6 +262,15 @@ mod tests {
         assert_eq!(v["hook_event_name"], "StatusLine");
         assert_eq!(v["session_id"], "s1");
         assert_eq!(v["rate_limits"]["five_hour"]["used_percentage"], 42);
+        assert_eq!(v["model"], serde_json::json!({ "id": "claude-opus-5-5", "display_name": "Opus" }));
+        assert_eq!(v["cost_usd"], 1.25);
+        assert_eq!(v.as_object().unwrap().len(), 5);
+        // Nothing of the model or the cost beyond those fields; both optional.
+        let bare = serde_json::json!({
+            "session_id": "s1", "model": "opus", "cost": { "total_cost_usd": "a lot" },
+            "rate_limits": { "five_hour": { "used_percentage": 1, "resets_at": 1 } }
+        });
+        let v: serde_json::Value = serde_json::from_str(payload(bare.as_object().unwrap()).unwrap().trim()).unwrap();
         assert_eq!(v.as_object().unwrap().len(), 3);
     }
 
