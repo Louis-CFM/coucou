@@ -23,6 +23,7 @@ import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
+import { dropPendingCard } from "./hooks";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
@@ -134,11 +135,12 @@ export class Island {
     });
   }
 
-  /** The request has its answer: the card goes and the session carries on. */
+  /**
+   * The request has its answer: the card goes and the session carries on. The
+   * next request waiting, if any, comes up in its place (hooks.ts).
+   */
   private closeApproval() {
-    State.endApproval();
-    this.fsm.pinned = false;
-    this.setView(State.defaultView());
+    dropPendingCard(this);
   }
 
   /**

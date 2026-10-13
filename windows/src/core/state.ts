@@ -37,8 +37,20 @@ export interface AgentTask {
   sessionCwd?: string | null;
   /** Claude Code's session, so "Open terminal" can find the window it runs in. */
   sessionId?: string | null;
+  /**
+   * Set on a pill made for one session because the pill it belongs to (VS
+   * Code's, Cursor's, an agent's) was already taken by another live session:
+   * the id of that pill. The card and the catalog read it as the kind of pill
+   * this is; the pill itself goes away with its session.
+   */
+  sessionOf?: string | null;
   /** Claude's final message after Stop, one line; cleared when a new turn starts. */
   finalLine?: string | null;
+}
+
+/** The catalog pill a task stands for: itself, or the one a session pill was made from. */
+export function pillKind(task: Pick<AgentTask, "id" | "sessionOf">): string {
+  return task.sessionOf ?? task.id;
 }
 
 export interface ApprovalInfo {
@@ -226,6 +238,12 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /**
+   * Requests that arrived while a card was up — other sessions asking at the
+   * same time — in order of arrival. Each comes up as the card before it is
+   * answered or withdrawn; until then its pill wears the approval badge.
+   */
+  approvalQueue: ApprovalInfo[] = [];
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
 
@@ -316,6 +334,8 @@ class AppState {
   /**
    * The card has its answer, or is withdrawn: the session carries on, and the
    * pill you were on comes back — unless you moved to another one meanwhile.
+   * The next request waiting, if any, comes up in its place at once: the
+   * island's view follows `pendingApproval`, so whoever called this shows it.
    */
   endApproval() {
     const req = this.pendingApproval;
@@ -329,7 +349,51 @@ class AppState {
     if (previous && this.focusId === req.pillId && this.tasks.some((t) => t.id === previous)) {
       this.focusId = previous;
     }
+    const next = this.approvalQueue.shift();
+    if (next) {
+      this.beginApproval(next);
+      this.updateTask(next.pillId, next.questions ? "question" : "approval");
+    }
     this.notify();
+  }
+
+  /**
+   * A request that arrived while another card was up waits its turn: its pill
+   * shows that it is asking (state and badge), nothing comes up over the card.
+   * The same request again changes nothing.
+   */
+  queueApproval(info: ApprovalInfo) {
+    if (this.approvalQueue.some((q) => q.requestId === info.requestId)) return;
+    this.approvalQueue.push(info);
+    this.updateTask(info.pillId, info.questions ? "question" : "approval");
+    if (this.focusId !== info.pillId) this.setPillBadge(info.pillId, "approval");
+    this.notify();
+  }
+
+  /**
+   * Forgets the waiting requests `moot` picks (a turn that ended, a request
+   * past its time) and returns them, so the relay can be released. A pill left
+   * with nothing waiting goes back to work.
+   */
+  dropQueuedApprovals(moot: (q: ApprovalInfo) => boolean): ApprovalInfo[] {
+    const gone = this.approvalQueue.filter(moot);
+    if (gone.length === 0) return gone;
+    this.approvalQueue = this.approvalQueue.filter((q) => !moot(q));
+    for (const q of gone) {
+      if (this.approvalQueue.some((o) => o.pillId === q.pillId)) continue;
+      if (this.pendingApproval?.pillId === q.pillId) continue;
+      const t = this.tasks.find((x) => x.id === q.pillId);
+      if (t && (t.state === "approval" || t.state === "question")) t.state = "working";
+      if (t?.pillBadge === "approval") t.pillBadge = null;
+    }
+    this.notify();
+    return gone;
+  }
+
+  /** The request a pill is showing or waiting with, if any. */
+  approvalOf(pillId: string): ApprovalInfo | null {
+    if (this.pendingApproval?.pillId === pillId) return this.pendingApproval;
+    return this.approvalQueue.find((q) => q.pillId === pillId) ?? null;
   }
 
   updateTask(id: string, state: BotStateName) {
@@ -440,6 +504,7 @@ class AppState {
       delete t.stepSeq;
       t.pillBadge = null;
       t.finalLine = null;
+      t.sessionId = null;
       const def = pillDefinition(id);
       if (def) t.name = def.name;
       this.clearSessionDiffs(id);
@@ -450,6 +515,30 @@ class AppState {
     this.clearSessionDiffs(id);
     if (this.focusId === id) this.focusId = this.tasks[0]?.id ?? this.mainPillId;
     this.notify();
+  }
+
+  /**
+   * The pill of a second session on a pill that already has one: made for the
+   * session, in the colour of the pill it stands in for (`kind`), right after
+   * the main pill. Never kept — it goes with its session. Returns it.
+   */
+  upsertSessionPill(id: string, kind: string, name: string, color: string, cwd: string, sessionId: string): AgentTask {
+    let t = this.tasks.find((x) => x.id === id);
+    if (!t) {
+      const base = this.tasks.find((x) => x.id === kind);
+      const def = pillDefinition(kind);
+      t = {
+        id, name,
+        color: base?.color ?? (def ? pillColor(def.id, def.color, this.settings.pillColors) : color),
+        state: "idle", stepIndex: 0, steps: [],
+        source: def?.source ?? "agent", isIntegration: false, sessionOf: kind,
+      };
+      this.insertAfterMain(t);
+    }
+    t.name = name;
+    if (cwd) t.sessionCwd = cwd;
+    t.sessionId = sessionId;
+    return t;
   }
 
   /**

@@ -769,6 +769,17 @@ body {
   color: var(--ink);
 }
 
+/* "+2 waiting": other sessions asked while this card was up. */
+.who-row .queued {
+  margin-left: auto;
+  font: 600 10px var(--font);
+  color: #f5a524;
+  background: rgba(245, 165, 36, 0.14);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
 .code {
   font: 400 12px var(--mono);
   color: #e8e9ec;
