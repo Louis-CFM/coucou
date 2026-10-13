@@ -196,6 +196,7 @@ enum ClaudeCodeChat {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = searchPath
         env["COUCOU_CHAT"] = "1"
+        env["COUCOU_WATCHED"] = "1"
         // Nothing that would make Coucou's hooks take this run for an editor session.
         for k in ["TERM_PROGRAM", "TERM_PROGRAM_VERSION", "VSCODE_PID", "CLAUDECODE"] { env[k] = nil }
         p.environment = env

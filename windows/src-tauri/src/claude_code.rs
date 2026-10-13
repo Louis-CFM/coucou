@@ -176,6 +176,7 @@ pub async fn send(
         .args(args(model, &settings.claude_code_effort, resume.as_deref(), inbox.as_deref()))
         .current_dir(&dir)
         .env("COUCOU_CHAT", "1")
+        .env("COUCOU_WATCHED", "1")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
