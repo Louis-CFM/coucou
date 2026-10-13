@@ -231,13 +231,30 @@ fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
 }
 
 fn is_terminal_editor(editor: &std::path::Path) -> bool {
+    let name = editor
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
     let stem = editor
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
+    // On Unix, a path with backslashes like "C:\tools\nvim.exe" is a single filename segment;
+    // strip the Windows extension if present so test paths work cross-platform.
+    let base = stem
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(&stem)
+        .strip_suffix(".exe")
+        .or_else(|| stem.rsplit(['/', '\\']).next())
+        .unwrap_or(&stem);
     matches!(
-        stem.as_str(),
+        base,
+        "vi" | "vim" | "nvim" | "nano" | "emacs" | "micro" | "helix" | "hx" | "kak" | "pico"
+    ) || matches!(
+        name.strip_suffix(".exe").unwrap_or(&name),
         "vi" | "vim" | "nvim" | "nano" | "emacs" | "micro" | "helix" | "hx" | "kak" | "pico"
     )
 }
