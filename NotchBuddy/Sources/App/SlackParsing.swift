@@ -232,12 +232,35 @@ enum SlackParsing {
 
 enum SlackLinks {
     /// Opens the conversation in the Slack app (docs.slack.dev/interactivity/deep-linking).
-    static func app(team: String, channel: String) -> URL? {
+    /// With a permalink, also at the message and its thread: `message` and `thread_ts` are
+    /// not in those docs, and the app ignores parameters it does not know.
+    static func app(team: String, channel: String, permalink: String? = nil) -> URL? {
         var c = URLComponents()
         c.scheme = "slack"
         c.host = "channel"
         c.queryItems = [URLQueryItem(name: "team", value: team), URLQueryItem(name: "id", value: channel)]
+        if let (ts, thread) = message(in: permalink) {
+            c.queryItems?.append(URLQueryItem(name: "message", value: ts))
+            if let thread { c.queryItems?.append(URLQueryItem(name: "thread_ts", value: thread)) }
+        }
         return c.url
+    }
+
+    /// ".../archives/C1/p1699999000000100?thread_ts=1699998000.000200" gives the message's
+    /// ts "1699999000.000100" and, for a reply, its thread's ts.
+    static func message(in permalink: String?) -> (ts: String, thread: String?)? {
+        func isTs(_ s: String) -> Bool {
+            let parts = s.split(separator: ".", omittingEmptySubsequences: false)
+            return parts.count == 2 && parts.allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }
+        }
+        guard let permalink, let c = URLComponents(string: permalink),
+              let last = c.path.split(separator: "/").last, last.hasPrefix("p") else { return nil }
+        let digits = last.dropFirst()
+        guard digits.count > 6 else { return nil }
+        let ts = "\(digits.dropLast(6)).\(digits.suffix(6))"
+        guard isTs(ts) else { return nil }
+        let thread = c.queryItems?.first { $0.name == "thread_ts" }?.value
+        return (ts, thread.flatMap { isTs($0) && $0 != ts ? $0 : nil })
     }
 
     /// The same conversation in a browser: the message's permalink when there is one.

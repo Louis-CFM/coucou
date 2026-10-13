@@ -243,7 +243,7 @@ HTTP 429 : on respecte `Retry-After` (60 s par défaut) avant toute nouvelle req
 ### Affichage
 
 - Carte : « Slack · Messages », compteurs non-lus (bulle) et mentions (`@`), puis 3 lignes : messages directs non lus d'abord, puis mentions non lues des dernières 24 h (plus récentes que le `last_read` du canal), chacun du plus récent au plus ancien. Ligne = auteur (ou `auteur · #canal`), extrait du texte (balises `<@U…>`, `<#C…|nom>`, `<url|texte>` rendues lisibles), âge.
-- Clic sur une ligne : `slack://channel?team=T…&id=C…` si une app gère `slack://` (macOS `urlForApplication(toOpen:)`, Linux `xdg-mime query default x-scheme-handler/slack`, Windows clé `HKCR\slack`), sinon le permalien `https` du message (mentions) ou `https://slack.com/app_redirect?channel=…&team=…` (doc : https://docs.slack.dev/interactivity/deep-linking).
+- Clic sur une ligne : `slack://channel?team=T…&id=C…` (+ `&message=` et `&thread_ts=` tirés du permalien d'une mention, paramètres absents de la doc) si une app gère `slack://` (macOS `urlForApplication(toOpen:)`, Linux `xdg-mime query default x-scheme-handler/slack`, Windows clé `HKCR\slack`), sinon le permalien `https` du message (mentions) ou `https://slack.com/app_redirect?channel=…&team=…` (doc : https://docs.slack.dev/interactivity/deep-linking).
 - Bouton ↗ : `slack://open`, sinon l'URL de l'espace renvoyée par `auth.test`.
 
 ### Alertes

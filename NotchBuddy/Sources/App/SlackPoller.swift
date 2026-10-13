@@ -180,7 +180,7 @@ final class SlackPoller {
 
     static func open(_ message: SlackMessage) {
         let team = AppState.shared.slackTeamId
-        if let app = SlackLinks.app(team: team, channel: message.channelId),
+        if let app = SlackLinks.app(team: team, channel: message.channelId, permalink: message.permalink),
            NSWorkspace.shared.urlForApplication(toOpen: app) != nil {
             NSWorkspace.shared.open(app)
             return

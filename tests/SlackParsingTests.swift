@@ -116,6 +116,13 @@ enum SlackParsingTests {
 
         // Links: the app first, the permalink or a redirect in the browser
         precondition(SlackLinks.app(team: "T1", channel: "D1")?.absoluteString == "slack://channel?team=T1&id=D1")
+        precondition(SlackLinks.app(team: "T1", channel: "C1", permalink: "https://a.slack.com/archives/C1/p1699999000000100")?
+            .absoluteString == "slack://channel?team=T1&id=C1&message=1699999000.000100")
+        precondition(SlackLinks.app(team: "T1", channel: "C1",
+                                    permalink: "https://a.slack.com/archives/C1/p1699999000000100?thread_ts=1699998000.000200&cid=C1")?
+            .absoluteString == "slack://channel?team=T1&id=C1&message=1699999000.000100&thread_ts=1699998000.000200")
+        precondition(SlackLinks.app(team: "T1", channel: "C1", permalink: "https://a.slack.com/archives/C1/p1x&evil=1")?
+            .absoluteString == "slack://channel?team=T1&id=C1")
         precondition(SlackLinks.web(team: "T1", channel: "C1", permalink: "https://a.slack.com/archives/C1/p1")?
                         .absoluteString == "https://a.slack.com/archives/C1/p1")
         precondition(SlackLinks.web(team: "T1", channel: "D1", permalink: nil)?.absoluteString

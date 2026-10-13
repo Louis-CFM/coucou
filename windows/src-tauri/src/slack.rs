@@ -296,8 +296,42 @@ pub fn snippet(text: &str, names: &HashMap<String, String>) -> String {
 }
 
 /// The Slack app's link to a conversation (docs.slack.dev/interactivity/deep-linking).
-pub fn app_link(team: &str, channel: &str) -> String {
-    format!("slack://channel?team={team}&id={channel}")
+/// With a permalink, also at the message and its thread: `message` and `thread_ts` are
+/// not in those docs, and the app ignores parameters it does not know.
+pub fn app_link(team: &str, channel: &str, permalink: Option<&str>) -> String {
+    let mut link = format!("slack://channel?team={team}&id={channel}");
+    if let Some((ts, thread)) = permalink.and_then(permalink_message) {
+        link.push_str(&format!("&message={ts}"));
+        if let Some(thread) = thread {
+            link.push_str(&format!("&thread_ts={thread}"));
+        }
+    }
+    link
+}
+
+/// ".../archives/C1/p1699999000000100?thread_ts=1699998000.000200" gives the message's
+/// ts "1699999000.000100" and, for a reply, its thread's ts.
+pub fn permalink_message(permalink: &str) -> Option<(String, Option<String>)> {
+    fn is_ts(s: &str) -> bool {
+        s.split_once('.').is_some_and(|(a, b)| {
+            !a.is_empty() && !b.is_empty() && a.bytes().chain(b.bytes()).all(|c| c.is_ascii_digit())
+        })
+    }
+    let (path, query) = permalink.split_once('?').unwrap_or((permalink, ""));
+    let digits = path.rsplit('/').next()?.strip_prefix('p')?;
+    if digits.len() <= 6 || !digits.is_ascii() {
+        return None;
+    }
+    let ts = format!("{}.{}", &digits[..digits.len() - 6], &digits[digits.len() - 6..]);
+    if !is_ts(&ts) {
+        return None;
+    }
+    let thread = query
+        .split('&')
+        .find_map(|kv| kv.strip_prefix("thread_ts="))
+        .filter(|t| is_ts(t) && *t != ts)
+        .map(str::to_string);
+    Some((ts, thread))
 }
 
 /// The same conversation in a browser: the message's permalink when there is one.
@@ -553,7 +587,7 @@ pub async fn slack_open(channel: String, permalink: Option<String>) {
         return;
     }
     let installed = tauri::async_runtime::spawn_blocking(app_installed).await.unwrap_or(false);
-    let url = if installed { app_link(&team, &channel) } else { web_link(&team, &channel, permalink.as_deref()) };
+    let url = if installed { app_link(&team, &channel, permalink.as_deref()) } else { web_link(&team, &channel, permalink.as_deref()) };
     platform::open_url(&url);
 }
 
@@ -706,7 +740,16 @@ mod tests {
 
     #[test]
     fn links_open_the_app_or_the_browser() {
-        assert_eq!(app_link("T1", "D1"), "slack://channel?team=T1&id=D1");
+        assert_eq!(app_link("T1", "D1", None), "slack://channel?team=T1&id=D1");
+        assert_eq!(
+            app_link("T1", "C1", Some("https://a.slack.com/archives/C1/p1699999000000100")),
+            "slack://channel?team=T1&id=C1&message=1699999000.000100",
+        );
+        assert_eq!(
+            app_link("T1", "C1", Some("https://a.slack.com/archives/C1/p1699999000000100?thread_ts=1699998000.000200&cid=C1")),
+            "slack://channel?team=T1&id=C1&message=1699999000.000100&thread_ts=1699998000.000200",
+        );
+        assert_eq!(app_link("T1", "C1", Some("https://a.slack.com/archives/C1/p1x&evil=1")), "slack://channel?team=T1&id=C1");
         assert_eq!(web_link("T1", "C1", Some("https://a.slack.com/archives/C1/p1")), "https://a.slack.com/archives/C1/p1");
         assert_eq!(web_link("T1", "D1", None), "https://slack.com/app_redirect?channel=D1&team=T1");
         assert_eq!(web_link("T1", "D1", Some("javascript:alert(1)")), "https://slack.com/app_redirect?channel=D1&team=T1");
