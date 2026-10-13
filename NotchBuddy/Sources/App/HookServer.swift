@@ -3254,6 +3254,9 @@ def main():
     except Exception:
         if '--statusline' not in sys.argv[1:]:
             return
+    # claude -p, the SDK and scheduled jobs: no one watches them, so they stay off the island.
+    if os.environ.get('CLAUDE_CODE_ENTRYPOINT', '').startswith('sdk-') and os.environ.get('COUCOU_WATCHED') != '1':
+        return
 
     socket_path = os.path.expanduser(
         '~/Library/Application Support/NotchBuddy/nb.sock'
@@ -3561,6 +3564,9 @@ def main():
     except Exception:
         if '--statusline' not in sys.argv[1:]:
             return
+    # claude -p, the SDK and scheduled jobs: no one watches them, so they stay off the island.
+    if os.environ.get('CLAUDE_CODE_ENTRYPOINT', '').startswith('sdk-') and os.environ.get('COUCOU_WATCHED') != '1':
+        return
 
     socket_path = os.path.expanduser(
         '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
