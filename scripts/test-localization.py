@@ -52,12 +52,12 @@ def main():
     for path in (ROOT / "NotchBuddy/Sources").rglob("*.swift"):
         if any(part in {"Phone", "Widgets", "NotificationContent"} for part in path.parts):
             continue
-        for literal in re.findall(r'String\(localized:\s*"((?:\\.|[^"\\])*)"', path.read_text()):
+        for literal in re.findall(r'(?:String\(localized:\s*|(?:Text|Button|Toggle|SecureField|TextField|Picker|Label|GroupBox|help|accessibilityLabel|navigationTitle)\(\s*)"((?:\\.|[^"\\])*)"', path.read_text()):
             if "\\(" in literal:  # Xcode generates interpolation keys; format arguments are checked above.
                 continue
             literal = re.sub(r"\\u\{([0-9a-fA-F]+)\}", lambda match: json.dumps(chr(int(match[1], 16)))[1:-1], literal)
             key = json.loads('"' + literal + '"')
-            if key not in catalog["strings"]:
+            if key.strip() and not key.isdecimal() and key not in catalog["strings"]:
                 errors.append(f"{path.name}: localized key {key!r} is missing from the catalog")
     if errors:
         print("\n".join(errors), file=sys.stderr)

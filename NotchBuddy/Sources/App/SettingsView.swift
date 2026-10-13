@@ -86,8 +86,11 @@ struct SettingsView: View {
     #endif
 
     // Multi-provider chat keys
-    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
-    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var googleKey: String   = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var openAIKey: String   = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var deepseekKey: String = KeychainStore.shared.get("deepseek-api-key") ?? ""
+    @State private var qwenKey: String     = KeychainStore.shared.get("qwen-api-key") ?? ""
+    @State private var moonshotKey: String = KeychainStore.shared.get("moonshot-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
@@ -1073,6 +1076,48 @@ struct SettingsView: View {
                     statusMessage = String(localized: "status.openai-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#5B8FF9")).frame(width: 8, height: 8)
+                    Text("DeepSeek").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $deepseekKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("deepseek-api-key", value: deepseekKey)
+                    statusMessage = String(localized: "status.deepseek-key-saved")
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#FF6A00")).frame(width: 8, height: 8)
+                    Text("Qwen (Alibaba)").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $qwenKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("qwen-api-key", value: qwenKey)
+                    statusMessage = String(localized: "status.qwen-key-saved")
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#7C5CFC")).frame(width: 8, height: 8)
+                    Text("Moonshot (Kimi)").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $moonshotKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
+                    statusMessage = String(localized: "status.moonshot-key-saved")
+                }
+                .buttonStyle(.borderedProminent)
             }
             .padding(.vertical, 4)
         }
@@ -1286,6 +1331,10 @@ struct SettingsView: View {
                 }
                 .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
                 .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
+
+                // Portfolio: exchange accounts + wallets.
+                PortfolioSettingsSection()
+                    .padding(.top, 4)
 
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()
