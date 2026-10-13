@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Rhytam Biswas. MIT License, like the rest of Coucou; see android/LICENSE for the text.
 // What the phone is told, and what it may decide.
 //
 // The hub holds the last list of sessions and the one permission request that is
@@ -555,7 +556,7 @@ impl Hub {
         self.subscribe_with(tx, now, Caps { details, ..Caps::default() })
     }
 
-    /// Like [`subscribe`], for a phone that may also have been offered `answers` and `prefs`.
+    /// Registers an authenticated connection with the capabilities it was offered.
     pub fn subscribe_with(&self, tx: mpsc::Sender<Out>, now: u64, caps: Caps) -> (u64, Arc<AtomicBool>) {
         let Caps { details, answers, prefs, diffs, usage, relay, services } = caps;
         let mut inner = self.inner.lock().unwrap();
@@ -729,7 +730,7 @@ impl Hub {
         self.host.get_diff(sub_id, pill_id, file_id);
     }
 
-    /// The island's answer to [`request_diff`]: sent to that phone only (and only if it still has `diffs`), cut to
+    /// The island's answer to [Self::request_diff]: sent to that phone only (and only if it still has `diffs`), cut to
     /// the limits whatever the island sent, in parts that each fit a line.
     pub fn send_diff(&self, sub_id: u64, diff: DiffIn) {
         let mut inner = self.inner.lock().unwrap();
@@ -1682,7 +1683,7 @@ mod tests {
 
     #[test]
     fn the_outfit_list_is_the_one_of_the_island() {
-        let ts = include_str!("../../../src/mochi/wardrobe.ts");
+        let ts = include_str!("../../src/mochi/wardrobe.ts");
         let body = ts.split("export const OUTFIT_SELECTIONS = [").nth(1).unwrap().split("] as const").next().unwrap();
         let ids: Vec<&str> = body.split('"').skip(1).step_by(2).collect();
         assert_eq!(ids, OUTFIT_CHOICES.to_vec());
@@ -1990,7 +1991,7 @@ mod tests {
 
     #[test]
     fn the_service_ids_are_those_of_the_pill_catalog() {
-        let ts = include_str!("../../../src/core/pills.ts");
+        let ts = include_str!("../../src/core/pills.ts");
         for id in SERVICE_IDS {
             assert!(ts.contains(&format!("\"{id}\"")), "{id}");
         }
