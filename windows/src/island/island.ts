@@ -11,7 +11,7 @@ import {
   type BotEmoteName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { State, type IslandDock } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -27,6 +27,14 @@ import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+
+/** What a press on the island must leave alone: controls, fields, and text to select. */
+const NO_GRAB =
+  "button, a, input, textarea, select, [contenteditable], [role=button], .tab, .link-btn, .chat-row, .reply, .md-p, pre";
+
+function grabsNothing(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(NO_GRAB) != null;
+}
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -105,6 +113,15 @@ export class Island {
 
   /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
   private botPress: { x: number; y: number } | null = null;
+
+  /** Where a press on the island itself started (screen px): past DRAG_THRESHOLD it carries the island. */
+  private islandPress: { x: number; y: number } | null = null;
+
+  /**
+   * The island being carried: the last pointer position seen in screen px, the
+   * travel not yet sent to Rust, and the frame that will send it.
+   */
+  private islandDrag: { x: number; y: number; dx: number; dy: number; flush: number | null } | null = null;
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
@@ -643,8 +660,19 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+  /** The edge the island is against, which is how it is laid out in the window. */
+  private dock(): IslandDock {
+    return State.settings.islandDock ?? "top";
+  }
+
+  /** Against a side: hidden and compact it stands on end (see layout.ts islandSize). */
+  private onEnd(): boolean {
+    const dock = this.dock();
+    return dock === "left" || dock === "right";
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, this.onEnd());
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -670,30 +698,60 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    const dock = this.dock();
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
-    this.islandEl.style.transform = `translateX(-50%)`;
+    // Flat along the edge it is against, where it retracts like a notch;
+    // rounded all round when afloat, where a flat side would look cut off.
+    const corners =
+      dock === "top" ? [0, 0, r, r]
+      : dock === "bottom" ? [r, r, 0, 0]
+      : dock === "left" ? [0, r, r, 0]
+      : dock === "right" ? [r, 0, 0, r]
+      : [r, r, r, r];
+    this.islandEl.style.borderRadius = corners.map((c) => `${c}px`).join(" ");
+    // Centred along that edge; the edge itself is CSS (#island[data-dock]).
+    this.islandEl.style.transform = this.onEnd() ? "translateY(-50%)" : "translateX(-50%)";
     // These follow the island as it resizes, so they belong here rather than in
-    // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
-    this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    // the state-driven DOM sync. On end, the agents sit below Mochi.
+    if (this.onEnd() && State.mode !== "expanded") {
+      this.miniGrid.style.left = `${w / 2 - 14.5}px`;
+      this.miniGrid.style.top = `${hh - 40 - 14.5}px`;
+    } else {
+      this.miniGrid.style.left = `${w - 40 - 14.5}px`;
+      this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    }
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const rect = this.islandRect();
     const p = this.pushedRect;
-    if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
+    if (
+      Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.y - rect.y) > 0.5 ||
+      Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5
+    ) {
       this.pushedRect = rect;
       void Bridge.setIslandRect(rect.x, rect.y, rect.w, rect.h);
     }
   }
 
-  /** Island rect in window coordinates (origin top-left of the 720×320 window). */
+  /**
+   * Island rect in window coordinates (origin top-left of the 720×320 window):
+   * against the edge it is docked to, centred along it; afloat, as at the top.
+   */
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    switch (this.dock()) {
+      case "bottom":
+        return { x: (PANEL_W - w) / 2, y: PANEL_H - hh, w, h: hh };
+      case "left":
+        return { x: 0, y: (PANEL_H - hh) / 2, w, h: hh };
+      case "right":
+        return { x: PANEL_W - w, y: (PANEL_H - hh) / 2, w, h: hh };
+      default:
+        return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    }
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -736,6 +794,10 @@ export class Island {
       // A press on Mochi may become a drag out to the desktop.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
         this.botPress = { x: e.clientX, y: e.clientY };
+      } else if (e.button === 0 && !grabsNothing(e.target)) {
+        // A press anywhere else on the island may become a drag of the island
+        // itself — not from a control or text, which have their own use for one.
+        this.islandPress = { x: e.screenX, y: e.screenY };
       }
       // Right-click on Mochi opens the wardrobe, and closes it again.
       if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
@@ -759,11 +821,28 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
-    // Dragging Mochi out of the island puts him on the desktop.
+    // Dragging Mochi out of the island puts him on the desktop; dragging the
+    // island itself moves it on the screen.
     window.addEventListener("mousemove", (e) => {
       if (this.desktop.carrying) {
         this.desktop.carry(e.clientX, e.clientY);
         return;
+      }
+      if (this.islandDrag) {
+        this.carryIsland(e);
+        return;
+      }
+      const grab = this.islandPress;
+      if (grab) {
+        if (!(e.buttons & 1)) {
+          this.islandPress = null;
+        } else if (Math.hypot(e.screenX - grab.x, e.screenY - grab.y) > DRAG_THRESHOLD) {
+          this.islandPress = null;
+          this.islandDrag = { x: grab.x, y: grab.y, dx: 0, dy: 0, flush: null };
+          this.islandEl.classList.add("carried");
+          this.carryIsland(e);
+          return;
+        }
       }
       const press = this.botPress;
       if (!press) return;
@@ -779,6 +858,8 @@ export class Island {
     });
     window.addEventListener("mouseup", (e) => {
       this.botPress = null;
+      this.islandPress = null;
+      if (this.islandDrag) void this.dropIsland();
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
 
@@ -872,6 +953,40 @@ export class Island {
     }
 
     this.ensureRunning();
+  }
+
+  /**
+   * Moves the window by the pointer's travel since the last step, once a frame:
+   * screen coordinates, since the window moves under the pointer.
+   */
+  private carryIsland(e: MouseEvent) {
+    const drag = this.islandDrag;
+    if (!drag) return;
+    drag.dx += e.screenX - drag.x;
+    drag.dy += e.screenY - drag.y;
+    drag.x = e.screenX;
+    drag.y = e.screenY;
+    State.lastActivity = performance.now();
+    if (drag.flush != null) return;
+    drag.flush = window.requestAnimationFrame(() => {
+      drag.flush = null;
+      const { dx, dy } = drag;
+      drag.dx = 0;
+      drag.dy = 0;
+      if (dx !== 0 || dy !== 0) void Bridge.nudgeIsland(dx, dy);
+    });
+  }
+
+  /** The island is let go: the last of the travel, then Rust settles where it landed. */
+  private async dropIsland() {
+    const drag = this.islandDrag;
+    if (!drag) return;
+    this.islandDrag = null;
+    this.islandEl.classList.remove("carried");
+    if (drag.flush != null) window.cancelAnimationFrame(drag.flush);
+    if (drag.dx !== 0 || drag.dy !== 0) await Bridge.nudgeIsland(drag.dx, drag.dy);
+    await Bridge.islandDropped();
+    State.lastActivity = performance.now();
   }
 
   /** The greeting and the drop sequence draw a Mochi of their own: not that one. */
@@ -1013,7 +1128,7 @@ export class Island {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress, this.onEnd());
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;
@@ -1198,6 +1313,14 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    // The edge the island is against: its anchor in the window (CSS), its
+    // size and corners, where Mochi and the agents sit.
+    const dock = this.dock();
+    this.islandEl.dataset.dock = dock;
+    this.wakeStrip.dataset.dock = dock;
+    this.animateGeometry(false);
+    this.updateBotTargets();
+    this.applyGeometry();
     State.notify();
   }
 

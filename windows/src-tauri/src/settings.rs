@@ -25,6 +25,18 @@ pub struct Settings {
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
+    /// Where the island sits along the top edge, as a share of the display's
+    /// width: 0 = centred, −50 = left edge, 50 = right edge. Lets it clear a
+    /// browser's tabs or a window title on a screen without a notch. Fractional
+    /// once the island has been dragged: a slider's step would snap it back.
+    pub island_shift: f64,
+    /// How far down the display the island sits, as a share of its height:
+    /// 0 = the top edge, where it retracts like a notch; more once dragged.
+    pub island_drop: f64,
+    /// The edge of the display the island is against — "top" (a bar along the
+    /// top, as shipped), "bottom", "left" or "right" (standing on end), or
+    /// "none" (afloat). Set by a drag, read by island::Dock.
+    pub island_dock: String,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -136,6 +148,9 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
+            island_shift: 0.0,
+            island_drop: 0.0,
+            island_dock: "top".into(),
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -423,6 +438,9 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
+  "islandShift": -20.5,
+  "islandDrop": 35.0,
+  "islandDock": "left",
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -930,6 +948,9 @@ mod tests {
                 "activeIntegrations",
                 "mainPill",
                 "screen",
+                "islandShift",
+                "islandDrop",
+                "islandDock",
                 "autostart",
                 "hooksInstalled",
                 "model",
