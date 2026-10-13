@@ -11,6 +11,214 @@
         }
       }
     },
+    "Agent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代理程式"
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無"
+          }
+        }
+      }
+    },
+    "Ready · no setup needed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready · no setup needed"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已就緒 · 無需設定"
+          }
+        }
+      }
+    },
+    "API key" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API key"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰"
+          }
+        }
+      }
+    },
+    "API key  (cal_live_…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API key  (cal_live_…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰（cal_live_…）"
+          }
+        }
+      }
+    },
+    "API key  (re_…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API key  (re_…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 金鑰（re_…）"
+          }
+        }
+      }
+    },
+    "From address  (you@yourdomain.com)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From address  (you@yourdomain.com)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "寄件人地址（you@yourdomain.com）"
+          }
+        }
+      }
+    },
+    "Instance URL  (https://…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instance URL  (https://…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "執行個體網址（https://…）"
+          }
+        }
+      }
+    },
+    "Integration token  (secret_…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Integration token  (secret_…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整合權杖（secret_…）"
+          }
+        }
+      }
+    },
+    "Personal Access Token" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal Access Token"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "個人存取權杖"
+          }
+        }
+      }
+    },
+    "Secret key  (sk_live_… or sk_test_…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secret key  (sk_live_… or sk_test_…)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "密鑰（sk_live_… 或 sk_test_…）"
+          }
+        }
+      }
+    },
+    "Token" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "權杖"
+          }
+        }
+      }
+    },
+    "繁體中文" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繁體中文"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繁體中文"
+          }
+        }
+      }
+    },
     " +%@" : {
       "localizations" : {
         "zh-Hant" : {
@@ -31774,22 +31982,6 @@
         }
       }
     },
-    "Agent" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agent"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "代理程式"
-          }
-        }
-      }
-    },
     "Auto (seasons)" : {
       "localizations" : {
         "en" : {
@@ -31886,22 +32078,6 @@
         }
       }
     },
-    "None" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "None"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無"
-          }
-        }
-      }
-    },
     "Party hat" : {
       "localizations" : {
         "en" : {
@@ -31930,22 +32106,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "南瓜"
-          }
-        }
-      }
-    },
-    "Ready · no setup needed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ready · no setup needed"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已就緒 · 無需設定"
           }
         }
       }
@@ -32142,54 +32302,6 @@
         }
       }
     },
-    "API key" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API key"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API 金鑰"
-          }
-        }
-      }
-    },
-    "API key  (cal_live_…)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API key  (cal_live_…)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API 金鑰（cal_live_…）"
-          }
-        }
-      }
-    },
-    "API key  (re_…)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API key  (re_…)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API 金鑰（re_…）"
-          }
-        }
-      }
-    },
     "Answer questions and permissions from terminal sessions in the notch" : {
       "localizations" : {
         "en" : {
@@ -32234,54 +32346,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "顯示器"
-          }
-        }
-      }
-    },
-    "From address  (you@yourdomain.com)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "From address  (you@yourdomain.com)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "寄件人地址（you@yourdomain.com）"
-          }
-        }
-      }
-    },
-    "Instance URL  (https://…)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Instance URL  (https://…)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "執行個體網址（https://…）"
-          }
-        }
-      }
-    },
-    "Integration token  (secret_…)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Integration token  (secret_…)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "整合權杖（secret_…）"
           }
         }
       }
@@ -32334,22 +32398,6 @@
         }
       }
     },
-    "Personal Access Token" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personal Access Token"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "個人存取權杖"
-          }
-        }
-      }
-    },
     "Qwen (Alibaba)" : {
       "localizations" : {
         "en" : {
@@ -32362,22 +32410,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Qwen (Alibaba)"
-          }
-        }
-      }
-    },
-    "Secret key  (sk_live_… or sk_test_…)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Secret key  (sk_live_… or sk_test_…)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "密鑰（sk_live_… 或 sk_test_…）"
           }
         }
       }
@@ -32410,22 +32442,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "顯示 Mochi 的螢幕"
-          }
-        }
-      }
-    },
-    "Token" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Token"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "權杖"
           }
         }
       }
@@ -32474,22 +32490,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iPhone"
-          }
-        }
-      }
-    },
-    "繁體中文" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "繁體中文"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "繁體中文"
           }
         }
       }
