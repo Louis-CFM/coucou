@@ -1,0 +1,25 @@
+# Coucou link relay (docs/RELAY_LINK.md). Deploy: see README.md.
+# No secret belongs in this file. The one secret, ACCESS_KEY, is set with:  npx wrangler secret put ACCESS_KEY
+name = "coucou-link"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+# Nothing is logged: the relay forwards opaque frames and has nothing worth logging.
+[observability]
+enabled = false
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# Durable Objects on the free plan must be SQLite-backed. The relay never uses the storage API.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# New connections per source address (Workers Rate Limiting binding). Optional: the relay works without it.
+[[ratelimits]]
+name = "CONNECT_LIMIT"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }

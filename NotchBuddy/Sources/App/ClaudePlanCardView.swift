@@ -4,6 +4,12 @@ import SwiftUI
 
 struct ClaudePlanCardView: View {
     let usage: PlanUsage?   // nil = installed, no data yet
+    #if !APPSTORE
+    /// Claude and Codex both shown: Codex is a third row (the header has room for one pill).
+    var codexRow: Bool = false
+    var codexUsage: CodexPlanUsage? = nil
+    var onCodex: () -> Void = {}
+    #endif
 
     @State private var now = Date()
 
@@ -32,6 +38,18 @@ struct ClaudePlanCardView: View {
             VStack(alignment: .leading, spacing: 5) {
                 GaugeRowView(label: String(localized: "plan.5hours"), window: usage?.fiveHour, now: now)
                 GaugeRowView(label: String(localized: "plan.week"),   window: usage?.sevenDay,  now: now, weekly: true)
+                #if !APPSTORE
+                if codexRow {
+                    // The Codex window closest to its limit; a click opens the Codex card.
+                    Button(action: onCodex) {
+                        let window = codexDominantWindow
+                        GaugeRowView(label: "Codex", window: window, now: now,
+                                     weekly: window != nil && window == codexUsage?.sevenDay)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                #endif
             }
             .padding(.top, 8)
             .padding(.leading, 108)
@@ -46,6 +64,19 @@ struct ClaudePlanCardView: View {
             }
         )
     }
+
+    #if !APPSTORE
+    private var codexDominantWindow: PlanWindow? {
+        guard let u = codexUsage else { return nil }
+        switch (u.fiveHour, u.sevenDay) {
+        case (nil, nil): return nil
+        case (let f?, nil): return f
+        case (nil, let w?): return w
+        case (let f?, let w?):
+            return ClaudePlanGauge.effectivePct(f) >= ClaudePlanGauge.effectivePct(w) ? f : w
+        }
+    }
+    #endif
 
     private var subtitleText: String {
         guard let usage else { return String(localized: "plan.waiting") }
