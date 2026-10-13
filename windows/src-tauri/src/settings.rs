@@ -66,6 +66,14 @@ pub struct Settings {
     /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
     /// code this build doesn't know reads as "".
     pub language: String,
+    /// Interface font, picked in Settings → General: "" keeps the default
+    /// stack, else the name of a family installed on the PC. Kept as it comes,
+    /// like `mochi_outfit`: src/core/font.ts cleans it before it reaches the
+    /// stylesheet. The Mac has no such setting.
+    pub font_family: String,
+    /// Text size factor, 1 = as shipped. Kept as it comes too: the page keeps
+    /// it inside the slider's range (core/font.ts).
+    pub font_scale: f64,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
@@ -151,6 +159,8 @@ impl Default for Settings {
             mochi_outfit: "auto".into(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
+            font_family: String::new(),
+            font_scale: 1.0,
             desktop_mochi: DesktopMochiPref::default(),
             phone_link: false,
             phone_chat: false,
@@ -438,6 +448,8 @@ mod tests {
   "mochiOutfit": "witchHat",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
+  "fontFamily": "Cascadia Code",
+  "fontScale": 1.15,
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
   "phoneLink": true,
   "phoneChat": true,
@@ -945,6 +957,8 @@ mod tests {
                 "mochiOutfit",
                 "pillColors",
                 "language",
+                "fontFamily",
+                "fontScale",
                 "desktopMochi",
                 "phoneLink",
                 "phoneChat",

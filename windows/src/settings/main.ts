@@ -15,6 +15,9 @@ import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
+import {
+  COMMON_FONTS, FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, applyFont, cleanFontFamily, cleanFontScale,
+} from "../core/font";
 import { h, clear } from "../views/dom";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
@@ -862,7 +865,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
           colorDot(def, "", () => settings.pillColors, pickColor),
-          h("span", { style: "font-size:12.5px", text: def.name }),
+          h("span", { style: "font-size:calc(12.5px * var(--fs, 1))", text: def.name }),
         ),
         rows,
       ),
@@ -967,7 +970,79 @@ function generalSection(): HTMLElement {
     ),
     ...recapRows(),
     languageRow(),
+    ...fontRows(),
   );
+}
+
+/**
+ * Settings → General → Font and Text size. The family is any font installed on
+ * the PC: the list comes from the system when the webview allows reading it,
+ * else from a few common ones, and a name typed by hand is kept as it is. The
+ * island and this window apply a change at once (core/font.ts), without a
+ * restart. Reset gives back the fonts and sizes that ship.
+ */
+function fontRows(): HTMLElement[] {
+  const listId = "font-families";
+  const list = h("datalist", { id: listId });
+  const fill = (names: string[]) => {
+    clear(list);
+    for (const name of names) list.append(h("option", { value: name }));
+  };
+  fill(COMMON_FONTS);
+  // Chromium's Local Font Access API. It may ask, or refuse: the short list stays then.
+  const query = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts;
+  if (typeof query === "function") {
+    void query.call(window).then(
+      (faces) => {
+        const families = [...new Set(faces.map((f) => f.family))].sort((a, b) => a.localeCompare(b));
+        if (families.length > 0) fill(families);
+      },
+      () => {},
+    );
+  }
+
+  const family = h("input", {
+    type: "text", list: listId, placeholder: t("Default"), value: settings.fontFamily, style: "width:220px",
+  }) as HTMLInputElement;
+  family.addEventListener("change", () => {
+    settings.fontFamily = cleanFontFamily(family.value);
+    family.value = settings.fontFamily;
+    applyFont(settings);
+    void save();
+  });
+
+  const shown = h("span", { class: "hint" });
+  const scale = h("input", {
+    type: "range", min: String(FONT_SCALE_MIN), max: String(FONT_SCALE_MAX), step: String(FONT_SCALE_STEP),
+    value: String(cleanFontScale(settings.fontScale)),
+  }) as HTMLInputElement;
+  const showScale = () => { shown.textContent = `${Math.round(cleanFontScale(settings.fontScale) * 100)}%`; };
+  showScale();
+  scale.addEventListener("input", () => {
+    settings.fontScale = cleanFontScale(Number(scale.value));
+    showScale();
+    applyFont(settings);
+    void save();
+  });
+
+  const reset = h("button", {
+    text: t("Reset"),
+    onclick: () => {
+      settings.fontFamily = "";
+      settings.fontScale = 1;
+      family.value = "";
+      scale.value = "1";
+      showScale();
+      applyFont(settings);
+      void save();
+    },
+  });
+
+  return [
+    h("div", { class: "row" }, h("label", { text: t("Font") }), family, list),
+    h("div", { class: "row" }, h("label", { text: t("Text size") }), scale, shown, reset),
+    h("div", { class: "hint", text: t("Any font installed on this PC. Mochi's drawings keep their own lettering.") }),
+  ];
 }
 
 /**
@@ -1298,6 +1373,7 @@ async function main() {
     version = boot.version;
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
+  applyFont(settings);
   applyDirection();
   onLanguageChange(() => {
     applyDirection();
@@ -1314,6 +1390,7 @@ async function main() {
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
     applyLanguage();
+    applyFont(settings);
   });
 }
 

@@ -83,7 +83,7 @@ function agentBlock(initial: AgentHookStatus): HTMLElement {
     head.append(
       h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px" },
         statusDot(status.installed),
-        h("span", { style: "font-size:12.5px", text: status.name }),
+        h("span", { style: "font-size:calc(12.5px * var(--fs, 1))", text: status.name }),
       ),
       h("span", { class: "hint", text: status.approvals ? TEXT.approvals : TEXT.displayOnly }),
       h("span", { class: "spacer" }),
