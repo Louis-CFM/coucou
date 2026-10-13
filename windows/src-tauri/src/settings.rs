@@ -25,6 +25,10 @@ pub struct Settings {
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
+    /// Where the island sits along the top edge, as a share of the display's
+    /// width: 0 = centred, −50 = left edge, 50 = right edge. Lets it clear a
+    /// browser's tabs or a window title on a screen without a notch.
+    pub island_shift: i32,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -136,6 +140,7 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
+            island_shift: 0,
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -423,6 +428,7 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
+  "islandShift": -20,
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -930,6 +936,7 @@ mod tests {
                 "activeIntegrations",
                 "mainPill",
                 "screen",
+                "islandShift",
                 "autostart",
                 "hooksInstalled",
                 "model",

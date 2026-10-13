@@ -13,7 +13,7 @@ import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
-import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
+import { noteClaudeSpend, setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
@@ -63,6 +63,9 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** StatusLine: the session's model and its running cost estimate (relay, statusline.rs). */
+  model?: { id?: string; display_name?: string };
+  cost_usd?: number;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -236,6 +239,10 @@ function handleHook(island: Island, payload: HookPayload) {
   if (payload.hook_event_name === "StatusLine") {
     const usage = parseClaudePlan(payload.rate_limits);
     if (usage) setClaudePlanUsage(usage);
+    // The session's model and running total: what each model takes (plan card).
+    if (payload.model?.id && typeof payload.cost_usd === "number") {
+      noteClaudeSpend(payload.session_id ?? "", payload.model.id, payload.model.display_name, payload.cost_usd);
+    }
     return;
   }
 

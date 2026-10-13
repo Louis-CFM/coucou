@@ -936,6 +936,31 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // Where along the top edge: a share of the display's width, −50 (left edge)
+  // to 50 (right edge), 0 centred where a Mac's notch would be. The window
+  // moves as the slider does, so the right spot is found by eye.
+  const shift = h("input", {
+    type: "range", min: "-50", max: "50", step: "1",
+    value: String(Math.max(-50, Math.min(50, Number(settings.islandShift) || 0))),
+    style: "width:160px",
+  }) as HTMLInputElement;
+  const shiftLabel = h("span", { class: "hint" });
+  const describeShift = (v: number) =>
+    v === 0 ? t("centred") : v < 0 ? t("{0}% to the left", { 0: String(-v) }) : t("{0}% to the right", { 0: String(v) });
+  shiftLabel.textContent = describeShift(Number(shift.value));
+  shift.addEventListener("input", () => {
+    settings.islandShift = Number(shift.value) || 0;
+    shiftLabel.textContent = describeShift(settings.islandShift);
+    void save();
+  });
+  const centreShift = h("button", { class: "btn", text: t("Centre") });
+  centreShift.addEventListener("click", () => {
+    shift.value = "0";
+    settings.islandShift = 0;
+    shiftLabel.textContent = describeShift(0);
+    void save();
+  });
+
   return h(
     "section",
     {},
@@ -961,6 +986,13 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Island lives on") }),
       screen,
     ),
+    h("div", { class: "row" },
+      h("label", { text: t("Along the top edge") }),
+      shift,
+      shiftLabel,
+      centreShift,
+    ),
+    h("div", { class: "hint", text: t("Slide the island left or right, out of the way of a browser's tabs or a window title.") }),
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),

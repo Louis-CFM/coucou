@@ -87,7 +87,8 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     let (screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
-        let screen_changed = current.screen != settings.screen;
+        let screen_changed =
+            current.screen != settings.screen || current.island_shift != settings.island_shift;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
