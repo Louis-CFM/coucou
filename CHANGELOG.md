@@ -39,8 +39,9 @@ Coucou becomes a real app: a window in the Dock, dictation everywhere on the Mac
 - **The island slides along the top edge** — Settings → General → "Along the top edge": a slider from the left edge to the right one, centred by default, so the island clears a browser's tabs or a window's title on a screen that has no notch. The wake strip follows
 
 - **The island slides along the top edge** *(Windows, Linux)* — Settings → General → "Along the top edge": a slider from the left edge to the right one, centred by default, so the island clears a browser's tabs or a window's title on a screen that has no notch. The wake strip follows
-- **The island can be dragged** *(Windows, Linux)* — hold it anywhere that is not a button, a field or text, and drop it where it suits you, on any display: kept on the screen, remembered as shares of that display, rounded all round once it leaves the top edge. "Centre" in Settings puts it back at the top centre
 
+- **The island can be dragged, and docks to any edge** *(Windows, Linux)* — hold it anywhere that is not a button, a field or text, and drop it where it suits you, on any display. Near an edge it docks there and takes its shape: a bar along the top or the bottom, standing on end against a side (Mochi at the top, the agents below him) and opening out from it as the usual panel; away from every edge it floats, rounded all round. Kept on the screen, remembered as shares of that display. "Centre" in Settings puts it back at the top centre
+ (Dropped near an edge, the island docks to it and takes its shape)
 - **What each model takes** *(Claude plan card)* — under the 5-hour and weekly gauges, a row per model with today's and the week's share, from Claude Code's own cost estimates at list price (the relay now forwards the session's model and running total with the limits). A share of your use, not a limit: Claude's limits are not split by model
 
 

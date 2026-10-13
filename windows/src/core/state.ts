@@ -176,6 +176,9 @@ export interface IntegrationInfo {
   configured: boolean;
 }
 
+/** The edge of the display the island is against (settings.islandDock). */
+export type IslandDock = "top" | "bottom" | "left" | "right" | "none";
+
 export interface Settings {
   soundEnabled: boolean;
   soundVolume: number;
@@ -195,6 +198,8 @@ export interface Settings {
   islandShift: number;
   /** How far down the display it sits: share of the height, 0 at the top edge (where it retracts like a notch). */
   islandDrop: number;
+  /** The edge it is against, which is how it is drawn: a bar along "top" or "bottom", on end against "left" or "right", a bar afloat when "none". */
+  islandDock: IslandDock;
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
@@ -300,6 +305,7 @@ export const DEFAULT_SETTINGS: Settings = {
   screen: "primary",
   islandShift: 0,
   islandDrop: 0,
+  islandDock: "top",
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",

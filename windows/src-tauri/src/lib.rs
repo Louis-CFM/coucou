@@ -119,6 +119,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         // Mochi's desktop spot) is not a webview's to say: its copy may be stale.
         let next = current.from_webview(settings);
         let screen_changed = current.screen != next.screen
+            || current.island_dock != next.island_dock
             || current.island_shift != next.island_shift
             || current.island_drop != next.island_drop;
         let autostart_changed = current.autostart != next.autostart;
@@ -247,9 +248,11 @@ fn nudge_island(app: AppHandle, dx: f64, dy: f64) {
 #[tauri::command]
 fn island_dropped(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
-    let Some(landing) = island::landing(&app, &pref) else { return };
+    let island = *shared.gate.rect.lock().unwrap();
+    let Some(landing) = island::landing(&app, &pref, island) else { return };
     let settings = {
         let mut current = shared.settings.lock().unwrap();
+        current.island_dock = landing.dock.name().to_string();
         current.island_shift = landing.shift;
         current.island_drop = landing.drop;
         if let Some(screen) = landing.screen {

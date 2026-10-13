@@ -1224,6 +1224,7 @@ function generalSection(): HTMLElement {
     shift.value = "0";
     settings.islandShift = 0;
     settings.islandDrop = 0;
+    settings.islandDock = "top";
     shiftLabel.textContent = describeShift(0);
     void save();
   });
