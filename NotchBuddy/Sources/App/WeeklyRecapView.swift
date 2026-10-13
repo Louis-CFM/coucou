@@ -57,7 +57,7 @@ struct WeeklyRecapCardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear { summary = RecapStore.shared.weeklySummary() }
-        .onChange(of: state.view) { _, newView in
+        .onChangeCompat(of: state.view) { _, newView in
             if newView == .recap { summary = RecapStore.shared.weeklySummary() }
         }
     }

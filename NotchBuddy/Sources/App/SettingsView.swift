@@ -382,7 +382,7 @@ struct SettingsView: View {
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
-                    .onChange(of: state.hotkeyEnabled) { _, _ in
+                    .onChangeCompat(of: state.hotkeyEnabled) { _, _ in
                         HotKeyCenter.shared.reregister(.toggleIsland)
                     }
                 if state.hotkeyEnabled {
@@ -390,11 +390,11 @@ struct SettingsView: View {
                         Text("Shortcut")
                             .frame(width: 70, alignment: .leading)
                         ShortcutRecorderButton(flags: $hotkeyFlags, code: $hotkeyCode)
-                            .onChange(of: hotkeyFlags) { _, v in
+                            .onChangeCompat(of: hotkeyFlags) { _, v in
                                 state.hotkeyFlags = v
                                 HotKeyCenter.shared.reregister(.toggleIsland)
                             }
-                            .onChange(of: hotkeyCode) { _, v in
+                            .onChangeCompat(of: hotkeyCode) { _, v in
                                 state.hotkeyCode = v
                                 HotKeyCenter.shared.reregister(.toggleIsland)
                             }
@@ -409,7 +409,7 @@ struct SettingsView: View {
 
         GroupBox("Startup") {
             Toggle("Launch at Mac startup", isOn: $launchAtStartup)
-                .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
+                .onChangeCompat(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
 
@@ -444,7 +444,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .onChange(of: state.appLanguage) { _, code in
+                .onChangeCompat(of: state.appLanguage) { _, code in
                     if code.isEmpty {
                         UserDefaults.standard.removeObject(forKey: "AppleLanguages")
                     } else {
@@ -475,14 +475,14 @@ struct SettingsView: View {
         GroupBox("iPhone") {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(String(localized: "iphone.sync.toggle"), isOn: $iPhoneSyncEnabled)
-                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
+                    .onChangeCompat(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
                 Text(String(localized: "iphone.sync.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Toggle(String(localized: "iphone.live-activity.toggle"), isOn: $iPhoneLiveActivityEnabled)
                     .disabled(!iPhoneSyncEnabled)
-                    .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
+                    .onChangeCompat(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
                 Text(String(localized: "iphone.live-activity.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -490,7 +490,7 @@ struct SettingsView: View {
                 #if !APPSTORE
                 Toggle(String(localized: "iphone.instruction.toggle"), isOn: $iPhoneInstructionsEnabled)
                     .disabled(!iPhoneSyncEnabled)
-                    .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
+                    .onChangeCompat(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
                 Text(String(localized: "iphone.instruction.description"))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -527,7 +527,7 @@ struct SettingsView: View {
                         Text(def.name).tag(def.id)
                     }
                 }
-                .onChange(of: state.mainPillId) { _, newId in
+                .onChangeCompat(of: state.mainPillId) { _, newId in
                     state.setMainPill(newId)
                 }
 
@@ -885,7 +885,7 @@ struct SettingsView: View {
                 if hermesPluginInstalled {
                     Divider()
                     Toggle(String(localized: "plugin.hermes.approvals"), isOn: $hermesApprovalsEnabled)
-                        .onChange(of: hermesApprovalsEnabled) { _, _ in triggerHermesConfigPreview() }
+                        .onChangeCompat(of: hermesApprovalsEnabled) { _, _ in triggerHermesConfigPreview() }
                         .disabled(!hermesSupportsApprovals)
                     if !hermesSupportsApprovals {
                         Text("Requires a newer version of Hermes — run: hermes update")
@@ -1023,7 +1023,7 @@ struct SettingsView: View {
                     }
                     Text(String(localized: "chat.model.custom")).tag(Self.customModelTag)
                 }
-                .onChange(of: modelChoice) { _, choice in
+                .onChangeCompat(of: modelChoice) { _, choice in
                     if choice != Self.customModelTag {
                         state.claudeModel = choice
                     } else {
@@ -1034,7 +1034,7 @@ struct SettingsView: View {
                 if modelChoice == Self.customModelTag {
                     TextField(String(localized: "chat.model.custom-id"), text: $customModel)
                         .textFieldStyle(.roundedBorder)
-                        .onChange(of: customModel) { _, value in applyCustomModel(value) }
+                        .onChangeCompat(of: customModel) { _, value in applyCustomModel(value) }
                 }
 
                 Text(String(localized: "chat.model.description"))
@@ -1328,8 +1328,8 @@ struct SettingsView: View {
                         .font(.system(size: 10))
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
-                .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
-                .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
+                .onChangeCompat(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
+                .onChangeCompat(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
 
                 // Portfolio: exchange accounts + wallets.
                 PortfolioSettingsSection()
@@ -1449,7 +1449,7 @@ struct SettingsView: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 180)
-                    .onChange(of: voiceLanguage) { _, _ in
+                    .onChangeCompat(of: voiceLanguage) { _, _ in
                         // Chosen by hand: Coucou no longer offers to switch.
                         VoiceSettings.languageOfferDone = true
                         ElevenLabsTTS.shared.reset()
@@ -1492,7 +1492,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 220)
-                .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+                .onChangeCompat(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
 
                 if ttsEngine == "system" {
                     HStack(spacing: 8) {

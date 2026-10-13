@@ -166,7 +166,7 @@ private struct AddExchangeSheet: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .onChange(of: selectedExchange) { _, _ in error = nil; apiKey = ""; apiSecret = ""; passphrase = "" }
+                .onChangeCompat(of: selectedExchange) { _, _ in error = nil; apiKey = ""; apiSecret = ""; passphrase = "" }
             }
             .padding(.bottom, 10)
 
@@ -318,7 +318,7 @@ private struct AddWalletSheet: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .onChange(of: selectedKind) { _, _ in error = nil; address = "" }
+                .onChangeCompat(of: selectedKind) { _, _ in error = nil; address = "" }
             }
             .padding(.bottom, 12)
 

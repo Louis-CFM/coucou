@@ -122,15 +122,15 @@ struct BotCanvasView: View {
                 engine.drawHandsAndExtras(context: ctx, size: size)
             }
         }
-        .onChange(of: state.effectiveState) { _, newState in
+        .onChangeCompat(of: state.effectiveState) { _, newState in
             engine.setState(newState)
         }
         #if !APPSTORE
-        .onChange(of: state.voiceActive) { _, on in
+        .onChangeCompat(of: state.voiceActive) { _, on in
             if on { engine.enterVoiceCompact() } else { engine.exitVoiceCompact() }
         }
         #endif
-        .onChange(of: state.view) { oldView, newView in
+        .onChangeCompat(of: state.view) { oldView, newView in
             // Morph up when upload view is active
             if state.mode == .expanded && newView == .upload {
                 engine.anim("morph", keys: [TweenKey(target: 1, duration: 550, ease: Ease.inOut)])
@@ -146,7 +146,7 @@ struct BotCanvasView: View {
             }
             #endif
         }
-        .onChange(of: state.mode) { _, newMode in
+        .onChangeCompat(of: state.mode) { _, newMode in
             // Hard-reset morph when island collapses
             if newMode != .expanded {
                 engine.tweens.removeValue(forKey: "morph")
@@ -257,12 +257,12 @@ struct MiniBotCanvasView: View {
                 engine.draw(context: ctx, size: size)
             }
         }
-        .onChange(of: task.state) { _, newState in
+        .onChangeCompat(of: task.state) { _, newState in
             engine.setState(newState)
         }
         // The colour is set once, when the engine is made: a colour picked in
         // Settings has to reach a mini Mochi that is already on screen.
-        .onChange(of: task.color) { _, newColor in
+        .onChangeCompat(of: task.color) { _, newColor in
             engine.bodyColor = cgColorFromHex(newColor)
         }
         .onAppear {

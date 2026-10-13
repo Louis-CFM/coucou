@@ -82,7 +82,7 @@ private struct MicDotView: View {
                     : .default,
                 value: pulsing
             )
-            .onChange(of: active) { _, newValue in pulsing = newValue }
+            .onChangeCompat(of: active) { _, newValue in pulsing = newValue }
             .onAppear  { pulsing = active }
             .onDisappear { pulsing = false }
     }
