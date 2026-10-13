@@ -18,12 +18,6 @@ bash scripts/test-screen-geometry.sh
 bash scripts/test-display-choice.sh
 ```
 
-Check auto-close timing and live setting changes:
-
-```bash
-bash scripts/test-auto-close.sh
-```
-
 Check hook setup status:
 
 ```bash
@@ -38,6 +32,13 @@ bash scripts/test-codex-thread-usage.sh
 ```
 
 These checks use temporary fixtures; they do not sign in or run a model.
+
+Check auto-close timing and live setting changes:
+
+```bash
+bash scripts/test-auto-close.sh
+```
+
 
 ## Good first contributions
 
