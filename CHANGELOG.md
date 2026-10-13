@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Several sessions at once** *(Windows, Linux)* — a second Claude Code session started while the first is going (another terminal, another project) gets a pill of its own, named after its project, instead of overwriting the first one's; each session keeps its pill, steps, badges and card for its whole life, and the pill made for a session goes away with it (or after thirty minutes of silence). Same for a second Codex, Copilot CLI or Muse Code session
+- **Permission requests queue** *(Windows, Linux)* — when a session asks while another's card is up, its request used to go straight back to its terminal, unseen. It now waits its turn: acknowledged at once, its pill shows that it is asking, the card says "+1 waiting", and it comes up by itself once the card is answered or withdrawn. A new request from the session on the card takes the card's place, since the one up was settled in the terminal
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
 
 ## Windows and Linux 0.4.0 — October 11, 2026

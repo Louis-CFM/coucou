@@ -156,6 +156,19 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+**Several sessions at once.** The first session goes on its pill as usual; a
+second one started while the first is going — another terminal, another
+project — gets a pill of its own, named after its project, right after the
+main pill, in the same colour. Each keeps its pill for its whole life: its
+steps, its finished badge and its card never land on the other's. A pill made
+for a session goes away when the session ends, or after thirty minutes of
+silence (a terminal closed without a word). Permission requests and questions
+queue instead of fighting over the one card: when a session asks while
+another's card is up, its pill shows that it is asking, the card says
+"+1 waiting", and its request comes up by itself once you have answered —
+the relay waits that long, so nothing goes back to the terminal unanswered.
+Same for Codex, Copilot CLI and Muse Code.
+
 ### Plan usage
 
 As on the Mac, the island's header can show your plan limits: a small pill
