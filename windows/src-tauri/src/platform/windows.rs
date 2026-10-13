@@ -393,6 +393,11 @@ pub fn process_ancestors(pid: u32) -> Vec<u32> {
     session_window::ancestors(&process_table(), pid)
 }
 
+/// The ancestors the relay listed, cut below the desktop shell and the services.
+pub fn below_tree_tops(listed: &[u32]) -> Vec<u32> {
+    session_window::below_tops(&process_table(), listed)
+}
+
 /// Visible top-level windows that are nobody's dialog and have a title:
 /// (handle, process ID, title).
 fn top_windows() -> Vec<(isize, u32, String)> {
@@ -425,9 +430,64 @@ pub fn first_with_window(pids: &[u32]) -> Option<u32> {
     pids.iter().copied().find(|pid| windows.iter().any(|(_, owner, _)| owner == pid))
 }
 
-/// What a session remembers: the ancestor that owns a window, or nothing.
+/// What a session remembers: the ancestor that owns a window, else the process
+/// whose window hosts the console the session runs in, or nothing.
 pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
-    first_with_window(ancestors).into_iter().collect()
+    if let Some(pid) = first_with_window(ancestors) {
+        return vec![pid];
+    }
+    ancestors.iter().find_map(|pid| console_window_owner(*pid)).into_iter().collect()
+}
+
+/// The console route to a session's window, for the shells no ancestor walk
+/// reaches: a PowerShell started from the Start menu has explorer.exe as parent,
+/// and Windows Terminal only hosts it as Windows 11's default console — it is
+/// never an ancestor. Attached to `pid`'s console, GetConsoleWindow gives a
+/// hidden pseudo-console window whose root owner is the Windows Terminal window
+/// (or, for a classic console, the console window itself). Its owner process is
+/// what the session remembers; `focus_process_window` then picks the window.
+///
+/// The console is process-wide, so one caller at a time, and never while the
+/// app has a console of its own (a dev build run from a terminal): attaching
+/// would fail, and freeing ours would lose its output.
+fn console_window_owner(pid: u32) -> Option<u32> {
+    use ::windows::Win32::System::Console::{AttachConsole, FreeConsole, GetConsoleWindow};
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetAncestor, GA_ROOTOWNER};
+    static CONSOLE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = CONSOLE.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe {
+        if !GetConsoleWindow().is_invalid() {
+            return None;
+        }
+        if AttachConsole(pid).is_err() {
+            return None;
+        }
+        let console = GetConsoleWindow();
+        let owner = if console.is_invalid() {
+            None
+        } else {
+            let root = GetAncestor(console, GA_ROOTOWNER);
+            let root = if root.is_invalid() { console } else { root };
+            let mut owner_pid = 0u32;
+            GetWindowThreadProcessId(root, Some(&mut owner_pid as *mut u32));
+            (owner_pid != 0 && IsWindowVisible(root).as_bool()).then_some(owner_pid)
+        };
+        let _ = FreeConsole();
+        owner
+    }
+}
+
+/// The title of the window a session remembered, as the terminal shows it
+/// (Claude Code writes its own summary there, with a glyph for its state).
+pub fn session_window_title(owners: &[u32], folder: &str) -> Option<String> {
+    let pid = *owners.first()?;
+    let candidates: Vec<(isize, String)> = top_windows()
+        .into_iter()
+        .filter(|(_, owner, _)| *owner == pid)
+        .map(|(hwnd, _, title)| (hwnd, title))
+        .collect();
+    let hwnd = *session_window::pick_window(&candidates, folder)?;
+    candidates.into_iter().find(|(h, _)| *h == hwnd).map(|(_, title)| title)
 }
 
 fn bring_forward(raw: isize) -> bool {

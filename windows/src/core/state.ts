@@ -37,6 +37,12 @@ export interface AgentTask {
   sessionCwd?: string | null;
   /** Claude Code's session, so "Open terminal" can find the window it runs in. */
   sessionId?: string | null;
+  /**
+   * The title of the terminal window the session runs in, as the app found it
+   * (Windows): Claude Code writes its one-line summary there. Shown under the
+   * project name; null when the window was not found.
+   */
+  windowTitle?: string | null;
   /** Claude's final message after Stop, one line; cleared when a new turn starts. */
   finalLine?: string | null;
 }

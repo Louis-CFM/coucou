@@ -213,6 +213,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
+    if event != "StatusLine" {
+        note_window_title(&mut payload);
+    }
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -264,14 +267,71 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     if session_window::known(session) {
         return;
     }
-    let Some(relay) = pipe.client_pid() else { return };
-    let ancestors = crate::platform::process_ancestors(relay);
+    // The relay lists its own ancestors in the event (`coucou_ancestors`): it
+    // has usually exited by now — only a permission request waits for us — and
+    // walking up from its PID then found nothing, event after event, so a
+    // session without a permission request never had a window. The list is the
+    // same walk, done while the relay was alive; an older relay is still looked
+    // up by PID.
+    // Windows reads the list; Linux still walks from the relay's PID (the list
+    // is sent there too, for when its focus code takes it up).
+    #[cfg(windows)]
+    let listed: Vec<u32> = payload
+        .get("coucou_ancestors")
+        .and_then(Value::as_array)
+        .map(|list| list.iter().filter_map(Value::as_u64).map(|p| p as u32).collect())
+        .unwrap_or_default();
+    #[cfg(not(windows))]
+    let listed: Vec<u32> = Vec::new();
+    let ancestors = if listed.is_empty() {
+        let Some(relay) = pipe.client_pid() else { return };
+        crate::platform::process_ancestors(relay)
+    } else {
+        #[cfg(windows)]
+        {
+            crate::platform::below_tree_tops(&listed)
+        }
+        #[cfg(not(windows))]
+        {
+            Vec::new()
+        }
+    };
     // No ancestors: the relay was already gone, so try again next time. Some,
     // but none with a window (a classic console): settled, VS Code it is.
     if !ancestors.is_empty() {
-        session_window::remember(session, crate::platform::window_owners(&ancestors));
+        let owners = crate::platform::window_owners(&ancestors);
+        // Once per session, worth a line: "Open terminal" and the title in the
+        // card both depend on it, and a miss is otherwise silent.
+        log::line(match owners.first() {
+            Some(pid) => format!("session window: found, owner pid {pid} (ancestors {ancestors:?})"),
+            None => format!("session window: not found among {ancestors:?}, VS Code or the folder instead"),
+        });
+        session_window::remember(session, owners);
     }
 }
+
+/// The title of the terminal window the session runs in, for the island to show
+/// next to the project name: Claude Code writes its own summary there. Only for
+/// a session whose window was found; one window enumeration per event, which
+/// is cheap. Windows only so far — Linux asks the display server for windows.
+#[cfg(windows)]
+fn note_window_title(payload: &mut Value) {
+    let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
+    let Some(owners) = session_window::lookup(session) else { return };
+    let folder = payload
+        .get("cwd")
+        .and_then(Value::as_str)
+        .map(session_window::folder_name)
+        .unwrap_or_default()
+        .to_string();
+    let title = crate::platform::session_window_title(&owners, &folder);
+    if let Some(title) = title {
+        payload["coucou_window_title"] = json!(title);
+    }
+}
+
+#[cfg(not(windows))]
+fn note_window_title(_payload: &mut Value) {}
 
 /// Two waits: a short one for "the card is up", then the long one for a human.
 async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<String> {

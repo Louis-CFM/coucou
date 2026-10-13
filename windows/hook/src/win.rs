@@ -23,6 +23,50 @@ use crate::CONNECT_TIMEOUT;
 /// the one error worth retrying: the server exists and a slot will free up.
 const ERROR_PIPE_BUSY: i32 = 231;
 
+/// Our ancestors, nearest first (the shell that ran us, Claude Code, its shell,
+/// the terminal…), at most 16, from one process snapshot. Sent with every event
+/// (`coucou_ancestors`) so the app can find the session's window even after we
+/// have exited: an event nobody waits for is gone from the process table by the
+/// time the app looks, and walking up from our PID then finds nothing.
+pub fn ancestors() -> Vec<u32> {
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+    };
+    let mut parents = std::collections::HashMap::new();
+    unsafe {
+        let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return Vec::new() };
+        let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        let mut more = Process32FirstW(snapshot, &mut entry).is_ok();
+        while more {
+            parents.insert(entry.th32ProcessID, entry.th32ParentProcessID);
+            more = Process32NextW(snapshot, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snapshot);
+    }
+    let mut out = Vec::new();
+    let mut current = std::process::id();
+    while out.len() < 16 {
+        let Some(&parent) = parents.get(&current) else { break };
+        // PID 0 ends the tree; a reused PID could loop.
+        if parent == 0 || parent == current || out.contains(&parent) {
+            break;
+        }
+        out.push(parent);
+        current = parent;
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn we_run_under_something() {
+        let up = super::ancestors();
+        assert!(!up.is_empty());
+        assert!(!up.contains(&std::process::id()));
+    }
+}
+
 /// `\\.\pipe\coucou-<sid>`. The SID keeps two accounts on the same machine from
 /// ever meeting on the same pipe; the name falls back to the user name only if
 /// the SID cannot be read at all, which should not happen.

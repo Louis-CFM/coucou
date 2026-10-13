@@ -187,6 +187,20 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     add_terminal_context(map, env);
 
+    // The processes we run under, for "Open terminal": the app finds the
+    // session's window among them, and they outlive us — an event nobody waits
+    // for is already gone from the process table when the app looks us up.
+    #[cfg(any(windows, target_os = "linux"))]
+    if !map.contains_key("coucou_ancestors") {
+        #[cfg(windows)]
+        let up = win::ancestors();
+        #[cfg(target_os = "linux")]
+        let up = unix::ancestors();
+        if !up.is_empty() {
+            map.insert("coucou_ancestors".into(), Value::Array(up.into_iter().map(Value::from).collect()));
+        }
+    }
+
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))

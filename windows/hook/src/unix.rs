@@ -14,6 +14,27 @@ use std::time::{Duration, Instant};
 
 use crate::CONNECT_TIMEOUT;
 
+/// Our ancestors, nearest first, at most 16, from `/proc/<pid>/stat`. Sent with
+/// every event (`coucou_ancestors`) so the app can find the session's window
+/// even after we have exited — see the Windows relay for why.
+pub fn ancestors() -> Vec<u32> {
+    let mut out = Vec::new();
+    let mut current = std::process::id();
+    while out.len() < 16 {
+        let Ok(stat) = std::fs::read_to_string(format!("/proc/{current}/stat")) else { break };
+        // The parent is the second field after the command name, which is
+        // between the first '(' and the LAST ')' and may itself hold spaces.
+        let Some(close) = stat.rfind(')') else { break };
+        let Some(parent) = stat[close + 1..].split_ascii_whitespace().nth(1).and_then(|p| p.parse::<u32>().ok()) else { break };
+        if parent <= 1 || parent == current || out.contains(&parent) {
+            break;
+        }
+        out.push(parent);
+        current = parent;
+    }
+    out
+}
+
 /// `$XDG_RUNTIME_DIR/coucou.sock`, or `/run/user/<uid>/coucou.sock` when the
 /// variable is missing (a hook started from a stripped-down environment). The
 /// directory must be ours and closed to everyone else, or there is no relay.

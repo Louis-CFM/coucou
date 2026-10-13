@@ -8,6 +8,8 @@ Add the optional field `coucou_agent` to any hook JSON payload. Coucou will crea
 
 **Validation:** the name must match `^[a-z0-9-]{1,24}$` (lowercase letters, digits and hyphens, 1–24 characters). An absent or invalid name routes the event to the Claude Code pill instead.
 
+**Claude Code under another name (Windows, Linux):** a name starting with `claude-` (`claude-perso`, `claude-work`…) is Claude Code itself with its own pill — one per account or machine, say, each with its own Mochi and colour. The relay keeps Claude Code's contract for it: Allow / Deny cards and answered questions come back to the session as usual. Put `--agent claude-perso` on the relay in that profile's `settings.json` (the one behind `CLAUDE_CONFIG_DIR`). The pill reads "Claude perso". `claude-desktop` is not an alias: it is the tag of sessions started from the Claude desktop app, which keeps its own prompts.
+
 ## Hook command (macOS)
 
 Configure your tool to call the Coucou relay with `--agent <your-name>` after the hook executable:
@@ -54,7 +56,7 @@ Same pattern with the Linux relay. Coucou copies the relay to `~/.local/share/co
 
 ## Payload format
 
-The relay adds `coucou_agent` to the JSON it forwards. You can also add it yourself if you talk to the socket directly:
+The relay adds `coucou_agent` to the JSON it forwards, and `coucou_ancestors` (Windows, Linux): the PIDs of the processes it runs under, nearest first, so the app can find the terminal window of the session even after the relay has exited. A tool that talks to the socket directly may add it too; without it the app walks up from the sender's PID while it lives. You can also add `coucou_agent` yourself if you talk to the socket directly:
 
 ```json
 {

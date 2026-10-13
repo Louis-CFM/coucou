@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Open terminal finds the window of a shell started from the Start menu** *(Windows)* — a PowerShell opened from the Start menu or the taskbar has Explorer as parent, and Windows Terminal only hosts it as Windows 11's default console: no ancestor owned a window, so the button opened the folder instead. The app now attaches to the session's console and asks Windows which window hosts it (the Windows Terminal window, or a classic console's own), and brings that one forward
+- **The session's window is found on any event, not only a permission request** — the relay now lists the processes it runs under with every event (`coucou_ancestors`); the app looked them up from the relay's PID, and the relay had exited by then on every event nobody waits for, so a session that never asked for a permission never had a window. Windows reads the list; Linux still walks from the PID
+- **The session named after its terminal** *(Windows)* — once the session's window is known, the pill and its card take the terminal's title, where Claude Code keeps a one-line summary of what the session is about ("Fix the footer contrast"), instead of the project folder, which moves to the card's subtitle
+- **Claude Code under another name** *(Windows, Linux)* — `coucou-hook --agent claude-perso` gives a Claude Code profile its own pill, "Claude perso", with Allow / Deny cards and answered questions as for the main one: one pill per account on the same computer (see [`docs/AGENTS.md`](docs/AGENTS.md))
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
 
 ## Windows and Linux 0.4.0 — October 11, 2026

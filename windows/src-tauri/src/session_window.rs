@@ -97,6 +97,27 @@ fn ancestors_below(procs: &HashMap<u32, Proc>, start: u32, tops: &[&str]) -> Vec
     out
 }
 
+/// The ancestors the relay listed itself (`coucou_ancestors`, nearest first),
+/// cut before the top of the tree, as `ancestors` would have done — the relay
+/// sends the raw walk, the desktop shell and the services included. A process
+/// the snapshot no longer has (the shell that ran the relay, already gone) is
+/// kept: only a known tree top ends the list.
+pub fn below_tops(procs: &HashMap<u32, Proc>, listed: &[u32]) -> Vec<u32> {
+    let mut out = Vec::new();
+    for pid in listed.iter().take(MAX_DEPTH) {
+        if let Some(proc) = procs.get(pid) {
+            if TREE_TOPS.contains(&proc.exe.to_ascii_lowercase().as_str()) {
+                break;
+            }
+        }
+        if *pid == 0 || out.contains(pid) {
+            break;
+        }
+        out.push(*pid);
+    }
+    out
+}
+
 /// The nearest ancestor that owns a window: the terminal or the editor. The
 /// Windows side walks `ancestors` itself (platform/windows.rs); this states the
 /// rule the tests pin down.
@@ -221,6 +242,24 @@ mod tests {
         ]);
         assert_eq!(ancestors_below(&procs, 600, WINDOWS_TREE_TOPS), [500, 400, 300, 200]);
         assert_eq!(window_owner(&procs, 600, |pid| pid == 200 || pid == 100), Some(200));
+    }
+
+    #[test]
+    fn a_list_from_the_relay_is_cut_at_the_tree_top_and_keeps_the_gone() {
+        // The relay listed bash (500, already gone from the snapshot), claude,
+        // the shell, explorer and the services above; the Start-menu case.
+        let procs = tree(&[
+            (4, 0, "System"),
+            (100, 4, "explorer.exe"),
+            (300, 100, "powershell.exe"),
+            (400, 300, "claude.exe"),
+        ]);
+        #[cfg(windows)]
+        assert_eq!(below_tops(&procs, &[500, 400, 300, 100, 4]), [500, 400, 300]);
+        #[cfg(windows)]
+        assert_eq!(below_tops(&procs, &[]), Vec::<u32>::new());
+        #[cfg(not(windows))]
+        let _ = procs;
     }
 
     #[test]

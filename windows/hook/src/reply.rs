@@ -8,11 +8,20 @@
 
 use serde_json::{json, Map, Value};
 
+/// Claude Code under another name: `--agent claude-<something>` gives a Claude
+/// Code session its own pill (one per account or machine, say) while keeping
+/// Claude Code's stdout contract — decisions and answered questions included.
+/// `claude-desktop` is not one: that tag marks sessions started from the Claude
+/// desktop app, which has its own prompts, and it has always been silent.
+pub fn is_claude_code(agent: &str) -> bool {
+    agent.is_empty() || (agent.starts_with("claude-") && agent != "claude-desktop")
+}
+
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`, or a `claude-*` alias), Codex, Copilot CLI and Muse Code. Any
+/// decision for another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    is_claude_code(agent) || matches!(agent, "codex" | "copilot" | "muse")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -50,8 +59,8 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
             }
         }
         // Claude Code and Codex share the documented hookSpecificOutput. Only
-        // Claude Code asks questions.
-        "" => decision.and_then(|d| decision_json(d, question)),
+        // Claude Code (under any of its names) asks questions.
+        a if is_claude_code(a) => decision.and_then(|d| decision_json(d, question)),
         _ => decision.and_then(|d| decision_json(d, None)),
     }
 }
@@ -249,6 +258,29 @@ mod tests {
         assert_eq!(decision["updatedInput"]["answers"]["Which one?"], "B");
         // Only Claude Code asks questions: an answer for anyone else is nothing.
         assert!(stdout("codex", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).is_none());
+    }
+
+    #[test]
+    fn a_claude_alias_is_claude_code_with_its_own_pill() {
+        assert!(is_claude_code(""));
+        assert!(is_claude_code("claude-perso"));
+        assert!(!is_claude_code("claude-desktop"));
+        assert!(!is_claude_code("codex"));
+        assert!(takes_decisions("claude-perso"));
+        assert!(!takes_decisions("claude-desktop"));
+        // Same stdout contract as Claude Code: decisions and answered questions.
+        let allow = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
+        assert_eq!(stdout("claude-perso", "PermissionRequest", Some("allow"), None).unwrap(), allow);
+        assert_eq!(stdout("claude-perso", "PermissionRequest", None, None), None);
+        assert_eq!(stdout("claude-perso", "PreToolUse", None, None), None);
+        let question = json!({
+            "questions": [{ "question": "Which one?", "options": [{ "label": "A" }, { "label": "B" }] }]
+        });
+        let out = stdout("claude-perso", "PermissionRequest", Some(r#"{"answers":{"Which one?":"A"}}"#), Some(&question)).unwrap();
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["hookSpecificOutput"]["decision"]["updatedInput"]["answers"]["Which one?"], "A");
+        // The desktop app's tag stays silent, as before.
+        assert_eq!(stdout("claude-desktop", "PermissionRequest", Some("allow"), None), None);
     }
 
     #[test]

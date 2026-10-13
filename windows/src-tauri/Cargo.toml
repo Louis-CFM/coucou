@@ -55,6 +55,10 @@ windows = { version = "0.61", features = [
   "Win32_Security_Authorization",
   # "Open terminal": the relay's process tree leads to the session's window.
   "Win32_System_Diagnostics_ToolHelp",
+  # "Open terminal" too: when no ancestor owns a window (shell started from the
+  # Start menu, Windows Terminal only hosting it), the console it is attached
+  # to leads to the terminal window (AttachConsole → GetConsoleWindow).
+  "Win32_System_Console",
   "Win32_System_Ole",
   "Win32_System_Pipes",
   "Win32_System_SystemInformation",

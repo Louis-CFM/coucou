@@ -435,6 +435,13 @@ body {
   white-space: nowrap;
 }
 
+/* The terminal's title in place of the kind of pill: as long as the row allows. */
+.who .tool.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .who .count {
   font: 400 11px var(--font);
   color: var(--dim-3);
