@@ -1986,6 +1986,46 @@ input[type="range"]::-webkit-slider-thumb {
   color: #c5c8cd;
 }
 
+/* "By model": a model per row, today and the week in two right-aligned columns. */
+.plan-spend {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plan-spend .plan-row {
+  gap: 10px;
+}
+
+.plan-spend .plan-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-spend-col {
+  flex: 0 0 64px;
+  text-align: right;
+  font: 500 11px var(--font);
+  color: #c5c8cd;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-spend-head .plan-spend-col,
+.plan-spend-head .plan-label {
+  font: 400 10px var(--font);
+  color: var(--dim-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plan-spend-note {
+  margin-top: 4px;
+  font: 400 10px var(--font);
+  color: var(--dim-3);
+}
+
 /* ── GitHub pulse (GitHubPulseCardView / GitHubDetailView) ─────────────── */
 
 .gh-spark {

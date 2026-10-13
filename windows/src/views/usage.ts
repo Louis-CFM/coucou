@@ -15,10 +15,11 @@ import {
   effectivePct, parseCodexPlan, pillLabel, planColor, resetLabel,
   type CodexPlanUsage, type PlanUsage, type PlanWindow,
 } from "../core/plan";
+import { noteSpend, restoreLedger, spendOver, type SpendEntry, type SpendLedger } from "../core/spend";
 import { State } from "../core/state";
 import { clear, dot, h, svg } from "./dom";
 import { ICONS } from "./icons";
-import { language, tl } from "../i18n/i18n";
+import { language, t, tl } from "../i18n/i18n";
 
 /** The Claude pill is in the header: overview, turned on, relay in. */
 export function claudePillVisible(): boolean {
@@ -77,6 +78,51 @@ export function storedClaudePlanUsage(): string | null {
     return window.localStorage?.getItem(STORE_KEY) ?? null;
   } catch {
     return null;
+  }
+}
+
+// ── What each model takes ─────────────────────────────────────────────────────
+
+const SPEND_KEY = "coucou.claudeSpend";
+let ledger: SpendLedger | null = null;
+/** Bumped when the ledger changes, so the card knows to redraw. */
+let ledgerVersion = 0;
+
+function spendLedger(): SpendLedger {
+  if (!ledger) {
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage?.getItem(SPEND_KEY) ?? null;
+    } catch {
+      // Storage off: the ledger lives for this run only.
+    }
+    ledger = restoreLedger(raw);
+  }
+  return ledger;
+}
+
+/**
+ * A status line update with the session's model and running total (relay,
+ * `model` and `cost_usd`): the share of each model, kept across restarts.
+ */
+export function noteClaudeSpend(sessionId: string, modelId: string, modelName: string | undefined, totalUsd: number): void {
+  const l = spendLedger();
+  if (!noteSpend(l, sessionId, modelId, modelName, totalUsd)) return;
+  ledgerVersion++;
+  try {
+    window.localStorage?.setItem(SPEND_KEY, JSON.stringify(l));
+  } catch {
+    // Storage off or full: the numbers just will not outlive this run.
+  }
+  if (State.mode === "expanded") State.notify();
+}
+
+/** "$12.34" in the interface language ("12,34 $US" in French). */
+function usd(amount: number): string {
+  try {
+    return new Intl.NumberFormat(language(), { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(amount);
+  } catch {
+    return `$${amount.toFixed(2)}`;
   }
 }
 
@@ -180,7 +226,7 @@ export class PlanCard {
   sync(now = Date.now()) {
     const codex = State.planDetailIsCodex;
     const u = codex ? State.codexPlanUsage : State.planUsage;
-    const key = `${language()}|${codex}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
+    const key = `${language()}|${codex}|${JSON.stringify(u)}|${ledgerVersion}|${Math.floor(now / 30_000)}`;
     if (key === this.key) return;
     this.key = key;
     clear(this.el);
@@ -195,6 +241,7 @@ export class PlanCard {
         gaugeRow(PLAN_TEXT.fiveHours, u?.fiveHour, false, now),
         gaugeRow(PLAN_TEXT.week, u?.sevenDay, true, now),
       ),
+      ...spendRows(now),
     );
   }
 
@@ -211,4 +258,37 @@ export class PlanCard {
     );
     this.el.append(head(codexColor(now), PLAN_TEXT.codexTitle, codexSubtitle(u, now)), rows);
   }
+}
+
+/**
+ * "By model": what each model took today and over the week, from Claude
+ * Code's own cost estimates at list price (core/spend.ts). The plan limits are
+ * not split by model, so this is a share, not a limit; shown only once a
+ * session has reported a model.
+ */
+function spendRows(now: number): HTMLElement[] {
+  const l = spendLedger();
+  const week = spendOver(l, 7, now);
+  if (!week.length) return [];
+  const today = new Map(spendOver(l, 1, now).map((e) => [e.id, e.usd]));
+  const rows = h("div", { class: "plan-rows plan-spend" },
+    h("div", { class: "plan-row plan-spend-head" },
+      h("span", { class: "plan-label", text: t("By model") }),
+      h("span", { class: "plan-spend-col", text: t("today") }),
+      h("span", { class: "plan-spend-col", text: t("7 days") }),
+    ),
+  );
+  for (const e of week) {
+    rows.append(spendRow(e, today.get(e.id) ?? 0));
+  }
+  rows.append(h("div", { class: "plan-spend-note", text: t("Claude Code's estimates at API list price — a share of your use, not a limit.") }));
+  return [rows];
+}
+
+function spendRow(e: SpendEntry, todayUsd: number): HTMLElement {
+  return h("div", { class: "plan-row" },
+    h("span", { class: "plan-label", text: e.name }),
+    h("span", { class: "plan-spend-col", text: todayUsd > 0 ? usd(todayUsd) : PLAN_TEXT.none }),
+    h("span", { class: "plan-spend-col", text: usd(e.usd) }),
+  );
 }
