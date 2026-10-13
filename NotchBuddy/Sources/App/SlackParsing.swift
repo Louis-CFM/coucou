@@ -127,10 +127,17 @@ enum SlackParsing {
         let latest = channel["latest"] as? [String: Any]
         let author = latest?["user"] as? String ?? partner
         if author == me { return nil }
+        if isThreadReply(latest) { return nil }
         return SlackMessage(kind: .dm, channelId: id, channelName: nil, userId: author,
                             author: author, text: latest?["text"] as? String ?? "",
                             ts: latest?["ts"] as? String ?? channel["last_read"] as? String ?? "0",
                             unread: unread, permalink: nil)
+    }
+
+    /// A reply inside a thread: Slack counts it unread in the DM, its app files it under Threads.
+    static func isThreadReply(_ message: [String: Any]?) -> Bool {
+        guard let thread = message?["thread_ts"] as? String, let ts = message?["ts"] as? String else { return false }
+        return thread != ts && message?["subtype"] as? String != "thread_broadcast"
     }
 
     /// search.messages for "<@me>": the recent ones written by someone else.

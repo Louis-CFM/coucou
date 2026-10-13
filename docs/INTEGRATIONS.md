@@ -236,7 +236,7 @@ Un poll par minute, **uniquement si la pastille Slack est déclarée** (et rien 
 
 HTTP 429 : on respecte `Retry-After` (60 s par défaut) avant toute nouvelle requête.
 
-`unread_count_display` n'existe que pour les messages directs (doc de `conversations.info`), et seulement un canal à la fois : d'où la sélection par `priority`. Un message direct avec quelqu'un hors des 15 plus proches n'est vu que si son canal a déjà été vu non lu.
+Un message direct dont le dernier message est une réponse dans un fil (`thread_ts` ≠ `ts`, hors `thread_broadcast`) n'est pas compté : Slack le compte non lu, son app le range dans Fils et laisse la conversation lue. `unread_count_display` n'existe que pour les messages directs (doc de `conversations.info`), et seulement un canal à la fois : d'où la sélection par `priority`. Un message direct avec quelqu'un hors des 15 plus proches n'est vu que si son canal a déjà été vu non lu.
 
 **Non vérifié sans vrai token** : que `search.messages` avec `<@ID>` retrouve bien les mentions. La doc décrit `in:<@UserID>` et `from:<@UserID>`, pas la recherche d'une mention dans le texte.
 

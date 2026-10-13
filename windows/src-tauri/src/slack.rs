@@ -146,7 +146,7 @@ pub fn parse_unread_dm(json: &Value, me: &str) -> Option<Message> {
     let partner = channel.get("user").and_then(Value::as_str).unwrap_or("");
     let latest = channel.get("latest");
     let author = latest.and_then(|l| l.get("user")).and_then(Value::as_str).unwrap_or(partner);
-    if author == me {
+    if author == me || latest.is_some_and(is_thread_reply) {
         return None;
     }
     let ts = latest
@@ -165,6 +165,13 @@ pub fn parse_unread_dm(json: &Value, me: &str) -> Option<Message> {
         unread,
         permalink: None,
     })
+}
+
+/// A reply inside a thread: Slack counts it unread in the DM, its app files it under Threads.
+fn is_thread_reply(message: &Value) -> bool {
+    let thread = message.get("thread_ts").and_then(Value::as_str);
+    thread.is_some_and(|t| Some(t) != message.get("ts").and_then(Value::as_str))
+        && message.get("subtype").and_then(Value::as_str) != Some("thread_broadcast")
 }
 
 /// search.messages for "<@me>": the recent ones written by someone else.
@@ -684,6 +691,12 @@ mod tests {
         let mine = json!({ "ok": true, "channel": { "id": "D1", "is_im": true, "user": "U2", "unread_count_display": 1,
             "latest": { "user": "W1", "text": "done", "ts": "1.0" } } });
         assert_eq!(parse_unread_dm(&mine, "W1"), None);
+        let reply = json!({ "ok": true, "channel": { "id": "D1", "is_im": true, "user": "U2", "unread_count_display": 1,
+            "latest": { "user": "U2", "text": "in a thread", "ts": "2.0", "thread_ts": "1.0" } } });
+        assert_eq!(parse_unread_dm(&reply, "W1"), None);
+        let broadcast = json!({ "ok": true, "channel": { "id": "D1", "is_im": true, "user": "U2", "unread_count_display": 1,
+            "latest": { "user": "U2", "text": "also sent", "ts": "2.0", "thread_ts": "1.0", "subtype": "thread_broadcast" } } });
+        assert!(parse_unread_dm(&broadcast, "W1").is_some());
     }
 
     #[test]

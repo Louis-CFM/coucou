@@ -63,6 +63,15 @@ enum SlackParsingTests {
           "latest":{"user":"W1","text":"done","ts":"1.0"}}}
         """#), me: "W1") == nil)
 
+        precondition(SlackParsing.unreadDM(json(#"""
+        {"ok":true,"channel":{"id":"D1","is_im":true,"user":"U2","unread_count_display":1,
+          "latest":{"user":"U2","text":"in a thread","ts":"2.0","thread_ts":"1.0"}}}
+        """#), me: "W1") == nil)
+        precondition(SlackParsing.unreadDM(json(#"""
+        {"ok":true,"channel":{"id":"D1","is_im":true,"user":"U2","unread_count_display":1,
+          "latest":{"user":"U2","text":"also sent","ts":"2.0","thread_ts":"1.0","subtype":"thread_broadcast"}}}
+        """#), me: "W1") != nil)
+
         // search.messages: recent mentions by others only
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let mentions = SlackParsing.mentions(json(#"""
