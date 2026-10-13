@@ -422,6 +422,17 @@
    "ko": "설정 → 연동에서 코인을 추가해 주세요",
    "ja": "設定 → 連携でコインを追加"
   },
+  "Add coins in Settings → Integrations": {
+   "zh-Hans": "在“设置 → 集成”中添加币种",
+   "hi": "सेटिंग्स → इंटीग्रेशन में कॉइन जोड़ें",
+   "es": "Añade monedas en Ajustes → Integraciones",
+   "ar": "أضف عملات في الإعدادات ← التكاملات",
+   "fr": "Ajoute des cryptos dans Réglages → Intégrations",
+   "bn": "সেটিংস → ইন্টিগ্রেশনে কয়েন যোগ করুন",
+   "pt-BR": "Adicione moedas em Ajustes → Integrações",
+   "ru": "Добавьте монеты в Настройки → Интеграции",
+   "id": "Tambahkan koin di Pengaturan → Integrasi"
+  },
   "Add your Anthropic API key in Settings → Chat first.": {
    "zh-Hans": "请先在设置 → 聊天中添加你的 Anthropic API 密钥。",
    "hi": "पहले सेटिंग्स → चैट में अपनी Anthropic API कुंजी जोड़ो।",
@@ -571,6 +582,17 @@
    "tr": "Tüm değişiklikler",
    "ko": "모든 변경 사항",
    "ja": "すべての変更点"
+  },
+  "Alert me when a coin moves {0} %": {
+   "zh-Hans": "币价变动 {0} % 时提醒我",
+   "hi": "कोई कॉइन {0} % हिले तो सूचित करें",
+   "es": "Avisarme cuando una moneda se mueva un {0} %",
+   "ar": "نبّهني عندما تتحرك عملة بنسبة {0} %",
+   "fr": "M’alerter quand une crypto bouge de {0} %",
+   "bn": "কোনো কয়েন {0} % ওঠানামা করলে জানাও",
+   "pt-BR": "Avisar quando uma moeda variar {0} %",
+   "ru": "Сообщать, если монета изменится на {0} %",
+   "id": "Beri tahu saat koin bergerak {0} %"
   },
   "Allow": {
    "zh-Hans": "允许",
@@ -2023,6 +2045,17 @@
    "ko": "코인 (BTC, ETH, SOL…)",
    "ja": "コイン（BTC、ETH、SOL…）"
   },
+  "Coins (BTC, ETH, SOL…)": {
+   "zh-Hans": "币种（BTC, ETH, SOL…）",
+   "hi": "कॉइन (BTC, ETH, SOL…)",
+   "es": "Monedas (BTC, ETH, SOL…)",
+   "ar": "العملات (BTC, ETH, SOL…)",
+   "fr": "Cryptos (BTC, ETH, SOL…)",
+   "bn": "কয়েন (BTC, ETH, SOL…)",
+   "pt-BR": "Moedas (BTC, ETH, SOL…)",
+   "ru": "Монеты (BTC, ETH, SOL…)",
+   "id": "Koin (BTC, ETH, SOL…)"
+  },
   "Color": {
    "zh-Hans": "颜色",
    "hi": "रंग",
@@ -2667,6 +2700,17 @@
    "tr": "Özel kısayol…",
    "ko": "사용자 지정 단축키…",
    "ja": "カスタムショートカット…"
+  },
+  "Currency": {
+   "zh-Hans": "货币",
+   "hi": "मुद्रा",
+   "es": "Moneda",
+   "ar": "العملة",
+   "fr": "Monnaie",
+   "bn": "মুদ্রা",
+   "pt-BR": "Moeda",
+   "ru": "Валюта",
+   "id": "Mata uang"
   },
   "Custom…": {
    "zh-Hans": "自定义…",
@@ -3387,6 +3431,17 @@
    "tr": "Borsa",
    "ko": "거래소",
    "ja": "取引所"
+  },
+  "Exchange": {
+   "zh-Hans": "交易所",
+   "hi": "एक्सचेंज",
+   "es": "Plataforma",
+   "ar": "المنصة",
+   "fr": "Plateforme",
+   "bn": "এক্সচেঞ্জ",
+   "pt-BR": "Corretora",
+   "ru": "Биржа",
+   "id": "Bursa"
   },
   "Explore all features without an API key or Claude Code. Nothing is written to disk.": {
    "zh-Hans": "无需 API 密钥或 Claude Code，探索所有功能。不会写入任何内容到磁盘。",
@@ -4333,6 +4388,17 @@
    "ko": "받은 편지함",
    "ja": "受信トレイ"
   },
+  "Inbox": {
+   "zh-Hans": "收件箱",
+   "hi": "इनबॉक्स",
+   "es": "Bandeja de entrada",
+   "ar": "البريد الوارد",
+   "fr": "Boîte de réception",
+   "bn": "ইনবক্স",
+   "pt-BR": "Caixa de entrada",
+   "ru": "Входящие",
+   "id": "Kotak masuk"
+  },
   "Install": {
    "zh-Hans": "安装",
    "hi": "इंस्टॉल करें",
@@ -5158,6 +5224,17 @@
    "ko": "Mail이 닫혀 있습니다. 열 때까지 아무것도 정리되지 않습니다.",
    "ja": "Mail が閉じています。開くまで何も整理されません。"
   },
+  "Mail is closed": {
+   "zh-Hans": "“邮件”未打开",
+   "hi": "Mail बंद है",
+   "es": "Mail está cerrado",
+   "ar": "تطبيق Mail مغلق",
+   "fr": "Mail est fermé",
+   "bn": "Mail বন্ধ আছে",
+   "pt-BR": "O Mail está fechado",
+   "ru": "Почта закрыта",
+   "id": "Mail ditutup"
+  },
   "Mail not available.": {
    "zh-Hans": "邮件不可用。",
    "hi": "मेल उपलब्ध नहीं है।",
@@ -5397,6 +5474,17 @@
    "tr": "Bu adreslerden veya alan adlarından gelen e-postalar her zaman önemli olarak işaretlenir ve hiçbir kural onları taşımaz.",
    "ko": "이 주소나 도메인에서 온 메일은 항상 중요로 표시되며, 어떤 규칙도 옮기지 않습니다.",
    "ja": "これらのアドレスやドメインからのメールは常に重要に設定され、ルールで移動されることはありません。"
+  },
+  "Mark as read": {
+   "zh-Hans": "标为已读",
+   "hi": "पढ़ा हुआ चिह्नित करें",
+   "es": "Marcar como leído",
+   "ar": "وضع علامة كمقروءة",
+   "fr": "Marquer comme lu",
+   "bn": "পঠিত হিসেবে চিহ্নিত করুন",
+   "pt-BR": "Marcar como lido",
+   "ru": "Отметить как прочитанное",
+   "id": "Tandai sudah dibaca"
   },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
@@ -6133,6 +6221,17 @@
    "ko": "메시지가 없어요",
    "ja": "メッセージなし"
   },
+  "No messages": {
+   "zh-Hans": "没有邮件",
+   "hi": "कोई संदेश नहीं",
+   "es": "No hay mensajes",
+   "ar": "لا توجد رسائل",
+   "fr": "Aucun message",
+   "bn": "কোনো বার্তা নেই",
+   "pt-BR": "Nenhuma mensagem",
+   "ru": "Нет сообщений",
+   "id": "Tidak ada pesan"
+  },
   "No models yet — download one in {name} first.": {
    "zh-Hans": "暂无模型 — 请先在 {name} 中下载一个。",
    "hi": "अभी कोई मॉडल नहीं — पहले {name} में एक डाउनलोड करें।",
@@ -6462,6 +6561,17 @@
    "tr": "Bu borsada yok: {0}",
    "ko": "이 거래소엔 없어요: {0}",
    "ja": "この取引所にはありません：{0}"
+  },
+  "Not on this exchange: {0}": {
+   "zh-Hans": "此交易所没有：{0}",
+   "hi": "इस एक्सचेंज पर नहीं: {0}",
+   "es": "No está en esta plataforma: {0}",
+   "ar": "غير مدرجة في هذه المنصة: {0}",
+   "fr": "Absente de cette plateforme : {0}",
+   "bn": "এই এক্সচেঞ্জে নেই: {0}",
+   "pt-BR": "Não está nesta corretora: {0}",
+   "ru": "Нет на этой бирже: {0}",
+   "id": "Tidak ada di bursa ini: {0}"
   },
   "Not playing": {
    "zh-Hans": "未播放",
@@ -7018,6 +7128,17 @@
    "ko": "메일 열기",
    "ja": "メールを開く"
   },
+  "Open Mail": {
+   "zh-Hans": "打开“邮件”",
+   "hi": "Mail खोलें",
+   "es": "Abrir Mail",
+   "ar": "فتح Mail",
+   "fr": "Ouvrir Mail",
+   "bn": "Mail খুলুন",
+   "pt-BR": "Abrir o Mail",
+   "ru": "Открыть Почту",
+   "id": "Buka Mail"
+  },
   "Open Music": {
    "zh-Hans": "打开 Music",
    "hi": "Music खोलें",
@@ -7137,6 +7258,17 @@
    "tr": "Mail'de aç",
    "ko": "메일에서 열기",
    "ja": "メールで開く"
+  },
+  "Open in Mail": {
+   "zh-Hans": "在“邮件”中打开",
+   "hi": "Mail में खोलें",
+   "es": "Abrir en Mail",
+   "ar": "فتح في Mail",
+   "fr": "Ouvrir dans Mail",
+   "bn": "Mail-এ খুলুন",
+   "pt-BR": "Abrir no Mail",
+   "ru": "Открыть в Почте",
+   "id": "Buka di Mail"
   },
   "Open in n8n": {
    "zh-Hans": "在 n8n 中打开",
@@ -7948,6 +8080,17 @@
    "ko": "호박",
    "ja": "かぼちゃ"
   },
+  "Public prices from the exchange: no account, no key. Read every minute, only while the pill is on.": {
+   "zh-Hans": "来自交易所的公开行情：无需账户和密钥。仅在启用该胶囊时每分钟读取一次。",
+   "hi": "एक्सचेंज की सार्वजनिक कीमतें: न खाता, न कुंजी। पिल चालू होने पर ही हर मिनट पढ़ी जाती हैं।",
+   "es": "Precios públicos de la plataforma: sin cuenta ni clave. Se leen cada minuto, solo con la píldora activa.",
+   "ar": "أسعار عامة من المنصة: بلا حساب ولا مفتاح. تُقرأ كل دقيقة، فقط حين تكون الحبة مفعّلة.",
+   "fr": "Cours publics de la plateforme : ni compte ni clé. Lus chaque minute, seulement quand la pilule est active.",
+   "bn": "এক্সচেঞ্জের পাবলিক দাম: কোনো অ্যাকাউন্ট বা কী লাগে না। পিলটি চালু থাকলেই শুধু প্রতি মিনিটে পড়া হয়।",
+   "pt-BR": "Preços públicos da corretora: sem conta nem chave. Lidos a cada minuto, só com a pílula ativa.",
+   "ru": "Публичные цены биржи: без аккаунта и ключа. Обновляются раз в минуту, только когда пилюля включена.",
+   "id": "Harga publik dari bursa: tanpa akun, tanpa kunci. Dibaca tiap menit, hanya saat pil aktif."
+  },
   "Quit": {
    "zh-Hans": "退出",
    "hi": "छोड़ें",
@@ -8322,6 +8465,17 @@
    "tr": "{0} için yanıt taslağı",
    "ko": "{0}에게 보낼 답장 초안",
    "ja": "{0} への返信の下書き"
+  },
+  "Reply": {
+   "zh-Hans": "回复",
+   "hi": "जवाब दें",
+   "es": "Responder",
+   "ar": "رد",
+   "fr": "Répondre",
+   "bn": "উত্তর দিন",
+   "pt-BR": "Responder",
+   "ru": "Ответить",
+   "id": "Balas"
   },
   "Reply in terminal": {
    "zh-Hans": "在终端回复",
@@ -12193,6 +12347,17 @@
    "ko": "paul@client.kr 또는 @client.kr",
    "ja": "paul@client.jp または @client.jp"
   },
+  "now": {
+   "zh-Hans": "刚刚",
+   "hi": "अभी",
+   "es": "ahora",
+   "ar": "الآن",
+   "fr": "à l’instant",
+   "bn": "এখন",
+   "pt-BR": "agora",
+   "ru": "сейчас",
+   "id": "baru saja"
+  },
   "presses this → island opens": {
    "zh-Hans": "按此键 → 岛打开",
    "hi": "दबाने पर → द्वीप खुलता है",
@@ -12553,6 +12718,17 @@
    "ko": "오늘 새 메시지 {0}개를 확인했어요. VIP, 금지어, 규칙 중 어느 것에도 해당하지 않아 Coucou는 그대로 두었어요.",
    "ja": "今日は新着メッセージを {0} 件確認しました。VIP、禁止ワード、ルールのどれにも当てはまらなかったので、Coucou はそのままにしました。"
   },
+  "{0} did not answer": {
+   "zh-Hans": "{0} 未响应",
+   "hi": "{0} ने जवाब नहीं दिया",
+   "es": "{0} no respondió",
+   "ar": "لم يستجب {0}",
+   "fr": "{0} n’a pas répondu",
+   "bn": "{0} সাড়া দেয়নি",
+   "pt-BR": "{0} não respondeu",
+   "ru": "{0} не отвечает",
+   "id": "{0} tidak merespons"
+  },
   "{0} removed": {
    "zh-Hans": "已移除 {0}",
    "hi": "{0} हटाया गया",
@@ -12582,6 +12758,17 @@
    "tr": "{0} okunmamış",
    "ko": "읽지 않음 {0}개",
    "ja": "未読 {0}"
+  },
+  "{0} unread": {
+   "zh-Hans": "{0} 封未读",
+   "hi": "{0} अपठित",
+   "es": "{0} sin leer",
+   "ar": "{0} غير مقروءة",
+   "fr": "{0} non lus",
+   "bn": "{0} অপঠিত",
+   "pt-BR": "{0} não lidos",
+   "ru": "Непрочитанных: {0}",
+   "id": "{0} belum dibaca"
   },
   "{0} — open Spotify": {
    "zh-Hans": "{0} — 打开 Spotify",
