@@ -613,14 +613,15 @@ final class HookServer: @unchecked Sendable {
                                     hostURL: display.hostURL, bundleId: bundleId, session: sessionId,
                                     overridingOwner: true)
             }
-            // ...and keeps its link if another session speaks once the card is up
-            if ClaudeHost.recordsHost(pillId: agentId) { state.finishedLink = SessionLink(hostApp: hostApp, hostURL: display.hostURL) }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
             }
             SoundEngine.shared.play("finish")
             if focused {
+                // The card keeps its session's link if another session speaks once it is up.
+                // Only here: a pill in the background gets a badge, not the card on screen.
+                if ClaudeHost.recordsHost(pillId: agentId) { state.finishedLink = SessionLink(hostApp: hostApp, hostURL: display.hostURL) }
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
@@ -628,8 +629,12 @@ final class HookServer: @unchecked Sendable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
                 // A session (this one or a sibling) is mid-turn: the pill goes back to work.
                 guard self.sessions.workingCount(pill: agentId) == 0 else {
-                    if AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .finished {
+                    if let idx = AppState.shared.tasks.firstIndex(where: { $0.id == agentId }),
+                       AppState.shared.tasks[idx].state == .finished {
+                        // The finished session's conclusion, name and link were on the pill: back to the owner's
+                        AppState.shared.tasks[idx].finalLine = nil
                         AppState.shared.updateTask(id: agentId, state: .working)
+                        self.applyDisplayOwner(pill: agentId)
                     }
                     return
                 }
@@ -672,6 +677,8 @@ final class HookServer: @unchecked Sendable {
                 guard self.sessions.workingCount(pill: agentId) > 0,
                       AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .error else { return }
                 AppState.shared.updateTask(id: agentId, state: .working)
+                // The failed session's name and link were on the pill: back to the owner's
+                self.applyDisplayOwner(pill: agentId)
             }
 
         case "Interrupt":
