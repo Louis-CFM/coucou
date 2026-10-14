@@ -847,6 +847,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let hostURL = ClaudeHost.sessionURL(from: payload)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -880,7 +881,7 @@ final class HookServer: @unchecked Sendable {
                                    projectName: projectName, cwd: cwd, tool: tool,
                                    command: command, inputKey: inputKey,
                                    hostApp: terminalHost?.bundleId,
-                                   hostURL: ClaudeHost.sessionURL(from: payload), bundleId: bundleId)
+                                   hostURL: hostURL, bundleId: bundleId)
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
@@ -894,7 +895,7 @@ final class HookServer: @unchecked Sendable {
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
-                                                        hostURL: ClaudeHost.sessionURL(from: payload),
+                                                        hostURL: hostURL,
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .approval)
@@ -1000,6 +1001,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let hostURL = ClaudeHost.sessionURL(from: payload)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -1029,12 +1031,12 @@ final class HookServer: @unchecked Sendable {
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
                                                         cwd: cwd, hostApp: terminalHost?.bundleId,
-                                                        hostURL: ClaudeHost.sessionURL(from: payload),
+                                                        hostURL: hostURL,
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
-        state.questionLink = SessionLink(hostApp: terminalHost?.bundleId, hostURL: ClaudeHost.sessionURL(from: payload))
+        state.questionLink = SessionLink(hostApp: terminalHost?.bundleId, hostURL: hostURL)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
