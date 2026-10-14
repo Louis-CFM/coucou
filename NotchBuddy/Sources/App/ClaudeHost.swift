@@ -15,6 +15,9 @@ struct ClaudeHost: Equatable {
     static let terminalCardsKey = "terminalCardsEnabled"
     static var terminalCardsEnabled: Bool { UserDefaults.standard.bool(forKey: terminalCardsKey) }
 
+    /// Conductor's bundle id: a host like the terminals, with its own link back to a session.
+    static let conductorBundleId = "com.conductor.app"
+
     /// Terminals accepted for Claude Code sessions. Keyed by bundle id; the second
     /// table maps TERM_PROGRAM for hooks that run without __CFBundleIdentifier.
     private static let terminals: [String: String] = [
@@ -30,7 +33,7 @@ struct ClaudeHost: Equatable {
         "dev.zed.Zed":                "Zed",
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
-        "com.conductor.app":          "Conductor",
+        conductorBundleId:            "Conductor",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",
@@ -73,14 +76,14 @@ struct ClaudeHost: Equatable {
     /// Whether a session runs in Conductor, which runs workspaces side by side: each of its
     /// sessions gets its own finished card and takes the pill when it gets a prompt.
     static func isConductor(_ hostBundleId: String?) -> Bool {
-        hostBundleId == "com.conductor.app"
+        hostBundleId == conductorBundleId
     }
 
     /// Conductor's link to the workspace and chat a session runs in
     /// (`conductor://workspace?id=…&session=…`), from the ids the relay reads in
     /// CONDUCTOR_WORKSPACE_ID / CONDUCTOR_SESSION_ID. nil for any other host.
     static func sessionURL(from payload: [String: Any]) -> URL? {
-        guard payload["bundle_id"] as? String == "com.conductor.app",
+        guard payload["bundle_id"] as? String == conductorBundleId,
               let workspace = conductorId(payload["conductor_workspace_id"]) else { return nil }
         var link = URLComponents()
         link.scheme = "conductor"
