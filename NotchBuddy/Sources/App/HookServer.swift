@@ -531,8 +531,10 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
-            // A new prompt brings its session onto the pill, even next to an older one.
-            upsertTask(pill: agentId, display: display, working: true, claiming: true,
+            // A new prompt in a Conductor workspace brings its session onto the pill, even next
+            // to an older one. Other sessions keep the oldest one on it, so its name stays put.
+            upsertTask(pill: agentId, display: display, working: true,
+                       claiming: ClaudeHost.isConductor(hostApp),
                        externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
@@ -597,10 +599,12 @@ final class HookServer: @unchecked Sendable {
             // The step log is shared, so the conclusion is worth showing either way.
             if !finalText.isEmpty { appendStep(id: agentId, step: finalText) }
             RecapStore.shared.stop(sessionId: recapSessionId)
-            // Every session gets its finished card and sound, even while another one is
-            // mid-turn behind this pill: that one's next event puts the pill back to work.
+            // Another session is still mid-turn behind this pill: the finished state, the
+            // sound and the idle reset below would land on its work. Its own Stop comes later.
+            // Conductor runs workspaces side by side, so each of its sessions gets its card.
             if scope == .sessionOnly {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
+                guard ClaudeHost.isConductor(hostApp) else { break }
             }
             // The finished card shows and goes back to the session that just finished (its name,
             // app and link), even if Coucou started mid-turn or another session owns the pill
@@ -639,12 +643,13 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            // Like Stop: every session gets its error card and sound, even while another one is
-            // mid-turn behind this pill, and the card names the session that failed.
+            // Like Stop: while another session is mid-turn behind this pill, only a Conductor
+            // session gets its error card and sound, and the card names the session that failed.
             let scope = sessions.endTurn(pill: agentId, session: sessionId)
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
             if scope == .sessionOnly {
                 nbLog("StopFailure \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
+                guard ClaudeHost.isConductor(hostApp) else { break }
             }
             if !isExternalAgent {
                 upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, hostApp: hostApp,

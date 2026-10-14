@@ -38,6 +38,11 @@ enum ClaudeHostTests {
         check("Cursor doesn't", !ClaudeHost.recordsHost(pillId: "agent_cursor"))
         check("no pill doesn't", !ClaudeHost.recordsHost(pillId: nil))
 
+        print("ClaudeHost.isConductor")
+        check("Conductor is", ClaudeHost.isConductor("com.conductor.app"))
+        check("Warp isn't", !ClaudeHost.isConductor("dev.warp.Warp-Stable"))
+        check("VS Code (nil host) isn't", !ClaudeHost.isConductor(nil))
+
         print("ClaudeHost.sessionURL")
         let conductor: [String: Any] = ["bundle_id": "com.conductor.app",
                                         "conductor_workspace_id": "a1f5ba4e-8f43-4648-9e05-4a87c51f5168",
