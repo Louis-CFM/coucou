@@ -263,6 +263,10 @@ struct OverviewView: View {
             #endif
         case "agent_claude-desktop":
             openClaudeDesktopApp()
+        case "agent_pi":
+            #if !APPSTORE
+            TerminalTarget.activate(sessionBundleId: nil)
+            #endif
         case "agent_gemini", "agent_antigravity",
              "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
             #if !APPSTORE
@@ -278,6 +282,8 @@ struct OverviewView: View {
             switchChatProvider(.ollama)
         case "ai_lmstudio":
             switchChatProvider(.lmstudio)
+        case "ai_acp":
+            switchChatProvider(.acp)
         case "integration_music":
             #if !APPSTORE
             MusicController.shared.openMusic()
@@ -1465,7 +1471,11 @@ struct PromptView: View {
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
         Task {
-            await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
+            if state.chatProvider == .acp {
+                await ClaudeService.shared.chatACP(query: query, state: state)
+            } else {
+                await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
+            }
             await MainActor.run { focused = true }
         }
     }
@@ -1509,9 +1519,11 @@ struct ModelPickerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Provider chips — wrap; hide local providers when not connected and not already active
+            // Show ACP provider only when at least one ACP agent is configured
             let visibleProviders = ChatProvider.allCases.filter { p in
                 if p == .ollama   { return !AppState.shared.ollamaServerURL.isEmpty   || state.chatProvider == .ollama }
                 if p == .lmstudio { return !AppState.shared.lmstudioServerURL.isEmpty || state.chatProvider == .lmstudio }
+                if p == .acp      { return !AcpConfigStore.load().isEmpty             || state.chatProvider == .acp }
                 return true
             }
             ChipFlowLayout(spacing: 6) {
@@ -1574,7 +1586,10 @@ struct ModelPickerView: View {
 
     @ViewBuilder
     private var modelListView: some View {
-        if state.loadingProviderModels.contains(state.chatProvider) {
+        if state.chatProvider == .acp {
+            // ACP always shows agent list, never a fetched model list
+            acpAgentListView
+        } else if state.loadingProviderModels.contains(state.chatProvider) {
             HStack(spacing: 8) {
                 ProgressView().scaleEffect(0.7)
                 Text("Loading models…")
@@ -1602,6 +1617,7 @@ struct ModelPickerView: View {
                             case .deepseek:  state.deepseekChatModel = model.id
                             case .qwen:      state.qwenChatModel = model.id
                             case .moonshot:  state.moonshotChatModel = model.id
+                            case .acp:       break  // ACP agent selection is in the acpAgentListView
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1630,6 +1646,107 @@ struct ModelPickerView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var acpAgentListView: some View {
+        let configs = AcpConfigStore.load()
+        if configs.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("No ACP agent configured.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#8A8F98"))
+                Text("Add one in Settings → ACP Agents.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#5C6370"))
+            }
+            .padding(.vertical, 4)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(configs) { config in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Button {
+                                state.acpSelectedAgentId = config.id
+                                isPresented = false
+                                SoundEngine.shared.play("blip")
+                            } label: {
+                                HStack {
+                                    Circle()
+                                        .fill(Color(hex: config.color))
+                                        .frame(width: 7, height: 7)
+                                    Text(config.name)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(state.acpSelectedAgentId == config.id
+                                                         ? Color(hex: config.color)
+                                                         : Color(hex: "#C8CDD4"))
+                                    Spacer()
+                                    if state.acpSelectedAgentId == config.id {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(Color(hex: config.color))
+                                    }
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(state.acpSelectedAgentId == config.id
+                                            ? Color(hex: config.color).opacity(0.1)
+                                            : Color.clear)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                            .buttonStyle(.plain)
+                            // Show model tag — tappable to edit inline
+                            AcpModelTag(config: config)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Inline editable model tag for ACP agent rows in the model picker.
+/// Shows the current model; tap to edit.
+struct AcpModelTag: View {
+    let config: AcpAgentConfig
+    @State private var isEditing = false
+    @State private var draft = ""
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "cpu")
+                .font(.system(size: 8))
+                .foregroundColor(Color(hex: "#5C6370"))
+            if isEditing {
+                TextField("model id", text: $draft)
+                    .font(.system(size: 10, design: .monospaced))
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { commitModel() }
+                    .onAppear { draft = config.model }
+            } else {
+                Text(config.model.isEmpty ? "tap to set model" : config.model)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(config.model.isEmpty ? Color(hex: "#5C6370") : Color(hex: "#6B7079"))
+            }
+        }
+        .padding(.horizontal, 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            draft = config.model
+            isEditing = true
+        }
+    }
+
+    private func commitModel() {
+        isEditing = false
+        var updated = config
+        updated.model = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Persist the change
+        var configs = AcpConfigStore.load()
+        if let idx = configs.firstIndex(where: { $0.id == config.id }) {
+            configs[idx] = updated
+            AcpConfigStore.save(configs)
         }
     }
 }
@@ -1864,6 +1981,8 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "agent_pi":
+            return true  // Pi reports through its own extension (coucou-pi-status), no hooks to install
         case "agent_claude-desktop":
             return true  // nothing to install: the relay tags desktop sessions on its own
         case "integration_music":
@@ -1887,6 +2006,7 @@ struct IntegrationCardView: View {
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
         case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
         case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
+        case "ai_acp":       return !AcpConfigStore.load().isEmpty
         case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
         case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
         case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
@@ -2041,11 +2161,13 @@ struct IntegrationCardView: View {
                    || task.id == "agent_codex"        || task.id == "agent_copilot"
                    || task.id == "agent_muse"         || task.id == "agent_opencode"
                    || task.id == "agent_amp"          || task.id == "agent_hermes"
+                   || task.id == "agent_pi"
         let isAI    = ChatProvider(pillID: task.id) != nil
         if isConfigured {
             if isHooks { return String(localized: "Hooks installed") }
             // No key or poller behind this pill: it only reflects hook events.
             if task.id == "agent_claude-desktop" { return String(localized: "Ready · no setup needed") }
+            if task.id == "agent_pi" { return String(localized: "Extension ready") }
             if isAI {
                 let provider = ChatProvider(pillID: task.id)!
                 if provider.isLocal {
@@ -2248,6 +2370,15 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                         }
+                        #endif
+                    } else if task.id == "agent_pi" {
+                        #if !APPSTORE
+                        Button("Open Pi") {
+                            TerminalTarget.activate(sessionBundleId: nil)
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(hex: task.color).opacity(0.85))
+                        .buttonStyle(.plain)
                         #endif
                     } else if let provider = ChatProvider(pillID: task.id) {
                         if isConfigured {

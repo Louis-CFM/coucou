@@ -101,6 +101,7 @@ enum ChatProvider: String, CaseIterable, Codable {
     case deepseek  = "deepseek"
     case qwen      = "qwen"
     case moonshot  = "moonshot"
+    case acp       = "acp"
 
     var displayName: String {
         switch self {
@@ -112,6 +113,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "DeepSeek"
         case .qwen:      "Qwen"
         case .moonshot:  "Moonshot"
+        case .acp:       "ACP Agent"
         }
     }
 
@@ -125,6 +127,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "#5B8FF9"
         case .qwen:      "#FF6A00"
         case .moonshot:  "#7C5CFC"
+        case .acp:       "#818CF8"
         }
     }
 
@@ -138,6 +141,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "deepseek-chat"
         case .qwen:      "qwen-max"
         case .moonshot:  "moonshot-v1-32k"
+        case .acp:       "agent"
         }
     }
 
@@ -151,6 +155,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "deepseek-api-key"
         case .qwen:      "qwen-api-key"
         case .moonshot:  "moonshot-api-key"
+        case .acp:       ""
         }
     }
 
@@ -168,6 +173,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .deepseek:  "ai_deepseek"
         case .qwen:      "ai_qwen"
         case .moonshot:  "ai_moonshot"
+        case .acp:       "ai_acp"
         }
     }
 
@@ -181,6 +187,7 @@ enum ChatProvider: String, CaseIterable, Codable {
         case "ai_deepseek":  self = .deepseek
         case "ai_qwen":      self = .qwen
         case "ai_moonshot":  self = .moonshot
+        case "ai_acp":       self = .acp
         default:             return nil
         }
     }
