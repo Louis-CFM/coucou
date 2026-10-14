@@ -17,6 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { buildCodeView, hasCode, resumeCode } from "./session";
 import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
@@ -136,7 +137,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "code");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -176,7 +177,17 @@ function buildOverview(actions: ViewActions): ViewHost {
     activeDiffId = null;
     State.notify();
   };
+  const codeOpens = () => mode === "ticker" && hasCode(State.focusTask?.id);
+  const openCode = () => {
+    actions.blip();
+    resumeCode(State.focusTask?.id);
+    actions.setView("code");
+  };
   const ticker = new Ticker((diffId) => {
+    if (codeOpens()) {
+      openCode();
+      return;
+    }
     actions.blip();
     activeDiffId = diffId;
     State.notify();
@@ -190,6 +201,11 @@ function buildOverview(actions: ViewActions): ViewHost {
     svg(ICONS.arrowUpRight, 8),
   );
   const left = card(null, leftBody, jump);
+  left.addEventListener("click", (e) => {
+    if (!codeOpens()) return;
+    if ((e.target as Element | null)?.closest?.(".jump")) return;
+    openCode();
+  });
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
@@ -381,6 +397,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      left.classList.toggle("expandable", codeOpens());
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
@@ -807,6 +824,7 @@ export function buildViews(
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
   map.set("overview", buildOverview(actions));
+  map.set("code", buildCodeView(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
   map.set("question", buildQuestion(actions));

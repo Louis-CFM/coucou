@@ -394,6 +394,11 @@ export class Island {
   setView(view: IslandViewName) {
     this.stopSequenceIfLeaving(view);
     if (view !== "overview") closePlanCard();
+    if (view === "code") {
+      this.fsm.pinned = true;
+    } else if (!State.pendingApproval) {
+      this.fsm.pinned = false;
+    }
     if (State.mode !== "expanded") {
       this.fsm.forceHome();
       State.view = view;
@@ -787,7 +792,8 @@ export class Island {
     // does on macOS.
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded") {
-        if (State.pendingApproval) this.foldApproval();
+        if (State.view === "code") this.setView("overview");
+        else if (State.pendingApproval) this.foldApproval();
         else if (!State.isPinned) this.collapse();
       }
       State.lastActivity = performance.now();
