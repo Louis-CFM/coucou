@@ -117,20 +117,8 @@ struct ClaudeHost: Equatable {
     @discardableResult
     static func activate(_ hostBundleId: String?, sessionURL: URL? = nil) -> Bool {
         guard let id = hostBundleId, terminals[id] != nil else { return false }
-        // The link switches the chat, but opened from Coucou (never the active app) it leaves
-        // the host behind other windows or on another desktop: bring it forward once it has it.
         if let sessionURL, let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
-            let configuration = NSWorkspace.OpenConfiguration()
-            configuration.activates = true
-            // `activates` already brings the host forward; the completion runs on a background
-            // queue, so the desktop switch (Accessibility) goes back to the main thread.
-            NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
-                DispatchQueue.main.async {
-                    // The link failed to open (app moved, launch refused): bring the host forward without it.
-                    guard let running else { activate(id); return }
-                    switchToDesktop(of: running)
-                }
-            }
+            open(sessionURL, with: app, hostBundleId: id)
             return true
         }
         if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
@@ -139,5 +127,22 @@ struct ClaudeHost: Equatable {
             NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
         }
         return true
+    }
+
+    /// Opens a session's link in its host and brings the host forward, on its desktop. The link
+    /// switches the chat, but opened from Coucou (never the active app) it leaves the host behind
+    /// other windows or on another desktop. If the link fails, just brings the host forward.
+    private static func open(_ sessionURL: URL, with app: URL, hostBundleId id: String) {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        // `activates` already brings the host forward; the completion runs on a background
+        // queue, so the desktop switch (Accessibility) goes back to the main thread.
+        NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
+            DispatchQueue.main.async {
+                // The link failed to open (app moved, launch refused): bring the host forward without it.
+                guard let running else { activate(id); return }
+                switchToDesktop(of: running)
+            }
+        }
     }
 }
