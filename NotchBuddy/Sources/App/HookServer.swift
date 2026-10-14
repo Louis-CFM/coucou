@@ -3304,6 +3304,55 @@ def enrich(payload, env):
         else:
             payload['cwd'] = os.getcwd()
 
+# A Claude or Codex started by another agent (a `claude -p` from the Bash tool, a script an
+# agent runs) inherits its terminal and Conductor ids, so it would take over that session's
+# pill. Walk up the process tree: past the agent running this hook, a second agent means the
+# session is nested. Unknown or slow: not nested, so the hook behaves as before.
+AGENT_NAMES = ('claude', 'codex', 'gemini')
+AGENT_SCRIPTS = ('/claude-code/', '/@openai/codex/', '/gemini-cli/')
+
+def ps_fields(pid, *fields):
+    import subprocess
+    out = subprocess.run(['/bin/ps', '-o', ','.join(f + '=' for f in fields), '-p', str(pid)],
+                         capture_output=True, timeout=0.5).stdout
+    return out.decode('utf-8', 'replace').strip()
+
+def is_agent(pid, comm):
+    name = os.path.basename(comm)
+    if name in AGENT_NAMES or '/claude/versions/' in comm:
+        return True
+    if name in ('node', 'bun'):
+        args = ps_fields(pid, 'args')
+        return any(script in args for script in AGENT_SCRIPTS)
+    return False
+
+def is_nested():
+    try:
+        pid = os.getppid()
+        agents = 0
+        in_agent = False
+        for _ in range(32):
+            if pid <= 1:
+                return False
+            parts = ps_fields(pid, 'ppid', 'comm').split(None, 1)
+            if len(parts) != 2 or not parts[0].isdigit():
+                return False
+            ppid, comm = int(parts[0]), parts[1]
+            # The app hosting the terminal (or Conductor): the top of the session
+            if '/Contents/MacOS/' in comm:
+                return False
+            agent = is_agent(pid, comm)
+            # A launcher and the agent it runs (node codex.js -> codex) count once
+            if agent and not in_agent:
+                agents += 1
+                if agents == 2:
+                    return True
+            in_agent = agent
+            pid = ppid
+    except Exception:
+        pass
+    return False
+
 def main():
     raw = b''
     payload = {}
@@ -3352,6 +3401,10 @@ def main():
                         sys.stdout.buffer.flush()
             except Exception:
                 pass
+        return
+
+    # A nested session stays out of the notch: no pill, no card, no permission
+    if is_nested():
         return
 
     # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
@@ -3606,6 +3659,55 @@ def enrich(payload, env):
         else:
             payload['cwd'] = os.getcwd()
 
+# A Claude or Codex started by another agent (a `claude -p` from the Bash tool, a script an
+# agent runs) inherits its terminal and Conductor ids, so it would take over that session's
+# pill. Walk up the process tree: past the agent running this hook, a second agent means the
+# session is nested. Unknown or slow: not nested, so the hook behaves as before.
+AGENT_NAMES = ('claude', 'codex', 'gemini')
+AGENT_SCRIPTS = ('/claude-code/', '/@openai/codex/', '/gemini-cli/')
+
+def ps_fields(pid, *fields):
+    import subprocess
+    out = subprocess.run(['/bin/ps', '-o', ','.join(f + '=' for f in fields), '-p', str(pid)],
+                         capture_output=True, timeout=0.5).stdout
+    return out.decode('utf-8', 'replace').strip()
+
+def is_agent(pid, comm):
+    name = os.path.basename(comm)
+    if name in AGENT_NAMES or '/claude/versions/' in comm:
+        return True
+    if name in ('node', 'bun'):
+        args = ps_fields(pid, 'args')
+        return any(script in args for script in AGENT_SCRIPTS)
+    return False
+
+def is_nested():
+    try:
+        pid = os.getppid()
+        agents = 0
+        in_agent = False
+        for _ in range(32):
+            if pid <= 1:
+                return False
+            parts = ps_fields(pid, 'ppid', 'comm').split(None, 1)
+            if len(parts) != 2 or not parts[0].isdigit():
+                return False
+            ppid, comm = int(parts[0]), parts[1]
+            # The app hosting the terminal (or Conductor): the top of the session
+            if '/Contents/MacOS/' in comm:
+                return False
+            agent = is_agent(pid, comm)
+            # A launcher and the agent it runs (node codex.js -> codex) count once
+            if agent and not in_agent:
+                agents += 1
+                if agents == 2:
+                    return True
+            in_agent = agent
+            pid = ppid
+    except Exception:
+        pass
+    return False
+
 def main():
     raw = b''
     payload = {}
@@ -3654,6 +3756,10 @@ def main():
                         sys.stdout.buffer.flush()
             except Exception:
                 pass
+        return
+
+    # A nested session stays out of the notch: no pill, no card, no permission
+    if is_nested():
         return
 
     # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
