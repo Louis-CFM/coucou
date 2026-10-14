@@ -200,6 +200,9 @@ export const Bridge = {
 
   reposition: () => call<void>("reposition"),
 
+  /** Zooms this page; used once at launch to undo the desktop's text scaling. */
+  setPageZoom: (zoom: number) => call<void>("set_page_zoom", { zoom }),
+
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
 

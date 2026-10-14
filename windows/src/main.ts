@@ -19,6 +19,20 @@ function applyLanguage() {
   setLanguage(resolveLanguage(State.settings.language, systemLanguages()));
 }
 
+/**
+ * Linux: the desktop's text scaling (GNOME, Cinnamon, GDK_DPI_SCALE) reaches
+ * WebKitGTK as a device pixel ratio, so the whole page is zoomed by it while
+ * the window keeps its size. At 1.25 the 720 × 320 island lays out in 576 × 256
+ * and is cut off, and the input region, computed in page pixels, no longer
+ * matches what is drawn (#122). Zooming the page back by the same factor gives
+ * the island the window it was designed for. Where the ratio is only the
+ * display's scale (HiDPI, Windows), it equals `screenScale` and nothing changes.
+ */
+function fitPageToWindow(screenScale: number) {
+  const ratio = window.devicePixelRatio / screenScale;
+  if (Number.isFinite(ratio) && Math.abs(ratio - 1) > 0.01) void Bridge.setPageZoom(1 / ratio);
+}
+
 async function main() {
   const root = document.getElementById("root");
   if (!root) return;
@@ -30,6 +44,7 @@ async function main() {
   const boot = await Bridge.boot();
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
+    fitPageToWindow(boot.screen.scale);
   }
   // A language change redraws the island in place: the texts given as tl(…)
   // relabel themselves (views/dom.ts) and the views redraw the rest on this
