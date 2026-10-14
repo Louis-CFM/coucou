@@ -172,6 +172,11 @@ impl DisplayId {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn linux_island_top(monitor_y: i32) -> i32 {
+    monitor_y + 32
+}
+
 fn describe(m: &Monitor) -> DisplayId {
     let (x, y) = logical_origin(m);
     let scale = m.scale_factor();
@@ -247,6 +252,12 @@ mod display_tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
+    fn linux_island_top_clears_gnome_pointer_guard() {
+        assert_eq!(linux_island_top(1080), 1112);
+    }
+
+    #[test]
     fn a_display_is_found_again_after_changes() {
         let dell = d("DELL U2720Q", 1920, 0, 2560, 1440);
         let lap = d("eDP-1", 0, 0, 1920, 1200);
@@ -311,6 +322,9 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
+    #[cfg(target_os = "linux")]
+    let y = linux_island_top(mp.y);
+    #[cfg(not(target_os = "linux"))]
     let y = mp.y;
 
     // GTK never sizes a non-resizable window below its natural size (200 px

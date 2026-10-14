@@ -97,6 +97,7 @@ export class Island {
   private confusedRecovery: number | null = null;
   private prevViewBeforeConfused: IslandViewName = "overview";
   private lastSyncedView: IslandViewName | null = null;
+  private textFocus = false;
 
   /** The launch greeting ended, or the island came out of hidden — two of the
    *  moments the Monday recap may open (see src/recap/recap.ts). */
@@ -167,7 +168,7 @@ export class Island {
         // A pill with a waiting request opens on its card: going back to it
         // after looking at another pill brings the card up again.
         const req = State.pendingApproval;
-        if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
+        if (req?.pillId === id) this.setView(req.questions || req.clarification ? "question" : "approval");
       },
       openTerminal: () => {
         const task = State.focusTask;
@@ -209,14 +210,16 @@ export class Island {
         const req = State.pendingApproval;
         if (!req) return;
         Sound.play("approve");
-        void Bridge.approvalAnswer(req.requestId, answers);
+        if (req.clarification) void Bridge.clarifyAnswer(req.requestId, answers);
+        else void Bridge.approvalAnswer(req.requestId, answers);
         this.closeApproval();
       },
       answerInTerminal: () => {
         const req = State.pendingApproval;
         if (!req) return;
         Sound.play("blip");
-        void Bridge.approvalDecline(req.requestId);
+        if (req.clarification) void Bridge.clarifyDecline(req.requestId);
+        else void Bridge.approvalDecline(req.requestId);
         this.closeApproval();
       },
       toggleSound: () => {
@@ -645,7 +648,7 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
-    if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
+    if (State.mode === "expanded" && State.view === "question" && (State.pendingApproval?.questions || State.pendingApproval?.clarification)) {
       h = QUESTION_PICKER_H;
     }
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
@@ -1159,17 +1162,17 @@ export class Island {
       if (on) view.sync();
     }
 
-    // The chat is the only view with a text field, so it is the only time the
-    // island is allowed to take keyboard focus.
-    if (this.lastSyncedView !== State.view) {
-      const wasChat = this.lastSyncedView === "prompt";
+    const needsTextFocus = expanded && State.view === "prompt";
+    if (needsTextFocus !== this.textFocus || this.lastSyncedView !== State.view) {
       this.lastSyncedView = State.view;
-      if (State.view === "prompt") {
+      if (needsTextFocus) {
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
-      } else if (wasChat) {
+        const view = State.view;
+        window.setTimeout(() => this.views.get(view)?.focus?.(), 120);
+      } else if (this.textFocus) {
         void Bridge.focusWindow(false);
       }
+      this.textFocus = needsTextFocus;
     }
 
     // Compact mini grid

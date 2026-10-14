@@ -50,10 +50,25 @@ export interface ApprovalInfo {
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /** Hermes clarify payload; kept separate from Claude's AskUserQuestion wire shape. */
+  clarification?: ClarificationRequest;
+}
+
+export interface ClarificationRequest {
+  questions: ClarificationQuestion[];
+}
+
+export interface ClarificationQuestion {
+  qid: string;
+  question: string;
+  choices?: string[];
+  multiSelect: boolean;
 }
 
 /** One question of an AskUserQuestion call. */
 export interface AskedQuestion {
+  /** Hermes clarify uses q0..q4 so responses match its normalized schema. */
+  qid?: string;
   question: string;
   options: { label: string; description: string }[];
   multiSelect: boolean;
@@ -506,7 +521,7 @@ class AppState {
    * reopening a folded island shows it again (Mac #117, #290).
    */
   defaultView(): IslandViewName {
-    if (this.pendingApproval) return this.pendingApproval.questions ? "question" : "approval";
+    if (this.pendingApproval) return this.pendingApproval.questions || this.pendingApproval.clarification ? "question" : "approval";
     return this.tasks.length === 0 ? "empty" : "overview";
   }
 }

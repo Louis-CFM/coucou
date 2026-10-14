@@ -548,7 +548,7 @@ function buildApproval(actions: ViewActions): ViewHost {
 
 // ── Question ──────────────────────────────────────────────────────────────────
 
-function buildQuestion(actions: ViewActions): ViewHost {
+export function buildQuestion(actions: ViewActions): ViewHost {
   const who = h("div");
   const title = h("div", { class: "title question-text" });
   const row = h("div", { class: "actions options" });
@@ -576,13 +576,20 @@ function buildQuestion(actions: ViewActions): ViewHost {
   return {
     el,
     sync() {
-      const questions = State.pendingApproval?.questions;
+      const request = State.pendingApproval;
+      const clarification = request?.clarification;
+      const questions = request?.questions ?? clarification?.questions.map((q) => ({
+        qid: q.qid,
+        question: q.question,
+        options: (q.choices ?? []).map((label) => ({ label, description: "" })),
+        multiSelect: q.multiSelect,
+      }));
       clear(who);
       // Only a request that is waiting can be folded away and come back.
       fold.style.display = State.pendingApproval ? "" : "none";
 
       // A question that arrived as a notification has nothing to pick from.
-      if (!questions) {
+      if (!questions?.length) {
         who.append(agentWho(State.focusTask, t("is asking a question")));
         const task = State.focusTask;
         title.textContent = (task && lastTextStep(task.steps)) ?? t("Claude needs an answer.");
@@ -601,6 +608,7 @@ function buildQuestion(actions: ViewActions): ViewHost {
         picked = new Set();
       }
       const q = questions[Math.min(index, questions.length - 1)];
+      const keyForAnswer = q.qid ?? q.question;
       const asking = questions.length > 1
         ? t("is asking ({index} of {total})", { index: index + 1, total: questions.length })
         : t("is asking");
@@ -612,11 +620,15 @@ function buildQuestion(actions: ViewActions): ViewHost {
       if (rowKey === key) return;
       rowKey = key;
       clear(row);
-      for (const option of q.options) {
+      if (clarification && !q.options?.length) {
+        row.append(btn(tl("Answer in terminal"), "primary", () => actions.answerInTerminal()));
+        return;
+      }
+      for (const option of q.options ?? []) {
         const on = picked.has(option.label);
         const button = btn(option.label, on ? "primary" : "secondary", () => {
           if (!q.multiSelect) {
-            next(q.question, option.label, questions.length);
+            next(keyForAnswer, option.label, questions.length);
             return;
           }
           if (on) picked.delete(option.label);
@@ -628,7 +640,7 @@ function buildQuestion(actions: ViewActions): ViewHost {
       }
       if (q.multiSelect) {
         const done = btn(tl("Done"), "primary", () => {
-          if (picked.size > 0) next(q.question, [...picked], questions.length);
+          if (picked.size > 0) next(keyForAnswer, [...picked], questions.length);
         });
         if (picked.size === 0) done.classList.add("off");
         row.append(done);

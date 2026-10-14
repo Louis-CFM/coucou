@@ -454,6 +454,21 @@ fn approval_decline(app: AppHandle, request_id: String) {
     pipe::decline(&app, &request_id);
 }
 
+#[tauri::command]
+fn clarify_ack(app: AppHandle, request_id: String) {
+    pipe::acknowledge_clarification(&app, &request_id);
+}
+
+#[tauri::command]
+fn clarify_answer(app: AppHandle, request_id: String, answer: String) {
+    pipe::answer_clarification(&app, &request_id, &answer);
+}
+
+#[tauri::command]
+fn clarify_decline(app: AppHandle, request_id: String) {
+    pipe::decline_clarification(&app, &request_id);
+}
+
 // ── Chat, files and secrets ───────────────────────────────────────────────────
 
 /// One chat turn with the provider picked in the chat view. API keys and any
@@ -708,6 +723,9 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            clarify_ack,
+            clarify_answer,
+            clarify_decline,
             log_line,
             chat_send,
             chat_models,

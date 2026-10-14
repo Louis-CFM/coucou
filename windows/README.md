@@ -365,8 +365,37 @@ Linux.
 | Claude Desktop (Windows) | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
 | OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
 | Amp | plugin `.config\amp\plugins\coucou.ts` | asked in Amp |
-| Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | asked in Hermes |
+| Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | optional Allow / Deny in Coucou; questions in Coucou |
 | Any other | run `coucou-hook --agent <name> [<Event>]` from your tool's hooks | asked in the tool |
+
+### Hermes prompts
+
+The generated plugin registers transports when the installed Hermes version supports them.
+Older Hermes versions keep activity-only hooks. Enable the plugin and restart Hermes:
+
+```sh
+hermes plugins enable coucou
+hermes plugins doctor coucou
+```
+
+Approval routing is opt-in. Installing the plugin does not change permission policy or configuration:
+
+```sh
+hermes config set security.approval.transport coucou
+hermes config set security.approval.transport_fallback builtin
+```
+
+Allow approves only the current request; Deny does not fall back. Missing, invalid, or timed-out
+relay answers are transport failures. Hermes denies those by default, or presents its own prompt
+when `transport_fallback` is explicitly `builtin`. Restore native prompts with:
+
+```sh
+hermes config set security.approval.transport builtin
+```
+
+Clarification uses a separate transport: single choice, multiple choices, or open text.
+It waits at most 108 seconds for Coucou, then returns to the native question UI.
+Approval transport configuration does not affect clarification routing.
 
 The relay maps every agent's event and field names onto Claude Code's (Gemini
 CLI's `BeforeTool`, Copilot's `preToolUse`, Cursor's `beforeSubmitPrompt`…), and

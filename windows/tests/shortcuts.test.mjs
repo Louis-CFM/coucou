@@ -287,6 +287,12 @@ const host = {
   viewCommand: (c) => did.push(`view:${c}`),
 };
 let desktopSupported = true;
+
+test("goToAlert reopens Hermes clarification as question", () => {
+  State.pendingApproval = { pillId: "agent_hermes", clarification: { questions: [{ qid: "q0", question: "Q" }] } };
+  runGlobalShortcut(host, "goToAlert", () => {});
+  assert.ok(did.includes("alert:question"));
+});
 const resume = () => did.push("resume");
 // The island listens on `window`, which here is the bare global object.
 const listeners = [];
