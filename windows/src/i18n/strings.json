@@ -838,6 +838,17 @@
    "ru": "Продолжить…",
    "id": "Lanjutkan…"
   },
+  "Copied · press ⌘V": {
+   "zh-Hans": "已复制 · 按 ⌘V",
+   "hi": "कॉपी हुआ · ⌘V दबाएँ",
+   "es": "Copiado · pulsa ⌘V",
+   "ar": "تم النسخ · اضغط ⌘V",
+   "fr": "Copié · fais ⌘V",
+   "bn": "কপি হয়েছে · ⌘V চাপুন",
+   "pt-BR": "Copiado · pressione ⌘V",
+   "ru": "Скопировано · нажмите ⌘V",
+   "id": "Disalin · tekan ⌘V"
+  },
   "Copy": {
    "zh-Hans": "复制",
    "hi": "कॉपी",
@@ -859,6 +870,17 @@
    "pt-BR": "Coucou responde em",
    "ru": "Coucou отвечает на",
    "id": "Coucou menjawab dalam"
+  },
+  "Coucou needs the Accessibility permission to see the key and paste your words: turn on Coucou in System Settings → Privacy & Security → Accessibility.": {
+   "zh-Hans": "Coucou 需要“辅助功能”权限才能识别按键并粘贴你的话：请在“系统设置”→“隐私与安全性”→“辅助功能”中打开 Coucou。",
+   "hi": "कुंजी देखने और आपके शब्द चिपकाने के लिए Coucou को एक्सेसिबिलिटी अनुमति चाहिए: सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → एक्सेसिबिलिटी में Coucou चालू करें।",
+   "es": "Coucou necesita el permiso de Accesibilidad para ver la tecla y pegar tus palabras: activa Coucou en Ajustes del Sistema → Privacidad y seguridad → Accesibilidad.",
+   "ar": "يحتاج Coucou إلى إذن تسهيلات الاستخدام لرؤية المفتاح ولصق كلماتك: فعّل Coucou في إعدادات النظام ← الخصوصية والأمن ← تسهيلات الاستخدام.",
+   "fr": "Coucou a besoin de l'autorisation Accessibilité pour voir la touche et coller tes mots : active Coucou dans Réglages Système → Confidentialité et sécurité → Accessibilité.",
+   "bn": "কী দেখতে আর আপনার কথা পেস্ট করতে Coucou-এর অ্যাক্সেসিবিলিটি অনুমতি দরকার: সিস্টেম সেটিংস → গোপনীয়তা ও নিরাপত্তা → অ্যাক্সেসিবিলিটিতে Coucou চালু করুন।",
+   "pt-BR": "O Coucou precisa da permissão de Acessibilidade para ver a tecla e colar suas palavras: ative o Coucou em Ajustes do Sistema → Privacidade e Segurança → Acessibilidade.",
+   "ru": "Coucou нужен доступ к Универсальному доступу, чтобы видеть клавишу и вставлять слова: включите Coucou в Системных настройках → Конфиденциальность и безопасность → Универсальный доступ.",
+   "id": "Coucou butuh izin Aksesibilitas untuk melihat tombol dan menempel kata-katamu: aktifkan Coucou di Pengaturan Sistem → Privasi & Keamanan → Aksesibilitas."
   },
   "Coucou reads back results in the spoken language, using a synthesized voice. 100% on-device.": {
    "zh-Hans": "Coucou 用语音语言朗读结果。完全在设备上处理。",
@@ -1168,6 +1190,17 @@
    "ru": "Получает",
    "id": "Mengambil"
   },
+  "Flow dictation": {
+   "zh-Hans": "Flow 听写",
+   "hi": "Flow डिक्टेशन",
+   "es": "Dictado Flow",
+   "ar": "إملاء Flow",
+   "fr": "Dictée Flow",
+   "bn": "Flow ডিক্টেশন",
+   "pt-BR": "Ditado Flow",
+   "ru": "Диктовка Flow",
+   "id": "Dikte Flow"
+  },
   "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
    "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
    "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
@@ -1365,6 +1398,28 @@
    "pt-BR": "Ocultar nomes de projetos em imagens compartilhadas",
    "ru": "Скрывать названия проектов в изображениях",
    "id": "Sembunyikan nama proyek di gambar yang dibagikan"
+  },
+  "Hold a key to dictate anywhere": {
+   "zh-Hans": "按住一个键，在任何地方听写",
+   "hi": "कहीं भी बोलकर लिखने के लिए एक कुंजी दबाए रखें",
+   "es": "Mantén una tecla para dictar en cualquier lugar",
+   "ar": "اضغط مطولًا على مفتاح للإملاء في أي مكان",
+   "fr": "Maintenir une touche pour dicter partout",
+   "bn": "যেকোনো জায়গায় ডিক্টেট করতে একটি কী চেপে ধরুন",
+   "pt-BR": "Segure uma tecla para ditar em qualquer lugar",
+   "ru": "Удерживайте клавишу, чтобы диктовать где угодно",
+   "id": "Tahan satu tombol untuk mendikte di mana saja"
+  },
+  "Hold {0}, speak, let go: your words are pasted where you type. Tap it twice to keep listening hands-free, and once more to paste. Esc cancels.": {
+   "zh-Hans": "按住 {0}，说话，松开：你的话会粘贴到你正在输入的位置。连按两次可免手持听写，再按一次即粘贴。按 Esc 取消。",
+   "hi": "{0} दबाए रखें, बोलें, छोड़ दें: आपके शब्द वहीं चिपक जाते हैं जहाँ आप टाइप करते हैं। बिना हाथ लगाए बोलने के लिए दो बार टैप करें, और चिपकाने के लिए एक बार फिर। Esc रद्द करता है।",
+   "es": "Mantén {0}, habla y suelta: tus palabras se pegan donde escribes. Púlsala dos veces para dictar sin manos y otra vez para pegar. Esc cancela.",
+   "ar": "اضغط مطولًا على {0} وتحدث ثم اترك: تُلصق كلماتك حيث تكتب. اضغط مرتين للإملاء دون استخدام اليدين، ثم مرة أخرى للصق. Esc يلغي.",
+   "fr": "Maintiens {0}, parle, relâche : tes mots sont collés là où tu écris. Tape deux fois pour dicter sans les mains, puis une fois pour coller. Échap annule.",
+   "bn": "{0} চেপে ধরুন, বলুন, ছেড়ে দিন: আপনি যেখানে লেখেন সেখানে আপনার কথা পেস্ট হয়। হাত ছাড়া ডিক্টেট করতে দুবার ট্যাপ করুন, পেস্ট করতে আরেকবার। Esc বাতিল করে।",
+   "pt-BR": "Segure {0}, fale e solte: suas palavras são coladas onde você digita. Toque duas vezes para ditar sem as mãos e mais uma vez para colar. Esc cancela.",
+   "ru": "Удерживайте {0}, говорите, отпустите — слова вставятся туда, где вы печатаете. Нажмите дважды, чтобы диктовать без рук, и ещё раз, чтобы вставить. Esc отменяет.",
+   "id": "Tahan {0}, bicara, lalu lepas: kata-katamu ditempel di tempat kamu mengetik. Ketuk dua kali untuk mendikte tanpa tangan, lalu sekali lagi untuk menempel. Esc membatalkan."
   },
   "Hooks installed": {
    "zh-Hans": "Hooks 已安装",
@@ -1574,6 +1629,17 @@
    "pt-BR": "Manter um histórico das minhas sessões de código",
    "ru": "Хранить историю сессий",
    "id": "Simpan riwayat sesi kode saya"
+  },
+  "Key": {
+   "zh-Hans": "按键",
+   "hi": "कुंजी",
+   "es": "Tecla",
+   "ar": "المفتاح",
+   "fr": "Touche",
+   "bn": "কী",
+   "pt-BR": "Tecla",
+   "ru": "Клавиша",
+   "id": "Tombol"
   },
   "Key configured · {model}": {
    "zh-Hans": "密钥已配置 · {model}",
@@ -3071,6 +3137,17 @@
    "ru": "Просмотри содержимое ниже перед подтверждением.",
    "id": "Tinjau konten di bawah sebelum mengonfirmasi."
   },
+  "Right {0}": {
+   "zh-Hans": "右侧 {0}",
+   "hi": "दायाँ {0}",
+   "es": "{0} derecha",
+   "ar": "{0} الأيمن",
+   "fr": "{0} de droite",
+   "bn": "ডান {0}",
+   "pt-BR": "{0} da direita",
+   "ru": "Правая {0}",
+   "id": "{0} kanan"
+  },
   "Runs": {
    "zh-Hans": "执行",
    "hi": "चलाता है",
@@ -3599,6 +3676,17 @@
    "ru": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain.",
    "id": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
   },
+  "To use fn, set System Settings → Keyboard → “Press 🌐 key to” to “Do Nothing”.": {
+   "zh-Hans": "要使用 fn，请在“系统设置”→“键盘”中将“按下 🌐 键时”设为“不执行任何操作”。",
+   "hi": "fn इस्तेमाल करने के लिए, सिस्टम सेटिंग्स → कीबोर्ड में “🌐 कुंजी दबाने पर” को “कुछ न करें” पर सेट करें।",
+   "es": "Para usar fn, en Ajustes del Sistema → Teclado, pon «Pulsar la tecla 🌐 para» en «No hacer nada».",
+   "ar": "لاستخدام fn، اضبط إعدادات النظام ← لوحة المفاتيح ← «اضغط على مفتاح 🌐 لـ» على «عدم القيام بأي شيء».",
+   "fr": "Pour utiliser fn, règle Réglages Système → Clavier → « Appuyer sur la touche 🌐 pour » sur « Ne rien faire ».",
+   "bn": "fn ব্যবহার করতে, সিস্টেম সেটিংস → কিবোর্ডে “🌐 কী চাপলে” “কিছুই করবেন না” সেট করুন।",
+   "pt-BR": "Para usar fn, em Ajustes do Sistema → Teclado, defina “Pressionar a tecla 🌐 para” como “Não fazer nada”.",
+   "ru": "Чтобы использовать fn, в Системных настройках → Клавиатура выберите для «Нажатие клавиши 🌐» вариант «Ничего не делать».",
+   "id": "Untuk memakai fn, atur Pengaturan Sistem → Papan Ketik → “Tekan tombol 🌐 untuk” ke “Jangan Lakukan Apa-apa”."
+  },
   "Too many hits at once.": {
    "zh-Hans": "一次点击太多次了。",
    "hi": "एक बार में बहुत ज़्यादा टैप।",
@@ -4006,6 +4094,17 @@
    "ru": "Твой ответ…",
    "id": "Jawaban Anda…"
   },
+  "Your voice is turned into text by your Mac's speech recognition, on-device when your Mac supports it; Coucou sends it nowhere. After pasting, the clipboard gets back what it held.": {
+   "zh-Hans": "你的声音由 Mac 的语音识别转成文字，Mac 支持时在设备上完成；Coucou 不会把它发送到任何地方。粘贴之后，剪贴板会恢复原来的内容。",
+   "hi": "आपकी आवाज़ को आपके Mac की वाक् पहचान टेक्स्ट में बदलती है, जब आपका Mac समर्थन करे तो डिवाइस पर ही; Coucou इसे कहीं नहीं भेजता। चिपकाने के बाद क्लिपबोर्ड में पहले वाली चीज़ वापस आ जाती है।",
+   "es": "Tu voz se convierte en texto con el reconocimiento de voz de tu Mac, en el propio equipo cuando tu Mac lo admite; Coucou no la envía a ningún sitio. Tras pegar, el portapapeles recupera lo que tenía.",
+   "ar": "يحوّل التعرّف على الكلام في جهاز Mac صوتك إلى نص، على الجهاز نفسه عندما يدعم جهازك ذلك؛ ولا يرسله Coucou إلى أي مكان. بعد اللصق تعود الحافظة إلى ما كانت تحتويه.",
+   "fr": "Ta voix est transformée en texte par la reconnaissance vocale de ton Mac, sur l'appareil quand ton Mac le permet ; Coucou ne l'envoie nulle part. Après le collage, le presse-papiers retrouve ce qu'il contenait.",
+   "bn": "আপনার Mac-এর স্পিচ রিকগনিশন আপনার কণ্ঠকে টেক্সটে রূপান্তর করে, Mac সমর্থন করলে ডিভাইসেই; Coucou এটি কোথাও পাঠায় না। পেস্ট করার পর ক্লিপবোর্ডে আগের জিনিস ফিরে আসে।",
+   "pt-BR": "Sua voz vira texto pelo reconhecimento de fala do seu Mac, no próprio aparelho quando o Mac permite; o Coucou não a envia para lugar nenhum. Depois de colar, a área de transferência recupera o que tinha.",
+   "ru": "Ваш голос превращает в текст распознавание речи Mac — прямо на устройстве, если Mac это поддерживает; Coucou никуда его не отправляет. После вставки буфер обмена возвращает прежнее содержимое.",
+   "id": "Suaramu diubah menjadi teks oleh pengenalan suara Mac, langsung di perangkat bila Mac mendukungnya; Coucou tidak mengirimnya ke mana pun. Setelah menempel, papan klip kembali berisi apa yang ada sebelumnya."
+  },
   "coding": {
    "zh-Hans": "编程",
    "hi": "कोडिंग",
@@ -4049,6 +4148,17 @@
    "pt-BR": "arquivos",
    "ru": "файлы",
    "id": "berkas"
+  },
+  "fn (🌐)": {
+   "zh-Hans": "fn (🌐)",
+   "hi": "fn (🌐)",
+   "es": "fn (🌐)",
+   "ar": "fn (🌐)",
+   "fr": "fn (🌐)",
+   "bn": "fn (🌐)",
+   "pt-BR": "fn (🌐)",
+   "ru": "fn (🌐)",
+   "id": "fn (🌐)"
   },
   "in {h} h {m}": {
    "zh-Hans": "{h} 小时 {m} 分后",
