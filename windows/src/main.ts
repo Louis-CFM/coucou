@@ -13,6 +13,7 @@ import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
+import { VoiceWakeListener } from "./island/voice";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -103,6 +104,10 @@ async function main() {
   registerIntegrationHandlers(island);
   registerShortcutHandlers(island, () => setPaused(false));
   registerSpotifyHandlers(island);
+
+  const voice = new VoiceWakeListener(island, () => setPaused(false));
+  voice.start();
+
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));

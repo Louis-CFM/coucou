@@ -206,6 +206,9 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
+    if provider == "antigravity" || provider == "agy" {
+        return send_agy(chat, &query, context.as_ref()).await;
+    }
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
@@ -219,6 +222,67 @@ pub async fn send(
     Err(format!("Unknown chat provider: {provider}"))
 }
 
+async fn send_agy(chat: &Chat, query: &str, context: Option<&ChatContext>) -> Result<ChatReply, String> {
+    let turn = chat.begin("antigravity");
+    let mut full_prompt = String::new();
+
+    // Attach system prompt on initial turn
+    if turn.first {
+        full_prompt.push_str(&system_prompt(true));
+        full_prompt.push_str("\n\n");
+    }
+
+    // Attach history from previous turns for continuous conversation
+    for m in &turn.history {
+        let role = m.get("role").and_then(|r| r.as_str()).unwrap_or("user");
+        let content = m.get("content").and_then(|c| c.as_str()).unwrap_or("");
+        if !content.is_empty() {
+            full_prompt.push_str(&format!("{role}: {content}\n"));
+        }
+    }
+
+    if let Some(ChatContext::File { name, path }) = context {
+        full_prompt.push_str(&format!("File: {name} ({path})\n"));
+    }
+    full_prompt.push_str(&format!("user: {query}\nassistant:"));
+
+    let agy_path = {
+        let exe = format!(
+            "{}\\AppData\\Local\\agy\\bin\\agy.exe",
+            std::env::var("USERPROFILE").unwrap_or_default()
+        );
+        if std::path::Path::new(&exe).exists() { exe } else { "agy".to_string() }
+    };
+
+    let mut cmd = std::process::Command::new(agy_path);
+    cmd.args(["-p", &full_prompt]);
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let output = cmd.output().map_err(|e| format!("Failed to run agy: {e}"))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("agy error: {err}"));
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    chat.commit(
+        &turn,
+        json!({ "role": "user", "content": query }),
+        json!({ "role": "assistant", "content": text }),
+        query,
+        &text,
+    );
+
+    Ok(ChatReply { text })
+}
+
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as
 /// [`send`], with no file or window context and no `AppHandle`. `on_delta` gets the streamed
 /// text so far, which only the model servers produce; the cloud providers answer all at once.
@@ -230,6 +294,9 @@ pub async fn send_for_phone(
     query: String,
     on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
+    if provider == "antigravity" || provider == "agy" {
+        return send_agy(chat, &query, None).await;
+    }
     if provider == ANTHROPIC {
         return claude::send(chat, model, query, None).await;
     }
@@ -246,6 +313,15 @@ pub async fn send_for_phone(
 /// that provider, and only once it has a key (or, for a local server, an
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
+    if provider == "antigravity" || provider == "agy" {
+        return Ok(vec![
+            ModelInfo { id: "gemini-3.8-flash-low".into(), label: "Gemini 3.8 Flash (Low)".into() },
+            ModelInfo { id: "gemini-3.8-flash-medium".into(), label: "Gemini 3.8 Flash (Medium)".into() },
+            ModelInfo { id: "gemini-3.8-flash-high".into(), label: "Gemini 3.8 Flash (High)".into() },
+            ModelInfo { id: "gemini-3.1-pro-high".into(), label: "Gemini 3.1 Pro (High)".into() },
+            ModelInfo { id: "claude-sonnet-4-6".into(), label: "Claude Sonnet 4.6 (Thinking)".into() },
+        ]);
+    }
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
