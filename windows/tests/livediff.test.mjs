@@ -83,6 +83,43 @@ test("an edit with no change, or one the relay had to cut, adds no diff", () => 
   assert.equal(diffs().length, 0);
 });
 
+test("Antigravity replace_file_content and write_to_file produce live diffs and steps", () => {
+  hook({
+    hook_event_name: "PostToolUse",
+    tool_name: "replace_file_content",
+    tool_input: {
+      TargetFile: "/p/proj/src/main.rs",
+      TargetContent: "fn old() {}\n",
+      ReplacementContent: "fn new() {}\nfn helper() {}\n",
+    },
+  });
+  const editStep = parseDiffStep(task().steps.at(-1));
+  assert.deepEqual(
+    { filename: editStep.filename, added: editStep.added, removed: editStep.removed },
+    { filename: "main.rs", added: 2, removed: 1 }
+  );
+  const editDiff = State.findDiff(CLAUDE, editStep.diffId);
+  assert.equal(editDiff.path, "/p/proj/src/main.rs");
+  assert.equal(editDiff.isNewFile, false);
+
+  hook({
+    hook_event_name: "PostToolUse",
+    tool_name: "write_to_file",
+    tool_input: {
+      TargetFile: "C:\\p\\proj\\new_module.rs",
+      CodeContent: "pub fn init() {}\n",
+    },
+  });
+  const writeStep = parseDiffStep(task().steps.at(-1));
+  assert.deepEqual(
+    { filename: writeStep.filename, added: writeStep.added, removed: writeStep.removed },
+    { filename: "new_module.rs", added: 1, removed: 0 }
+  );
+  const writeDiff = State.findDiff(CLAUDE, writeStep.diffId);
+  assert.equal(writeDiff.path, "C:\\p\\proj\\new_module.rs");
+  assert.equal(writeDiff.isNewFile, true);
+});
+
 test("diffs are capped per pill, oldest first, and ids stay unique", () => {
   for (let i = 0; i < MAX_DIFFS_PER_PILL + 5; i++) edit();
   const kept = diffs();

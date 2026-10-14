@@ -46,11 +46,17 @@ pub fn event(name: &str) -> &str {
 /// Keys of Antigravity's `toolCall.args` the island reads under another name.
 const ARG_ALIASES: &[(&str, &str)] = &[
     ("CommandLine", "command"),
+    ("TargetFile", "file_path"),
     ("FilePath", "file_path"),
+    ("AbsolutePath", "file_path"),
+    ("DirectoryPath", "path"),
     ("Path", "path"),
     ("Url", "url"),
     ("Query", "query"),
     ("Pattern", "pattern"),
+    ("TargetContent", "old_string"),
+    ("ReplacementContent", "new_string"),
+    ("CodeContent", "content"),
 ];
 
 fn non_empty_str<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a str> {
@@ -196,6 +202,36 @@ mod tests {
         assert_eq!(m["tool_input"]["CommandLine"], "cargo check");
         assert_eq!(m["session_id"], "conv-1");
         assert_eq!(m["cwd"], "C:\\Projects\\test");
+
+        let mut edit = obj(json!({
+            "toolCall": {
+                "name": "replace_file_content",
+                "args": {
+                    "TargetFile": "src/main.rs",
+                    "TargetContent": "fn old() {}",
+                    "ReplacementContent": "fn new() {}"
+                }
+            }
+        }));
+        fields(&mut edit, &no_env);
+        assert_eq!(edit["tool_name"], "replace_file_content");
+        assert_eq!(edit["tool_input"]["file_path"], "src/main.rs");
+        assert_eq!(edit["tool_input"]["old_string"], "fn old() {}");
+        assert_eq!(edit["tool_input"]["new_string"], "fn new() {}");
+
+        let mut write = obj(json!({
+            "toolCall": {
+                "name": "write_to_file",
+                "args": {
+                    "TargetFile": "src/new.rs",
+                    "CodeContent": "fn created() {}"
+                }
+            }
+        }));
+        fields(&mut write, &no_env);
+        assert_eq!(write["tool_name"], "write_to_file");
+        assert_eq!(write["tool_input"]["file_path"], "src/new.rs");
+        assert_eq!(write["tool_input"]["content"], "fn created() {}");
     }
 
     #[test]
