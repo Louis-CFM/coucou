@@ -14,6 +14,7 @@ enum IslandView: String, CaseIterable {
     case searching, result, note, settings, greeting, wardrobe, recap
     case listening    // voice wake detected — "À l'écoute…" with live transcript
     case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
+    case todoUpdate   // OpenCode todo completed — "✓ Task name (3/5)" for ~2.5 s
 }
 
 // MARK: - Bot State
@@ -63,6 +64,21 @@ struct ApprovalInfo: Sendable {
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
 
 enum PillBadge { case approval, finished, error }
+
+// MARK: - OpenCode todo update (ephemeral — shown for ~2.5 s, then auto-dismiss)
+
+struct TodoUpdate: Equatable {
+    /// How many todos in the current list are marked completed.
+    var completed: Int
+    /// Total todos in the current list.
+    var total: Int
+    /// The text of the most recently completed todo, if any. Shown on the card.
+    var lastCompletedContent: String?
+    /// Pill the update belongs to (so dismiss doesn't clobber a sibling pill's state).
+    var pillId: String
+    /// Used to debounce: the island only displays the most recent update per pill.
+    var timestamp: Date = Date()
+}
 
 // MARK: - Agent Task
 

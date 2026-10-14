@@ -410,6 +410,11 @@ final class AppState: ObservableObject {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
 
+    // Most recent OpenCode todo update. Ephemeral — the island shows it for ~2.5 s,
+    // then auto-dismisses via HookServer's processTodoUpdated (no didSet timer here
+    // so the state survives a quick re-render but the view always reads the latest).
+    @Published var lastTodoUpdate: TodoUpdate? = nil
+
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]

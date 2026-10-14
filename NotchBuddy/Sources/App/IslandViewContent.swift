@@ -39,6 +39,8 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .todoUpdate:
+            TodoUpdateView(state: state)
         }
     }
 }
@@ -692,6 +694,49 @@ struct FinishedView: View {
             .padding(.trailing, 16)
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+// MARK: - Todo update (OpenCode)
+
+/// Ephemeral card shown for ~2.5 s after a todo item transitions to completed.
+/// Auto-dismissal is driven from HookServer.processTodoUpdated; the view is
+/// read-only and just renders whatever AppState.lastTodoUpdate holds.
+struct TodoUpdateView: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        ZStack {
+            CardBackground(wash: .green)
+
+            HStack(spacing: 0) {
+                Spacer().frame(width: 110)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(Color(hex: "#34D399"))
+
+                        Text(state.lastTodoUpdate?.lastCompletedContent
+                             ?? String(localized: "Todo completed"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+
+                    if let update = state.lastTodoUpdate, update.total > 0 {
+                        Text("\(update.completed) of \(update.total) done")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#9AA0A6"))
+                    }
+                }
+                .padding(.trailing, 18)
+
+                Spacer(minLength: 0)
+            }
         }
     }
 }

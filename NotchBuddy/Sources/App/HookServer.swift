@@ -658,9 +658,55 @@ final class HookServer: @unchecked Sendable {
         case "SubagentStop":
             appendStep(id: agentId, step: "• subagent done")
 
+        case "TodoUpdated":
+            // OpenCode sends the full todo list on every change. We show the most
+            // recently completed item (or the last item in the list) as an
+            // ephemeral mini-card on the focused pill, then auto-dismiss.
+            // The payload's `todos` is an array of {id, content, status, priority}.
+            // Status is one of "pending" | "in_progress" | "completed" | "cancelled".
+            let rawTodos = payload["todos"] as? [[String: Any]] ?? []
+            let completed = rawTodos.filter { ($0["status"] as? String) == "completed" }.count
+            let total = rawTodos.count
+            // Prefer the last completed item; fall back to the last item in the list.
+            let lastCompleted = rawTodos.last(where: { ($0["status"] as? String) == "completed" })
+                ?? rawTodos.last
+            let lastContent = lastCompleted?["content"] as? String
+            let update = TodoUpdate(
+                completed: completed,
+                total: total,
+                lastCompletedContent: lastContent,
+                pillId: agentId
+            )
+            // Always store the latest — the view reads from here, and a sibling pill
+            // dispatching a different update later just overwrites cleanly.
+            state.lastTodoUpdate = update
+            if focused {
+                expandIfNeeded(to: .todoUpdate)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    // Only auto-dismiss if no newer update landed for the same pill.
+                    guard state.lastTodoUpdate?.timestamp == update.timestamp else { return }
+                    self.restoreOverviewIfShowingTodo(pill: agentId)
+                }
+            } else {
+                // Set a pill badge so the user knows there is something to look at.
+                setPillBadge(id: agentId, badge: .finished)
+            }
+
         default:
             break
         }
+    }
+
+    // MARK: - Todo view helpers
+
+    @MainActor
+    private func restoreOverviewIfShowingTodo(pill: String) {
+        let state = AppState.shared
+        // Only step back if the island is still on the todo card for this pill —
+        // a more important event (approval, question, stop) may have taken over.
+        guard state.view == .todoUpdate else { return }
+        state.view = .overview
+        clearPillBadge(id: pill)
     }
 
     // MARK: - Agent validation + dynamic pill
@@ -2331,6 +2377,8 @@ const EVENT_MAP = {
   'session.error': 'StopFailure',
   'session.deleted': 'SessionEnd',
   'permission.asked': 'PermissionRequest',
+  'question.asked': 'ask_user_question',
+  'todo.updated': 'TodoUpdated',
 };
 
 function forward(hook_event_name, payload) {
