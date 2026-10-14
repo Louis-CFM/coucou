@@ -3288,6 +3288,22 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Terminal and Conductor context, so the app can bring the user back to the session
+def enrich(payload, env):
+    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
+    if 'cwd' not in payload or not payload['cwd']:
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
 def main():
     raw = b''
     payload = {}
@@ -3344,20 +3360,7 @@ def main():
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        # Conductor: the workspace and chat, so "Open Conductor" goes back to them
-        payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
-        payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
+        enrich(payload, os.environ)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3413,21 +3416,7 @@ def main():
     if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
         payload['coucou_agent'] = 'claude-desktop'
 
-    # Enrich with terminal context
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
-    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
-    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
+    enrich(payload, os.environ)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
@@ -3601,6 +3590,22 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Terminal and Conductor context, so the app can bring the user back to the session
+def enrich(payload, env):
+    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
+    if 'cwd' not in payload or not payload['cwd']:
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
 def main():
     raw = b''
     payload = {}
@@ -3657,20 +3662,7 @@ def main():
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        # Conductor: the workspace and chat, so "Open Conductor" goes back to them
-        payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
-        payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
+        enrich(payload, os.environ)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3726,20 +3718,7 @@ def main():
     if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
         payload['coucou_agent'] = 'claude-desktop'
 
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
-    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
-    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
+    enrich(payload, os.environ)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
