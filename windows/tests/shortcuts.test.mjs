@@ -299,6 +299,7 @@ beforeEach(() => {
   State.tasks = [];
   State.focusId = null;
   State.mode = "hidden";
+  State.panelClosing = false;
   State.view = "overview";
   State.isPinned = false;
   State.pendingApproval = null;
@@ -358,6 +359,25 @@ test("the island toggle opens with the keyboard, and closes an open island", () 
   State.mode = "expanded";
   runGlobalShortcut(host, "toggleIsland", resume);
   assert.deepEqual(did, ["collapse"]);
+});
+
+test("outside dismissal closes once and never opens a closed island", () => {
+  runGlobalShortcut(host, "closeIsland", resume);
+  assert.deepEqual(did, []);
+  State.mode = "expanded";
+  runGlobalShortcut(host, "closeIsland", resume);
+  assert.deepEqual(did, ["collapse"]);
+  did = [];
+  State.panelClosing = true;
+  runGlobalShortcut(host, "closeIsland", resume);
+  assert.deepEqual(did, []);
+});
+
+test("a toggle during the return animation opens again", () => {
+  State.mode = "expanded";
+  State.panelClosing = true;
+  runGlobalShortcut(host, "toggleIsland", resume);
+  assert.deepEqual(did, ["resume", "alert:overview", "keyboard"]);
 });
 
 test("go to alert: the permission first, then a question, else Mochi is annoyed", () => {

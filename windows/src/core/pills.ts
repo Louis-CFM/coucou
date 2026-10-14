@@ -128,8 +128,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
-  { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+  { id: "integration_music", name: "Cider", color: "#FA2D48", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
   // Spotify's MPRIS interface on the session bus (src-tauri/src/spotify.rs).
   // Windows has nothing to read it from yet.
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",

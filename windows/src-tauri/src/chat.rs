@@ -63,7 +63,7 @@ struct Conversation {
 
 /// What a provider needs to build one turn.
 pub struct Turn {
-    epoch: u64,
+    pub epoch: u64,
     provider: String,
     /// No earlier turn: the file or window context rides along with this one.
     pub first: bool,
@@ -207,6 +207,7 @@ pub async fn send(
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
+    if provider == "codex" { return crate::codex_chat::send(app, chat, settings, query, context).await; }
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
     }
@@ -246,6 +247,10 @@ pub async fn send_for_phone(
 /// that provider, and only once it has a key (or, for a local server, an
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
+    if provider == "codex" {
+        crate::codex_chat::require_enabled(settings)?;
+        return crate::codex_chat::models().await.map(crate::codex_chat::plain_models);
+    }
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;

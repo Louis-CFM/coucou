@@ -30,6 +30,8 @@ beforeEach(() => {
   State.chatHistory = [];
   State.stateOverride = null;
   State.view = "prompt";
+  State.mode = "expanded";
+  State.chatPickerOpen = false;
   State.droppedFile = null;
   view = buildPrompt(() => {});
   view.sync();
@@ -38,6 +40,20 @@ beforeEach(() => {
 const $ = (cls) => view.el.querySelector(cls);
 const chips = () => view.el.find(".picker-chip").map((c) => c.textContent);
 const models = () => view.el.find(".picker-model").map((m) => m.textContent);
+
+test("leaving chat closes the selector even without syncing the inactive view", async () => {
+  answers.secret_present = false;
+  $(".model-btn").fire("click");
+  await flush();
+  assert.equal(State.chatPickerOpen, true);
+  State.view = "overview";
+  State.notify();
+  assert.equal(State.chatPickerOpen, false);
+  assert.ok(!$(".chat-body").classList.contains("picking"));
+  State.view = "prompt";
+  State.notify();
+  assert.equal(State.chatPickerOpen, false);
+});
 
 test("the model button shows the active provider's model", () => {
   assert.equal($(".model-name").textContent, "claude-opus-5");
@@ -54,7 +70,7 @@ test("a provider without a key is never asked for its models", async () => {
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter", "Codex CLI"]);
   assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
@@ -121,4 +137,47 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.equal(view.el.find(".reply")[0].textContent, "Hello there!");
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
+});
+
+test("Codex uses the existing model button without an API key and saves effort and speed", async () => {
+  State.settings = {...State.settings, chatProvider: "codex", chatModels: {codex: "gpt-test"}};
+  answers.codex_models = [{id: "gpt-test", label: "GPT Test", reasoningEfforts: ["low", "high"], defaultEffort: "low", serviceTiers: [{id: "priority",name: "Fast",description: "Faster"}],isDefault: true},
+    {id: "gpt-other",label: "GPT Other",reasoningEfforts: ["medium"],defaultEffort: "medium",serviceTiers: []}];
+  view.sync();$(".model-btn").fire("click");await flush();
+  assert.equal(sent("secret_present").length,0);
+  assert.equal(sent("codex_models").length,1);
+  assert.equal(State.settings.codexReasoningEffort,"low");
+  const slider=$(".codex-effort-slider");slider.value="1";slider.fire("input");slider.fire("change");
+  assert.equal(State.settings.codexReasoningEffort,"high");
+  $(".codex-bolt").fire("click");
+  assert.equal(State.settings.codexServiceTier,"priority");
+  assert.equal(sent("save_settings").at(-1).settings.codexServiceTier,"priority");
+  $(".codex-model-link").fire("click");
+  assert.ok($(".picker").classList.contains("codex-models-mode"));
+  view.el.find(".picker-model")[1].fire("click");
+  assert.ok(!$(".picker").classList.contains("codex-models-mode"));
+  assert.equal(State.settings.chatModels.codex,"gpt-other");
+  assert.equal(State.settings.codexReasoningEffort,"medium");
+  assert.equal(State.settings.codexServiceTier,"");
+  assert.ok($(".chat-body").classList.contains("picking"));
+});
+
+test("Codex stop button sends cancellation without submitting another turn", async () => {
+  State.settings={...State.settings,chatProvider:"codex"};
+  let finish;answers.chat_send=()=>new Promise((resolve)=>finish=resolve);
+  $(".chat-input").value="test";$(".send-btn").fire("click");await flush();
+  $(".send-btn").fire("click");await flush();
+  assert.equal(sent("chat_send").length,1);assert.equal(sent("chat_cancel").length,1);
+  finish({text:"done"});await flush();
+});
+
+test("a new chat discards a late Codex reply and its streamed messages", async () => {
+  State.view="prompt";
+  State.settings={...State.settings,chatProvider:"codex"};
+  let finish;answers.chat_send=()=>new Promise(resolve=>finish=resolve);
+  $(".chat-input").value="old question";$(".send-btn").fire("click");await flush();
+  State.chatHistory=[];view.sync();emit("chat-delta","old reply");
+  assert.equal(view.el.find(".reply").length,0);
+  finish({text:"old completed reply"});await flush();
+  assert.deepEqual(State.chatHistory,[]);assert.equal(State.view,"prompt");
 });

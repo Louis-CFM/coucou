@@ -3899,6 +3899,248 @@
    "pt-BR": "Este código também inclui a chave de acesso e a chave de ponta a ponta do relay {host}. «Parear de novo» cria uma chave e uma sala novas.",
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru."
+  },
+  "Reasoning effort": {
+   "es": "Esfuerzo de razonamiento",
+   "zh-Hans": "推理强度",
+   "hi": "तर्क प्रयास",
+   "ar": "جهد الاستدلال",
+   "fr": "Effort de raisonnement",
+   "bn": "যুক্তির প্রচেষ্টা",
+   "pt-BR": "Esforço de raciocínio",
+   "ru": "Уровень рассуждений",
+   "id": "Upaya penalaran"
+  },
+  "Reset to model default": {
+   "es": "Restablecer valores del modelo",
+   "zh-Hans": "恢复模型默认设置",
+   "hi": "मॉडल की डिफ़ॉल्ट सेटिंग बहाल करें",
+   "ar": "استعادة إعدادات النموذج الافتراضية",
+   "fr": "Rétablir les réglages du modèle",
+   "bn": "মডেলের ডিফল্ট সেটিং ফিরিয়ে আনুন",
+   "pt-BR": "Restaurar padrão do modelo",
+   "ru": "Вернуть настройки модели",
+   "id": "Pulihkan bawaan model"
+  },
+  "Fast": {
+   "es": "Rápida",
+   "zh-Hans": "快速",
+   "hi": "तेज़",
+   "ar": "سريع",
+   "fr": "Rapide",
+   "bn": "দ্রুত",
+   "pt-BR": "Rápido",
+   "ru": "Быстро",
+   "id": "Cepat"
+  },
+  "Fast uses more of your plan.": {
+   "es": "La velocidad rápida consume más de tu plan.",
+   "zh-Hans": "快速模式会消耗更多套餐额度。",
+   "hi": "तेज़ मोड आपके प्लान की अधिक सीमा इस्तेमाल करता है।",
+   "ar": "يستهلك الوضع السريع المزيد من حصة خطتك.",
+   "fr": "Le mode rapide consomme davantage ton forfait.",
+   "bn": "দ্রুত মোড আপনার প্ল্যানের বেশি কোটা ব্যবহার করে।",
+   "pt-BR": "O modo rápido consome mais da sua cota.",
+   "ru": "Быстрый режим расходует больше лимита тарифа.",
+   "id": "Mode cepat memakai lebih banyak kuota paket Anda."
+  },
+  "Stop response": {
+   "es": "Detener respuesta",
+   "zh-Hans": "停止回答",
+   "hi": "जवाब रोकें",
+   "ar": "إيقاف الرد",
+   "fr": "Arrêter la réponse",
+   "bn": "উত্তর থামান",
+   "pt-BR": "Parar resposta",
+   "ru": "Остановить ответ",
+   "id": "Hentikan jawaban"
+  },
+  "Low": {
+   "es": "Bajo",
+   "zh-Hans": "低",
+   "hi": "कम",
+   "ar": "منخفض",
+   "fr": "Faible",
+   "bn": "কম",
+   "pt-BR": "Baixo",
+   "ru": "Низкий",
+   "id": "Rendah"
+  },
+  "Medium": {
+   "es": "Medio",
+   "zh-Hans": "中",
+   "hi": "मध्यम",
+   "ar": "متوسط",
+   "fr": "Moyen",
+   "bn": "মাঝারি",
+   "pt-BR": "Médio",
+   "ru": "Средний",
+   "id": "Sedang"
+  },
+  "High": {
+   "es": "Alto",
+   "zh-Hans": "高",
+   "hi": "अधिक",
+   "ar": "مرتفع",
+   "fr": "Élevé",
+   "bn": "বেশি",
+   "pt-BR": "Alto",
+   "ru": "Высокий",
+   "id": "Tinggi"
+  },
+  "Extra high": {
+   "es": "Muy alto",
+   "zh-Hans": "极高",
+   "hi": "बहुत अधिक",
+   "ar": "مرتفع جدًا",
+   "fr": "Très élevé",
+   "bn": "খুব বেশি",
+   "pt-BR": "Muito alto",
+   "ru": "Очень высокий",
+   "id": "Sangat tinggi"
+  },
+  "Maximum": {
+   "es": "Máximo",
+   "zh-Hans": "最大",
+   "hi": "अधिकतम",
+   "ar": "أقصى",
+   "fr": "Maximum",
+   "bn": "সর্বাধিক",
+   "pt-BR": "Máximo",
+   "ru": "Максимальный",
+   "id": "Maksimum"
+  },
+  "Ultra": {
+   "es": "Ultra",
+   "zh-Hans": "超高",
+   "hi": "अत्यधिक",
+   "ar": "فائق",
+   "fr": "Ultra",
+   "bn": "অতি উচ্চ",
+   "pt-BR": "Ultra",
+   "ru": "Сверхвысокий",
+   "id": "Ultra"
+  },
+  "Minimal": {
+   "es": "Mínimo",
+   "zh-Hans": "最低",
+   "hi": "न्यूनतम",
+   "ar": "أدنى",
+   "fr": "Minimal",
+   "bn": "সর্বনিম্ন",
+   "pt-BR": "Mínimo",
+   "ru": "Минимальный",
+   "id": "Minimal"
+  },
+  "Codex CLI chat": {
+   "es": "Chat de Codex CLI",
+   "zh-Hans": "Codex CLI 聊天",
+   "hi": "Codex CLI चैट",
+   "ar": "دردشة Codex CLI",
+   "fr": "Chat Codex CLI",
+   "bn": "Codex CLI চ্যাট",
+   "pt-BR": "Chat do Codex CLI",
+   "ru": "Чат Codex CLI",
+   "id": "Chat Codex CLI"
+  },
+  "Use your Codex session to chat with Mochi. Choose the model, reasoning effort and speed in the chat.": {
+   "es": "Usa tu sesión de Codex para conversar con Mochi. Elige el modelo, esfuerzo y velocidad desde el chat.",
+   "zh-Hans": "使用你的 Codex 会话与 Mochi 聊天。在聊天中选择模型、推理强度和速度。",
+   "hi": "अपनी Codex सत्र से Mochi के साथ चैट करें। चैट में मॉडल, तर्क प्रयास और गति चुनें।",
+   "ar": "استخدم جلسة Codex للدردشة مع Mochi. اختر النموذج وجهد الاستدلال والسرعة في الدردشة.",
+   "fr": "Utilise ta session Codex pour discuter avec Mochi. Choisis le modèle, l’effort de raisonnement et la vitesse dans le chat.",
+   "bn": "আপনার Codex সেশন দিয়ে Mochi-এর সঙ্গে চ্যাট করুন। চ্যাটে মডেল, যুক্তির প্রচেষ্টা ও গতি বেছে নিন।",
+   "pt-BR": "Use sua sessão do Codex para conversar com Mochi. Escolha o modelo, o esforço de raciocínio e a velocidade no chat.",
+   "ru": "Общайтесь с Mochi через свой сеанс Codex. Выбирайте модель, уровень рассуждений и скорость в чате.",
+   "id": "Gunakan sesi Codex Anda untuk mengobrol dengan Mochi. Pilih model, upaya penalaran, dan kecepatan di chat."
+  },
+  "Removing this integration keeps Codex CLI, your login, island hooks and model preferences.": {
+   "es": "Al quitar esta integración se conservan Codex CLI, tu sesión, la integración con la isla y tus preferencias de modelo.",
+   "zh-Hans": "移除此集成会保留 Codex CLI、登录状态、岛屿钩子和模型偏好设置。",
+   "hi": "यह एकीकरण हटाने पर Codex CLI, आपका लॉगिन, आइलैंड हुक और मॉडल प्राथमिकताएँ बनी रहेंगी।",
+   "ar": "إزالة هذا التكامل تُبقي Codex CLI وتسجيل دخولك وخطافات الجزيرة وتفضيلات النموذج.",
+   "fr": "Supprimer cette intégration conserve Codex CLI, ta connexion, les hooks de l’île et tes préférences de modèle.",
+   "bn": "এই ইন্টিগ্রেশন সরালেও Codex CLI, আপনার লগইন, আইল্যান্ড হুক ও মডেলের পছন্দ বজায় থাকবে।",
+   "pt-BR": "Remover esta integração mantém o Codex CLI, seu login, os hooks da ilha e suas preferências de modelo.",
+   "ru": "Удаление интеграции сохраняет Codex CLI, вход в аккаунт, хуки островка и настройки модели.",
+   "id": "Menghapus integrasi ini tetap mempertahankan Codex CLI, login, hook pulau, dan preferensi model Anda."
+  },
+  "Chat integration installed. Codex is selected in the chat.": {
+   "es": "Integración instalada. Codex está seleccionado en el chat.",
+   "zh-Hans": "聊天集成已安装。聊天中已选择 Codex。",
+   "hi": "चैट एकीकरण स्थापित है। चैट में Codex चुना गया है।",
+   "ar": "تم تثبيت تكامل الدردشة. تم اختيار Codex في الدردشة.",
+   "fr": "Intégration du chat installée. Codex est sélectionné dans le chat.",
+   "bn": "চ্যাট ইন্টিগ্রেশন ইনস্টল হয়েছে। চ্যাটে Codex নির্বাচিত আছে।",
+   "pt-BR": "Integração do chat instalada. Codex está selecionado no chat.",
+   "ru": "Интеграция чата установлена. В чате выбран Codex.",
+   "id": "Integrasi chat dipasang. Codex dipilih di chat."
+  },
+  "Chat integration removed. You can install it again at any time.": {
+   "es": "Integración desinstalada. Puedes instalarla de nuevo cuando quieras.",
+   "zh-Hans": "聊天集成已移除。你可以随时重新安装。",
+   "hi": "चैट एकीकरण हटा दिया गया है। इसे कभी भी फिर स्थापित कर सकते हैं।",
+   "ar": "تمت إزالة تكامل الدردشة. يمكنك تثبيته مجددًا في أي وقت.",
+   "fr": "Intégration du chat supprimée. Tu peux la réinstaller à tout moment.",
+   "bn": "চ্যাট ইন্টিগ্রেশন সরানো হয়েছে। যেকোনো সময় আবার ইনস্টল করতে পারবেন।",
+   "pt-BR": "Integração do chat removida. Você pode reinstalá-la quando quiser.",
+   "ru": "Интеграция чата удалена. Её можно установить снова в любое время.",
+   "id": "Integrasi chat dihapus. Anda dapat memasangnya lagi kapan saja."
+  },
+  "Could not update the chat integration: {error}": {
+   "es": "No se pudo cambiar la integración del chat: {error}",
+   "zh-Hans": "无法更新聊天集成：{error}",
+   "hi": "चैट एकीकरण अपडेट नहीं हुआ: {error}",
+   "ar": "تعذر تحديث تكامل الدردشة: {error}",
+   "fr": "Impossible de mettre à jour l’intégration du chat : {error}",
+   "bn": "চ্যাট ইন্টিগ্রেশন আপডেট করা যায়নি: {error}",
+   "pt-BR": "Não foi possível atualizar a integração do chat: {error}",
+   "ru": "Не удалось обновить интеграцию чата: {error}",
+   "id": "Tidak dapat memperbarui integrasi chat: {error}"
+  },
+  "Consumes usage limits faster": {
+   "es": "Consume los límites más rápido",
+   "zh-Hans": "更快消耗使用额度",
+   "hi": "उपयोग सीमा तेज़ी से खर्च होती है",
+   "ar": "يستهلك حدود الاستخدام بشكل أسرع",
+   "fr": "Consomme les limites plus vite",
+   "bn": "ব্যবহারের কোটা দ্রুত খরচ করে",
+   "pt-BR": "Consome a cota mais rápido",
+   "ru": "Быстрее расходует лимиты",
+   "id": "Memakai kuota lebih cepat"
+  },
+  "Select model": {
+   "es": "Seleccionar modelo",
+   "zh-Hans": "选择模型",
+   "hi": "मॉडल चुनें",
+   "ar": "اختيار النموذج",
+   "fr": "Choisir le modèle",
+   "bn": "মডেল বেছে নিন",
+   "pt-BR": "Selecionar modelo",
+   "ru": "Выбрать модель",
+   "id": "Pilih model"
+  },
+  "Switch provider": {
+   "es": "Cambiar proveedor",
+   "zh-Hans": "切换提供商",
+   "hi": "प्रदाता बदलें",
+   "ar": "تغيير المزوّد",
+   "fr": "Changer de fournisseur",
+   "bn": "প্রদানকারী বদলান",
+   "pt-BR": "Trocar provedor",
+   "ru": "Сменить провайдера",
+   "id": "Ganti penyedia"
+  },
+  "Shows music playing in Cider on this computer. No account or API key required.": {
+   "es": "Muestra la música que reproduce Cider en este equipo. No requiere una cuenta ni una clave de API.",
+   "zh-Hans": "显示此电脑上 Cider 正在播放的音乐。无需账户或 API 密钥。",
+   "hi": "इस कंप्यूटर पर Cider में चल रहा संगीत दिखाता है। खाते या API कुंजी की ज़रूरत नहीं है।",
+   "ar": "يعرض الموسيقى التي يشغلها Cider على هذا الكمبيوتر. لا يلزم حساب أو مفتاح API.",
+   "fr": "Affiche la musique jouée dans Cider sur cet ordinateur. Aucun compte ni clé API nécessaire.",
+   "bn": "এই কম্পিউটারে Cider-এ চলা সংগীত দেখায়। অ্যাকাউন্ট বা API কী দরকার নেই।",
+   "pt-BR": "Mostra a música tocando no Cider neste computador. Não precisa de conta nem chave API.",
+   "ru": "Показывает музыку из Cider на этом компьютере. Аккаунт и ключ API не нужны.",
+   "id": "Menampilkan musik yang diputar di Cider pada komputer ini. Tidak perlu akun atau kunci API."
   }
  }
 }

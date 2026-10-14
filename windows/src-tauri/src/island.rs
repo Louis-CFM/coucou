@@ -312,6 +312,11 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
     let y = mp.y;
+    #[cfg(target_os = "linux")]
+    let y = {
+        let (lx, ly) = logical_origin(&m);
+        y + (platform::island_top_inset(&win, lx, ly) as f64 * scale).round() as i32
+    };
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao

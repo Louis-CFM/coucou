@@ -22,6 +22,8 @@ import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
+import { buildAppleMusicCard, buildAppleMusicPill } from "./apple-music";
+import { AppleMusic, APPLE_MUSIC_ID } from "../core/apple-music";
 import { SPOTIFY_ID } from "../core/spotify";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
@@ -198,6 +200,8 @@ function buildOverview(actions: ViewActions): ViewHost {
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
   const spotifyCard = buildSpotifyCard();
+  const appleMusicCard = buildAppleMusicCard();
+  let appleMusicPill: SpotifyPillHost | null = null;
   let spotifyPill: SpotifyPillHost | null = null;
 
   const el = h("div", { class: "view overview" },
@@ -208,7 +212,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "appleMusic" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -356,6 +360,9 @@ function buildOverview(actions: ViewActions): ViewHost {
           }));
         }
         ticker.sync(task);
+      } else if (task && task.id === APPLE_MUSIC_ID) {
+        if (mode !== "appleMusic") { clear(leftBody); leftBody.append(appleMusicCard.el); mode = "appleMusic"; cardKey = ""; }
+        appleMusicCard.sync();
       } else if (task && task.id === SPOTIFY_ID) {
         // Its own card for every state: playing, idle, not installed.
         if (mode !== "spotify") {
@@ -380,6 +387,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         }
       }
 
+      el.classList.toggle("music-overview", mode === "appleMusic" && AppleMusic.state.track != null);
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
@@ -395,8 +403,12 @@ function buildOverview(actions: ViewActions): ViewHost {
         pillIds = pillKey;
         clear(pills);
         spotifyPill = null;
+        appleMusicPill = null;
         for (const t of others) {
-          if (t.id === SPOTIFY_ID) {
+          if (t.id === APPLE_MUSIC_ID) {
+            appleMusicPill = buildAppleMusicPill(t, () => actions.setFocus(t.id));
+            pills.append(appleMusicPill.el);
+          } else if (t.id === SPOTIFY_ID) {
             spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
             pills.append(spotifyPill.el);
           } else {
@@ -406,6 +418,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         pruneMiniBots();
       }
       spotifyPill?.sync();
+      appleMusicPill?.sync();
     },
   };
 }

@@ -12,6 +12,7 @@ import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
+import { AppleMusic, APPLE_MUSIC_ID } from "./apple-music";
 import { Spotify, musicPlaying } from "./spotify";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
@@ -124,6 +125,9 @@ export interface Settings {
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
   chatModels: Record<string, string>;
+  codexChatEnabled: boolean;
+  codexReasoningEffort: string;
+  codexServiceTier: string;
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -183,6 +187,9 @@ export const DEFAULT_SETTINGS: Settings = {
   showCodexPlanInNotch: false,
   chatProvider: "anthropic",
   chatModels: {},
+  codexChatEnabled: true,
+  codexReasoningEffort: "",
+  codexServiceTier: "",
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",
@@ -201,6 +208,9 @@ export const DIFF_TTL_MS = 3_600_000;
 
 class AppState {
   mode: IslandMode = "hidden";
+  panelIntegration = false;
+  /** Keep the live surface until GNOME finishes returning it to the clock. */
+  panelClosing = false;
   view: IslandViewName = "overview";
 
   tasks: AgentTask[] = [];
@@ -225,6 +235,8 @@ class AppState {
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
+  chatPickerOpen = false;
+  chatPickerHeight = 280;
   pendingApproval: ApprovalInfo | null = null;
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
@@ -286,7 +298,8 @@ class AppState {
 
   /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
   get spotifyPlaying(): boolean {
-    return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+    const active = sanitizeDeclared(this.settings, this.os).activeIntegrations;
+    return musicPlaying(Spotify.state, active) || (active.includes(APPLE_MUSIC_ID) && AppleMusic.state.playing && !!AppleMusic.state.track);
   }
 
   get otherTasks(): AgentTask[] {

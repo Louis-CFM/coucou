@@ -11,9 +11,10 @@ import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
 
 // ── The catalog itself ────────────────────────────────────────────────────────
 
-test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's values", () => {
+test("the catalog keeps the Mac order and values with a Linux Cider label", () => {
   // Copied from NotchBuddy/Sources/CoucouKit/PillCatalog.swift: an ID is a
   // contract value, and a colour or subtitle that drifts is a visible bug.
+  // The Linux music implementation uses Cider, so its label names that client.
   const mac = [
     ["integration_claude", "VS Code", "#F5F6F8", "workspace", "Integration"],
     ["agent_cursor", "Cursor", "#C0C4CC", "workspace", "Integration"],
@@ -38,7 +39,7 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     ["integration_notion", "Notion", "#8C8C8C", "service", "Integration"],
     ["integration_calcom", "Cal.com", "#C9956A", "service", "Integration"],
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
-    ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
+    ["integration_music", "Cider", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
   assert.deepEqual(
@@ -73,12 +74,12 @@ test("IDs are unique", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("this build leaves out what only macOS has, Claude Desktop on Linux and Spotify on Windows", () => {
+test("music players are Linux-only; Claude Desktop is Windows-only", () => {
   const windows = availablePills("windows").map((p) => p.id);
   const linux = availablePills("linux").map((p) => p.id);
   for (const id of ["integration_music"]) {
     assert.ok(!windows.includes(id), id);
-    assert.ok(!linux.includes(id), id);
+    assert.ok(linux.includes(id), id);
   }
   // Their plugins are written from Settings → Agents, and the chat talks to
   // every provider (port/chat-providers), on both systems.
@@ -92,7 +93,7 @@ test("this build leaves out what only macOS has, Claude Desktop on Linux and Spo
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(!windows.includes("integration_spotify"));
   assert.deepEqual(
-    linux.filter((id) => id !== "integration_spotify"),
+    linux.filter((id) => !["integration_spotify", "integration_music"].includes(id)),
     windows.filter((id) => id !== "agent_claude-desktop"),
   );
 });
@@ -162,7 +163,7 @@ test("a declaration from an older or edited settings file is made usable", () =>
   );
   assert.deepEqual(
     sanitizeDeclared({ mainPill: "agent_cursor", activeIntegrations: ["agent_cursor", "integration_n8n", "integration_n8n", "integration_music"] }, "linux"),
-    { mainPill: "agent_cursor", activeIntegrations: ["integration_n8n"] },
+    { mainPill: "agent_cursor", activeIntegrations: ["integration_n8n", "integration_music"] },
   );
   // No mainPill at all: a settings.json from before this version.
   assert.deepEqual(
@@ -182,7 +183,8 @@ test("up to four pills next to the main one, never the main one itself", () => {
   assert.equal(four.length, MAX_DECLARED);
   assert.equal(toggleDeclared({ ...d, activeIntegrations: four }, "ai_anthropic", "linux"), null);
   assert.equal(toggleDeclared(d, "integration_claude", "linux"), null);
-  assert.equal(toggleDeclared(d, "integration_music", "linux"), null);
+  assert.ok(toggleDeclared(d, "integration_music", "linux").includes("integration_music"));
+  assert.equal(toggleDeclared(d, "integration_music", "windows"), null);
   assert.equal(toggleDeclared(d, "agent_claude-desktop", "linux"), null);
   assert.ok(toggleDeclared(d, "agent_claude-desktop", "windows").includes("agent_claude-desktop"));
   assert.deepEqual(toggleDeclared(d, "integration_github", "linux"), ["integration_n8n", "integration_stripe"]);

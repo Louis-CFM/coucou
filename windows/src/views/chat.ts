@@ -13,6 +13,8 @@ import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridg
 import {
   activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
+import { codexSelection, effortLabel, codexModelLabel } from "../core/codex";
+import { codexControls } from "./codex-picker";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
 import type { ViewHost } from "./views";
@@ -70,18 +72,25 @@ interface Picker {
   open(): void;
   close(): void;
   readonly isOpen: boolean;
+  readonly height: number;
 }
 
 /** Provider chips, then the chosen provider's models — ModelPickerView. */
 function buildPicker(onChange: () => void): Picker {
   const chips = h("div", { class: "picker-chips" });
   const list = h("div", { class: "picker-list" });
-  const el = h("div", { class: "picker" }, chips, h("div", { class: "picker-rule" }), list);
+  const heading = h("div", { class: "codex-model-heading" });
+  const controls = h("div", { class: "codex-controls" });
+  const content = h("div", { class: "picker-content" }, list, controls);
+  const el = h("div", { class: "picker" }, heading, chips, h("div", { class: "picker-rule" }), content);
 
   /** Models already asked for, by provider; a model server is asked again each time. */
   const cache = new Map<string, ModelInfo[]>();
   let isOpen = false;
   let request = 0;
+  let codexPage: "controls" | "models" | "providers" = "controls";
+  let resizing: Animation | null = null;
+  let shown = false;
 
   function drawChips() {
     clear(chips);
@@ -94,7 +103,11 @@ function buildPicker(onChange: () => void): Picker {
         h("span", { text: t(p.name) }),
       );
       chip.addEventListener("click", () => {
-        if (p.id === State.settings.chatProvider) return;
+        if (p.id === State.settings.chatProvider) {
+          if (p.id === "codex") { codexPage = "controls"; drawModels(p, cache.get(p.id) ?? []); onChange(); }
+          return;
+        }
+        codexPage = "controls";
         State.settings = { ...State.settings, chatProvider: p.id };
         saveSettings();
         Sound.play("pop");
@@ -106,8 +119,14 @@ function buildPicker(onChange: () => void): Picker {
     }
   }
 
-  function status(text: string, withSettings = false) {
+  function status(text: string, withSettings = false, retry = false) {
     clear(list);
+    clear(heading);
+    clear(controls);
+    const codex = State.settings.chatProvider === "codex";
+    el.classList.toggle("codex-picker", codex);
+    el.classList.toggle("codex-status", codex);
+    el.classList.remove("codex-models-mode", "codex-providers-mode");
     const line = h("div", { class: "picker-status", text });
     if (withSettings) {
       line.append(
@@ -119,11 +138,35 @@ function buildPicker(onChange: () => void): Picker {
       );
     }
     list.append(line);
+    if (retry) line.append(h("button", {class: "picker-link", text: tl("Retry"), onclick: () => void loadModels()}));
   }
 
   function drawModels(p: ProviderDef, models: ModelInfo[]) {
+    const before = typeof el.animate === "function" && isOpen && shown ? el.getBoundingClientRect().height : 0;
+    resizing?.cancel();
     clear(list);
+    clear(heading);
     const current = activeModel(State.settings);
+    const codex = p.id === "codex";
+    el.classList.remove("codex-status");
+    el.classList.toggle("codex-picker", codex);
+    el.classList.toggle("codex-providers-mode", codex && codexPage === "providers");
+    el.classList.toggle("codex-models-mode", codex && codexPage === "models");
+    clear(controls);
+    const selected = models.find(m => m.id === current);
+    const page = (next: typeof codexPage) => {
+      codexPage = next; drawModels(p, models); onChange();
+    };
+    if (codex && selected) {
+      controls.append(codexControls(selected, () => page("models"), save => {
+        if (save) saveSettings(); onChange();
+      }));
+      const back = h("button", {class: "codex-back", "aria-label": tl("Back"), onclick: () => page("controls")},
+        svg(ICONS.chevronLeft, 12, {stroke: 1.7}));
+      heading.append(back,
+        h("span", {text: tl(codexPage === "providers" ? N_("Switch provider") : N_("Select model"))}),
+        h("button", {class: "codex-providers", title: tl("Switch provider"), "aria-label": tl("Switch provider"), onclick: () => page("providers")}, svg(ICONS.ellipsis, 15)));
+    }
     for (const m of models) {
       const on = m.id === current;
       const row = h(
@@ -133,14 +176,23 @@ function buildPicker(onChange: () => void): Picker {
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
-        State.settings = withModel(State.settings, p.id, m.id);
+        State.settings = p.id === "codex" ? codexSelection(State.settings, m) : withModel(State.settings, p.id, m.id);
         saveSettings();
         Sound.play("blip");
-        close();
+        if (p.id === "codex") { codexPage = "controls"; drawModels(p, models); onChange(); } else close();
       });
       list.append(row);
     }
-    list.querySelector(".picker-model.on")?.scrollIntoView({ block: "nearest" });
+    if (!codex || codexPage !== "controls") list.querySelector(".picker-model.on")?.scrollIntoView({ block: "nearest" });
+    if (before > 0 && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      const after = el.getBoundingClientRect().height;
+      if (Math.abs(after - before) > 1) resizing = el.animate(
+        [{ height: `${before}px` }, { height: `${after}px` }],
+        { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" },
+      );
+    }
+    shown = true;
+    onChange();
   }
 
   async function loadModels() {
@@ -162,19 +214,33 @@ function buildPicker(onChange: () => void): Picker {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
       if (!p.urlField) cache.set(p.id, models);
-      const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
+      const keep = p.id === "codex" && !models.some(m => m.id === activeModel(State.settings))
+        ? (models.find(m => m.isDefault) ?? models[0])?.id
+        : pickModel(p, models.map((m) => m.id), activeModel(State.settings));
       if (keep && keep !== activeModel(State.settings)) {
         State.settings = withModel(State.settings, p.id, keep);
         saveSettings();
         onChange();
       }
+      if (p.id === "codex") {
+        const model = models.find(m => m.id === keep);
+        if (model) {
+          const next = codexSelection(State.settings, model);
+          if (next.codexReasoningEffort !== State.settings.codexReasoningEffort || next.codexServiceTier !== State.settings.codexServiceTier) {
+            State.settings = next; saveSettings(); onChange();
+          }
+        }
+      }
       drawModels(p, models);
     } catch (err) {
-      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
+      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key), true);
     }
   }
 
   function open() {
+    shown = false;
+    resizing?.cancel();
+    codexPage = "controls";
     isOpen = true;
     el.classList.add("on");
     drawChips();
@@ -184,6 +250,7 @@ function buildPicker(onChange: () => void): Picker {
 
   function close() {
     isOpen = false;
+    shown = false;
     request++;
     el.classList.remove("on");
     onChange();
@@ -193,6 +260,7 @@ function buildPicker(onChange: () => void): Picker {
     el,
     open,
     close,
+    get height() { return 320; },
     get isOpen() {
       return isOpen;
     },
@@ -228,13 +296,27 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
+    if (State.chatPickerOpen !== picker.isOpen || State.chatPickerHeight !== picker.height) {
+      State.chatPickerOpen = picker.isOpen;
+      State.chatPickerHeight = picker.height;
+      State.notify();
+      onHeightChange();
+    }
   });
   body.append(chipRow, log, picker.el, modelRow, bar);
+  // Inactive views are not synced by the island. Fold the menu immediately
+  // when leaving so returning to chat starts at its normal height.
+  State.subscribe(() => {
+    if ((State.view !== "prompt" || State.mode !== "expanded") && picker.isOpen) picker.close();
+  });
 
   const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
+  let stopped = false;
+  let activeHistory: ChatMessage[] | null = null;
+  let codexEnabled = State.settings.codexChatEnabled;
   let renderedCount = -1;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
@@ -242,7 +324,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    const model = activeModel(State.settings);
+    modelName.textContent = p.id === "codex" && model
+      ? [codexModelLabel(model), State.settings.codexReasoningEffort ? t(effortLabel(State.settings.codexReasoningEffort)) : "",
+          State.settings.codexServiceTier ? t("Fast") : ""].filter(Boolean).join(" · ")
+      : model || t(STRINGS.noModel);
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -254,7 +340,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   });
 
   void onEvent<string>("chat-delta", (text) => {
-    if (!sending || !text) return; // nothing visible yet: the dots stay
+    if (!sending || State.chatHistory !== activeHistory || !text) return; // nothing visible yet: the dots stay
     if (!live) {
       live = h("div", { class: "reply" });
       log.querySelector(".typing")?.parentElement?.remove();
@@ -270,6 +356,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     if (picker.isOpen) picker.close();
     input.value = "";
     sending = true;
+    activeHistory = State.chatHistory;
+    const conversation = activeHistory;
+    stopped = false;
+    drawSendButton();
     drawModelButton();
     Sound.play("send");
 
@@ -284,16 +374,20 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
     try {
       const reply = await Bridge.chatSend(query, context);
+      if (State.chatHistory !== conversation) return;
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
+      if (stopped || State.chatHistory !== conversation) return;
       State.stateOverride = null;
       State.noteMessage = String(err).replace(/^Error:\s*/, "");
       State.view = "note";
       Sound.play("error");
     } finally {
       sending = false;
+      State.stateOverride = null;
+      drawSendButton();
       live = null;
       renderedCount = -1; // the finished answer replaces the streamed one
       drawModelButton();
@@ -303,7 +397,19 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     }
   }
 
-  send.addEventListener("click", () => void submit());
+  function drawSendButton() {
+    clear(send);
+    const canStop = sending && State.settings.chatProvider === "codex";
+    send.append(svg(canStop ? "M6 6h12v12H6z" : ICONS.arrowUp, 11));
+    send.title = t(canStop ? N_("Stop response") : STRINGS.send);
+    send.setAttribute("aria-label", send.title);
+  }
+  send.addEventListener("click", () => {
+    if (sending && State.settings.chatProvider === "codex") {
+      stopped = true;
+      void Bridge.chatCancel();
+    } else void submit();
+  });
   input.addEventListener("keydown", (e) => {
     const key = (e as KeyboardEvent).key;
     if (key === "Enter") {
@@ -337,6 +443,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         log.scrollTop = log.scrollHeight;
       }
 
+      if (codexEnabled !== State.settings.codexChatEnabled) {
+        codexEnabled = State.settings.codexChatEnabled;
+        if (!codexEnabled && sending) stopped = true;
+        if (picker.isOpen) picker.close();
+      }
       // Leaving the chat folds the picker away.
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();

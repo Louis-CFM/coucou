@@ -12,6 +12,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { AppleMusic, APPLE_MUSIC_ID } from "../core/apple-music";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -27,6 +28,7 @@ import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { PanelMascot } from "./panel-mascot";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -84,6 +86,8 @@ export class Island {
   // Rust starts the window at full size so the launch greeting has room.
   private collapsed = false;
   private collapseTimer: number | null = null;
+  private panelCloseTimer: number | null = null;
+  private lastPanelIntegration = false;
   private wasInIsland = false;
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
@@ -108,6 +112,7 @@ export class Island {
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
+  private musicExpanded = false;
 
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
@@ -123,12 +128,22 @@ export class Island {
     this.build();
     this.wireFsm();
     this.wireInput();
+    new PanelMascot(this.engine, (x, y) => this.prepareBot(x, y, true));
     this.engine.onDizzy = () => this.handleDizzy();
     this.greeting.onComplete = () => {
       this.fsm.greetComplete();
       this.onGreetingDone?.();
     };
     State.subscribe(() => {
+      if (this.musicExpanded !== this.musicOverview) {
+        this.musicExpanded = this.musicOverview;
+        this.animateGeometry(false);
+      }
+      if (this.lastPanelIntegration !== State.panelIntegration) {
+        this.lastPanelIntegration = State.panelIntegration;
+        this.updateWindowCollapsed();
+        this.animateGeometry(false);
+      }
       this.dirty = true;
       this.ensureRunning();
     });
@@ -192,6 +207,7 @@ export class Island {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (task.id === APPLE_MUSIC_ID) void Bridge.ciderOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -347,9 +363,20 @@ export class Island {
 
   // ── Mode / view ─────────────────────────────────────────────────────────────
 
-  private setMode(mode: IslandMode) {
+  private setMode(mode: IslandMode, panelSettled = false) {
     const prev = State.mode;
     if (mode === prev) return;
+    if (State.panelIntegration && prev === "expanded" && mode !== "expanded" && !panelSettled) {
+      if (this.panelCloseTimer != null) return;
+      State.panelClosing = true;
+      State.notify();
+      this.panelCloseTimer = window.setTimeout(() => {
+        this.panelCloseTimer = null;
+        State.panelClosing = false;
+        this.setMode(mode, true);
+      }, 380);
+      return;
+    }
     State.mode = mode;
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
@@ -367,7 +394,18 @@ export class Island {
       UploadSeq.deactivate();
     }
     this.updateWindowCollapsed();
-    this.animateGeometry(modeOrder(mode) < modeOrder(prev));
+    if (State.panelIntegration) {
+      // GNOME animates the whole live window from the panel capsule. Avoid a
+      // second resize animation inside it or hiding before its return completes.
+      const {w, h, r} = this.targetSize();
+      this.width.jump(w);
+      this.height.jump(h);
+      this.radius.jump(r);
+      this.applyGeometry();
+      this.ensureRunning();
+    } else {
+      this.animateGeometry(modeOrder(mode) < modeOrder(prev));
+    }
     State.notify();
   }
 
@@ -382,6 +420,11 @@ export class Island {
   }
 
   expand(view: IslandViewName) {
+    if (this.panelCloseTimer != null) {
+      window.clearTimeout(this.panelCloseTimer);
+      this.panelCloseTimer = null;
+      State.panelClosing = false;
+    }
     this.stopSequenceIfLeaving(view);
     if (view !== "overview") closePlanCard();
     State.view = view;
@@ -643,18 +686,34 @@ export class Island {
 
   // ── Geometry ────────────────────────────────────────────────────────────────
 
+  private get musicOverview(): boolean {
+    return State.mode === "expanded" && State.view === "overview" && !planCardOpen() &&
+      State.focusTask?.id === APPLE_MUSIC_ID && AppleMusic.state.track != null;
+  }
+
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
+    if (State.mode === "expanded" && State.view === "prompt" && State.chatPickerOpen) {
+      h = Math.max(h, State.chatPickerHeight);
+    }
+    if (this.musicOverview) h = 240;
+    if (State.panelIntegration && State.mode !== "expanded") h = 0;
     const r = State.mode === "expanded" ? EXPANDED_CORNER : ROUNDED_CORNER;
     return { w, h, r };
   }
 
+  panelSurface(): {surfaceWidth: number; surfaceHeight: number} {
+    const {w, h} = this.targetSize();
+    return {surfaceWidth: w, surfaceHeight: h};
+  }
+
   private animateGeometry(shrinking: boolean) {
     const { w, h, r } = this.targetSize();
-    if (shrinking) {
+    if (shrinking || State.panelIntegration) {
+      // The native surface is 320 px tall: resize without a spring overshoot.
       this.width.curveTowards(w);
       this.height.curveTowards(h);
       this.radius.curveTowards(r);
@@ -672,7 +731,8 @@ export class Island {
     const r = this.radius.value;
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    this.islandEl.style.visibility = State.panelIntegration && State.mode !== "expanded" ? "hidden" : "visible";
+    this.islandEl.style.borderRadius = `${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
@@ -681,7 +741,7 @@ export class Island {
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: State.panelIntegration && (State.mode !== "expanded" || State.panelClosing) ? 0 : hh };
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
@@ -702,6 +762,15 @@ export class Island {
     if (this.collapseTimer != null) {
       window.clearTimeout(this.collapseTimer);
       this.collapseTimer = null;
+    }
+    if (State.panelIntegration) {
+      // Keep a stable native frame for GNOME's capsule transform. A zero input
+      // rectangle and shell opacity hide it without resizing its coordinate space.
+      if (this.collapsed) {
+        this.collapsed = false;
+        void Bridge.setCollapsed(false);
+      }
+      return;
     }
     if (State.mode === "hidden") {
       // Let the island finish retracting, then drop the window to the wake strip:
@@ -825,6 +894,7 @@ export class Island {
 
   /** Cursor in window-logical coordinates. */
   onCursor(x: number, y: number) {
+    if (State.panelIntegration && (State.mode !== "expanded" || State.panelClosing)) return;
     // WebKitGTK can deliver a mousemove after the pointer has left the layer
     // surface; trusting it re-enters the island and the auto-close never runs.
     if (this.pointerInside === false) {
@@ -998,7 +1068,7 @@ export class Island {
     // spends most of its life in. Geometry still has to finish retracting.
     const settling =
       this.width.animating || this.height.animating || this.radius.animating;
-    const busy = State.mode === "hidden"
+    const busy = State.mode === "hidden" || (State.panelIntegration && State.mode !== "expanded")
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
@@ -1059,6 +1129,18 @@ export class Island {
     const ctx = this.botCanvas.getContext("2d");
     if (!ctx) return;
 
+    this.prepareBot(this.lookX(), this.lookY());
+    // One clock owns the shared engine, including while the full window is open.
+    if (!State.panelIntegration) this.engine.update(dt);
+    ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
+    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    ctx.save();
+    this.engine.applyDance(ctx, w, hCss);
+    this.engine.draw(ctx, w, hCss);
+    ctx.restore();
+  }
+
+  private prepareBot(lookX: number, lookY: number, panel = false) {
     const focus = State.focusTask;
     // While a plan card is open Mochi wears the plan's colour, like its pill.
     this.engine.bodyColor = planCardOpen()
@@ -1067,8 +1149,8 @@ export class Island {
         ? hexToRGB(focus.color)
         : null;
     this.engine.particleOverhang = BOT_OVERHANG;
-    this.engine.lookX = this.lookX();
-    this.engine.lookY = this.lookY();
+    this.engine.lookX = lookX;
+    this.engine.lookY = lookY;
     if (this.engine.morph > 0.3) {
       this.engine.slotHTarget = State.fileDragOver ? 0.2 : 0;
     } else {
@@ -1092,18 +1174,11 @@ export class Island {
     this.engine.setDancing(islandDances({
       music: State.spotifyPlaying,
       state: State.effectiveState,
-      mode: State.mode,
+      mode: panel && State.mode !== "expanded" ? "compact" : State.mode,
       view: State.view,
       focusId: State.focusTask?.id,
     }));
 
-    this.engine.update(dt);
-    ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
-    ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
-    ctx.save();
-    this.engine.applyDance(ctx, w, hCss);
-    this.engine.draw(ctx, w, hCss);
-    ctx.restore();
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
@@ -1142,8 +1217,8 @@ export class Island {
     this.contentEl.style.opacity = live ? "1" : "0";
     // While the drop sequence owns the body its buttons are painted on the canvas
     // underneath, so only the header may keep taking clicks up here.
-    this.contentEl.style.pointerEvents = live && !this.uploadActive ? "auto" : "none";
-    this.header.el.style.pointerEvents = live ? "auto" : "none";
+    this.contentEl.style.pointerEvents = live && !this.uploadActive && !State.panelClosing ? "auto" : "none";
+    this.header.el.style.pointerEvents = live && !State.panelClosing ? "auto" : "none";
     this.greetingCanvas.style.display = greetingActive ? "block" : "none";
 
     // Leaving the greeting, however it ends, lets its sound fade out.

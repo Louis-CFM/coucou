@@ -50,7 +50,7 @@ function focusPill(host: ShortcutHost, id: string | null, open: boolean) {
 export function runGlobalShortcut(host: ShortcutHost, action: string, resume: () => void) {
   switch (action) {
     case "toggleIsland":
-      if (State.mode === "expanded") {
+      if (State.mode === "expanded" && !State.panelClosing) {
         host.collapse();
       } else {
         resume();
@@ -58,6 +58,10 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
         host.alert(State.defaultView());
         host.takeKeyboard();
       }
+      break;
+
+    case "closeIsland":
+      if (State.mode === "expanded" && !State.panelClosing) host.collapse();
       break;
 
     case "openChat":

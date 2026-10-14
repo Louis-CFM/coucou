@@ -482,6 +482,9 @@ pub fn sync(app: &AppHandle, active_integrations: &[String]) {
     let _ = (app, active_integrations);
 }
 
+#[cfg(target_os = "linux")]
+pub(crate) fn mpris_props(map: &dbus::arg::PropMap) -> Vec<(String, Value)> { linux::props_of(map) }
+
 // ── Linux: MPRIS over D-Bus ───────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]

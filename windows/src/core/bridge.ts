@@ -179,6 +179,14 @@ export interface PhoneAnswersStatus {
 }
 
 export const Bridge = {
+  publishPanelFrame: async (pixels: Uint8Array) => {
+    if (!IS_TAURI) return null;
+    try { return await invoke<{x: number; y: number; hover: boolean; visible: boolean; transport?: string}>("publish_panel_frame", pixels); }
+    catch { return null; }
+  },
+  publishPanelState: (status: { working: number; waiting: number; agent: string; phase: string; expanded: boolean;
+    closing: boolean; surfaceWidth: number; surfaceHeight: number }) =>
+    call<boolean>("publish_panel_state", { status }),
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
   setSystemLanguages: (languages: string[]) => call<void>("set_system_languages", { languages }),
@@ -330,11 +338,13 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  codexChatSetEnabled: (enabled: boolean) => callOrThrow<Settings>("codex_chat_set_enabled", { enabled }),
+  chatCancel: () => call<void>("chat_cancel"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
    * the provider only when it has a key (or a server address).
    */
-  chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
+  chatModels: (provider: string) => provider === "codex" ? callOrThrow<ModelInfo[]>("codex_models") : callOrThrow<ModelInfo[]>("chat_models", { provider }),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
@@ -408,6 +418,10 @@ export const Bridge = {
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
+  ciderRefresh: () => call<SpotifyState | null>("cider_refresh"),
+  ciderControl: (action: SpotifyAction, value?: number) => call<boolean>("cider_control", {action, value: value ?? null}),
+  ciderOpen: () => call<boolean>("cider_open"),
+  ciderInstalled: () => call<boolean>("cider_installed"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
@@ -462,6 +476,10 @@ export type ChatContext =
 export interface ModelInfo {
   id: string;
   label: string;
+  reasoningEfforts?: string[];
+  defaultEffort?: string;
+  serviceTiers?: { id: string; name: string; description: string }[];
+  isDefault?: boolean;
 }
 
 export interface LocalServer {

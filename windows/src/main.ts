@@ -10,6 +10,8 @@ import { registerPhoneLink } from "./island/phone-link";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
+import { applyAppleMusic, registerAppleMusicHandlers } from "./island/apple-music";
+import { APPLE_MUSIC_ID } from "./core/apple-music";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
@@ -39,6 +41,35 @@ async function main() {
   // Rust shows the tray and its errors in the same language as the webview.
   void Bridge.setSystemLanguages(systemLanguages());
   island.applySettings();
+  if (IS_TAURI) {
+    let publishing = false;
+    let publishAgain = false;
+    const publishPanel = async () => {
+      if (publishing) { publishAgain = true; return; }
+      publishing = true;
+      try {
+        do {
+          publishAgain = false;
+          const agents = State.tasks.filter(t => !t.isIntegration || t.sessionId);
+          const waiting = agents.filter(t => ["approval", "question"].includes(t.state));
+          const working = agents.filter(t => ["working", "thinking", "searching"].includes(t.state));
+          const focus = waiting[0] ?? working[0];
+          const phase = waiting.length || State.pendingApproval ? "waiting" : working.length ? "working" : "idle";
+          const integrated = await Bridge.publishPanelState({working: working.length,
+            waiting: Math.max(waiting.length, State.pendingApproval ? 1 : 0),
+            agent: focus?.name ?? "", phase, expanded: State.mode === "expanded",
+            closing: State.panelClosing, ...island.panelSurface()});
+          if (integrated !== null && State.panelIntegration !== integrated) {
+            State.panelIntegration = integrated;
+            State.notify();
+          }
+        } while (publishAgain);
+      } finally { publishing = false; }
+    };
+    State.subscribe(() => void publishPanel());
+    window.setInterval(() => void publishPanel(), 1000);
+    await publishPanel();
+  }
   State.loadIntegrationTasks();
   if (boot && !boot.cursorPoll) island.followPageCursor();
   await island.desktop.init();
@@ -103,7 +134,11 @@ async function main() {
   registerIntegrationHandlers(island);
   registerShortcutHandlers(island, () => setPaused(false));
   registerSpotifyHandlers(island);
+  registerAppleMusicHandlers(island);
   // Rust may have read Spotify before this page listened: ask once.
+  if (State.settings.activeIntegrations.includes(APPLE_MUSIC_ID)) {
+    void Bridge.ciderRefresh().then(s => s && applyAppleMusic(island, s));
+  }
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
   }

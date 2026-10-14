@@ -297,6 +297,10 @@ pub fn plan(
 /// `coucou --shortcut <id>` → the action id, when it names a ported one.
 pub fn from_args(args: &[String]) -> Option<&'static str> {
     let at = args.iter().position(|a| a == "--shortcut")?;
+    // Idempotent dismissal for the desktop panel; it has no global binding.
+    if args.get(at + 1).is_some_and(|id| id == "closeIsland") {
+        return Some("closeIsland");
+    }
     let def = find(args.get(at + 1)?)?;
     def.ported.then_some(def.id)
 }

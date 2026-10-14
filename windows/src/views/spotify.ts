@@ -8,10 +8,10 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { Bridge } from "../core/bridge";
+import { Bridge as NativeBridge } from "../core/bridge";
 import { State, type AgentTask } from "../core/state";
 import {
-  SPOTIFY_GREEN, SPOTIFY_ID, Spotify, currentArtwork, formatTime, isAd, spotifyPosition, volumeLevel, withPlaying,
+  SPOTIFY_GREEN as DEFAULT_GREEN, SPOTIFY_ID as DEFAULT_ID, Spotify as DefaultSpotify, formatTime, isAd, spotifyPosition, volumeLevel, withPlaying,
   type SpotifyTrack,
 } from "../core/spotify";
 import { createMiniBot } from "../mochi/minibots";
@@ -19,6 +19,35 @@ import { pillDefinition } from "../core/pills";
 import { N_, t } from "../i18n/i18n";
 
 
+export interface MusicSource {
+  id: string;
+  name: string;
+  color: string;
+  store: typeof DefaultSpotify;
+  control: typeof NativeBridge.spotifyControl;
+  open: typeof NativeBridge.spotifyOpen;
+}
+
+export interface SpotifyPillHost {
+  el: HTMLElement;
+  sync(): void;
+}
+
+export interface SpotifyCardHost {
+  el: HTMLElement;
+  sync(): void;
+}
+
+/** Shared player controls keep Spotify and Apple Music in the same design system. */
+export function createMusicViews(source: MusicSource) {
+  const Spotify = source.store;
+  const SPOTIFY_ID = source.id;
+  const SPOTIFY_GREEN = source.color;
+  const Bridge = { spotifyControl: source.control, spotifyOpen: source.open };
+  const currentArtwork = (s = Spotify.state) => {
+    const art = Spotify.artwork;
+    return art && s.track?.artUrl === art.artUrl ? art.dataUrl : null;
+  };
 function lighter(hex: string, amount: number): string {
   const v = parseInt(hex.replace("#", ""), 16);
   const c = [(v >> 16) & 255, (v >> 8) & 255, v & 255].map((x) => Math.min(255, Math.round(x + amount * 255)));
@@ -28,7 +57,7 @@ function lighter(hex: string, amount: number): string {
 // ── Controls (shared by the pill and the card) ───────────────────────────────
 
 /** Play/pause, at once on the page, then in Spotify (SpotifyController.playPause). */
-export function togglePlay() {
+function togglePlay() {
   const s = Spotify.state;
   if (!s.running) return;
   Spotify.state = withPlaying(s, !s.playing, Date.now());
@@ -79,10 +108,7 @@ function setVolume(value: number) {
 
 // ── Pill (overview right column) ──────────────────────────────────────────────
 
-export interface SpotifyPillHost {
-  el: HTMLElement;
-  sync(): void;
-}
+
 
 /** MusicControlButton: a 20 px round button in the pill's colour. */
 function pillButton(color: string, icon: string, onClick: () => void): HTMLElement {
@@ -111,9 +137,9 @@ function pillButton(color: string, icon: string, onClick: () => void): HTMLEleme
  * SpotifyPill: the agent pill's look, with a mini Mochi that dances while
  * Spotify plays, and play/pause + next on hover when a track is loaded.
  */
-export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPillHost {
+function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPillHost {
   const color = task.color;
-  const mini = createMiniBot(task, 24, () => State.spotifyPlaying);
+  const mini = createMiniBot(task, 24, () => Spotify.state.playing);
   const label = h("span", { class: "lbl", text: task.name });
   const playBtn = pillButton(color, ICONS.play, togglePlay);
   const nextBtn = pillButton(color, ICONS.forward, () => void Bridge.spotifyControl("next"));
@@ -247,13 +273,10 @@ function iconButton(icon: string, size: number, stroke: number, onClick: () => v
   return b;
 }
 
-export interface SpotifyCardHost {
-  el: HTMLElement;
-  sync(): void;
-}
+
 
 /** SpotifyCardView: now playing, or the idle card (not playing / not installed). */
-export function buildSpotifyCard(): SpotifyCardHost {
+function buildSpotifyCard(): SpotifyCardHost {
   const green = SPOTIFY_GREEN;
 
   // Now playing: artwork row, progress row, controls row.
@@ -265,9 +288,10 @@ export function buildSpotifyCard(): SpotifyCardHost {
   art.addEventListener("click", () => void Bridge.spotifyOpen());
   const title = h("span", { class: "np-title" });
   const subtitle = h("div", { class: "np-sub" });
+  const album = source.id === "integration_music" ? h("div", { class: "np-album" }) : null;
   const head = h("div", { class: "np-head" },
     art,
-    h("div", { class: "np-text" }, h("div", { class: "np-title-row" }, dot(green, 6), title), subtitle),
+    h("div", { class: "np-text" }, source.id === "integration_music" ? h("span", {class: "apple-music-brand", text: `♫ ${source.name}`}) : null, h("div", { class: "np-title-row" }, dot(green, 6), title), subtitle, album),
   );
 
   let dragFraction: number | null = null;
@@ -313,12 +337,12 @@ export function buildSpotifyCard(): SpotifyCardHost {
   idleAction.addEventListener("click", () => void Bridge.spotifyOpen());
   const idleSub = h("span");
   const idleEl = h("div", { class: "int-card" },
-    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: "Spotify" }), idleSub),
+    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: source.name }), idleSub),
     h("div", { class: "int-status" }, idleDot, idleText),
     h("div", { class: "int-actions" }, idleAction),
   );
 
-  const el = h("div", { class: "np-root" });
+  const el = h("div", { class: source.id === "integration_music" ? "np-root apple-music-root" : "np-root" });
   let showing: "playing" | "idle" | null = null;
   let shownTrack: SpotifyTrack | null = null;
   let playIcon: boolean | null = null;
@@ -359,13 +383,14 @@ export function buildSpotifyCard(): SpotifyCardHost {
     if (shownTrack !== track) {
       shownTrack = track;
       title.textContent = isAd(track) ? t("Advertisement") : track.title;
-      const sub = [track.artist, track.album].filter((x) => x).join(" · ");
+      const sub = album ? track.artist : [track.artist, track.album].filter((x) => x).join(" · ");
       subtitle.textContent = sub;
       subtitle.style.display = sub ? "" : "none";
+      if (album) { album.textContent = track.album; album.style.display = track.album ? "" : "none"; }
     } else if (isAd(track)) {
       title.textContent = t("Advertisement");
     }
-    art.title = track.album ? t("{0} — open Spotify", { 0: track.album }) : t("Open Spotify");
+    art.title = track.album ? `${track.album} — ${t(`Open ${source.name}`)}` : t(`Open ${source.name}`);
     const cover = currentArtwork(s);
     if (cover) {
       if (artImg.getAttribute("src") !== cover) artImg.setAttribute("src", cover);
@@ -406,8 +431,8 @@ export function buildSpotifyCard(): SpotifyCardHost {
   function syncIdle() {
     const installed = Spotify.state.installed || Spotify.state.running;
     idleDot.style.background = installed ? "#22C55E" : "#F4505E";
-    idleText.textContent = installed ? t("Not playing") : t("Spotify not installed");
-    idleAction.textContent = installed ? t("Open Spotify") : t("Get Spotify");
+    idleText.textContent = installed ? t("Not playing") : t(`${source.name} not installed`);
+    idleAction.textContent = installed ? t(`Open ${source.name}`) : t(`Get ${source.name}`);
     idleSub.textContent = t(pillDefinition(SPOTIFY_ID)?.subtitle ?? N_("Integration"));
   }
 
@@ -428,3 +453,12 @@ export function buildSpotifyCard(): SpotifyCardHost {
     },
   };
 }
+
+  return { togglePlay, buildSpotifyPill, buildSpotifyCard };
+}
+
+const spotifyViews = createMusicViews({id: DEFAULT_ID, name: "Spotify", color: DEFAULT_GREEN,
+  store: DefaultSpotify, control: NativeBridge.spotifyControl, open: NativeBridge.spotifyOpen});
+export const togglePlay = spotifyViews.togglePlay;
+export const buildSpotifyPill = spotifyViews.buildSpotifyPill;
+export const buildSpotifyCard = spotifyViews.buildSpotifyCard;

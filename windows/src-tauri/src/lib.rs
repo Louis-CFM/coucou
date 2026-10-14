@@ -3,6 +3,7 @@
 mod agent_hooks;
 mod agents;
 mod chat;
+mod codex_chat;
 mod claude;
 mod codex_plan;
 mod config_file;
@@ -20,6 +21,7 @@ mod net;
 mod openai_compat;
 mod phone_link;
 mod pipe;
+mod panel;
 mod platform;
 #[cfg(target_os = "linux")]
 mod portal;
@@ -30,6 +32,7 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+mod cider;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -124,6 +127,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    cider::sync(&app, &settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -470,6 +474,34 @@ async fn chat_send(
     chat::send(&app, &chat, &settings, query, context).await
 }
 
+#[tauri::command]
+async fn codex_models(shared: State<'_, Shared>) -> Result<Vec<codex_chat::CodexModel>, String> {
+    codex_chat::require_enabled(&shared.settings.lock().unwrap())?;
+    codex_chat::models().await
+}
+
+/// Enable/remove only the bundled chat integration, preserving Codex login and hooks.
+#[tauri::command]
+fn codex_chat_set_enabled(app: AppHandle, shared: State<Shared>, enabled: bool) -> Result<Settings, String> {
+    let updated = {
+        let mut current = shared.settings.lock().unwrap();
+        let mut next = current.clone();
+        next.codex_chat_enabled = enabled;
+        if enabled { next.chat_provider = "codex".into(); }
+        else if next.chat_provider == "codex" { next.chat_provider = chat::ANTHROPIC.into(); }
+        // Report persistence errors before changing the running integration.
+        settings::save(&next).map_err(|e| e.to_string())?;
+        *current = next.clone();
+        next
+    };
+    if !enabled { codex_chat::disconnect(); }
+    let _ = app.emit("settings-changed", &updated);
+    Ok(updated)
+}
+
+#[tauri::command]
+fn chat_cancel() { codex_chat::cancel(); }
+
 /// The models a provider offers, for the picker in the chat view. Only asked
 /// once the user picked that provider, and only with its key or address.
 #[tauri::command]
@@ -493,6 +525,7 @@ fn local_set_key(url: String, key: String) -> Result<(), String> {
 
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
+    codex_chat::cancel();
     chat.reset();
 }
 
@@ -681,6 +714,8 @@ pub fn run() {
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
             boot,
+            panel::publish_panel_state,
+            panel::publish_panel_frame,
             save_settings,
             set_system_languages,
             set_collapsed,
@@ -711,6 +746,9 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            codex_models,
+            codex_chat_set_enabled,
+            chat_cancel,
             local_connect,
             local_set_key,
             chat_reset,
@@ -777,6 +815,10 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            cider::cider_refresh,
+            cider::cider_control,
+            cider::cider_open,
+            cider::cider_installed,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -816,6 +858,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            cider::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

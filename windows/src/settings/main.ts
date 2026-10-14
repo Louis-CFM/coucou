@@ -17,6 +17,7 @@ import {
 } from "../core/pills";
 import { h, clear } from "../views/dom";
 import { agentsSection } from "./agents";
+import { codexChatSection } from "./codex-chat";
 import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
@@ -31,6 +32,7 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
+let codexChatRedraw: (() => void) | null = null;
 
 const root = document.getElementById("settings-root")!;
 
@@ -778,6 +780,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  { id: "integration_music", name: "Cider", color: "#FA2D48", fields: [],
+    hint: N_("Shows music playing in Cider on this computer. No account or API key required.") },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -848,11 +852,11 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
-    if (def.id === "integration_spotify") {
+    if (def.id === "integration_spotify" || def.id === "integration_music") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
       rows.append(hint);
-      void Bridge.spotifyInstalled().then((ok) => {
+      void (def.id === "integration_music" ? Bridge.ciderInstalled() : Bridge.spotifyInstalled()).then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }
@@ -1310,6 +1314,7 @@ async function main() {
     const before = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
+    codexChatRedraw?.();
     for (const redraw of declaredViews) redraw();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
@@ -1360,10 +1365,13 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
+  const codexChat = codexChatSection(() => settings, (next) => { settings = next; });
+  codexChatRedraw = codexChat.sync;
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
     agentsSection(agents),
+    codexChat.el,
     planSection(status),
     apiSection(hasKey),
     chatProvidersSection(chatKeys, keyChanged),

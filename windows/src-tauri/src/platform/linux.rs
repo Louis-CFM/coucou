@@ -509,6 +509,21 @@ fn start_pointer_watch() {
     });
 }
 
+/// GNOME's panel is above XWayland windows, so leave its work area clear.
+pub fn island_top_inset(win: &WebviewWindow, x: i32, y: i32) -> i32 {
+    if LAYER_SURFACE.load(Ordering::Relaxed)
+        || !is_gnome(&std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default()) {
+        return 0;
+    }
+    let Ok(gw) = win.gtk_window() else { return 0 };
+    let display = gw.display();
+    (0..display.n_monitors())
+        .filter_map(|i| display.monitor(i))
+        .find(|m| { let g = m.geometry(); g.x() == x && g.y() == y })
+        .map(|m| (m.workarea().y() - y).max(0) + 10)
+        .unwrap_or(0)
+}
+
 /// Puts the layer surface on the display whose logical origin is (`x`, `y`).
 ///
 /// A layer surface ignores `set_position`: without an explicit output the
