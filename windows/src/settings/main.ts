@@ -229,6 +229,127 @@ function claudeSection(status: HookStatus): HTMLElement {
   return section;
 }
 
+// ── Claude Code in WSL ────────────────────────────────────────────────────────
+
+/**
+ * The same hooks, in a WSL distro's own settings.json (src-tauri/src/wsl.rs).
+ * The words of the change are the Windows ones; only where it goes differs.
+ */
+function wslChange(distro: string, user: string): Change {
+  return {
+    preview: (install) => Bridge.wslHooksPreview(distro, user, install),
+    apply: (install, fingerprint) => Bridge.wslHooksApply(distro, user, install, fingerprint),
+    get installText() { return HOOKS_CHANGE.installText; },
+    get removeText() { return HOOKS_CHANGE.removeText; },
+    get installButton() { return HOOKS_CHANGE.installButton; },
+    get removeButton() { return HOOKS_CHANGE.removeButton; },
+    done: (backup) => backup
+      ? t("Done. Previous settings saved as {backup}. Open a new Claude Code session in WSL to pick the hooks up.", { backup })
+      : t("Done. Open a new Claude Code session in WSL to pick the hooks up."),
+  };
+}
+
+/** The plan usage gauge's status line in a distro; the words are the Windows ones. */
+function wslStatusLineChange(distro: string, user: string): Change {
+  return {
+    preview: (install) => Bridge.wslStatusLinePreview(distro, user, install),
+    apply: (install, fingerprint) => Bridge.wslStatusLineApply(distro, user, install, fingerprint),
+    get installText() { return STATUS_LINE_CHANGE.installText; },
+    get removeText() { return STATUS_LINE_CHANGE.removeText; },
+    get installButton() { return STATUS_LINE_CHANGE.installButton; },
+    get removeButton() { return STATUS_LINE_CHANGE.removeButton; },
+    done: (backup) => STATUS_LINE_CHANGE.done(backup),
+  };
+}
+
+/** One row of the section: a distro's user, or a distro that is not running. */
+function wslSection(hookReady: boolean): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h("section", { style: "display:none" }, h("h2", {}, h("span", { text: t("Claude Code in WSL") })), body);
+
+  const redraw = () => {
+    clear(body);
+    void load();
+  };
+
+  async function load() {
+    const distros = (await Bridge.wslHooksList()) ?? [];
+    // Nobody with WSL, nothing to show.
+    if (distros.length === 0) return;
+    section.style.display = "";
+    clear(body);
+    body.append(h("div", {
+      class: "hint",
+      text: t("Claude Code sessions that run in WSL show up in the island too, and you can approve them there. Coucou adds its hooks to the distro's own ~/.claude/settings.json; they start the Windows relay through WSL."),
+    }));
+    for (const distro of distros) {
+      if (!distro.running) {
+        body.append(h("div", { class: "row" },
+          h("label", { text: distro.name }),
+          h("span", { class: "path", text: t("{distro} is not running — start it to set its hooks up.", { distro: distro.name }) }),
+        ));
+        continue;
+      }
+      for (const user of distro.users) {
+        const name = `${distro.name} · ${user.name}`;
+        // Present but starting a relay that is not this one (Coucou moved or was
+        // reinstalled): they would do nothing, so the dot is not green.
+        const row = h("div", { class: "row" },
+          statusDot(user.installed && !user.stale),
+          h("label", { text: name }),
+          h("span", { class: "path", text: user.settingsPath }),
+        );
+        if (user.stale) {
+          body.append(h("div", {
+            class: "notice warn",
+            text: t("Coucou in {name} starts a relay that is not the current one (it moved or was reinstalled), so it does nothing. Reinstall it.", { name }),
+          }));
+        }
+        const change = wslChange(distro.name, user.name);
+        const install = h("button", {
+          class: "primary",
+          text: user.installed ? t("Reinstall hooks…") : t("Install hooks…"),
+          onclick: () => void reviewChange(body, change, true, redraw, redraw),
+        });
+        if (!hookReady) {
+          install.disabled = true;
+          install.title = t("The relay isn't installed yet.");
+        }
+        const actions = h("div", { class: "row" }, install);
+        if (user.installed) {
+          actions.append(h("button", {
+            class: "danger",
+            text: t("Uninstall hooks…"),
+            onclick: () => void reviewChange(body, change, false, redraw, redraw),
+          }));
+        }
+        // The plan usage gauge: the relay as this user's status line, which keeps
+        // running their own.
+        const lineChange = wslStatusLineChange(distro.name, user.name);
+        const line = h("div", { class: "row" },
+          h("label", { text: t("Plan usage") }),
+          statusDot(user.planInstalled && !user.stale),
+          h("span", { class: "hint", text: user.planInstalled ? t("installed") : t("not installed") }),
+        );
+        const lineButton = h("button", {
+          class: user.planInstalled ? "danger" : "primary",
+          text: user.planInstalled ? t("Uninstall relay…") : t("Install relay…"),
+          onclick: () => void reviewChange(body, lineChange, !user.planInstalled, redraw, redraw),
+        });
+        if (!hookReady && !user.planInstalled) {
+          lineButton.disabled = true;
+          lineButton.title = t("The relay isn't installed yet.");
+        }
+        line.append(lineButton);
+        body.append(row, actions, line);
+      }
+    }
+  }
+
+  void load();
+  return section;
+}
+
 // ── Plan usage section ────────────────────────────────────────────────────────
 
 /**
@@ -776,7 +897,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
+  // Nothing to enter: Spotify is read over D-Bus (Linux) or SMTC (Windows).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
 
@@ -1363,6 +1484,7 @@ async function render() {
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
+    wslSection(status.hookReady),
     agentsSection(agents),
     planSection(status),
     apiSection(hasKey),

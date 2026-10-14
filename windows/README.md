@@ -156,6 +156,58 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+### Claude Code in WSL
+
+A session that runs inside a WSL distro is Linux: it reads the distro's own
+`~/.claude/settings.json` and cannot see the island's named pipe. What it can
+do is start a Windows program, and `coucou-hook.exe` is one, so the hooks of
+such a session run it through WSL. It reads the event on its standard input,
+talks to the island, and prints its answer, so **Allow and Deny clicked in the
+island reach the session in WSL** like any other. A call costs about 60 ms, nearly
+all of it WSL starting a Windows process.
+
+Open **Settings… → Claude Code in WSL**. The section only appears when WSL has
+distros. Each running distro lists the Linux users who have a `~/.claude`, with
+**Install hooks…** and **Uninstall hooks…**, which show the diff and take a
+dated backup exactly as above (the file is reached as
+`\\wsl.localhost\<distro>\home\<user>\.claude\settings.json`). A distro that
+isn't running is listed but left alone: reading its files would start it.
+
+The command written is the relay's path as the distro sees it
+(`/mnt/c/Users/…/coucou-hook.exe`, from the distro's own automount root in
+`/etc/wsl.conf`), guarded so that a session never reports a failing hook:
+`[ -x '<relay>' ] && '<relay>' <Event> || true`. If Windows interop is turned off
+in the distro, the hooks do nothing. Your own hooks stay as they are.
+
+"Open terminal" works for these sessions too, down to the tab (see below).
+
+**Paths.** A session in WSL reports Linux paths (`/home/me/proj`). For a diff's ↗
+and for "Open terminal"'s fallback, Coucou looks the path up in the running
+distros and turns it into its place on the distro's share
+(`\\wsl.localhost\<distro>\home\me\proj`), which is what Explorer and `code`
+understand. With VS Code's **Remote - WSL** extension installed, the file or
+folder opens in a window that runs in the distro (`code --remote wsl+<distro>
+<path>`); without it, VS Code opens the network path. A distro that isn't running
+isn't looked in (it would start), and a path that exists in two running distros
+goes to the first. The path still has to be an existing file or folder, given in
+full.
+
+**Plan usage.** Under each user, **Plan usage → Install relay…** puts the relay in
+as the distro's status line, with the same diff and backup. Claude Code hands the
+status line the session's JSON, so the command reads it once, gives it to the
+relay in the background (`coucou-hook --statusline --no-previous`, which only
+sends the plan limits and never delays the line) and to **your own status line**,
+which is run in the distro as before, so it keeps working. The one you had is
+saved beside `settings.json` (`coucou-statusline-previous.json`) and put back
+when you uninstall.
+
+**Stale hooks.** If Coucou moved or was reinstalled somewhere else, the commands
+written in a distro start a relay that is no longer there and do nothing, without
+an error. Settings checks that the relay in each command is the current one and
+says so (the dot goes red and a note asks to reinstall); the Claude Code pill is
+only "connected" when the hooks in WSL would actually run. A Coucou for Linux
+installed inside the distro is its own install and is never called stale.
+
 ### Plan usage
 
 As on the Mac, the island's header can show your plan limits: a small pill
@@ -402,7 +454,15 @@ own window.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
-  process to the terminal or editor that runs it. A session in a classic
+  process to the terminal or editor that runs it. The relay takes that chain
+  itself, while it is alive, and sends it with the session's first events, so it
+  also works for events that don't wait for an answer, and for sessions in WSL
+  (the chain goes through `wsl.exe` up to the terminal). In **Windows Terminal**
+  a window holds many tabs: when a prompt is submitted, the window in front is
+  the session's terminal, so Coucou remembers its selected tab (through UI
+  Automation) and "Open terminal" brings that window forward with that tab
+  selected, found by its runtime ID or, failing that, by a title that is its
+  alone. Elsewhere, only the window comes forward. A session in a classic
   console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
   as it does when `code` is on your `PATH` and nothing was found. Linux walks
@@ -413,8 +473,19 @@ own window.
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
-  nothing to read it from yet.
+  is left out.
+- Spotify (Settings → Integrations) is read from Windows' media session
+  (SMTC, the card Windows shows for what plays): the track, the cover, play,
+  pause, previous, next, seek, shuffle and repeat, and Mochi dances while it
+  plays. Nothing is polled: one thread waits for Windows' own events while the
+  pill is declared. Both the desktop Spotify and the Microsoft Store one work.
+  SMTC has no volume, so the volume slider is Spotify's own entry in the
+  Windows volume mixer (it moves with the mixer's slider for Spotify); it only
+  exists while Spotify has an audio session, so a volume set before anything
+  has played is applied as soon as it starts. SMTC has no track id either, so an
+  ad is recognised by its title and artist.
+  **Open Spotify** starts it, or brings the running one forward, through the
+  `spotify:` link; without Spotify, **Get Spotify** opens its download page.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
@@ -477,8 +548,7 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop dances only on Linux, to Spotify; on Windows there is
-  no music integration to dance to yet. While he dances he stays awake (the
+- Mochi on the desktop dances to Spotify. While he dances he stays awake (the
   Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
   to the chat. While he
   sleeps, the transparent square around him (120 px) takes the first mouse

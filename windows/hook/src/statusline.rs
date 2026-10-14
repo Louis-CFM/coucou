@@ -1,5 +1,5 @@
-//! `coucou-hook --statusline`: Claude Code's status line command, for the plan
-//! usage pill.
+//! `coucou-hook --statusline [--no-previous]`: Claude Code's status line command,
+//! for the plan usage pill.
 //!
 //! Claude Code hands its status line command the session's JSON on stdin, and
 //! whatever that command prints becomes the status line. Coucou only wants the
@@ -56,7 +56,11 @@ pub fn run() -> ! {
             rx
         });
 
-    if let Some(command) = previous_command() {
+    // `--no-previous`: the status line of a WSL distro runs the user's own command
+    // itself, in the distro (src-tauri/src/wsl.rs). The one saved next to this
+    // program is the Windows one, and its Git Bash is not that distro's shell.
+    let own = (!std::env::args().any(|a| a == "--no-previous")).then(previous_command).flatten();
+    if let Some(command) = own {
         if let Some(out) = run_previous(&command, &raw, PREVIOUS_BUDGET) {
             let mut stdout = std::io::stdout();
             let _ = stdout.write_all(&out);
