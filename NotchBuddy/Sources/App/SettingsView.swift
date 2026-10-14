@@ -88,6 +88,7 @@ struct SettingsView: View {
     // Multi-provider chat keys
     @State private var googleKey: String   = KeychainStore.shared.get("google-api-key") ?? ""
     @State private var openAIKey: String   = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var opencodeGoKey: String = KeychainStore.shared.get("opencode-go-api-key") ?? ""
     @State private var deepseekKey: String = KeychainStore.shared.get("deepseek-api-key") ?? ""
     @State private var qwenKey: String     = KeychainStore.shared.get("qwen-api-key") ?? ""
     @State private var moonshotKey: String = KeychainStore.shared.get("moonshot-api-key") ?? ""
@@ -1075,6 +1076,26 @@ struct SettingsView: View {
                     statusMessage = String(localized: "status.openai-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: ChatProvider.opencodeGo.accentHex)).frame(width: 8, height: 8)
+                    Text(verbatim: ChatProvider.opencodeGo.displayName).font(.system(size: 12, weight: .semibold))
+                }
+                SecureField(String(localized: "OpenCode Go API key"), text: $opencodeGoKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("opencode-go-api-key", value: opencodeGoKey)
+                    state.fetchedProviderModels[.opencodeGo] = nil
+                    state.providerModelFetchError[.opencodeGo] = nil
+                    statusMessage = String(localized: "✓ OpenCode Go key saved.")
+                }
+                .buttonStyle(.borderedProminent)
+                Text(String(localized: "Text-only chat: no web search or attachments. Models on the Responses API (grok-, gpt-, muse-) are not supported yet."))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Divider()
 
@@ -2163,8 +2184,7 @@ struct SettingsView: View {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL
                     if url.isEmpty { return String(localized: "Not connected") }
                 } else {
-                    let keyId = def.id == "ai_anthropic" ? "anthropic-api-key"
-                               : def.id == "ai_google"    ? "google-api-key" : "openai-api-key"
+                    let keyId = ChatProvider(pillID: def.id)?.keychainKey ?? "openai-api-key"
                     if KeychainStore.shared.get(keyId) == nil { return String(localized: "Key not configured") }
                 }
             }

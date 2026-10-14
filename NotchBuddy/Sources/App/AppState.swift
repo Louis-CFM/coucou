@@ -136,6 +136,9 @@ final class AppState: ObservableObject {
     @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
         didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
     }
+    @Published var opencodeGoChatModel: String = ChatProvider.opencodeGo.defaultModel {
+        didSet { UserDefaults.standard.set(opencodeGoChatModel, forKey: "opencodeGoModel") }
+    }
     @Published var deepseekChatModel: String = ChatProvider.deepseek.defaultModel {
         didSet { UserDefaults.standard.set(deepseekChatModel, forKey: "deepseekChatModel") }
     }
@@ -214,6 +217,7 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .opencodeGo: models = await ClaudeService.fetchOpenCodeGoModels(apiKey: apiKey)
             case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
             case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
             case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
@@ -236,6 +240,11 @@ final class AppState: ObservableObject {
                 case .openai:
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
+                    }
+                case .opencodeGo:
+                    if !models.contains(where: { $0.id == opencodeGoChatModel }) {
+                        opencodeGoChatModel = models.first(where: { $0.id == ChatProvider.opencodeGo.defaultModel })?.id
+                            ?? models.first!.id
                     }
                 case .deepseek:
                     if !models.contains(where: { $0.id == deepseekChatModel }) {
@@ -263,6 +272,7 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .opencodeGo: return opencodeGoChatModel
         case .deepseek:  return deepseekChatModel
         case .qwen:      return qwenChatModel
         case .moonshot:  return moonshotChatModel
@@ -531,6 +541,8 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "opencodeGoModel"),
+           !v.trimmingCharacters(in: .whitespaces).isEmpty { opencodeGoChatModel = v }
         if let v = ud.string(forKey: "deepseekChatModel"), !v.isEmpty { deepseekChatModel = v }
         if let v = ud.string(forKey: "qwenChatModel"),     !v.isEmpty { qwenChatModel     = v }
         if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }

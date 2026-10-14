@@ -64,6 +64,7 @@ final class KeychainStore: @unchecked Sendable {
         "anthropic-api-key",
         "google-api-key",
         "openai-api-key",
+        "opencode-go-api-key",
         "deepseek-api-key",
         "qwen-api-key",
         "moonshot-api-key",
@@ -185,6 +186,15 @@ final class ClaudeService {
             .map { (id: $0.id, label: $0.id) }
     }
 
+    /// Chat models from the OpenCode Go catalog (Responses-API models hidden: no transport yet).
+    static func fetchOpenCodeGoModels(apiKey: String) async -> [(id: String, label: String)] {
+        var req = URLRequest(url: OpenCodeGo.modelsURL, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
+        return OpenCodeGo.chatModels(from: data)
+    }
+
     /// Fetches models from any OpenAI-compatible `/v1/models` endpoint.
     static func fetchOpenAICompatibleModels(baseURL: String, apiKey: String) async -> [(id: String, label: String)] {
         guard let url = URL(string: "\(baseURL)/models") else { return [] }
@@ -213,23 +223,32 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        openCodeGoSessionID = UUID().uuidString
     }
+
+    // OpenCode Go requires a stable per-conversation session ID; rotated on reset.
+    private var openCodeGoSessionID = UUID().uuidString
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
-    private let systemPrompt = ClaudeService.makeSystemPrompt()
+    private let systemPrompt = ClaudeService.makeSystemPrompt(webSearch: true)
+    /// OpenCode Go has no web search tool, so its prompt must not promise it.
+    private let noWebSystemPrompt = ClaudeService.makeSystemPrompt(webSearch: false)
 
     /// Greets the user by their macOS first name when there is one worth using, and stays
     /// neutral otherwise — same wording as the Windows build.
-    private nonisolated static func makeSystemPrompt() -> String {
+    private nonisolated static func makeSystemPrompt(webSearch: Bool) -> String {
         let opening = if let firstName = resolveUserFirstName() {
             "You are Mochi, \(firstName)'s personal AI assistant embedded in the notch of their Mac."
         } else {
             "You are Mochi, a personal AI assistant embedded in the notch of the user's Mac."
         }
+        let abilities = webSearch
+            ? "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
+            : "Help with coding, research, recommendations, tasks and questions. You cannot browse the web."
         return """
         \(opening) \
-        You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
+        \(abilities) \
         Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
         Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small.
         """
@@ -246,6 +265,10 @@ final class ClaudeService {
             state.stateOverride = .thinking
             await DemoEngine.shared.streamChatResponse(for: query)
             state.stateOverride = nil
+            return
+        }
+        if state.chatProvider == .opencodeGo {
+            await chatOpenCodeGo(query: query, context: context, state: state)
             return
         }
         guard state.chatProvider == .anthropic else {
@@ -313,7 +336,7 @@ final class ClaudeService {
             case .deepseek:  baseURL = "https://api.deepseek.com/v1"
             case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
             case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
-            case .anthropic, .ollama, .lmstudio: baseURL = ""
+            case .anthropic, .ollama, .lmstudio, .opencodeGo: baseURL = ""
             }
         }
 
@@ -478,6 +501,80 @@ final class ClaudeService {
                 conversationMessages.removeLast()
                 await showError(error.localizedDescription, state: state)
             }
+        }
+    }
+
+    // MARK: - OpenCode Go chat (text only, no tools)
+
+    func chatOpenCodeGo(query: String, context: PromptContext?, state: AppState) async {
+        guard let key = KeychainStore.shared.get(OpenCodeGo.apiKeyKey), !key.isEmpty else {
+            await showError("OpenCode Go API key missing. Configure it in Settings.", state: state)
+            return
+        }
+        let model = state.activeChatModel
+        let endpoint = OpenCodeGo.endpoint(forModel: model)
+        guard endpoint != .responses else {
+            await showError("This model uses the Responses API, not supported yet. Pick another model.", state: state)
+            return
+        }
+
+        // Same first-turn context as Anthropic; attachments are rejected below, never dropped.
+        var userContent: [[String: Any]] = []
+        if conversationMessages.isEmpty, let context = context {
+            switch context {
+            case .window(let app, let title, let url):
+                var text = "Context — App: \(app), Window: \(title)"
+                if let url = url { text += ", URL: \(url)" }
+                userContent.append(["type": "text", "text": text])
+            case .file(let name, let fileURL):
+                if let fileURL = fileURL, let block = readFileAsBlock(url: fileURL) {
+                    userContent.append(block)
+                }
+                userContent.append(["type": "text", "text": "File: \(name)"])
+            }
+        }
+        userContent.append(["type": "text", "text": query])
+
+        let turn: [String: Any] = ["role": "user", "content": userContent]
+        guard let messages = OpenCodeGo.textOnlyMessages(conversationMessages + [turn]) else {
+            await showError("OpenCode Go chat supports text only. Remove the image or PDF, or switch provider.",
+                            state: state)
+            return
+        }
+        conversationMessages.append(turn)
+
+        let body = OpenCodeGo.body(endpoint: endpoint, model: model, system: noWebSystemPrompt,
+                                   messages: messages, maxTokens: 4096)
+        var req = URLRequest(url: OpenCodeGo.url(for: endpoint), timeoutInterval: 45)
+        req.httpMethod = "POST"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+        for (field, value) in OpenCodeGo.headers(endpoint: endpoint, key: key,
+                                                 sessionID: openCodeGoSessionID, appVersion: version) {
+            req.setValue(value, forHTTPHeaderField: field)
+        }
+
+        do {
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                let msg = OpenCodeGo.errorMessage(from: data)
+                    ?? String(data: data, encoding: .utf8).flatMap { $0.isEmpty ? nil : $0 }
+                    ?? "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)"
+                throw NSError(domain: "OpenCodeGo", code: 0, userInfo: [NSLocalizedDescriptionKey: msg])
+            }
+            guard let text = OpenCodeGo.responseText(from: data, endpoint: endpoint), !text.isEmpty else {
+                throw NSError(domain: "OpenCodeGo", code: 0,
+                              userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])
+            }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            conversationMessages.append(["role": "assistant", "content": trimmed])
+            state.chatHistory.append(ChatMessage(role: .assistant, content: trimmed))
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            conversationMessages.removeLast()
+            await showError(error.localizedDescription, state: state)
         }
     }
 
