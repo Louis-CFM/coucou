@@ -114,6 +114,8 @@ export interface Settings {
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
   model: string;
+  /** An Anthropic-compatible gateway for the chat; empty means Anthropic's own API. */
+  anthropicBaseUrl: string;
   /** Show the Claude plan pill (5 h and weekly limits) in the island's header. */
   showPlanInNotch: boolean;
   /** Coucou's status line relay is installed in Claude Code's settings. */
@@ -178,6 +180,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
+  anthropicBaseUrl: "",
   showPlanInNotch: false,
   planRelayInstalled: false,
   showCodexPlanInNotch: false,

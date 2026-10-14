@@ -3899,6 +3899,39 @@
    "pt-BR": "Este código também inclui a chave de acesso e a chave de ponta a ponta do relay {host}. «Parear de novo» cria uma chave e uma sala novas.",
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru."
+  },
+  "Base URL": {
+   "zh-Hans": "Base URL",
+   "hi": "Base URL",
+   "es": "URL base",
+   "ar": "عنوان URL الأساسي",
+   "fr": "URL de base",
+   "bn": "Base URL",
+   "pt-BR": "URL base",
+   "ru": "Base URL",
+   "id": "URL dasar"
+  },
+  "Base URL saved: {url}": {
+   "zh-Hans": "Base URL 已保存：{url}",
+   "hi": "Base URL सहेजा गया: {url}",
+   "es": "URL base guardada: {url}",
+   "ar": "تم حفظ عنوان URL الأساسي: {url}",
+   "fr": "URL de base enregistrée : {url}",
+   "bn": "Base URL সংরক্ষিত: {url}",
+   "pt-BR": "URL base salva: {url}",
+   "ru": "Base URL сохранён: {url}",
+   "id": "URL dasar disimpan: {url}"
+  },
+  "Base URL cleared — using the official Anthropic API.": {
+   "zh-Hans": "Base URL 已清除——使用 Anthropic 官方 API。",
+   "hi": "Base URL हटाया गया — आधिकारिक Anthropic API का उपयोग हो रहा है।",
+   "es": "URL base borrada: se usa la API oficial de Anthropic.",
+   "ar": "تم مسح عنوان URL الأساسي — يُستخدم واجهة Anthropic الرسمية.",
+   "fr": "URL de base effacée — l'API officielle d'Anthropic est utilisée.",
+   "bn": "Base URL মুছে ফেলা হয়েছে — অফিসিয়াল Anthropic API ব্যবহার হচ্ছে।",
+   "pt-BR": "URL base apagada — usando a API oficial da Anthropic.",
+   "ru": "Base URL очищен — используется официальный API Anthropic.",
+   "id": "URL dasar dihapus — memakai API resmi Anthropic."
   }
  }
 }

@@ -85,16 +85,21 @@ pub fn join(base: &Url, tail: &str) -> String {
 /// `…/v1`) gets `/v1/messages` added; a full endpoint is kept. The key goes
 /// wherever this points, so it must be https — plain http only to this machine.
 pub fn anthropic_endpoint(raw: &str) -> Result<Url, String> {
-    const VAR: &str = "COUCOU_ANTHROPIC_BASE_URL";
-    let mut url = Url::parse(raw.trim()).map_err(|_| format!("{VAR} is not a valid URL."))?;
+    anthropic_endpoint_from(raw, "COUCOU_ANTHROPIC_BASE_URL")
+}
+
+/// [`anthropic_endpoint`] for an address from `source`, which errors name
+/// (the variable, or "The base URL" typed in Settings → Claude).
+pub fn anthropic_endpoint_from(raw: &str, source: &str) -> Result<Url, String> {
+    let mut url = Url::parse(raw.trim()).map_err(|_| format!("{source} is not a valid URL."))?;
     match url.scheme() {
         "https" => {}
         "http" if is_loopback_url(&url) => {}
-        "http" => return Err(format!("{VAR} must use https:// (plain http only to this computer).")),
-        _ => return Err(format!("{VAR} must start with https://.")),
+        "http" => return Err(format!("{source} must use https:// (plain http only to this computer).")),
+        _ => return Err(format!("{source} must start with https://.")),
     }
     if !url.username().is_empty() || url.password().is_some() || url.host_str().is_none() {
-        return Err(format!("{VAR} must not carry a user name or password."));
+        return Err(format!("{source} must not carry a user name or password."));
     }
     let path = url.path().trim_end_matches('/').to_string();
     let path = if path.ends_with("/v1/messages") {
@@ -226,6 +231,8 @@ pub(crate) mod tests {
         assert!(e("ftp://gw.example.com").is_err());
         assert!(e("https://me:secret@gw.example.com").is_err());
         assert!(e("not a url").is_err());
+        let from_settings = anthropic_endpoint_from("http://gw.example.com", "The base URL").unwrap_err();
+        assert!(from_settings.starts_with("The base URL must use https://"));
     }
 
     #[test]
