@@ -8,11 +8,11 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { Bridge } from "../core/bridge";
+import { Bridge, type SpotifyAction } from "../core/bridge";
 import { State, type AgentTask } from "../core/state";
 import {
-  SPOTIFY_GREEN, SPOTIFY_ID, Spotify, currentArtwork, formatTime, isAd, spotifyPosition, volumeLevel, withPlaying,
-  type SpotifyTrack,
+  SPOTIFY_GREEN, Spotify, YouTubeMusic, currentArtwork, formatTime, isAd, spotifyPosition, volumeLevel, withPlaying,
+  type MusicPlayer, type SpotifyTrack,
 } from "../core/spotify";
 import { createMiniBot } from "../mochi/minibots";
 import { pillDefinition } from "../core/pills";
@@ -27,23 +27,35 @@ function lighter(hex: string, amount: number): string {
 
 // ── Controls (shared by the pill and the card) ───────────────────────────────
 
-/** Play/pause, at once on the page, then in Spotify (SpotifyController.playPause). */
-export function togglePlay() {
-  const s = Spotify.state;
-  if (!s.running) return;
-  Spotify.state = withPlaying(s, !s.playing, Date.now());
-  State.notify();
-  void Bridge.spotifyControl("playPause");
+function control(player: MusicPlayer, action: SpotifyAction, value?: number) {
+  return player === YouTubeMusic ? Bridge.youtubeMusicControl(action, value) : Bridge.spotifyControl(action, value);
 }
 
-function seek(seconds: number) {
-  const s = Spotify.state;
+function open(player: MusicPlayer) {
+  return player === YouTubeMusic ? Bridge.youtubeMusicOpen() : Bridge.spotifyOpen();
+}
+
+function playingNow(player: MusicPlayer): boolean {
+  return player === YouTubeMusic ? State.youtubeMusicPlaying : State.spotifyPlaying;
+}
+
+/** Play/pause, at once on the page, then in Spotify (SpotifyController.playPause). */
+export function togglePlay(player: MusicPlayer = Spotify) {
+  const s = player.state;
+  if (!s.running) return;
+  player.state = withPlaying(s, !s.playing, Date.now());
+  State.notify();
+  void control(player, "playPause");
+}
+
+function seek(player: MusicPlayer, seconds: number) {
+  const s = player.state;
   const track = s.track;
   if (!s.running || !track || isAd(track)) return;
   const target = Math.min(Math.max(0, seconds), Math.max(0, track.duration - 1));
-  Spotify.state = { ...s, position: target, positionAt: Date.now() };
+  player.state = { ...s, position: target, positionAt: Date.now() };
   State.notify();
-  void Bridge.spotifyControl("seek", target);
+  void control(player, "seek", target);
 }
 
 function setFlag(which: "shuffle" | "repeat", on: boolean) {
@@ -57,12 +69,17 @@ function setFlag(which: "shuffle" | "repeat", on: boolean) {
 let pendingVolume: number | null = null;
 let volumeTimer: number | null = null;
 
-function setVolume(value: number) {
-  if (!Spotify.state.running) return;
+let volumePlayer: MusicPlayer = Spotify;
+
+function setVolume(player: MusicPlayer, value: number) {
+  if (!player.state.running) return;
   const v = Math.min(100, Math.max(0, Math.round(value)));
-  Spotify.state = { ...Spotify.state, volume: v };
+  player.state = { ...player.state, volume: v };
   State.notify();
+  // Another player's value still waiting goes to that player first.
+  if (player !== volumePlayer && pendingVolume != null) void control(volumePlayer, "volume", pendingVolume);
   pendingVolume = v;
+  volumePlayer = player;
   if (volumeTimer != null) return;
   const send = () => {
     const next = pendingVolume;
@@ -71,7 +88,7 @@ function setVolume(value: number) {
       volumeTimer = null;
       return;
     }
-    void Bridge.spotifyControl("volume", next);
+    void control(volumePlayer, "volume", next);
     volumeTimer = window.setTimeout(send, 120);
   };
   send();
@@ -111,12 +128,12 @@ function pillButton(color: string, icon: string, onClick: () => void): HTMLEleme
  * SpotifyPill: the agent pill's look, with a mini Mochi that dances while
  * Spotify plays, and play/pause + next on hover when a track is loaded.
  */
-export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPillHost {
+export function buildSpotifyPill(task: AgentTask, onTap: () => void, player: MusicPlayer = Spotify): SpotifyPillHost {
   const color = task.color;
-  const mini = createMiniBot(task, 24, () => State.spotifyPlaying);
+  const mini = createMiniBot(task, 24, () => playingNow(player), () => player.state.video === true);
   const label = h("span", { class: "lbl", text: task.name });
-  const playBtn = pillButton(color, ICONS.play, togglePlay);
-  const nextBtn = pillButton(color, ICONS.forward, () => void Bridge.spotifyControl("next"));
+  const playBtn = pillButton(color, ICONS.play, () => togglePlay(player));
+  const nextBtn = pillButton(color, ICONS.forward, () => void control(player, "next"));
   const controls = h("div", { class: "np-pill-controls" }, playBtn, nextBtn);
   const pill = h("div", { class: "pill np-pill", onclick: onTap }, mini, label, controls);
   pill.style.borderColor = `${color}24`;
@@ -124,7 +141,7 @@ export function buildSpotifyPill(task: AgentTask, onTap: () => void): SpotifyPil
   let playing: boolean | null = null;
 
   const sync = () => {
-    const s = Spotify.state;
+    const s = player.state;
     const current = State.tasks.find((x) => x.id === task.id);
     const name = current?.name ?? task.name;
     if (label.textContent !== name) label.textContent = name;
@@ -175,8 +192,10 @@ class NowPlayingBar {
   enabled = true;
   private onChange: (f: number) => void;
   private onCommit: (f: number) => void;
+  private color: string;
 
-  constructor(onChange: (f: number) => void, onCommit: (f: number) => void) {
+  constructor(onChange: (f: number) => void, onCommit: (f: number) => void, color = SPOTIFY_GREEN) {
+    this.color = color;
     this.onChange = onChange;
     this.onCommit = onCommit;
     this.fill = h("i", { class: "np-fill" });
@@ -235,7 +254,7 @@ class NowPlayingBar {
     this.el.classList.toggle("active", active);
     const pct = `${this.fraction * 100}%`;
     this.fill.style.width = pct;
-    this.fill.style.background = active ? SPOTIFY_GREEN : "#C5C8CD";
+    this.fill.style.background = active ? this.color : "#C5C8CD";
     this.knob.style.left = `clamp(0px, calc(${pct} - 4.5px), calc(100% - 9px))`;
   }
 }
@@ -253,8 +272,8 @@ export interface SpotifyCardHost {
 }
 
 /** SpotifyCardView: now playing, or the idle card (not playing / not installed). */
-export function buildSpotifyCard(): SpotifyCardHost {
-  const green = SPOTIFY_GREEN;
+export function buildSpotifyCard(player: MusicPlayer = Spotify): SpotifyCardHost {
+  const green = player.color;
 
   // Now playing: artwork row, progress row, controls row.
   const art = h("div", { class: "np-art" });
@@ -262,7 +281,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
   const artNote = svg(ICONS.musicNote, 16);
   artNote.style.color = `${green}b3`;
   art.append(artNote, artImg);
-  art.addEventListener("click", () => void Bridge.spotifyOpen());
+  art.addEventListener("click", () => void open(player));
   const title = h("span", { class: "np-title" });
   const subtitle = h("div", { class: "np-sub" });
   const head = h("div", { class: "np-head" },
@@ -279,26 +298,30 @@ export function buildSpotifyCard(): SpotifyCardHost {
       paintProgress();
     },
     (f) => {
-      const d = Spotify.state.track?.duration ?? 0;
+      const d = player.state.track?.duration ?? 0;
       dragFraction = null;
-      seek(f * d);
+      seek(player, f * d);
     },
+    green,
   );
   const progressRow = h("div", { class: "np-progress" }, elapsed, progress.el, remaining);
 
   const shuffle = iconButton(ICONS.shuffle, 10, 2.2, () => setFlag("shuffle", !Spotify.state.shuffle));
-  const prev = iconButton(ICONS.backward, 11, 0, () => void Bridge.spotifyControl("previous"));
-  const next = iconButton(ICONS.forward, 11, 0, () => void Bridge.spotifyControl("next"));
+  const prev = iconButton(ICONS.backward, 11, 0, () => void control(player, "previous"));
+  const next = iconButton(ICONS.forward, 11, 0, () => void control(player, "next"));
   const repeat = iconButton(ICONS.repeat, 10, 2.2, () => setFlag("repeat", !Spotify.state.repeat));
   prev.style.color = "#C5C8CD";
   next.style.color = "#C5C8CD";
-  const play = h("button", { class: "np-play", onclick: togglePlay });
+  const play = h("button", { class: "np-play", onclick: () => togglePlay(player) });
   const volIcon = h("span", { class: "np-vol-icon" });
   const volume = new NowPlayingBar(
-    (f) => setVolume(f * 100),
-    (f) => setVolume(f * 100),
+    (f) => setVolume(player, f * 100),
+    (f) => setVolume(player, f * 100),
+    green,
   );
   const volumeBox = h("div", { class: "np-volume" }, volIcon, volume.el);
+  // A browser's tab takes no shuffle or repeat over MPRIS.
+  if (!player.extras) for (const x of [shuffle, repeat]) x.style.display = "none";
   const controls = h("div", { class: "np-controls" },
     h("div", { class: "np-buttons" }, shuffle, prev, play, next, repeat),
     h("div", { class: "grow" }),
@@ -310,10 +333,10 @@ export function buildSpotifyCard(): SpotifyCardHost {
   const idleDot = dot("#22C55E", 5);
   const idleText = h("span");
   const idleAction = h("button", { class: "link-btn", style: `color:${green}d9` });
-  idleAction.addEventListener("click", () => void Bridge.spotifyOpen());
+  idleAction.addEventListener("click", () => void open(player));
   const idleSub = h("span");
   const idleEl = h("div", { class: "int-card" },
-    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: "Spotify" }), idleSub),
+    h("div", { class: "int-head" }, dot(green, 7), h("b", { text: player.name }), idleSub),
     h("div", { class: "int-status" }, idleDot, idleText),
     h("div", { class: "int-actions" }, idleAction),
   );
@@ -326,7 +349,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
   let timer: number | null = null;
 
   function paintProgress() {
-    const s = Spotify.state;
+    const s = player.state;
     const d = s.track?.duration ?? 0;
     const pos = dragFraction != null ? dragFraction * d : spotifyPosition(s, Date.now());
     const f = dragFraction ?? (d > 0 ? Math.min(1, Math.max(0, pos / d)) : 0);
@@ -337,11 +360,11 @@ export function buildSpotifyCard(): SpotifyCardHost {
 
   /** The position runs on its own clock, twice a second, only while it plays on screen. */
   function syncTimer() {
-    const run = Spotify.state.playing && showing === "playing" && el.isConnected &&
+    const run = player.state.playing && showing === "playing" && el.isConnected &&
       State.mode === "expanded" && State.view === "overview";
     if (run && timer == null) {
       timer = window.setInterval(() => {
-        if (!(Spotify.state.playing && el.isConnected && State.mode === "expanded" && State.view === "overview")) {
+        if (!(player.state.playing && el.isConnected && State.mode === "expanded" && State.view === "overview")) {
           if (timer != null) window.clearInterval(timer);
           timer = null;
           return;
@@ -355,7 +378,7 @@ export function buildSpotifyCard(): SpotifyCardHost {
   }
 
   function syncPlaying(track: SpotifyTrack) {
-    const s = Spotify.state;
+    const s = player.state;
     if (shownTrack !== track) {
       shownTrack = track;
       title.textContent = isAd(track) ? t("Advertisement") : track.title;
@@ -365,8 +388,11 @@ export function buildSpotifyCard(): SpotifyCardHost {
     } else if (isAd(track)) {
       title.textContent = t("Advertisement");
     }
-    art.title = track.album ? t("{0} — open Spotify", { 0: track.album }) : t("Open Spotify");
-    const cover = currentArtwork(s);
+    art.title = player === YouTubeMusic
+      ? (s.video ? t("Open YouTube")
+        : track.album ? t("{0} — open YouTube Music", { 0: track.album }) : t("Open YouTube Music"))
+      : (track.album ? t("{0} — open Spotify", { 0: track.album }) : t("Open Spotify"));
+    const cover = currentArtwork(s, player);
     if (cover) {
       if (artImg.getAttribute("src") !== cover) artImg.setAttribute("src", cover);
       art.classList.add("has-art");
@@ -404,17 +430,18 @@ export function buildSpotifyCard(): SpotifyCardHost {
   }
 
   function syncIdle() {
-    const installed = Spotify.state.installed || Spotify.state.running;
+    const installed = player.state.installed || player.state.running;
     idleDot.style.background = installed ? "#22C55E" : "#F4505E";
     idleText.textContent = installed ? t("Not playing") : t("Spotify not installed");
-    idleAction.textContent = installed ? t("Open Spotify") : t("Get Spotify");
-    idleSub.textContent = t(pillDefinition(SPOTIFY_ID)?.subtitle ?? N_("Integration"));
+    idleAction.textContent = player === YouTubeMusic ? t("Open YouTube Music")
+      : installed ? t("Open Spotify") : t("Get Spotify");
+    idleSub.textContent = t(pillDefinition(player.id)?.subtitle ?? N_("Integration"));
   }
 
   return {
     el,
     sync() {
-      const track = Spotify.state.track;
+      const track = player.state.track;
       const want = track ? "playing" : "idle";
       if (want !== showing) {
         showing = want;

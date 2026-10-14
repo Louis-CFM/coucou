@@ -30,6 +30,7 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+mod youtube_music;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -124,6 +125,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    youtube_music::sync(&app, &settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -777,6 +779,9 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            youtube_music::youtube_music_refresh,
+            youtube_music::youtube_music_control,
+            youtube_music::youtube_music_open,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -816,6 +821,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            youtube_music::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })

@@ -11,6 +11,7 @@ interface MiniBot {
   taskId: string;
   /** Asked every frame: whether this one dances (the music pill's, MiniBotCanvasView). */
   dancing?: () => boolean;
+  watching?: () => boolean;
 }
 
 const live = new Map<HTMLCanvasElement, MiniBot>();
@@ -24,7 +25,9 @@ const live = new Map<HTMLCanvasElement, MiniBot>();
  * `.frame(width: 22)`. Sizing the canvas itself to `bodySize` would shrink the
  * whole drawing to 60 %, which is what used to happen.
  */
-export function createMiniBot(task: AgentTask, bodySize: number, dancing?: () => boolean): HTMLElement {
+export function createMiniBot(
+  task: AgentTask, bodySize: number, dancing?: () => boolean, watching?: () => boolean,
+): HTMLElement {
   const slot = document.createElement("span");
   slot.className = "mini";
   slot.style.width = `${bodySize}px`;
@@ -50,7 +53,7 @@ export function createMiniBot(task: AgentTask, bodySize: number, dancing?: () =>
     engine.eyeOverrideUntil = Number.POSITIVE_INFINITY;
   }
 
-  live.set(canvas, { canvas, engine, cssSize: engineSize, taskId: task.id, dancing });
+  live.set(canvas, { canvas, engine, cssSize: engineSize, taskId: task.id, dancing, watching });
   return slot;
 }
 
@@ -79,7 +82,7 @@ export function tickMiniBots(dt: number) {
   for (const mb of live.values()) {
     const ctx = mb.canvas.getContext("2d");
     if (!ctx) continue;
-    mb.engine.setDancing(mb.dancing?.() ?? false);
+    mb.engine.setDancing(mb.dancing?.() ?? false, mb.watching?.() ?? false);
     mb.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, mb.cssSize, mb.cssSize);

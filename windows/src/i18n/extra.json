@@ -3899,6 +3899,39 @@
    "pt-BR": "Este código também inclui a chave de acesso e a chave de ponta a ponta do relay {host}. «Parear de novo» cria uma chave e uma sala novas.",
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru."
+  },
+  "Open YouTube": {
+   "zh-Hans": "打开 YouTube",
+   "hi": "YouTube खोलें",
+   "es": "Abrir YouTube",
+   "ar": "فتح YouTube",
+   "fr": "Ouvrir YouTube",
+   "bn": "YouTube খুলুন",
+   "pt-BR": "Abrir o YouTube",
+   "ru": "Открыть YouTube",
+   "id": "Buka YouTube"
+  },
+  "Open YouTube Music": {
+   "zh-Hans": "打开 YouTube Music",
+   "hi": "YouTube Music खोलें",
+   "es": "Abrir YouTube Music",
+   "ar": "فتح YouTube Music",
+   "fr": "Ouvrir YouTube Music",
+   "bn": "YouTube Music খুলুন",
+   "pt-BR": "Abrir o YouTube Music",
+   "ru": "Открыть YouTube Music",
+   "id": "Buka YouTube Music"
+  },
+  "{0} — open YouTube Music": {
+   "zh-Hans": "{0} — 打开 YouTube Music",
+   "hi": "{0} — YouTube Music खोलें",
+   "es": "{0} — abrir YouTube Music",
+   "ar": "{0} — فتح YouTube Music",
+   "fr": "{0} — ouvrir YouTube Music",
+   "bn": "{0} — YouTube Music খুলুন",
+   "pt-BR": "{0} — abrir o YouTube Music",
+   "ru": "{0} — открыть YouTube Music",
+   "id": "{0} — buka YouTube Music"
   }
  }
 }

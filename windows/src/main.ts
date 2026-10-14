@@ -9,8 +9,8 @@ import { registerHookHandlers } from "./island/hooks";
 import { registerPhoneLink } from "./island/phone-link";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
-import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
-import { SPOTIFY_ID } from "./core/spotify";
+import { applySpotify, applyYouTubeMusic, registerSpotifyHandlers } from "./island/spotify";
+import { SPOTIFY_ID, YOUTUBE_MUSIC_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
@@ -106,6 +106,9 @@ async function main() {
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
+  }
+  if (State.settings.activeIntegrations.includes(YOUTUBE_MUSIC_ID)) {
+    void Bridge.youtubeMusicRefresh().then((s) => s && applyYouTubeMusic(island, s));
   }
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.

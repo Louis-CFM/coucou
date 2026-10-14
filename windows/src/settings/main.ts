@@ -778,6 +778,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter: YouTube Music's browser tab is read over D-Bus (Linux only).
+  { id: "integration_youtube_music", name: "YouTube Music", color: "#FF0000", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;

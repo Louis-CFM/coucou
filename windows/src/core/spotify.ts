@@ -37,6 +37,8 @@ export interface SpotifyState {
   repeat: boolean;
   /** 0…100. */
   volume: number;
+  /** YouTube Music's pill only: the tab plays a video, not a song. */
+  video?: boolean;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
@@ -44,15 +46,34 @@ export const IDLE_SPOTIFY: SpotifyState = {
   position: 0, positionAt: 0, shuffle: false, repeat: false, volume: 50,
 };
 
-/** The page's copy of the player, and the cover of the track that has one. */
-export const Spotify = {
-  state: { ...IDLE_SPOTIFY } as SpotifyState,
-  artwork: null as { artUrl: string; dataUrl: string } | null,
+/** A music pill's copy of its player, and the cover of the track that has one. */
+export interface MusicPlayer {
+  id: string;
+  name: string;
+  color: string;
+  /** Shuffle and repeat reach the player (a browser's tab takes neither). */
+  extras: boolean;
+  state: SpotifyState;
+  artwork: { artUrl: string; dataUrl: string } | null;
+}
+
+export const Spotify: MusicPlayer = {
+  id: SPOTIFY_ID, name: "Spotify", color: SPOTIFY_GREEN, extras: true,
+  state: { ...IDLE_SPOTIFY },
+  artwork: null,
+};
+
+/** YouTube Music in a browser (src-tauri/src/youtube_music.rs, Linux), on its own pill. */
+export const YOUTUBE_MUSIC_ID = "integration_youtube_music";
+export const YouTubeMusic: MusicPlayer = {
+  id: YOUTUBE_MUSIC_ID, name: "YouTube Music", color: "#FF0000", extras: false,
+  state: { ...IDLE_SPOTIFY, installed: true },
+  artwork: null,
 };
 
 /** The cover to show for the current track, if it has arrived. */
-export function currentArtwork(s: SpotifyState = Spotify.state): string | null {
-  const art = Spotify.artwork;
+export function currentArtwork(s: SpotifyState = Spotify.state, player: MusicPlayer = Spotify): string | null {
+  const art = player.artwork;
   return art && s.track?.artUrl && art.artUrl === s.track.artUrl ? art.dataUrl : null;
 }
 
@@ -94,9 +115,9 @@ export function volumeLevel(volume: number): 0 | 1 | 2 | 3 {
   return 3;
 }
 
-/** Music is playing on a declared Spotify pill. */
-export function musicPlaying(s: SpotifyState, activeIntegrations: readonly string[]): boolean {
-  return s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
+/** Music is playing on a declared Spotify pill (or the given one). */
+export function musicPlaying(s: SpotifyState, activeIntegrations: readonly string[], id = SPOTIFY_ID): boolean {
+  return s.playing && s.track != null && activeIntegrations.includes(id);
 }
 
 /** The states Mochi dances in; the rest (an alert, an error, sleep) win. */
@@ -115,7 +136,7 @@ export function islandDances(o: {
 }): boolean {
   if (!o.music || !DANCE_STATES.has(o.state)) return false;
   if (o.mode === "compact") return true;
-  return o.mode === "expanded" && o.view === "overview" && o.focusId === SPOTIFY_ID;
+  return o.mode === "expanded" && o.view === "overview" && (o.focusId === SPOTIFY_ID || o.focusId === YOUTUBE_MUSIC_ID);
 }
 
 /** Mochi on the desktop: the compact island's rules (DesktopMochi.swift). */

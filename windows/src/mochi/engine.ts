@@ -192,6 +192,22 @@ export function danceTransform(seconds: number, level: number, R: number) {
   };
 }
 
+/**
+ * Watching a video instead (Linux, a YouTube tab): a slow rock from side to
+ * side with a soft breath, where music gets the hop.
+ */
+export function watchTransform(seconds: number, level: number, R: number) {
+  const rock = Math.sin(seconds * 2.2);
+  const breath = (1 + Math.sin(seconds * 4.4)) / 2;
+  return {
+    dx: 0.05 * R * rock * level,
+    dy: -0.04 * R * breath * level,
+    rotate: 0.06 * rock * level,
+    sx: 1 + 0.02 * breath * level,
+    sy: 1 - 0.02 * breath * level,
+  };
+}
+
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 export class BotEngine {
@@ -229,6 +245,8 @@ export class BotEngine {
   /** Dancing to music; `dancingLevel` follows it, 0→1 in 0.3 s, 1→0 in 0.5 s. */
   isDancing = false;
   dancingLevel = 0;
+  /** What plays is a video: he watches (watchTransform, wide eyes) instead. */
+  isWatching = false;
 
   // Mouth spring (fraction of R)
   slotH = 0; slotHTarget = 0; slotHVel = 0; isChewing = false;
@@ -744,8 +762,10 @@ export class BotEngine {
 
   // ── Dancing ─────────────────────────────────────────────────────────────────
 
-  setDancing(dancing: boolean) {
+  setDancing(dancing: boolean, watching = false) {
     if (this.isDancing !== dancing) this.isDancing = dancing;
+    // Kept while the dance fades out, so the last move does not jump.
+    if (dancing) this.isWatching = watching;
   }
 
   /**
@@ -757,7 +777,7 @@ export class BotEngine {
     const R = W * 0.3;
     const px = W / 2 + this.ox * R;
     const py = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + R * 0.88;
-    const d = danceTransform(now(), this.dancingLevel, R);
+    const d = (this.isWatching ? watchTransform : danceTransform)(now(), this.dancingLevel, R);
     x.translate(px + d.dx, py + d.dy);
     x.rotate(d.rotate);
     x.scale(d.sx, d.sy);
@@ -915,9 +935,9 @@ export class BotEngine {
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
-    // Dancing: happy eyes in the calm states.
+    // Dancing: happy eyes in the calm states (wide open on a video).
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
-      shape = "happy";
+      shape = this.isWatching ? "wide" : "happy";
     }
     if (this.morph > 0.5) {
       if (this.isChewing) shape = "happy";

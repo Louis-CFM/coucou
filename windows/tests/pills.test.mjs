@@ -40,6 +40,8 @@ test("the catalog holds the Mac's pills, in the Mac's order, with the Mac's valu
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
+    // Not on the Mac: a browser tab read over MPRIS, Linux only.
+    ["integration_youtube_music", "YouTube Music", "#FF0000", "service", "Integration"],
   ];
   assert.deepEqual(
     PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
@@ -91,8 +93,10 @@ test("this build leaves out what only macOS has, Claude Desktop on Linux and Spo
   // Spotify is read over MPRIS, which only Linux has.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(!windows.includes("integration_spotify"));
+  assert.ok(linux.includes("integration_youtube_music"));
+  assert.ok(!windows.includes("integration_youtube_music"));
   assert.deepEqual(
-    linux.filter((id) => id !== "integration_spotify"),
+    linux.filter((id) => id !== "integration_spotify" && id !== "integration_youtube_music"),
     windows.filter((id) => id !== "agent_claude-desktop"),
   );
 });

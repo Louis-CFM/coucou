@@ -408,6 +408,14 @@ export const Bridge = {
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
+
+  // ── YouTube Music in a browser (src-tauri/src/youtube_music.rs, Linux) ────
+  youtubeMusicRefresh: () => call<SpotifyState | null>("youtube_music_refresh"),
+  /** playPause, next, previous, seek, volume (the browser's); no shuffle or repeat. */
+  youtubeMusicControl: (action: SpotifyAction, value?: number) =>
+    call<boolean>("youtube_music_control", { action, value: value ?? null }),
+  /** Brings the tab forward, else opens what played (or music.youtube.com). */
+  youtubeMusicOpen: () => call<boolean>("youtube_music_open"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

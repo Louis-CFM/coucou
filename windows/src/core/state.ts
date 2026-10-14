@@ -12,7 +12,7 @@ import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
-import { Spotify, musicPlaying } from "./spotify";
+import { Spotify, YouTubeMusic, YOUTUBE_MUSIC_ID, musicPlaying } from "./spotify";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -287,6 +287,21 @@ class AppState {
   /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
   get spotifyPlaying(): boolean {
     return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+  }
+
+  /** YouTube Music plays on its declared pill (Linux). */
+  get youtubeMusicPlaying(): boolean {
+    return musicPlaying(YouTubeMusic.state, sanitizeDeclared(this.settings, this.os).activeIntegrations, YOUTUBE_MUSIC_ID);
+  }
+
+  /** Only a YouTube video plays: Mochi watches it instead of dancing. */
+  get watchingVideo(): boolean {
+    return this.youtubeMusicPlaying && !this.spotifyPlaying && YouTubeMusic.state.video === true;
+  }
+
+  /** Any music pill plays: Mochi dances. */
+  get musicPlaying(): boolean {
+    return this.spotifyPlaying || this.youtubeMusicPlaying;
   }
 
   get otherTasks(): AgentTask[] {

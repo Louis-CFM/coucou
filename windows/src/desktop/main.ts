@@ -36,7 +36,7 @@ class DesktopMochi {
   private mode: DesktopMode = "off";
 
   private snap: DesktopSnapshot = {
-    state: "idle", outfit: "none", soundEnabled: true, soundVolume: 0.12, paused: false, dancing: false,
+    state: "idle", outfit: "none", soundEnabled: true, soundVolume: 0.12, paused: false, dancing: false, watching: false,
   };
 
   private visible = false;
@@ -207,7 +207,7 @@ class DesktopMochi {
       engine.lookY = g.lookY;
     }
     // Dances while Spotify plays (Linux), by the compact island's rules.
-    engine.setDancing(this.snap.dancing && !this.asleep);
+    engine.setDancing(this.snap.dancing && !this.asleep, this.snap.watching);
     engine.update(dt);
     const dpr = this.dpr();
     ctx.setTransform(dpr, 0, 0, dpr, SIDE * dpr, 0);

@@ -134,6 +134,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // Windows has nothing to read it from yet.
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
+  // YouTube Music's tab in a browser, over the same MPRIS (src-tauri/src/youtube_music.rs).
+  // Not in the Mac's PillCatalog.swift: Linux only.
+  { id: "integration_youtube_music", name: "YouTube Music", color: "#FF0000", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */
