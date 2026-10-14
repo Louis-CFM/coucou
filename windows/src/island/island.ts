@@ -1,7 +1,7 @@
 // The island: DOM shell, sizing animation, Mochi placement, mouse handling.
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
-import { Tracked, Spring, clamp } from "../core/anim";
+import { Ease, Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -12,7 +12,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
-import { SPOTIFY_ID, islandDances } from "../core/spotify";
+import { isMusicPill, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -27,6 +27,8 @@ import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { LIVE_W, Live, buildLive } from "./live";
+import { buildMiniPlayer, miniPlayerWanted } from "./miniplayer";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -57,6 +59,10 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
+  private live = buildLive();
+  private mini = buildMiniPlayer();
+  /** The compact width last animated to, so music starting widens it once. */
+  private compactW = 0;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -191,7 +197,7 @@ export class Island {
         else if (task.id === "integration_claude" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
-        else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (isMusicPill(task.id)) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -292,6 +298,8 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.live.el,
+      this.mini.el,
       this.countdown,
     );
 
@@ -350,6 +358,7 @@ export class Island {
   private setMode(mode: IslandMode) {
     const prev = State.mode;
     if (mode === prev) return;
+    void Bridge.log(`island ${prev} -> ${mode}`);
     State.mode = mode;
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
@@ -440,6 +449,19 @@ export class Island {
     this.silentReveal = false;
   }
 
+  /** A live activity (island/live.ts): out of hidden for `ms`, silently. */
+  peekLive(ms: number) {
+    if (State.paused) return;
+    this.silentReveal = true;
+    this.fsm.peek(ms);
+    this.silentReveal = false;
+  }
+
+  /** A live activity came or went: the compact island widens or narrows. */
+  liveResized() {
+    this.animateGeometry(Live.current == null);
+  }
+
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
   toggleWardrobe() {
     if (State.paused || State.mode === "hidden") return;
@@ -482,6 +504,38 @@ export class Island {
 
   emote(name: BotEmoteName) {
     this.engine.triggerEmote(name);
+    this.ensureRunning();
+  }
+
+  // ── Maki (voice/eleven.ts): Mochi is the one talking ────────────────────────
+
+  /** Listening (cyan, all ears), thinking (purple), working (blue), speaking (himself). */
+  voiceMood(mood: "listening" | "thinking" | "working" | "speaking" | null) {
+    const state = mood === "listening" ? "question" : mood === "thinking" ? "thinking" : mood === "working" ? "working" : null;
+    State.stateOverride = mood == null ? null : (state ?? "idle");
+    this.engine.setState(State.effectiveState);
+    // Listening: dots, not the "?" of a question.
+    if (mood === "listening") this.engine.setBadge({ kind: "dots", color: [0.133, 0.827, 0.933] });
+    this.ensureRunning();
+  }
+
+  /** One beat of the voice: Mochi bobs with Maki's words, widens his eyes at yours. */
+  voicePulse(level: number, user: boolean) {
+    const v = clamp(level, 0, 1);
+    if (user) {
+      this.engine.anim("es", [[1 + 0.18 * v, 70, Ease.out], [1, 160, Ease.inOut]]);
+    } else {
+      this.engine.anim("sy", [[1 + 0.09 * v, 70, Ease.out], [1, 150, Ease.inOut]]);
+      this.engine.anim("sx", [[1 - 0.04 * v, 70, Ease.out], [1, 150, Ease.inOut]]);
+      this.engine.anim("oy", [[-0.07 * v, 70, Ease.out], [0, 150, Ease.inOut]]);
+    }
+    this.ensureRunning();
+  }
+
+  /** A passing eye shape for moods without an emote (sad, curious). */
+  voiceEye(eye: "tired" | "wide", seconds = 1.8) {
+    this.engine.eyeOverride = eye;
+    this.engine.eyeOverrideUntil = performance.now() / 1000 + seconds;
     this.ensureRunning();
   }
 
@@ -645,6 +699,9 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    if (State.mode === "compact" && Live.current) w = Live.current.kind === "call" ? LIVE_W + 64 : LIVE_W;
+    // The player, then the agents' mini Mochis on the right: room for both.
+    else if (State.mode === "compact" && miniPlayerWanted()) w = LIVE_W + 44;
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1172,8 +1229,23 @@ export class Island {
       }
     }
 
+    // A live activity takes the mini grid's place while it lasts.
+    this.live.sync(expanded);
+
     // Compact mini grid
-    const showGrid = State.mode === "compact";
+    // Music: the mini player, unless a live activity is up (it comes back after).
+    const showMini = State.mode === "compact" && !Live.current && miniPlayerWanted();
+    this.mini.sync(showMini);
+    if (State.mode === "compact") {
+      const w = this.targetSize().w;
+      if (w !== this.compactW) {
+        this.compactW = w;
+        this.animateGeometry(false);
+      }
+    }
+    // The agents' mini Mochis stay beside the player: an agent at work (the
+    // orange Claude Desktop one included) must still be seen while music plays.
+    const showGrid = State.mode === "compact" && !Live.current;
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);
@@ -1198,6 +1270,9 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.fsm.alwaysVisible = State.settings.plus?.alwaysVisible ?? false;
+    // Already hidden when it was switched on: come back out.
+    if (this.fsm.alwaysVisible && this.fsm.state === "hidden") this.fsm.reveal();
     State.notify();
   }
 

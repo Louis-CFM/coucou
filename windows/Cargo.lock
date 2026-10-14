@@ -636,6 +636,7 @@ dependencies = [
  "webpki-roots",
  "webview2-com",
  "windows 0.61.3",
+ "windows-collections 0.2.0",
  "windows-core 0.62.2",
  "x11rb",
 ]

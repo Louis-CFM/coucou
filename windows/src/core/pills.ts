@@ -128,19 +128,24 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
+  // Windows: read from the system media controls (src-tauri/src/media_win.rs).
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
-  // Spotify's MPRIS interface on the session bus (src-tauri/src/spotify.rs).
-  // Windows has nothing to read it from yet.
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
+  // Linux: Spotify's MPRIS interface (spotify.rs). Windows: the media controls.
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "linux", connect: none },
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Windows only: whatever else plays — a browser tab, VLC, Media Player…
+  { id: "integration_media", name: "Now Playing", color: "#A78BFA", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },  // Any calendar's private iCal link (Google, Outlook, iCloud): integrations.rs.
+  { id: "integration_calendar", name: "Calendar", color: "#4F9DF7", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calendar-ics-url") },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */
 export const DEFAULT_MAIN_PILL = "integration_claude";
 
-/** How many declared pills may sit next to the main one. */
-export const MAX_DECLARED = 4;
+/** How many declared pills may sit next to the main one: two pages of four. */
+export const MAX_DECLARED = 8;
 
 /** The OS this page runs on. Only the Windows webview says "Windows". */
 export const HOST_OS: HostOs =

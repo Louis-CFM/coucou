@@ -398,7 +398,7 @@ export const Bridge = {
   /** Asleep, the cursor poll stops. */
   desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
 
-  // ── Spotify (src-tauri/src/spotify.rs, Linux) ─────────────────────────────
+  // ── Music (src-tauri/src/spotify.rs: Linux MPRIS, Windows media controls) ──
   /** Reads the player again (the card came on screen) and reports it. */
   spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
   /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
@@ -406,8 +406,42 @@ export const Bridge = {
     call<boolean>("spotify_control", { action, value: value ?? null }),
   /** Brings Spotify forward or starts it; without it, its download page. */
   spotifyOpen: () => call<boolean>("spotify_open"),
-  /** Whether there is a Spotify to launch (Settings). */
-  spotifyInstalled: () => call<boolean>("spotify_installed"),
+  /** Whether there is a player to launch for this music pill (Settings). */
+  /** iCloud Drive bridge and phone alerts (src-tauri/src/phone.rs). */
+  phoneStatus: () => call<{ icloud: boolean; folder: string } | null>("phone_status"),
+  phonePush: (title: string, body: string, urgent: boolean, force = false) =>
+    call<boolean>("phone_push", { title, body, urgent, force }),
+  phoneSend: (text: string) => call<boolean>("phone_send", { text }),
+  /** Phone Link in front, where a call is answered or declined (notify.rs). */
+  openPhoneLink: () => call<boolean>("open_phone_link"),
+  /** Claude Code's `/usage` text: the plan's numbers, fetched on demand (claude_cli.rs). */
+  claudeUsageText: () => call<string>("claude_usage_text"),
+  /** Maki: a question to Claude with Coucou's context, answered in a few spoken sentences. */
+  voiceAsk: (question: string, context: string) => call<string>("voice_ask", { question, context }),
+  /** Maki: listen for a command now, without the wake word. */
+  voiceListenNow: () => call<boolean>("voice_listen_now"),
+  /** Maki: the phrases the on-device recogniser listens for. */
+  voiceSetPhrases: (phrases: string[]) => call<void>("voice_set_phrases", { phrases }),
+  /** Maki talks through the ElevenLabs agent (true) or the phrase list (false). */
+  voiceConverse: (on: boolean) => call<void>("voice_converse", { on }),
+  /** The conversation is over: the wake word listener takes the mic back. */
+  voiceConversationEnded: () => call<void>("voice_conversation_ended"),
+  /** A one-time WebSocket URL for the user's ElevenLabs agent (eleven.rs). */
+  elevenSignedUrl: (agentId: string | null) => callOrThrow<string>("eleven_signed_url", { agentId }),
+  /** The agent's ask_hermes tool: one request to Hermes on this PC. */
+  askHermes: (request: string) => callOrThrow<string>("ask_hermes", { request }),
+  /** An installed app by name, from the Start menu (Store apps too); its name. */
+  openApp: (name: string) => callOrThrow<string>("open_app", { name }),
+  lockScreen: () => callOrThrow<void>("lock_screen"),
+  /** Plays a song: the top YouTube result, or the song in Apple Music. What it found. */
+  playSong: (query: string, apple: boolean, country: string) => callOrThrow<string>("play_song", { query, apple, country }),
+  /** The ElevenLabs credits this month (eleven.rs); null without a key. */
+  elevenUsage: () => call<{ used: number; limit: number; resets_at: number }>("eleven_usage"),
+  /** The volume keys' own step: up, down or mute, with the island's HUD. */
+  volumeKey: (action: "up" | "down" | "mute") => call<boolean>("volume_key_action", { action }),
+  /** Presses Phone Link's Accept (true) or Decline / End call (false) button (callctl.rs). */
+  callAction: (answer: boolean) => call<boolean>("call_action", { answer }),
+  spotifyInstalled: (pill?: string) => call<boolean>("spotify_installed", { pill: pill ?? null }),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

@@ -97,6 +97,63 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// What the Windows build adds to the island (sysevents.rs).
+    pub plus: PlusPrefs,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PlusPrefs {
+    /// The island shows the volume and takes the volume keys from Windows' popup.
+    pub volume_hud: bool,
+    /// The island shows the brightness when it changes.
+    pub brightness_hud: bool,
+    /// Plugged in, unplugged, 20 % and 10 % left.
+    pub battery_alerts: bool,
+    /// The texts copied lately, kept in memory only — never on disk.
+    pub clipboard_history: bool,
+    /// The compact island never hides on its own.
+    pub always_visible: bool,
+    /// Links and text from the iPhone through iCloud Drive (phone.rs).
+    pub icloud_bridge: bool,
+    /// What is copied here goes to the iPhone too (iCloud Drive).
+    pub share_copies_to_iphone: bool,
+    /// ntfy alerts only when nobody has touched the PC for a minute.
+    pub push_only_when_away: bool,
+    /// Other apps' notifications (Phone Link's calls and messages) in the island.
+    pub notifications: bool,
+    /// Voice: say the wake word, then a command (voice.rs, src/voice/).
+    pub voice: bool,
+    pub wake_word: String,
+    /// A BCP-47 tag ("en-IN"); empty is Windows' speech language.
+    pub voice_language: String,
+    /// Maki says its answers out loud, besides showing them.
+    pub speak_answers: bool,
+    /// The Windows voice to speak with; empty is the default one.
+    pub voice_name: String,
+    /// Maki talks through the user's ElevenLabs agent (eleven.rs).
+    pub eleven: bool,
+    /// That agent's id; empty is the one made for Maki.
+    pub eleven_agent: String,
+}
+
+impl Default for PlusPrefs {
+    fn default() -> Self {
+        PlusPrefs { volume_hud: true, brightness_hud: true, battery_alerts: true, clipboard_history: true,
+            always_visible: false,
+            icloud_bridge: false,
+            share_copies_to_iphone: false,
+            push_only_when_away: true,
+            notifications: false,
+            voice: false,
+            wake_word: "Maki".into(),
+            voice_language: String::new(),
+            speak_answers: true,
+            voice_name: String::new(),
+            eleven: false,
+            eleven_agent: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -162,6 +219,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            plus: PlusPrefs::default(),
         }
     }
 }
@@ -439,6 +497,7 @@ mod tests {
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "plus": { "volumeHud": false, "brightnessHud": false, "batteryAlerts": false, "clipboardHistory": false, "alwaysVisible": true, "icloudBridge": true, "shareCopiesToIphone": true, "pushOnlyWhenAway": false, "notifications": true, "voice": true, "wakeWord": "Jarvis", "voiceLanguage": "en-GB", "speakAnswers": false, "voiceName": "Microsoft Hazel", "eleven": true, "elevenAgent": "agent_x" },
   "phoneLink": true,
   "phoneChat": true,
   "phoneChatModels": ["openai/gpt-x"],
@@ -956,6 +1015,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "plus",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

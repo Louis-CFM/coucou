@@ -30,6 +30,23 @@ mod settings;
 mod shortcuts;
 mod sounds;
 mod spotify;
+mod claude_cli;
+#[cfg(windows)]
+mod media_win;
+#[cfg(windows)]
+mod audio;
+#[cfg(windows)]
+mod sysevents;
+#[cfg(windows)]
+mod phone;
+#[cfg(windows)]
+mod notify;
+#[cfg(windows)]
+mod callctl;
+#[cfg(windows)]
+mod voice;
+#[cfg(windows)]
+mod eleven;
 mod tray;
 #[cfg(windows)]
 mod webview_drop;
@@ -124,6 +141,14 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    #[cfg(windows)]
+    sysevents::apply(&settings.plus);
+    #[cfg(windows)]
+    phone::apply(&settings.plus);
+    #[cfg(windows)]
+    notify::apply(settings.plus.notifications);
+    #[cfg(windows)]
+    voice::apply(settings.plus.voice, &settings.plus.wake_word, &settings.plus.voice_language);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -156,6 +181,7 @@ fn language_changed(app: &AppHandle) {
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
+    log::line(format!("window {}", if collapsed { "collapsed to the wake strip" } else { "full size" }));
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
@@ -163,6 +189,8 @@ fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
+    #[cfg(windows)]
+    sysevents::keep_on_top();
 }
 
 /// The front end pushes the island shape; Rust decides click-through from it.
@@ -657,6 +685,12 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // `coucou --shortcut <action>`: what a desktop's own keyboard
             // settings run where we can't listen for keys ourselves (Wayland).
+            // `coucou --notify "Build done"`: to the phone, from any script.
+            #[cfg(windows)]
+            if let Some(message) = notify_arg(&argv) {
+                tauri::async_runtime::spawn(phone::phone_push("Coucou".into(), message, false, Some(true)));
+                return;
+            }
             match shortcuts::from_args(&argv) {
                 Some(action) => shortcuts::dispatch(app, action),
                 None => {
@@ -777,6 +811,46 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            #[cfg(windows)]
+            sysevents::clipboard_history,
+            #[cfg(windows)]
+            sysevents::clipboard_clear,
+            #[cfg(windows)]
+            sysevents::clipboard_copy,
+            claude_cli::claude_usage_text,
+            claude_cli::voice_ask,
+            #[cfg(windows)]
+            voice::voice_listen_now,
+            #[cfg(windows)]
+            voice::voice_set_phrases,
+            #[cfg(windows)]
+            voice::voice_converse,
+            #[cfg(windows)]
+            voice::voice_conversation_ended,
+            #[cfg(windows)]
+            eleven::eleven_signed_url,
+            #[cfg(windows)]
+            eleven::ask_hermes,
+            #[cfg(windows)]
+            eleven::open_app,
+            #[cfg(windows)]
+            eleven::eleven_usage,
+            #[cfg(windows)]
+            eleven::play_song,
+            #[cfg(windows)]
+            eleven::lock_screen,
+            #[cfg(windows)]
+            sysevents::volume_key_action,
+            #[cfg(windows)]
+            notify::open_phone_link,
+            #[cfg(windows)]
+            callctl::call_action,
+            #[cfg(windows)]
+            phone::phone_send,
+            #[cfg(windows)]
+            phone::phone_status,
+            #[cfg(windows)]
+            phone::phone_push,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -816,6 +890,19 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            #[cfg(windows)]
+            sysevents::start(&handle, &loaded.plus);
+            #[cfg(windows)]
+            phone::start(&handle, &loaded.plus);
+            #[cfg(windows)]
+            notify::start(&handle, loaded.plus.notifications);
+            #[cfg(windows)]
+            voice::start(&handle, loaded.plus.voice, &loaded.plus.wake_word, &loaded.plus.voice_language);
+            // Started by `coucou --notify "…"` itself: send it too.
+            #[cfg(windows)]
+            if let Some(message) = notify_arg(&std::env::args().collect::<Vec<_>>()) {
+                tauri::async_runtime::spawn(phone::phone_push("Coucou".into(), message, false, Some(true)));
+            }
             shortcuts::apply(&handle, &loaded.shortcuts);
             Ok(())
         })
@@ -829,9 +916,24 @@ pub fn run() {
         });
 }
 
+/// The message after `--notify`, if the command line has one.
+fn notify_arg(argv: &[String]) -> Option<String> {
+    let i = argv.iter().position(|a| a == "--notify")?;
+    let msg = argv.get(i + 1).map(|s| s.trim().to_string()).unwrap_or_default();
+    Some(if msg.is_empty() { "Done".to_string() } else { msg.chars().take(500).collect() })
+}
+
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+
+    #[test]
+    fn notify_takes_the_next_argument() {
+        let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(super::notify_arg(&a(&["coucou.exe", "--notify", "Build done"])).as_deref(), Some("Build done"));
+        assert_eq!(super::notify_arg(&a(&["coucou.exe", "--notify"])).as_deref(), Some("Done"));
+        assert_eq!(super::notify_arg(&a(&["coucou.exe"])), None);
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
