@@ -480,7 +480,7 @@ final class HookServer: @unchecked Sendable {
             session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, hostURL: ClaudeHost.sessionURL(from: payload), bundleId: bundleId)
+            hostApp: hostApp, hostURL: conductorLink(payload, bundleId: bundleId), bundleId: bundleId)
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -859,7 +859,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
-        let hostURL = ClaudeHost.sessionURL(from: payload)
+        let hostURL = conductorLink(payload, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -1013,7 +1013,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
-        let hostURL = ClaudeHost.sessionURL(from: payload)
+        let hostURL = conductorLink(payload, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -1312,6 +1312,13 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Logging
+
+    /// The Conductor link of the session that sent `payload`, from the ids the relay adds.
+    private func conductorLink(_ payload: [String: Any], bundleId: String) -> URL? {
+        ClaudeHost.sessionURL(bundleId: bundleId,
+                              workspaceId: payload["conductor_workspace_id"] as? String,
+                              sessionId: payload["conductor_session_id"] as? String)
+    }
 
     private func nbLog(_ message: String) {
         appendAppLog("nb.log", message)
