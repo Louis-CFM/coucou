@@ -17,6 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { buildCodeView, hasCode } from "./session";
 import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
@@ -136,7 +137,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
-      tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      tabHome.classList.toggle("on", v === "overview" || v === "empty" || v === "code");
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -176,7 +177,10 @@ function buildOverview(actions: ViewActions): ViewHost {
     activeDiffId = null;
     State.notify();
   };
+  /** Set by a click on a diff row, so the same click does not also open the code view. */
+  let diffTapped = false;
   const ticker = new Ticker((diffId) => {
+    diffTapped = true;
     actions.blip();
     activeDiffId = diffId;
     State.notify();
@@ -189,7 +193,19 @@ function buildOverview(actions: ViewActions): ViewHost {
     { class: "icon-btn jump", title: tl("Open"), onclick: () => actions.openTarget() },
     svg(ICONS.arrowUpRight, 8),
   );
-  const left = card(null, leftBody, jump);
+  const expandHint = h("span", { class: "expand-hint", title: tl("Show the code") }, svg(ICONS.expand, 10, { stroke: 2 }));
+  const left = card(null, leftBody, jump, expandHint);
+  // A Claude Code session that has edited a file or run a command: its card opens
+  // the code view. Only on a click, nothing opens by itself.
+  const codeOpens = () => mode === "ticker" && hasCode(State.focusTask?.id);
+  left.addEventListener("click", (e) => {
+    const tapped = diffTapped;
+    diffTapped = false;
+    if (tapped || !codeOpens()) return;
+    if ((e.target as Element | null)?.closest?.(".jump")) return;
+    actions.blip();
+    actions.setView("code");
+  });
   const pills = h("div", { class: "pills" });
   const right = card(null, pills);
   // Opened from a plan pill in the header: stands in for the left card.
@@ -381,6 +397,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       }
 
       jump.style.display = detailOpen || mode === "plan" || mode === "diff" ? "none" : "";
+      left.classList.toggle("expandable", codeOpens());
 
       // Ctrl+↓ Ctrl+↑ walk the open GitHub list (cardItemCount / cardSelection).
       const rows = mode === "card" ? listRows(leftBody) : [];
@@ -807,6 +824,7 @@ export function buildViews(
 ): Map<IslandViewName, ViewHost> {
   const map = new Map<IslandViewName, ViewHost>();
   map.set("overview", buildOverview(actions));
+  map.set("code", buildCodeView(actions));
   map.set("empty", buildEmpty(actions));
   map.set("approval", buildApproval(actions));
   map.set("question", buildQuestion(actions));

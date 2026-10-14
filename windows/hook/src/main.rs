@@ -31,6 +31,7 @@ use serde_json::{Map, Value};
 
 mod normalize;
 mod reply;
+mod tail;
 
 /// Budget for getting a pipe connection. Beyond this the agent wins, always.
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
@@ -177,6 +178,14 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let name = normalize::refine(normalize::event(&raw_event), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
+    // Of what a finished command printed, only its last lines go on (tail.rs).
+    let tool = map.get("tool_name").and_then(Value::as_str);
+    if name == "PostToolUse" && matches!(tool, Some("Bash" | "PowerShell")) {
+        if let Some(lines) = map.get("tool_response").and_then(command_tail) {
+            map.insert("tool_tail".into(), Value::from(lines));
+        }
+    }
+
     for field in DROPPED_FIELDS {
         map.remove(*field);
     }
@@ -200,6 +209,18 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let mut line = payload.to_string();
     line.push('\n');
     Some(Event { line, name, question })
+}
+
+/// A command's `tool_response`: an object with `stdout` / `stderr`, or a string.
+fn command_tail(response: &Value) -> Option<Vec<String>> {
+    match response {
+        Value::String(s) => tail::output_tail(Some(s), None),
+        Value::Object(o) => tail::output_tail(
+            o.get("stdout").and_then(Value::as_str),
+            o.get("stderr").and_then(Value::as_str),
+        ),
+        _ => None,
+    }
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -483,6 +504,24 @@ mod tests {
         let (v, ev) = run(&raw, "gemini", "");
         assert_eq!(ev.name, "PreToolUse");
         assert!(v["tool_input"]["content"].as_str().unwrap().len() <= MAX_FIELD_LEN + 4);
+    }
+
+    #[test]
+    fn a_finished_command_forwards_only_its_last_lines() {
+        let raw = r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"npm test"},"tool_response":{"stdout":"1\n2\n3\n\u001b[32m4\u001b[0m\n","stderr":""}}"#;
+        let (v, _) = run(raw, "", "");
+        assert_eq!(v["tool_tail"], serde_json::json!(["2", "3", "4"]));
+        assert!(v.get("tool_response").is_none());
+        // A string response, and stderr when stdout is empty.
+        let raw = r#"{"hook_event_name":"PostToolUse","tool_name":"PowerShell","tool_response":"only line"}"#;
+        assert_eq!(run(raw, "", "").0["tool_tail"], serde_json::json!(["only line"]));
+        let raw = r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_response":{"stdout":"","stderr":"boom"}}"#;
+        assert_eq!(run(raw, "", "").0["tool_tail"], serde_json::json!(["boom"]));
+        // Other tools and other events: nothing.
+        let raw = r#"{"hook_event_name":"PostToolUse","tool_name":"Read","tool_response":{"stdout":"x"}}"#;
+        assert!(run(raw, "", "").0.get("tool_tail").is_none());
+        let raw = r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_response":{"stdout":"x"}}"#;
+        assert!(run(raw, "", "").0.get("tool_tail").is_none());
     }
 
     #[test]
