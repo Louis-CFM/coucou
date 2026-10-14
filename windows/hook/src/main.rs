@@ -157,8 +157,9 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     // pill. Absent means Claude Code, so existing hook commands keep working
     // unchanged; invalid names are discarded by the app, not here. A Claude Code
     // session started from the Claude desktop app is tagged `claude-desktop`.
-    if let Some(tag) = agent_tag(&args.agent, env) {
-        map.insert("coucou_agent".into(), Value::String(tag));
+    let tag = agent_tag(&args.agent, env);
+    if let Some(tag) = &tag {
+        map.insert("coucou_agent".into(), Value::String(tag.clone()));
     }
     // Claude Code in Cursor's terminal goes on the Cursor pill (Mac #120).
     if !map.contains_key("term_editor") {
@@ -174,7 +175,21 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .map(str::to_string)
         .unwrap_or_else(|| args.event.clone());
     normalize::fields(map, env);
-    let name = normalize::refine(normalize::event(&raw_event), map);
+    let mut name = normalize::refine(normalize::event(&raw_event), map);
+    // Devin has no PostToolUseFailure event: a failed tool call is a
+    // PostToolUse whose tool_response carries "success": false. The island
+    // reads the failure off the event name, so it is set here, while
+    // tool_response is still present (DROPPED_FIELDS removes it below).
+    if name == "PostToolUse"
+        && tag.as_deref() == Some("devin")
+        && map
+            .get("tool_response")
+            .and_then(|r| r.get("success"))
+            .and_then(Value::as_bool)
+            == Some(false)
+    {
+        name = "PostToolUseFailure".into();
+    }
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
     for field in DROPPED_FIELDS {
@@ -220,14 +235,22 @@ fn add_terminal_context(map: &mut Map<String, Value>, env: &dyn Fn(&str) -> Opti
 
 /// The `coucou_agent` tag: `--agent` when given, otherwise `claude-desktop` for
 /// a Claude Code session started from the Claude desktop app, which says so in
-/// CLAUDE_CODE_ENTRYPOINT — the same rule as the Mac's relay (#191). Nothing
-/// for a plain Claude Code session.
+/// CLAUDE_CODE_ENTRYPOINT — the same rule as the Mac's relay (#191), or
+/// `devin` for a Devin session, which sets DEVIN_PROJECT_DIR for its hooks
+/// (Devin also imports `~/.claude/settings.json` hooks, so a bare Coucou hook
+/// running under it still lands on the right pill). Nothing for a plain
+/// Claude Code session.
 fn agent_tag(arg: &str, env: &dyn Fn(&str) -> Option<String>) -> Option<String> {
     if !arg.is_empty() {
         return Some(arg.to_string());
     }
     (env("CLAUDE_CODE_ENTRYPOINT").as_deref() == Some("claude-desktop"))
         .then(|| "claude-desktop".to_string())
+        .or_else(|| {
+            env("DEVIN_PROJECT_DIR")
+                .filter(|v| !v.is_empty())
+                .map(|_| "devin".to_string())
+        })
 }
 
 /// `cursor` when the session runs in Cursor's integrated terminal. Cursor sets
@@ -383,6 +406,33 @@ mod tests {
         assert_eq!(agent_tag("gemini", &desktop).as_deref(), Some("gemini"));
         assert_eq!(agent_tag("", &env_of(&[("CLAUDE_CODE_ENTRYPOINT", "cli")])), None);
         assert_eq!(agent_tag("", &env_of(&[])), None);
+    }
+
+    #[test]
+    fn devin_sessions_are_tagged_from_their_project_dir() {
+        let devin = env_of(&[("DEVIN_PROJECT_DIR", r"C:\Users\me\work")]);
+        assert_eq!(agent_tag("", &devin).as_deref(), Some("devin"));
+        assert_eq!(agent_tag("codex", &devin).as_deref(), Some("codex"));
+        assert_eq!(agent_tag("", &env_of(&[("DEVIN_PROJECT_DIR", "")])), None);
+    }
+
+    #[test]
+    fn devins_failed_tool_call_reads_as_post_tool_use_failure() {
+        let devin = Args { agent: "devin".into(), event: String::new() };
+        let raw = br#"{"hook_event_name":"PostToolUse","tool_name":"exec","tool_response":{"success":false,"output":"boom"}}"#;
+        let ev = prepare(raw, &devin, &|_| None, "/p").unwrap();
+        assert_eq!(ev.name, "PostToolUseFailure");
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["hook_event_name"], "PostToolUseFailure");
+        assert!(v.get("tool_response").is_none());
+
+        // A success stays PostToolUse, and the rule is Devin's alone: Claude
+        // Code reports failures on its own PostToolUseFailure event already.
+        let ok = br#"{"hook_event_name":"PostToolUse","tool_name":"exec","tool_response":{"success":true}}"#;
+        assert_eq!(prepare(ok, &devin, &|_| None, "/p").unwrap().name, "PostToolUse");
+        let claude = Args { agent: String::new(), event: String::new() };
+        let same = br#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_response":{"success":false}}"#;
+        assert_eq!(prepare(same, &claude, &|_| None, "/p").unwrap().name, "PostToolUse");
     }
 
     #[test]

@@ -14,6 +14,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
   gemini: { name: "Gemini CLI", color: "#8AB4F8" },
   copilot: { name: "Copilot CLI", color: "#818CF8" },
   muse: { name: "Muse Code", color: "#38BDF8" },
+  devin: { name: "Devin", color: "#F472B6" },
   opencode: { name: "OpenCode", color: "#4ADE80" },
   amp: { name: "Amp", color: "#F59E0B" },
   hermes: { name: "Hermes", color: "#C084FC" },
@@ -25,7 +26,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
  * Must match `takes_decisions` in the relay (hook/src/reply.rs): any other
  * agent's request is handed straight back to its terminal.
  */
-export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse"]);
+export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "devin"]);
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {
