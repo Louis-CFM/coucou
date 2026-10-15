@@ -19,6 +19,16 @@ LINUX_APT := build-essential pkg-config libwebkit2gtk-4.1-dev libgtk-layer-shell
 	libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev libasound2-dev patchelf \
 	gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 
+# sccache : cache des dépendances compilées, partagé entre branches et après un `cargo clean`
+# (build à froid de l'app : 232 s -> 54 s mesuré). Utilisé seulement s'il est installé : `make sccache-install`.
+# Hors make, `export RUSTC_WRAPPER=sccache` donne le même effet.
+SCCACHE := $(shell command -v sccache 2>/dev/null)
+ifneq ($(SCCACHE),)
+export RUSTC_WRAPPER := $(SCCACHE)
+endif
+SCCACHE_VERSION := 0.18.0
+SCCACHE_SHA256_LINUX_X86_64 := 45f1447fbe231e3037bde351ef70677dd212216c8d62ae7ca409fecc4d6acc89
+
 .PHONY: help
 help: ## Affiche cette aide
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage : make \033[36m<cible>\033[0m\n"} \
@@ -66,6 +76,11 @@ $(WIN)/node_modules: $(WIN)/package-lock.json
 	cd $(WIN) && npm ci
 	@touch $@
 
+.PHONY: hooks
+hooks: ## Active le hook pre-commit (types, tests du front, clippy sur ce qui est commité)
+	git config core.hooksPath .githooks
+	@echo "Hook pre-commit actif. Pour le sauter une fois : SKIP_HOOKS=1 git commit ..."
+
 .PHONY: deps
 deps: _need-node ## Installe les dépendances npm
 	cd $(WIN) && npm ci
@@ -75,6 +90,21 @@ linux-deps: _need-linux ## Installe les paquets système pour compiler (apt, dem
 	@command -v apt-get >/dev/null || { echo "Pas d'apt : voir windows/README.md (section Linux) pour votre distribution." >&2; exit 1; }
 	sudo apt-get update
 	sudo apt-get install -y $(LINUX_APT)
+
+.PHONY: sccache-install sccache-stats
+sccache-install: ## Installe sccache (binaire vérifié par SHA-256 sous Linux x86_64, sinon cargo install)
+	@if command -v sccache >/dev/null; then echo "sccache déjà installé : $$(sccache --version)"; exit 0; fi; \
+	if [ "$$(uname -sm)" = "Linux x86_64" ]; then \
+		tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+		curl -fsSL -o "$$tmp/s.tgz" "https://github.com/mozilla/sccache/releases/download/v$(SCCACHE_VERSION)/sccache-v$(SCCACHE_VERSION)-x86_64-unknown-linux-musl.tar.gz" && \
+		echo "$(SCCACHE_SHA256_LINUX_X86_64)  $$tmp/s.tgz" | sha256sum -c - && \
+		tar xzf "$$tmp/s.tgz" -C "$$tmp" --strip-components=1 && \
+		mkdir -p "$(HOME)/.local/bin" && install -m 755 "$$tmp/sccache" "$(HOME)/.local/bin/sccache" && \
+		echo "Installé : $(HOME)/.local/bin/sccache (dossier à mettre dans le PATH)"; \
+	else cargo install sccache --locked; fi
+
+sccache-stats: ## Statistiques du cache sccache
+	@sccache --show-stats
 
 ##@ Vérifications
 .PHONY: check test test-web test-rust types clippy watch
