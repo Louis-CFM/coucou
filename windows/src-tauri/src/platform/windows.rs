@@ -473,6 +473,13 @@ pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
     owners.first().is_some_and(|pid| focus_process_window(*pid, folder))
 }
 
+/// An editor's window for a project that is open in it: not looked for on
+/// Windows, where JetBrains' launcher brings the project's window forward itself.
+#[allow(dead_code)]
+pub fn focus_editor_window(_class_hint: &str, _folder: &str, _pid: Option<u32>) -> bool {
+    false
+}
+
 /// The windows of every Windows Terminal, for tests that need a real one.
 #[cfg(test)]
 pub fn windows_terminal_windows() -> Vec<isize> {

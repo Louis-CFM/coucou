@@ -263,6 +263,9 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
         session_window::forget(session);
         return;
     }
+    if let Some(port) = session_window::ide_port_from_payload(payload) {
+        session_window::remember_ide_port(session, port);
+    }
     if !session_window::known(session) {
         find_session_window(pipe, payload, session);
     }
