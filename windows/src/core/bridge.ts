@@ -5,6 +5,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import type { LineHint } from "./diff";
+import type { EditorId } from "./editors";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
@@ -214,12 +216,20 @@ export const Bridge = {
   /** Tells the island to read the sounds folder again ("sounds-changed"). */
   reloadSounds: () => call<void>("reload_sounds"),
 
-  /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
-  openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
+  /**
+   * Opens the folder in the editor picked in Settings when its launcher is found
+   * (else the file manager). `editor` names one for a button that is about that
+   * editor in particular.
+   */
+  openInEditor: (path: string | null, editor: EditorId | null = null) =>
+    call<boolean>("open_in_editor", { path, editor }),
+
+  /** Editor id → whether its launcher is found on this computer. */
+  editorsStatus: () => call<Record<string, boolean>>("editors_status"),
 
   /**
    * "Open terminal": the window the session runs in when Rust found it
-   * (Windows; Linux on X11 and KDE Plasma), else the folder in VS Code.
+   * (Windows; Linux on X11 and KDE Plasma), else the folder in the editor picked in Settings.
    */
   openSession: (sessionId: string | null, path: string | null) =>
     call<boolean>("open_session", { sessionId, path }),
@@ -227,8 +237,11 @@ export const Bridge = {
   /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
   openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
 
-  /** The diff card's ↗: an existing file, in VS Code; never launched by its type. */
-  openFileInVSCode: (path: string) => call<boolean>("open_file_in_vscode", { path }),
+  /**
+   * The diff card's ↗: an existing file, in the editor picked in Settings (on
+   * its first changed line in PhpStorm); never launched by its type.
+   */
+  openFileInEditor: (path: string, hint: LineHint | null) => call<boolean>("open_file_in_editor", { path, hint }),
 
   quit: () => call<void>("quit_app"),
 
