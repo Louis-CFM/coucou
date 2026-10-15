@@ -6,7 +6,7 @@
 // Code's (hook/src/normalize.rs), so one handler serves them all.
 
 import { Bridge, onEvent } from "../core/bridge";
-import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
+import { buildFileDiffs, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
 import { State, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
@@ -210,18 +210,22 @@ function clearFinalLine(id: string) {
 }
 
 /**
- * PostToolUse of Edit / MultiEdit / Write → a diff stored for the pill and a
- * ticker step with its +N −M counts. Nothing is kept for a pill that does not
- * exist, so a stray event cannot grow memory. An edit the relay had to cut
- * would give wrong counts: the PreToolUse step ("Edits · file") stands alone.
+ * PostToolUse of a supported file-edit tool → one diff per changed file, stored
+ * for the pill with a ticker step and its +N −M counts. Nothing is kept for a
+ * pill that does not exist, so a stray event cannot grow memory. An edit the
+ * relay had to cut would give wrong counts: the PreToolUse step stands alone.
  */
-function recordDiff(agentId: string, payload: HookPayload) {
-  if (payload.coucou_diff_truncated) return;
-  if (!State.tasks.some((t) => t.id === agentId)) return;
-  const diff = buildFileDiff(payload.tool_name ?? "", payload.tool_input ?? {});
-  if (!diff) return;
-  const id = State.appendSessionDiff(agentId, diff);
-  State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
+function recordDiff(agentId: string, payload: HookPayload): number | null {
+  if (payload.coucou_diff_truncated) return null;
+  if (!State.tasks.some((t) => t.id === agentId)) return null;
+  const diffs = buildFileDiffs(payload.tool_name ?? "", payload.tool_input ?? {}, payload.cwd ?? "");
+  let latestId: number | null = null;
+  for (const diff of diffs) {
+    const id = State.appendSessionDiff(agentId, diff);
+    State.appendStep(agentId, makeDiffStep(fileName(diff.path), diff.added, diff.removed, id));
+    latestId = id;
+  }
+  return latestId;
 }
 
 export function registerHookHandlers(island: Island) {
@@ -361,7 +365,14 @@ function handleHook(island: Island, payload: HookPayload) {
         dropPendingCard(island);
       }
       State.updateTask(agentId, "working");
-      recordDiff(agentId, payload);
+      const diffId = recordDiff(agentId, payload);
+      if (diffId != null) {
+        if (State.focusId !== agentId) State.setFocus(agentId);
+      }
+      if (diffId != null && State.openDiff(agentId, diffId)) {
+        if (State.mode === "expanded") island.setView("diff");
+        else island.alert("diff");
+      }
       break;
 
     case "PostToolUseFailure":

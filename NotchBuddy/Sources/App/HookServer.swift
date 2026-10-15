@@ -557,14 +557,16 @@ final class HookServer: @unchecked Sendable {
         case "PostToolUse":
             sessions.note(pill: agentId, display: display, working: true)
             state.updateTask(id: agentId, state: .working)
-            // Live diff for Edit / MultiEdit / Write
             let diffTool = payload["tool_name"] as? String ?? ""
             let diffInput = payload["tool_input"] as? [String: Any] ?? [:]
-            if let diff = buildFileDiff(tool: diffTool, input: diffInput, pillId: agentId) {
-                let idx = state.appendSessionDiff(diff, for: agentId)
-                let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
-                appendStep(id: agentId, step: step)
-                RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
+            let cwd = payload["cwd"] as? String ?? ""
+            if payload["coucou_diff_truncated"] as? Bool != true {
+                for diff in buildFileDiffs(tool: diffTool, input: diffInput, cwd: cwd) {
+                    let idx = state.appendSessionDiff(diff, for: agentId)
+                    let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
+                    appendStep(id: agentId, step: step)
+                    RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
+                }
             }
 
         case "PostToolUseFailure":
@@ -1209,19 +1211,24 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Live diff helpers
 
     @MainActor
-    private func buildFileDiff(tool: String, input: [String: Any], pillId: String) -> FileDiff? {
+    private func buildFileDiffs(tool: String, input: [String: Any], cwd: String) -> [FileDiff] {
+        func string(_ keys: String...) -> String? {
+            keys.compactMap { input[$0] as? String }.first
+        }
+        func path(_ keys: String...) -> String? {
+            guard let value = keys.compactMap({ input[$0] as? String }).first else { return nil }
+            return DiffEngine.resolve(value, cwd: cwd)
+        }
         switch tool {
         case "Edit":
-            guard let old = input["old_string"] as? String,
-                  let new = input["new_string"] as? String,
-                  let path = input["file_path"] as? String,
-                  !old.isEmpty || !new.isEmpty else { return nil }
+            guard let old = string("old_string"), let new = string("new_string"),
+                  let path = path("file_path"), !old.isEmpty || !new.isEmpty else { return [] }
             let d = DiffEngine.fromEdit(old: old, new: new, path: path)
-            return (d.added > 0 || d.removed > 0) ? d : nil
+            return (d.added > 0 || d.removed > 0) ? [d] : []
 
         case "MultiEdit":
-            guard let path = input["file_path"] as? String,
-                  let edits = input["edits"] as? [[String: Any]], !edits.isEmpty else { return nil }
+            guard let path = path("file_path"),
+                  let edits = input["edits"] as? [[String: Any]], !edits.isEmpty else { return [] }
             var totalAdded = 0, totalRemoved = 0, allHunks: [DiffHunk] = [], anyLarge = false
             for edit in edits {
                 guard let old = edit["old_string"] as? String,
@@ -1230,18 +1237,51 @@ final class HookServer: @unchecked Sendable {
                 totalAdded += d.added; totalRemoved += d.removed
                 allHunks.append(contentsOf: d.hunks); if d.tooLarge { anyLarge = true }
             }
-            guard totalAdded > 0 || totalRemoved > 0 else { return nil }
-            return FileDiff(path: path, added: totalAdded, removed: totalRemoved,
-                            hunks: allHunks, tooLarge: anyLarge, isNewFile: false)
+            guard totalAdded > 0 || totalRemoved > 0 else { return [] }
+            return [FileDiff(path: path, added: totalAdded, removed: totalRemoved,
+                             hunks: allHunks, tooLarge: anyLarge, isNewFile: false)]
 
         case "Write":
-            guard let path = input["file_path"] as? String,
-                  let content = input["content"] as? String, !content.isEmpty else { return nil }
+            guard let path = path("file_path"), let content = string("content"), !content.isEmpty else { return [] }
             let d = DiffEngine.fromNew(content: content, path: path)
-            return (d.added > 0 || d.removed > 0) ? d : nil
+            return (d.added > 0 || d.removed > 0) ? [d] : []
+
+        case "apply_patch":
+            guard let patch = string("command"), !patch.isEmpty else { return [] }
+            return DiffEngine.fromCodexPatch(patch, cwd: cwd)
+
+        case "write_to_file":
+            guard let target = path("TargetFile", "targetFile"),
+                  let content = string("CodeContent", "codeContent"), !content.isEmpty else { return [] }
+            let d = DiffEngine.fromNew(content: content, path: target)
+            return (d.added > 0 || d.removed > 0) ? [d] : []
+
+        case "replace_file_content":
+            guard let target = path("TargetFile", "targetFile"),
+                  let old = string("TargetContent", "targetContent"),
+                  let new = string("ReplacementContent", "replacementContent"), !old.isEmpty || !new.isEmpty else { return [] }
+            let d = DiffEngine.fromEdit(old: old, new: new, path: target)
+            return (d.added > 0 || d.removed > 0) ? [d] : []
+
+        case "multi_replace_file_content":
+            guard let target = path("TargetFile", "targetFile"),
+                  let chunks = (input["ReplacementChunks"] ?? input["replacementChunks"]) as? [[String: Any]], !chunks.isEmpty else { return [] }
+            var totalAdded = 0, totalRemoved = 0, allHunks: [DiffHunk] = [], anyLarge = false
+            for chunk in chunks {
+                guard let old = (chunk["TargetContent"] ?? chunk["targetContent"] ?? chunk["old_string"]) as? String,
+                      let new = (chunk["ReplacementContent"] ?? chunk["replacementContent"] ?? chunk["new_string"]) as? String else { continue }
+                let d = DiffEngine.fromEdit(old: old, new: new, path: target)
+                totalAdded += d.added
+                totalRemoved += d.removed
+                allHunks.append(contentsOf: d.hunks)
+                anyLarge = anyLarge || d.tooLarge
+            }
+            guard totalAdded > 0 || totalRemoved > 0 else { return [] }
+            return [FileDiff(path: target, added: totalAdded, removed: totalRemoved,
+                             hunks: allHunks, tooLarge: anyLarge, isNewFile: false)]
 
         default:
-            return nil
+            return []
         }
     }
 
@@ -3241,6 +3281,34 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+def cap_diff_payload(payload):
+    if payload.get('hook_event_name') != 'PostToolUse' or payload.get('tool_name') not in (
+        'Edit', 'MultiEdit', 'Write', 'apply_patch', 'write_to_file',
+        'replace_file_content', 'multi_replace_file_content'):
+        return
+    fields = {'old_string', 'new_string', 'content', 'command', 'CodeContent',
+              'TargetContent', 'ReplacementContent', 'targetContent', 'replacementContent'}
+    budget = [512 * 1024]
+    cut_any = [False]
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in list(value.items()):
+                if key in fields and isinstance(item, str):
+                    raw = item.encode('utf-8')
+                    limit = min(256 * 1024, budget[0])
+                    if len(raw) > limit:
+                        value[key] = raw[:limit].decode('utf-8', 'ignore') + '…'
+                        cut_any[0] = True
+                    budget[0] = max(0, budget[0] - len(value[key].encode('utf-8')))
+                else:
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+    walk(payload.get('tool_input', {}))
+    if cut_any[0]:
+        payload['coucou_diff_truncated'] = True
+
 def main():
     raw = b''
     payload = {}
@@ -3382,8 +3450,12 @@ def main():
         if raw_event:
             payload['hook_event_name'] = normalize_event(raw_event)
         normalize_tool_fields(payload)
+        cap_diff_payload(payload)
     except Exception:
         pass
+
+    payload.pop('tool_response', None)
+    payload.pop('tool_output', None)
 
     event = payload.get('hook_event_name', '')
     # socket_path is already defined above
@@ -3548,6 +3620,34 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+def cap_diff_payload(payload):
+    if payload.get('hook_event_name') != 'PostToolUse' or payload.get('tool_name') not in (
+        'Edit', 'MultiEdit', 'Write', 'apply_patch', 'write_to_file',
+        'replace_file_content', 'multi_replace_file_content'):
+        return
+    fields = {'old_string', 'new_string', 'content', 'command', 'CodeContent',
+              'TargetContent', 'ReplacementContent', 'targetContent', 'replacementContent'}
+    budget = [512 * 1024]
+    cut_any = [False]
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in list(value.items()):
+                if key in fields and isinstance(item, str):
+                    raw = item.encode('utf-8')
+                    limit = min(256 * 1024, budget[0])
+                    if len(raw) > limit:
+                        value[key] = raw[:limit].decode('utf-8', 'ignore') + '…'
+                        cut_any[0] = True
+                    budget[0] = max(0, budget[0] - len(value[key].encode('utf-8')))
+                else:
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+    walk(payload.get('tool_input', {}))
+    if cut_any[0]:
+        payload['coucou_diff_truncated'] = True
+
 def main():
     raw = b''
     payload = {}
@@ -3688,8 +3788,12 @@ def main():
         if raw_event:
             payload['hook_event_name'] = normalize_event(raw_event)
         normalize_tool_fields(payload)
+        cap_diff_payload(payload)
     except Exception:
         pass
+
+    payload.pop('tool_response', None)
+    payload.pop('tool_output', None)
 
     event = payload.get('hook_event_name', '')
     # socket_path is already defined above

@@ -120,12 +120,15 @@ two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
 polling, a few frames a second. He remembers his spot between launches; if it
 was on a display that is no longer connected, he stays in the island.
 
-**Live diff.** Every file Claude edits (Edit, MultiEdit, Write) shows up in the
-session ticker with its **+N −M** lines; click it for the diff. Same limits as the
-Mac: past 200 KB or 4 000 lines only the counts are kept, at most 50 diffs per
-session, and they are forgotten an hour after the last edit or when the session
-ends. When Claude finishes, the card keeps the first paragraph of its final
-answer on one line, still, until the next prompt.
+**Live diff.** Claude Code's `Edit`, `MultiEdit` and `Write`, Codex's `apply_patch`,
+and Antigravity's `write_to_file`, `replace_file_content` and
+`multi_replace_file_content` automatically opens a full review panel with the
+agent, recent session steps, file path, line numbers and syntax-coloured changes.
+The ticker also lists each changed file. Past 200 KB
+or 4 000 lines, only the counts are kept. Each session keeps at most 50 diffs;
+they expire an hour after the last edit or when the session ends. When an agent
+finishes, the card keeps the first paragraph of its final answer on one line
+until the next prompt.
 
 ## Your pills
 
@@ -442,13 +445,12 @@ own window.
   it also offers OpenRouter and any OpenAI-compatible server, which the Mac
   does not. Google AI, OpenAI and OpenRouter can see an image you dropped (sent
   inline), where the Mac sends its name only.
-- Live diff: the relay forwards an edit's text whole only once the edit is done
-  (PostToolUse), up to 256 KB per string and 512 KB per event. A bigger edit
+- Live diff: the relay forwards supported edit text only after the tool finishes
+  (PostToolUse), up to 256 KB per string and 512 KB per event. A larger edit
   shows its "Edits · file" step without counts rather than wrong ones. The
   diff's ↗ needs `code` on your `PATH`; without it, it opens the file's folder —
-  never the file itself. Counts and diffs come from Claude Code's Edit,
-  MultiEdit and Write, on whichever pill its session is on (VS Code, Cursor,
-  Claude Desktop); other agents' edits show as plain steps.
+  never the file itself. Codex `apply_patch` and Antigravity file-edit tools
+  produce diffs alongside Claude Code's Edit, MultiEdit and Write.
 - There is no iPhone to keep fetching the GitHub lists while the pill is off.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
   keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the

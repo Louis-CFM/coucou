@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DIFF_MAX_LINES, buildFileDiff, fileName, fromEdit, fromNew, isDiffStep, lastTextStep,
+  DIFF_MAX_LINES, buildFileDiff, buildFileDiffs, fileName, fromEdit, fromNew, isDiffStep, lastTextStep,
   makeDiffStep, parseDiffStep, toOneLine,
 } from "../src/core/diff.ts";
 
@@ -189,4 +189,51 @@ test("buildFileDiff — Write and other tools", () => {
   assert.equal(buildFileDiff("Write", { file_path: "/p/n.md", content: "" }), null);
   assert.equal(buildFileDiff("Bash", { command: "ls" }), null);
   assert.equal(buildFileDiff("Read", { file_path: "/p/n.md" }), null);
+});
+
+test("buildFileDiffs — Codex apply_patch creates one diff per changed file", () => {
+  const diffs = buildFileDiffs("apply_patch", { command: [
+    "*** Begin Patch",
+    "*** Update File: src/invoice.ts",
+    "@@ -1,1 +1,1 @@",
+    "-const VAT = 0.19",
+    "+const VAT = 0.20",
+    "*** Add File: src/types.ts",
+    "+export interface Item {",
+    "+  price: number",
+    "+}",
+    "*** End Patch",
+  ].join("\n") }, "C:\\p\\project");
+  assert.deepEqual(diffs.map((d) => [d.path, d.added, d.removed]), [
+    ["C:\\p\\project\\src\\invoice.ts", 1, 1],
+    ["C:\\p\\project\\src\\types.ts", 3, 0],
+  ]);
+  assert.equal(diffs[1].isNewFile, true);
+  assert.deepEqual(allLines(diffs[0]).filter((line) => line.kind !== "context").map((line) => line.text), [
+    "const VAT = 0.19", "const VAT = 0.20",
+  ]);
+});
+
+test("buildFileDiff — Antigravity write, replace and multi-replace payloads", () => {
+  const written = buildFileDiff("write_to_file", {
+    TargetFile: "src/new.ts",
+    CodeContent: "export const answer = 42\n",
+  }, "C:\\p\\project");
+  assert.deepEqual([written.path, written.added, written.isNewFile], ["C:\\p\\project\\src\\new.ts", 1, true]);
+
+  const replaced = buildFileDiff("replace_file_content", {
+    TargetFile: "src/invoice.ts",
+    TargetContent: "const VAT = 0.19",
+    ReplacementContent: "const VAT = 0.20",
+  }, "C:\\p\\project");
+  assert.deepEqual([replaced.path, replaced.added, replaced.removed], ["C:\\p\\project\\src\\invoice.ts", 1, 1]);
+
+  const multi = buildFileDiff("multi_replace_file_content", {
+    TargetFile: "src/invoice.ts",
+    ReplacementChunks: [
+      { TargetContent: "const VAT = 0.19", ReplacementContent: "const VAT = 0.20" },
+      { TargetContent: "return sum", ReplacementContent: "return Math.round(sum)" },
+    ],
+  }, "C:\\p\\project");
+  assert.deepEqual([multi.path, multi.added, multi.removed, multi.hunks.length], ["C:\\p\\project\\src\\invoice.ts", 2, 2, 2]);
 });

@@ -31,6 +31,17 @@ struct FileDiff: Equatable {
     static let maxLines = 4000
 }
 
+private struct PatchFile {
+    var path: String
+    var kind: String
+    var hunks: [DiffHunk] = []
+    var added = 0
+    var removed = 0
+    var tooLarge = false
+    var bytes = 0
+    var lines = 0
+}
+
 // MARK: - DiffEngine
 
 enum DiffEngine {
@@ -80,6 +91,100 @@ enum DiffEngine {
             tooLarge: false,
             isNewFile: true
         )
+    }
+
+    /// Decode Codex's `apply_patch` input into one diff per changed file.
+    /// This reads the patch text only; it never applies it to the workspace.
+    static func fromCodexPatch(_ patch: String, cwd: String) -> [FileDiff] {
+        var files: [PatchFile] = []
+        var current: PatchFile?
+        var hunkLines: [DiffLine] = []
+        var oldLine = 1
+        var newLine = 1
+
+        func flushHunk() {
+            guard !hunkLines.isEmpty else { return }
+            let origStart = hunkLines.first(where: { $0.origLine > 0 })?.origLine ?? oldLine
+            let newStart = hunkLines.first(where: { $0.newLine > 0 })?.newLine ?? newLine
+            current?.hunks.append(DiffHunk(origStart: origStart, newStart: newStart, lines: hunkLines))
+            hunkLines.removeAll(keepingCapacity: true)
+        }
+
+        func flushFile() {
+            flushHunk()
+            if let current { files.append(current) }
+            current = nil
+        }
+
+        for line in patch.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n") {
+            if line.hasPrefix("*** Update File: ") || line.hasPrefix("*** Add File: ") || line.hasPrefix("*** Delete File: ") {
+                flushFile()
+                let kind = line.hasPrefix("*** Add File: ") ? "add" : line.hasPrefix("*** Delete File: ") ? "delete" : "update"
+                let prefix = kind == "add" ? "*** Add File: " : kind == "delete" ? "*** Delete File: " : "*** Update File: "
+                current = PatchFile(path: String(line.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces), kind: kind)
+                oldLine = 1
+                newLine = 1
+                continue
+            }
+            if line.hasPrefix("*** Move to: "), current != nil {
+                current?.path = String(line.dropFirst("*** Move to: ".count)).trimmingCharacters(in: .whitespaces)
+                continue
+            }
+            guard current != nil else { continue }
+            if line.hasPrefix("*** Begin Patch") || line.hasPrefix("*** End Patch") || line == "*** End of File" { continue }
+            if line.hasPrefix("@@") {
+                flushHunk()
+                let pattern = "^@@\\s+-(\\d+)(?:,\\d+)?\\s+\\+(\\d+)(?:,\\d+)?\\s+@@"
+                if let regex = try? NSRegularExpression(pattern: pattern),
+                   let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+                   let oldRange = Range(match.range(at: 1), in: line),
+                   let newRange = Range(match.range(at: 2), in: line) {
+                    oldLine = Int(line[oldRange]) ?? oldLine
+                    newLine = Int(line[newRange]) ?? newLine
+                }
+                continue
+            }
+            guard let marker = line.first, marker == " " || marker == "+" || marker == "-" else { continue }
+            current?.bytes += line.utf8.count + 1
+            current?.lines += 1
+            if current.map({ $0.bytes > FileDiff.maxBytes || $0.lines > FileDiff.maxLines }) == true {
+                current?.tooLarge = true
+            }
+            let text = String(line.dropFirst())
+            switch marker {
+            case " ":
+                hunkLines.append(DiffLine(kind: .context, text: text, origLine: oldLine, newLine: newLine))
+                oldLine += 1
+                newLine += 1
+            case "+":
+                current?.added += 1
+                hunkLines.append(DiffLine(kind: .added, text: text, origLine: -1, newLine: newLine))
+                newLine += 1
+            default:
+                current?.removed += 1
+                hunkLines.append(DiffLine(kind: .removed, text: text, origLine: oldLine, newLine: -1))
+                oldLine += 1
+            }
+        }
+        flushFile()
+
+        return files.compactMap { file in
+            guard file.kind != "delete", file.added > 0 || file.removed > 0 else { return nil }
+            let path = resolve(file.path, cwd: cwd)
+            return FileDiff(path: path, added: file.added, removed: file.removed,
+                            hunks: file.tooLarge ? [] : file.hunks,
+                            tooLarge: file.tooLarge, isNewFile: file.kind == "add")
+        }
+    }
+
+    static func resolve(_ path: String, cwd: String) -> String {
+        let absolute = path.hasPrefix("/") || path.range(of: "^[A-Za-z]:[\\\\/]|^\\\\\\\\", options: .regularExpression) != nil
+        guard !absolute, !cwd.isEmpty else { return path }
+        let separator = cwd.contains("\\") ? "\\" : "/"
+        let base = cwd.trimmingCharacters(in: CharacterSet(charactersIn: "/\\"))
+        var relative = path
+        while relative.hasPrefix("./") || relative.hasPrefix(".\\") { relative.removeFirst(2) }
+        return base.isEmpty ? "\(separator)\(relative)" : "\(base)\(separator)\(relative)"
     }
 
     // MARK: - Line splitting

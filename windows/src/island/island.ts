@@ -382,6 +382,7 @@ export class Island {
   }
 
   expand(view: IslandViewName) {
+    if (view !== "diff" && State.view === "diff") State.closeDiff();
     this.stopSequenceIfLeaving(view);
     if (view !== "overview") closePlanCard();
     State.view = view;
@@ -392,6 +393,7 @@ export class Island {
   }
 
   setView(view: IslandViewName) {
+    if (view !== "diff" && State.view === "diff") State.closeDiff();
     this.stopSequenceIfLeaving(view);
     if (view !== "overview") closePlanCard();
     if (State.mode !== "expanded") {
@@ -690,7 +692,7 @@ export class Island {
     }
   }
 
-  /** Island rect in window coordinates (origin top-left of the 720×320 window). */
+  /** Island rect in window coordinates (origin top-left of the host window). */
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
@@ -790,6 +792,10 @@ export class Island {
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && State.mode === "expanded") {
         if (State.pendingApproval) this.foldApproval();
+        else if (State.view === "diff") {
+          State.closeDiff();
+          this.setView("overview");
+        }
         else if (!State.isPinned) this.collapse();
       }
       State.lastActivity = performance.now();

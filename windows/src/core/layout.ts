@@ -6,6 +6,7 @@ export type IslandMode = "hidden" | "compact" | "expanded";
 
 export type IslandViewName =
   | "overview"
+  | "diff"
   | "empty"
   | "approval"
   | "question"
@@ -50,16 +51,17 @@ export interface ViewLayout {
   agentMode: AgentLayoutMode;
 }
 
-// The window is a fixed 720×320 (largest view) like the macOS panel; the island is
-// drawn inside it, glued to the top edge and horizontally centred.
-export const PANEL_W = 720;
-export const PANEL_H = 320;
+// The transparent host window holds the largest review view; ordinary island
+// views stay compact inside it, glued to the top edge and horizontally centred.
+export const PANEL_W = 1080;
+export const PANEL_H = 620;
 
 // No notch on a PC: these are the hidden/compact sizes from docs/SPEC.md.
 export const NOTCH_W = 184;
 export const NOTCH_H = 32;
 export const COMPACT_W = 288; // NOTCH_W + 104
 export const EXPANDED_W = 640;
+export const DIFF_VIEW_W = 1000;
 
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;
@@ -70,6 +72,7 @@ export const WAKE_STRIP_H = 6;
 
 export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   overview: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "pills" },
+  diff: { height: 560, botX: 100, botY: 166, botDiameter: 76, agentMode: "none" },
   empty: { height: 160, botX: 70, botY: null, botDiameter: 62, agentMode: "none" },
   approval: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
   question: { height: 160, botX: 62, botY: null, botDiameter: 56, agentMode: "column" },
@@ -121,7 +124,7 @@ export function islandSize(
       return { w: COMPACT_W, h: NOTCH_H };
     case "expanded": {
       const h = view === "prompt" ? chatPromptHeight(chatCount) : VIEW_LAYOUTS[view].height;
-      return { w: EXPANDED_W, h };
+      return { w: view === "diff" ? DIFF_VIEW_W : EXPANDED_W, h };
     }
   }
 }

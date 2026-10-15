@@ -59,6 +59,28 @@ enum DiffEngineTests {
                       d.hunks.flatMap { $0.lines }.allSatisfy { $0.kind == .added })
         }
 
+        // ── DiffEngine.fromCodexPatch — multiple files ─────────────────────────
+        print("DiffEngine.fromCodexPatch — multiple files")
+        do {
+            let patch = """
+            *** Begin Patch
+            *** Update File: src/invoice.ts
+            @@ -1,1 +1,1 @@
+            -const VAT = 0.19
+            +const VAT = 0.20
+            *** Add File: src/types.ts
+            +export interface Item {}
+            *** End Patch
+            """
+            let diffs = DiffEngine.fromCodexPatch(patch, cwd: "/projects/invoice")
+            checkInt("one diff per file", diffs.count, 2)
+            checkTrue("update path resolved", diffs.first?.path == "/projects/invoice/src/invoice.ts")
+            checkTrue("update counts", diffs.first?.added == 1 && diffs.first?.removed == 1)
+            checkTrue("new file path resolved", diffs.last?.path == "/projects/invoice/src/types.ts")
+            checkTrue("new file marked", diffs.last?.isNewFile == true)
+            checkInt("new file lines", diffs.last?.added ?? -1, 1)
+        }
+
         // ── DiffEngine.fromEdit — MultiEdit (two edits) ────────────────────────
         print("DiffEngine.fromEdit — MultiEdit (two edits)")
         do {

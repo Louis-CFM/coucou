@@ -104,12 +104,12 @@ export function fromNew(content: string, path: string): FileDiff {
 }
 
 /**
- * HookServer.buildFileDiff — the diff of one Edit, MultiEdit or Write tool call,
- * or null when the call changes nothing (or is not a file edit at all).
+ * Build a file diff from tool arguments when they carry the replaced and new
+ * text, or null when the call changes nothing or is not a supported edit.
  */
-export function buildFileDiff(tool: string, input: Record<string, unknown>): FileDiff | null {
+export function buildFileDiff(tool: string, input: Record<string, unknown>, cwd = ""): FileDiff | null {
   const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
-  const path = str(input.file_path);
+  const path = resolvePath(str(input.file_path), cwd);
   switch (tool) {
     case "Edit": {
       const oldText = str(input.old_string);
@@ -147,9 +147,158 @@ export function buildFileDiff(tool: string, input: Record<string, unknown>): Fil
       const d = fromNew(content, path);
       return d.added > 0 || d.removed > 0 ? d : null;
     }
+    case "write_to_file": {
+      const target = resolvePath(str(input.TargetFile) ?? str(input.targetFile), cwd);
+      const content = str(input.CodeContent) ?? str(input.codeContent);
+      if (target == null || content == null || content.length === 0) return null;
+      const d = fromNew(content, target);
+      return d.added > 0 || d.removed > 0 ? d : null;
+    }
+    case "replace_file_content": {
+      const target = resolvePath(str(input.TargetFile) ?? str(input.targetFile), cwd);
+      const oldText = str(input.TargetContent) ?? str(input.targetContent);
+      const newText = str(input.ReplacementContent) ?? str(input.replacementContent);
+      if (target == null || oldText == null || newText == null || (!oldText && !newText)) return null;
+      const d = fromEdit(oldText, newText, target);
+      return d.added > 0 || d.removed > 0 ? d : null;
+    }
+    case "multi_replace_file_content": {
+      const target = resolvePath(str(input.TargetFile) ?? str(input.targetFile), cwd);
+      const chunks = input.ReplacementChunks ?? input.replacementChunks;
+      if (target == null || !Array.isArray(chunks) || chunks.length === 0) return null;
+      let added = 0;
+      let removed = 0;
+      let tooLarge = false;
+      const hunks: DiffHunk[] = [];
+      for (const chunk of chunks) {
+        if (!chunk || typeof chunk !== "object") continue;
+        const c = chunk as Record<string, unknown>;
+        const oldText = str(c.TargetContent) ?? str(c.targetContent) ?? str(c.old_string);
+        const newText = str(c.ReplacementContent) ?? str(c.replacementContent) ?? str(c.new_string);
+        if (oldText == null || newText == null) continue;
+        const d = fromEdit(oldText, newText, target);
+        added += d.added;
+        removed += d.removed;
+        hunks.push(...d.hunks);
+        tooLarge ||= d.tooLarge;
+      }
+      if (added === 0 && removed === 0) return null;
+      return { id: 0, path: target, added, removed, hunks, tooLarge, isNewFile: false };
+    }
     default:
       return null;
   }
+}
+
+/** One hook can carry an apply_patch call that changes several files. */
+export function buildFileDiffs(tool: string, input: Record<string, unknown>, cwd = ""): FileDiff[] {
+  if (tool === "apply_patch") {
+    const patch = typeof input.command === "string" ? input.command : "";
+    return patch ? parseCodexPatch(patch, cwd) : [];
+  }
+  const diff = buildFileDiff(tool, input, cwd);
+  return diff ? [diff] : [];
+}
+
+function resolvePath(path: string | null, cwd: string): string | null {
+  if (!path) return null;
+  if (/^(?:[A-Za-z]:[\\/]|[\\/]{2}|\/)/.test(path) || !cwd) return path;
+  const separator = cwd.includes("\\") ? "\\" : "/";
+  let relative = path;
+  while (relative.startsWith("./") || relative.startsWith(".\\")) relative = relative.slice(2);
+  return `${cwd.replace(/[\\/]+$/, "")}${separator}${relative.replace(/[\\/]+/g, separator)}`;
+}
+
+/** Decode Codex's apply_patch body without executing or applying it. */
+function parseCodexPatch(patch: string, cwd: string): FileDiff[] {
+  type PatchFile = { path: string; kind: "update" | "add" | "delete"; hunks: DiffHunk[]; added: number; removed: number; tooLarge: boolean };
+  const files: PatchFile[] = [];
+  const state: { file: PatchFile | null } = { file: null };
+  let hunkLines: DiffLine[] = [];
+  let oldLine = 1;
+  let newLine = 1;
+  let fileBytes = 0;
+  let fileLines = 0;
+
+  const flushHunk = () => {
+    if (!state.file || hunkLines.length === 0) return;
+    state.file.hunks.push({
+      origStart: hunkLines.find((line) => line.origLine > 0)?.origLine ?? oldLine,
+      newStart: hunkLines.find((line) => line.newLine > 0)?.newLine ?? newLine,
+      lines: hunkLines,
+    });
+    hunkLines = [];
+  };
+  const flushFile = () => {
+    flushHunk();
+    if (state.file) files.push(state.file);
+    state.file = null;
+  };
+  const beginFile = (path: string, kind: PatchFile["kind"]) => {
+    flushFile();
+    state.file = { path, kind, hunks: [], added: 0, removed: 0, tooLarge: false };
+    oldLine = 1;
+    newLine = 1;
+    fileBytes = 0;
+    fileLines = 0;
+  };
+
+  const encoder = new TextEncoder();
+  for (const line of patch.replace(/\r\n/g, "\n").split("\n")) {
+    const update = line.match(/^\*\*\* Update File: (.+)$/);
+    const add = line.match(/^\*\*\* Add File: (.+)$/);
+    const del = line.match(/^\*\*\* Delete File: (.+)$/);
+    const move = line.match(/^\*\*\* Move to: (.+)$/);
+    if (update || add || del) {
+      beginFile((update ?? add ?? del)![1].trim(), update ? "update" : add ? "add" : "delete");
+      continue;
+    }
+    if (move && state.file) {
+      state.file.path = move[1].trim();
+      continue;
+    }
+    if (!state.file || line === "*** Begin Patch" || line === "*** End Patch" || line === "*** End of File") continue;
+    if (line.startsWith("@@")) {
+      flushHunk();
+      const header = line.match(/^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
+      if (header) {
+        oldLine = Number(header[1]);
+        newLine = Number(header[2]);
+      }
+      continue;
+    }
+
+    const marker = line[0];
+    if (marker !== " " && marker !== "+" && marker !== "-") continue;
+    fileBytes += encoder.encode(line).length + 1;
+    fileLines++;
+    if (marker === " ") {
+      hunkLines.push({ kind: "context", text: line.slice(1), origLine: oldLine++, newLine: newLine++ });
+    } else if (marker === "+") {
+      state.file.added++;
+      hunkLines.push({ kind: "added", text: line.slice(1), origLine: -1, newLine: newLine++ });
+    } else {
+      state.file.removed++;
+      hunkLines.push({ kind: "removed", text: line.slice(1), origLine: oldLine++, newLine: -1 });
+    }
+    if (fileBytes > DIFF_MAX_BYTES || fileLines > DIFF_MAX_LINES) state.file.tooLarge = true;
+  }
+  flushFile();
+
+  return files.flatMap((item) => {
+    if (item.kind === "delete" || (item.added === 0 && item.removed === 0)) return [];
+    const path = resolvePath(item.path, cwd);
+    if (!path) return [];
+    return [{
+      id: 0,
+      path,
+      added: item.added,
+      removed: item.removed,
+      hunks: item.tooLarge ? [] : item.hunks,
+      tooLarge: item.tooLarge,
+      isNewFile: item.kind === "add",
+    }];
+  });
 }
 
 // ── Line splitting ────────────────────────────────────────────────────────────

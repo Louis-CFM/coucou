@@ -76,6 +76,68 @@ test("Write and MultiEdit are diffed too; other tools and PreToolUse are not", (
   assert.equal(diffs().length, 2);
 });
 
+test("Codex apply_patch stores each file diff and opens the newest one", () => {
+  const patch = [
+    "*** Begin Patch",
+    "*** Update File: src/invoice.ts",
+    "@@ -1,1 +1,1 @@",
+    "-const VAT = 0.19",
+    "+const VAT = 0.20",
+    "*** Add File: src/types.ts",
+    "+export interface Item {}",
+    "*** End Patch",
+  ].join("\n");
+  hook({ hook_event_name: "SessionStart", cwd: "C:\\p\\project", session_id: "codex-1", coucou_agent: "codex" });
+  hook({
+    hook_event_name: "PostToolUse",
+    cwd: "C:\\p\\project",
+    session_id: "codex-1",
+    coucou_agent: "codex",
+    tool_name: "apply_patch",
+    tool_input: { command: patch },
+  });
+
+  const codexDiffs = diffs("agent_codex");
+  assert.equal(codexDiffs.length, 2);
+  assert.equal(State.activeDiff.pillId, "agent_codex");
+  assert.equal(State.activeDiff.diffId, codexDiffs[1].id);
+  assert.deepEqual(codexDiffs.map((d) => d.path), [
+    "C:\\p\\project\\src\\invoice.ts",
+    "C:\\p\\project\\src\\types.ts",
+  ]);
+
+  hook({
+    hook_event_name: "PostToolUse",
+    cwd: "C:\\p\\project",
+    session_id: "codex-1",
+    coucou_agent: "codex",
+    tool_name: "apply_patch",
+    tool_input: { command: patch },
+    coucou_diff_truncated: true,
+  });
+  assert.equal(diffs("agent_codex").length, 2);
+});
+
+test("Antigravity file tools record their changes", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "/p/proj", coucou_agent: "antigravity" });
+  hook({
+    hook_event_name: "PostToolUse",
+    cwd: "/p/proj",
+    coucou_agent: "antigravity",
+    tool_name: "replace_file_content",
+    tool_input: {
+      TargetFile: "src/app.ts",
+      TargetContent: "const answer = 41",
+      ReplacementContent: "const answer = 42",
+    },
+  });
+  const antigravityDiff = diffs("agent_antigravity")[0];
+  assert.deepEqual([antigravityDiff.path, antigravityDiff.added, antigravityDiff.removed], [
+    "/p/proj/src/app.ts", 1, 1,
+  ]);
+  assert.equal(State.activeDiff.pillId, "agent_antigravity");
+});
+
 test("an edit with no change, or one the relay had to cut, adds no diff", () => {
   hook({ hook_event_name: "PostToolUse", tool_name: "Edit", tool_input: { file_path: "/p/a.ts", old_string: "same", new_string: "same" } });
   edit({ coucou_diff_truncated: true });

@@ -1497,6 +1497,16 @@
    "ru": "Открыть Claude",
    "id": "Buka Claude"
   },
+  "Open Settings": {
+   "zh-Hans": "打开设置",
+   "hi": "सेटिंग्स खोलें",
+   "es": "Abrir Configuración",
+   "ar": "فتح الإعدادات",
+   "fr": "Ouvrir les réglages",
+   "bn": "সেটিংস খুলুন",
+   "pt-BR": "Abrir Configurações",
+   "ru": "Открыть настройки",
+   "id": "Buka Pengaturan"
   "Open in VS Code": {
    "zh-Hans": "在 VS Code 中打开",
    "hi": "VS Code में खोलें",
@@ -3866,6 +3876,127 @@
    "pt-BR": "Este código também inclui a chave de acesso e a chave de ponta a ponta do relay {host}. «Parear de novo» cria uma chave e uma sala novas.",
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru."
+  },
+  "Back to session": {
+   "zh-Hans": "返回会话",
+   "hi": "सत्र पर वापस जाएँ",
+   "es": "Volver a la sesión",
+   "ar": "العودة إلى الجلسة",
+   "fr": "Retour à la session",
+   "bn": "সেশনে ফিরে যান",
+   "pt-BR": "Voltar à sessão",
+   "ru": "Вернуться к сеансу",
+   "id": "Kembali ke sesi"
+  },
+  "Changed by agent": {
+   "zh-Hans": "由代理修改",
+   "hi": "एजेंट द्वारा बदला गया",
+   "es": "Modificado por el agente",
+   "ar": "عدّله الوكيل",
+   "fr": "Modifié par l’agent",
+   "bn": "এজেন্টের দ্বারা পরিবর্তিত",
+   "pt-BR": "Alterado pelo agente",
+   "ru": "Изменено агентом",
+   "id": "Diubah oleh agen"
+  },
+  "Diff is too large to display; line counts are shown.": {
+   "zh-Hans": "差异过大，无法显示；仅显示行数。",
+   "hi": "अंतर दिखाने के लिए बहुत बड़ा है; केवल पंक्तियों की संख्या दिखाई गई है।",
+   "es": "El diff es demasiado grande; solo se muestran los recuentos de líneas.",
+   "ar": "التغييرات كبيرة جدًا لعرضها؛ تُعرض أعداد الأسطر فقط.",
+   "fr": "Le diff est trop volumineux ; seuls les nombres de lignes sont affichés.",
+   "bn": "ডিফটি দেখানোর জন্য খুব বড়; শুধু লাইনের সংখ্যা দেখানো হয়েছে।",
+   "pt-BR": "O diff é grande demais para exibir; mostrando apenas a contagem de linhas.",
+   "ru": "Различия слишком велики для отображения; показано только число строк.",
+   "id": "Diff terlalu besar untuk ditampilkan; hanya jumlah baris yang ditampilkan."
+  },
+  "Finished": {
+   "zh-Hans": "已完成",
+   "hi": "पूरा हुआ",
+   "es": "Terminado",
+   "ar": "اكتمل",
+   "fr": "Terminé",
+   "bn": "সম্পন্ন",
+   "pt-BR": "Concluído",
+   "ru": "Завершено",
+   "id": "Selesai"
+  },
+  "No activity details yet": {
+   "zh-Hans": "暂无活动详情",
+   "hi": "अभी तक गतिविधि का विवरण नहीं है",
+   "es": "Aún no hay detalles de actividad",
+   "ar": "لا توجد تفاصيل للنشاط بعد",
+   "fr": "Aucun détail d’activité pour le moment",
+   "bn": "এখনও কোনো কার্যকলাপের বিবরণ নেই",
+   "pt-BR": "Ainda não há detalhes da atividade",
+   "ru": "Пока нет сведений о действиях",
+   "id": "Belum ada detail aktivitas"
+  },
+  "No changes to display.": {
+   "zh-Hans": "没有可显示的更改。",
+   "hi": "दिखाने के लिए कोई बदलाव नहीं है।",
+   "es": "No hay cambios que mostrar.",
+   "ar": "لا توجد تغييرات لعرضها.",
+   "fr": "Aucune modification à afficher.",
+   "bn": "দেখানোর মতো কোনো পরিবর্তন নেই।",
+   "pt-BR": "Não há alterações para exibir.",
+   "ru": "Нет изменений для отображения.",
+   "id": "Tidak ada perubahan untuk ditampilkan."
+  },
+  "Open in editor": {
+   "zh-Hans": "在编辑器中打开",
+   "hi": "संपादक में खोलें",
+   "es": "Abrir en el editor",
+   "ar": "فتح في المحرر",
+   "fr": "Ouvrir dans l’éditeur",
+   "bn": "এডিটরে খুলুন",
+   "pt-BR": "Abrir no editor",
+   "ru": "Открыть в редакторе",
+   "id": "Buka di editor"
+  },
+  "Session activity": {
+   "zh-Hans": "会话活动",
+   "hi": "सत्र गतिविधि",
+   "es": "Actividad de la sesión",
+   "ar": "نشاط الجلسة",
+   "fr": "Activité de la session",
+   "bn": "সেশনের কার্যকলাপ",
+   "pt-BR": "Atividade da sessão",
+   "ru": "Действия в сеансе",
+   "id": "Aktivitas sesi"
+  },
+  "Waiting for you": {
+   "zh-Hans": "等待你的回复",
+   "hi": "आपकी प्रतीक्षा में",
+   "es": "Esperando tu respuesta",
+   "ar": "بانتظارك",
+   "fr": "En attente de votre réponse",
+   "bn": "আপনার জন্য অপেক্ষা করছে",
+   "pt-BR": "Aguardando você",
+   "ru": "Ожидает вашего ответа",
+   "id": "Menunggu Anda"
+  },
+  "Working": {
+   "zh-Hans": "正在处理",
+   "hi": "काम कर रहा है",
+   "es": "En curso",
+   "ar": "قيد العمل",
+   "fr": "En cours",
+   "bn": "কাজ চলছে",
+   "pt-BR": "Em andamento",
+   "ru": "В работе",
+   "id": "Sedang bekerja"
+  },
+  "Workspace": {
+   "zh-Hans": "工作区",
+   "hi": "वर्कस्पेस",
+   "es": "Espacio de trabajo",
+   "ar": "مساحة العمل",
+   "fr": "Espace de travail",
+   "bn": "কর্মক্ষেত্র",
+   "pt-BR": "Área de trabalho",
+   "ru": "Рабочая область",
+   "id": "Ruang kerja"
   }
  }
 }

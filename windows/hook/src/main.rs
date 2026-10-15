@@ -48,11 +48,28 @@ const MAX_FIELD_LEN: usize = 2_000;
 
 mod statusline;
 
-/// The live diff needs the whole text of a file edit, once it has happened:
-/// PostToolUse of these tools keeps its edit strings far longer than the rest.
-const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write"];
-/// The `tool_input` keys holding the text being replaced or written.
-const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content"];
+/// These PostToolUse payloads carry the source needed to render a live diff.
+const DIFF_TOOLS: &[&str] = &[
+    "Edit",
+    "MultiEdit",
+    "Write",
+    "apply_patch",
+    "write_to_file",
+    "replace_file_content",
+    "multi_replace_file_content",
+];
+/// The `tool_input` keys holding patch or file-edit text across supported agents.
+const DIFF_FIELDS: &[&str] = &[
+    "old_string",
+    "new_string",
+    "content",
+    "command",
+    "CodeContent",
+    "TargetContent",
+    "ReplacementContent",
+    "targetContent",
+    "replacementContent",
+];
 /// Per edit string. The island stops diffing at 200 KB anyway (DiffEngine).
 const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the
@@ -242,10 +259,8 @@ fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
     exe.starts_with("cursor").then_some("cursor")
 }
 
-/// Caps the strings of a payload: every field to MAX_FIELD_LEN, except the edit
-/// strings of a finished Edit / MultiEdit / Write, which the live diff needs
-/// whole. If even those had to be cut, `coucou_diff_truncated` tells the island
-/// not to show counts it cannot trust.
+/// Caps payload strings. File-edit and patch content gets a larger bounded
+/// budget; if cut, `coucou_diff_truncated` prevents showing misleading diffs.
 fn truncate_payload(payload: &mut serde_json::Value, event: &str) {
     let keeps_diff = event == "PostToolUse"
         && payload

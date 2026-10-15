@@ -241,6 +241,8 @@ class AppState {
   planDetailIsCodex = false;
   /** Per-pill file diffs, in order of reception. Steps carry their ids. */
   sessionDiffs = new Map<string, FileDiff[]>();
+  /** The file diff currently open in the full review panel. */
+  activeDiff: { pillId: string; diffId: number } | null = null;
   private sessionDiffTimers = new Map<string, number>();
   /** Never reset, so an id can never point at a newer diff than the one tapped. */
   private nextDiffId = 0;
@@ -296,6 +298,7 @@ class AppState {
   setFocus(id: string) {
     const t = this.tasks.find((x) => x.id === id);
     if (!t) return;
+    if (this.activeDiff && this.activeDiff.pillId !== id) this.activeDiff = null;
     this.focusId = id;
     this.showingPlanDetail = false;
     t.pillBadge = null;
@@ -378,7 +381,19 @@ class AppState {
     return this.sessionDiffs.get(pillId)?.find((d) => d.id === id) ?? null;
   }
 
+  openDiff(pillId: string, diffId: number): boolean {
+    if (!this.findDiff(pillId, diffId)) return false;
+    this.activeDiff = { pillId, diffId };
+    this.focusId = pillId;
+    return true;
+  }
+
+  closeDiff() {
+    this.activeDiff = null;
+  }
+
   clearSessionDiffs(pillId: string) {
+    if (this.activeDiff?.pillId === pillId) this.closeDiff();
     const timer = this.sessionDiffTimers.get(pillId);
     if (timer != null) window.clearTimeout(timer);
     this.sessionDiffTimers.delete(pillId);
