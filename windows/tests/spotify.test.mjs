@@ -91,12 +91,12 @@ test("music counts only when it plays on a declared Spotify pill", () => {
 
 test("the island's Mochi dances by the Mac's rules", () => {
   const base = { music: true, state: "idle", mode: "compact", view: "overview", focusId: "integration_claude" };
-  // Compact: whenever music plays, in the calm and busy states.
-  for (const state of ["idle", "working", "thinking", "searching", "finished"]) {
+  // Compact: whenever music plays and it isn't working (extras).
+  for (const state of ["idle", "finished"]) {
     assert.ok(islandDances({ ...base, state }), state);
   }
-  // An alert, an error, sleep or a daze win.
-  for (const state of ["approval", "question", "error", "ratelimit", "sleeping", "dizzy"]) {
+  // Work, an alert, an error, sleep or a daze win.
+  for (const state of ["working", "thinking", "searching", "approval", "question", "error", "ratelimit", "sleeping", "dizzy"]) {
     assert.ok(!islandDances({ ...base, state }), state);
   }
   assert.ok(!islandDances({ ...base, music: false }));
@@ -108,7 +108,8 @@ test("the island's Mochi dances by the Mac's rules", () => {
 });
 
 test("Mochi on the desktop dances by the compact island's rules", () => {
-  assert.ok(desktopDances(true, "working"));
+  assert.ok(desktopDances(true, "idle"));
+  assert.ok(!desktopDances(true, "working"));
   assert.ok(!desktopDances(true, "approval"));
   assert.ok(!desktopDances(false, "idle"));
 });

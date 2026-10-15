@@ -96,8 +96,12 @@ export function musicPlaying(s: SpotifyState, activeIntegrations: readonly strin
   return s.playing && s.track != null && activeIntegrations.includes(SPOTIFY_ID);
 }
 
-/** The states Mochi dances in; the rest (an alert, an error, sleep) win. */
-const DANCE_STATES: ReadonlySet<BotStateName> = new Set(["idle", "working", "thinking", "searching", "finished"]);
+/** The states Mochi dances in (only resting ones, idle or finished; a
+ *  Mochi at work keeps working). The rest (work, an alert, an error, sleep) win. */
+const DANCE_STATES: ReadonlySet<BotStateName> = new Set(["idle", "finished"]);
+
+/** Whether a Mochi in this state dances while music plays. */
+export const dancesIn = (state: BotStateName) => DANCE_STATES.has(state);
 
 /**
  * The island's Mochi (BotCanvasView, macOS): in the compact island whenever
@@ -112,7 +116,8 @@ export function islandDances(o: {
 }): boolean {
   if (!o.music || !DANCE_STATES.has(o.state)) return false;
   if (o.mode === "compact") return true;
-  return o.mode === "expanded" && o.view === "overview" && o.focusId === SPOTIFY_ID;
+  // The Windows Music pill (core/state.ts MUSIC_ID, music.rs) is a music card too.
+  return o.mode === "expanded" && o.view === "overview" && (o.focusId === SPOTIFY_ID || o.focusId === "integration_music");
 }
 
 /** Mochi on the desktop: the compact island's rules (DesktopMochi.swift). */

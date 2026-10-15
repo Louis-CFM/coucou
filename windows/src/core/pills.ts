@@ -128,8 +128,11 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
-  { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+  // Windows: whatever plays in the system media controls (src-tauri/src/music.rs),
+  // Spotify, Apple Music, YouTube Music or any other player. The Mac's Apple
+  // Music pill had this id; it has no Windows or Linux source of its own.
+  { id: "integration_music", name: "Music", color: "#FA2D48", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
@@ -168,9 +171,18 @@ export function isHookPill(id: string): boolean {
   return pillDefinition(id)?.connect.kind === "hooks";
 }
 
-/** Workspace tools that can be the main pill. */
+/**
+ * Agents that can also be the main pill: Claude Code sessions from the Claude
+ * desktop app are where some people do all their coding. They stay in the
+ * Agents group, so the catalog keeps the Mac's values.
+ */
+const MAIN_CAPABLE_AGENTS: readonly string[] = ["agent_claude-desktop"];
+
+/** Workspace tools (and MAIN_CAPABLE_AGENTS) that can be the main pill. */
 export function mainPillChoices(os: HostOs = HOST_OS): PillDefinition[] {
-  return availablePills(os).filter((p) => p.category === "workspace" && p.support !== "soon");
+  return availablePills(os).filter(
+    (p) => (p.category === "workspace" || MAIN_CAPABLE_AGENTS.includes(p.id)) && p.support !== "soon",
+  );
 }
 
 /** PillDefinition.sessionSubtitle — next to the name in a live session's card. */
