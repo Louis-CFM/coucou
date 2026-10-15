@@ -94,14 +94,14 @@ if [ "$MODE" != "--finish" ]; then
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
   echo "$COMMIT" > "$COMMIT_FILE"
 
+  # Signing comes from project.yml's Release config, which only the app target
+  # has. Set on the command line it would reach the Swift packages' targets too
+  # (FluidAudio), which have no team and fail with "requires a development team".
   xcodebuild \
     -project NotchBuddy.xcodeproj \
     -scheme NotchBuddy \
     -configuration Release \
     build \
-    CODE_SIGN_IDENTITY="$IDENTITY" \
-    CODE_SIGNING_REQUIRED=YES \
-    CODE_SIGNING_ALLOWED=YES \
     CONFIGURATION_BUILD_DIR="$BUILD_DIR"
 
   [ -f "$APP/Contents/embedded.provisionprofile" ] || die "the provisioning profile was not embedded in the app"

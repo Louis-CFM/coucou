@@ -7,6 +7,7 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
+import type { SpotifyState } from "./spotify";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -31,6 +32,152 @@ export interface BootInfo {
   cursorPoll: boolean;
 }
 
+/** The phone link (src-tauri/src/phone_link): how it is, never its secrets. */
+export interface PhoneLinkStatus {
+  enabled: boolean;
+  running: boolean;
+  port: number;
+  host: string;
+  name: string;
+  clients: number;
+  error: string | null;
+  /** The relay connection ("Away from home Wi-Fi"). */
+  relayState: PhoneRelayState;
+}
+
+export type PhoneRelayState = "off" | "connecting" | "waiting" | "linked" | "accessRefused" | "unreachable" | "roomTaken" | "tooMany";
+
+/** The relay switch and address. The access key is write-only: only whether one is stored comes back. */
+export interface PhoneRelayStatus {
+  enabled: boolean;
+  url: string;
+  hasAccess: boolean;
+  state: PhoneRelayState;
+}
+
+/** Session details for the phone: the switch (off by default). */
+export interface PhoneDetailsStatus {
+  enabled: boolean;
+}
+
+/** Chat from the phone: the switch and the models the phone may use ("provider/model"). */
+export interface PhoneChatStatus {
+  enabled: boolean;
+  models: string[];
+}
+
+/** What the settings window shows to pair a phone. Only the settings window may ask. */
+export interface PhoneLinkPairing {
+  link: string;
+  qrSvg: string;
+  host: string;
+  port: number;
+  name: string;
+  /** The relay's host when this link also carries the relay fields. */
+  relay: string | null;
+}
+
+/** One session as the phone sees it; Rust stamps `updatedAt`. */
+export interface PhoneLinkSession {
+  pillId: string;
+  agent: string;
+  state: string;
+  statusText: string;
+  stepIndex: number;
+  stepCount: number;
+  /** Details, for a phone that has the capability (the user's switch). */
+  steps?: string[];
+  finalLine?: string;
+  /** A folder name, never a path. */
+  project?: string;
+  color?: string;
+  /** The files this session changed, for a phone that has `diffs` (Rust cuts them to a name and a count). */
+  files?: PhoneLinkFile[];
+}
+
+export interface PhoneLinkFile {
+  id: number;
+  /** A file name; Rust keeps only its last segment. */
+  name: string;
+  added: number;
+  removed: number;
+  tooLarge?: boolean;
+  isNew?: boolean;
+}
+
+/** One file's diff for the phone that asked: lines as [kind, text], kind "+", "-", " " or "@" (a hunk's first line). */
+export interface PhoneLinkDiff {
+  pillId: string;
+  fileId: number;
+  name: string;
+  added: number;
+  removed: number;
+  tooLarge: boolean;
+  gone: boolean;
+  lines: [string, string][];
+}
+
+/** One plan window for the phone: used percentage (as the island has it) and when it resets (epoch ms). */
+export interface PhoneLinkWindow {
+  usedPct: number;
+  resetsAt: number;
+}
+
+export interface PhoneLinkPlan {
+  fiveHour?: PhoneLinkWindow;
+  sevenDay?: PhoneLinkWindow;
+  resetCredits?: number;
+  planType?: string;
+  updatedAt: number;
+}
+
+export interface PhoneLinkUsage {
+  claude: PhoneLinkPlan | null;
+  codex: PhoneLinkPlan | null;
+}
+
+/** What one service pill says, for a phone whose user allowed it (Rust cuts every text to size). */
+export interface PhoneLinkService {
+  id: string;
+  title: string;
+  headline: string;
+  reason?: string;
+  items: { label: string; detail: string }[];
+}
+
+export interface PhoneServicesStatus {
+  /** The services allowed for the phone. */
+  services: string[];
+}
+
+export interface PhoneUsageStatus {
+  enabled: boolean;
+}
+
+export interface PhoneDiffsStatus {
+  enabled: boolean;
+}
+
+export interface PhoneLinkApproval {
+  requestId: string;
+  sessionId: string;
+  pillId: string;
+  tool: string;
+  command: string;
+}
+
+/** The question Claude Code is waiting on, for a phone that may answer it (phone_link/hub.rs). */
+export interface PhoneLinkQuestion {
+  requestId: string;
+  sessionId: string;
+  pillId: string;
+  questions: { question: string; options: { label: string; description: string }[]; multiSelect: boolean }[];
+}
+
+export interface PhoneAnswersStatus {
+  enabled: boolean;
+}
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -52,18 +199,27 @@ export const Bridge = {
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
 
   reposition: () => call<void>("reposition"),
+  fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),
 
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
 
+  /** Which of these sounds have a file of the user's own in the sounds folder. */
+  customSounds: (names: readonly string[]) => call<string[]>("custom_sounds", { names }),
+  /** The user's file for one sound, as raw bytes. */
+  customSound: (name: string) => call<ArrayBuffer>("custom_sound", { name }),
+  revealSoundsFolder: () => call<void>("reveal_sounds_folder"),
+  /** Tells the island to read the sounds folder again ("sounds-changed"). */
+  reloadSounds: () => call<void>("reload_sounds"),
+
   /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
   openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
 
   /**
    * "Open terminal": the window the session runs in when Rust found it
-   * (Windows), else the folder in VS Code.
+   * (Windows; Linux on X11 and KDE Plasma), else the folder in VS Code.
    */
   openSession: (sessionId: string | null, path: string | null) =>
     call<boolean>("open_session", { sessionId, path }),
@@ -128,6 +284,47 @@ export const Bridge = {
 
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
+
+  // ── Phone link (Coucou for Android) ───────────────────────────────────────
+  phoneLinkStatus: () => call<PhoneLinkStatus>("phone_link_status"),
+  /** Only ever from the switch in Settings. Throws with the reason if it cannot start. */
+  phoneLinkSetEnabled: (enabled: boolean) => callOrThrow<PhoneLinkStatus>("phone_link_set_enabled", { enabled }),
+  phoneLinkPairing: () => callOrThrow<PhoneLinkPairing>("phone_link_pairing"),
+  /** A new code: the phone that had the old one is disconnected. */
+  phoneLinkNewPairing: () => callOrThrow<PhoneLinkPairing>("phone_link_new_pairing"),
+  phoneDetailsStatus: () => call<PhoneDetailsStatus>("phone_details_status"),
+  /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
+  phoneDetailsSetEnabled: (enabled: boolean) => callOrThrow<PhoneDetailsStatus>("phone_details_set_enabled", { enabled }),
+  phoneAnswersStatus: () => call<PhoneAnswersStatus>("phone_answers_status"),
+  /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
+  phoneAnswersSetEnabled: (enabled: boolean) => callOrThrow<PhoneAnswersStatus>("phone_answers_set_enabled", { enabled }),
+  phoneDiffsStatus: () => call<PhoneDiffsStatus>("phone_diffs_status"),
+  /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
+  phoneDiffsSetEnabled: (enabled: boolean) => callOrThrow<PhoneDiffsStatus>("phone_diffs_set_enabled", { enabled }),
+  /** The answer to a phone's request for a file's diff (the "phone-link-getdiff" event); `conn` says which phone. */
+  phoneLinkSendDiff: (conn: number, diff: PhoneLinkDiff) => call<void>("phone_link_send_diff", { conn, diff }),
+  phoneServicesStatus: () => call<PhoneServicesStatus>("phone_services_status"),
+  /** None by default; only from the ticks in Settings. Phones are reconnected so they learn about it. */
+  phoneServicesSet: (services: string[]) => callOrThrow<PhoneServicesStatus>("phone_services_set", { services }),
+  phoneLinkPublishServices: (services: PhoneLinkService[]) => call<void>("phone_link_publish_services", { services }),
+  phoneRelayStatus: () => call<PhoneRelayStatus>("phone_relay_status"),
+  /** Off by default; needs a valid wss:// address and a stored access key. */
+  phoneRelaySet: (enabled: boolean, url: string) => callOrThrow<PhoneRelayStatus>("phone_relay_set", { enabled, url }),
+  /** Write-only: stored in the OS keystore, never sent back. An empty value clears it. */
+  phoneRelaySetAccess: (access: string) => callOrThrow<PhoneRelayStatus>("phone_relay_set_access", { access }),
+  phoneUsageStatus: () => call<PhoneUsageStatus>("phone_usage_status"),
+  /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
+  phoneUsageSetEnabled: (enabled: boolean) => callOrThrow<PhoneUsageStatus>("phone_usage_set_enabled", { enabled }),
+  phoneLinkPublishUsage: (usage: PhoneLinkUsage) => call<void>("phone_link_publish_usage", { usage }),
+  phoneChatStatus: () => call<PhoneChatStatus>("phone_chat_status"),
+  /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
+  phoneChatSetEnabled: (enabled: boolean) => callOrThrow<PhoneChatStatus>("phone_chat_set_enabled", { enabled }),
+  phoneChatSetModels: (models: string[]) => callOrThrow<PhoneChatStatus>("phone_chat_set_models", { models }),
+  phoneLinkPublish: (sessions: PhoneLinkSession[], approval: PhoneLinkApproval | null) =>
+    call<void>("phone_link_publish", { sessions, approval }),
+  phoneLinkPublishQuestion: (question: PhoneLinkQuestion | null) => call<void>("phone_link_publish_question", { question }),
+  /** What Mochi wears ("auto" or an outfit), for phones that asked for it. */
+  phoneLinkPublishPrefs: (outfit: string) => call<void>("phone_link_publish_prefs", { outfit }),
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
@@ -194,24 +391,43 @@ export const Bridge = {
   /** X11: top-left corner, physical pixels. */
   desktopDragMove: (x: number, y: number) => call<void>("desktop_mochi_drag_move", { x, y }),
   desktopDragEnd: (x: number, y: number) => call<void>("desktop_mochi_drag_end", { x, y }),
-  /** From the island to his spot. False: no spot on any connected display. */
-  desktopFlyOut: () => call<boolean>("desktop_mochi_fly_out"),
+  /** From the island to his spot. False: no spot on any connected display.
+   *  `anywhere`: the first-visit corner then, rather than staying home. */
+  desktopFlyOut: (anywhere = false) => call<boolean>("desktop_mochi_fly_out", { anywhere }),
   /** To the island, then hidden. `forget`: he lives in the island again. */
   desktopFlyHome: (forget: boolean) => call<boolean>("desktop_mochi_fly_home", { forget }),
   /** Asleep, the cursor poll stops. */
   desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
+
+  // ── Spotify (src-tauri/src/spotify.rs) ────────────────────────────────────
+  /** Reads the player again (the card came on screen) and reports it. */
+  spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
+  /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
+  spotifyControl: (action: SpotifyAction, value?: number) =>
+    call<boolean>("spotify_control", { action, value: value ?? null }),
+  /** Brings Spotify forward or starts it; without it, its download page. */
+  spotifyOpen: () => call<boolean>("spotify_open"),
+  /** Whether there is a Spotify to launch (Settings). */
+  spotifyInstalled: () => call<boolean>("spotify_installed"),
 };
+
+export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 
 export type ShortcutStatus =
   | "active" | "off" | "inUse" | "duplicate" | "invalid"
-  | "typesCharacter" | "unsupported" | "notPorted";
+  | "typesCharacter" | "unsupported" | "notPorted"
+  /** Wayland: handed to the desktop's portal, no answer yet / left out by it. */
+  | "pending" | "refused";
 
 export interface ShortcutsReport {
-  actions: { id: string; status: ShortcutStatus; typed?: string }[];
-  /** "wayland" or "no-display" when no global shortcut can be registered. */
+  /** `trigger`: on Wayland, the keys the desktop says run it, in its words. */
+  actions: { id: string; status: ShortcutStatus; typed?: string; trigger?: string }[];
+  /** "wayland" or "no-display" when no key grab can be made. */
   blocked: string | null;
   /** `<executable> --shortcut`: append an action id for a desktop shortcut. */
   command: string;
+  /** Wayland: the shortcuts went to the desktop's GlobalShortcuts portal. */
+  portal?: "pending" | "active" | null;
 }
 
 /** How the desktop Mochi's window works here (platform::DesktopMode). */

@@ -320,14 +320,15 @@ struct BotPlacement: View {
                     let t = min(1.0, max(0, elapsed / state.uploadDuration))
                     // cx = 36 + 526*t: bot center at fill right edge (bar left=36, width=526)
                     let uploadCx = 36 + CGFloat(t * (2 - t)) * 526
-                    BotCanvasView(state: state, particleOverhang: 0)
+                    BotCanvasView(state: state, particleOverhang: 0, paused: state.mochiOnDesktop)
                         .frame(width: canvasSize, height: canvasSize)
                         .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                         .position(x: uploadCx, y: cy)
                 }
                 .transition(.scale(scale: 0.01, anchor: .center).combined(with: .opacity))
             } else {
-                BotCanvasView(state: state, particleOverhang: overhang)
+                // Invisible while Mochi lives on the desktop: no drawing either.
+                BotCanvasView(state: state, particleOverhang: overhang, paused: state.mochiOnDesktop)
                     .frame(width: canvasSize, height: canvasSize + overhang)
                     .opacity(state.isDraggingBot || state.mochiOnDesktop ? 0 : opacity)
                     .position(x: cx, y: cy - overhang / 2)
@@ -398,6 +399,21 @@ func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: 
     }
 }
 
+// MARK: - Active island view
+
+private struct IslandViewActiveKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// False inside the island views that are mounted but not shown (opacity 0):
+    /// TimelineViews in them pause. True everywhere else.
+    var islandViewActive: Bool {
+        get { self[IslandViewActiveKey.self] }
+        set { self[IslandViewActiveKey.self] = newValue }
+    }
+}
+
 // MARK: - Countdown bar
 
 struct CountdownBar: View {
@@ -414,29 +430,46 @@ struct CountdownBar: View {
                 .cornerRadius(2)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .onAppear { startTimer() }
-        .onDisappear { timer?.invalidate() }
+        // The bar only exists in the open island: its 10 Hz timer runs only then
+        // (CLAUDE.md: 0 % CPU when the island is hidden).
+        .onAppear { if state.mode == .expanded { startTimer() } }
+        .onChange(of: state.mode) { _, mode in
+            if mode == .expanded { startTimer() } else { stopTimer() }
+        }
+        .onDisappear { stopTimer() }
     }
 
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            updateBar()
+        guard timer == nil else { return }
+        let t = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            MainActor.assumeIsolated { updateBar() }
         }
+        t.tolerance = 0.02
+        timer = t
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+        if barWidth != 0 { barWidth = 0 }
     }
 
     private func updateBar() {
         guard state.mode == .expanded && !state.isPinned else {
-            barWidth = 0
+            if barWidth != 0 { barWidth = 0 }
             return
         }
         let autoClose = state.autoCloseInterval
         let window = min(10.0, autoClose * 0.6)
         let elapsed = Date.now.timeIntervalSince(state.lastActivity)
         let remaining = autoClose - elapsed
-        if remaining < window {
-            barWidth = max(0, CGFloat(remaining / window) * 160)
-        } else {
-            barWidth = 0
+        let target: CGFloat = remaining < window ? max(0, CGFloat(remaining / window) * 160) : 0
+        // The timer ticks at 10 Hz; a linear animation over the same 0.1 s glides between ticks,
+        // so the bar shrinks on every display frame instead of in 10 steps a second.
+        if target < barWidth && barWidth - target < 40 {
+            withAnimation(.linear(duration: 0.1)) { barWidth = target }
+        } else if target != barWidth {
+            barWidth = target
         }
     }
 }
@@ -464,6 +497,9 @@ struct IslandContentView: View {
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
                     IslandViewContent(view: v, state: state)
+                        // Views behind the active one stay mounted (for the cross-fade)
+                        // but stop their endless animations: nobody sees them.
+                        .environment(\.islandViewActive, active)
                         .frame(maxWidth: .infinity)
                         .frame(height: isTall ? nil : 98)
                         .frame(minHeight: (isTall && !active) ? 0 : nil, maxHeight: isTall ? .infinity : nil)
@@ -486,15 +522,13 @@ struct IslandContentView: View {
 
 struct IslandHeader: View {
     @ObservedObject var state: AppState
+    @State private var gearHovered  = false
+    @State private var soundHovered = false
+    @State private var closeHovered = false
 
-    // Claude + Codex pills together: tighten the right side so it clears the notch
-    private var bothPlans: Bool {
-        #if !APPSTORE
-        return state.view == .overview && state.showPlanInNotch && state.planRelayInstalled && state.showCodexPlanInNotch
-        #else
-        return false
-        #endif
-    }
+    /// Pending approval or mail draft: the island refuses to fold (fsm.isHeldOpen), so the
+    /// close cross is not shown.
+    private var heldOpen: Bool { state.pendingApproval != nil || state.voiceMailDraft != nil }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -515,16 +549,17 @@ struct IslandHeader: View {
             Spacer()
 
             // Right: plan pill (GitHub build, home view only) + action icons
-            HStack(spacing: bothPlans ? 5 : 8) {
+            HStack(spacing: 8) {
                 #if !APPSTORE
+                // Claude and Codex both on: only Claude here (two pills and the icons do not
+                // clear the notch); Codex is a row in the Claude plan card.
                 if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
                     ClaudePlanHeaderPill(state: state)
-                }
-                if state.view == .overview && state.showCodexPlanInNotch {
+                } else if state.view == .overview && state.showCodexPlanInNotch {
                     ClaudePlanHeaderPill(state: state, codex: true)
                 }
                 #endif
-                HStack(spacing: bothPlans ? 10 : 14) {
+                HStack(spacing: 14) {
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             state.view = .settings
@@ -532,19 +567,35 @@ struct IslandHeader: View {
                     }) {
                         Image(systemName: state.view == .settings ? "gearshape.fill" : "gearshape")
                             .font(.system(size: 14))
-                            .foregroundColor(state.view == .settings ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                            .foregroundColor(state.view == .settings || gearHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    .onHover { gearHovered = $0 }
 
                     Button(action: { state.soundEnabled.toggle() }) {
                         Image(systemName: state.soundEnabled ? "speaker.wave.2" : "speaker.slash")
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "#8E939C"))
+                            .foregroundColor(soundHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
                     }
                     .buttonStyle(.plain)
+                    .onHover { soundHovered = $0 }
+
+                    // Fold back to the compact island now, without waiting for the timer.
+                    if !heldOpen {
+                        Button(action: {
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14))
+                                .foregroundColor(closeHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "Close"))
+                        .onHover { closeHovered = $0 }
+                    }
                 }
             }
-            .padding(.trailing, bothPlans ? 8 : 16)
+            .padding(.trailing, 16)
         }
         .frame(maxHeight: .infinity)
     }

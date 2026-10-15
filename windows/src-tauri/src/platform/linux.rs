@@ -261,22 +261,8 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
 
 // ── Session windows ("Open terminal") ─────────────────────────────────────────
 //
-// Wayland lets no app raise another app's window, and X11 would need a window
-// manager protocol client this build does not carry, so "Open terminal" opens
-// the folder in VS Code here, as before. There is no Claude desktop app for
-// Linux either.
-
-pub fn process_ancestors(_pid: u32) -> Vec<u32> {
-    Vec::new()
-}
-
-pub fn first_with_window(_pids: &[u32]) -> Option<u32> {
-    None
-}
-
-pub fn focus_process_window(_pid: u32, _folder: &str) -> bool {
-    false
-}
+// Finding and raising a session's window lives in linux_focus.rs. There is no
+// Claude desktop app for Linux.
 
 pub fn open_claude_desktop() -> bool {
     false
@@ -588,10 +574,10 @@ fn apply_input_region(gw: &impl IsA<gtk::Widget>, rect: Region) {
 
 /// Global shortcuts are X11 key grabs. A Wayland session has no such thing: a
 /// grab made through XWayland only sees keys typed into other X11 windows, so
-/// it would look registered and never fire. The XDG GlobalShortcuts portal is
-/// the Wayland way and isn't wired up yet, so on Wayland nothing is registered
-/// and Settings explains how to bind `coucou --shortcut <id>` in the desktop's
-/// own keyboard settings instead.
+/// it would look registered and never fire. On Wayland the shortcuts go to the
+/// desktop through the XDG GlobalShortcuts portal instead (portal.rs), and
+/// where there is none Settings explains how to bind `coucou --shortcut <id>`
+/// in the desktop's own keyboard settings.
 pub fn global_shortcuts_blocked() -> Option<&'static str> {
     let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
     let wayland = set("WAYLAND_DISPLAY")
@@ -865,4 +851,98 @@ mod tests {
         assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home), None);
         assert_eq!(xdg_user_dir("", "XDG_PICTURES_DIR", home), None);
     }
+}
+
+// ── Flow dictation's pill ─────────────────────────────────────────────────────
+//
+// The pill rests at the bottom (or on the left or right edge) of the screen.
+// On X11 it is an ordinary always-on-top window placed with set_position; on a
+// layer-shell compositor a layer surface anchored to that edge. Either way the
+// input region is the pill and its bubble, so clicks anywhere else go through.
+
+/// The pill's input rectangles, re-applied on every map.
+static PILL_SHAPE: Mutex<Vec<(f64, f64, f64, f64)>> = Mutex::new(Vec::new());
+
+/// Sets the pill's window up before it is ever shown. Main thread.
+pub fn prepare_pill_window(win: &WebviewWindow, mode: super::DesktopMode) -> bool {
+    let Ok(gw) = win.gtk_window() else { return false };
+    gw.set_accept_focus(false);
+    let reapply = |w: &gtk::ApplicationWindow| apply_rects(w, &PILL_SHAPE.lock().unwrap());
+    match mode {
+        super::DesktopMode::Layer => {
+            if gw.is_realized() {
+                return false;
+            }
+            gw.set_titlebar(None::<&gtk::Widget>);
+            let ptr = gtk_window_ptr(&gw);
+            unsafe {
+                layer::gtk_layer_init_for_window(ptr);
+                layer::gtk_layer_set_namespace(ptr, c"coucou-pill".as_ptr());
+                layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
+                layer::gtk_layer_set_anchor(ptr, layer::EDGE_BOTTOM, 1);
+                layer::gtk_layer_set_exclusive_zone(ptr, 0);
+                layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_NONE);
+            }
+            let remapped = std::cell::Cell::new(false);
+            gw.connect_map_event(move |w, _| {
+                reapply(w);
+                if !remapped.replace(true) {
+                    let w = w.clone();
+                    gtk::glib::idle_add_local_once(move || {
+                        w.hide();
+                        w.show_all();
+                        apply_rects(&w, &PILL_SHAPE.lock().unwrap());
+                    });
+                }
+                gtk::glib::Propagation::Proceed
+            });
+            true
+        }
+        super::DesktopMode::Window => {
+            if !gw.is_realized() {
+                gw.set_type_hint(gtk::gdk::WindowTypeHint::Dock);
+            }
+            gw.set_keep_above(true);
+            gw.connect_map_event(move |w, _| {
+                reapply(w);
+                gtk::glib::Propagation::Proceed
+            });
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Layer surface only: anchors the pill to its edge, centred along it. Main thread.
+pub fn set_pill_edge(win: &WebviewWindow, edge: &str) {
+    let Ok(gw) = win.gtk_window() else { return };
+    let ptr = gtk_window_ptr(&gw);
+    unsafe {
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_BOTTOM, (edge == "bottom") as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, (edge == "left") as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_RIGHT, (edge == "right") as i32);
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 0);
+    }
+}
+
+/// The parts of the pill's window that take the mouse. Main thread.
+pub fn set_pill_input(win: &WebviewWindow, rects: Vec<(f64, f64, f64, f64)>) {
+    *PILL_SHAPE.lock().unwrap() = rects.clone();
+    let Ok(gw) = win.gtk_window() else { return };
+    apply_rects(&gw, &rects);
+}
+
+fn apply_rects(gw: &impl IsA<gtk::Widget>, rects: &[(f64, f64, f64, f64)]) {
+    use gtk::cairo::{RectangleInt, Region};
+    let Some(gdk_window) = gw.window() else { return };
+    let region = Region::create_rectangle(&RectangleInt::new(0, 0, 0, 0));
+    for &(x, y, w, h) in rects {
+        let _ = region.union_rectangle(&RectangleInt::new(
+            x.floor() as i32,
+            y.floor() as i32,
+            w.ceil().max(0.0) as i32,
+            h.ceil().max(0.0) as i32,
+        ));
+    }
+    gdk_window.input_shape_combine_region(&region, 0, 0);
 }

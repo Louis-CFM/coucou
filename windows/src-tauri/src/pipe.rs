@@ -174,7 +174,13 @@ impl Relay for NamedPipeServer {
 
 /// Dropping the stream closes it; the relay reads up to our newline first.
 #[cfg(target_os = "linux")]
-impl Relay for tokio::net::UnixStream {}
+impl Relay for tokio::net::UnixStream {
+    /// SO_PEERCRED: the process that connected, as the kernel saw it.
+    fn client_pid(&self) -> Option<u32> {
+        let pid = self.peer_cred().ok()?.pid()?;
+        u32::try_from(pid).ok().filter(|pid| *pid > 1)
+    }
+}
 
 async fn handle(app: AppHandle, mut pipe: impl Relay) {
     let mut buf = Vec::new();
@@ -263,8 +269,7 @@ fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     // No ancestors: the relay was already gone, so try again next time. Some,
     // but none with a window (a classic console): settled, VS Code it is.
     if !ancestors.is_empty() {
-        let owner = crate::platform::first_with_window(&ancestors);
-        session_window::remember(session, owner.unwrap_or(session_window::NO_WINDOW));
+        session_window::remember(session, crate::platform::window_owners(&ancestors));
     }
 }
 

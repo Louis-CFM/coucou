@@ -159,7 +159,10 @@ function world({ alert = false, flyOutOk = true } = {}) {
       await new Promise((r) => setImmediate(r));
     },
     port: {
-      flyOut: () => new Promise((resolve) => flights.push({ kind: "out", resolve, defaultResult: flyOutOk })),
+      flyOut: (anywhere) => {
+        log.push(anywhere ? "out-anywhere" : "out-spot");
+        return new Promise((resolve) => flights.push({ kind: "out", resolve, defaultResult: flyOutOk }));
+      },
       flyHome: (forget) => {
         log.push(forget ? "home-forget" : "home-keep");
         return new Promise((resolve) => flights.push({ kind: "home", resolve, defaultResult: true }));
@@ -341,6 +344,50 @@ test("sent home in the instant before an alert takes him: home wins", async () =
   w.c.updateAlert(false);
   await w.tick(RETURN_DELAY_MS);
   assert.deepEqual(w.flying, [], "and he doesn't come back out");
+});
+
+// ── The desktop shortcut (flyOutOrHome, ⌃⌥D on the Mac) ───────────────────────
+
+test("the desktop shortcut: out from the island, home from the desktop", async () => {
+  const w = world();
+  void w.c.flyOutOrHome();
+  assert.equal(w.c.enabled, true, "he lives on the desktop now");
+  assert.equal(w.c.phase, "flyingOut");
+  assert.ok(w.log.includes("out-anywhere"), "a spot on a display that is gone gives way to the corner");
+  // Pressed again mid-flight: nothing.
+  void w.c.flyOutOrHome();
+  assert.deepEqual(w.flying, ["out"]);
+  await w.land();
+  assert.equal(w.c.phase, "onDesktop");
+
+  void w.c.flyOutOrHome();
+  assert.equal(w.c.phase, "home");
+  assert.equal(w.c.enabled, false);
+  assert.ok(w.log.includes("home-forget"), "home for good, like a double click");
+  await w.land();
+  assert.equal(w.away, false);
+});
+
+test("the desktop shortcut during an alert: he waits in the island, then goes", async () => {
+  const w = world({ alert: true });
+  w.c.updateAlert(true);
+  await w.c.flyOutOrHome();
+  assert.equal(w.c.phase, "atNotchForAlert");
+  assert.deepEqual(w.flying, []);
+  // Away for the alert: the shortcut leaves him be.
+  await w.c.flyOutOrHome();
+  assert.equal(w.c.phase, "atNotchForAlert");
+  w.alert = false;
+  w.c.updateAlert(false);
+  await w.tick(RETURN_DELAY_MS);
+  assert.deepEqual(w.flying, ["out"]);
+});
+
+test("the launch keeps him home when his spot's display is gone", async () => {
+  const w = world();
+  w.c.enabled = true;
+  void w.c.launchFlyIfNeeded();
+  assert.deepEqual(w.log, ["out-spot"]);
 });
 
 test("a finished task gets a happy jump, only on the desktop", () => {

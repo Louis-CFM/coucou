@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mochi in the "waiting" state with his glow behind him, as the Widget picker shows him (vectors only). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/preview_glow_waiting" />
+    <item android:drawable="@drawable/preview_face_waiting" />
+</layer-list>

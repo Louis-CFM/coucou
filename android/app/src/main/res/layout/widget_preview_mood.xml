@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Preview of Mochi Mood: his happy face with a green glow.
+     A still picture for the Widget picker (android:previewLayout): sample text and numbers, no ids, nothing from the app, no runtime bitmap.
+     It uses the same card, border, gradient, type scale and state colours as the real Widget, so the picker shows what you will get. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_card_done">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="1dp"
+        android:background="@drawable/widget_tint_done" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:padding="4dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/preview_mochi_done" />
+</FrameLayout>

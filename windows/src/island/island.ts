@@ -12,6 +12,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -24,6 +25,7 @@ import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
+import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 
 const BOT_OVERHANG = 40;
@@ -105,6 +107,9 @@ export class Island {
 
   /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
   private botPress: { x: number; y: number } | null = null;
+
+  /** The next reveal from hidden makes no peek (music starting, as on macOS). */
+  private silentReveal = false;
 
   /** Drop sequence bookkeeping: last tick played, and whether the ✓ has fired. */
   private uploadTens = 0;
@@ -188,6 +193,7 @@ export class Island {
         else if (task.id === "integration_claude" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
+        else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -305,6 +311,7 @@ export class Island {
 
   private wireFsm() {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.openOnHover = State.settings.openOnHover;
     this.fsm.onTransition = (from, to) => {
       // The greeting is over, however it ended: back to his desktop spot.
       if (from === "coucou" && to !== "coucou") this.desktop.launch();
@@ -314,7 +321,7 @@ export class Island {
           break;
         case "petit":
           if (from === "coucou") this.greeting.interrupt();
-          else if (from === "hidden") Sound.play("peek");
+          else if (from === "hidden" && !this.silentReveal) Sound.play("peek");
           this.setMode("compact");
           if (from === "coucou") State.view = State.defaultView();
           if (!this.wasInIsland) this.fsm.mouseLeft();
@@ -428,6 +435,13 @@ export class Island {
     this.fsm.reveal();
   }
 
+  /** Music started playing: the compact island, without the peek sound (musicReveal). */
+  revealSilently() {
+    this.silentReveal = true;
+    this.fsm.reveal();
+    this.silentReveal = false;
+  }
+
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
   toggleWardrobe() {
     if (State.paused || State.mode === "hidden") return;
@@ -490,6 +504,25 @@ export class Island {
    *  It gives it back when it closes, or when the chat is left. */
   takeKeyboard() {
     void Bridge.focusWindow(true);
+  }
+
+  /** The desktop shortcut needs a desktop Mochi: none on GNOME's Wayland. */
+  canLeaveIsland(): boolean {
+    return this.desktop.supported;
+  }
+
+  /** The desktop shortcut (macOS DesktopMochiController.flyOutOrHome). */
+  flyOutOrHome() {
+    // The greeting and the drop sequence draw a Mochi of their own: he stays
+    // for them, as he does for a drag (canDragOut).
+    const busy = State.mode === "expanded" && (State.view === "greeting" || this.uploadActive);
+    if (busy && !State.mochiOnDesktop) return;
+    this.desktop.flyOutOrHome();
+  }
+
+  /** Ctrl+O / Ctrl+E go to the view on screen. */
+  viewCommand(command: ViewCommand) {
+    this.views.get(State.view)?.command?.(command);
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
@@ -670,7 +703,8 @@ export class Island {
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
-    const rect = { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
+    const rect = { x: (viewportW - w) / 2, y: 0, w, h: hh };
     const p = this.pushedRect;
     if (Math.abs(p.x - rect.x) > 0.5 || Math.abs(p.w - rect.w) > 0.5 || Math.abs(p.h - rect.h) > 0.5) {
       this.pushedRect = rect;
@@ -682,7 +716,8 @@ export class Island {
   private islandRect(): { x: number; y: number; w: number; h: number } {
     const w = this.width.value;
     const hh = this.height.value;
-    return { x: (PANEL_W - w) / 2, y: 0, w, h: hh };
+    const viewportW = window.innerWidth > 0 ? window.innerWidth : PANEL_W;
+    return { x: (viewportW - w) / 2, y: 0, w, h: hh };
   }
 
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
@@ -720,6 +755,8 @@ export class Island {
     this.islandEl.addEventListener("mousedown", (e) => {
       Sound.resume();
       State.lastActivity = performance.now();
+      // A click makes a hover-opened island an ordinary open one.
+      this.fsm.userInteracted();
       // A press on Mochi may become a drag out to the desktop.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
         this.botPress = { x: e.clientX, y: e.clientY };
@@ -833,14 +870,18 @@ export class Island {
       x >= rect.x - HIT_MARGIN && x <= rect.x + rect.w + HIT_MARGIN &&
       y >= rect.y - HIT_MARGIN && y <= rect.y + rect.h + HIT_MARGIN;
 
-    if (inIsland && !this.wasInIsland) {
+    // Recorded before the state machine hears of it: a transition it makes
+    // right away (open on hover) reads where the pointer is, and must not see
+    // the pointer as still outside.
+    const wasIn = this.wasInIsland;
+    this.wasInIsland = inIsland;
+    if (inIsland && !wasIn) {
       if (this.fsm.state === "coucou") this.greeting.hover();
       this.fsm.mouseEntered();
     }
-    if (!inIsland && this.wasInIsland) {
+    if (!inIsland && wasIn) {
       this.fsm.mouseLeft();
     }
-    this.wasInIsland = inIsland;
 
     // Bot hover → love
     const overBot = State.mode === "expanded" && State.stateOverride == null && this.isBotHit(x, y);
@@ -1071,11 +1112,23 @@ export class Island {
     const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
     const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
     this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
+    // Dances while music plays: always in the compact island, expanded only on
+    // the music pill's card (BotCanvasView, macOS). Asked every frame.
+    this.engine.setDancing(islandDances({
+      music: State.spotifyPlaying,
+      state: State.effectiveState,
+      mode: State.mode,
+      view: State.view,
+      focusId: State.focusTask?.id,
+    }));
 
     this.engine.update(dt);
     ctx.setTransform(dpr, 0, 0, dpr, BOT_SIDE * dpr, 0);
     ctx.clearRect(-BOT_SIDE, 0, wCss, hCss);
+    ctx.save();
+    this.engine.applyDance(ctx, w, hCss);
     this.engine.draw(ctx, w, hCss);
+    ctx.restore();
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */
@@ -1169,6 +1222,7 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
   }
 

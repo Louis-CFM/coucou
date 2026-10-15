@@ -25,10 +25,11 @@ export const PILL_CATEGORIES: { id: PillCategory; title: string }[] = [
  * Whether the pill does anything on this build:
  * - `yes`: works on Windows and Linux;
  * - `windows`: Windows only (the app behind it has no Linux build);
+ * - `linux`: Linux only (what drives it is Linux's);
  * - `soon`: can be declared, shows "Coming soon" (macOS has it, this build not yet);
  * - `no`: macOS only, never offered here.
  */
-export type PillSupport = "yes" | "windows" | "soon" | "no";
+export type PillSupport = "yes" | "windows" | "linux" | "soon" | "no";
 
 /** What makes the pill connected. */
 export type PillConnect =
@@ -71,7 +72,7 @@ const ACCENT = {
 
 export const PILL_CATALOG: readonly PillDefinition[] = [
   // ── Where you code ─────────────────────────────────────────────────────────
-  { id: "integration_claude", name: "VS Code", color: "#F5F6F8", category: "workspace",
+  { id: "integration_claude", name: "Claude Code", color: "#F5F6F8", category: "workspace",
     subtitle: N_("Integration"), source: "claudeCode", support: "yes", connect: hooks },
   // Claude Code in Cursor's terminal: the same hooks as Claude Code.
   { id: "agent_cursor", name: "Cursor", color: "#C0C4CC", category: "workspace",
@@ -129,6 +130,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+  // Spotify through MPRIS on Linux and the system media controls on Windows
+  // (src-tauri/src/spotify.rs).
+  { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */
@@ -146,7 +151,7 @@ export function pillDefinition(id: string): PillDefinition | undefined {
 }
 
 function offeredOn(def: PillDefinition, os: HostOs): boolean {
-  return def.support === "yes" || def.support === "soon" || (def.support === "windows" && os === "windows");
+  return def.support === "yes" || def.support === "soon" || def.support === os;
 }
 
 /** The pills this build offers, in catalog order. */

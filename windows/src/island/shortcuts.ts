@@ -9,7 +9,7 @@
 
 import { Bridge, onEvent } from "../core/bridge";
 import type { BotEmoteName, IslandViewName } from "../core/layout";
-import { cyclePill, islandKeyAction, pillByNumber, type IslandKeyAction } from "../core/shortcuts";
+import { cyclePill, islandKeyAction, navigate, pillByNumber, type IslandKeyAction } from "../core/shortcuts";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 
@@ -26,11 +26,21 @@ export interface ShortcutHost {
   takeKeyboard(): void;
   /** The wardrobe from any state, or back if it is open (Island.wardrobeAnywhere). */
   wardrobeAnywhere(): void;
+  /** False where Mochi can't leave the island (GNOME on Wayland). */
+  canLeaveIsland(): boolean;
+  /** Mochi out to the desktop, or home (DesktopMochiController.flyOutOrHome). */
+  flyOutOrHome(): void;
+  /** Hands Ctrl+O / Ctrl+E to the view on screen (the Mac posts notifications). */
+  viewCommand(command: ViewCommand): void;
 }
+
+/** What the open view is asked to do: open the highlighted item, toggle the diff. */
+export type ViewCommand = "openSelection" | "toggleDiff";
 
 function focusPill(host: ShortcutHost, id: string | null, open: boolean) {
   if (!id) return;
   State.setFocus(id);
+  State.cardSelection = null;
   Sound.play("blip");
   if (open) host.alert("overview");
   else host.setView("overview");
@@ -110,8 +120,20 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       break;
     }
 
+    // The Mac's ⌃⌥D. Sending him out lifts Pause, as the other shortcuts do;
+    // where he can't leave the island, Mochi says so.
+    case "desktopToggle":
+      if (!host.canLeaveIsland()) {
+        host.emote("annoyed");
+        Sound.play("error");
+        break;
+      }
+      if (!State.mochiOnDesktop) resume();
+      host.flyOutOrHome();
+      break;
+
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and
-    // attachFrontWindow / desktopToggle aren't in this version.
+    // attachFrontWindow isn't in this version.
     default:
       break;
   }
@@ -126,6 +148,19 @@ export function runIslandKey(host: ShortcutHost, action: IslandKeyAction) {
       break;
     case "pill":
       focusPill(host, pillByNumber(ids, action.number), false);
+      break;
+    case "list":
+      // Only a card with a list counts its items: the GitHub lists, as on the Mac.
+      if (State.view !== "overview" || State.cardItemCount <= 0) return;
+      State.cardSelection = navigate(State.cardSelection, action.delta, State.cardItemCount);
+      State.notify();
+      break;
+    case "openSelection":
+      if (State.cardSelection == null) return;
+      host.viewCommand("openSelection");
+      break;
+    case "diff":
+      host.viewCommand("toggleDiff");
       break;
     case "newChat":
       // Not while an answer is on its way: it would land in the new chat.

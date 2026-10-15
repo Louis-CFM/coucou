@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The card of a Widget in the "done" tone: the shared card with a 1dp border in the state's colour. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_card" />
+    <stroke android:width="@dimen/widget_border_width" android:color="@color/widget_border_done" />
+    <corners android:radius="@dimen/widget_radius" />
+</shape>

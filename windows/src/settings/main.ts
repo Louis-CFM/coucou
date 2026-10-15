@@ -1,6 +1,7 @@
-// Settings window — the place where anything that writes to disk is confirmed.
-// Stage 2 covers the Claude Code hooks and the general preferences; API keys and
-// integrations land here too in a later stage.
+// The Coucou window (settings.html): Flow dictation, the Notetaker and, under
+// Notch, every setting of the island — the place where anything that writes to
+// disk is confirmed. The window's frame and the Flow pages live in ../hub; the
+// island's settings are drawn here, one Notch page at a time.
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
@@ -10,12 +11,17 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
+import { startHub, type PageId } from "../hub/shell";
+import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
+import { phoneSection } from "./phone";
+import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -29,10 +35,19 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
 
-const root = document.getElementById("settings-root")!;
+const windowRoot = document.getElementById("hub")!;
+/** Where the Notch page being shown draws its sections. */
+let root: HTMLElement = windowRoot;
+let hub: { redraw(): void; current(): PageId } | null = null;
 
 async function save() {
   await Bridge.saveSettings(settings);
+}
+
+/** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */
+function pickColor(next: Record<string, string>) {
+  settings.pillColors = next;
+  void save();
 }
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────
@@ -230,6 +245,7 @@ function claudeSection(status: HookStatus): HTMLElement {
  */
 const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
+  get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
   get showClaude() { return t("Show in notch"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
@@ -275,6 +291,7 @@ function planSection(status: HookStatus): HTMLElement {
         class: "hint",
         text: PLAN_SETTINGS_TEXT.claude,
       }),
+      h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
@@ -425,7 +442,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     const on = settings.activeIntegrations.includes(def.id);
     const full = !isMain && !on && settings.activeIntegrations.length >= MAX_ACTIVE;
     const el = h("div", { class: full ? "pill-row full" : "pill-row" },
-      h("i", { class: "dot", style: `background:${def.color};width:10px;height:10px` }),
+      colorDot(def, "width:10px;height:10px", () => settings.pillColors, pickColor),
       h("span", { class: "name", text: def.name }),
     );
     if (isMain) {
@@ -765,6 +782,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
+  // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
+  { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -787,7 +806,8 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   }
   declaredViews.push(updateNote);
 
-  for (const def of INTEGRATIONS) {
+  const offered = new Set(availablePills().map((p) => p.id));
+  for (const def of INTEGRATIONS.filter((d) => offered.has(d.id))) {
     const active = settings.activeIntegrations.includes(def.id);
     const sw = h("button", { class: active ? "switch on" : "switch" });
     sw.addEventListener("click", () => {
@@ -834,12 +854,20 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_spotify") {
+      // As on the Mac's row: said only when there is no Spotify to launch.
+      const hint = h("div", { class: "hint", style: "padding-top:5px" });
+      rows.append(hint);
+      void Bridge.spotifyInstalled().then((ok) => {
+        hint.textContent = ok === false ? t("Not installed") : "";
+      });
+    }
 
     list.append(
       h("div", { style: "display:flex;gap:12px;align-items:flex-start" },
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
-          h("i", { class: "dot", style: `background:${def.color}` }),
+          colorDot(def, "", () => settings.pillColors, pickColor),
           h("span", { style: "font-size:12.5px", text: def.name }),
         ),
         rows,
@@ -861,6 +889,20 @@ function generalSection(): HTMLElement {
   volume.addEventListener("input", () => {
     settings.soundVolume = Number(volume.value);
     void save();
+  });
+
+  // Your own sounds: the folder, a reload, and how many are replaced.
+  const customCount = h("span", { class: "hint" });
+  const countCustom = () =>
+    void Bridge.customSounds(SOUND_NAMES).then((own) => {
+      const n = own?.length ?? 0;
+      customCount.textContent = n > 0 ? t("{0} custom", { 0: n }) : "";
+    });
+  countCustom();
+  const soundsFolder = h("button", { text: t("Open sounds folder"), onclick: () => void Bridge.revealSoundsFolder() });
+  const reloadSounds = h("button", {
+    text: t("Reload sounds"),
+    onclick: () => void Bridge.reloadSounds().then(() => window.setTimeout(countCustom, 300)),
   });
 
   const autoClose = h("input", {
@@ -909,6 +951,13 @@ function generalSection(): HTMLElement {
       toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); }),
       volume,
     ),
+    h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
+    h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Open on hover") }),
+      toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
@@ -968,6 +1017,17 @@ const SHORTCUTS_UI = {
     return t("Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:");
   },
   get noDisplay() { return t("No display server was found, so global shortcuts are off."); },
+  get portalPending() {
+    return t("Asking your desktop to register the shortcuts. It may show its own window to confirm them.");
+  },
+  get portalActive() {
+    return t("These shortcuts are registered with your desktop. It may ask you to confirm them or to pick other keys; when it says which keys it uses, they show next to each shortcut.");
+  },
+  get portalFallback() {
+    return t("If one doesn't work, you can also add it in your system's keyboard settings with these commands:");
+  },
+  desktopKeys: (keys: string) => t("Desktop: {keys}", { keys }),
+  get refused() { return t("Not set by your desktop"); },
 };
 
 function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
@@ -992,6 +1052,9 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
       case "invalid": return h("span", { class: "tag err", text: SHORTCUTS_UI.invalid });
       case "typesCharacter": return h("span", { class: "tag warn", text: SHORTCUTS_UI.types(st.typed ?? "?") });
       case "unsupported": return h("span", { class: "tag", text: SHORTCUTS_UI.unavailable });
+      case "refused": return h("span", { class: "tag warn", text: SHORTCUTS_UI.refused });
+      // Wayland: the desktop may run it on other keys than the ones asked for.
+      case "active": return st.trigger ? h("span", { class: "tag", text: SHORTCUTS_UI.desktopKeys(st.trigger) }) : null;
       default: return null;
     }
   }
@@ -1074,12 +1137,27 @@ function shortcutsSection(initial: ShortcutsReport | null): HTMLElement {
     }
 
     clear(blockedNote);
-    if (report?.blocked === "wayland") {
-      const commands = h("div", { class: "diff" });
+    const commands = (command: string) => {
+      const list = h("div", { class: "diff" });
       for (const d of SHORTCUTS) {
-        if (d.ported) commands.append(h("div", { class: "ctx", text: `${report.command} ${d.id}` }));
+        if (d.ported) list.append(h("div", { class: "ctx", text: `${command} ${d.id}` }));
       }
-      blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.wayland }), commands);
+      return list;
+    };
+    if (report?.portal) {
+      // Wayland, through the desktop's GlobalShortcuts portal; the commands
+      // stay as a way around a shortcut the desktop didn't take.
+      const active = report.portal === "active";
+      blockedNote.append(
+        h("div", {
+          class: active ? "notice ok" : "notice",
+          text: active ? SHORTCUTS_UI.portalActive : SHORTCUTS_UI.portalPending,
+        }),
+        h("div", { class: "hint", text: SHORTCUTS_UI.portalFallback }),
+        commands(report.command),
+      );
+    } else if (report?.blocked === "wayland") {
+      blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.wayland }), commands(report.command));
     } else if (report?.blocked) {
       blockedNote.append(h("div", { class: "notice warn", text: SHORTCUTS_UI.noDisplay }));
     }
@@ -1191,30 +1269,7 @@ function applyLanguage() {
 
 function applyDirection() {
   document.documentElement.dir = isRtl() ? "rtl" : "ltr";
-  document.title = t("Settings — Coucou");
-}
-
-let rendering: Promise<void> | null = null;
-let renderAgain = false;
-
-/** Redraws every section from fresh state, keeping the scroll position. */
-async function rerender() {
-  if (rendering) {
-    renderAgain = true;
-    return;
-  }
-  const scroll = document.scrollingElement?.scrollTop ?? 0;
-  rendering = render();
-  try {
-    await rendering;
-  } finally {
-    rendering = null;
-  }
-  if (document.scrollingElement) document.scrollingElement.scrollTop = scroll;
-  if (renderAgain) {
-    renderAgain = false;
-    await rerender();
-  }
+  document.title = "Coucou";
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -1227,11 +1282,19 @@ async function main() {
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
+  hub = await startHub(windowRoot, {
+    version,
+    flowPages: FLOW_PAGE_RENDERERS,
+    renderNotch: async (page, container) => {
+      notchPage = page;
+      root = container;
+      await render();
+    },
+  });
   onLanguageChange(() => {
     applyDirection();
-    void rerender();
+    hub?.redraw();
   });
-  await render();
 
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
   void onEvent<Settings>("settings-changed", (s) => {
@@ -1245,7 +1308,10 @@ async function main() {
   });
 }
 
-/** Reads what the sections show and draws them all. */
+/** The Notch page being shown. */
+let notchPage: PageId = "general";
+
+/** Reads what the sections of the Notch page show and draws them. */
 async function render() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, planRelayInstalled: false, settingsPath: "", hookPath: "", hookReady: false,
@@ -1288,23 +1354,22 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
-  root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
-    agentsSection(agents),
-    planSection(status),
-    apiSection(hasKey),
-    chatProvidersSection(chatKeys, keyChanged),
-    localSection(customKey),
-    activePillsSection(connected),
-    integrationsSection(present),
-    generalSection(),
-    shortcutsSection(shortcutReport),
-    h("div", {
+  const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
+    general: () => [generalSection()],
+    pills: () => [activePillsSection(connected)],
+    agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    integrations: () => [integrationsSection(present)],
+    phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
+    shortcuts: () => [shortcutsSection(shortcutReport)],
+  };
+  root.append(...(sections[notchPage]?.() ?? []));
+  if (notchPage === "general") {
+    root.append(h("div", {
       class: "hint",
       text: t("No telemetry. Network requests only go to the services you configure yourself."),
-    }),
-  );
+    }));
+  }
 }
 
 void main();
