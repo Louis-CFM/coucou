@@ -8,21 +8,59 @@ import FoundationModels
 #endif
 
 /// Who writes the summary of a call.
-enum NoteSummaryEngine: String, CaseIterable, Identifiable {
+enum NoteSummaryEngine: Hashable, Identifiable {
     /// The Claude key of Settings → Chat (the transcript goes to Anthropic, or to its gateway).
     case claude
+    /// Another chat provider of Settings → Chat, with its key or local server and its chat model.
+    case provider(ChatProvider)
     /// Apple Intelligence, on the Mac (macOS 26).
     case apple
     case off
+
+    /// Saved in UserDefaults: "claude", "apple" and "off" as before, "provider:openai"…
+    var rawValue: String {
+        switch self {
+        case .claude:              return "claude"
+        case .provider(let p):     return "provider:\(p.rawValue)"
+        case .apple:               return "apple"
+        case .off:                 return "off"
+        }
+    }
+
+    init?(rawValue: String) {
+        switch rawValue {
+        case "claude": self = .claude
+        case "apple":  self = .apple
+        case "off":    self = .off
+        default:
+            guard rawValue.hasPrefix("provider:"),
+                  let p = ChatProvider(rawValue: String(rawValue.dropFirst("provider:".count))),
+                  p != .anthropic else { return nil }
+            self = .provider(p)
+        }
+    }
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .claude: return String(localized: "notes.engine.claude")
+        case .provider(let p):
+            return p.isLocal
+                ? String(format: String(localized: "notes.engine.local"), p.displayName)
+                : String(format: String(localized: "notes.engine.provider"), p.displayName)
         case .apple:  return String(localized: "notes.engine.apple")
         case .off:    return String(localized: "notes.engine.off")
         }
+    }
+
+    /// What the menu offers: Claude, the other chat providers set up in Settings → Chat,
+    /// Apple Intelligence, nobody. `current` stays listed even once its key is gone.
+    @MainActor static func available(keeping current: NoteSummaryEngine) -> [NoteSummaryEngine] {
+        var engines: [NoteSummaryEngine] = [.claude]
+        engines += OneShotAI.configured().map { .provider($0) }
+        if case .provider = current, !engines.contains(current) { engines.append(current) }
+        return engines + [.apple, .off]
     }
 }
 
@@ -344,6 +382,10 @@ final class NoteTaker: ObservableObject {
             let key = KeychainStore.shared.get("anthropic-api-key") ?? ""
             let model = AppState.shared.claudeModel.isEmpty ? AppState.defaultClaudeModel : AppState.shared.claudeModel
             reply = key.isEmpty ? nil : await Self.claudeSummary(transcript, key: key, model: model)
+        case .provider(let p):
+            reply = await OneShotAI.ask(p, system: Self.summaryInstructions,
+                                        user: "<transcript>\n\(transcript.prefix(400_000))\n</transcript>",
+                                        timeout: 120)
         case .apple:
             reply = await Self.appleSummary(transcript)
         case .off:

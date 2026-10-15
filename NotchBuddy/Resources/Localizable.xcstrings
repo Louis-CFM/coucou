@@ -10806,61 +10806,61 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مع Claude يُرسل النص المكتوب (وليس الصوت أبدًا) إلى Anthropic بمفتاحك من الإعدادات ← الدردشة. أما Apple Intelligence فيكتبه على جهاز Mac (macOS 26)."
+            "value" : "مع Claude أو مزوّد آخر من الإعدادات ← الدردشة، يُرسل النص المكتوب (وليس الصوت أبدًا) إلى ذلك المزوّد بمفتاحك، أو إلى خادمك المحلي. أما Apple Intelligence فيكتبه على جهاز Mac (macOS 26)."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude-এর সঙ্গে ট্রান্সক্রিপ্ট (কখনো অডিও নয়) সেটিংস → চ্যাট-এর কী দিয়ে Anthropic-এ যায়। Apple Intelligence এটি আপনার Mac-এ লেখে (macOS 26)।"
+            "value" : "Claude বা সেটিংস → চ্যাট-এর অন্য কোনো প্রোভাইডারের সঙ্গে ট্রান্সক্রিপ্ট (কখনো অডিও নয়) আপনার কী দিয়ে সেই প্রোভাইডারে, বা আপনার লোকাল সার্ভারে যায়। Apple Intelligence এটি আপনার Mac-এ লেখে (macOS 26)।"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "With Claude, the transcript (never the audio) goes to Anthropic with your key from Settings → Chat. Apple Intelligence writes it on your Mac (macOS 26)."
+            "value" : "With Claude or another provider of Settings → Chat, the transcript (never the audio) goes to that provider with your key, or to your local server. Apple Intelligence writes it on your Mac (macOS 26)."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con Claude, la transcripción (nunca el audio) va a Anthropic con tu clave de Ajustes → Chat. Apple Intelligence lo escribe en tu Mac (macOS 26)."
+            "value" : "Con Claude u otro proveedor de Ajustes → Chat, la transcripción (nunca el audio) va a ese proveedor con tu clave, o a tu servidor local. Apple Intelligence lo escribe en tu Mac (macOS 26)."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avec Claude, la transcription (jamais l'audio) part chez Anthropic avec ta clé de Réglages → Chat. Apple Intelligence l'écrit sur ton Mac (macOS 26)."
+            "value" : "Avec Claude ou un autre fournisseur de Réglages → Chat, la transcription (jamais l'audio) part chez ce fournisseur avec ta clé, ou vers ton serveur local. Apple Intelligence l'écrit sur ton Mac (macOS 26)."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude के साथ ट्रांसक्रिप्ट (ऑडियो कभी नहीं) सेटिंग्स → चैट वाली आपकी कुंजी से Anthropic को जाता है। Apple Intelligence इसे आपके Mac पर लिखता है (macOS 26)।"
+            "value" : "Claude या सेटिंग्स → चैट के किसी दूसरे प्रोवाइडर के साथ ट्रांसक्रिप्ट (ऑडियो कभी नहीं) आपकी कुंजी से उसी प्रोवाइडर को, या आपके लोकल सर्वर को जाता है। Apple Intelligence इसे आपके Mac पर लिखता है (macOS 26)।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dengan Claude, transkrip (bukan audio) dikirim ke Anthropic dengan kuncimu dari Pengaturan → Obrolan. Apple Intelligence menulisnya di Mac-mu (macOS 26)."
+            "value" : "Dengan Claude atau penyedia lain dari Pengaturan → Obrolan, transkrip (bukan audio) dikirim ke penyedia itu dengan kuncimu, atau ke server lokalmu. Apple Intelligence menulisnya di Mac-mu (macOS 26)."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Com o Claude, a transcrição (nunca o áudio) vai para a Anthropic com sua chave de Ajustes → Chat. A Apple Intelligence escreve no seu Mac (macOS 26)."
+            "value" : "Com o Claude ou outro provedor de Ajustes → Chat, a transcrição (nunca o áudio) vai para esse provedor com sua chave, ou para o seu servidor local. A Apple Intelligence escreve no seu Mac (macOS 26)."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "С Claude расшифровка (но не аудио) уходит в Anthropic с вашим ключом из Настройки → Чат. Apple Intelligence пишет итог прямо на Mac (macOS 26)."
+            "value" : "С Claude или другим провайдером из Настройки → Чат расшифровка (но не аудио) уходит этому провайдеру с вашим ключом или на ваш локальный сервер. Apple Intelligence пишет итог прямо на Mac (macOS 26)."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用 Claude 时，转写文字（绝不是音频）会用“设置”→“聊天”中的密钥发送给 Anthropic。Apple 智能则在你的 Mac 上生成（macOS 26）。"
+            "value" : "使用 Claude 或“设置”→“聊天”中的其他提供商时，转写文字（绝不是音频）会用你的密钥发送给该提供商，或发送到你的本地服务器。Apple 智能则在你的 Mac 上生成（macOS 26）。"
           }
         }
       }
@@ -10995,6 +10995,70 @@
         }
       }
     },
+    "notes.engine.local" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (على هذا الـ Mac)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (এই Mac-এ)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (this Mac)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (este Mac)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (ce Mac)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (यह Mac)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Mac ini)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (este Mac)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (этот Mac)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（本机）"
+          }
+        }
+      }
+    },
     "notes.engine.off" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11056,6 +11120,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "不生成摘要"
+          }
+        }
+      }
+    },
+    "notes.engine.provider" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (مفتاحك)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (আপনার কী)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (your key)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (tu clave)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (ta clé)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (आपकी कुंजी)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (kuncimu)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (sua chave)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (ваш ключ)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（你的密钥）"
           }
         }
       }
