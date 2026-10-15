@@ -239,9 +239,11 @@ export const Bridge = {
 
   /**
    * The diff card's ↗: an existing file, in the editor picked in Settings (on
-   * its first changed line in PhpStorm); never launched by its type.
+   * its first changed line in PhpStorm, in the window of the project that holds
+   * it); never launched by its type.
    */
-  openFileInEditor: (path: string, hint: LineHint | null) => call<boolean>("open_file_in_editor", { path, hint }),
+  openFileInEditor: (path: string, hint: LineHint | null, sessionId: string | null) =>
+    call<boolean>("open_file_in_editor", { path, hint, sessionId }),
 
   quit: () => call<void>("quit_app"),
 

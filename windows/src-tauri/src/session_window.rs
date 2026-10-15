@@ -147,6 +147,34 @@ pub fn pick_window<'a, W>(windows: &'a [(W, String)], folder: &str) -> Option<&'
     named.or_else(|| windows.first()).map(|(w, _)| w)
 }
 
+/// Whether a window title names a project folder: JetBrains titles are the
+/// project's name, then " – " and the open file; `folder` is lower case. The
+/// name must be a whole word of the title, so "app" does not match "webapp".
+pub fn title_names_folder(title: &str, folder: &str) -> bool {
+    if folder.is_empty() {
+        return false;
+    }
+    let title = title.to_lowercase();
+    let name = title.split(['–', '—', '[']).next().unwrap_or_default().trim();
+    name == folder
+}
+
+/// The project a session's folder belongs to: the nearest folder up from it
+/// that holds an `.idea` (a JetBrains project), else the nearest that holds a
+/// `.git`, else the folder itself. Claude Code reports the folder its shell is
+/// in, which drifts into a sub-folder after a `cd`; the editor has the project
+/// open, not that sub-folder.
+pub fn project_root(path: &str) -> String {
+    let start = std::path::Path::new(path);
+    if !start.is_absolute() || !start.is_dir() {
+        return path.to_string();
+    }
+    let up = |marker: &str| start.ancestors().find(|dir| dir.parent().is_some() && dir.join(marker).is_dir());
+    up(".idea")
+        .or_else(|| up(".git"))
+        .map_or_else(|| path.to_string(), |dir| dir.to_string_lossy().into_owned())
+}
+
 /// The last folder name of a path, either separator.
 pub fn folder_name(path: &str) -> &str {
     path.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or_default()
@@ -273,8 +301,35 @@ pub fn lookup(session: &str) -> Option<Vec<u32>> {
     list.iter().find(|(s, _)| s == session).map(|(_, pids)| pids.clone()).filter(|pids| !pids.is_empty())
 }
 
+/// Session ID → the port of the IDE it runs in (`ide_port` of the payload, from
+/// CLAUDE_CODE_SSE_PORT), see jetbrains.rs. Kept apart from `SESSIONS`: it comes
+/// with every event, the window is looked for once.
+static IDE_PORTS: Mutex<Vec<(String, u16)>> = Mutex::new(Vec::new());
+
+/// The IDE port the relay sent: a number that is a port, nothing else.
+pub fn ide_port_from_payload(payload: &serde_json::Value) -> Option<u16> {
+    payload.get("ide_port")?.as_u64().and_then(|p| u16::try_from(p).ok()).filter(|p| *p > 0)
+}
+
+pub fn remember_ide_port(session: &str, port: u16) {
+    if !valid_session(session) {
+        return;
+    }
+    let mut list = IDE_PORTS.lock().unwrap_or_else(|e| e.into_inner());
+    list.retain(|(s, _)| s != session);
+    list.push((session.to_string(), port));
+    let excess = list.len().saturating_sub(MAX_SESSIONS);
+    list.drain(..excess);
+}
+
+pub fn ide_port(session: &str) -> Option<u16> {
+    let list = IDE_PORTS.lock().unwrap_or_else(|e| e.into_inner());
+    list.iter().find(|(s, _)| s == session).map(|(_, port)| *port)
+}
+
 pub fn forget(session: &str) {
     SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+    IDE_PORTS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
     TABS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
 }
 
@@ -303,6 +358,51 @@ pub fn tab_of(session: &str) -> Option<TabRef> {
 
 #[cfg(test)]
 mod tests {
+    use super::project_root;
+
+    #[test]
+    fn a_sub_folder_belongs_to_the_project_that_holds_it() {
+        let base = std::env::temp_dir().join(format!("coucou-root-{}", std::process::id()));
+        let sub = base.join("app/src/deep");
+        std::fs::create_dir_all(&sub).unwrap();
+        std::fs::create_dir_all(base.join("app/.git")).unwrap();
+        let text = |p: &std::path::Path| p.to_string_lossy().into_owned();
+        // Only a .git: that is the root.
+        assert_eq!(project_root(&text(&sub)), text(&base.join("app")));
+        // An .idea nearer than the .git wins; one above it does not.
+        std::fs::create_dir_all(base.join("app/src/.idea")).unwrap();
+        assert_eq!(project_root(&text(&sub)), text(&base.join("app/src")));
+        // Nothing: the folder itself, and a path that is not a folder is left alone.
+        let bare = base.join("bare");
+        std::fs::create_dir_all(&bare).unwrap();
+        assert_eq!(project_root(&text(&bare)), text(&bare));
+        assert_eq!(project_root("/nowhere/at/all"), "/nowhere/at/all");
+        assert_eq!(project_root("relative/dir"), "relative/dir");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    use super::{ide_port_from_payload, title_names_folder};
+
+    #[test]
+    fn the_ide_port_of_a_payload_is_a_port_or_nothing() {
+        use serde_json::json;
+        assert_eq!(ide_port_from_payload(&json!({ "ide_port": 46143 })), Some(46143));
+        for bad in [json!({ "ide_port": 0 }), json!({ "ide_port": 70000 }), json!({ "ide_port": "46143" }),
+                    json!({ "ide_port": -1 }), json!({ "ide_port": null }), json!({})] {
+            assert_eq!(ide_port_from_payload(&bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_title_names_a_project_by_its_first_part() {
+        assert!(title_names_folder("coucou", "coucou"));
+        assert!(title_names_folder("Coucou – main.rs", "coucou"));
+        assert!(title_names_folder("coucou [~/Projets/coucou] – src/lib.rs", "coucou"));
+        assert!(!title_names_folder("meyclub – coucou.php", "coucou"));
+        assert!(!title_names_folder("webapp", "app"));
+        assert!(!title_names_folder("coucou", ""));
+    }
+
     use super::*;
 
     fn tree(entries: &[(u32, u32, &str)]) -> HashMap<u32, Proc> {

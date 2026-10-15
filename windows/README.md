@@ -545,7 +545,12 @@ own window.
   and the diff's ↗ open things in: VS Code by default, or PhpStorm, which is
   looked for on `PATH` (`phpstorm`, `phpstorm.sh`, `pstorm`), in the JetBrains
   Toolbox's scripts and in `/snap/bin`, and opens the file on its first changed
-  line (`phpstorm --line N <file>`). It is your pick and is never detected. A
+  line (`phpstorm --line N <file>`) in the window of the open project that holds
+  it. On Linux (X11), "Open terminal" brings forward the PhpStorm window of the
+  session's project, found through the Claude Code plugin's lock files in
+  `~/.claude/ide` and the `CLAUDE_CODE_SSE_PORT` of the session (the relay sends
+  it as `ide_port`); without them, by the project's root and the window's title.
+  The terminal's tab is not selected: PhpStorm cannot be asked to. It is your pick and is never detected. A
   session in WSL opens in PhpStorm through its `\\wsl.localhost\…` share.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
   turned on once by hand. Hermes runs natively on Linux; on Windows it is
