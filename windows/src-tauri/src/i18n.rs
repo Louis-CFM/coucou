@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-pub const LANGUAGES: [&str; 10] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id"];
+pub const LANGUAGES: [&str; 11] = ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "tr"];
 
 static MAC: &str = include_str!("../../src/i18n/strings.json");
 static EXTRA: &str = include_str!("../../src/i18n/extra.json");
@@ -274,6 +274,28 @@ mod tests {
         assert_eq!(plural_category("ru", 23), "few");
         assert_eq!(plural_category("ru", 25), "many");
         assert_eq!(plural_category("ar", 2), "two");
+        set_for_test("en");
+    }
+
+    #[test]
+    fn turkish_resolves_translates_and_preserves_counted_nouns() {
+        let system = |tag: &str| vec![tag.to_string()];
+        assert_eq!(resolve("tr", &system("en-US")), "tr");
+        for tag in ["tr", "tr-TR", "tr_TR.UTF-8"] {
+            assert_eq!(resolve("", &system(tag)), "tr");
+        }
+        set_for_test("tr");
+        assert_eq!(t("Allow"), "İzin ver");
+        assert_eq!(t("Deny"), "Reddet");
+        assert_eq!(t("Open the chat"), "Sohbeti aç");
+        assert_eq!(tf("Uploading {name}", &[("name", "öğrenci.pdf")]), "öğrenci.pdf yükleniyor");
+        assert_eq!(t("A string nobody translated"), "A string nobody translated");
+        for n in [0, 1, 2, 21] {
+            assert_eq!(plural_category("tr", n), if n == 1 { "one" } else { "other" });
+            assert_eq!(tn("{count} repo", "{count} repos", n, &[]), format!("{n} depo"));
+            assert_eq!(tn("✓ Connected · {count} model", "✓ Connected · {count} models", n, &[]),
+                format!("✓ Bağlı · {n} model"));
+        }
         set_for_test("en");
     }
 
