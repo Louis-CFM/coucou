@@ -94,8 +94,8 @@ watch: _need-node node_modules ## Relance les tests du front à chaque sauvegard
 test-rust: hook-fast ## Tests Rust (cargo test)
 	cd $(WIN) && cargo test --workspace --locked
 
-clippy: hook-fast ## Clippy (avertissements non bloquants)
-	cd $(WIN) && cargo clippy --workspace --all-targets --locked
+clippy: hook-fast ## Clippy (les avertissements font échouer, comme en CI)
+	cd $(WIN) && cargo clippy --workspace --all-targets --locked -- -D warnings
 
 .PHONY: hook hook-fast
 hook: _need-node ## Compile le relais coucou-hook en release complet

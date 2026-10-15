@@ -24,6 +24,20 @@ Check auto-close timing and live setting changes:
 bash scripts/test-auto-close.sh
 ```
 
+## Windows and Linux
+
+The Tauri app in `windows/` has a Makefile at the root (`make` lists every target):
+
+```bash
+make linux-dev      # or windows-dev: live-reloading development build
+make stop           # stops the dev app and the Vite server
+make check          # types, tests and clippy, as the CI runs them
+make linux-install  # or windows-install: build the package and install it
+```
+
+It needs Rust (pinned by `windows/rust-toolchain.toml`) and Node 22.18+ (`nvm use` reads `windows/.nvmrc`).
+On Linux, `make linux-deps` installs the system libraries. Clippy warnings fail the CI.
+
 ## Good first contributions
 
 - A new service integration (a poller + an entry in `PillCatalog.swift` in the `.service` category + a detail card). Look at `StripePoller.swift` for a compact example.

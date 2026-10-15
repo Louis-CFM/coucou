@@ -357,7 +357,7 @@ is off or Coucou is paused.
 
 ## Build it yourself
 
-You need [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), and the
+You need [Rust](https://rustup.rs), [Node 22.18+](https://nodejs.org) (`windows/.nvmrc` names the version the CI uses: `nvm use`), and the
 **MSVC build tools** (Visual Studio Build Tools with "Desktop development with
 C++"). WebView2 ships with Windows 10/11.
 

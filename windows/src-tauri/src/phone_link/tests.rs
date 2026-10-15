@@ -1006,7 +1006,7 @@ mod chat_tests {
                 let m = reason(code);
                 assert!(!m.contains("sk-") && !m.to_lowercase().contains("bearer") && !m.contains("key:"), "{m}");
             }
-            assert!(DONE_TEXT_MAX < 64 * 1024);
+            const { assert!(DONE_TEXT_MAX < 64 * 1024) };
         });
     }
 
