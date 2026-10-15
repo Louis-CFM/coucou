@@ -488,6 +488,9 @@ final class IslandWindowController: NSWindowController {
         if overBot && !botHovering { botHoverIn(mousePos: NSEvent.mouseLocation) }
         if !overBot && botHovering { botHoverOut() }
         botHovering = overBot
+        // The pointer on Mochi (or on the resting island): the line about the Mac shows under it.
+        let vitalsHover = (state.mode == .compact && inIsland) || overBot
+        if MachineVitals.shared.hovered != vitalsHover { MachineVitals.shared.hovered = vitalsHover }
         if botHovering {
             let m = NSEvent.mouseLocation
             let dist = hypot(m.x - botHoverStartPos.x, m.y - botHoverStartPos.y)
@@ -708,6 +711,12 @@ final class IslandWindowController: NSWindowController {
             #if !APPSTORE
             VoiceSpeaker.shared.stop()
             VoiceEngine.shared.startListeningDirectly()
+            #endif
+
+        case .captureScreen:
+            #if !APPSTORE
+            appendAppLog("nb.log", "[Capture] shortcut pressed")
+            ScreenCapture.shared.begin()
             #endif
         }
     }

@@ -363,6 +363,8 @@ final class FlowDictation: ObservableObject {
             let latest = self.current === listen
             if latest { self.current = nil }
             guard !text.isEmpty else { if latest { self.pill.rest() }; return }
+            // A capture waiting on the island (⌘⇧S): the image goes in first, then the words.
+            _ = await ScreenCapture.shared.pasteForDictation()
             let result = FlowPaste.insert(text)
             if latest { self.pill.rest() }
             switch result {
