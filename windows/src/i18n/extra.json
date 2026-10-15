@@ -1200,6 +1200,50 @@
    "ru": "Основной инструмент",
    "id": "Alat utama"
   },
+  "Code editor": {
+   "zh-Hans": "代码编辑器",
+   "hi": "कोड एडिटर",
+   "es": "Editor de código",
+   "ar": "محرر الأكواد",
+   "fr": "Éditeur de code",
+   "bn": "কোড এডিটর",
+   "pt-BR": "Editor de código",
+   "ru": "Редактор кода",
+   "id": "Editor kode"
+  },
+  "Opens the folder for Open terminal and the file for the ↗ of a diff. PhpStorm opens the file on its first changed line.": {
+   "zh-Hans": "“打开终端”用它打开文件夹,差异的 ↗ 用它打开文件。PhpStorm 会定位到第一处改动的行。",
+   "hi": "“टर्मिनल खोलें” फ़ोल्डर और डिफ़ का ↗ फ़ाइल इसी में खोलता है। PhpStorm फ़ाइल को पहली बदली हुई पंक्ति पर खोलता है।",
+   "es": "Abre la carpeta con «Abrir terminal» y el archivo con el ↗ de un diff. PhpStorm abre el archivo en su primera línea modificada.",
+   "ar": "يفتح المجلد عند «فتح الطرفية» والملف عند ↗ في الفروقات. يفتح PhpStorm الملف عند أول سطر معدَّل.",
+   "fr": "Ouvre le dossier avec « Ouvrir le terminal » et le fichier avec le ↗ d'un diff. PhpStorm ouvre le fichier à sa première ligne modifiée.",
+   "bn": "“টার্মিনাল খুলুন” ফোল্ডার এবং ডিফের ↗ ফাইল এতে খোলে। PhpStorm ফাইলটি প্রথম পরিবর্তিত লাইনে খোলে।",
+   "pt-BR": "Abre a pasta com «Abrir terminal» e o arquivo com o ↗ de um diff. O PhpStorm abre o arquivo na primeira linha alterada.",
+   "ru": "Открывает папку по «Открыть терминал» и файл по ↗ в диффе. PhpStorm открывает файл на первой изменённой строке.",
+   "id": "Membuka folder lewat «Buka terminal» dan file lewat ↗ pada diff. PhpStorm membuka file di baris pertama yang berubah."
+  },
+  "Found on this computer": {
+   "zh-Hans": "已在此电脑上找到",
+   "hi": "इस कंप्यूटर पर मिला",
+   "es": "Encontrado en este equipo",
+   "ar": "موجود على هذا الكمبيوتر",
+   "fr": "Trouvé sur cet ordinateur",
+   "bn": "এই কম্পিউটারে পাওয়া গেছে",
+   "pt-BR": "Encontrado neste computador",
+   "ru": "Найден на этом компьютере",
+   "id": "Ditemukan di komputer ini"
+  },
+  "Not found on this computer": {
+   "zh-Hans": "在此电脑上未找到",
+   "hi": "इस कंप्यूटर पर नहीं मिला",
+   "es": "No encontrado en este equipo",
+   "ar": "غير موجود على هذا الكمبيوتر",
+   "fr": "Introuvable sur cet ordinateur",
+   "bn": "এই কম্পিউটারে পাওয়া যায়নি",
+   "pt-BR": "Não encontrado neste computador",
+   "ru": "Не найден на этом компьютере",
+   "id": "Tidak ditemukan di komputer ini"
+  },
   "Meeting": {
    "zh-Hans": "会议",
    "hi": "मीटिंग",
@@ -1507,6 +1551,17 @@
    "pt-BR": "Abrir no VS Code",
    "ru": "Открыть в VS Code",
    "id": "Buka di VS Code"
+  },
+  "Open in PhpStorm": {
+   "zh-Hans": "在 PhpStorm 中打开",
+   "hi": "PhpStorm में खोलें",
+   "es": "Abrir en PhpStorm",
+   "ar": "فتح في PhpStorm",
+   "fr": "Ouvrir dans PhpStorm",
+   "bn": "PhpStorm-এ খুলুন",
+   "pt-BR": "Abrir no PhpStorm",
+   "ru": "Открыть в PhpStorm",
+   "id": "Buka di PhpStorm"
   },
   "Open or close the island": {
    "zh-Hans": "打开或关闭岛",

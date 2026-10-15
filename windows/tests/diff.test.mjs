@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   DIFF_MAX_LINES, buildFileDiff, fileName, fromEdit, fromNew, isDiffStep, lastTextStep,
-  makeDiffStep, parseDiffStep, toOneLine,
+  lineHint, makeDiffStep, parseDiffStep, toOneLine,
 } from "../src/core/diff.ts";
 
 const allLines = (d) => d.hunks.flatMap((h) => h.lines);
@@ -189,4 +189,36 @@ test("buildFileDiff — Write and other tools", () => {
   assert.equal(buildFileDiff("Write", { file_path: "/p/n.md", content: "" }), null);
   assert.equal(buildFileDiff("Bash", { command: "ls" }), null);
   assert.equal(buildFileDiff("Read", { file_path: "/p/n.md" }), null);
+});
+
+// ── Where the first change is (PhpStorm opens the file on that line) ──────────
+
+test("lineHint — the lines around the first added line", () => {
+  const d = fromEdit("a\nb\nc\nd\ne\n", "a\nb\nX\nd\ne\n", "/f.php");
+  assert.deepEqual(lineHint(d), { block: ["a", "b", "X", "d", "e"], offset: 2 });
+});
+
+test("lineHint — a removal points at the line that took its place", () => {
+  const d = fromEdit("a\nb\nc\nd\n", "a\nb\nd\n", "/f.php");
+  assert.deepEqual(lineHint(d), { block: ["a", "b", "d"], offset: 2 });
+});
+
+test("lineHint — a removal at the very end points at the last line left", () => {
+  const d = fromEdit("a\nb\nc\n", "a\nb\n", "/f.php");
+  assert.deepEqual(lineHint(d), { block: ["a", "b"], offset: 1 });
+});
+
+test("lineHint — a new file starts at its first line; nothing to find otherwise", () => {
+  assert.deepEqual(lineHint(fromNew("<?php\necho 1;\n", "/n.php")), { block: ["<?php", "echo 1;"], offset: 0 });
+  assert.equal(lineHint(fromEdit("", "", "/e.php")), null);
+  assert.equal(lineHint(fromEdit("a\n", "", "/e.php")), null);
+  assert.equal(lineHint(fromNew("x\n".repeat(DIFF_MAX_LINES + 1), "/big.php")), null);
+});
+
+test("lineHint — a long edit is cut to a few lines around the change", () => {
+  const lines = Array.from({ length: 40 }, (_, i) => `line ${i}`);
+  const d = fromEdit("", lines.join("\n"), "/long.php");
+  const hint = lineHint(d);
+  assert.equal(hint.block.length, 24);
+  assert.equal(hint.block[hint.offset], "line 0");
 });
