@@ -17,7 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
-import { lastTextStep } from "../core/diff";
+import { lastTextStep, lineHint } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
@@ -331,7 +331,7 @@ function buildOverview(actions: ViewActions): ViewHost {
               actions.blip();
               closeDiff();
             },
-            open: (path) => void Bridge.openFileInVSCode(path),
+            open: (path) => void Bridge.openFileInEditor(path, lineHint(diff), task.sessionId ?? null),
           }));
         }
       } else if (task && sessionActive) {

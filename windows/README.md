@@ -58,7 +58,7 @@ You can also [build it yourself](#build-it-yourself).
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
-| Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
+| Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in your code editor (VS Code, or PhpStorm on the first changed line — Settings → Active pills → Code editor), ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
 | Tray icon | Open, Weekly recap, Wardrobe…, Settings…, Pause, Quit |
@@ -153,7 +153,7 @@ ElevenLabs with yours.
 ## Your pills
 
 **Settings… → Active pills** lists the tools you use, from the same catalog as
-the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
+the Mac app. Pick your **main tool** — VS Code, Cursor, PhpStorm, Codex or Antigravity —
 which is always there and doesn't take a slot, then declare up to four more:
 agents (Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude
 Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
@@ -538,6 +538,20 @@ own window.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
+- The PhpStorm pill (Windows and Linux only, the Mac has none) carries Claude
+  Code running in a JetBrains terminal, told apart by `TERMINAL_EMULATOR=JetBrains-JediTerm`.
+  Every JetBrains IDE sets it, so a WebStorm or IntelliJ terminal lands there too.
+- **Code editor** (Settings → Active pills) is the editor "Open terminal"'s fallback
+  and the diff's ↗ open things in: VS Code by default, or PhpStorm, which is
+  looked for on `PATH` (`phpstorm`, `phpstorm.sh`, `pstorm`), in the JetBrains
+  Toolbox's scripts and in `/snap/bin`, and opens the file on its first changed
+  line (`phpstorm --line N <file>`) in the window of the open project that holds
+  it. On Linux (X11), "Open terminal" brings forward the PhpStorm window of the
+  session's project, found through the Claude Code plugin's lock files in
+  `~/.claude/ide` and the `CLAUDE_CODE_SSE_PORT` of the session (the relay sends
+  it as `ide_port`); without them, by the project's root and the window's title.
+  The terminal's tab is not selected: PhpStorm cannot be asked to. It is your pick and is never detected. A
+  session in WSL opens in PhpStorm through its `\\wsl.localhost\…` share.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
   turned on once by hand. Hermes runs natively on Linux; on Windows it is
   untested.

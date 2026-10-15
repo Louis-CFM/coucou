@@ -180,6 +180,12 @@ fn prepare_with(
         }
     }
 
+    // The port of the JetBrains IDE this Claude Code is connected to: the name of
+    // its lock file in ~/.claude/ide, which tells the app which window it is in.
+    if let Some(port) = ide_port(env) {
+        map.insert("ide_port".into(), Value::from(port));
+    }
+
     let raw_event = map
         .get("hook_event_name")
         .and_then(Value::as_str)
@@ -246,16 +252,27 @@ fn agent_tag(arg: &str, env: &dyn Fn(&str) -> Option<String>) -> Option<String> 
         .then(|| "claude-desktop".to_string())
 }
 
-/// `cursor` when the session runs in Cursor's integrated terminal. Cursor sets
+/// `cursor` when the session runs in Cursor's integrated terminal, `phpstorm`
+/// in a JetBrains one (every JetBrains IDE sets the same variable, so a
+/// WebStorm or IntelliJ terminal reads as PhpStorm). Cursor sets
 /// TERM_PROGRAM=vscode like VS Code does, so it is told apart by its own trace
 /// variable, or by its executable behind VS Code's git helper.
 fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
     if env("CURSOR_TRACE_ID").is_some_and(|v| !v.is_empty()) {
         return Some("cursor");
     }
+    if env("TERMINAL_EMULATOR").as_deref() == Some("JetBrains-JediTerm") {
+        return Some("phpstorm");
+    }
     let helper = env("VSCODE_GIT_ASKPASS_NODE").unwrap_or_default();
     let exe = helper.rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
     exe.starts_with("cursor").then_some("cursor")
+}
+
+/// `CLAUDE_CODE_SSE_PORT`, set by Claude Code when it runs in a terminal of an IDE
+/// with its plugin: a port number, nothing else is forwarded.
+fn ide_port(env: &dyn Fn(&str) -> Option<String>) -> Option<u16> {
+    env("CLAUDE_CODE_SSE_PORT")?.trim().parse::<u16>().ok().filter(|p| *p > 0)
 }
 
 /// Caps the strings of a payload: every field to MAX_FIELD_LEN, except the edit
@@ -420,6 +437,28 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn the_ide_port_is_a_port_number_or_nothing() {
+        assert_eq!(ide_port(&env_of(&[("CLAUDE_CODE_SSE_PORT", "46143")])), Some(46143));
+        assert_eq!(ide_port(&env_of(&[("CLAUDE_CODE_SSE_PORT", " 80 ")])), Some(80));
+        for bad in ["", "0", "65536", "-1", "46143; rm -rf /", "abc", "../x"] {
+            let env = move |k: &str| (k == "CLAUDE_CODE_SSE_PORT").then(|| bad.to_string());
+            assert_eq!(ide_port(&env), None, "{bad}");
+        }
+        assert_eq!(ide_port(&env_of(&[])), None);
+    }
+
+    #[test]
+    fn a_jetbrains_terminal_reads_as_phpstorm() {
+        assert_eq!(term_editor(&env_of(&[("TERMINAL_EMULATOR", "JetBrains-JediTerm")])), Some("phpstorm"));
+        assert_eq!(term_editor(&env_of(&[("TERMINAL_EMULATOR", "other")])), None);
+        // Cursor's own variable still wins.
+        assert_eq!(
+            term_editor(&env_of(&[("CURSOR_TRACE_ID", "abc"), ("TERMINAL_EMULATOR", "JetBrains-JediTerm")])),
+            Some("cursor")
+        );
     }
 
     #[test]
