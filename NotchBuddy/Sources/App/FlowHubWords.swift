@@ -207,7 +207,7 @@ struct HubSnippetsPage: View {
 
 // MARK: - Styles
 
-/// Coucou Flow → Styles: Claude's clean-up, and how the words are written in each app.
+/// Coucou Flow → Styles: the AI clean-up and who writes it, and how the words are written in each app.
 struct HubStylesPage: View {
     @ObservedObject var router: HubRouter
     @ObservedObject private var store = FlowStore.shared
@@ -220,9 +220,18 @@ struct HubStylesPage: View {
                     Toggle("", isOn: $store.cleanupEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .disabled(!FlowCleanup.hasKey && !store.cleanupEnabled)
+                        .disabled(!FlowCleanup.canClean && !store.cleanupEnabled)
                 }
-                if !FlowCleanup.hasKey {
+                if !FlowCleanup.providers.isEmpty {
+                    HubRow(title: String(localized: "hub.cleanup-provider")) {
+                        Picker("", selection: $store.cleanupProvider) {
+                            ForEach(cleanupProviders, id: \.self) { Text(providerLabel($0)).tag($0) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
+                if FlowCleanup.providers.isEmpty {
                     HStack(spacing: 10) {
                         Image(systemName: "key")
                             .foregroundColor(HubTheme.accent)
@@ -296,6 +305,20 @@ struct HubStylesPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// The providers that can clean up, and the one picked even once its key is gone.
+    private var cleanupProviders: [ChatProvider] {
+        let ready = FlowCleanup.providers
+        return ready.contains(store.cleanupProvider) ? ready : ready + [store.cleanupProvider]
+    }
+
+    /// Same names as the Notetaker's menu: "Claude (your key)", "OpenAI (your key)", "Ollama (this Mac)".
+    private func providerLabel(_ provider: ChatProvider) -> String {
+        if provider == .anthropic { return String(localized: "notes.engine.claude") }
+        return provider.isLocal
+            ? String(format: String(localized: "notes.engine.local"), provider.displayName)
+            : String(format: String(localized: "notes.engine.provider"), provider.displayName)
     }
 
     private func stylePicker(_ selection: Binding<FlowStyle>) -> some View {
