@@ -1038,14 +1038,14 @@ mod tests {
         let missing = dir.join("missing");
         let png = "data:image/png;base64,iVBORw0KGgo=";
         let first = save_png(&[missing.clone(), dir.clone()], png, "2026-10-05").unwrap();
-        let second = save_png(&[dir.clone()], png, "2026-10-05").unwrap();
+        let second = save_png(std::slice::from_ref(&dir), png, "2026-10-05").unwrap();
         assert_eq!(first, dir.join("Coucou weekly recap 2026-10-05.png"));
         assert_eq!(second, dir.join("Coucou weekly recap 2026-10-05 (2).png"));
         // The week is a date or nothing: no path tricks through it.
-        let third = save_png(&[dir.clone()], png, "../../x").unwrap();
+        let third = save_png(std::slice::from_ref(&dir), png, "../../x").unwrap();
         assert_eq!(third, dir.join("Coucou weekly recap.png"));
         // Not a PNG: refused.
-        assert!(save_png(&[dir.clone()], "data:image/png;base64,aGVsbG8=", "").is_err());
+        assert!(save_png(std::slice::from_ref(&dir), "data:image/png;base64,aGVsbG8=", "").is_err());
         assert!(save_png(&[missing], png, "").is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }

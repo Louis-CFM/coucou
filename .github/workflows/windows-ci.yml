@@ -31,10 +31,10 @@ jobs:
           persist-credentials: false
 
       # The tests run the TypeScript sources directly, which needs Node 22.18
-      # or newer; 24 is the version they are run with locally.
+      # or newer; windows/.nvmrc names the version they are run with locally.
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: windows/.nvmrc
           cache: npm
           cache-dependency-path: windows/package-lock.json
 
@@ -63,7 +63,5 @@ jobs:
       - name: Rust tests
         run: cargo test --workspace --locked
 
-      # Warnings are reported, not fatal: the existing code has a few to clean up first.
-      # Once it is clean, add `-- -D warnings` here.
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --locked
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
