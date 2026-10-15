@@ -66,6 +66,16 @@ impl Editor {
         }
     }
 
+    /// What the window manager calls this editor's windows, for the editors whose
+    /// windows are looked for (PhpStorm: one process, a window per project).
+    /// VS Code is left to its own launcher, which reuses the window of a folder.
+    pub fn window_class(self) -> Option<&'static str> {
+        match self {
+            Editor::VsCode => None,
+            Editor::PhpStorm => Some("phpstorm"),
+        }
+    }
+
     /// The arguments that open a target. `vscode_args` are the ones VS Code is
     /// given (they may reach into WSL, which PhpStorm has no use for); `local`
     /// is the target as this machine reaches it; `line` is a line of a file to
@@ -125,6 +135,12 @@ mod tests {
         assert_eq!(Editor::from_id(""), Editor::VsCode);
         assert_eq!(Editor::from_id("PhpStorm"), Editor::VsCode);
         assert_eq!(Editor::from_id("emacs"), Editor::VsCode);
+    }
+
+    #[test]
+    fn only_phpstorms_windows_are_looked_for() {
+        assert_eq!(Editor::PhpStorm.window_class(), Some("phpstorm"));
+        assert_eq!(Editor::VsCode.window_class(), None);
     }
 
     #[test]

@@ -16,6 +16,7 @@ mod i18n;
 mod identity;
 mod integrations;
 mod island;
+mod jetbrains;
 mod local_chat;
 mod log;
 mod net;
@@ -283,6 +284,19 @@ fn open_folder_in(ed: editor::Editor, path: Option<String>) -> bool {
     false
 }
 
+/// Brings forward the PhpStorm window a session runs in, found by the IDE port
+/// its Claude Code was given (jetbrains.rs). False when it has none, or no open
+/// window answers to it.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn raise_session_project(session_id: Option<&str>, cwd: Option<&str>) -> bool {
+    let Some(port) = session_id.and_then(session_window::ide_port) else { return false };
+    let projects = jetbrains::open_projects(&jetbrains::lock_dir());
+    let Some(found) = jetbrains::for_port(&projects, port, cwd.map(std::path::Path::new)) else { return false };
+    let done = platform::focus_editor_window("phpstorm", &found.name(), Some(found.project.pid));
+    log::line(format!("terminal: IDE port {port} is PhpStorm pid {} on {:?}: {}", found.project.pid, found.name(), if done { "raised" } else { "no window" }));
+    done
+}
+
 /// Which editors can be launched on this machine, by the id Settings stores.
 #[tauri::command]
 fn editors_status() -> std::collections::HashMap<String, bool> {
@@ -326,7 +340,20 @@ fn editor_target(path: &str, folder: bool) -> Option<EditorTarget> {
 /// folder in the editor picked in Settings, as before.
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
-    let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
+    let owners = session_id.as_deref().and_then(session_window::lookup);
+    let cwd = path.clone();
+    // PhpStorm has the project open, not the sub-folder a `cd` left the session
+    // in: it is the project that is looked for, and opened if it is not open.
+    let path = if chosen_editor(None) == editor::Editor::PhpStorm {
+        path.map(|p| session_window::project_root(&p))
+    } else {
+        path
+    };
+    // Nothing remembered (the app started after the session did, or the window
+    // was never found): on Linux the editor's own window for the folder is still
+    // looked for, below. Elsewhere the editor opens.
+    #[cfg(not(target_os = "linux"))]
+    let Some(owners) = owners else {
         return open_folder_in(chosen_editor(None), path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
@@ -358,13 +385,26 @@ fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
         true
     }
     // Linux asks the display server, KWin or the terminal, which can take a
-    // moment: never on the UI thread a sync command runs on. the editor still
+    // moment: never on the UI thread a sync command runs on. The editor still
     // opens when none of them could bring the window forward.
     #[cfg(target_os = "linux")]
     {
         std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
-                open_folder_in(chosen_editor(None), path);
+            let ed = chosen_editor(None);
+            // PhpStorm: the window of the IDE the session's Claude Code is connected
+            // to, whatever folder the session has drifted into.
+            let by_ide = ed == editor::Editor::PhpStorm && raise_session_project(session_id.as_deref(), cwd.as_deref());
+            let by_owners = !by_ide && owners.as_deref().is_some_and(|o| platform::focus_session_window(o, &folder));
+            // The editor already has the project open: its window is the one.
+            let brought = by_ide
+                || by_owners
+                || ed.window_class().is_some_and(|class| platform::focus_editor_window(class, &folder, None));
+            log::line(format!(
+                "terminal: open session — owners {owners:?} folder {folder:?}: {}",
+                if brought { "window brought forward" } else { "not brought forward, the editor opens" },
+            ));
+            if !brought {
+                open_folder_in(ed, path);
             }
         });
         true
@@ -384,11 +424,21 @@ fn open_claude_desktop() -> bool {
 /// shows its folder. The file itself is never opened by its type — xdg-open or
 /// Explorer would run a script that Claude just wrote.
 #[tauri::command]
-fn open_file_in_editor(path: String, hint: Option<editor::LineHint>) -> bool {
+fn open_file_in_editor(path: String, hint: Option<editor::LineHint>, session_id: Option<String>) -> bool {
     // A relative path, a folder or a path `code` could read as an option goes no
     // further; one from a session in WSL is turned into its place on the distro.
     let Some(file) = editor_target(&path, false) else { return false };
     let ed = chosen_editor(None);
+    if ed == editor::Editor::PhpStorm {
+        // The window of the open project that holds the file, in whichever PhpStorm
+        // it is open: the session's own when it holds it. The launcher then opens
+        // the file in that window, which is in front.
+        let projects = jetbrains::open_projects(&jetbrains::lock_dir());
+        let own = session_id.as_deref().and_then(session_window::ide_port);
+        if let Some(found) = jetbrains::for_file(&projects, &file.local, own) {
+            platform::focus_editor_window("phpstorm", &found.name(), Some(found.project.pid));
+        }
+    }
     // Only PhpStorm is asked for a line, so only then is the file read.
     let line = hint.filter(|_| ed == editor::Editor::PhpStorm).and_then(|h| h.locate_in(&file.local));
     if launch_editor(ed, Some(&file), line) {

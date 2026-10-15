@@ -331,7 +331,7 @@ function buildOverview(actions: ViewActions): ViewHost {
               actions.blip();
               closeDiff();
             },
-            open: (path) => void Bridge.openFileInEditor(path, lineHint(diff)),
+            open: (path) => void Bridge.openFileInEditor(path, lineHint(diff), task.sessionId ?? null),
           }));
         }
       } else if (task && sessionActive) {
