@@ -7,7 +7,7 @@ import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
-  | "ollama" | "lmstudio" | "custom";
+  | "ollama" | "lmstudio" | "custom" | "cursor" | "kiro";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -21,6 +21,8 @@ export interface ProviderDef {
   defaultModel: string;
   /** When the saved model is not offered, the first one containing this is picked. */
   prefer: string | null;
+  /** Answered through the user's own plan, by its CLI (plan_chat.rs). */
+  plan?: true;
 }
 
 export const PROVIDERS: readonly ProviderDef[] = [
@@ -31,7 +33,13 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  // This fork only.
+  { id: "cursor", name: "Cursor", accent: "#C0C4CC", key: null, urlField: null, defaultModel: "auto", prefer: null, plan: true },
+  { id: "kiro", name: "Kiro", accent: "#9046FF", key: null, urlField: null, defaultModel: "auto", prefer: null, plan: true },
 ];
+
+/** The plans the chat can use, in the order it falls back through them. */
+export const PLAN_PROVIDERS = PROVIDERS.filter((p) => p.plan);
 
 /** Credential store entry of the custom server's optional key. */
 export const CUSTOM_SERVER_KEY = "openai-compatible-key";
@@ -55,13 +63,16 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
 
 /**
  * The chips of the picker: every cloud provider (one without a key says so
- * when picked), and a model server once it is connected — or while it is the
- * active one, so the picker never hides where the chat goes.
+ * when picked), a model server once it is connected and a plan once it is
+ * turned on — or while it is the active one, so the picker never hides where
+ * the chat goes.
  */
 export function visibleProviders(settings: Settings): ProviderDef[] {
-  return PROVIDERS.filter(
-    (p) => !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
-  );
+  return PROVIDERS.filter((p) => {
+    if (settings.chatProvider === p.id) return true;
+    if (p.plan) return settings.planChats.includes(p.id);
+    return !p.urlField || settings[p.urlField] !== "";
+  });
 }
 
 /** The model to keep once the list arrives: the saved one if offered, else a sensible one. */

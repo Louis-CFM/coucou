@@ -21,6 +21,7 @@ mod net;
 mod notes;
 mod openai_compat;
 mod phone_link;
+mod plan_chat;
 mod pipe;
 mod platform;
 #[cfg(target_os = "linux")]
@@ -520,6 +521,24 @@ fn chat_reset(chat: State<Chat>) {
     chat.reset();
 }
 
+/// Settings → Chat: is the Cursor or Kiro CLI installed and signed in?
+#[tauri::command]
+async fn plan_status(provider: String) -> Result<plan_chat::PlanStatus, String> {
+    if !plan_chat::is_plan(&provider) {
+        return Err(format!("Unknown plan: {provider}"));
+    }
+    Ok(plan_chat::status(&provider).await)
+}
+
+/// Settings → Chat → Sign in: the CLI's own browser sign-in.
+#[tauri::command]
+fn plan_login(provider: String) -> Result<(), String> {
+    if !plan_chat::is_plan(&provider) {
+        return Err(format!("Unknown plan: {provider}"));
+    }
+    plan_chat::login(&provider)
+}
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -765,6 +784,8 @@ pub fn run() {
             local_connect,
             local_set_key,
             chat_reset,
+            plan_status,
+            plan_login,
             ingest_file,
             secret_present,
             secret_set,

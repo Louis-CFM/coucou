@@ -69,6 +69,9 @@ mod unix;
 #[cfg(target_os = "linux")]
 use unix::connect;
 
+/// Set by Coucou on the agent CLIs it runs itself (plan_chat.rs).
+const QUIET_ENV: &str = "COUCOU_QUIET";
+
 /// What the command line says: `--agent <name>` and the event name.
 struct Args {
     agent: String,
@@ -109,7 +112,9 @@ fn main() {
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    let Some(event) = prepare(&raw, &args, &env, &cwd) else {
+    // The agent CLIs Coucou runs itself (its chat) are not sessions.
+    let quiet = std::env::var_os(QUIET_ENV).is_some();
+    let Some(event) = prepare(&raw, &args, &env, &cwd).filter(|_| !quiet) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);

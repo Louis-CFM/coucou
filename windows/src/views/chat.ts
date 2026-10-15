@@ -170,7 +170,7 @@ function buildPicker(onChange: () => void): Picker {
       }
       drawModels(p, models);
     } catch (err) {
-      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
+      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key || p.plan));
     }
   }
 

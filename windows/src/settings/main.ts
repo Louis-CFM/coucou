@@ -5,7 +5,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CUSTOM_SERVER_KEY, PLAN_PROVIDERS, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -593,6 +593,95 @@ function chatProvidersSection(
     {},
     h("h2", {}, h("span", { text: CHAT_STRINGS.providersTitle })),
     h("div", { class: "hint", text: CHAT_STRINGS.providersHint }),
+    list,
+  );
+}
+
+// ── Plans section (this fork only) ────────────────────────────────────────────
+
+const PLAN_CLI: Record<string, { install: string; login: string }> = {
+  cursor: { install: "curl https://cursor.com/install -fsS | bash", login: "agent login" },
+  kiro: { install: "curl -fsSL https://cli.kiro.dev/install | bash", login: "kiro-cli login" },
+};
+
+function plansSection(): HTMLElement {
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
+  for (const p of PLAN_PROVIDERS) {
+    const cli = PLAN_CLI[p.id];
+    const state = h("div", { class: "hint", text: t("Checking the CLI…") });
+    const extra = h("div", {});
+    const dotEl = statusDot(false);
+    const use = toggle(settings.planChats.includes(p.id), (on) => {
+      const others = settings.planChats.filter((id) => id !== p.id);
+      settings.planChats = on ? [...others, p.id] : others;
+      void save();
+    });
+    let polls = 0;
+    const refresh = async () => {
+      const s = await Bridge.planStatus(p.id);
+      clear(extra);
+      dotEl.style.background = s?.loggedIn ? "#22c55e" : "#f4505e";
+      if (!s?.cli) {
+        state.textContent = t("{name} CLI not found. Install it, then sign in:", { name: p.name });
+        extra.append(
+          h("div", { class: "row" }, h("span", { class: "path", text: cli.install })),
+          h("div", { class: "row" }, h("span", { class: "path", text: cli.login })),
+        );
+        return;
+      }
+      if (s.loggedIn) {
+        state.textContent = s.status || t("Connected");
+        return;
+      }
+      state.textContent = p.id === "cursor"
+        ? t("Not signed in. Sign in once in your browser:")
+        : t("Not signed in. Run this in a terminal:");
+      const signIn = h("button", { class: "primary", text: t("Sign in") });
+      signIn.addEventListener("click", async () => {
+        try {
+          await Bridge.planLogin(p.id);
+        } catch (err) {
+          state.textContent = String(err).replace(/^Error:\s*/, "");
+          return;
+        }
+        // The CLI signs in in the browser: look again until it is done.
+        polls = 40;
+        const again = async () => {
+          if (polls-- <= 0) return;
+          const now = await Bridge.planStatus(p.id);
+          if (now?.loggedIn) void refresh();
+          else setTimeout(again, 3000);
+        };
+        setTimeout(again, 3000);
+      });
+      extra.append(
+        p.id === "cursor"
+          ? h("div", { class: "row" }, signIn)
+          : h("div", { class: "row" }, h("span", { class: "path", text: cli.login })),
+      );
+    };
+    void refresh();
+    list.append(
+      h("div", { style: "display:flex;flex-direction:column;gap:6px" },
+        h("div", { class: "row" },
+          h("label", {},
+            h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+            h("span", { text: p.name }),
+          ),
+          h("span", { style: "flex:1" }),
+          h("span", { class: "hint", text: CHAT_STRINGS.useInChat }),
+          use, dotEl,
+        ),
+        state,
+        extra,
+      ),
+    );
+  }
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Your Cursor and Kiro plans") })),
+    h("div", { class: "hint", text: t("Chat on a plan you already pay for, through the Cursor or Kiro CLI. It runs read-only in a private folder: it can answer, never act on this computer. With a plan on, a question it cannot answer goes to the next plan, then to your Anthropic key.") }),
     list,
   );
 }
@@ -1358,7 +1447,7 @@ async function render() {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), plansSection(), localSection(customKey)],
     integrations: () => [integrationsSection(present)],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

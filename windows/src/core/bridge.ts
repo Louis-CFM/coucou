@@ -336,6 +336,10 @@ export const Bridge = {
    * the provider only when it has a key (or a server address).
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
+  /** Whether a plan's CLI (Cursor, Kiro) is installed and signed in. */
+  planStatus: (provider: string) => call<PlanStatus>("plan_status", { provider }),
+  /** Opens the plan's browser sign-in through its CLI. */
+  planLogin: (provider: string) => callOrThrow<void>("plan_login", { provider }),
   /** Settings → Local models → Connect: does the server answer, and with which models? */
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
@@ -463,6 +467,14 @@ export type ChatContext =
 export interface ModelInfo {
   id: string;
   label: string;
+}
+
+export interface PlanStatus {
+  /** Path of the CLI, or null when it is not installed. */
+  cli: string | null;
+  /** What the CLI says about the account, e.g. "Logged in as …". */
+  status: string;
+  loggedIn: boolean;
 }
 
 export interface LocalServer {

@@ -124,6 +124,8 @@ export interface Settings {
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
   chatModels: Record<string, string>;
+  /** The plans the chat may use through their CLIs ("cursor", "kiro"); with any on, a failed turn falls back. */
+  planChats: string[];
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -183,6 +185,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showCodexPlanInNotch: false,
   chatProvider: "anthropic",
   chatModels: {},
+  planChats: [],
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",

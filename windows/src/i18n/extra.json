@@ -4405,6 +4405,138 @@
    "pt-BR": "Inicie uma nova sessão do Kiro CLI para carregar os hooks.",
    "ru": "Начните новый сеанс Kiro CLI, чтобы хуки подключились.",
    "id": "Mulai sesi Kiro CLI baru agar hook dimuat."
+  },
+  "Could not start the {name} CLI: {error}": {
+   "zh-Hans": "无法启动 {name} CLI：{error}",
+   "hi": "{name} CLI शुरू नहीं हो सका: {error}",
+   "es": "No se pudo iniciar la CLI de {name}: {error}",
+   "ar": "تعذّر تشغيل واجهة {name} السطرية: {error}",
+   "fr": "Impossible de lancer la CLI {name} : {error}",
+   "bn": "{name} CLI চালু করা যায়নি: {error}",
+   "pt-BR": "Não foi possível iniciar a CLI do {name}: {error}",
+   "ru": "Не удалось запустить CLI {name}: {error}",
+   "id": "Tidak dapat memulai CLI {name}: {error}"
+  },
+  "{name} took too long to answer.": {
+   "zh-Hans": "{name} 回答超时。",
+   "hi": "{name} ने जवाब देने में बहुत देर लगाई।",
+   "es": "{name} tardó demasiado en responder.",
+   "ar": "استغرق {name} وقتًا طويلًا للرد.",
+   "fr": "{name} a mis trop de temps à répondre.",
+   "bn": "{name} উত্তর দিতে অনেক বেশি সময় নিয়েছে।",
+   "pt-BR": "O {name} demorou demais para responder.",
+   "ru": "{name} слишком долго не отвечал.",
+   "id": "{name} terlalu lama menjawab."
+  },
+  "{name} CLI not found. Install it, then sign in with {command}.": {
+   "zh-Hans": "未找到 {name} CLI。请先安装，然后用 {command} 登录。",
+   "hi": "{name} CLI नहीं मिला। इसे इंस्टॉल करें, फिर {command} से साइन इन करें।",
+   "es": "No se encontró la CLI de {name}. Instálala y luego inicia sesión con {command}.",
+   "ar": "لم يُعثر على واجهة {name} السطرية. ثبّتها ثم سجّل الدخول باستخدام {command}.",
+   "fr": "CLI {name} introuvable. Installez-la, puis connectez-vous avec {command}.",
+   "bn": "{name} CLI পাওয়া যায়নি। এটি ইনস্টল করুন, তারপর {command} দিয়ে সাইন ইন করুন।",
+   "pt-BR": "CLI do {name} não encontrada. Instale e depois entre com {command}.",
+   "ru": "CLI {name} не найден. Установите его, затем войдите командой {command}.",
+   "id": "CLI {name} tidak ditemukan. Pasang, lalu masuk dengan {command}."
+  },
+  "Only text files can be sent to {name} for now.": {
+   "zh-Hans": "目前只能向 {name} 发送文本文件。",
+   "hi": "फ़िलहाल {name} को केवल टेक्स्ट फ़ाइलें भेजी जा सकती हैं।",
+   "es": "Por ahora solo se pueden enviar archivos de texto a {name}.",
+   "ar": "لا يمكن حاليًا إرسال سوى الملفات النصية إلى {name}.",
+   "fr": "Pour l’instant, seuls les fichiers texte peuvent être envoyés à {name}.",
+   "bn": "আপাতত {name}-এ শুধু টেক্সট ফাইল পাঠানো যায়।",
+   "pt-BR": "Por enquanto, só arquivos de texto podem ser enviados ao {name}.",
+   "ru": "Пока в {name} можно отправлять только текстовые файлы.",
+   "id": "Untuk saat ini hanya file teks yang bisa dikirim ke {name}."
+  },
+  "{name} returned an error.": {
+   "zh-Hans": "{name} 返回了错误。",
+   "hi": "{name} ने एक त्रुटि लौटाई।",
+   "es": "{name} devolvió un error.",
+   "ar": "أعاد {name} خطأً.",
+   "fr": "{name} a renvoyé une erreur.",
+   "bn": "{name} একটি ত্রুটি ফেরত দিয়েছে।",
+   "pt-BR": "O {name} retornou um erro.",
+   "ru": "{name} вернул ошибку.",
+   "id": "{name} mengembalikan galat."
+  },
+  "Checking the CLI…": {
+   "zh-Hans": "正在检查 CLI…",
+   "hi": "CLI जाँचा जा रहा है…",
+   "es": "Comprobando la CLI…",
+   "ar": "جارٍ التحقق من الواجهة السطرية…",
+   "fr": "Vérification de la CLI…",
+   "bn": "CLI যাচাই করা হচ্ছে…",
+   "pt-BR": "Verificando a CLI…",
+   "ru": "Проверка CLI…",
+   "id": "Memeriksa CLI…"
+  },
+  "{name} CLI not found. Install it, then sign in:": {
+   "zh-Hans": "未找到 {name} CLI。请先安装，然后登录：",
+   "hi": "{name} CLI नहीं मिला। इसे इंस्टॉल करें, फिर साइन इन करें:",
+   "es": "No se encontró la CLI de {name}. Instálala y luego inicia sesión:",
+   "ar": "لم يُعثر على واجهة {name} السطرية. ثبّتها ثم سجّل الدخول:",
+   "fr": "CLI {name} introuvable. Installez-la, puis connectez-vous :",
+   "bn": "{name} CLI পাওয়া যায়নি। এটি ইনস্টল করুন, তারপর সাইন ইন করুন:",
+   "pt-BR": "CLI do {name} não encontrada. Instale e depois entre:",
+   "ru": "CLI {name} не найден. Установите его, затем войдите:",
+   "id": "CLI {name} tidak ditemukan. Pasang, lalu masuk:"
+  },
+  "Not signed in. Sign in once in your browser:": {
+   "zh-Hans": "尚未登录。请在浏览器中登录一次：",
+   "hi": "साइन इन नहीं है। अपने ब्राउज़र में एक बार साइन इन करें:",
+   "es": "No has iniciado sesión. Inicia sesión una vez en tu navegador:",
+   "ar": "لم يتم تسجيل الدخول. سجّل الدخول مرة واحدة في متصفحك:",
+   "fr": "Non connecté. Connectez-vous une fois dans votre navigateur :",
+   "bn": "সাইন ইন করা নেই। ব্রাউজারে একবার সাইন ইন করুন:",
+   "pt-BR": "Você não entrou. Entre uma vez pelo navegador:",
+   "ru": "Вход не выполнен. Войдите один раз в браузере:",
+   "id": "Belum masuk. Masuk sekali lewat peramban:"
+  },
+  "Not signed in. Run this in a terminal:": {
+   "zh-Hans": "尚未登录。请在终端中运行：",
+   "hi": "साइन इन नहीं है। इसे टर्मिनल में चलाएँ:",
+   "es": "No has iniciado sesión. Ejecuta esto en una terminal:",
+   "ar": "لم يتم تسجيل الدخول. شغّل هذا في الطرفية:",
+   "fr": "Non connecté. Lancez ceci dans un terminal :",
+   "bn": "সাইন ইন করা নেই। টার্মিনালে এটি চালান:",
+   "pt-BR": "Você não entrou. Rode isto em um terminal:",
+   "ru": "Вход не выполнен. Выполните это в терминале:",
+   "id": "Belum masuk. Jalankan ini di terminal:"
+  },
+  "Sign in": {
+   "zh-Hans": "登录",
+   "hi": "साइन इन करें",
+   "es": "Iniciar sesión",
+   "ar": "تسجيل الدخول",
+   "fr": "Se connecter",
+   "bn": "সাইন ইন",
+   "pt-BR": "Entrar",
+   "ru": "Войти",
+   "id": "Masuk"
+  },
+  "Your Cursor and Kiro plans": {
+   "zh-Hans": "你的 Cursor 和 Kiro 套餐",
+   "hi": "आपके Cursor और Kiro प्लान",
+   "es": "Tus planes de Cursor y Kiro",
+   "ar": "خططك في Cursor وKiro",
+   "fr": "Vos forfaits Cursor et Kiro",
+   "bn": "আপনার Cursor ও Kiro প্ল্যান",
+   "pt-BR": "Seus planos do Cursor e do Kiro",
+   "ru": "Ваши тарифы Cursor и Kiro",
+   "id": "Paket Cursor dan Kiro Anda"
+  },
+  "Chat on a plan you already pay for, through the Cursor or Kiro CLI. It runs read-only in a private folder: it can answer, never act on this computer. With a plan on, a question it cannot answer goes to the next plan, then to your Anthropic key.": {
+   "zh-Hans": "通过 Cursor 或 Kiro CLI，用你已付费的套餐聊天。它在私有文件夹中以只读方式运行：只能回答，绝不会在这台电脑上执行操作。开启套餐后，它无法回答的问题会转给下一个套餐，然后是你的 Anthropic 密钥。",
+   "hi": "Cursor या Kiro CLI के ज़रिए उस प्लान पर चैट करें जिसका आप पहले से भुगतान करते हैं। यह एक निजी फ़ोल्डर में केवल-पढ़ने के मोड में चलता है: यह जवाब दे सकता है, इस कंप्यूटर पर कभी कुछ नहीं करता। प्लान चालू होने पर, जिस सवाल का यह जवाब नहीं दे पाता वह अगले प्लान को, फिर आपकी Anthropic कुंजी को जाता है।",
+   "es": "Chatea con un plan que ya pagas, a través de la CLI de Cursor o de Kiro. Se ejecuta en modo de solo lectura en una carpeta privada: puede responder, nunca actuar en este equipo. Con un plan activado, una pregunta que no pueda responder pasa al siguiente plan y luego a tu clave de Anthropic.",
+   "ar": "تحدّث عبر خطة تدفع ثمنها بالفعل، من خلال واجهة Cursor أو Kiro السطرية. تعمل للقراءة فقط في مجلد خاص: يمكنها الإجابة، ولا تتصرف أبدًا على هذا الحاسوب. عند تفعيل خطة، ينتقل السؤال الذي لا تستطيع الإجابة عنه إلى الخطة التالية، ثم إلى مفتاح Anthropic الخاص بك.",
+   "fr": "Discutez avec un forfait que vous payez déjà, via la CLI Cursor ou Kiro. Elle tourne en lecture seule dans un dossier privé : elle peut répondre, jamais agir sur cet ordinateur. Avec un forfait activé, une question à laquelle il ne peut pas répondre passe au forfait suivant, puis à votre clé Anthropic.",
+   "bn": "Cursor বা Kiro CLI দিয়ে আপনি যে প্ল্যানের জন্য আগেই টাকা দেন তাতে চ্যাট করুন। এটি একটি ব্যক্তিগত ফোল্ডারে শুধু-পড়ার মোডে চলে: উত্তর দিতে পারে, এই কম্পিউটারে কখনো কিছু করে না। প্ল্যান চালু থাকলে, যে প্রশ্নের উত্তর এটি দিতে পারে না তা পরের প্ল্যানে, তারপর আপনার Anthropic কী-তে যায়।",
+   "pt-BR": "Converse usando um plano que você já paga, pela CLI do Cursor ou do Kiro. Ela roda em modo somente leitura numa pasta privada: pode responder, nunca agir neste computador. Com um plano ligado, uma pergunta que ele não consiga responder passa para o próximo plano e depois para a sua chave da Anthropic.",
+   "ru": "Общайтесь в чате по тарифу, за который вы уже платите, через CLI Cursor или Kiro. Он работает только на чтение в отдельной папке: может отвечать, но никогда ничего не делает на этом компьютере. Когда тариф включён, вопрос, на который он не может ответить, переходит к следующему тарифу, а затем к вашему ключу Anthropic.",
+   "id": "Mengobrol dengan paket yang sudah Anda bayar, lewat CLI Cursor atau Kiro. Berjalan hanya-baca di folder pribadi: bisa menjawab, tidak pernah bertindak di komputer ini. Dengan paket aktif, pertanyaan yang tidak bisa dijawabnya diteruskan ke paket berikutnya, lalu ke kunci Anthropic Anda."
   }
  }
 }
