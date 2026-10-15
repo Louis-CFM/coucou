@@ -134,6 +134,10 @@ fn main() {
 
     let decision = rx.recv_timeout(budget).ok().flatten();
     print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    if let Some((message, code)) = reply::exit_status(&args.agent, &event.name, decision.as_deref()) {
+        eprintln!("{message}");
+        std::process::exit(code);
+    }
     std::process::exit(0);
 }
 
@@ -174,7 +178,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .map(str::to_string)
         .unwrap_or_else(|| args.event.clone());
     normalize::fields(map, env);
-    let name = normalize::refine(normalize::event(&raw_event), map);
+    let name = normalize::for_agent(&args.agent, normalize::refine(normalize::event(&raw_event), map), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
     for field in DROPPED_FIELDS {

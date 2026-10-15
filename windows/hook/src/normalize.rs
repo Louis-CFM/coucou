@@ -130,6 +130,28 @@ pub fn refine(event: &str, map: &Map<String, Value>) -> String {
     event.to_string()
 }
 
+/// Kiro CLI's shell tools.
+const KIRO_SHELL_TOOLS: &[&str] = &["execute_bash", "shell"];
+
+/// What `agent`'s event means to the island. Kiro asks nothing of its own: its
+/// PreToolUse of a shell command is the one that can wait for a click, so it
+/// becomes a PermissionRequest. Kiro's final answer is `assistant_response`.
+pub fn for_agent(agent: &str, event: String, map: &mut Map<String, Value>) -> String {
+    if agent != "kiro" {
+        return event;
+    }
+    if !map.contains_key("last_assistant_message") {
+        if let Some(text) = map.get("assistant_response").cloned() {
+            map.insert("last_assistant_message".into(), text);
+        }
+    }
+    let tool = map.get("tool_name").and_then(Value::as_str).unwrap_or("");
+    if event == "PreToolUse" && KIRO_SHELL_TOOLS.contains(&tool) {
+        return "PermissionRequest".into();
+    }
+    event
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -254,6 +276,27 @@ mod tests {
         assert!(!m.contains_key("tool_name"));
         assert!(!m.contains_key("tool_input"));
         assert!(!m.contains_key("cwd"));
+    }
+
+    #[test]
+    fn only_kiros_shell_commands_wait_for_a_click() {
+        let mut m = obj(json!({ "tool_name": "execute_bash" }));
+        assert_eq!(for_agent("kiro", "PreToolUse".into(), &mut m), "PermissionRequest");
+        let mut m = obj(json!({ "tool_name": "fs_read" }));
+        assert_eq!(for_agent("kiro", "PreToolUse".into(), &mut m), "PreToolUse");
+        let mut m = obj(json!({ "tool_name": "execute_bash" }));
+        assert_eq!(for_agent("cursor", "PreToolUse".into(), &mut m), "PreToolUse");
+        assert_eq!(for_agent("", "PreToolUse".into(), &mut m), "PreToolUse");
+    }
+
+    #[test]
+    fn kiros_final_answer_is_read_like_claude_codes() {
+        let mut m = obj(json!({ "assistant_response": "Done." }));
+        for_agent("kiro", "Stop".into(), &mut m);
+        assert_eq!(m["last_assistant_message"], "Done.");
+        let mut m = obj(json!({ "assistant_response": "no", "last_assistant_message": "keep" }));
+        for_agent("kiro", "Stop".into(), &mut m);
+        assert_eq!(m["last_assistant_message"], "keep");
     }
 
     #[test]
