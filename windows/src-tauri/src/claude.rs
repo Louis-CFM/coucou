@@ -7,6 +7,9 @@
 // COUCOU_ANTHROPIC_BASE_URL points the chat at an Anthropic-compatible gateway
 // instead (issue #180). Only that variable is read: Claude Code's own
 // ANTHROPIC_BASE_URL may name a proxy the user never meant to hand this key to.
+// A gateway (MiniMax, LiteLLM…) gets the key as a bearer token too, no web
+// search or fallback (Anthropic server features), and COUCOU_ANTHROPIC_MODEL
+// as its model when set, since it rarely knows Claude's names or lists models.
 
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -22,6 +25,7 @@ use crate::{net, secrets};
 pub const KEY: &str = "anthropic-api-key";
 const DEFAULT_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
 const BASE_URL_VAR: &str = "COUCOU_ANTHROPIC_BASE_URL";
+const MODEL_VAR: &str = "COUCOU_ANTHROPIC_MODEL";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Server-side fallback: on a policy decline the API retries the same request on
 /// a fallback model inside the same call, so the island never shows a dead end.
@@ -56,6 +60,21 @@ fn endpoint() -> Result<Url, String> {
         .clone()
 }
 
+/// Anything but Anthropic's own API.
+fn is_gateway(endpoint: &Url) -> bool {
+    endpoint.as_str() != DEFAULT_ENDPOINT
+}
+
+/// The model COUCOU_ANTHROPIC_MODEL names, when the chat goes to a gateway.
+pub fn gateway_model() -> Option<String> {
+    gateway_model_for(&endpoint(), std::env::var(MODEL_VAR).ok())
+}
+
+fn gateway_model_for(endpoint: &Result<Url, String>, raw: Option<String>) -> Option<String> {
+    endpoint.as_ref().ok().filter(|url| is_gateway(url))?;
+    raw.map(|m| m.trim().to_string()).filter(|m| !m.is_empty())
+}
+
 /// The model list endpoint next to the Messages one.
 fn models_endpoint(messages: &Url) -> Url {
     let mut url = messages.clone();
@@ -88,9 +107,18 @@ fn user_content(first: bool, context: Option<&ChatContext>, query: &str) -> Vec<
     content
 }
 
-fn request_body(model: &str, system: &str, history: &[Value], user: &Value) -> Value {
+fn request_body(model: &str, system: &str, history: &[Value], user: &Value, gateway: bool) -> Value {
     let mut messages = history.to_vec();
     messages.push(user.clone());
+    if gateway {
+        // Web search and the fallback model run on Anthropic's servers only.
+        return json!({
+            "model": model,
+            "max_tokens": MAX_TOKENS,
+            "system": system,
+            "messages": messages,
+        });
+    }
     json!({
         "model": model,
         "max_tokens": MAX_TOKENS,
@@ -99,6 +127,13 @@ fn request_body(model: &str, system: &str, history: &[Value], user: &Value) -> V
         "fallbacks": "default",
         "messages": messages,
     })
+}
+
+/// The key and API version: a gateway also gets the key as a bearer token, which
+/// most of them read.
+fn authorize(request: reqwest::RequestBuilder, endpoint: &Url, key: &str) -> reqwest::RequestBuilder {
+    let request = request.header("x-api-key", key).header("anthropic-version", ANTHROPIC_VERSION);
+    if is_gateway(endpoint) { request.bearer_auth(key) } else { request }
 }
 
 /// The assistant's full text from a Messages API content array — the same as
@@ -148,7 +183,11 @@ pub async fn send(
 
     let turn = chat.begin(chat::ANTHROPIC);
     let user = json!({ "role": "user", "content": user_content(turn.first, context.as_ref(), &query) });
-    let body = request_body(model, &chat::system_prompt(true), &turn.history, &user);
+    let gateway = is_gateway(&endpoint);
+    // The phone names its own model: on a gateway, COUCOU_ANTHROPIC_MODEL still wins.
+    let named = gateway_model_for(&Ok(endpoint.clone()), std::env::var(MODEL_VAR).ok());
+    let model = named.as_deref().unwrap_or(model);
+    let body = request_body(model, &chat::system_prompt(!gateway), &turn.history, &user, gateway);
 
     let response = call(&endpoint, &key, &body).await?;
     let (blocks, text) = interpret(&response)?;
@@ -161,11 +200,11 @@ pub async fn send(
 }
 
 async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> {
-    let response = net::client(endpoint, Duration::from_secs(90))?
-        .post(endpoint.clone())
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
-        .header("anthropic-beta", FALLBACK_BETA)
+    let mut request = net::api_client(endpoint, Duration::from_secs(90))?.post(endpoint.clone());
+    if !is_gateway(endpoint) {
+        request = request.header("anthropic-beta", FALLBACK_BETA);
+    }
+    let response = authorize(request, endpoint, key)
         .header("content-type", "application/json")
         .json(body)
         .send()
@@ -184,11 +223,10 @@ async fn call(endpoint: &Url, key: &str, body: &Value) -> Result<Value, String> 
 
 /// The models on the user's Anthropic account, newest first, as the API lists them.
 pub async fn models(key: &str) -> Result<Vec<ModelInfo>, String> {
-    let url = models_endpoint(&endpoint()?);
-    let response = net::client(&url, Duration::from_secs(10))?
-        .get(url.clone())
-        .header("x-api-key", key)
-        .header("anthropic-version", ANTHROPIC_VERSION)
+    let endpoint = endpoint()?;
+    let url = models_endpoint(&endpoint);
+    let request = net::api_client(&url, Duration::from_secs(10))?.get(url.clone());
+    let response = authorize(request, &endpoint, key)
         .send()
         .await
         .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
@@ -336,7 +374,7 @@ mod tests {
     fn the_request_carries_history_web_search_and_the_new_turn_last() {
         let history = vec![json!({"role":"user","content":"a"}), json!({"role":"assistant","content":"b"})];
         let user = json!({"role":"user","content":[{"type":"text","text":"c"}]});
-        let body = request_body("claude-x", "sys", &history, &user);
+        let body = request_body("claude-x", "sys", &history, &user, false);
         assert_eq!(body["model"], "claude-x");
         assert_eq!(body["system"], "sys");
         assert_eq!(body["max_tokens"], MAX_TOKENS);
@@ -371,5 +409,47 @@ mod tests {
                 ModelInfo { id: "claude-x".into(), label: "claude-x".into() },
             ]
         );
+    }
+
+    #[test]
+    fn a_gateway_gets_no_web_search_and_no_fallback() {
+        let user = json!({"role":"user","content":[{"type":"text","text":"c"}]});
+        let body = request_body("MiniMax-M3", "sys", &[], &user, true);
+        assert_eq!(body["model"], "MiniMax-M3");
+        assert!(body.get("tools").is_none(), "{body}");
+        assert!(body.get("fallbacks").is_none(), "{body}");
+        assert_eq!(body["messages"][0], user);
+        let body = request_body("claude-x", "sys", &[], &user, false);
+        assert_eq!(body["fallbacks"], "default");
+    }
+
+    #[test]
+    fn a_gateway_also_gets_the_key_as_a_bearer_token() {
+        let headers = |endpoint: &Url| {
+            let request = authorize(reqwest::Client::new().post(endpoint.clone()), endpoint, "sk-test").build().unwrap();
+            let get = |name: &str| request.headers().get(name).map(|v| v.to_str().unwrap().to_string());
+            (get("x-api-key"), get("authorization"), get("anthropic-version"))
+        };
+        let anthropic = Url::parse(DEFAULT_ENDPOINT).unwrap();
+        assert!(!is_gateway(&anthropic));
+        assert_eq!(headers(&anthropic), (Some("sk-test".into()), None, Some(ANTHROPIC_VERSION.into())));
+        let gateway = net::anthropic_endpoint("https://api.minimax.io/anthropic").unwrap();
+        assert!(is_gateway(&gateway));
+        assert_eq!(
+            headers(&gateway),
+            (Some("sk-test".into()), Some("Bearer sk-test".into()), Some(ANTHROPIC_VERSION.into()))
+        );
+    }
+
+    #[test]
+    fn the_gateway_model_applies_to_a_gateway_only() {
+        let anthropic = Ok(Url::parse(DEFAULT_ENDPOINT).unwrap());
+        let gateway = net::anthropic_endpoint("https://api.minimax.io/anthropic");
+        let broken: Result<Url, String> = Err("bad".into());
+        assert_eq!(gateway_model_for(&gateway, Some(" MiniMax-M3 ".into())), Some("MiniMax-M3".into()));
+        assert_eq!(gateway_model_for(&gateway, Some("  ".into())), None);
+        assert_eq!(gateway_model_for(&gateway, None), None);
+        assert_eq!(gateway_model_for(&anthropic, Some("MiniMax-M3".into())), None);
+        assert_eq!(gateway_model_for(&broken, Some("MiniMax-M3".into())), None);
     }
 }

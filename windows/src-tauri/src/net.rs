@@ -112,13 +112,24 @@ pub fn anthropic_endpoint(raw: &str) -> Result<Url, String> {
 /// A client for `url`: requests to this machine skip any system proxy, which
 /// would otherwise see (and usually fail) a loopback address.
 pub fn client(url: &Url, timeout: Duration) -> Result<reqwest::Client, String> {
-    let mut builder = reqwest::Client::builder()
+    builder(url, timeout).build().map_err(|e| e.to_string())
+}
+
+/// `client` for a request that carries an API key in its own header: a redirect
+/// is never followed, so the key only reaches the host typed (reqwest drops
+/// `Authorization` on a redirect to another host, but not `x-api-key`).
+pub fn api_client(url: &Url, timeout: Duration) -> Result<reqwest::Client, String> {
+    builder(url, timeout)
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+fn builder(url: &Url, timeout: Duration) -> reqwest::ClientBuilder {
+    let builder = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10).min(timeout))
         .timeout(timeout);
-    if is_loopback_url(url) {
-        builder = builder.no_proxy();
-    }
-    builder.build().map_err(|e| e.to_string())
+    if is_loopback_url(url) { builder.no_proxy() } else { builder }
 }
 
 /// The body of `response`, refused past `limit` bytes.
