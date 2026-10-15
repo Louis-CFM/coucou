@@ -190,3 +190,16 @@ test("buildFileDiff — Write and other tools", () => {
   assert.equal(buildFileDiff("Bash", { command: "ls" }), null);
   assert.equal(buildFileDiff("Read", { file_path: "/p/n.md" }), null);
 });
+
+test("buildFileDiff — Kiro's fs_write creates, replaces and appends", () => {
+  const created = buildFileDiff("fs_write", { command: "create", path: "/p/new.md", file_text: "one\ntwo" });
+  assert.equal(created.added, 2);
+  assert.equal(created.removed, 0);
+  assert.equal(created.path, "/p/new.md");
+  const replaced = buildFileDiff("fs_write", { command: "str_replace", path: "/p/a.ts", old_str: "x = 1", new_str: "x = 2" });
+  assert.equal(replaced.added, 1);
+  assert.equal(replaced.removed, 1);
+  assert.equal(buildFileDiff("fs_write", { command: "append", path: "/p/a.ts", new_str: "y" }).added, 1);
+  assert.equal(buildFileDiff("fs_read", { path: "/p/a.ts" }), null);
+  assert.equal(buildFileDiff("fs_write", { command: "rm", path: "/p/a.ts" }), null);
+});

@@ -147,6 +147,29 @@ export function buildFileDiff(tool: string, input: Record<string, unknown>): Fil
       const d = fromNew(content, path);
       return d.added > 0 || d.removed > 0 ? d : null;
     }
+    // Kiro CLI: one tool, the operation in `command`, the file in `path`.
+    case "fs_write":
+    case "write": {
+      const file = str(input.path);
+      if (!file) return null;
+      let d: FileDiff;
+      switch (input.command) {
+        case "create":
+          if (!str(input.file_text)) return null;
+          d = fromNew(str(input.file_text)!, file);
+          break;
+        case "str_replace":
+          d = fromEdit(str(input.old_str) ?? "", str(input.new_str) ?? "", file);
+          break;
+        case "insert":
+        case "append":
+          d = fromEdit("", str(input.new_str) ?? "", file);
+          break;
+        default:
+          return null;
+      }
+      return d.added > 0 || d.removed > 0 ? d : null;
+    }
     default:
       return null;
   }

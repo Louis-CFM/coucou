@@ -4394,6 +4394,17 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Start a new Kiro CLI session to pick the hooks up.": {
+   "zh-Hans": "开始新的 Kiro CLI 会话以加载钩子。",
+   "hi": "हुक लागू करने के लिए नया Kiro CLI सेशन शुरू करें।",
+   "es": "Inicia una nueva sesión de Kiro CLI para cargar los hooks.",
+   "ar": "ابدأ جلسة Kiro CLI جديدة لتحميل الخطافات.",
+   "fr": "Démarrez une nouvelle session Kiro CLI pour prendre en compte les hooks.",
+   "bn": "হুকগুলো চালু করতে নতুন একটি Kiro CLI সেশন শুরু করুন।",
+   "pt-BR": "Inicie uma nova sessão do Kiro CLI para carregar os hooks.",
+   "ru": "Начните новый сеанс Kiro CLI, чтобы хуки подключились.",
+   "id": "Mulai sesi Kiro CLI baru agar hook dimuat."
   }
  }
 }

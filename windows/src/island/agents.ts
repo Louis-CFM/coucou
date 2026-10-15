@@ -18,6 +18,8 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
   amp: { name: "Amp", color: "#F59E0B" },
   hermes: { name: "Hermes", color: "#C084FC" },
   "claude-desktop": { name: "Claude Desktop", color: "#D97757" },
+  // This fork only: not in PillCatalog.swift.
+  kiro: { name: "Kiro", color: "#9046FF" },
 };
 
 /**
@@ -25,7 +27,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
  * Must match `takes_decisions` in the relay (hook/src/reply.rs): any other
  * agent's request is handed straight back to its terminal.
  */
-export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse"]);
+export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "kiro"]);
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {
