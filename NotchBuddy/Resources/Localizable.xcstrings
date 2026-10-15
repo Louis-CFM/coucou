@@ -372,6 +372,12 @@
             "state" : "translated",
             "value" : "Coucou 还不能粘贴，也无法识别 Esc：它需要“辅助功能”权限。请在“系统设置”→“隐私与安全性”→“辅助功能”中打开 Coucou。如果已经打开，请用“−”移除后重新添加：新版本的 Coucou 需要重新授权。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 尚無法貼上文字或偵測 Esc：需要「輔助使用」權限。請在「系統設定 → 隱私權與安全性 → 輔助使用」中開啟 Coucou。若已開啟，請按 − 移除後重新加入：新版 Coucou 需要重新授權。"
+          }
         }
       }
     },
@@ -436,6 +442,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已允许辅助功能：Coucou 会粘贴到你输入的位置。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允許輔助使用：Coucou 會將文字貼到你輸入的位置。"
           }
         }
       }
@@ -502,6 +514,12 @@
             "state" : "translated",
             "value" : "打开辅助功能设置"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟輔助使用設定"
+          }
         }
       }
     },
@@ -566,6 +584,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "允许"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允許"
           }
         }
       }
@@ -632,6 +656,12 @@
             "state" : "translated",
             "value" : "关闭"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉"
+          }
         }
       }
     },
@@ -696,6 +726,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou 听不到你：麦克风未获允许或不可用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 聽不到你的聲音：麥克風未獲授權或無法使用。"
           }
         }
       }
@@ -762,6 +798,12 @@
             "state" : "translated",
             "value" : "Coucou 无法粘贴：你的话已拷贝。按 ⌘V，并允许“辅助功能”，让它自动粘贴。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 無法貼上：文字已複製。請按 ⌘V，並允許輔助使用，讓 Coucou 自動貼上。"
+          }
         }
       }
     },
@@ -826,6 +868,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这里没有文本框？你的话已拷贝：点按想要的位置并按 ⌘V。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這裡沒有文字欄位嗎？文字已複製：請點選要貼上的位置，再按 ⌘V。"
           }
         }
       }
@@ -892,6 +940,12 @@
             "state" : "translated",
             "value" : "设置"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定"
+          }
         }
       }
     },
@@ -956,6 +1010,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已复制 · 允许辅助功能以粘贴"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已複製 · 允許輔助使用即可貼上"
           }
         }
       }
@@ -1022,6 +1082,12 @@
             "state" : "translated",
             "value" : "胶囊位置"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標籤位置"
+          }
         }
       }
     },
@@ -1086,6 +1152,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "底部"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下方"
           }
         }
       }
@@ -1152,6 +1224,12 @@
             "state" : "translated",
             "value" : "左侧"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左側"
+          }
         }
       }
     },
@@ -1216,6 +1294,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "右侧"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右側"
           }
         }
       }
@@ -1282,6 +1366,12 @@
             "state" : "translated",
             "value" : "按住一个键，在任何地方听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住按鍵，即可在任何地方聽寫"
+          }
         }
       }
     },
@@ -1346,6 +1436,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "麦克风不可用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "麥克風無法使用"
           }
         }
       }
@@ -1412,6 +1508,12 @@
             "state" : "translated",
             "value" : "要使用 fn，请在“系统设置”→“键盘”中将“按下 🌐 键时”设为“不执行任何操作”。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "若要使用 fn，請將「系統設定 → 鍵盤 → 按下 🌐 鍵時」設為「不執行動作」。"
+          }
         }
       }
     },
@@ -1476,6 +1578,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按住 %@，说话，松开：你的话会粘贴到你正在输入的位置。连按两次可免手持听写，再按一次即粘贴。按 Esc 取消。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住 %@ 說話，放開後文字便會貼到你輸入的位置。連按兩下可免按鍵持續聆聽，再按一下即可貼上。按 Esc 取消。"
           }
         }
       }
@@ -1542,6 +1650,12 @@
             "state" : "translated",
             "value" : "按键"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按鍵"
+          }
         }
       }
     },
@@ -1606,6 +1720,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "fn (🌐)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn（🌐）"
           }
         }
       }
@@ -1672,6 +1792,12 @@
             "state" : "translated",
             "value" : "右侧 %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右側 %@"
+          }
         }
       }
     },
@@ -1736,6 +1862,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已粘贴上一次听写"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已貼上上次聽寫的文字"
           }
         }
       }
@@ -1802,6 +1934,12 @@
             "state" : "translated",
             "value" : "你的声音由 Mac 的语音识别转成文字，Mac 支持时在设备上完成；Coucou 不会把它发送到任何地方。粘贴之后，剪贴板会恢复原来的内容。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音由 Mac 的語音辨識轉成文字；若 Mac 支援，會在裝置上處理，Coucou 不會將語音傳送到任何地方。貼上後，剪貼簿會還原原本的內容。"
+          }
         }
       }
     },
@@ -1863,6 +2001,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消"
@@ -1932,6 +2076,12 @@
             "state" : "translated",
             "value" : "听写 · %@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫 · %@"
+          }
         }
       }
     },
@@ -1996,6 +2146,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "粘贴 · 或按 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼上 · 或按 %@"
           }
         }
       }
@@ -2062,6 +2218,12 @@
             "state" : "translated",
             "value" : "打开 Coucou"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 Coucou"
+          }
         }
       }
     },
@@ -2126,6 +2288,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "录制通话"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "錄製通話"
           }
         }
       }
@@ -2192,6 +2360,12 @@
             "state" : "translated",
             "value" : "Flow 听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow 聽寫"
+          }
         }
       }
     },
@@ -2257,6 +2431,12 @@
             "state" : "translated",
             "value" : "添加"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增"
+          }
         }
       }
     },
@@ -2318,6 +2498,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消"
@@ -2387,6 +2573,12 @@
             "state" : "translated",
             "value" : "用 Claude 整理"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 Claude 整理文字"
+          }
         }
       }
     },
@@ -2451,6 +2643,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "去掉“嗯”、重复和说话时的改口，并修正标点。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除「嗯」、重複及說話時的修正，並修正標點符號。"
           }
         }
       }
@@ -2517,6 +2715,12 @@
             "state" : "translated",
             "value" : "整理会使用你的 Claude 密钥。请在“设置”→“聊天”中添加。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字整理使用你的 Claude 金鑰。請在「設定 → 聊天」中新增。"
+          }
         }
       }
     },
@@ -2581,6 +2785,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开启整理时，文字（绝不是你的声音）会用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟文字整理時，會使用你的 Claude 金鑰將文字傳送至 Anthropic，不會傳送語音。關閉時，所有資料都留在 Mac 上。"
           }
         }
       }
@@ -2647,6 +2857,12 @@
             "state" : "translated",
             "value" : "拷贝"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複製"
+          }
         }
       }
     },
@@ -2711,6 +2927,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "删除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除"
           }
         }
       }
@@ -2777,6 +2999,12 @@
             "state" : "translated",
             "value" : "Coucou 必须始终写对的名字和词语。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "讓 Coucou 一定要拼寫正確的名稱與詞彙。"
+          }
         }
       }
     },
@@ -2841,6 +3069,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "编辑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯"
           }
         }
       }
@@ -2907,6 +3141,12 @@
             "state" : "translated",
             "value" : "下载"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載"
+          }
         }
       }
     },
@@ -2971,6 +3211,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在下载 Parakeet 之前，Coucou 使用 Mac 的语音识别。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載 Parakeet 前，Coucou 會使用 Mac 的語音辨識。"
           }
         }
       }
@@ -3037,6 +3283,12 @@
             "state" : "translated",
             "value" : "已安装"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已安裝"
+          }
         }
       }
     },
@@ -3101,6 +3353,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Parakeet，在你的 Mac 上"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 上的 Parakeet"
           }
         }
       }
@@ -3167,6 +3425,12 @@
             "state" : "translated",
             "value" : "最准确，离线可用，支持 25 种语言。只需下载一次（约 650 MB）。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "準確度最高，可離線使用，支援 25 種語言。僅需下載一次（約 650 MB）。"
+          }
         }
       }
     },
@@ -3228,6 +3492,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除模型"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除模型"
@@ -3297,6 +3567,12 @@
             "state" : "translated",
             "value" : "重试"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重試"
+          }
         }
       }
     },
@@ -3361,6 +3637,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要 Apple 芯片"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要 Apple 晶片"
           }
         }
       }
@@ -3427,6 +3709,12 @@
             "state" : "translated",
             "value" : "听到的，例如 cloud code"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "辨識到的文字，例如 cloud code"
+          }
         }
       }
     },
@@ -3488,6 +3776,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你好"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "你好"
@@ -3557,6 +3851,12 @@
             "state" : "translated",
             "value" : "你好，%@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@，你好"
+          }
         }
       }
     },
@@ -3621,6 +3921,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在任何地方按住 %@，说话，松开：文字就粘贴好了。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在任何地方按住 %@ 說話，放開即可貼上文字。"
           }
         }
       }
@@ -3687,6 +3993,12 @@
             "state" : "translated",
             "value" : "历史记录"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歷史紀錄"
+          }
         }
       }
     },
@@ -3751,6 +4063,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的听写会显示在这里。在任何 App 中按住 %@ 说话即可。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫內容會顯示在這裡。在任何 App 中按住 %@ 並說話即可。"
           }
         }
       }
@@ -3817,6 +4135,12 @@
             "state" : "translated",
             "value" : "历史记录已关闭。请在“设置”→“隐私”中打开。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歷史紀錄已關閉。請在「設定 → 隱私權」中開啟。"
+          }
         }
       }
     },
@@ -3881,6 +4205,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 小时 %02lld 分"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 小時 %02lld 分"
           }
         }
       }
@@ -3947,6 +4277,12 @@
             "state" : "translated",
             "value" : "在你的 Mac 上统计，从不发送。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "統計在 Mac 上完成，不會傳送到任何地方。"
+          }
         }
       }
     },
@@ -4012,6 +4348,12 @@
             "state" : "translated",
             "value" : "你听写了什么、多快、在哪里。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看聽寫內容、速度及使用的 App。"
+          }
         }
       }
     },
@@ -4073,6 +4415,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "永久"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "永久"
@@ -4142,6 +4490,12 @@
             "state" : "translated",
             "value" : "30 天"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 天"
+          }
         }
       }
     },
@@ -4203,6 +4557,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不保留"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "不保留"
@@ -4272,6 +4632,12 @@
             "state" : "translated",
             "value" : "7 天"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 天"
+          }
         }
       }
     },
@@ -4333,6 +4699,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 年"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 年"
@@ -4402,6 +4774,12 @@
             "state" : "translated",
             "value" : "Esc"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc"
+          }
         }
       }
     },
@@ -4463,6 +4841,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou Flow…"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou Flow…"
@@ -4532,6 +4916,12 @@
             "state" : "translated",
             "value" : "%lld 分钟"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 分鐘"
+          }
         }
       }
     },
@@ -4596,6 +4986,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mochi 关注的 Claude Code、Codex 和其他智能体。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi 追蹤的 Claude Code、Codex 與其他代理程式。"
           }
         }
       }
@@ -4662,6 +5058,12 @@
             "state" : "translated",
             "value" : "刘海聊天使用的 AI，用你自己的密钥。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏海聊天使用的 AI，搭配你自己的金鑰。"
+          }
         }
       }
     },
@@ -4726,6 +5128,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mochi、它的声音和刘海的行为。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi、音效與瀏海的行為。"
           }
         }
       }
@@ -4792,6 +5200,12 @@
             "state" : "translated",
             "value" : "Stripe、GitHub、Vercel、n8n、Notion 等。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe、GitHub、Vercel、n8n、Notion 等服務。"
+          }
         }
       }
     },
@@ -4856,6 +5270,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "刘海中显示的胶囊、顺序和颜色。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏海中顯示的標籤、排列順序與顏色。"
           }
         }
       }
@@ -4922,6 +5342,12 @@
             "state" : "translated",
             "value" : "打开刘海及其操作的按键。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟瀏海與執行操作的按鍵。"
+          }
         }
       }
     },
@@ -4986,6 +5412,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“OK Coucou”、Mochi 的声音和听写按键。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「OK Coucou」、Mochi 的聲音與聽寫按鍵。"
           }
         }
       }
@@ -5052,6 +5484,12 @@
             "state" : "translated",
             "value" : "通话按人逐句转写，附带摘要和待办。会议里没有机器人。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "依發言者轉錄通話，並產生摘要與待辦事項。無須機器人加入會議。"
+          }
         }
       }
     },
@@ -5116,6 +5554,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开会议笔记 →"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟通話筆記 →"
           }
         }
       }
@@ -5182,6 +5626,12 @@
             "state" : "translated",
             "value" : "会议笔记"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通話筆記"
+          }
         }
       }
     },
@@ -5246,6 +5696,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开 Coucou Flow"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 Coucou Flow"
           }
         }
       }
@@ -5312,6 +5768,12 @@
             "state" : "translated",
             "value" : "打开设置"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟設定"
+          }
         }
       }
     },
@@ -5376,6 +5838,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "听写"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫"
           }
         }
       }
@@ -5442,6 +5910,12 @@
             "state" : "translated",
             "value" : "词典"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "詞典"
+          }
         }
       }
     },
@@ -5506,6 +5980,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "统计"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "統計"
           }
         }
       }
@@ -5572,6 +6052,12 @@
             "state" : "translated",
             "value" : "会议笔记"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通話筆記"
+          }
         }
       }
     },
@@ -5636,6 +6122,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定"
           }
         }
       }
@@ -5702,6 +6194,12 @@
             "state" : "translated",
             "value" : "片段"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字片段"
+          }
         }
       }
     },
@@ -5767,6 +6265,12 @@
             "state" : "translated",
             "value" : "风格"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "風格"
+          }
         }
       }
     },
@@ -5828,6 +6332,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "全部"
@@ -5897,6 +6407,12 @@
             "state" : "translated",
             "value" : "月"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本月"
+          }
         }
       }
     },
@@ -5961,6 +6477,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "周"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本週"
           }
         }
       }
@@ -6027,6 +6549,12 @@
             "state" : "translated",
             "value" : "录制通话"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "錄製通話"
+          }
         }
       }
     },
@@ -6091,6 +6619,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "替换"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "替換詞"
           }
         }
       }
@@ -6157,6 +6691,12 @@
             "state" : "translated",
             "value" : "Coucou 听到左边的词时，会写成右边的词。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 聽到左側詞彙時，會寫成右側文字。"
+          }
         }
       }
     },
@@ -6221,6 +6761,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "保存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存"
           }
         }
       }
@@ -6287,6 +6833,12 @@
             "state" : "translated",
             "value" : "搜索听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜尋聽寫紀錄"
+          }
         }
       }
     },
@@ -6351,6 +6903,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有匹配的听写。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有符合的聽寫紀錄。"
           }
         }
       }
@@ -6417,6 +6975,12 @@
             "state" : "translated",
             "value" : "刘海"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏海"
+          }
         }
       }
     },
@@ -6478,6 +7042,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "App"
@@ -6547,6 +7117,12 @@
             "state" : "translated",
             "value" : "取消听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消聽寫"
+          }
         }
       }
     },
@@ -6611,6 +7187,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "全部清除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除全部"
           }
         }
       }
@@ -6677,6 +7259,12 @@
             "state" : "translated",
             "value" : "清除历史记录和统计？"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要清除歷史紀錄與統計資料嗎？"
+          }
         }
       }
     },
@@ -6741,6 +7329,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除历史记录"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除歷史紀錄"
           }
         }
       }
@@ -6807,6 +7401,12 @@
             "state" : "translated",
             "value" : "在程序坞中显示 Coucou"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Dock 中顯示 Coucou"
+          }
         }
       }
     },
@@ -6871,6 +7471,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "像其他 App 一样打开 Coucou；点按其图标即可回到此窗口。关闭后，Coucou 只在菜单栏中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "像其他 App 一樣開啟 Coucou；按一下圖示即可返回此視窗。關閉時，Coucou 只會顯示在選單列。"
           }
         }
       }
@@ -6937,6 +7543,12 @@
             "state" : "translated",
             "value" : "Mac 的语音识别"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 的語音辨識"
+          }
         }
       }
     },
@@ -7001,6 +7613,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mac 支持时在设备上完成，无需下载。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "若 Mac 支援，會在裝置上處理，不需下載。"
           }
         }
       }
@@ -7067,6 +7685,12 @@
             "state" : "translated",
             "value" : "免手持"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免按鍵"
+          }
         }
       }
     },
@@ -7131,6 +7755,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "连按两次，想说多久就说多久，再按一次即粘贴。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連按兩下後即可持續說話，再按一下即可貼上。"
           }
         }
       }
@@ -7197,6 +7827,12 @@
             "state" : "translated",
             "value" : "按住听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住以聽寫"
+          }
         }
       }
     },
@@ -7261,6 +7897,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "保留历史记录"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留歷史紀錄"
           }
         }
       }
@@ -7327,6 +7969,12 @@
             "state" : "translated",
             "value" : "按键"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按鍵"
+          }
         }
       }
     },
@@ -7391,6 +8039,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开 Coucou 时打开此窗口"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 Coucou 時顯示此視窗"
           }
         }
       }
@@ -7457,6 +8111,12 @@
             "state" : "translated",
             "value" : "再次粘贴上一次听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再次貼上上次聽寫的文字"
+          }
         }
       }
     },
@@ -7521,6 +8181,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当文字粘贴到了错误的位置时。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "適合文字貼到錯誤位置時使用。"
           }
         }
       }
@@ -7587,6 +8253,12 @@
             "state" : "translated",
             "value" : "权限"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "權限"
+          }
         }
       }
     },
@@ -7651,6 +8323,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐私"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隱私權"
           }
         }
       }
@@ -7717,6 +8395,12 @@
             "state" : "translated",
             "value" : "历史记录、统计和你的笔记都保存在这台 Mac 上的 Coucou 文件夹中。听写从不保存为音频；通话的音频在转写完成后立即删除。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歷史紀錄、統計資料與筆記會保存在此 Mac 的 Coucou 資料夾中。聽寫不會儲存為音訊；通話音訊會在逐字稿完成後立即刪除。"
+          }
         }
       }
     },
@@ -7781,6 +8465,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "识别"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音辨識"
           }
         }
       }
@@ -7847,6 +8537,12 @@
             "state" : "translated",
             "value" : "在任何 App 中按住 %@，说话，松开：你的话会粘贴到你正在输入的位置。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在任何 App 中按住 %@ 說話，放開後文字便會貼到你輸入的位置。"
+          }
         }
       }
     },
@@ -7911,6 +8607,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "还差一项权限"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "還需一項權限"
           }
         }
       }
@@ -7977,6 +8679,12 @@
             "state" : "translated",
             "value" : "开启听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟聽寫"
+          }
         }
       }
     },
@@ -8041,6 +8749,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在 Mac 上随处听写"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Mac 的任何地方聽寫"
           }
         }
       }
@@ -8107,6 +8821,12 @@
             "state" : "translated",
             "value" : "编辑片段"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯文字片段"
+          }
         }
       }
     },
@@ -8171,6 +8891,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新片段"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增文字片段"
           }
         }
       }
@@ -8237,6 +8963,12 @@
             "state" : "translated",
             "value" : "Coucou 要粘贴的文字"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 要貼上的文字"
+          }
         }
       }
     },
@@ -8301,6 +9033,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "还没有片段。你的预约链接、签名、地址：说几个字，就能得到整段文字。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚無文字片段。預約連結、簽名檔、地址：只要說出幾個字，就能貼上完整內容。"
           }
         }
       }
@@ -8367,6 +9105,12 @@
             "state" : "translated",
             "value" : "听写时说出触发语：Coucou 会把整段文字粘贴在它的位置。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫時說出觸發詞，Coucou 就會替換成完整文字。"
+          }
         }
       }
     },
@@ -8431,6 +9175,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你在哪里听写"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用聽寫的 App"
           }
         }
       }
@@ -8497,6 +9247,12 @@
             "state" : "translated",
             "value" : "在某个 App 中听写，它就会显示在这里。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 App 中聽寫後，就會顯示在這裡。"
+          }
         }
       }
     },
@@ -8561,6 +9317,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "听写次数"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫次數"
           }
         }
       }
@@ -8627,6 +9389,12 @@
             "state" : "translated",
             "value" : "每日字数"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日字數"
+          }
         }
       }
     },
@@ -8691,6 +9459,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "节省的时间"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "節省時間"
           }
         }
       }
@@ -8757,6 +9531,12 @@
             "state" : "translated",
             "value" : "相比每分钟打 45 个词"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相較於每分鐘輸入 45 字"
+          }
         }
       }
     },
@@ -8818,6 +9598,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速度"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "速度"
@@ -8887,6 +9673,12 @@
             "state" : "translated",
             "value" : "听写字数"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫字數"
+          }
         }
       }
     },
@@ -8951,6 +9743,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "粘贴需要辅助功能权限"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼上需要輔助使用權限"
           }
         }
       }
@@ -9017,6 +9815,12 @@
             "state" : "translated",
             "value" : "听写已关闭"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫已關閉"
+          }
         }
       }
     },
@@ -9081,6 +9885,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "就绪 · 按住 %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已就緒 · 按住 %@"
           }
         }
       }
@@ -9147,6 +9957,12 @@
             "state" : "translated",
             "value" : "连续天数"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連續天數"
+          }
         }
       }
     },
@@ -9211,6 +10027,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "添加 App"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增 App"
           }
         }
       }
@@ -9277,6 +10099,12 @@
             "state" : "translated",
             "value" : "按 App 设置风格"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各 App 的風格"
+          }
         }
       }
     },
@@ -9338,6 +10166,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他 App"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "其他 App"
@@ -9407,6 +10241,12 @@
             "state" : "translated",
             "value" : "没有其他打开的 App"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有其他已開啟的 App"
+          }
         }
       }
     },
@@ -9468,6 +10308,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自然"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "自然"
@@ -9537,6 +10383,12 @@
             "state" : "translated",
             "value" : "去掉“嗯”和重复，保留你的语气。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除「嗯」與重複內容，保留你的語氣。"
+          }
         }
       }
     },
@@ -9601,6 +10453,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "潤飾"
           }
         }
       }
@@ -9667,6 +10525,12 @@
             "state" : "translated",
             "value" : "完整的句子和段落，适合邮件。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理成完整句子與段落，適合電子郵件。"
+          }
         }
       }
     },
@@ -9731,6 +10595,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "原样"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照原話"
           }
         }
       }
@@ -9797,6 +10667,12 @@
             "state" : "translated",
             "value" : "只用词典和片段：适合代码、终端和 AI 聊天。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只套用詞典與文字片段，適合程式碼、終端機及 AI 聊天。"
+          }
         }
       }
     },
@@ -9862,6 +10738,12 @@
             "state" : "translated",
             "value" : "Claude 会按你正在输入的 App 的风格整理你说的话。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude 會依照你使用的 App 風格，整理你說的話。"
+          }
         }
       }
     },
@@ -9923,6 +10805,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天"
@@ -9992,6 +10880,12 @@
             "state" : "translated",
             "value" : "字已听写"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聽寫字數"
+          }
         }
       }
     },
@@ -10056,6 +10950,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你说的话，例如 我的签名"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你說的話，例如「我的簽名」"
           }
         }
       }
@@ -10122,6 +11022,12 @@
             "state" : "translated",
             "value" : "无限制且免费"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免費且無限制"
+          }
         }
       }
     },
@@ -10186,6 +11092,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "添加词语，例如 Supabase"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增詞彙，例如 Supabase"
           }
         }
       }
@@ -10252,6 +11164,12 @@
             "state" : "translated",
             "value" : "还没有词语。添加 Coucou 写错的名字、品牌和术语。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚無詞彙。新增 Coucou 容易辨識錯誤的名稱、品牌與專有名詞。"
+          }
         }
       }
     },
@@ -10316,6 +11234,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "词/分钟"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字／分鐘"
           }
         }
       }
@@ -10382,6 +11306,12 @@
             "state" : "translated",
             "value" : "写成，例如 Claude Code"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "寫成的文字，例如 Claude Code"
+          }
         }
       }
     },
@@ -10443,6 +11373,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "昨天"
@@ -10512,6 +11448,12 @@
             "state" : "translated",
             "value" : "你说"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你說的話"
+          }
         }
       }
     },
@@ -10573,6 +11515,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看"
@@ -10642,6 +11590,12 @@
             "state" : "translated",
             "value" : "笔记已就绪：%@"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "筆記已完成：%@"
+          }
         }
       }
     },
@@ -10706,6 +11660,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已拷贝"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已複製"
           }
         }
       }
@@ -10772,6 +11732,12 @@
             "state" : "translated",
             "value" : "拷贝为 Markdown"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複製為 Markdown"
+          }
         }
       }
     },
@@ -10836,6 +11802,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "通话 · %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通話 · %@"
           }
         }
       }
@@ -10902,6 +11874,12 @@
             "state" : "translated",
             "value" : "删除这次通话及其笔记？"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要刪除此通話及其筆記嗎？"
+          }
         }
       }
     },
@@ -10967,6 +11945,12 @@
             "state" : "translated",
             "value" : "你的通话会显示在这里。通话开始时点按“录制通话”。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通話會顯示在這裡。開始通話時，請按「錄製通話」。"
+          }
         }
       }
     },
@@ -11028,6 +12012,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "摘要"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "摘要"
@@ -11097,6 +12087,12 @@
             "state" : "translated",
             "value" : "使用 Claude 时，转写文字（绝不是音频）会用“设置”→“聊天”中的密钥发送给 Anthropic。Apple 智能则在你的 Mac 上生成（macOS 26）。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 Claude 時，會透過「設定 → 聊天」中的金鑰將逐字稿傳送至 Anthropic，不會傳送音訊。Apple Intelligence 則會在 Mac 上產生摘要（macOS 26）。"
+          }
         }
       }
     },
@@ -11161,6 +12157,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apple 智能"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Intelligence"
           }
         }
       }
@@ -11227,6 +12229,12 @@
             "state" : "translated",
             "value" : "Claude（你的密钥）"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude（你的金鑰）"
+          }
         }
       }
     },
@@ -11291,6 +12299,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "不生成摘要"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不產生摘要"
           }
         }
       }
@@ -11357,6 +12371,12 @@
             "state" : "translated",
             "value" : "Coucou 无法使用麦克风。请在“系统设置”→“隐私与安全性”→“麦克风”中允许。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 無法使用麥克風。請在「系統設定 → 隱私權與安全性 → 麥克風」中允許存取。"
+          }
         }
       }
     },
@@ -11421,6 +12441,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请先在 Coucou Flow →“设置”中下载模型。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請先在「Coucou Flow → 設定」中下載模型。"
           }
         }
       }
@@ -11487,6 +12513,12 @@
             "state" : "translated",
             "value" : "这次通话的录音已不存在。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此通話的錄音已不存在。"
+          }
         }
       }
     },
@@ -11551,6 +12583,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "导出为 Markdown…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯出為 Markdown…"
           }
         }
       }
@@ -11617,6 +12655,12 @@
             "state" : "translated",
             "value" : "无法生成转写。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法產生逐字稿。"
+          }
         }
       }
     },
@@ -11681,6 +12725,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失敗"
           }
         }
       }
@@ -11747,6 +12797,12 @@
             "state" : "translated",
             "value" : "要点"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重點"
+          }
         }
       }
     },
@@ -11811,6 +12867,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "一切都留在你的 Mac 上。请告知通话中的人你正在录音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有資料都會留在 Mac 上。請告知通話參與者你正在錄音。"
           }
         }
       }
@@ -11877,6 +12939,12 @@
             "state" : "translated",
             "value" : "实时"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "即時"
+          }
         }
       }
     },
@@ -11942,6 +13010,12 @@
             "state" : "translated",
             "value" : "大家说话时，文字会显示在这里。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "發言時，文字會顯示在這裡。"
+          }
         }
       }
     },
@@ -12003,6 +13077,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "我"
@@ -12072,6 +13152,12 @@
             "state" : "translated",
             "value" : "还没有摘要。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚無摘要。"
+          }
         }
       }
     },
@@ -12137,6 +13223,12 @@
             "state" : "translated",
             "value" : "这段录音中没有听到任何人。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這段錄音中未偵測到任何人的聲音。"
+          }
         }
       }
     },
@@ -12198,6 +13290,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他人"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "其他人"
@@ -12267,6 +13365,12 @@
             "state" : "translated",
             "value" : "说话人 %lld"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "發言者 %lld"
+          }
         }
       }
     },
@@ -12331,6 +13435,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou 正在按人逐句写转写…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 正依發言者產生逐字稿…"
           }
         }
       }
@@ -12397,6 +13507,12 @@
             "state" : "translated",
             "value" : "处理中…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轉錄中…"
+          }
         }
       }
     },
@@ -12461,6 +13577,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在录制…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "錄音中…"
           }
         }
       }
@@ -12527,6 +13649,12 @@
             "state" : "translated",
             "value" : "名字"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "姓名"
+          }
         }
       }
     },
@@ -12591,6 +13719,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这是谁？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這是誰？"
           }
         }
       }
@@ -12657,6 +13791,12 @@
             "state" : "translated",
             "value" : "Coucou 用 Parakeet 在你的 Mac 上转写通话，并用第二个小模型区分说话人。两者只需下载一次（约 650 MB），之后一切离线运行。"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 會使用 Parakeet 在 Mac 上轉錄通話，並透過另一個小型模型區分說話者。兩個模型僅需下載一次（約 650 MB），之後即可完全離線運作。"
+          }
         }
       }
     },
@@ -12721,6 +13861,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下载模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載模型"
           }
         }
       }
@@ -12787,6 +13933,12 @@
             "state" : "translated",
             "value" : "下载一次，之后离线"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載一次，即可離線使用"
+          }
         }
       }
     },
@@ -12848,6 +14000,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "停止"
@@ -12917,6 +14075,12 @@
             "state" : "translated",
             "value" : "生成摘要"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "產生摘要"
+          }
         }
       }
     },
@@ -12981,6 +14145,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新生成摘要"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新產生摘要"
           }
         }
       }
@@ -13047,6 +14217,12 @@
             "state" : "translated",
             "value" : "正在生成摘要…"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在產生摘要…"
+          }
         }
       }
     },
@@ -13108,6 +14284,12 @@
           }
         },
         "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "摘要"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "摘要"
@@ -13177,6 +14359,12 @@
             "state" : "translated",
             "value" : "待办"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待辦事項"
+          }
         }
       }
     },
@@ -13241,6 +14429,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "转写"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "逐字稿"
           }
         }
       }
