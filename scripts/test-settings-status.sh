@@ -24,6 +24,11 @@ provider = types[types.index('enum ChatProvider:'):types.index('// MARK: - View 
 service = Path('NotchBuddy/Sources/App/CodexChatService.swift').read_text()
 streaming_property = next(line.strip() for line in service.splitlines() if 'var isChatStreaming: Bool {' in line)
 authentication = service[service.index('enum CodexAuthenticationStatus'):service.index('/// Owns Coucou-created')]
+hub_source = Path('NotchBuddy/Sources/App/FlowHub.swift').read_text()
+hub = hub_source[hub_source.index('enum HubPage:'):hub_source.index('\n/// The colors')]
+hub += hub_source[hub_source.index('extension HubPage {'):hub_source.index('\n@MainActor\nfinal class HubRouter')]
+assert 'HubPage.notchSubtitle(router.page, chatProvider: state.chatProvider)' in hub_source
+assert '@ObservedObject private var state = AppState.shared' in hub_source
 Path(sys.argv[1]).write_text('''import Foundation
 enum AgentSource { case claudeCode, n8n, agent }
 struct AgentTask {
@@ -80,10 +85,16 @@ final class CodexChatService {
     var displayMessage: UUID?
 ''' + streaming_property + '''
 }
-''' + provider + authentication + settings + streaming + '''
+''' + provider + authentication + settings + streaming + hub + '''
 @main struct Check {
     static func main() async {
         let state = AppState()
+        assert(HubPage.notchSubtitle(.chat, chatProvider: .codex) == "codex.chat.title")
+        for provider in ChatProvider.allCases where provider != .codex {
+            assert(HubPage.notchSubtitle(.chat, chatProvider: provider) == "hub.notch.chat")
+        }
+        assert(HubPage.notchSubtitle(.agents, chatProvider: .codex) == "hub.notch.agents")
+        assert(HubPage.notchSubtitle(.dictation, chatProvider: .codex) == nil)
         state.focusTask = AgentTask(id: "integration_claude", name: "VS Code", source: .claudeCode)
         let view = SettingsIslandView(state: state)
         assert(view.agentStatus.label == "Agent · Claude Code" && view.agentStatus.ok == true)
