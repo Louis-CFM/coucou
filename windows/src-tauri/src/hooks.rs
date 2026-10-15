@@ -357,11 +357,14 @@ fn status_line_settings_with(
 
 /// Where the status line goes in and out, and what goes in: Windows' own
 /// settings.json, or a WSL distro's.
+/// Builds the status line command for the relay at the given path (`None`: no previous one).
+type StatusLineCommand = Box<dyn Fn(Option<&str>) -> String>;
+
 struct StatusLineTarget {
     settings: PathBuf,
     /// Where the user's own status line waits while the relay stands in for it.
     previous: PathBuf,
-    command: Box<dyn Fn(Option<&str>) -> String>,
+    command: StatusLineCommand,
 }
 
 impl StatusLineTarget {

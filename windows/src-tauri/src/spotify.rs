@@ -1333,7 +1333,7 @@ mod linux {
             conn.channel().flush();
         }
 
-        fn value_box(v: &Box<dyn RefArg>) -> Box<dyn RefArg> {
+        fn value_box(v: &dyn RefArg) -> Box<dyn RefArg> {
             v.box_clone()
         }
     }
