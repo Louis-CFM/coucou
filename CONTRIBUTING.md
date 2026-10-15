@@ -32,6 +32,8 @@ The Tauri app in `windows/` has a Makefile at the root (`make` lists every targe
 make linux-dev      # or windows-dev: live-reloading development build
 make stop           # stops the dev app and the Vite server
 make check          # types, tests and clippy, as the CI runs them
+make sccache-install # caches compiled dependencies: a build from scratch goes from ~4 min to ~1 min
+make hooks          # pre-commit: types, island tests and clippy on what you commit
 make linux-install  # or windows-install: build the package and install it
 ```
 

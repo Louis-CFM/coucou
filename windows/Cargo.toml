@@ -23,6 +23,8 @@ strip = true
 debug = "line-tables-only"
 
 # Dependencies change rarely and run hot (TLS, JSON, the pipe server): a light
-# optimisation makes the app feel like the real one and costs one build per Cargo.lock change.
+# optimisation roughly halves an incremental rebuild (about 7 s to 3.5 s, measured) and the
+# tests run faster, but a build from scratch takes about twice as long (93 s to 222 s).
+# `make sccache-install` caches those dependencies across branches and `cargo clean` (54 s).
 [profile.dev.package."*"]
 opt-level = 1
