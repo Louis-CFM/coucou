@@ -38,15 +38,12 @@ jobs:
           cache: npm
           cache-dependency-path: windows/package-lock.json
 
+      # Caches the registry and the dependencies only, keyed on Cargo.lock and the compiler,
+      # and drops our own crates' artefacts, which change on every push.
       - name: Cache cargo
-        uses: actions/cache@v6
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            windows/target
-          key: windows-ci-cargo-${{ hashFiles('windows/Cargo.lock') }}
-          restore-keys: windows-ci-cargo-
+          workspaces: windows
 
       - name: Install dependencies
         run: npm ci
@@ -65,3 +62,8 @@ jobs:
 
       - name: Rust tests
         run: cargo test --workspace --locked
+
+      # Warnings are reported, not fatal: the existing code has a few to clean up first.
+      # Once it is clean, add `-- -D warnings` here.
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked

@@ -13,7 +13,7 @@ dev-web:
     cd windows && npm run dev
 
 # Windows / Linux checks, as the CI runs them: types, island tests, Rust tests
-check: types test-web test-rust
+check: types test-web test-rust clippy
 
 types:
     cd windows && npx tsc --noEmit
@@ -27,6 +27,9 @@ watch:
 
 test-rust:
     cd windows && node scripts/build-hook.mjs --fast && cargo test --workspace --locked
+
+clippy:
+    cd windows && cargo clippy --workspace --all-targets --locked
 
 # Swift tests (macOS). `just test-swift voice` for the ones matching "voice".
 test-swift filter="":
