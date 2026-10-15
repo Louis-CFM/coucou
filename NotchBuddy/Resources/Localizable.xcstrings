@@ -1,6 +1,182 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "codex.continue-chat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue chat"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "繼續聊天"
+          }
+        }
+      }
+    },
+    "codex.open-desktop" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Codex"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 Codex"
+          }
+        }
+      }
+    },
+    "session.open-editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open editor"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟編輯器"
+          }
+        }
+      }
+    },
+    "codex.reply-in-codex" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply in Codex"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到 Codex 回答"
+          }
+        }
+      }
+    },
+    "codex.plugin.project %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project: %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "專案：%@"
+          }
+        }
+      }
+    },
+    "codex.desktop-plugin.export" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export desktop plugin…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯出桌面插件⋯"
+          }
+        }
+      }
+    },
+    "codex.desktop-plugin.setup" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install and enable the exported folder as a local plugin in Codex Desktop. Only questions asked through this plugin can be answered in Coucou; other questions stay in Codex."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將匯出的資料夾安裝為 Codex 桌面版的本機插件並啟用。只有透過此插件提出的問題能在 Coucou 回答；其他問題仍在 Codex 回答。"
+          }
+        }
+      }
+    },
+    "codex.desktop-plugin.export-folder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a folder for the Codex desktop plugin."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇 Codex 桌面插件的匯出資料夾。"
+          }
+        }
+      }
+    },
+    "codex.desktop-plugin.exported %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plugin exported to %@. Install and enable it in Codex Desktop."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "插件已匯出至 %@。請在 Codex 桌面版安裝並啟用。"
+          }
+        }
+      }
+    },
+    "codex.desktop-plugin.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desktop plugin resources are missing. Reinstall Coucou and try again."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找不到桌面插件資源。請重新安裝 Coucou 後再試。"
+          }
+        }
+      }
+    },
+    "codex.desktop-plugin.exists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou-Codex-Plugin already exists in that folder. Choose another folder."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "該資料夾已存在 Coucou-Codex-Plugin。請選擇其他資料夾。"
+          }
+        }
+      }
+    },
     "codex.vscode.setup" : {
       "localizations" : {
         "en" : {
@@ -44626,182 +44802,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "簡體中文"
-          }
-        }
-      }
-    },
-    "codex.continue-chat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue chat"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "繼續聊天"
-          }
-        }
-      }
-    },
-    "codex.open-desktop" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Codex"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 Codex"
-          }
-        }
-      }
-    },
-    "session.open-editor" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open editor"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟編輯器"
-          }
-        }
-      }
-    },
-    "codex.reply-in-codex" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reply in Codex"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "回到 Codex 回答"
-          }
-        }
-      }
-    },
-    "codex.plugin.project %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Project: %@"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "專案：%@"
-          }
-        }
-      }
-    },
-    "codex.desktop-plugin.export" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Export desktop plugin…"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "匯出桌面插件⋯"
-          }
-        }
-      }
-    },
-    "codex.desktop-plugin.setup" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Install and enable the exported folder as a local plugin in Codex Desktop. Only questions asked through this plugin can be answered in Coucou; other questions stay in Codex."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "將匯出的資料夾安裝為 Codex 桌面版的本機插件並啟用。只有透過此插件提出的問題能在 Coucou 回答；其他問題仍在 Codex 回答。"
-          }
-        }
-      }
-    },
-    "codex.desktop-plugin.export-folder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a folder for the Codex desktop plugin."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇 Codex 桌面插件的匯出資料夾。"
-          }
-        }
-      }
-    },
-    "codex.desktop-plugin.exported %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plugin exported to %@. Install and enable it in Codex Desktop."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "插件已匯出至 %@。請在 Codex 桌面版安裝並啟用。"
-          }
-        }
-      }
-    },
-    "codex.desktop-plugin.missing" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desktop plugin resources are missing. Reinstall Coucou and try again."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "找不到桌面插件資源。請重新安裝 Coucou 後再試。"
-          }
-        }
-      }
-    },
-    "codex.desktop-plugin.exists" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coucou-Codex-Plugin already exists in that folder. Choose another folder."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "該資料夾已存在 Coucou-Codex-Plugin。請選擇其他資料夾。"
           }
         }
       }
