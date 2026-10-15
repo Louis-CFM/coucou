@@ -165,6 +165,8 @@ mod tests {
         write("2000.lock", lock(me, "PhpStorm", format!(r#"["{}"]"#, abs("/p/coucou"))));
         write("1000.lock", lock(me, "PhpStorm", format!(r#"["{}", "relative"]"#, abs("/p/meyclub"))));
         write("3000.lock", lock(me, "WebStorm", format!(r#"["{}"]"#, abs("/p/web"))));
+        // Only Linux checks that the process is alive.
+        #[cfg(target_os = "linux")]
         write("4000.lock", lock(u32::MAX - 1, "PhpStorm", format!(r#"["{}"]"#, abs("/p/dead"))));
         write("5000.lock", lock(me, "PhpStorm", "[]".to_string()));
         write("6000.lock", "not json".into());
