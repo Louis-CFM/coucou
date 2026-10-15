@@ -254,7 +254,12 @@ To send the Claude chat through an Anthropic-compatible gateway, set
 `/v1/messages` is added). It must be `https://`, or `http://` to this PC only.
 Claude Code's own `ANTHROPIC_BASE_URL` is deliberately ignored: your key only
 goes where you told Coucou to send it. The gateway's host is written to the log
-once; the key never is.
+once; the key never is. A gateway gets the key both as `x-api-key` and as a
+bearer token, no web search (an Anthropic server tool), and redirects are not
+followed. Most gateways do not know Claude's model names: set
+`COUCOU_ANTHROPIC_MODEL` to the one to use (for MiniMax,
+`COUCOU_ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic` and
+`COUCOU_ANTHROPIC_MODEL=MiniMax-M3`).
 
 No telemetry. The only network requests Coucou makes are to the services you
 configure yourself.

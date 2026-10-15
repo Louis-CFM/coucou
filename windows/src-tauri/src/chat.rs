@@ -160,6 +160,9 @@ pub fn plain_question(first: bool, context: Option<&ChatContext>, query: &str) -
 /// The model chosen for `provider`, or its default.
 pub fn model_for(settings: &Settings, provider: &str) -> String {
     if provider == ANTHROPIC {
+        if let Some(m) = claude::gateway_model() {
+            return m;
+        }
         let m = settings.model.trim();
         return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
     }
@@ -249,6 +252,10 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
+        // A gateway with COUCOU_ANTHROPIC_MODEL set uses that model, listed or not.
+        if let Some(m) = claude::gateway_model() {
+            return Ok(vec![ModelInfo { id: m.clone(), label: m }]);
+        }
         return claude::models(&key).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
