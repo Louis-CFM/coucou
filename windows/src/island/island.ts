@@ -603,7 +603,11 @@ export class Island {
         this.engine.animateMorph(0);
         this.setView("note");
         Sound.play("error");
-        window.setTimeout(() => this.setView(State.defaultView()), 2400);
+        window.setTimeout(() => {
+          // Only the note still on screen: setView would reopen a folded island
+          // and replace a view the user opened since.
+          if (State.mode === "expanded" && State.view === "note") this.setView(State.defaultView());
+        }, 2400);
       });
   }
 
