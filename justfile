@@ -28,6 +28,12 @@ watch:
 test-rust:
     cd windows && node scripts/build-hook.mjs --fast && cargo test --workspace --locked
 
+# Same tests under cargo-nextest (`cargo install cargo-nextest --locked`): one process per test,
+# a readable summary, `just nextest <filter>` to run a few. Not faster here: the suite takes
+# about 3 s either way, compiling is what costs.
+nextest *filter:
+    cd windows && node scripts/build-hook.mjs --fast && cargo nextest run --workspace --locked {{filter}}
+
 clippy:
     cd windows && cargo clippy --workspace --all-targets --locked
 
