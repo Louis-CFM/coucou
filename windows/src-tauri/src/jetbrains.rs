@@ -156,24 +156,26 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("coucou-locks-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let me = std::process::id();
+        // A path is absolute with a drive letter on Windows.
+        let abs = |p: &str| if cfg!(windows) { format!("C:{p}") } else { p.to_string() };
         let write = |name: &str, body: String| std::fs::write(dir.join(name), body).unwrap();
-        let lock = |pid: u32, ide: &str, folders: &str| {
+        let lock = |pid: u32, ide: &str, folders: String| {
             format!(r#"{{"pid":{pid},"ideName":"{ide}","workspaceFolders":{folders},"authToken":"secret","transport":"ws"}}"#)
         };
-        write("2000.lock", lock(me, "PhpStorm", r#"["/p/coucou"]"#));
-        write("1000.lock", lock(me, "PhpStorm", r#"["/p/meyclub", "relative"]"#));
-        write("3000.lock", lock(me, "WebStorm", r#"["/p/web"]"#));
-        write("4000.lock", lock(u32::MAX - 1, "PhpStorm", r#"["/p/dead"]"#));
-        write("5000.lock", lock(me, "PhpStorm", "[]"));
+        write("2000.lock", lock(me, "PhpStorm", format!(r#"["{}"]"#, abs("/p/coucou"))));
+        write("1000.lock", lock(me, "PhpStorm", format!(r#"["{}", "relative"]"#, abs("/p/meyclub"))));
+        write("3000.lock", lock(me, "WebStorm", format!(r#"["{}"]"#, abs("/p/web"))));
+        write("4000.lock", lock(u32::MAX - 1, "PhpStorm", format!(r#"["{}"]"#, abs("/p/dead"))));
+        write("5000.lock", lock(me, "PhpStorm", "[]".to_string()));
         write("6000.lock", "not json".into());
-        write("notaport.lock", lock(me, "PhpStorm", r#"["/p/x"]"#));
-        write("7000.txt", lock(me, "PhpStorm", r#"["/p/x"]"#));
+        write("notaport.lock", lock(me, "PhpStorm", format!(r#"["{}"]"#, abs("/p/x"))));
+        write("7000.txt", lock(me, "PhpStorm", format!(r#"["{}"]"#, abs("/p/x"))));
         let found = open_projects(&dir);
         let got: Vec<(u16, Vec<String>)> = found
             .iter()
             .map(|p| (p.port, p.folders.iter().map(|f| f.to_string_lossy().into_owned()).collect()))
             .collect();
-        assert_eq!(got, vec![(1000, vec!["/p/meyclub".to_string()]), (2000, vec!["/p/coucou".to_string()])]);
+        assert_eq!(got, vec![(1000, vec![abs("/p/meyclub")]), (2000, vec![abs("/p/coucou")])]);
         assert!(open_projects(&dir.join("missing")).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
