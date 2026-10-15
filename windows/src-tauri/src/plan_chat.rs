@@ -151,7 +151,7 @@ const MAX_ARG_PROMPT: usize = 120_000;
 pub async fn complete(provider: &str, model: &str, instructions: &str, user: &str) -> Result<String, String> {
     let provider = if provider == KIRO { KIRO } else { CURSOR };
     let cli = cli_path(provider).ok_or_else(|| not_found(provider))?;
-    let dir = crate::settings::local_dir().join(if provider == KIRO { WORKDIRS[5] } else { WORKDIRS[4] });
+    let dir = crate::settings::local_dir().join(if provider == KIRO { WORKDIRS[3] } else { WORKDIRS[2] });
     platform::ensure_private_dir(&dir).map_err(|e| e.to_string())?;
     let mut prompt = format!("{instructions}\n\n{user}");
     if prompt.len() > MAX_ARG_PROMPT {
@@ -418,6 +418,32 @@ pub fn login(provider: &str) -> Result<(), String> {
     let mut cmd = std::process::Command::new(cli);
     cmd.arg("login").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     platform::no_console(&mut cmd).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+struct KiroSessionDir {
+    cwd: String,
+    sessions: Vec<KiroSession>,
+}
+
+#[derive(Deserialize)]
+struct KiroSession {
+    #[serde(rename = "sessionId")]
+    session_id: String,
+}
+
+/// Kiro leaves an empty session after every non-interactive run; drop only the
+/// ones created in Coucou's own workdirs.
+async fn forget_kiro_sessions(cli: &Path, dir: &Path) {
+    let mut cmd = command(KIRO, cli);
+    cmd.current_dir(dir).args(["chat", "--list-sessions", "-f", "json"]);
+    let Ok(out) = run(KIRO, cmd).await else { return };
+    let dirs: Vec<KiroSessionDir> = serde_json::from_slice(&out.stdout).unwrap_or_default();
+    for s in dirs.into_iter().filter(|d| Path::new(&d.cwd) == dir).flat_map(|d| d.sessions) {
+        let mut cmd = command(KIRO, cli);
+        cmd.current_dir(dir).args(["chat", "--delete-session", &s.session_id]);
+        let _ = run(KIRO, cmd).await;
+    }
 }
 
 #[cfg(test)]
