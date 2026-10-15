@@ -33,7 +33,9 @@ class EnglishOnlyTest {
 
     @Test fun thereAreNoOtherLanguagesInTheRepo() {
         val folders = File("src/main/res").listFiles().orEmpty().map { it.name }.filter { it.startsWith("values") }
-        assertEquals(listOf("values"), folders.sorted())
+        // values-notnight is not a language: it is the light variant of the Widgets' colours, and holds colours only.
+        assertEquals(listOf("values", "values-notnight"), folders.sorted())
+        assertEquals(listOf("colors.xml"), File("src/main/res/values-notnight").listFiles().orEmpty().map { it.name })
         assertFalse(File("../i18n/extra.json").exists())
     }
 }
