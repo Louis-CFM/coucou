@@ -72,6 +72,9 @@ class AppModel(private val context: Context) : LinkListener {
     /** Set only by LaunchActivity (not exported), read by MainActivity: see [com.coucou.android.core.PendingLaunch]. */
     val launch = com.coucou.android.core.PendingLaunch()
 
+    /** Agent tasks finished today, for the Today widget. Kept on this phone only (see [TodayStore]). */
+    private val todayCounter = com.coucou.android.core.TodayCounter(TodayStore(context))
+
     var mode by mutableStateOf(Mode.NONE); private set
     var linkState by mutableStateOf(LinkState.DISCONNECTED); private set
     var desktopName by mutableStateOf<String?>(null); private set
@@ -330,11 +333,16 @@ class AppModel(private val context: Context) : LinkListener {
         mode != Mode.NONE || isPaired, linkState, desktopName, sessions, approvals.size, this::agentName,
     )
 
+    /** What the Widgets draw now: the glance, the sessions, the plan usage the computer sent and today's finished tasks. */
+    fun widgetContent(g: com.coucou.android.core.Glance = glance()): com.coucou.android.core.WidgetContent =
+        com.coucou.android.core.WidgetData.build(g, sessions, this::agentName, usage, todayCounter.count(), System.currentTimeMillis())
+
     /** The small surfaces follow every change of sessions, requests and link; none of them runs a timer. */
     private fun pushGlance() {
         val g = glance()
         notifier.updateOngoing(this, g)
         GlanceWidget.update(context, g)
+        WidgetHub.update(context, widgetContent(g))
         GlanceTile.requestUpdate(context)
     }
 
@@ -663,12 +671,16 @@ class AppModel(private val context: Context) : LinkListener {
             detailsOffered = Protocol.CAP_DETAILS in caps
             diffsOffered = Protocol.CAP_DIFFS in caps
             if (Protocol.CAP_USAGE !in caps) usage = null
+            pushGlance() // the Usage Ring says to turn it on
             if (Protocol.CAP_SERVICES !in caps) services = emptyList()
         }
     }
 
     override fun onUsage(usage: com.coucou.android.link.UsageSnapshot) {
-        main.post { this.usage = usage.takeIf { it.claude != null || it.codex != null } }
+        main.post {
+            this.usage = usage.takeIf { it.claude != null || it.codex != null }
+            pushGlance() // the Usage Ring follows it
+        }
     }
 
     override fun onServices(cards: List<com.coucou.android.link.ServiceCard>) {
@@ -710,6 +722,8 @@ class AppModel(private val context: Context) : LinkListener {
             val minute = java.time.LocalTime.now().let { it.hour * 60 + it.minute }
             for (s in sessions) {
                 val prev = lastState.put(s.pillId, s.state)
+                // A task just finished (not one already finished when the link came back), on a real computer: the demo loops and never counts.
+                if (mode == Mode.PAIRED && prev != null && prev != BotState.FINISHED && s.state == BotState.FINISHED) todayCounter.increment()
                 val name = agentName(s.pillId)
                 val sound = com.coucou.android.mochi.MochiConst.STATE_SOUND[s.state]
                 if (sound != null && StatusPolicy.stateSoundWanted(prev, s.state, settings)) sounds.play(sound)

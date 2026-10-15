@@ -12,6 +12,8 @@ final class DesktopBotViewState: ObservableObject {
     @Published var isSleeping: Bool = false
     /// Pause entirely (screen sleep / lock).
     @Published var paused: Bool = false
+    /// Mouse is over Mochi's body — drives hover scale animation.
+    @Published var isHovered: Bool = false
     /// Bot center in the same coord space as AppState.mousePosition (DesktopSpace, y-down).
     /// Updated every poll frame; Canvas reads it inside TimelineView — @Published not needed.
     var lookOrigin: CGPoint = .zero
@@ -77,6 +79,8 @@ struct DesktopBotView: View {
                 engine.drawHandsAndExtras(context: c, size: size)
             }
         }
+        .scaleEffect(viewState.isHovered ? 1.07 : 1.0)
+        .animation(.spring(response: 0.25, dampingFraction: 0.6), value: viewState.isHovered)
         .onChange(of: appState.effectiveState) { _, newState in
             engine.setState(newState)
         }
@@ -534,6 +538,10 @@ final class DesktopMochiController {
         if p.ignoresMouseEvents == needsMouse {
             p.ignoresMouseEvents = !needsMouse
         }
+
+        // Hover scale animation
+        let hovering = overBody && !isDragging
+        if viewState?.isHovered != hovering { viewState?.isHovered = hovering }
 
         // Update eye-tracking origin every frame
         viewState?.lookOrigin = lookOriginFor(panel: p)
