@@ -36,7 +36,7 @@ _need-node:
 	@node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 22 ? 1 : 0)' 2>/dev/null || { echo "Node 22 ou plus est requis (actuel : $$(node -v 2>/dev/null || echo absent))." >&2; exit 1; }
 
 ##@ Développement
-.PHONY: linux-dev windows-dev dev-web
+.PHONY: linux-dev windows-dev dev-web stop
 linux-dev: _need-linux _need-node node_modules ## Lance l'app Linux en développement (rechargement à chaud)
 	cd $(WIN) && npm run tauri dev
 
@@ -45,6 +45,21 @@ windows-dev: _need-windows _need-node node_modules ## Lance l'app Windows en dé
 
 dev-web: _need-node node_modules ## Sert uniquement le front dans un navigateur (http://localhost:1420)
 	cd $(WIN) && npm run dev
+
+# Arrête ce que `make *-dev` a lancé : la CLI tauri, le serveur Vite (port 1420) et l'app de dev
+# (windows/target/debug/coucou). L'app installée n'est pas touchée, ni celles d'un autre dossier.
+stop: ## Arrête l'app de dev et le serveur Vite (pas l'app installée)
+	@case "$$(uname -s)" in \
+	MINGW*|MSYS*|CYGWIN*) \
+		powershell.exe -NoProfile -Command " \
+			Get-NetTCPConnection -LocalPort 1420 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id \$$_.OwningProcess -Force }; \
+			Get-Process coucou,coucou-hook -ErrorAction SilentlyContinue | Where-Object { \$$_.Path -like '*\\windows\\target\\debug\\*' } | Stop-Process -Force" ;; \
+	*) \
+		pkill -f '^node $(abspath $(WIN))/node_modules/.bin/tauri dev' || true; \
+		pkill -f '^$(abspath $(WIN))/target/debug/coucou$$' || true; \
+		fuser -k 1420/tcp >/dev/null 2>&1 || true ;; \
+	esac
+	@echo "Dev arrêté."
 
 node_modules: $(WIN)/node_modules
 $(WIN)/node_modules: $(WIN)/package-lock.json
