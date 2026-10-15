@@ -325,7 +325,13 @@ final class IslandWindowController: NSWindowController {
         }
 
         // An approval, or an email prepared by voice, stays open until I click.
+        #if !APPSTORE
+        // A meeting reminder too: it stays until OK, Join or Remind me.
+        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil
+            || CalendarReminder.shared.current != nil }
+        #else
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
+        #endif
 
         // Voice: wake phrase detected → open listening island
         #if !APPSTORE
