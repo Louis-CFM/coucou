@@ -8,7 +8,10 @@ extension TerminalTarget {
         let apps = NSWorkspace.shared.runningApplications
         let running = Set(apps.compactMap(\.bundleIdentifier))
         guard let id = pick(sessionBundleId: sessionBundleId, running: running),
-              let app = apps.first(where: { $0.bundleIdentifier == id }) else { return false }
-        return app.activate(options: .activateIgnoringOtherApps)
+              let url = apps.first(where: { $0.bundleIdentifier == id })?.bundleURL else { return false }
+        // Not NSRunningApplication.activate(): since macOS 14 it is ignored when called
+        // from an app that is not active, and the island never is.
+        NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+        return true
     }
 }
