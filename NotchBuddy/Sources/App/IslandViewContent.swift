@@ -39,6 +39,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .capture:
+            #if !APPSTORE
+            CaptureCardView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
@@ -221,6 +227,18 @@ struct OverviewView: View {
             }
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
+        case "integration_mail":
+            #if !APPSTORE
+            MailController.shared.openMail()
+            #endif
+        case "integration_crypto":
+            let exchange = CryptoSettings.exchange
+            if let first = CryptoSettings.coins.first,
+               let url = exchange.tradeURL(exchange.pair(first, CryptoSettings.currency)) {
+                NSWorkspace.shared.open(url)
+            }
+        case "integration_portfolio":
+            break   // no global URL; individual holdings open their exchange pages
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
@@ -1295,7 +1313,12 @@ struct PromptView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(state.chatHistory) { msg in
-                                    ChatBubble(message: msg).id(msg.id)
+                                    ChatBubble(
+                                        message: msg,
+                                        isStreaming: state.stateOverride != nil
+                                            && msg.role == .assistant
+                                            && msg.id == state.chatHistory.last?.id
+                                    ).id(msg.id)
                                 }
                                 if state.stateOverride != nil {
                                     HStack { TypingDotsView(); Spacer(minLength: 32) }
@@ -1582,6 +1605,9 @@ struct ModelPickerView: View {
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
+                            case .deepseek:  state.deepseekChatModel = model.id
+                            case .qwen:      state.qwenChatModel = model.id
+                            case .moonshot:  state.moonshotChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1616,6 +1642,7 @@ struct ModelPickerView: View {
 
 struct ChatBubble: View {
     let message: ChatMessage
+    var isStreaming: Bool = false
 
     var body: some View {
         if !message.content.isEmpty {
@@ -1631,7 +1658,22 @@ struct ChatBubble: View {
                         .background(Color.white.opacity(0.13))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {
-                    ChatMarkdownView(markdown: message.content)
+                    Group {
+                        if isStreaming {
+                            TimelineView(.periodic(from: .now, by: 0.5)) { tl in
+                                let show = Int(tl.date.timeIntervalSinceReferenceDate / 0.5).isMultiple(of: 2)
+                                Text(message.content + (show ? "▌" : " "))
+                                    .font(.system(size: 12.5))
+                                    .foregroundColor(Color(hex: "#B0B5BE"))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        } else {
+                            ChatMarkdownView(markdown: message.content)
+                        }
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(Color.white.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     Spacer(minLength: 8)
                 }
             }
@@ -1770,6 +1812,9 @@ struct IntegrationCardView: View {
     var onDiffTap: ((Int) -> Void)? = nil
     @ObservedObject private var appState = AppState.shared
     @State private var githubDetailSection: GitHubDetailSection = .myPRs
+    #if !APPSTORE
+    @ObservedObject private var mailController = MailController.shared
+    #endif
 
     private var isConfigured: Bool {
         switch task.id {
@@ -1833,6 +1878,16 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_mail":
+            #if !APPSTORE
+            return true  // Apple Mail is always installed on macOS: nothing to set up
+            #else
+            return false
+            #endif
+        case "integration_crypto":
+            return true  // public market data: no key, nothing to set up
+        case "integration_portfolio":
+            return PortfolioSettings.hasAnyAccount
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
@@ -1924,6 +1979,17 @@ struct IntegrationCardView: View {
         #endif
     }
 
+    // Apple Mail: the message list once Mail is open and allowed (else the idle card says why)
+    private var mailHasData: Bool {
+        #if !APPSTORE
+        guard task.id == "integration_mail" else { return false }
+        let mail = MailController.shared
+        return mail.isMailRunning && !mail.automationDenied
+        #else
+        return false
+        #endif
+    }
+
     // Spotify: its own card for every state (playing, idle, not installed, Automation denied)
     private var isSpotify: Bool {
         #if !APPSTORE
@@ -1940,6 +2006,12 @@ struct IntegrationCardView: View {
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
         #endif
+        #if !APPSTORE
+        if task.id == "integration_mail" {
+            if mailController.automationDenied { return Color(hex: "#F4505E") }
+            return mailController.isMailRunning ? Color(hex: "#22C55E") : Color(hex: "#6B7079")
+        }
+        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -1954,6 +2026,12 @@ struct IntegrationCardView: View {
             if appState.musicAutomationDenied { return String(localized: "Automation not allowed") }
             if appState.musicPlaying { return String(format: String(localized: "Playing · %@"), MusicController.shared.trackTitle ?? String(localized: "Unknown")) }
             return String(localized: "Not playing")
+        }
+        #endif
+        #if !APPSTORE
+        if task.id == "integration_mail" {
+            if mailController.automationDenied { return String(localized: "Automation not allowed") }
+            return mailController.isMailRunning ? String(localized: "Loading…") : String(localized: "Mail is closed")
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
@@ -2056,6 +2134,18 @@ struct IntegrationCardView: View {
         } else if musicIsActive {
             #if !APPSTORE
             MusicCardView()
+                .transition(.opacity)
+            #endif
+        } else if task.id == "integration_crypto" {
+            // Its own card in every state (loading, no coins, prices).
+            CryptoCardView()
+                .transition(.opacity)
+        } else if task.id == "integration_portfolio" {
+            PortfolioCardView()
+                .transition(.opacity)
+        } else if mailHasData {
+            #if !APPSTORE
+            MailCardView()
                 .transition(.opacity)
             #endif
         } else if isSpotify {
@@ -2187,6 +2277,19 @@ struct IntegrationCardView: View {
                                 .buttonStyle(.plain)
                         }
                         #endif
+                    } else if task.id == "integration_mail" {
+                        #if !APPSTORE
+                        Button("Open Mail") { MailController.shared.openMail() }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color(hex: task.color).opacity(0.85))
+                            .buttonStyle(.plain)
+                        if mailController.automationDenied {
+                            Button("Open Settings…") { MailController.shared.openAutomationSettings() }
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                                .buttonStyle(.plain)
+                        }
+                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -2232,7 +2335,8 @@ struct IntegrationCardView: View {
                     if !isConfigured
                        && task.id != "agent_cursor"
                        && task.id != "agent_codex"
-                       && task.id != "integration_music" {
+                       && task.id != "integration_music"
+                       && task.id != "integration_mail" {
                         Button("Settings…") {
                             let section: String
                             switch PillCatalog.definition(for: task.id)?.category {

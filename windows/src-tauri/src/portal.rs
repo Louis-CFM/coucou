@@ -236,6 +236,8 @@ pub enum Event {
     Unavailable(String),
     /// A shortcut was pressed.
     Activated(String),
+    /// A shortcut was released (Flow dictation's hold-to-talk key).
+    Deactivated(String),
 }
 
 enum Command {
@@ -519,11 +521,11 @@ impl Portal {
         };
         match (&*iface, &*member) {
             (REQUEST, "Response") => self.response(&path, msg, on_event),
-            (IFACE, "Activated") => {
+            (IFACE, member @ ("Activated" | "Deactivated")) => {
                 let Phase::Bound { session, .. } = &self.phase else { return };
                 if let Ok((from, id)) = msg.read2::<Path, String>() {
                     if &*from == session.as_str() {
-                        on_event(Event::Activated(id));
+                        on_event(if member == "Activated" { Event::Activated(id) } else { Event::Deactivated(id) });
                     }
                 }
             }

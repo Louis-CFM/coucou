@@ -30,9 +30,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.0</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
-	<string>15</string>
+	<string>16</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
@@ -44,12 +44,14 @@
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Coucou records what your Mac plays only while you note a call, to write down what the other people say.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Coucou looks up an email address when you ask it, by voice, to prepare an email.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Coucou uses the microphone when you dictate a message in the chat.</string>
+	<string>Coucou uses the microphone when you dictate, and to note your calls when you ask it to.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Coucou turns your voice into the text of a chat message.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

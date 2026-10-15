@@ -257,8 +257,14 @@ class MainActivity : ComponentActivity() {
                 i.data = null // handled once: a rotation must not ask again
             }
         }
-        // Never read from the intent: this activity is exported, any app could send these extras. The request comes
+        // Never read from the intent: this activity is exported, any app could send these extras. The requests come
         // from LaunchActivity (ours, not exported) through the model, once.
+        model.launch.takeSession()?.let { pill ->
+            // A tap on a widget row. The session screen says so itself if it has ended, and fills in when the link is back.
+            if (model.isPaired || model.mode != Mode.NONE) { detailPill = pill; screen = Screen.SESSION }
+        }
+        // A tap on a widget button: a screen of the closed list ([LaunchScreen]), even when the app is locked, not connected or not paired.
+        model.launch.takeScreen()?.let { screen = it.screen }
         val launch = model.launch.take() ?: return
         val fp = launch.fingerprint
         if (launch.allow) {

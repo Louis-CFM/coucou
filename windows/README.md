@@ -127,6 +127,29 @@ session, and they are forgotten an hour after the last edit or when the session
 ends. When Claude finishes, the card keeps the first paragraph of its final
 answer on one line, still, until the next prompt.
 
+## Flow, the Notetaker and « OK Coucou »
+
+Coucou has its own window (tray → Open, or launch Coucou again): **Flow** on the
+left (Dictation, Notetaker, Statistics, Dictionary, Snippets, Styles, Settings),
+then **Notch**, the island's settings. Everything below runs on
+[Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) through
+[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), on your CPU and offline;
+nothing is downloaded until you click **Download** (about 700 MB, once, checked
+against its SHA-256, kept in Coucou's data folder under `Models`).
+
+| What you do | What happens |
+|---|---|
+| Hold **right Ctrl** anywhere, speak, let go | Your words are pasted where you type. Pick another key in Flow → Settings: right Alt, right Shift, Ctrl + Win (Ctrl + Super on Linux) |
+| Tap the key twice | Hands-free: speak as long as you like, tap once to paste. `Esc` cancels |
+| Hover the pill at the bottom of the screen | Dictate, record a call, open Coucou. Put the pill on the left or right edge in Flow → Settings |
+| Click **Record a call** | Your microphone and what the computer plays, transcribed live, then written person by person with a summary and to-dos by Claude (your key). The audio is deleted once the transcript is written |
+| Say **« OK Coucou »**, then ask | Claude (your key) answers in the pill and out loud: pills, Spotify, your services' numbers, your agents, web search, open an app, an email prepared in your mail app. Turn it on in Notch → OK Coucou |
+
+Your voice never leaves the computer. With Claude's clean-up (Flow → Styles),
+a call's summary or « OK Coucou », the text — never the audio — goes to
+Anthropic with your key; an ElevenLabs voice for the answers sends them to
+ElevenLabs with yours.
+
 ## Your pills
 
 **Settings… → Active pills** lists the tools you use, from the same catalog as
@@ -397,6 +420,30 @@ own window.
 
 ## What's different from the Mac version
 
+- **Flow dictation** pastes with `Ctrl+V` (`Ctrl+Shift+V` in a terminal),
+  typed by `SendInput` on Windows and XTest on X11, and puts back what the
+  clipboard held once it is pasted; clipboard history (Windows, KDE, GNOME
+  extensions) leaves the dictation out. On **Wayland** no app may watch the
+  keyboard: the desktop holds the dictation key through its GlobalShortcuts
+  portal (`Ctrl+Alt+V` unless you pick others when it asks) and the
+  RemoteDesktop portal types the paste, asked once and remembered. Desktops
+  without those portals (older GNOME) dictate from the pill's microphone and
+  leave the words on the clipboard. The Mac's fn key and Apple's own
+  recognition have no equivalent: Parakeet is the only engine.
+- **The Notetaker** records what the computer plays through WASAPI loopback on
+  Windows and the default output's monitor on Linux (PulseAudio or PipeWire).
+  The people in a call are told apart by
+  [pyannote](https://github.com/pyannote/pyannote-audio)'s segmentation and
+  3D-Speaker's voice prints, also on the CPU. Summaries are Claude's only:
+  there is no Apple Intelligence here.
+- **« OK Coucou »** listens with a small energy detector and Parakeet instead of
+  the Mac's speech recognizer, so it understands Parakeet's 25 languages.
+  Emails open in your default mail app through a `mailto:` link, with no
+  contact lookup and no attachment; « play » something on Spotify opens its
+  search rather than starting a track; apps open from the Start menu's
+  shortcuts or Linux's `.desktop` entries. The system voice is the webview's;
+  where WebKitGTK has none, `spd-say` (speech-dispatcher) or `espeak-ng`
+  speaks if installed.
 - No notch, so the island lives at the top centre of the screen and retracts into
   the top edge instead of hiding in a notch.
 - Permission approval works from **any** terminal; the Mac build only listens to
@@ -413,8 +460,17 @@ own window.
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
 - Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
-  nothing to read it from yet.
+  is left out.
+- **Spotify** (Settings → Integrations) is read from the system media
+  controls, the session Spotify publishes for the media keys: the same pill
+  and card as on Linux (cover, progress bar, play/pause, previous, next,
+  shuffle, repeat), and Mochi dances while it plays. Nothing is polled: one
+  thread waits for the session's change events while the pill is declared.
+  The volume is Spotify's own in the Windows mixer. Works with the installer
+  from spotify.com and the Microsoft Store app; **Open Spotify** goes through
+  its `spotify:` link, and without Spotify **Get Spotify** opens its download
+  page. Windows gives no Spotify link for the track, so an ad is told apart by
+  having a title and no artist or album.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
@@ -477,8 +533,7 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop dances only on Linux, to Spotify; on Windows there is
-  no music integration to dance to yet. While he dances he stays awake (the
+- Mochi on the desktop dances to Spotify. While he dances he stays awake (the
   Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
   to the chat. While he
   sleeps, the transparent square around him (120 px) takes the first mouse

@@ -43,6 +43,9 @@ object GlanceBuilder {
         BotState.WORKING, BotState.SEARCHING, BotState.THINKING, BotState.FINISHED, BotState.SLEEPING, BotState.IDLE,
     )
 
+    /** Where a state sits in the list, most urgent first; unknown states go last. */
+    fun rank(state: BotState): Int = ORDER.indexOf(state).let { i -> if (i < 0) ORDER.size else i }
+
     fun build(
         paired: Boolean,
         link: LinkState,
@@ -96,7 +99,7 @@ object GlanceBuilder {
     }
 
     /** The plain line of a session: its state in a few words, never its step text or answer (those stay in the app). */
-    private fun lineOf(s: SessionInfo): String = when (s.state) {
+    fun lineOf(s: SessionInfo): String = when (s.state) {
         BotState.APPROVAL -> "Waiting for your approval"
         BotState.QUESTION -> "Has a question"
         BotState.ERROR -> "Stopped on an error"
