@@ -21,6 +21,10 @@ export interface DesktopSnapshot {
   paused: boolean;
   /** Music plays: he dances (the compact island's rules, core/spotify.ts). */
   dancing: boolean;
+  /** His body shape from the wardrobe (wardrobe.ts SHAPES). */
+  shape?: string;
+  /** the island's Mochis are asleep; he sleeps with them (island.ts). */
+  asleep?: boolean;
 }
 
 /** Events between the two windows. Rust adds `desktop-mochi-dropped`. */
@@ -33,6 +37,8 @@ export const DESKTOP_EVENTS = {
   home: "desktop-mochi-home",
   wardrobe: "desktop-mochi-wardrobe",
   dizzy: "desktop-mochi-dizzy",
+  /** A click on him asleep: wakes every Mochi (extras). */
+  wake: "desktop-mochi-wake",
   /** Rust → island: a drag ended, `{ from: "island" | "desktop", home }`. */
   dropped: "desktop-mochi-dropped",
   /** Rust → desktop window */
@@ -45,9 +51,8 @@ export const DESKTOP_EVENTS = {
 
 /** Side of the desktop window, logical pixels. */
 export const PANEL_SIZE = 120;
-/** Seconds without agent activity before he may fall asleep. */
-export const SLEEP_TIMEOUT = 120;
-/** He only dozes off once the pointer is at least this far from him. */
+/** asleep, the cursor poll stops only once the pointer is this far from
+ *  him (near him, it keeps the clicks around his body going through). */
 export const SLEEP_MOUSE_DISTANCE = 150;
 /** Clickable body radius, as a fraction of the window side. */
 export const BODY_RADIUS_FRACTION = 0.24;
@@ -69,11 +74,19 @@ export interface Point {
 }
 
 /**
- * Whether Mochi should be asleep: no agent activity for longer than
- * SLEEP_TIMEOUT (strictly), and the pointer not close to him.
+ * what wakes the sleeping Mochis (besides a chat message): a coding
+ * session starting, as a new pill or one going from idle, finished or error
+ * back to work. `before`: each pill's state at the last look.
  */
-export function shouldSleep(sinceAgentActive: number, mouseDistanceToCenter: number): boolean {
-  return sinceAgentActive > SLEEP_TIMEOUT && mouseDistanceToCenter >= SLEEP_MOUSE_DISTANCE;
+export function sessionStarted(
+  before: ReadonlyMap<string, BotStateName>,
+  tasks: ReadonlyArray<{ id: string; state: BotStateName }>,
+): boolean {
+  const settled = (s: BotStateName) => s === "idle" || s === "finished" || s === "error";
+  return tasks.some((t) => {
+    const was = before.get(t.id);
+    return was === undefined || (settled(was) && !settled(t.state));
+  });
 }
 
 /** Hit test of the round body inside the square window (window-local). */
@@ -129,9 +142,9 @@ export function alertActive(s: {
 export const POINTER_MEMORY_MS = 4000;
 
 /**
- * Distance from the pointer to his centre, for shouldSleep. With a cursor
- * poll (Windows) it is measured; without one, the pointer is near while it was
- * over him a moment ago, and far otherwise.
+ * Distance from the pointer to his centre. With a cursor poll (Windows) it is
+ * measured; without one, the pointer is near while it was over him a moment
+ * ago, and far otherwise.
  */
 export function pointerDistance(
   cursorPoll: boolean,
