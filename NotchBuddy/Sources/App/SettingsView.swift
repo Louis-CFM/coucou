@@ -728,6 +728,11 @@ struct SettingsView: View {
                     Button(String(localized: "hooks.uninstall")) { triggerCodexPreview(install: false) }
                         .buttonStyle(.bordered)
                 }
+                Button(String(localized: "codex.desktop-plugin.export", defaultValue: "Export desktop plugin…")) { exportCodexDesktopPlugin() }
+                    .buttonStyle(.bordered)
+                Text(String(localized: "codex.desktop-plugin.setup", defaultValue: "Install and enable the exported folder as a local plugin in Codex Desktop. Only questions asked through this plugin can be answered in Coucou; other questions stay in Codex."))
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(String(localized: "codex.vscode.setup"))
                     .font(.system(size: 11)).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1789,6 +1794,22 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         if !state.codexProjectPath.isEmpty { panel.directoryURL = URL(fileURLWithPath: state.codexProjectPath) }
         if panel.runModal() == .OK, let url = panel.url { state.selectCodexProject(url.path) }
+    }
+
+    private func exportCodexDesktopPlugin() {
+        let panel = NSOpenPanel()
+        panel.message = String(localized: "codex.desktop-plugin.export-folder", defaultValue: "Choose a folder for the Codex desktop plugin.")
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let parent = panel.url else { return }
+        do {
+            let destination = try CodexDesktopPlugin.export(to: parent)
+            NSWorkspace.shared.activateFileViewerSelecting([destination])
+            statusMessage = String(format: String(localized: "codex.desktop-plugin.exported %@", defaultValue: "Plugin exported to %@. Install and enable it in Codex Desktop."), destination.path)
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
     }
     #endif
 

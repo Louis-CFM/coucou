@@ -93,6 +93,16 @@ The pill lifecycle:
 | `SessionEnd` | Active declared pills (catalog + checked in Settings) reset to idle — all others are removed |
 | `SubagentStart` / `SubagentStop` | Step added to ticker |
 
+### Codex Desktop questions through the local plugin
+
+The GitHub Mac build can export **Coucou Desktop** from Settings → Agents → Codex → Export desktop plugin. Install and enable that local plugin in Codex Desktop, then invoke `$coucou-question` in the original conversation. Its `ask_question` MCP tool sends choices or a free-form prompt to the existing Coucou question card; the user's answer returns through that same tool call. To enter a new question or instruction, ask the skill to open a free-form input prompt.
+
+This adds a transport for plugin-routed questions; it does not intercept built-in Codex questions. Official Coucou 0.3.0 and the App Store build do not contain this bridge. Python 3 and the updated GitHub Mac app must run on the same machine and user account. The exported README covers marketplace registration and installing/enabling the plugin. Exporting does not modify Codex settings or hooks.
+
+The plugin uses the existing same-user Unix socket, one live question per bridge, bounded JSON messages and a 120-second total deadline. A request is bound to its waiting socket and displayed request ID. Cancellation, timeout, disconnect, leaving the card or replacement releases that request and its temporary registry session. An unanswered or busy request returns an explicit tool error so Codex can ask in its own interface; it is never treated as user consent. Native thread identity and transport ownership are not inferred from a project path.
+
+Completion controls use the observed source: **Open Codex** for Desktop (including the ChatGPT host), **Continue chat** for Coucou-managed chat, and **Open editor** for IDE sessions. Unknown sources show an unavailable-source note. Plugin question headers/return actions capture their own Desktop source even when another Codex session owns the shared pill.
+
 ## Declared pills
 
 A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabled in **Settings → Active pills**. When a session ends for a declared pill, the pill stays visible and resets to idle instead of disappearing.

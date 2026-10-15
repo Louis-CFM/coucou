@@ -100,6 +100,7 @@ struct AgentTask: Identifiable, Equatable {
         case "com.microsoft.VSCodeInsiders": host = "VS Code Insiders"
         case "com.vscodium": host = "VSCodium"
         case "com.openai.codex": host = "Codex Desktop"
+        case "com.openai.chat": host = id == "agent_codex" ? "Codex Desktop" : "ChatGPT"
         case "com.todesktop.230313mzl4w4u92": host = "Cursor"
         case "com.apple.Terminal": host = "Terminal"
         case "com.googlecode.iterm2": host = "iTerm2"

@@ -121,6 +121,9 @@ targets:
       - path: Resources/sounds
         buildPhase: resources
         type: folder
+      - path: Resources/CodexDesktopPlugin
+        buildPhase: resources
+        type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
     info:

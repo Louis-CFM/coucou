@@ -20,6 +20,7 @@ methods = s[s.index('    /// Called by ApprovalView buttons'):s.index('    // MA
 methods = methods.replace('    #if !APPSTORE\n', '').replace('    #endif\n', '')
 questions = s[s.index('    /// Called by QuestionView.'):s.index('    /// Returns the tool_input serialized')]
 questions = questions.replace('        #if !APPSTORE\n', '').replace('        #endif\n', '')
+plugin_cleanup = s[s.index('    @MainActor\n    private func finishPluginQuestion('):s.index('    @MainActor\n    private func dismissQuestionCard(')]
 socket_question = s[s.index('    @MainActor\n    private func processQuestionRequest('):s.index('    /// "VS Code", "Warp"')]
 socket_question = socket_question.replace('        #if !APPSTORE\n', '').replace('        #else\n        let isCodexRequest = false\n', '').replace('        #endif\n', '')
 owner = s[s.index('    @MainActor\n    private func applyDisplayOwner('):s.index('    @MainActor\n    private func upsertWorkspaceTask(')]
@@ -37,7 +38,7 @@ import Darwin
 }
 extension Notification.Name { static let islandCollapse = Notification.Name("islandCollapse") }
 enum View { case approval, question, overview, empty, note }
-enum State { case approval, question, working }
+enum State { case approval, question, working, idle }
 struct TaskInfo {
     var id: String
     var name = ""
@@ -141,7 +142,7 @@ final class HookServer: @unchecked Sendable {
         PillSessionRegistry.Display(session: session, projectName: projectName, cwd: cwd)
     }
     @MainActor func upsertTask(pill: String, display: PillSessionRegistry.Display, working: Bool, externalAgent: String?) {}
-'''+queue+methods+questions+socket_question+owner+'''
+'''+queue+methods+questions+plugin_cleanup+socket_question+owner+'''
     @MainActor static func check() async {
         let server = shared
         let state = AppState.shared

@@ -215,14 +215,33 @@ final class HookServer: @unchecked Sendable {
     }
 
     @MainActor
+    private func finishPluginQuestion() -> Bool {
+        let state = AppState.shared
+        guard state.pendingQuestion?.isCodexPlugin == true,
+              let session = state.pendingQuestion?.sessionId else { return false }
+        _ = sessions.endSession(pill: questionPillId, session: session)
+        applyDisplayOwner(pill: questionPillId)
+        if state.pendingApproval?.pillId != questionPillId {
+            state.updateTask(id: questionPillId, state: sessions.workingCount(pill: questionPillId) > 0 ? .working : .idle)
+        }
+        if state.pendingApproval == nil { state.isPinned = false }
+        return true
+    }
+
+    @MainActor
     private func dismissQuestionCard(note: String) {
         cancelQuestionFDSource()
         pendingQuestionFD = -1
         let state = AppState.shared
         let pillId = questionPillId
+        let wasPlugin = finishPluginQuestion()
         state.pendingQuestion = nil
+        if wasPlugin, state.pendingApproval != nil {
+            focusBeforeQuestion = nil
+            return
+        }
         state.isPinned = false
-        state.updateTask(id: pillId, state: .working)
+        if !wasPlugin { state.updateTask(id: pillId, state: .working) }
         clearPillBadge(id: pillId)
         if let prev = focusBeforeQuestion {
             focusBeforeQuestion = nil
@@ -299,6 +318,7 @@ final class HookServer: @unchecked Sendable {
         pendingQuestionFD = -1
         let source = questionFDSource
         questionFDSource = nil
+        _ = finishPluginQuestion()
         AppState.shared.pendingQuestion = nil
         Task.detached { [weak self] in
             self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -456,6 +476,28 @@ final class HookServer: @unchecked Sendable {
             close(fd)
             return
         }
+
+        #if !APPSTORE
+        if coucouKind == "codex_mcp_question" {
+            let input = payload["tool_input"] as? [String: Any] ?? [:]
+            let cwd = payload["cwd"] as? String ?? ""
+            var directory: ObjCBool = false
+            guard raw.count <= 131_072, payload["coucou_agent"] as? String == "codex",
+                  payload["coucou_managed"] == nil, payload["thread_id"] == nil,
+                  payload["turn_id"] == nil, payload["rollout_path"] == nil,
+                  UUID(uuidString: payload["session_id"] as? String ?? "") != nil,
+                  UUID(uuidString: payload["request_id"] as? String ?? "") != nil,
+                  cwd.hasPrefix("/"), !cwd.contains("\0"),
+                  FileManager.default.fileExists(atPath: cwd, isDirectory: &directory), directory.boolValue,
+                  let parsed = AskQuestion.parseCodexPlugin(input) else {
+                sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+                return
+            }
+            Task { @MainActor in self.processQuestionRequest(fd: fd, parsed: parsed, payload: payload) }
+            return
+        }
+        #endif
 
         // AskUserQuestion via --ask PreToolUse hook — hold fd open like PermissionRequest
         if coucouKind == "ask_user_question" {
@@ -848,7 +890,7 @@ final class HookServer: @unchecked Sendable {
         #if !APPSTORE
         let nativeMirror = payload["coucou_agent"] as? String == "codex"
             && CodexEventAdapter.shared.isManagedHookSession(payload["session_id"] as? String ?? "")
-        if nativeMirror || codexQuestion != nil {
+        if nativeMirror || codexQuestion != nil || AppState.shared.pendingQuestion?.isCodexPlugin == true {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -1214,7 +1256,8 @@ final class HookServer: @unchecked Sendable {
         #if !APPSTORE
         let nativeMirror = payload["coucou_agent"] as? String == "codex"
             && CodexEventAdapter.shared.isManagedHookSession(payload["session_id"] as? String ?? "")
-        if nativeMirror || codexQuestion != nil || !codexApprovals.isEmpty {
+        if nativeMirror || codexQuestion != nil || !codexApprovals.isEmpty
+            || (parsed.isCodexPlugin && (hasRealPendingQuestion || hasRealPendingApproval)) {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
@@ -1264,6 +1307,7 @@ final class HookServer: @unchecked Sendable {
 
         // Displace any previous question waiting for an answer.
         if pendingQuestionFD >= 0 {
+            _ = finishPluginQuestion()
             let old = pendingQuestionFD
             let oldSrc = questionFDSource
             questionFDSource = nil
@@ -1289,6 +1333,7 @@ final class HookServer: @unchecked Sendable {
         identified.pillId = pillId
         identified.sessionId = sessionId
         identified.requestId = UUID().uuidString
+        if identified.isCodexPlugin { identified.projectName = projectName }
         state.pendingQuestion = identified
         state.isPinned = true
         SoundEngine.shared.play("approval")
@@ -1298,8 +1343,10 @@ final class HookServer: @unchecked Sendable {
         expandIfNeeded(to: .question)
 
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        let capturedRequestId = identified.requestId
         source.setEventHandler { [weak self] in
-            guard let self, self.pendingQuestionFD == fd else { return }
+            guard let self, self.pendingQuestionFD == fd,
+                  AppState.shared.pendingQuestion?.requestId == capturedRequestId else { return }
             self.dismissQuestionCard(note: "")
         }
         source.setCancelHandler { close(fd) }
@@ -1308,7 +1355,8 @@ final class HookServer: @unchecked Sendable {
 
         let captured = fd
         DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
-            guard let self, self.pendingQuestionFD == captured else { return }
+            guard let self, self.pendingQuestionFD == captured,
+                  AppState.shared.pendingQuestion?.requestId == capturedRequestId else { return }
             // Send "ask" so nb-hook exits cleanly; Claude Code re-asks in terminal.
             let askFD = self.pendingQuestionFD
             self.pendingQuestionFD = -1

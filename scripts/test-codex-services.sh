@@ -433,7 +433,9 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
    chat.reset();assert(state.chatHistory.isEmpty && chat.threadId==nil)
   }
   await chat.chat(query:"before disconnect",context:nil,state:state)
-  let disconnectedThread=chat.threadId!
+  guard let disconnectedThread=chat.threadId else {
+   fatalError("Before-disconnect Chat did not create a thread; connected=\(connection.isConnected), authentication=\(chat.authenticationStatus), last reply=\(state.chatHistory.last?.content ?? "<empty>")")
+  }
   assert(!state.chatHistory.isEmpty)
   do { _=try await connection.request("exit");assertionFailure("Expected disconnected") } catch CodexServiceError.disconnected {}
   assert(!chat.owns(threadId:disconnectedThread) && chat.threadId==nil && state.chatHistory.isEmpty,"Disconnected history implies retained native context")
