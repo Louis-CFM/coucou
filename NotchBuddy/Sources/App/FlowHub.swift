@@ -6,11 +6,13 @@ import SwiftUI
 /// The pages of the Coucou window: Flow (the dictation, the Notetaker) and the notch's settings.
 enum HubPage: String, CaseIterable, Identifiable {
     case dictation, notes, insights, dictionary, snippets, styles, settings
+    case music, agenda
     case general, pills, agents, chat, integrations, voice, shortcuts
 
     var id: String { rawValue }
 
     static let flowPages: [HubPage] = [.dictation, .notes, .insights, .dictionary, .snippets, .styles, .settings]
+    static let appPages: [HubPage] = [.music, .agenda]
     static let notchPages: [HubPage] = [.general, .pills, .agents, .chat, .integrations, .voice, .shortcuts]
 
     /// The section of Settings this page shows, for the notch's pages.
@@ -48,6 +50,8 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .snippets:   return String(localized: "hub.page.snippets")
         case .styles:     return String(localized: "hub.page.styles")
         case .settings:   return String(localized: "hub.page.settings")
+        case .music:      return String(localized: "hub.page.music")
+        case .agenda:     return String(localized: "hub.page.agenda")
         }
     }
 
@@ -60,6 +64,8 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .snippets:   return "bolt"
         case .styles:     return "textformat"
         case .settings:   return "slider.horizontal.3"
+        case .music:      return "music.note"
+        case .agenda:     return "calendar"
         case .general:      return "gearshape"
         case .pills:        return "square.grid.2x2"
         case .agents:       return "terminal"
@@ -231,6 +237,8 @@ struct FlowHubView: View {
         case .snippets:   HubSnippetsPage()
         case .styles:     HubStylesPage(router: router)
         case .settings:   HubSettingsPage()
+        case .music:      HubMusicPage()
+        case .agenda:     HubAgendaPage(router: router)
         default:
             if let section = router.page.settingsSection {
                 VStack(alignment: .leading, spacing: 0) {
@@ -270,6 +278,11 @@ private struct HubSidebar: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HubSidebarHeader(text: "Flow")
                     ForEach(HubPage.flowPages) { page in
+                        HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                    }
+                    HubSidebarHeader(text: String(localized: "hub.section.apps"))
+                        .padding(.top, 14)
+                    ForEach(HubPage.appPages) { page in
                         HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
                     }
                     HubSidebarHeader(text: String(localized: "hub.section.notch"))

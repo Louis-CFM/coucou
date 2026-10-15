@@ -14,6 +14,9 @@ enum IslandView: String, CaseIterable {
     case searching, result, note, settings, greeting, wardrobe, recap
     case listening    // voice wake detected — "À l'écoute…" with live transcript
     case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
+    case music        // the header's Music tab: what Spotify or Music plays (GitHub build)
+    case calendar     // the header's Calendar tab: the next events (GitHub build)
+    case reminder     // a meeting starts soon: Mochi comes out with it, big (GitHub build)
 }
 
 // MARK: - Bot State
@@ -237,6 +240,11 @@ enum IslandConst {
         .listening:    ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
         // Voice result: same layout as listening — Mochi on left, ✓/✗ on right
         .voiceResult:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Music and Calendar tabs: Mochi on the left (dancing to the music), the card on the right
+        .music:     ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
+        .calendar:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Meeting reminder: taller, a bigger Mochi next to the event
+        .reminder:  ViewLayout(height: 204, botX: 76,  botY: nil, botDiameter: 72, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug

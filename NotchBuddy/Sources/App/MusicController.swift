@@ -19,8 +19,21 @@ final class MusicController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.music")
 
+    /// Followed when its pill is on, or while a Music view (the notch's tab, the Coucou window's
+    /// page) is on screen.
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains("integration_music")
+        AppState.shared.activeIntegrations.contains("integration_music") || watchers > 0
+    }
+
+    /// The Music views on screen.
+    private var watchers = 0
+
+    /// A Music view appeared (true) or went away (false): read the player now, forget it when
+    /// nothing shows it any more.
+    func watch(_ on: Bool) {
+        watchers = max(0, watchers + (on ? 1 : -1))
+        if on, watchers == 1, isMusicRunning() { fetchAndApply() }
+        if !isPillActive { clearState() }
     }
 
     private init() {
@@ -77,7 +90,7 @@ final class MusicController: ObservableObject {
         AppState.shared.$activeIntegrations
             .sink { [weak self] integrations in
                 guard let self else { return }
-                if integrations.contains("integration_music") {
+                if integrations.contains("integration_music") || self.watchers > 0 {
                     if self.isMusicRunning(),
                        UserDefaults.standard.bool(forKey: "coucou.musicAutomationGranted") {
                         self.fetchAndApply()
@@ -145,8 +158,8 @@ final class MusicController: ObservableObject {
         AppState.shared.musicPlaying = playing
         syncTaskName()
 
-        // Reveal only on transition from not-playing → playing
-        if playing && !wasPlaying {
+        // Reveal only on transition from not-playing → playing, for the pill (not a Music view)
+        if playing && !wasPlaying && AppState.shared.activeIntegrations.contains("integration_music") {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
         }
     }
@@ -182,7 +195,7 @@ final class MusicController: ObservableObject {
             album      = values[3].isEmpty ? nil : values[3]
             AppState.shared.musicPlaying = playing
             syncTaskName()
-            if playing && !wasPlaying {
+            if playing && !wasPlaying && AppState.shared.activeIntegrations.contains("integration_music") {
                 NotificationCenter.default.post(name: .musicReveal, object: nil)
             }
         }

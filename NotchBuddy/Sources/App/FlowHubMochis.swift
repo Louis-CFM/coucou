@@ -55,6 +55,8 @@ struct HubMochiSpec: Hashable {
     var roams = true
     /// Where it starts, from 0 (left of its area) to 1 (right).
     var start: CGFloat = 0.5
+    /// Stops where it is and dances while Spotify or Music plays (the Music page).
+    var dances = false
 }
 
 /// The Mochis of a scene, moved frame by frame.
@@ -89,8 +91,12 @@ final class HubMochiTroupe: ObservableObject {
     /// The part of the scene where they walk, from 0 to 1.
     var range: ClosedRange<CGFloat> = 0.05...0.95
 
+    /// Some Mochi of the scene dances to the music: the only case where step() reads the players.
+    private let hasDancers: Bool
+
     init(cast: [HubMochiSpec]) {
         walkers = cast.map { Walker(spec: $0) }
+        hasDancers = cast.contains(where: \.dances)
     }
 
     /// One frame: the walkers move, and stop now and then to do a little something.
@@ -98,9 +104,11 @@ final class HubMochiTroupe: ObservableObject {
         let now = CACurrentMediaTime()
         let dt = CGFloat(min(0.05, max(0, now - last)))
         last = now
+        let music = hasDancers ? HubNowPlaying.isPlaying : false
         for actor in walkers {
+            if actor.spec.dances { actor.engine.setDancing(music) }
             MochiFrameClock.advance(actor.engine)
-            guard actor.spec.roams else { continue }
+            guard actor.spec.roams, !(actor.spec.dances && music) else { continue }
             if now < actor.restUntil {
                 actor.hop = max(0, actor.hop - dt * 4)
                 continue
@@ -170,6 +178,7 @@ final class HubMochiTroupe: ObservableObject {
             }
             var c = context
             c.translateBy(x: cx - w / 2, y: size.height - w * 0.92 - lift)
+            actor.engine.applyDance(&c, size: CGSize(width: w, height: w))
             actor.engine.draw(context: c, size: CGSize(width: w, height: w))
         }
     }
@@ -229,8 +238,8 @@ struct HubHeroTheme {
 
     static func of(_ page: HubPage) -> HubHeroTheme {
         func m(_ color: String, _ size: CGFloat, _ start: CGFloat, outfit: Outfit = .none,
-               state: BotState = .idle, roams: Bool = true) -> HubMochiSpec {
-            HubMochiSpec(color: color, size: size, outfit: outfit, state: state, roams: roams, start: start)
+               state: BotState = .idle, roams: Bool = true, dances: Bool = false) -> HubMochiSpec {
+            HubMochiSpec(color: color, size: size, outfit: outfit, state: state, roams: roams, start: start, dances: dances)
         }
         switch page {
         case .dictation:
@@ -247,6 +256,12 @@ struct HubHeroTheme {
             return .init(color: Color(hex: "#F472B6"), cast: [m("#F472B6", 60, 0.25, outfit: .sunglasses), m("#F5F6F8", 48, 0.7, outfit: .bow), m("#22D3EE", 42, 1, outfit: .partyHat)])
         case .settings:
             return .init(color: Color(hex: "#8E939C"), cast: [m("#F5F6F8", 56, 0.3), m("#8E939C", 46, 0.95, state: .sleeping, roams: false)])
+        case .music:
+            return .init(color: Color(hex: "#1DB954"), cast: [m("#1DB954", 58, 0.15, outfit: .sunglasses, dances: true),
+                                                               m("#F5F6F8", 48, 0.55, outfit: .partyHat, dances: true),
+                                                               m("#F472B6", 44, 0.95, outfit: .bow, dances: true)])
+        case .agenda:
+            return .init(color: Color(hex: "#3B9EFF"), cast: [m("#3B9EFF", 56, 0.2, outfit: .roundGlasses), m("#F5F6F8", 46, 0.8, outfit: .scarf)])
         case .general:
             return .init(color: Color(hex: "#8E939C"), cast: [m("#F5F6F8", 60, 0.4, outfit: .scarf), m("#FB923C", 46, 0.85)])
         case .pills:

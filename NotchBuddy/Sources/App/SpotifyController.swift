@@ -56,8 +56,21 @@ final class SpotifyController: ObservableObject {
     private var pendingVolume: Int?
     private var volumeTask: Task<Void, Never>?
 
+    /// Followed when its pill is on, or while a Music view (the notch's tab, the Coucou window's
+    /// page) is on screen.
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains(Self.pillId)
+        AppState.shared.activeIntegrations.contains(Self.pillId) || watchers > 0
+    }
+
+    /// The Music views on screen.
+    private var watchers = 0
+
+    /// A Music view appeared (true) or went away (false): read Spotify now, forget it when
+    /// nothing shows it any more.
+    func watch(_ on: Bool) {
+        watchers = max(0, watchers + (on ? 1 : -1))
+        if on, watchers == 1 { refresh() }
+        if !isPillActive { clearState() }
     }
 
     private var automationGranted: Bool {
@@ -141,7 +154,10 @@ final class SpotifyController: ObservableObject {
                 guard let self else { return }
                 let active = integrations.contains(Self.pillId)
                 defer { wasActive = active }
-                guard active else { self.clearState(); return }
+                guard active else {
+                    if self.watchers == 0 { self.clearState() }
+                    return
+                }
                 guard wasActive != true else { return }
                 if wasActive == false || self.automationGranted {
                     // The publisher fires before the property is set: read once it is
@@ -198,8 +214,8 @@ final class SpotifyController: ObservableObject {
             anchor(position(at: Date()))
         }
         isPlaying = playing
-        // Reveal only on transition from not-playing → playing
-        if playing && !wasPlaying {
+        // Reveal only on transition from not-playing → playing, for the pill (not a Music view)
+        if playing && !wasPlaying && AppState.shared.activeIntegrations.contains(Self.pillId) {
             NotificationCenter.default.post(name: .musicReveal, object: nil)
         }
     }

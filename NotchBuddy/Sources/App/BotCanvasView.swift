@@ -58,6 +58,10 @@ struct BotCanvasView: View {
                 // Compute shouldDance per-frame (no observer lag)
                 let dancing: Bool = {
                     #if !APPSTORE
+                    // The Music tab: Mochi dances to whichever player plays.
+                    if state.mode == .expanded && state.view == .music {
+                        return HubNowPlaying.isPlaying
+                    }
                     let active = AppState.shared.activeIntegrations
                     let music = AppState.shared.musicPlaying && active.contains("integration_music")
                     let spotify = SpotifyController.shared.isPlaying && active.contains(SpotifyController.pillId)

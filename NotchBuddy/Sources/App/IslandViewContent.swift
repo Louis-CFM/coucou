@@ -39,6 +39,24 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .music:
+            #if !APPSTORE
+            NotchMusicView(state: state)
+            #else
+            EmptyView()
+            #endif
+        case .calendar:
+            #if !APPSTORE
+            NotchCalendarView(state: state)
+            #else
+            EmptyView()
+            #endif
+        case .reminder:
+            #if !APPSTORE
+            NotchReminderView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
@@ -247,6 +265,10 @@ struct OverviewView: View {
             NSWorkspace.shared.open(URL(string: "https://notion.so")!)
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
+        case "integration_calendar":
+            #if !APPSTORE
+            CalendarCardView.openCalendar()
+            #endif
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
@@ -1878,6 +1900,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_calendar":
+            #if !APPSTORE
+            return true  // Calendar is always installed; its card asks for access itself
+            #else
+            return false
+            #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
         case "integration_portfolio":
@@ -2128,6 +2156,12 @@ struct IntegrationCardView: View {
         } else if musicIsActive {
             #if !APPSTORE
             MusicCardView()
+                .transition(.opacity)
+            #endif
+        } else if task.id == "integration_calendar" {
+            #if !APPSTORE
+            // Its own card in every state (no access yet, nothing planned, events).
+            CalendarCardView()
                 .transition(.opacity)
             #endif
         } else if task.id == "integration_crypto" {
