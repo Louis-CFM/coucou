@@ -162,6 +162,13 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
     let map = payload.as_object_mut()?;
 
+    // Cursor also runs the Claude Code hooks of ~/.claude/settings.json, with
+    // its own payload. Its own hooks (--agent cursor) already report the same
+    // events on its pill; here they would show up as a Claude Code session.
+    if args.agent.is_empty() && map.contains_key("cursor_version") {
+        return None;
+    }
+
     // Which agent this hook was installed for, so the app routes it to the right
     // pill. Absent means Claude Code, so existing hook commands keep working
     // unchanged; invalid names are discarded by the app, not here. A Claude Code
@@ -431,6 +438,15 @@ mod tests {
         assert!(v.get("coucou_agent").is_none());
         assert_eq!(v["cwd"], "/p");
         assert_eq!(v["tool_name"], "Bash");
+    }
+
+    #[test]
+    fn cursor_running_claude_code_hooks_is_dropped() {
+        let raw = r#"{"hook_event_name":"preToolUse","tool_name":"Shell","cursor_version":"2026.10.14","conversation_id":"c"}"#;
+        let args = Args { agent: String::new(), event: "PreToolUse".into() };
+        assert!(prepare(raw.as_bytes(), &args, &|_| None, "/p").is_none());
+        let (v, _) = run(raw, "cursor", "");
+        assert_eq!(v["coucou_agent"], "cursor");
     }
 
     #[test]
