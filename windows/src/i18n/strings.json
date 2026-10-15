@@ -24,6 +24,28 @@
    "ru": " готов.",
    "id": " siap."
   },
+  "1 year": {
+   "zh-Hans": "1 年",
+   "hi": "1 साल",
+   "es": "1 año",
+   "ar": "سنة واحدة",
+   "fr": "1 an",
+   "bn": "১ বছর",
+   "pt-BR": "1 ano",
+   "ru": "1 год",
+   "id": "1 tahun"
+  },
+  "30 days": {
+   "zh-Hans": "30 天",
+   "hi": "30 दिन",
+   "es": "30 días",
+   "ar": "30 يومًا",
+   "fr": "30 jours",
+   "bn": "৩০ দিন",
+   "pt-BR": "30 dias",
+   "ru": "30 дней",
+   "id": "30 hari"
+  },
   "4 active — remove which?": {
    "zh-Hans": "4 个激活 — 删除哪个？",
    "hi": "4 सक्रिय — कौन सा हटाएं?",
@@ -45,6 +67,17 @@
    "pt-BR": "5 horas",
    "ru": "5 часов",
    "id": "5 jam"
+  },
+  "7 days": {
+   "zh-Hans": "7 天",
+   "hi": "7 दिन",
+   "es": "7 días",
+   "ar": "7 أيام",
+   "fr": "7 jours",
+   "bn": "৭ দিন",
+   "pt-BR": "7 dias",
+   "ru": "7 дней",
+   "id": "7 hari"
   },
   "API key (AI Studio)": {
    "zh-Hans": "API 密钥 (AI Studio)",
@@ -90,6 +123,28 @@
    "ru": "АВТО",
    "id": "AUTO"
   },
+  "Accessibility allowed: Coucou pastes where you type.": {
+   "zh-Hans": "已允许辅助功能：Coucou 会粘贴到你输入的位置。",
+   "hi": "एक्सेसिबिलिटी की अनुमति है: Coucou वहीं चिपकाता है जहाँ आप टाइप करते हैं।",
+   "es": "Accesibilidad permitida: Coucou pega donde escribes.",
+   "ar": "تم السماح بتسهيلات الاستخدام: يلصق Coucou حيث تكتب.",
+   "fr": "Accessibilité autorisée : Coucou colle là où tu écris.",
+   "bn": "অ্যাক্সেসিবিলিটি অনুমোদিত: আপনি যেখানে লেখেন Coucou সেখানে পেস্ট করে।",
+   "pt-BR": "Acessibilidade permitida: o Coucou cola onde você digita.",
+   "ru": "Универсальный доступ разрешён: Coucou вставляет текст туда, где вы печатаете.",
+   "id": "Aksesibilitas diizinkan: Coucou menempel di tempat kamu mengetik."
+  },
+  "Accessibility needed to paste": {
+   "zh-Hans": "粘贴需要辅助功能权限",
+   "hi": "चिपकाने के लिए एक्सेसिबिलिटी चाहिए",
+   "es": "Se necesita Accesibilidad para pegar",
+   "ar": "يلزم إذن تسهيلات الاستخدام للصق",
+   "fr": "Accessibilité requise pour coller",
+   "bn": "পেস্ট করতে অ্যাক্সেসিবিলিটি দরকার",
+   "pt-BR": "Acessibilidade necessária para colar",
+   "ru": "Для вставки нужен Универсальный доступ",
+   "id": "Perlu Aksesibilitas untuk menempel"
+  },
   "Active pills": {
    "zh-Hans": "活跃标签页",
    "hi": "सक्रिय टैब",
@@ -111,6 +166,39 @@
    "pt-BR": "Atividade",
    "ru": "Активность",
    "id": "Aktivitas"
+  },
+  "Add": {
+   "zh-Hans": "添加",
+   "hi": "जोड़ें",
+   "es": "Añadir",
+   "ar": "إضافة",
+   "fr": "Ajouter",
+   "bn": "যোগ করুন",
+   "pt-BR": "Adicionar",
+   "ru": "Добавить",
+   "id": "Tambah"
+  },
+  "Add a word, e.g. Supabase": {
+   "zh-Hans": "添加词语，例如 Supabase",
+   "hi": "शब्द जोड़ें, जैसे Supabase",
+   "es": "Añade una palabra, p. ej. Supabase",
+   "ar": "أضف كلمة، مثل Supabase",
+   "fr": "Ajouter un mot, ex. Supabase",
+   "bn": "শব্দ যোগ করুন, যেমন Supabase",
+   "pt-BR": "Adicione uma palavra, ex. Supabase",
+   "ru": "Добавьте слово, напр. Supabase",
+   "id": "Tambah kata, mis. Supabase"
+  },
+  "Add an app": {
+   "zh-Hans": "添加 App",
+   "hi": "ऐप जोड़ें",
+   "es": "Añadir una app",
+   "ar": "إضافة تطبيق",
+   "fr": "Ajouter une app",
+   "bn": "অ্যাপ যোগ করুন",
+   "pt-BR": "Adicionar um app",
+   "ru": "Добавить приложение",
+   "id": "Tambah aplikasi"
   },
   "Add coins in Settings → Integrations": {
    "zh-Hans": "在“设置 → 集成”中添加币种",
@@ -188,6 +276,17 @@
    "pt-BR": "Avisar quando uma moeda variar {0} %",
    "ru": "Сообщать, если монета изменится на {0} %",
    "id": "Beri tahu saat koin bergerak {0} %"
+  },
+  "All": {
+   "zh-Hans": "全部",
+   "hi": "सब",
+   "es": "Todo",
+   "ar": "الكل",
+   "fr": "Tout",
+   "bn": "সব",
+   "pt-BR": "Tudo",
+   "ru": "Всё",
+   "id": "Semua"
   },
   "Allow": {
    "zh-Hans": "允许",
@@ -288,6 +387,28 @@
    "ru": "Хуки Antigravity",
    "id": "Hooks Antigravity"
   },
+  "App": {
+   "zh-Hans": "App",
+   "hi": "ऐप",
+   "es": "App",
+   "ar": "التطبيق",
+   "fr": "App",
+   "bn": "অ্যাপ",
+   "pt-BR": "App",
+   "ru": "Приложение",
+   "id": "Aplikasi"
+  },
+  "Apple Intelligence": {
+   "zh-Hans": "Apple 智能",
+   "hi": "Apple Intelligence",
+   "es": "Apple Intelligence",
+   "ar": "Apple Intelligence",
+   "fr": "Apple Intelligence",
+   "bn": "Apple Intelligence",
+   "pt-BR": "Apple Intelligence",
+   "ru": "Apple Intelligence",
+   "id": "Apple Intelligence"
+  },
   "Applies on next launch": {
    "zh-Hans": "下次启动时生效",
    "hi": "अगली बार लॉन्च पर लागू होगा",
@@ -331,6 +452,17 @@
    "pt-BR": "Aprovado",
    "ru": "Одобрено",
    "id": "Disetujui"
+  },
+  "As said": {
+   "zh-Hans": "原样",
+   "hi": "जैसा बोला",
+   "es": "Tal cual",
+   "ar": "كما قيل",
+   "fr": "Tel quel",
+   "bn": "যেমন বলা",
+   "pt-BR": "Do jeito que foi dito",
+   "ru": "Как сказано",
+   "id": "Apa adanya"
   },
   "Ask Claude": {
    "zh-Hans": "问 Claude",
@@ -442,6 +574,17 @@
    "ru": "Поведение",
    "id": "Perilaku"
   },
+  "Bottom": {
+   "zh-Hans": "底部",
+   "hi": "नीचे",
+   "es": "Abajo",
+   "ar": "أسفل",
+   "fr": "En bas",
+   "bn": "নিচে",
+   "pt-BR": "Embaixo",
+   "ru": "Внизу",
+   "id": "Bawah"
+  },
   "Busiest day": {
    "zh-Hans": "最忙的一天",
    "hi": "सबसे व्यस्त दिन",
@@ -464,6 +607,17 @@
    "ru": "КОМАНДЫ",
    "id": "PERINTAH"
   },
+  "Call · {0}": {
+   "zh-Hans": "通话 · {0}",
+   "hi": "कॉल · {0}",
+   "es": "Llamada · {0}",
+   "ar": "مكالمة · {0}",
+   "fr": "Call · {0}",
+   "bn": "কল · {0}",
+   "pt-BR": "Chamada · {0}",
+   "ru": "Звонок · {0}",
+   "id": "Panggilan · {0}"
+  },
   "Can't reach {name} at {url}. Is it running?": {
    "zh-Hans": "无法访问 {name}（{url}）。它正在运行吗？",
    "hi": "{name} को {url} पर नहीं पहुंचा जा सका। क्या यह चल रहा है?",
@@ -485,6 +639,17 @@
    "pt-BR": "Cancelar",
    "ru": "Отмена",
    "id": "Batal"
+  },
+  "Cancel a dictation": {
+   "zh-Hans": "取消听写",
+   "hi": "डिक्टेशन रद्द करें",
+   "es": "Cancelar un dictado",
+   "ar": "إلغاء إملاء",
+   "fr": "Annuler une dictée",
+   "bn": "ডিক্টেশন বাতিল করুন",
+   "pt-BR": "Cancelar um ditado",
+   "ru": "Отменить диктовку",
+   "id": "Batalkan dikte"
   },
   "Chat": {
    "zh-Hans": "聊天",
@@ -552,6 +717,17 @@
    "ru": "Классический токен с правом repo или гранулярный с доступом на чтение к Pull requests, Commit statuses и Actions.",
    "id": "Token klasik dengan scope repo, atau token fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions."
   },
+  "Claude (your key)": {
+   "zh-Hans": "Claude（你的密钥）",
+   "hi": "Claude (आपकी कुंजी)",
+   "es": "Claude (tu clave)",
+   "ar": "Claude (مفتاحك)",
+   "fr": "Claude (ta clé)",
+   "bn": "Claude (আপনার কী)",
+   "pt-BR": "Claude (sua chave)",
+   "ru": "Claude (ваш ключ)",
+   "id": "Claude (kuncimu)"
+  },
   "Claude Code finished": {
    "zh-Hans": "Claude Code 已完成",
    "hi": "Claude Code समाप्त हो गया",
@@ -585,6 +761,17 @@
    "ru": "Claude Code спрашивает",
    "id": "Claude Code bertanya"
   },
+  "Claude Code, Codex and the other agents Mochi follows.": {
+   "zh-Hans": "Mochi 关注的 Claude Code、Codex 和其他智能体。",
+   "hi": "Claude Code, Codex और बाकी एजेंट जिन पर मोची नज़र रखता है।",
+   "es": "Claude Code, Codex y los demás agentes que sigue Mochi.",
+   "ar": "Claude Code وCodex وبقية الوكلاء الذين يتابعهم موتشي.",
+   "fr": "Claude Code, Codex et les autres agents que Mochi suit.",
+   "bn": "Claude Code, Codex আর অন্য এজেন্ট যাদের মোচি অনুসরণ করে।",
+   "pt-BR": "Claude Code, Codex e os outros agentes que o Mochi acompanha.",
+   "ru": "Claude Code, Codex и другие агенты, за которыми следит Мочи.",
+   "id": "Claude Code, Codex, dan agen lain yang diikuti Mochi."
+  },
   "Claude as Coucou's brain": {
    "zh-Hans": "由 Claude 担任 Coucou 的大脑",
    "hi": "Coucou का दिमाग: Claude",
@@ -595,6 +782,17 @@
    "pt-BR": "Claude como cérebro do Coucou",
    "ru": "Claude — мозг Coucou",
    "id": "Claude sebagai otak Coucou"
+  },
+  "Claude cleans up what you say, in the style of the app you write in.": {
+   "zh-Hans": "Claude 会按你正在输入的 App 的风格整理你说的话。",
+   "hi": "Claude आपकी बात को उस ऐप की शैली में साफ़ करता है जिसमें आप लिख रहे हैं।",
+   "es": "Claude limpia lo que dices, con el estilo de la app en la que escribes.",
+   "ar": "ينقّح Claude ما تقوله بأسلوب التطبيق الذي تكتب فيه.",
+   "fr": "Claude nettoie ce que tu dis, dans le style de l'app où tu écris.",
+   "bn": "আপনি যে অ্যাপে লিখছেন তার স্টাইলে Claude আপনার কথা পরিষ্কার করে।",
+   "pt-BR": "O Claude limpa o que você diz, no estilo do app em que você escreve.",
+   "ru": "Claude приводит сказанное в порядок в стиле приложения, где вы пишете.",
+   "id": "Claude merapikan ucapanmu sesuai gaya aplikasi tempat kamu menulis."
   },
   "Claude is reading {name}…": {
    "zh-Hans": "Claude 正在读取 {name}…",
@@ -628,6 +826,17 @@
    "pt-BR": "Plano Claude",
    "ru": "План Claude",
    "id": "Paket Claude"
+  },
+  "Clean up with Claude": {
+   "zh-Hans": "用 Claude 整理",
+   "hi": "Claude से साफ़ करें",
+   "es": "Limpiar con Claude",
+   "ar": "التنقيح باستخدام Claude",
+   "fr": "Nettoyer avec Claude",
+   "bn": "Claude দিয়ে পরিষ্কার করুন",
+   "pt-BR": "Limpar com o Claude",
+   "ru": "Чистить текст с Claude",
+   "id": "Rapikan dengan Claude"
   },
   "Clear": {
    "zh-Hans": "清除",
@@ -838,6 +1047,28 @@
    "ru": "Продолжить…",
    "id": "Lanjutkan…"
   },
+  "Copied": {
+   "zh-Hans": "已拷贝",
+   "hi": "कॉपी हुआ",
+   "es": "Copiado",
+   "ar": "تم النسخ",
+   "fr": "Copié",
+   "bn": "কপি হয়েছে",
+   "pt-BR": "Copiado",
+   "ru": "Скопировано",
+   "id": "Disalin"
+  },
+  "Copied · allow Accessibility to paste": {
+   "zh-Hans": "已复制 · 允许辅助功能以粘贴",
+   "hi": "कॉपी हुआ · चिपकाने के लिए एक्सेसिबिलिटी की अनुमति दें",
+   "es": "Copiado · permite Accesibilidad para pegar",
+   "ar": "تم النسخ · اسمح بتسهيلات الاستخدام للصق",
+   "fr": "Copié · autorise l'Accessibilité pour coller",
+   "bn": "কপি হয়েছে · পেস্ট করতে অ্যাক্সেসিবিলিটি অনুমতি দিন",
+   "pt-BR": "Copiado · permita a Acessibilidade para colar",
+   "ru": "Скопировано · разрешите Универсальный доступ для вставки",
+   "id": "Disalin · izinkan Aksesibilitas untuk menempel"
+  },
   "Copy": {
    "zh-Hans": "复制",
    "hi": "कॉपी",
@@ -849,6 +1080,28 @@
    "ru": "Скопировать",
    "id": "Salin"
   },
+  "Copy as Markdown": {
+   "zh-Hans": "拷贝为 Markdown",
+   "hi": "Markdown में कॉपी करें",
+   "es": "Copiar en Markdown",
+   "ar": "نسخ بصيغة Markdown",
+   "fr": "Copier en Markdown",
+   "bn": "Markdown হিসেবে কপি",
+   "pt-BR": "Copiar em Markdown",
+   "ru": "Скопировать в Markdown",
+   "id": "Salin sebagai Markdown"
+  },
+  "Coucou Flow…": {
+   "zh-Hans": "Coucou Flow…",
+   "hi": "Coucou Flow…",
+   "es": "Coucou Flow…",
+   "ar": "Coucou Flow…",
+   "fr": "Coucou Flow…",
+   "bn": "Coucou Flow…",
+   "pt-BR": "Coucou Flow…",
+   "ru": "Coucou Flow…",
+   "id": "Coucou Flow…"
+  },
   "Coucou answers in": {
    "zh-Hans": "Coucou 回答语言",
    "hi": "Coucou जवाब देता है",
@@ -859,6 +1112,61 @@
    "pt-BR": "Coucou responde em",
    "ru": "Coucou отвечает на",
    "id": "Coucou menjawab dalam"
+  },
+  "Coucou can't hear you: the microphone is not allowed or not available.": {
+   "zh-Hans": "Coucou 听不到你：麦克风未获允许或不可用。",
+   "hi": "Coucou आपको सुन नहीं पा रहा: माइक्रोफ़ोन की अनुमति नहीं है या वह उपलब्ध नहीं।",
+   "es": "Coucou no te oye: el micrófono no está permitido o no está disponible.",
+   "ar": "لا يسمعك Coucou: الميكروفون غير مسموح به أو غير متاح.",
+   "fr": "Coucou ne t'entend pas : le micro n'est pas autorisé ou pas disponible.",
+   "bn": "Coucou আপনাকে শুনতে পাচ্ছে না: মাইক্রোফোনের অনুমতি নেই বা পাওয়া যাচ্ছে না।",
+   "pt-BR": "O Coucou não te ouve: o microfone não está permitido ou indisponível.",
+   "ru": "Coucou вас не слышит: микрофон не разрешён или недоступен.",
+   "id": "Coucou tidak bisa mendengarmu: mikrofon tidak diizinkan atau tidak tersedia."
+  },
+  "Coucou can't paste yet, or see Esc: it needs the Accessibility permission. Turn on Coucou in System Settings → Privacy & Security → Accessibility. If it is already on, remove it with − and add it again: a new build of Coucou needs it again.": {
+   "zh-Hans": "Coucou 还不能粘贴，也无法识别 Esc：它需要“辅助功能”权限。请在“系统设置”→“隐私与安全性”→“辅助功能”中打开 Coucou。如果已经打开，请用“−”移除后重新添加：新版本的 Coucou 需要重新授权。",
+   "hi": "Coucou अभी न चिपका सकता है, न Esc देख सकता है: इसे एक्सेसिबिलिटी अनुमति चाहिए। सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → एक्सेसिबिलिटी में Coucou चालू करें। अगर यह पहले से चालू है, तो − से हटाकर फिर जोड़ें: Coucou के नए संस्करण को फिर से अनुमति चाहिए।",
+   "es": "Coucou aún no puede pegar ni ver Esc: necesita el permiso de Accesibilidad. Activa Coucou en Ajustes del Sistema → Privacidad y seguridad → Accesibilidad. Si ya está activado, quítalo con − y vuelve a añadirlo: una nueva versión de Coucou lo necesita de nuevo.",
+   "ar": "لا يستطيع Coucou اللصق بعد ولا رؤية Esc: يحتاج إلى إذن تسهيلات الاستخدام. فعّل Coucou في إعدادات النظام ← الخصوصية والأمن ← تسهيلات الاستخدام. إذا كان مفعّلًا، احذفه بزر − ثم أضفه من جديد: كل إصدار جديد من Coucou يحتاج الإذن مرة أخرى.",
+   "fr": "Coucou ne peut pas encore coller, ni voir Échap : il lui faut l'autorisation Accessibilité. Active Coucou dans Réglages Système → Confidentialité et sécurité → Accessibilité. S'il y est déjà, retire-le avec − puis rajoute-le : une nouvelle version de Coucou doit être autorisée à nouveau.",
+   "bn": "Coucou এখনও পেস্ট করতে বা Esc দেখতে পারে না: এর অ্যাক্সেসিবিলিটি অনুমতি দরকার। সিস্টেম সেটিংস → গোপনীয়তা ও নিরাপত্তা → অ্যাক্সেসিবিলিটিতে Coucou চালু করুন। আগে থেকেই চালু থাকলে − দিয়ে সরিয়ে আবার যোগ করুন: Coucou-এর নতুন সংস্করণের আবার অনুমতি লাগে।",
+   "pt-BR": "O Coucou ainda não consegue colar nem ver o Esc: ele precisa da permissão de Acessibilidade. Ative o Coucou em Ajustes do Sistema → Privacidade e Segurança → Acessibilidade. Se já estiver ativado, remova com − e adicione de novo: uma nova versão do Coucou precisa da permissão outra vez.",
+   "ru": "Coucou пока не может вставлять текст и видеть Esc: нужен доступ к Универсальному доступу. Включите Coucou в Системных настройках → Конфиденциальность и безопасность → Универсальный доступ. Если он уже включён, удалите его кнопкой − и добавьте снова: новой версии Coucou нужно разрешение заново.",
+   "id": "Coucou belum bisa menempel atau melihat Esc: ia butuh izin Aksesibilitas. Aktifkan Coucou di Pengaturan Sistem → Privasi & Keamanan → Aksesibilitas. Jika sudah aktif, hapus dengan − lalu tambahkan lagi: versi baru Coucou perlu izin lagi."
+  },
+  "Coucou can't use the microphone. Allow it in System Settings → Privacy & Security → Microphone.": {
+   "zh-Hans": "Coucou 无法使用麦克风。请在“系统设置”→“隐私与安全性”→“麦克风”中允许。",
+   "hi": "Coucou माइक्रोफ़ोन इस्तेमाल नहीं कर पा रहा। सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → माइक्रोफ़ोन में अनुमति दें।",
+   "es": "Coucou no puede usar el micrófono. Permítelo en Ajustes del Sistema → Privacidad y seguridad → Micrófono.",
+   "ar": "لا يستطيع Coucou استخدام الميكروفون. اسمح به من إعدادات النظام ← الخصوصية والأمن ← الميكروفون.",
+   "fr": "Coucou ne peut pas utiliser le micro. Autorise-le dans Réglages Système → Confidentialité et sécurité → Micro.",
+   "bn": "Coucou মাইক্রোফোন ব্যবহার করতে পারছে না। সিস্টেম সেটিংস → গোপনীয়তা ও নিরাপত্তা → মাইক্রোফোন-এ অনুমতি দিন।",
+   "pt-BR": "O Coucou não pode usar o microfone. Permita em Ajustes do Sistema → Privacidade e Segurança → Microfone.",
+   "ru": "Coucou не может использовать микрофон. Разрешите его в Системных настройках → Конфиденциальность и безопасность → Микрофон.",
+   "id": "Coucou tidak bisa memakai mikrofon. Izinkan di Pengaturan Sistem → Privasi & Keamanan → Mikrofon."
+  },
+  "Coucou couldn't paste: your words are copied. Press ⌘V, and allow Accessibility so it pastes for you.": {
+   "zh-Hans": "Coucou 无法粘贴：你的话已拷贝。按 ⌘V，并允许“辅助功能”，让它自动粘贴。",
+   "hi": "Coucou चिपका नहीं सका: आपके शब्द कॉपी हो गए हैं। ⌘V दबाएँ, और एक्सेसिबिलिटी की अनुमति दें ताकि वह खुद चिपकाए।",
+   "es": "Coucou no pudo pegar: tus palabras están copiadas. Pulsa ⌘V y permite Accesibilidad para que pegue solo.",
+   "ar": "لم يتمكن Coucou من اللصق: كلماتك منسوخة. اضغط ⌘V، واسمح بتسهيلات الاستخدام ليلصق بنفسه.",
+   "fr": "Coucou n'a pas pu coller : tes mots sont copiés. Fais ⌘V, et autorise l'Accessibilité pour qu'il colle tout seul.",
+   "bn": "Coucou পেস্ট করতে পারেনি: আপনার কথা কপি হয়েছে। ⌘V চাপুন, আর অ্যাক্সেসিবিলিটির অনুমতি দিন যাতে নিজেই পেস্ট করে।",
+   "pt-BR": "O Coucou não conseguiu colar: suas palavras foram copiadas. Pressione ⌘V e permita a Acessibilidade para ele colar sozinho.",
+   "ru": "Coucou не смог вставить: слова скопированы. Нажмите ⌘V и разрешите Универсальный доступ, чтобы он вставлял сам.",
+   "id": "Coucou tidak bisa menempel: kata-katamu sudah disalin. Tekan ⌘V, dan izinkan Aksesibilitas agar ia menempel sendiri."
+  },
+  "Coucou is writing the transcript, person by person…": {
+   "zh-Hans": "Coucou 正在按人逐句写转写…",
+   "hi": "Coucou हर व्यक्ति के हिसाब से ट्रांसक्रिप्ट लिख रहा है…",
+   "es": "Coucou está escribiendo la transcripción, persona por persona…",
+   "ar": "يكتب Coucou النص شخصًا بشخص…",
+   "fr": "Coucou écrit la transcription, personne par personne…",
+   "bn": "Coucou প্রতিজনের ট্রান্সক্রিপ্ট লিখছে…",
+   "pt-BR": "O Coucou está escrevendo a transcrição, pessoa por pessoa…",
+   "ru": "Coucou составляет расшифровку по участникам…",
+   "id": "Coucou sedang menulis transkrip, per orang…"
   },
   "Coucou reads back results in the spoken language, using a synthesized voice. 100% on-device.": {
    "zh-Hans": "Coucou 用语音语言朗读结果。完全在设备上处理。",
@@ -881,6 +1189,28 @@
    "pt-BR": "Coucou responde em voz alta",
    "ru": "Coucou отвечает вслух",
    "id": "Coucou merespons dengan suara"
+  },
+  "Coucou writes your calls on your Mac with Parakeet, and tells the voices apart with a second small model. Both are downloaded once (about 650 MB), then everything works offline.": {
+   "zh-Hans": "Coucou 用 Parakeet 在你的 Mac 上转写通话，并用第二个小模型区分说话人。两者只需下载一次（约 650 MB），之后一切离线运行。",
+   "hi": "Coucou आपकी कॉल Parakeet से आपके Mac पर ही लिखता है, और एक दूसरे छोटे मॉडल से आवाज़ें पहचानता है। दोनों एक बार डाउनलोड होते हैं (लगभग 650 MB), फिर सब ऑफ़लाइन चलता है।",
+   "es": "Coucou transcribe tus llamadas en tu Mac con Parakeet y distingue las voces con un segundo modelo pequeño. Ambos se descargan una vez (unos 650 MB) y luego todo funciona sin conexión.",
+   "ar": "يكتب Coucou مكالماتك على جهاز Mac باستخدام Parakeet، ويميّز الأصوات بنموذج صغير ثانٍ. يُنزَّل الاثنان مرة واحدة (نحو 650 ميغابايت)، ثم يعمل كل شيء بلا إنترنت.",
+   "fr": "Coucou écrit tes calls sur ton Mac avec Parakeet, et reconnaît les voix avec un second petit modèle. Les deux se téléchargent une fois (environ 650 Mo), puis tout marche hors ligne.",
+   "bn": "Coucou Parakeet দিয়ে আপনার Mac-এই কল লিখে ফেলে, আর দ্বিতীয় একটি ছোট মডেল দিয়ে কণ্ঠ আলাদা করে। দুটোই একবার ডাউনলোড হয় (প্রায় ৬৫০ MB), তারপর সব অফলাইনে চলে।",
+   "pt-BR": "O Coucou transcreve suas chamadas no seu Mac com o Parakeet e distingue as vozes com um segundo modelo pequeno. Os dois são baixados uma vez (cerca de 650 MB) e depois tudo funciona offline.",
+   "ru": "Coucou записывает звонки текстом прямо на Mac с помощью Parakeet и различает голоса второй небольшой моделью. Обе скачиваются один раз (около 650 МБ), дальше всё работает без сети.",
+   "id": "Coucou menulis panggilanmu di Mac dengan Parakeet, dan membedakan suara dengan model kecil kedua. Keduanya diunduh sekali (sekitar 650 MB), lalu semuanya bekerja luring."
+  },
+  "Counted on your Mac, never sent anywhere.": {
+   "zh-Hans": "在你的 Mac 上统计，从不发送。",
+   "hi": "आपके Mac पर गिनी जाती हैं, कहीं भेजी नहीं जातीं।",
+   "es": "Contadas en tu Mac, nunca se envían.",
+   "ar": "تُحسب على جهاز Mac ولا تُرسل إلى أي مكان.",
+   "fr": "Comptées sur ton Mac, jamais envoyées.",
+   "bn": "আপনার Mac-এ গোনা হয়, কোথাও পাঠানো হয় না।",
+   "pt-BR": "Contadas no seu Mac, nunca enviadas.",
+   "ru": "Считается на вашем Mac и никуда не отправляется.",
+   "id": "Dihitung di Mac-mu, tidak pernah dikirim."
   },
   "Currency": {
    "zh-Hans": "货币",
@@ -914,6 +1244,28 @@
    "pt-BR": "Padrão",
    "ru": "По умолчанию",
    "id": "Bawaan"
+  },
+  "Delete": {
+   "zh-Hans": "删除",
+   "hi": "हटाएँ",
+   "es": "Eliminar",
+   "ar": "حذف",
+   "fr": "Supprimer",
+   "bn": "মুছুন",
+   "pt-BR": "Apagar",
+   "ru": "Удалить",
+   "id": "Hapus"
+  },
+  "Delete this call and its notes?": {
+   "zh-Hans": "删除这次通话及其笔记？",
+   "hi": "यह कॉल और इसके नोट्स हटाएँ?",
+   "es": "¿Eliminar esta llamada y sus notas?",
+   "ar": "هل تريد حذف هذه المكالمة وملاحظاتها؟",
+   "fr": "Supprimer ce call et ses notes ?",
+   "bn": "এই কল আর এর নোট মুছবেন?",
+   "pt-BR": "Apagar esta chamada e as notas?",
+   "ru": "Удалить этот звонок и его заметки?",
+   "id": "Hapus panggilan ini beserta catatannya?"
   },
   "Demo": {
    "zh-Hans": "演示",
@@ -970,6 +1322,83 @@
    "ru": "Деплои",
    "id": "Penerapan"
   },
+  "Dictate anywhere on your Mac": {
+   "zh-Hans": "在 Mac 上随处听写",
+   "hi": "अपने Mac पर कहीं भी डिक्टेट करें",
+   "es": "Dicta en cualquier parte de tu Mac",
+   "ar": "أملِ في أي مكان على جهاز Mac",
+   "fr": "Dicte partout sur ton Mac",
+   "bn": "আপনার Mac-এ যেকোনো জায়গায় ডিক্টেট করুন",
+   "pt-BR": "Dite em qualquer lugar do seu Mac",
+   "ru": "Диктуйте где угодно на Mac",
+   "id": "Dikte di mana saja di Mac-mu"
+  },
+  "Dictate in an app and it shows here.": {
+   "zh-Hans": "在某个 App 中听写，它就会显示在这里。",
+   "hi": "किसी ऐप में डिक्टेट करें, वह यहाँ दिखेगा।",
+   "es": "Dicta en una app y aparecerá aquí.",
+   "ar": "أملِ في تطبيق وسيظهر هنا.",
+   "fr": "Dicte dans une app et elle s'affiche ici.",
+   "bn": "কোনো অ্যাপে ডিক্টেট করুন, এখানে দেখা যাবে।",
+   "pt-BR": "Dite em um app e ele aparece aqui.",
+   "ru": "Подиктуйте в приложении — оно появится здесь.",
+   "id": "Dikte di sebuah aplikasi dan akan muncul di sini."
+  },
+  "Dictate · {0}": {
+   "zh-Hans": "听写 · {0}",
+   "hi": "डिक्टेट करें · {0}",
+   "es": "Dictar · {0}",
+   "ar": "إملاء · {0}",
+   "fr": "Dicter · {0}",
+   "bn": "ডিক্টেট · {0}",
+   "pt-BR": "Ditar · {0}",
+   "ru": "Диктовать · {0}",
+   "id": "Dikte · {0}"
+  },
+  "Dictation": {
+   "zh-Hans": "听写",
+   "hi": "डिक्टेशन",
+   "es": "Dictado",
+   "ar": "الإملاء",
+   "fr": "Dictée",
+   "bn": "ডিক্টেশন",
+   "pt-BR": "Ditado",
+   "ru": "Диктовка",
+   "id": "Dikte"
+  },
+  "Dictation is off": {
+   "zh-Hans": "听写已关闭",
+   "hi": "डिक्टेशन बंद है",
+   "es": "Dictado desactivado",
+   "ar": "الإملاء متوقف",
+   "fr": "Dictée désactivée",
+   "bn": "ডিক্টেশন বন্ধ",
+   "pt-BR": "Ditado desligado",
+   "ru": "Диктовка выключена",
+   "id": "Dikte nonaktif"
+  },
+  "Dictations": {
+   "zh-Hans": "听写次数",
+   "hi": "डिक्टेशन",
+   "es": "Dictados",
+   "ar": "الإملاءات",
+   "fr": "Dictées",
+   "bn": "ডিক্টেশন",
+   "pt-BR": "Ditados",
+   "ru": "Диктовки",
+   "id": "Dikte"
+  },
+  "Dictionary": {
+   "zh-Hans": "词典",
+   "hi": "शब्दकोश",
+   "es": "Diccionario",
+   "ar": "القاموس",
+   "fr": "Dictionnaire",
+   "bn": "অভিধান",
+   "pt-BR": "Dicionário",
+   "ru": "Словарь",
+   "id": "Kamus"
+  },
   "Diff too large": {
    "zh-Hans": "Diff 太大",
    "hi": "Diff बहुत बड़ा है",
@@ -991,6 +1420,50 @@
    "pt-BR": "Desconectar",
    "ru": "Отключить",
    "id": "Putuskan"
+  },
+  "Don't keep": {
+   "zh-Hans": "不保留",
+   "hi": "न रखें",
+   "es": "No guardar",
+   "ar": "عدم الاحتفاظ",
+   "fr": "Ne pas garder",
+   "bn": "রাখবেন না",
+   "pt-BR": "Não guardar",
+   "ru": "Не хранить",
+   "id": "Jangan simpan"
+  },
+  "Download": {
+   "zh-Hans": "下载",
+   "hi": "डाउनलोड करें",
+   "es": "Descargar",
+   "ar": "تنزيل",
+   "fr": "Télécharger",
+   "bn": "ডাউনলোড",
+   "pt-BR": "Baixar",
+   "ru": "Скачать",
+   "id": "Unduh"
+  },
+  "Download the models": {
+   "zh-Hans": "下载模型",
+   "hi": "मॉडल डाउनलोड करें",
+   "es": "Descargar los modelos",
+   "ar": "تنزيل النماذج",
+   "fr": "Télécharger les modèles",
+   "bn": "মডেল ডাউনলোড করুন",
+   "pt-BR": "Baixar os modelos",
+   "ru": "Скачать модели",
+   "id": "Unduh model"
+  },
+  "Download the models in Coucou Flow → Settings first.": {
+   "zh-Hans": "请先在 Coucou Flow →“设置”中下载模型。",
+   "hi": "पहले Coucou Flow → सेटिंग्स में मॉडल डाउनलोड करें।",
+   "es": "Primero descarga los modelos en Coucou Flow → Ajustes.",
+   "ar": "نزّل النماذج أولًا من Coucou Flow ← الإعدادات.",
+   "fr": "Télécharge d'abord les modèles dans Coucou Flow → Réglages.",
+   "bn": "আগে Coucou Flow → সেটিংস-এ মডেল ডাউনলোড করুন।",
+   "pt-BR": "Primeiro baixe os modelos em Coucou Flow → Ajustes.",
+   "ru": "Сначала скачайте модели в Coucou Flow → Настройки.",
+   "id": "Unduh dulu modelnya di Coucou Flow → Pengaturan."
   },
   "Draft": {
    "zh-Hans": "草稿",
@@ -1047,6 +1520,28 @@
    "ru": "Дублирующийся",
    "id": "Duplikat"
   },
+  "Edit": {
+   "zh-Hans": "编辑",
+   "hi": "बदलें",
+   "es": "Editar",
+   "ar": "تعديل",
+   "fr": "Modifier",
+   "bn": "সম্পাদনা",
+   "pt-BR": "Editar",
+   "ru": "Изменить",
+   "id": "Edit"
+  },
+  "Edit the snippet": {
+   "zh-Hans": "编辑片段",
+   "hi": "स्निपेट बदलें",
+   "es": "Editar el fragmento",
+   "ar": "تعديل المقتطف",
+   "fr": "Modifier le snippet",
+   "bn": "স্নিপেট সম্পাদনা",
+   "pt-BR": "Editar o trecho",
+   "ru": "Изменить шаблон",
+   "id": "Edit cuplikan"
+  },
   "Edits": {
    "zh-Hans": "编辑",
    "hi": "संपादित करता है",
@@ -1102,6 +1597,61 @@
    "ru": "Включить голосовые команды",
    "id": "Aktifkan perintah suara"
   },
+  "Erase everything": {
+   "zh-Hans": "全部清除",
+   "hi": "सब मिटाएँ",
+   "es": "Borrar todo",
+   "ar": "مسح كل شيء",
+   "fr": "Tout effacer",
+   "bn": "সব মুছুন",
+   "pt-BR": "Apagar tudo",
+   "ru": "Стереть всё",
+   "id": "Hapus semua"
+  },
+  "Erase the history": {
+   "zh-Hans": "清除历史记录",
+   "hi": "इतिहास मिटाएँ",
+   "es": "Borrar el historial",
+   "ar": "مسح السجل",
+   "fr": "Effacer l'historique",
+   "bn": "ইতিহাস মুছুন",
+   "pt-BR": "Apagar o histórico",
+   "ru": "Стереть историю",
+   "id": "Hapus riwayat"
+  },
+  "Erase the history and the statistics?": {
+   "zh-Hans": "清除历史记录和统计？",
+   "hi": "इतिहास और आँकड़े मिटाएँ?",
+   "es": "¿Borrar el historial y las estadísticas?",
+   "ar": "هل تريد مسح السجل والإحصاءات؟",
+   "fr": "Effacer l'historique et les statistiques ?",
+   "bn": "ইতিহাস আর পরিসংখ্যান মুছবেন?",
+   "pt-BR": "Apagar o histórico e as estatísticas?",
+   "ru": "Стереть историю и статистику?",
+   "id": "Hapus riwayat dan statistik?"
+  },
+  "Esc": {
+   "zh-Hans": "Esc",
+   "hi": "Esc",
+   "es": "Esc",
+   "ar": "Esc",
+   "fr": "Échap",
+   "bn": "Esc",
+   "pt-BR": "Esc",
+   "ru": "Esc",
+   "id": "Esc"
+  },
+  "Everything stays on your Mac. Tell the people in the call that you are recording.": {
+   "zh-Hans": "一切都留在你的 Mac 上。请告知通话中的人你正在录音。",
+   "hi": "सब कुछ आपके Mac पर रहता है। कॉल में लोगों को बताएँ कि आप रिकॉर्ड कर रहे हैं।",
+   "es": "Todo se queda en tu Mac. Avisa a las personas de la llamada de que grabas.",
+   "ar": "يبقى كل شيء على جهاز Mac. أخبر من في المكالمة أنك تسجّل.",
+   "fr": "Tout reste sur ton Mac. Préviens les gens du call que tu enregistres.",
+   "bn": "সবকিছু আপনার Mac-এ থাকে। কলের লোকদের জানান যে আপনি রেকর্ড করছেন।",
+   "pt-BR": "Tudo fica no seu Mac. Avise as pessoas da chamada que você está gravando.",
+   "ru": "Всё остаётся на Mac. Предупредите участников звонка, что ведёте запись.",
+   "id": "Semuanya tetap di Mac-mu. Beri tahu orang di panggilan bahwa kamu merekam."
+  },
   "Exchange": {
    "zh-Hans": "交易所",
    "hi": "एक्सचेंज",
@@ -1123,6 +1673,17 @@
    "pt-BR": "Explore todos os recursos sem chave de API ou Claude Code. Nada é gravado no disco.",
    "ru": "Изучи все функции без API-ключа и Claude Code. Ничего не записывается на диск.",
    "id": "Jelajahi semua fitur tanpa kunci API atau Claude Code. Tidak ada yang ditulis ke disk."
+  },
+  "Export as Markdown…": {
+   "zh-Hans": "导出为 Markdown…",
+   "hi": "Markdown में एक्सपोर्ट करें…",
+   "es": "Exportar en Markdown…",
+   "ar": "تصدير بصيغة Markdown…",
+   "fr": "Exporter en Markdown…",
+   "bn": "Markdown হিসেবে এক্সপোর্ট…",
+   "pt-BR": "Exportar em Markdown…",
+   "ru": "Экспортировать в Markdown…",
+   "id": "Ekspor sebagai Markdown…"
   },
   "FILES": {
    "zh-Hans": "文件",
@@ -1168,6 +1729,17 @@
    "ru": "Получает",
    "id": "Mengambil"
   },
+  "Flow dictation": {
+   "zh-Hans": "Flow 听写",
+   "hi": "Flow डिक्टेशन",
+   "es": "Dictado Flow",
+   "ar": "إملاء Flow",
+   "fr": "Dictée Flow",
+   "bn": "Flow ডিক্টেশন",
+   "pt-BR": "Ditado Flow",
+   "ru": "Диктовка Flow",
+   "id": "Dikte Flow"
+  },
   "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
    "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
    "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
@@ -1179,6 +1751,17 @@
    "ru": "Для более естественного голоса скачай голос Premium: Системные настройки → Универсальный доступ → Устная речь → Системный голос → Управлять голосами. По-английски: Ava — женский, Jamie — мужской (британский).",
    "id": "Untuk suara yang lebih alami, unduh suara Premium: Pengaturan Sistem → Aksesibilitas → Konten Lisan → Suara Sistem → Kelola Suara. Bahasa Inggris: Ava untuk wanita, Jamie untuk pria (Inggris)."
   },
+  "Forever": {
+   "zh-Hans": "永久",
+   "hi": "हमेशा",
+   "es": "Siempre",
+   "ar": "دائمًا",
+   "fr": "Toujours",
+   "bn": "সবসময়",
+   "pt-BR": "Sempre",
+   "ru": "Всегда",
+   "id": "Selamanya"
+  },
   "From Open-Meteo for this city, only when you ask.": {
    "zh-Hans": "仅在你询问时，从 Open-Meteo 获取该城市的天气。",
    "hi": "इस शहर के लिए Open-Meteo से, सिर्फ़ पूछने पर।",
@@ -1189,6 +1772,17 @@
    "pt-BR": "Do Open-Meteo para esta cidade, só quando você pergunta.",
    "ru": "Из Open-Meteo для этого города, только когда спрашиваешь.",
    "id": "Dari Open-Meteo untuk kota ini, hanya saat kamu bertanya."
+  },
+  "Full sentences and paragraphs, for mails.": {
+   "zh-Hans": "完整的句子和段落，适合邮件。",
+   "hi": "पूरे वाक्य और पैराग्राफ़, ईमेल के लिए।",
+   "es": "Frases completas y párrafos, para los correos.",
+   "ar": "جمل كاملة وفقرات، للرسائل.",
+   "fr": "Des phrases complètes et des paragraphes, pour les mails.",
+   "bn": "পূর্ণ বাক্য আর অনুচ্ছেদ, ইমেইলের জন্য।",
+   "pt-BR": "Frases completas e parágrafos, para e-mails.",
+   "ru": "Полные предложения и абзацы — для писем.",
+   "id": "Kalimat lengkap dan paragraf, untuk email."
   },
   "Gemini CLI hooks": {
    "zh-Hans": "Gemini CLI 钩子",
@@ -1322,6 +1916,50 @@
    "ru": "Разрешено",
    "id": "Diberikan"
   },
+  "Hands-free": {
+   "zh-Hans": "免手持",
+   "hi": "हैंड्स-फ़्री",
+   "es": "Manos libres",
+   "ar": "دون استخدام اليدين",
+   "fr": "Mains libres",
+   "bn": "হ্যান্ডস-ফ্রি",
+   "pt-BR": "Mãos livres",
+   "ru": "Без рук",
+   "id": "Tanpa tangan"
+  },
+  "Heard, e.g. cloud code": {
+   "zh-Hans": "听到的，例如 cloud code",
+   "hi": "सुना गया, जैसे cloud code",
+   "es": "Oído, p. ej. cloud code",
+   "ar": "المسموع، مثل cloud code",
+   "fr": "Entendu, ex. cloud code",
+   "bn": "যা শোনা গেছে, যেমন cloud code",
+   "pt-BR": "Ouvido, ex. cloud code",
+   "ru": "Услышано, напр. cloud code",
+   "id": "Terdengar, mis. cloud code"
+  },
+  "Hello": {
+   "zh-Hans": "你好",
+   "hi": "नमस्ते",
+   "es": "Hola",
+   "ar": "مرحبًا",
+   "fr": "Salut",
+   "bn": "হ্যালো",
+   "pt-BR": "Olá",
+   "ru": "Привет",
+   "id": "Halo"
+  },
+  "Hello {0}": {
+   "zh-Hans": "你好，{0}",
+   "hi": "नमस्ते {0}",
+   "es": "Hola, {0}",
+   "ar": "مرحبًا {0}",
+   "fr": "Salut {0}",
+   "bn": "হ্যালো {0}",
+   "pt-BR": "Olá, {0}",
+   "ru": "Привет, {0}",
+   "id": "Halo, {0}"
+  },
   "Hermes Agent": {
    "zh-Hans": "Hermes Agent",
    "hi": "Hermes Agent",
@@ -1365,6 +2003,72 @@
    "pt-BR": "Ocultar nomes de projetos em imagens compartilhadas",
    "ru": "Скрывать названия проектов в изображениях",
    "id": "Sembunyikan nama proyek di gambar yang dibagikan"
+  },
+  "History": {
+   "zh-Hans": "历史记录",
+   "hi": "इतिहास",
+   "es": "Historial",
+   "ar": "السجل",
+   "fr": "Historique",
+   "bn": "ইতিহাস",
+   "pt-BR": "Histórico",
+   "ru": "История",
+   "id": "Riwayat"
+  },
+  "Hold a key to dictate anywhere": {
+   "zh-Hans": "按住一个键，在任何地方听写",
+   "hi": "कहीं भी बोलकर लिखने के लिए एक कुंजी दबाए रखें",
+   "es": "Mantén una tecla para dictar en cualquier lugar",
+   "ar": "اضغط مطولًا على مفتاح للإملاء في أي مكان",
+   "fr": "Maintenir une touche pour dicter partout",
+   "bn": "যেকোনো জায়গায় ডিক্টেট করতে একটি কী চেপে ধরুন",
+   "pt-BR": "Segure uma tecla para ditar em qualquer lugar",
+   "ru": "Удерживайте клавишу, чтобы диктовать где угодно",
+   "id": "Tahan satu tombol untuk mendikte di mana saja"
+  },
+  "Hold to dictate": {
+   "zh-Hans": "按住听写",
+   "hi": "डिक्टेट करने के लिए दबाए रखें",
+   "es": "Mantener para dictar",
+   "ar": "اضغط مطولًا للإملاء",
+   "fr": "Maintenir pour dicter",
+   "bn": "ডিক্টেট করতে চেপে ধরুন",
+   "pt-BR": "Segurar para ditar",
+   "ru": "Удерживать для диктовки",
+   "id": "Tahan untuk dikte"
+  },
+  "Hold {0} anywhere, speak, let go: it's pasted.": {
+   "zh-Hans": "在任何地方按住 {0}，说话，松开：文字就粘贴好了。",
+   "hi": "कहीं भी {0} दबाए रखें, बोलें, छोड़ दें: टेक्स्ट चिपक जाता है।",
+   "es": "Mantén {0} en cualquier sitio, habla y suelta: queda pegado.",
+   "ar": "اضغط مطولًا على {0} في أي مكان، تحدّث، ثم اترك: يُلصق النص.",
+   "fr": "Maintiens {0} n'importe où, parle, relâche : c'est collé.",
+   "bn": "যেকোনো জায়গায় {0} চেপে ধরুন, বলুন, ছেড়ে দিন: পেস্ট হয়ে যাবে।",
+   "pt-BR": "Segure {0} em qualquer lugar, fale e solte: está colado.",
+   "ru": "Удерживайте {0} где угодно, говорите, отпустите — текст вставлен.",
+   "id": "Tahan {0} di mana saja, bicara, lepas: langsung ditempel."
+  },
+  "Hold {0} in any app, speak, let go: your words are pasted where you type.": {
+   "zh-Hans": "在任何 App 中按住 {0}，说话，松开：你的话会粘贴到你正在输入的位置。",
+   "hi": "किसी भी ऐप में {0} दबाए रखें, बोलें, छोड़ दें: आपके शब्द वहीं चिपकते हैं जहाँ आप टाइप करते हैं।",
+   "es": "Mantén {0} en cualquier app, habla y suelta: tus palabras se pegan donde escribes.",
+   "ar": "اضغط مطولًا على {0} في أي تطبيق، تحدّث، ثم اترك: تُلصق كلماتك حيث تكتب.",
+   "fr": "Maintiens {0} dans n'importe quelle app, parle, relâche : tes mots sont collés là où tu écris.",
+   "bn": "যেকোনো অ্যাপে {0} চেপে ধরুন, বলুন, ছেড়ে দিন: আপনি যেখানে লেখেন সেখানে কথা পেস্ট হবে।",
+   "pt-BR": "Segure {0} em qualquer app, fale e solte: suas palavras são coladas onde você digita.",
+   "ru": "Удерживайте {0} в любом приложении, говорите, отпустите — слова вставятся туда, где вы печатаете.",
+   "id": "Tahan {0} di aplikasi apa pun, bicara, lepas: kata-katamu ditempel di tempat kamu mengetik."
+  },
+  "Hold {0}, speak, let go: your words are pasted where you type. Tap it twice to keep listening hands-free, and once more to paste. Esc cancels.": {
+   "zh-Hans": "按住 {0}，说话，松开：你的话会粘贴到你正在输入的位置。连按两次可免手持听写，再按一次即粘贴。按 Esc 取消。",
+   "hi": "{0} दबाए रखें, बोलें, छोड़ दें: आपके शब्द वहीं चिपक जाते हैं जहाँ आप टाइप करते हैं। बिना हाथ लगाए बोलने के लिए दो बार टैप करें, और चिपकाने के लिए एक बार फिर। Esc रद्द करता है।",
+   "es": "Mantén {0}, habla y suelta: tus palabras se pegan donde escribes. Púlsala dos veces para dictar sin manos y otra vez para pegar. Esc cancela.",
+   "ar": "اضغط مطولًا على {0} وتحدث ثم اترك: تُلصق كلماتك حيث تكتب. اضغط مرتين للإملاء دون استخدام اليدين، ثم مرة أخرى للصق. Esc يلغي.",
+   "fr": "Maintiens {0}, parle, relâche : tes mots sont collés là où tu écris. Tape deux fois pour dicter sans les mains, puis une fois pour coller. Échap annule.",
+   "bn": "{0} চেপে ধরুন, বলুন, ছেড়ে দিন: আপনি যেখানে লেখেন সেখানে আপনার কথা পেস্ট হয়। হাত ছাড়া ডিক্টেট করতে দুবার ট্যাপ করুন, পেস্ট করতে আরেকবার। Esc বাতিল করে।",
+   "pt-BR": "Segure {0}, fale e solte: suas palavras são coladas onde você digita. Toque duas vezes para ditar sem as mãos e mais uma vez para colar. Esc cancela.",
+   "ru": "Удерживайте {0}, говорите, отпустите — слова вставятся туда, где вы печатаете. Нажмите дважды, чтобы диктовать без рук, и ещё раз, чтобы вставить. Esc отменяет.",
+   "id": "Tahan {0}, bicara, lalu lepas: kata-katamu ditempel di tempat kamu mengetik. Ketuk dua kali untuk mendikte tanpa tangan, lalu sekali lagi untuk menempel. Esc membatalkan."
   },
   "Hooks installed": {
    "zh-Hans": "Hooks 已安装",
@@ -1542,6 +2246,17 @@
    "ru": "Установить ретранслятор",
    "id": "Pasang relay"
   },
+  "Installed": {
+   "zh-Hans": "已安装",
+   "hi": "इंस्टॉल है",
+   "es": "Instalado",
+   "ar": "مثبّت",
+   "fr": "Installé",
+   "bn": "ইনস্টল করা",
+   "pt-BR": "Instalado",
+   "ru": "Установлен",
+   "id": "Terpasang"
+  },
   "Integrations": {
    "zh-Hans": "集成",
    "hi": "एकीकरण",
@@ -1575,6 +2290,28 @@
    "ru": "Хранить историю сессий",
    "id": "Simpan riwayat sesi kode saya"
   },
+  "Keep the history": {
+   "zh-Hans": "保留历史记录",
+   "hi": "इतिहास रखें",
+   "es": "Guardar el historial",
+   "ar": "الاحتفاظ بالسجل",
+   "fr": "Garder l'historique",
+   "bn": "ইতিহাস রাখুন",
+   "pt-BR": "Guardar o histórico",
+   "ru": "Хранить историю",
+   "id": "Simpan riwayat"
+  },
+  "Key": {
+   "zh-Hans": "按键",
+   "hi": "कुंजी",
+   "es": "Tecla",
+   "ar": "المفتاح",
+   "fr": "Touche",
+   "bn": "কী",
+   "pt-BR": "Tecla",
+   "ru": "Клавиша",
+   "id": "Tombol"
+  },
   "Key configured · {model}": {
    "zh-Hans": "密钥已配置 · {model}",
    "hi": "की कॉन्फ़िगर हुई · {model}",
@@ -1597,6 +2334,17 @@
    "ru": "Ключ не настроен",
    "id": "Kunci belum dikonfigurasi"
   },
+  "Key points": {
+   "zh-Hans": "要点",
+   "hi": "मुख्य बातें",
+   "es": "Puntos clave",
+   "ar": "النقاط الرئيسية",
+   "fr": "Points clés",
+   "bn": "মূল বিষয়",
+   "pt-BR": "Pontos-chave",
+   "ru": "Главное",
+   "id": "Poin penting"
+  },
   "Key saved in Keychain": {
    "zh-Hans": "密钥已存入钥匙串",
    "hi": "कुंजी कीचेन में सहेजी गई",
@@ -1607,6 +2355,17 @@
    "pt-BR": "Chave salva nas Chaves",
    "ru": "Ключ сохранён в Связке ключей",
    "id": "Kunci tersimpan di Keychain"
+  },
+  "Keys": {
+   "zh-Hans": "按键",
+   "hi": "कुंजियाँ",
+   "es": "Teclas",
+   "ar": "المفاتيح",
+   "fr": "Touches",
+   "bn": "কী",
+   "pt-BR": "Teclas",
+   "ru": "Клавиши",
+   "id": "Tombol"
   },
   "LM Studio disconnected.": {
    "zh-Hans": "LM Studio 已断开连接。",
@@ -1630,6 +2389,17 @@
    "ru": "Язык",
    "id": "Bahasa"
   },
+  "Last dictation pasted": {
+   "zh-Hans": "已粘贴上一次听写",
+   "hi": "पिछला डिक्टेशन चिपकाया गया",
+   "es": "Último dictado pegado",
+   "ar": "تم لصق آخر إملاء",
+   "fr": "Dernière dictée collée",
+   "bn": "শেষ ডিক্টেশন পেস্ট হয়েছে",
+   "pt-BR": "Último ditado colado",
+   "ru": "Последняя диктовка вставлена",
+   "id": "Dikte terakhir ditempel"
+  },
   "Launch at Mac startup": {
    "zh-Hans": "在 Mac 启动时自动启动",
    "hi": "Mac स्टार्टअप पर लॉन्च करें",
@@ -1640,6 +2410,17 @@
    "pt-BR": "Iniciar ao ligar o Mac",
    "ru": "Запускать при старте Mac",
    "id": "Jalankan saat Mac startup"
+  },
+  "Left": {
+   "zh-Hans": "左侧",
+   "hi": "बाएँ",
+   "es": "Izquierda",
+   "ar": "يسار",
+   "fr": "À gauche",
+   "bn": "বাঁয়ে",
+   "pt-BR": "Esquerda",
+   "ru": "Слева",
+   "id": "Kiri"
   },
   "Let my iPhone send instructions to Claude Code": {
    "zh-Hans": "允许我的 iPhone 向 Claude Code 发送指令",
@@ -1673,6 +2454,17 @@
    "pt-BR": "Lista",
    "ru": "Перечисляет",
    "id": "Daftar"
+  },
+  "Live": {
+   "zh-Hans": "实时",
+   "hi": "लाइव",
+   "es": "En directo",
+   "ar": "مباشر",
+   "fr": "En direct",
+   "bn": "লাইভ",
+   "pt-BR": "Ao vivo",
+   "ru": "В реальном времени",
+   "id": "Langsung"
   },
   "Loading models…": {
    "zh-Hans": "正在加载模型…",
@@ -1839,6 +2631,17 @@
    "ru": "Отметить как прочитанное",
    "id": "Tandai sudah dibaca"
   },
+  "Me": {
+   "zh-Hans": "我",
+   "hi": "मैं",
+   "es": "Yo",
+   "ar": "أنا",
+   "fr": "Moi",
+   "bn": "আমি",
+   "pt-BR": "Eu",
+   "ru": "Я",
+   "id": "Saya"
+  },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
    "hi": "माइक्रोफ़ोन अनुपलब्ध",
@@ -1883,6 +2686,17 @@
    "ru": "Mochi на рабочем столе вкл / выкл",
    "id": "Mochi di desktop ya / tidak"
   },
+  "Mochi, his sounds and how the notch behaves.": {
+   "zh-Hans": "Mochi、它的声音和刘海的行为。",
+   "hi": "मोची, उसकी आवाज़ें और नॉच का व्यवहार।",
+   "es": "Mochi, sus sonidos y cómo se comporta el notch.",
+   "ar": "موتشي وأصواته وسلوك النوتش.",
+   "fr": "Mochi, ses sons et le comportement du notch.",
+   "bn": "মোচি, তার শব্দ আর নচের আচরণ।",
+   "pt-BR": "O Mochi, seus sons e o comportamento do notch.",
+   "ru": "Мочи, его звуки и поведение чёлки.",
+   "id": "Mochi, suaranya, dan perilaku notch."
+  },
   "Model": {
    "zh-Hans": "模型",
    "hi": "मॉडल",
@@ -1904,6 +2718,17 @@
    "pt-BR": "ID do modelo (ex.: claude-sonnet-4-6)",
    "ru": "ID модели (напр. claude-sonnet-4-6)",
    "id": "ID model (mis. claude-sonnet-4-6)"
+  },
+  "Month": {
+   "zh-Hans": "月",
+   "hi": "महीना",
+   "es": "Mes",
+   "ar": "شهر",
+   "fr": "Mois",
+   "bn": "মাস",
+   "pt-BR": "Mês",
+   "ru": "Месяц",
+   "id": "Bulan"
   },
   "Move Mochi to my iPhone's Dynamic Island when my Mac is locked": {
    "zh-Hans": "Mac 锁定时将 Mochi 移至我 iPhone 的灵动岛",
@@ -1949,6 +2774,39 @@
    "ru": "Мои PR",
    "id": "PR saya"
   },
+  "Name": {
+   "zh-Hans": "名字",
+   "hi": "नाम",
+   "es": "Nombre",
+   "ar": "الاسم",
+   "fr": "Nom",
+   "bn": "নাম",
+   "pt-BR": "Nome",
+   "ru": "Имя",
+   "id": "Nama"
+  },
+  "Names and words Coucou must always spell right.": {
+   "zh-Hans": "Coucou 必须始终写对的名字和词语。",
+   "hi": "नाम और शब्द जिन्हें Coucou को हमेशा सही लिखना चाहिए।",
+   "es": "Los nombres y palabras que Coucou siempre debe escribir bien.",
+   "ar": "الأسماء والكلمات التي يجب أن يكتبها Coucou دائمًا بشكل صحيح.",
+   "fr": "Les noms et les mots que Coucou doit toujours bien écrire.",
+   "bn": "যে নাম আর শব্দ Coucou-কে সবসময় ঠিক লিখতে হবে।",
+   "pt-BR": "Os nomes e palavras que o Coucou deve sempre escrever certo.",
+   "ru": "Имена и слова, которые Coucou всегда должен писать правильно.",
+   "id": "Nama dan kata yang harus selalu ditulis benar oleh Coucou."
+  },
+  "Natural": {
+   "zh-Hans": "自然",
+   "hi": "स्वाभाविक",
+   "es": "Natural",
+   "ar": "طبيعي",
+   "fr": "Naturel",
+   "bn": "স্বাভাবিক",
+   "pt-BR": "Natural",
+   "ru": "Естественный",
+   "id": "Alami"
+  },
   "Navigate list items": {
    "zh-Hans": "在列表项中导航",
    "hi": "सूची आइटम नेविगेट करें",
@@ -1959,6 +2817,17 @@
    "pt-BR": "Navegar pelos itens da lista",
    "ru": "Навигация по элементам списка",
    "id": "Navigasi item daftar"
+  },
+  "Needs Apple silicon": {
+   "zh-Hans": "需要 Apple 芯片",
+   "hi": "Apple silicon चाहिए",
+   "es": "Requiere Apple silicon",
+   "ar": "يتطلب Apple silicon",
+   "fr": "Nécessite un Mac Apple silicon",
+   "bn": "Apple silicon দরকার",
+   "pt-BR": "Requer Apple silicon",
+   "ru": "Нужен Mac с Apple silicon",
+   "id": "Perlu Apple silicon"
   },
   "New conversation": {
    "zh-Hans": "新建对话",
@@ -1981,6 +2850,17 @@
    "pt-BR": "Novo email",
    "ru": "Новое письмо",
    "id": "Email baru"
+  },
+  "New snippet": {
+   "zh-Hans": "新片段",
+   "hi": "नया स्निपेट",
+   "es": "Nuevo fragmento",
+   "ar": "مقتطف جديد",
+   "fr": "Nouveau snippet",
+   "bn": "নতুন স্নিপেট",
+   "pt-BR": "Novo trecho",
+   "ru": "Новый шаблон",
+   "id": "Cuplikan baru"
   },
   "Next": {
    "zh-Hans": "下一步",
@@ -2070,6 +2950,17 @@
    "ru": "Нет вкладов",
    "id": "Tidak ada kontribusi"
   },
+  "No dictation matches.": {
+   "zh-Hans": "没有匹配的听写。",
+   "hi": "कोई डिक्टेशन मेल नहीं खाता।",
+   "es": "Ningún dictado coincide.",
+   "ar": "لا يوجد إملاء مطابق.",
+   "fr": "Aucune dictée ne correspond.",
+   "bn": "কোনো ডিক্টেশন মেলেনি।",
+   "pt-BR": "Nenhum ditado corresponde.",
+   "ru": "Ничего не найдено.",
+   "id": "Tidak ada dikte yang cocok."
+  },
   "No error details available.": {
    "zh-Hans": "无错误详情。",
    "hi": "कोई त्रुटि विवरण उपलब्ध नहीं है।",
@@ -2114,6 +3005,28 @@
    "ru": "Нет музыкального приложения",
    "id": "Tidak ada app musik"
   },
+  "No other open app": {
+   "zh-Hans": "没有其他打开的 App",
+   "hi": "कोई और ऐप खुला नहीं",
+   "es": "No hay otra app abierta",
+   "ar": "لا يوجد تطبيق مفتوح آخر",
+   "fr": "Aucune autre app ouverte",
+   "bn": "আর কোনো অ্যাপ খোলা নেই",
+   "pt-BR": "Nenhum outro app aberto",
+   "ru": "Других открытых приложений нет",
+   "id": "Tidak ada aplikasi lain yang terbuka"
+  },
+  "No snippet yet. Your booking link, your signature, your address: say a few words, get the whole text.": {
+   "zh-Hans": "还没有片段。你的预约链接、签名、地址：说几个字，就能得到整段文字。",
+   "hi": "अभी कोई स्निपेट नहीं। आपका बुकिंग लिंक, हस्ताक्षर, पता: कुछ शब्द बोलें, पूरा टेक्स्ट पाएँ।",
+   "es": "Aún no hay fragmentos. Tu enlace de citas, tu firma, tu dirección: di unas palabras y obtén el texto entero.",
+   "ar": "لا مقتطفات بعد. رابط حجز المواعيد، توقيعك، عنوانك: قل بضع كلمات واحصل على النص كاملًا.",
+   "fr": "Pas encore de snippet. Ton lien de rendez-vous, ta signature, ton adresse : dis quelques mots, reçois le texte entier.",
+   "bn": "এখনো কোনো স্নিপেট নেই। আপনার বুকিং লিংক, স্বাক্ষর, ঠিকানা: কয়েকটি শব্দ বলুন, পুরো লেখা পান।",
+   "pt-BR": "Nenhum trecho ainda. Seu link de agendamento, sua assinatura, seu endereço: diga poucas palavras e receba o texto inteiro.",
+   "ru": "Шаблонов пока нет. Ссылка для записи, подпись, адрес: скажите пару слов — получите весь текст.",
+   "id": "Belum ada cuplikan. Tautan jadwalmu, tanda tanganmu, alamatmu: ucapkan beberapa kata, dapatkan teks utuhnya."
+  },
   "No speech recognition model available on this device. Install one in System Settings → Keyboard → Dictation.": {
    "zh-Hans": "此设备上没有可用的语音识别模型。在系统设置 → 键盘 → 听写中安装一个。",
    "hi": "इस डिवाइस पर कोई वाक् पहचान मॉडल उपलब्ध नहीं है। सिस्टम सेटिंग्स → कीबोर्ड → डिक्टेशन में एक इंस्टॉल करें।",
@@ -2124,6 +3037,61 @@
    "pt-BR": "Nenhum modelo de reconhecimento de fala disponível neste dispositivo. Instale um em Ajustes do Sistema → Teclado → Ditado.",
    "ru": "На этом устройстве нет доступной модели распознавания речи. Установите её в Системных настройках → Клавиатура → Диктовка.",
    "id": "Tidak ada model pengenalan ucapan yang tersedia di perangkat ini. Instal satu di Pengaturan Sistem → Keyboard → Dikte."
+  },
+  "No summary": {
+   "zh-Hans": "不生成摘要",
+   "hi": "कोई सारांश नहीं",
+   "es": "Sin resumen",
+   "ar": "بدون ملخص",
+   "fr": "Pas de résumé",
+   "bn": "সারাংশ নয়",
+   "pt-BR": "Sem resumo",
+   "ru": "Без итога",
+   "id": "Tanpa ringkasan"
+  },
+  "No summary yet.": {
+   "zh-Hans": "还没有摘要。",
+   "hi": "अभी कोई सारांश नहीं।",
+   "es": "Aún no hay resumen.",
+   "ar": "لا ملخص بعد.",
+   "fr": "Pas encore de résumé.",
+   "bn": "এখনো কোনো সারাংশ নেই।",
+   "pt-BR": "Ainda sem resumo.",
+   "ru": "Итога пока нет.",
+   "id": "Belum ada ringkasan."
+  },
+  "No text field here? Your words are copied: click where you want them and press ⌘V.": {
+   "zh-Hans": "这里没有文本框？你的话已拷贝：点按想要的位置并按 ⌘V。",
+   "hi": "यहाँ कोई टेक्स्ट फ़ील्ड नहीं? आपके शब्द कॉपी हो गए हैं: जहाँ चाहें क्लिक करें और ⌘V दबाएँ।",
+   "es": "¿No hay campo de texto aquí? Tus palabras están copiadas: haz clic donde quieras y pulsa ⌘V.",
+   "ar": "لا يوجد حقل نص هنا؟ كلماتك منسوخة: انقر حيث تريد واضغط ⌘V.",
+   "fr": "Pas de champ de texte ici ? Tes mots sont copiés : clique où tu veux et fais ⌘V.",
+   "bn": "এখানে কোনো টেক্সট ফিল্ড নেই? আপনার কথা কপি হয়েছে: যেখানে চান ক্লিক করে ⌘V চাপুন।",
+   "pt-BR": "Sem campo de texto aqui? Suas palavras foram copiadas: clique onde quiser e pressione ⌘V.",
+   "ru": "Здесь нет текстового поля? Слова скопированы: щёлкните, куда нужно, и нажмите ⌘V.",
+   "id": "Tidak ada kolom teks di sini? Kata-katamu sudah disalin: klik di tempat yang kamu mau lalu tekan ⌘V."
+  },
+  "No word yet. Add the names, brands and jargon Coucou gets wrong.": {
+   "zh-Hans": "还没有词语。添加 Coucou 写错的名字、品牌和术语。",
+   "hi": "अभी कोई शब्द नहीं। वे नाम, ब्रांड और तकनीकी शब्द जोड़ें जिन्हें Coucou गलत लिखता है।",
+   "es": "Aún no hay palabras. Añade los nombres, marcas y tecnicismos que Coucou escribe mal.",
+   "ar": "لا كلمات بعد. أضف الأسماء والعلامات والمصطلحات التي يخطئ Coucou في كتابتها.",
+   "fr": "Aucun mot pour l'instant. Ajoute les noms, marques et mots techniques que Coucou écrit mal.",
+   "bn": "এখনো কোনো শব্দ নেই। যে নাম, ব্র্যান্ড আর পরিভাষা Coucou ভুল লেখে সেগুলো যোগ করুন।",
+   "pt-BR": "Nenhuma palavra ainda. Adicione nomes, marcas e termos técnicos que o Coucou escreve errado.",
+   "ru": "Слов пока нет. Добавьте имена, бренды и термины, которые Coucou пишет неправильно.",
+   "id": "Belum ada kata. Tambahkan nama, merek, dan istilah yang sering salah ditulis Coucou."
+  },
+  "Nobody was heard in this recording.": {
+   "zh-Hans": "这段录音中没有听到任何人。",
+   "hi": "इस रिकॉर्डिंग में कोई सुनाई नहीं दिया।",
+   "es": "No se oyó a nadie en esta grabación.",
+   "ar": "لم يُسمع أحد في هذا التسجيل.",
+   "fr": "Personne n'a été entendu dans cet enregistrement.",
+   "bn": "এই রেকর্ডিংয়ে কাউকে শোনা যায়নি।",
+   "pt-BR": "Ninguém foi ouvido nesta gravação.",
+   "ru": "В этой записи никого не слышно.",
+   "id": "Tidak ada yang terdengar di rekaman ini."
   },
   "Not active": {
    "zh-Hans": "未激活",
@@ -2224,6 +3192,17 @@
    "ru": "Не запрошено",
    "id": "Belum diminta"
   },
+  "Notch": {
+   "zh-Hans": "刘海",
+   "hi": "नॉच",
+   "es": "Notch",
+   "ar": "النوتش",
+   "fr": "Notch",
+   "bn": "নচ",
+   "pt-BR": "Notch",
+   "ru": "Notch",
+   "id": "Notch"
+  },
   "Notch shortcuts — active when the notch is in front": {
    "zh-Hans": "岛快捷键 — 岛获得焦点时有效",
    "hi": "आइलैंड शॉर्टकट — आइलैंड फोकस में होने पर सक्रिय",
@@ -2245,6 +3224,28 @@
    "pt-BR": "Notebook",
    "ru": "Notebook",
    "id": "Notebook"
+  },
+  "Notes ready: {0}": {
+   "zh-Hans": "笔记已就绪：{0}",
+   "hi": "नोट्स तैयार: {0}",
+   "es": "Notas listas: {0}",
+   "ar": "الملاحظات جاهزة: {0}",
+   "fr": "Notes prêtes : {0}",
+   "bn": "নোট তৈরি: {0}",
+   "pt-BR": "Notas prontas: {0}",
+   "ru": "Заметки готовы: {0}",
+   "id": "Catatan siap: {0}"
+  },
+  "Notetaker": {
+   "zh-Hans": "会议笔记",
+   "hi": "Notetaker",
+   "es": "Notetaker",
+   "ar": "Notetaker",
+   "fr": "Notetaker",
+   "bn": "Notetaker",
+   "pt-BR": "Notetaker",
+   "ru": "Notetaker",
+   "id": "Notetaker"
   },
   "Nothing here": {
    "zh-Hans": "这里没有内容",
@@ -2301,6 +3302,39 @@
    "ru": "Ollama отключён.",
    "id": "Ollama terputus."
   },
+  "On-device when your Mac supports it, nothing to download.": {
+   "zh-Hans": "Mac 支持时在设备上完成，无需下载。",
+   "hi": "Mac समर्थन करे तो डिवाइस पर ही, कुछ डाउनलोड नहीं करना।",
+   "es": "En el propio equipo cuando tu Mac lo admite, sin descargas.",
+   "ar": "على الجهاز نفسه عندما يدعم Mac ذلك، بلا تنزيل.",
+   "fr": "Sur l'appareil quand ton Mac le permet, rien à télécharger.",
+   "bn": "Mac সমর্থন করলে ডিভাইসেই, কিছু ডাউনলোড করতে হয় না।",
+   "pt-BR": "No próprio aparelho quando o Mac permite, nada para baixar.",
+   "ru": "На устройстве, если Mac это поддерживает, ничего не нужно скачивать.",
+   "id": "Langsung di perangkat bila Mac mendukung, tanpa unduhan."
+  },
+  "One download, then offline": {
+   "zh-Hans": "下载一次，之后离线",
+   "hi": "एक डाउनलोड, फिर ऑफ़लाइन",
+   "es": "Una descarga y luego sin conexión",
+   "ar": "تنزيل واحد ثم بلا إنترنت",
+   "fr": "Un téléchargement, puis hors ligne",
+   "bn": "একবার ডাউনলোড, তারপর অফলাইন",
+   "pt-BR": "Um download, depois offline",
+   "ru": "Одна загрузка — и без сети",
+   "id": "Sekali unduh, lalu luring"
+  },
+  "One permission left": {
+   "zh-Hans": "还差一项权限",
+   "hi": "बस एक अनुमति बाकी",
+   "es": "Falta un permiso",
+   "ar": "بقي إذن واحد",
+   "fr": "Il reste une autorisation",
+   "bn": "আর একটি অনুমতি বাকি",
+   "pt-BR": "Falta uma permissão",
+   "ru": "Осталось одно разрешение",
+   "id": "Tinggal satu izin"
+  },
   "Only http:// and https:// URLs are accepted.": {
    "zh-Hans": "仅支持 http:// 和 https:// URL。",
    "hi": "केवल http:// और https:// URL समर्थित हैं।",
@@ -2311,6 +3345,17 @@
    "pt-BR": "Apenas URLs com http:// e https:// são suportadas.",
    "ru": "Поддерживаются только URL с http:// и https://.",
    "id": "Hanya URL http:// dan https:// yang didukung."
+  },
+  "Only the dictionary and the snippets: for code, terminals and AI chats.": {
+   "zh-Hans": "只用词典和片段：适合代码、终端和 AI 聊天。",
+   "hi": "सिर्फ़ शब्दकोश और स्निपेट: कोड, टर्मिनल और AI चैट के लिए।",
+   "es": "Solo el diccionario y los fragmentos: para código, terminales y chats de IA.",
+   "ar": "القاموس والمقتطفات فقط: للبرمجة والطرفيات ومحادثات الذكاء الاصطناعي.",
+   "fr": "Seulement le dictionnaire et les snippets : pour le code, les terminaux et les chats IA.",
+   "bn": "শুধু অভিধান আর স্নিপেট: কোড, টার্মিনাল আর AI চ্যাটের জন্য।",
+   "pt-BR": "Só o dicionário e os trechos: para código, terminais e chats de IA.",
+   "ru": "Только словарь и шаблоны: для кода, терминалов и чатов с ИИ.",
+   "id": "Hanya kamus dan cuplikan: untuk kode, terminal, dan chat AI."
   },
   "Only: {0}": {
    "zh-Hans": "仅：{0}",
@@ -2400,6 +3445,28 @@
    "ru": "Открыть Coucou",
    "id": "Buka Coucou"
   },
+  "Open Coucou Flow": {
+   "zh-Hans": "打开 Coucou Flow",
+   "hi": "Coucou Flow खोलें",
+   "es": "Abrir Coucou Flow",
+   "ar": "فتح Coucou Flow",
+   "fr": "Ouvrir Coucou Flow",
+   "bn": "Coucou Flow খুলুন",
+   "pt-BR": "Abrir o Coucou Flow",
+   "ru": "Открыть Coucou Flow",
+   "id": "Buka Coucou Flow"
+  },
+  "Open Coucou like any app; a click on its icon brings this window back. Off, Coucou lives in the menu bar only.": {
+   "zh-Hans": "像其他 App 一样打开 Coucou；点按其图标即可回到此窗口。关闭后，Coucou 只在菜单栏中。",
+   "hi": "Coucou को किसी भी ऐप की तरह खोलें; इसके आइकन पर क्लिक करने से यह विंडो वापस आती है। बंद होने पर Coucou सिर्फ़ मेनू बार में रहता है।",
+   "es": "Abre Coucou como cualquier app; un clic en su icono trae esta ventana. Desactivado, Coucou solo está en la barra de menús.",
+   "ar": "افتح Coucou كأي تطبيق؛ والنقر على أيقونته يعيد هذه النافذة. عند الإيقاف يبقى Coucou في شريط القوائم فقط.",
+   "fr": "Ouvre Coucou comme n'importe quelle app ; un clic sur son icône ramène cette fenêtre. Désactivé, Coucou vit seulement dans la barre des menus.",
+   "bn": "যেকোনো অ্যাপের মতো Coucou খুলুন; এর আইকনে ক্লিক করলে এই উইন্ডো ফিরে আসে। বন্ধ থাকলে Coucou শুধু মেনু বারে থাকে।",
+   "pt-BR": "Abra o Coucou como qualquer app; um clique no ícone traz esta janela de volta. Desligado, o Coucou fica só na barra de menus.",
+   "ru": "Открывайте Coucou как обычное приложение; щелчок по значку возвращает это окно. Если выключено, Coucou живёт только в строке меню.",
+   "id": "Buka Coucou seperti aplikasi lain; klik ikonnya untuk memunculkan jendela ini. Jika mati, Coucou hanya ada di bar menu."
+  },
   "Open Cursor": {
    "zh-Hans": "打开 Cursor",
    "hi": "Cursor खोलें",
@@ -2432,6 +3499,17 @@
    "pt-BR": "Abrir Music",
    "ru": "Открыть Music",
    "id": "Buka Music"
+  },
+  "Open Settings": {
+   "zh-Hans": "打开设置",
+   "hi": "सेटिंग्स खोलें",
+   "es": "Abrir Ajustes",
+   "ar": "فتح الإعدادات",
+   "fr": "Ouvrir les réglages",
+   "bn": "সেটিংস খুলুন",
+   "pt-BR": "Abrir Ajustes",
+   "ru": "Открыть настройки",
+   "id": "Buka Pengaturan"
   },
   "Open Settings…": {
    "zh-Hans": "打开设置…",
@@ -2554,6 +3632,28 @@
    "ru": "Открыть терминал",
    "id": "Buka terminal"
   },
+  "Open the Notetaker →": {
+   "zh-Hans": "打开会议笔记 →",
+   "hi": "Notetaker खोलें →",
+   "es": "Abrir el Notetaker →",
+   "ar": "فتح Notetaker ←",
+   "fr": "Ouvrir le Notetaker →",
+   "bn": "Notetaker খুলুন →",
+   "pt-BR": "Abrir o Notetaker →",
+   "ru": "Открыть Notetaker →",
+   "id": "Buka Notetaker →"
+  },
+  "Open this window when you open Coucou": {
+   "zh-Hans": "打开 Coucou 时打开此窗口",
+   "hi": "Coucou खोलने पर यह विंडो खोलें",
+   "es": "Abrir esta ventana al abrir Coucou",
+   "ar": "فتح هذه النافذة عند فتح Coucou",
+   "fr": "Ouvrir cette fenêtre quand tu lances Coucou",
+   "bn": "Coucou খুললে এই উইন্ডো খুলুন",
+   "pt-BR": "Abrir esta janela ao abrir o Coucou",
+   "ru": "Открывать это окно при запуске Coucou",
+   "id": "Buka jendela ini saat membuka Coucou"
+  },
   "Open {name}": {
    "zh-Hans": "打开 {name}",
    "hi": "{name} खोलें",
@@ -2598,6 +3698,28 @@
    "ru": "Открытие Apple Music…",
    "id": "Membuka Apple Music…"
   },
+  "Other apps": {
+   "zh-Hans": "其他 App",
+   "hi": "बाकी ऐप",
+   "es": "Las demás apps",
+   "ar": "التطبيقات الأخرى",
+   "fr": "Les autres apps",
+   "bn": "অন্যান্য অ্যাপ",
+   "pt-BR": "Os outros apps",
+   "ru": "Остальные приложения",
+   "id": "Aplikasi lain"
+  },
+  "Others": {
+   "zh-Hans": "其他人",
+   "hi": "बाकी लोग",
+   "es": "Los demás",
+   "ar": "الآخرون",
+   "fr": "Les autres",
+   "bn": "অন্যরা",
+   "pt-BR": "Os outros",
+   "ru": "Остальные",
+   "id": "Yang lain"
+  },
   "Other…": {
    "zh-Hans": "其他…",
    "hi": "अन्य…",
@@ -2619,6 +3741,39 @@
    "pt-BR": "Visão geral",
    "ru": "Обзор",
    "id": "Ikhtisar"
+  },
+  "Parakeet, on your Mac": {
+   "zh-Hans": "Parakeet，在你的 Mac 上",
+   "hi": "Parakeet, आपके Mac पर",
+   "es": "Parakeet, en tu Mac",
+   "ar": "Parakeet على جهاز Mac",
+   "fr": "Parakeet, sur ton Mac",
+   "bn": "Parakeet, আপনার Mac-এ",
+   "pt-BR": "Parakeet, no seu Mac",
+   "ru": "Parakeet на вашем Mac",
+   "id": "Parakeet, di Mac-mu"
+  },
+  "Paste the last dictation again": {
+   "zh-Hans": "再次粘贴上一次听写",
+   "hi": "पिछला डिक्टेशन फिर से चिपकाएँ",
+   "es": "Volver a pegar el último dictado",
+   "ar": "إعادة لصق آخر إملاء",
+   "fr": "Recoller la dernière dictée",
+   "bn": "শেষ ডিক্টেশন আবার পেস্ট করুন",
+   "pt-BR": "Colar o último ditado de novo",
+   "ru": "Вставить последнюю диктовку снова",
+   "id": "Tempel lagi dikte terakhir"
+  },
+  "Paste · or press {0}": {
+   "zh-Hans": "粘贴 · 或按 {0}",
+   "hi": "चिपकाएँ · या {0} दबाएँ",
+   "es": "Pegar · o pulsa {0}",
+   "ar": "لصق · أو اضغط {0}",
+   "fr": "Coller · ou appuie sur {0}",
+   "bn": "পেস্ট · বা {0} চাপুন",
+   "pt-BR": "Colar · ou pressione {0}",
+   "ru": "Вставить · или нажмите {0}",
+   "id": "Tempel · atau tekan {0}"
   },
   "Pause": {
    "zh-Hans": "暂停",
@@ -2653,6 +3808,17 @@
    "ru": "Платежи",
    "id": "Pembayaran"
   },
+  "Permission": {
+   "zh-Hans": "权限",
+   "hi": "अनुमति",
+   "es": "Permiso",
+   "ar": "الإذن",
+   "fr": "Autorisation",
+   "bn": "অনুমতি",
+   "pt-BR": "Permissão",
+   "ru": "Разрешение",
+   "id": "Izin"
+  },
   "Permissions": {
    "zh-Hans": "权限",
    "hi": "अनुमतियाँ",
@@ -2663,6 +3829,17 @@
    "pt-BR": "Permissões",
    "ru": "Разрешения",
    "id": "Izin"
+  },
+  "Person {0}": {
+   "zh-Hans": "说话人 {0}",
+   "hi": "व्यक्ति {0}",
+   "es": "Persona {0}",
+   "ar": "الشخص {0}",
+   "fr": "Personne {0}",
+   "bn": "ব্যক্তি {0}",
+   "pt-BR": "Pessoa {0}",
+   "ru": "Участник {0}",
+   "id": "Orang {0}"
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -2763,6 +3940,17 @@
    "ru": "Плагин не установлен",
    "id": "Plugin tidak terpasang"
   },
+  "Polished": {
+   "zh-Hans": "正式",
+   "hi": "सजा हुआ",
+   "es": "Cuidado",
+   "ar": "مُتقَن",
+   "fr": "Soigné",
+   "bn": "পরিপাটি",
+   "pt-BR": "Caprichado",
+   "ru": "Аккуратный",
+   "id": "Rapi"
+  },
   "Previous": {
    "zh-Hans": "上一首",
    "hi": "पिछला",
@@ -2795,6 +3983,17 @@
    "pt-BR": "Faixa anterior",
    "ru": "Предыдущий трек",
    "id": "Lagu sebelumnya"
+  },
+  "Privacy": {
+   "zh-Hans": "隐私",
+   "hi": "गोपनीयता",
+   "es": "Privacidad",
+   "ar": "الخصوصية",
+   "fr": "Confidentialité",
+   "bn": "গোপনীয়তা",
+   "pt-BR": "Privacidade",
+   "ru": "Конфиденциальность",
+   "id": "Privasi"
   },
   "Projects": {
    "zh-Hans": "项目",
@@ -2840,6 +4039,17 @@
    "ru": "Читает",
    "id": "Membaca"
   },
+  "Ready · hold {0}": {
+   "zh-Hans": "就绪 · 按住 {0}",
+   "hi": "तैयार · {0} दबाए रखें",
+   "es": "Listo · mantén {0}",
+   "ar": "جاهز · اضغط مطولًا على {0}",
+   "fr": "Prête · maintiens {0}",
+   "bn": "প্রস্তুত · {0} চেপে ধরুন",
+   "pt-BR": "Pronto · segure {0}",
+   "ru": "Готово · удерживайте {0}",
+   "id": "Siap · tahan {0}"
+  },
   "Recent": {
    "zh-Hans": "最近",
    "hi": "हाल का",
@@ -2861,6 +4071,39 @@
    "pt-BR": "Frases ouvidas recentemente",
    "ru": "Недавно услышанные фразы",
    "id": "Kalimat yang baru didengar"
+  },
+  "Recognition": {
+   "zh-Hans": "识别",
+   "hi": "पहचान",
+   "es": "Reconocimiento",
+   "ar": "التعرّف",
+   "fr": "Reconnaissance",
+   "bn": "রিকগনিশন",
+   "pt-BR": "Reconhecimento",
+   "ru": "Распознавание",
+   "id": "Pengenalan"
+  },
+  "Record a call": {
+   "zh-Hans": "录制通话",
+   "hi": "कॉल रिकॉर्ड करें",
+   "es": "Grabar una llamada",
+   "ar": "تسجيل مكالمة",
+   "fr": "Enregistrer un call",
+   "bn": "কল রেকর্ড করুন",
+   "pt-BR": "Gravar uma chamada",
+   "ru": "Записать звонок",
+   "id": "Rekam panggilan"
+  },
+  "Recording…": {
+   "zh-Hans": "正在录制…",
+   "hi": "रिकॉर्ड हो रहा है…",
+   "es": "Grabando…",
+   "ar": "جارٍ التسجيل…",
+   "fr": "Enregistrement…",
+   "bn": "রেকর্ড হচ্ছে…",
+   "pt-BR": "Gravando…",
+   "ru": "Запись…",
+   "id": "Merekam…"
   },
   "Refresh": {
    "zh-Hans": "刷新",
@@ -2917,6 +4160,28 @@
    "ru": "Убрать из избранного",
    "id": "Hapus dari favorit"
   },
+  "Remove the models": {
+   "zh-Hans": "移除模型",
+   "hi": "मॉडल हटाएँ",
+   "es": "Eliminar los modelos",
+   "ar": "إزالة النماذج",
+   "fr": "Supprimer les modèles",
+   "bn": "মডেল মুছুন",
+   "pt-BR": "Remover os modelos",
+   "ru": "Удалить модели",
+   "id": "Hapus model"
+  },
+  "Removes the “um”, the repeats and the corrections you made while speaking, and fixes the punctuation.": {
+   "zh-Hans": "去掉“嗯”、重复和说话时的改口，并修正标点。",
+   "hi": "“अं”, दोहराव और बोलते समय किए गए सुधार हटाता है, और विराम चिह्न ठीक करता है।",
+   "es": "Quita los «eh», las repeticiones y las correcciones que haces al hablar, y arregla la puntuación.",
+   "ar": "يحذف «أممم» والتكرار والتصحيحات التي تقولها أثناء الكلام، ويصلح علامات الترقيم.",
+   "fr": "Enlève les « euh », les répétitions et les corrections faites en parlant, et corrige la ponctuation.",
+   "bn": "“উম”, পুনরাবৃত্তি আর বলার সময় করা সংশোধন সরিয়ে দেয় এবং যতিচিহ্ন ঠিক করে।",
+   "pt-BR": "Tira os “é…”, as repetições e as correções feitas ao falar, e acerta a pontuação.",
+   "ru": "Убирает «э-э», повторы и поправки, сделанные на ходу, и исправляет пунктуацию.",
+   "id": "Menghapus “eh”, pengulangan dan koreksi saat bicara, lalu merapikan tanda baca."
+  },
   "Repeat all": {
    "zh-Hans": "全部重复",
    "hi": "सभी दोहराएँ",
@@ -2960,6 +4225,17 @@
    "pt-BR": "Repetir uma",
    "ru": "Повторять один",
    "id": "Ulangi satu"
+  },
+  "Replacements": {
+   "zh-Hans": "替换",
+   "hi": "बदलाव",
+   "es": "Sustituciones",
+   "ar": "الاستبدالات",
+   "fr": "Remplacements",
+   "bn": "প্রতিস্থাপন",
+   "pt-BR": "Substituições",
+   "ru": "Замены",
+   "id": "Penggantian"
   },
   "Reply": {
    "zh-Hans": "回复",
@@ -3071,6 +4347,28 @@
    "ru": "Просмотри содержимое ниже перед подтверждением.",
    "id": "Tinjau konten di bawah sebelum mengonfirmasi."
   },
+  "Right": {
+   "zh-Hans": "右侧",
+   "hi": "दाएँ",
+   "es": "Derecha",
+   "ar": "يمين",
+   "fr": "À droite",
+   "bn": "ডানে",
+   "pt-BR": "Direita",
+   "ru": "Справа",
+   "id": "Kanan"
+  },
+  "Right {0}": {
+   "zh-Hans": "右侧 {0}",
+   "hi": "दायाँ {0}",
+   "es": "{0} derecha",
+   "ar": "{0} الأيمن",
+   "fr": "{0} de droite",
+   "bn": "ডান {0}",
+   "pt-BR": "{0} da direita",
+   "ru": "Правая {0}",
+   "id": "{0} kanan"
+  },
   "Runs": {
    "zh-Hans": "执行",
    "hi": "चलाता है",
@@ -3126,6 +4424,17 @@
    "ru": "Сохранить…",
    "id": "Simpan…"
   },
+  "Say the trigger while dictating: Coucou pastes the whole text in its place.": {
+   "zh-Hans": "听写时说出触发语：Coucou 会把整段文字粘贴在它的位置。",
+   "hi": "डिक्टेट करते समय वाक्यांश बोलें: Coucou उसकी जगह पूरा टेक्स्ट चिपका देगा।",
+   "es": "Di la frase al dictar: Coucou pega el texto entero en su lugar.",
+   "ar": "قل العبارة أثناء الإملاء: يلصق Coucou النص كاملًا مكانها.",
+   "fr": "Dis la phrase en dictant : Coucou colle le texte entier à sa place.",
+   "bn": "ডিক্টেট করার সময় বাক্যাংশটি বলুন: Coucou তার জায়গায় পুরো লেখা পেস্ট করবে।",
+   "pt-BR": "Diga a frase ao ditar: o Coucou cola o texto inteiro no lugar dela.",
+   "ru": "Произнесите фразу во время диктовки — Coucou вставит вместо неё весь текст.",
+   "id": "Ucapkan pemicunya saat dikte: Coucou menempel teks utuhnya sebagai gantinya."
+  },
   "Say your command": {
    "zh-Hans": "说出您的命令",
    "hi": "अपना आदेश बोलें",
@@ -3148,6 +4457,17 @@
    "ru": "Расписание",
    "id": "Jadwal"
   },
+  "Search dictations": {
+   "zh-Hans": "搜索听写",
+   "hi": "डिक्टेशन खोजें",
+   "es": "Buscar dictados",
+   "ar": "البحث في الإملاءات",
+   "fr": "Chercher une dictée",
+   "bn": "ডিক্টেশন খুঁজুন",
+   "pt-BR": "Buscar ditados",
+   "ru": "Поиск по диктовкам",
+   "id": "Cari dikte"
+  },
   "Searches": {
    "zh-Hans": "搜索",
    "hi": "खोजता है",
@@ -3169,6 +4489,17 @@
    "pt-BR": "Pesquisa na web",
    "ru": "Ищет в сети",
    "id": "Mencari web"
+  },
+  "See": {
+   "zh-Hans": "查看",
+   "hi": "देखें",
+   "es": "Ver",
+   "ar": "عرض",
+   "fr": "Voir",
+   "bn": "দেখুন",
+   "pt-BR": "Ver",
+   "ru": "Открыть",
+   "id": "Lihat"
   },
   "Send": {
    "zh-Hans": "发送",
@@ -3236,6 +4567,17 @@
    "ru": "Сессия завершена",
    "id": "Sesi selesai"
   },
+  "Settings": {
+   "zh-Hans": "设置",
+   "hi": "सेटिंग्स",
+   "es": "Ajustes",
+   "ar": "الإعدادات",
+   "fr": "Réglages",
+   "bn": "সেটিংস",
+   "pt-BR": "Ajustes",
+   "ru": "Настройки",
+   "id": "Pengaturan"
+  },
   "Settings — Coucou": {
    "zh-Hans": "设置 — Coucou",
    "hi": "सेटिंग्स — Coucou",
@@ -3301,6 +4643,17 @@
    "pt-BR": "Atalhos",
    "ru": "Горячие клавиши",
    "id": "Pintasan"
+  },
+  "Show Coucou in the Dock": {
+   "zh-Hans": "在程序坞中显示 Coucou",
+   "hi": "Coucou को Dock में दिखाएँ",
+   "es": "Mostrar Coucou en el Dock",
+   "ar": "إظهار Coucou في Dock",
+   "fr": "Afficher Coucou dans le Dock",
+   "bn": "Dock-এ Coucou দেখান",
+   "pt-BR": "Mostrar o Coucou no Dock",
+   "ru": "Показывать Coucou в Dock",
+   "id": "Tampilkan Coucou di Dock"
   },
   "Show approval requests in the notch": {
    "zh-Hans": "在刘海中显示审批请求",
@@ -3379,6 +4732,17 @@
    "ru": "Перемешивание вкл.",
    "id": "Acak aktif"
   },
+  "Snippets": {
+   "zh-Hans": "片段",
+   "hi": "स्निपेट",
+   "es": "Fragmentos",
+   "ar": "المقتطفات",
+   "fr": "Snippets",
+   "bn": "স্নিপেট",
+   "pt-BR": "Trechos",
+   "ru": "Шаблоны",
+   "id": "Cuplikan"
+  },
   "Sorry, can you say that again?": {
    "zh-Hans": "抱歉，可以再说一遍吗？",
    "hi": "माफ़ करना, फिर से बोलोगे?",
@@ -3412,6 +4776,17 @@
    "ru": "Распознавание речи:",
    "id": "Pengenalan ucapan:"
   },
+  "Speed": {
+   "zh-Hans": "速度",
+   "hi": "गति",
+   "es": "Velocidad",
+   "ar": "السرعة",
+   "fr": "Vitesse",
+   "bn": "গতি",
+   "pt-BR": "Velocidade",
+   "ru": "Скорость",
+   "id": "Kecepatan"
+  },
   "Spotify not installed": {
    "zh-Hans": "未安装 Spotify",
    "hi": "Spotify इंस्टॉल नहीं है",
@@ -3434,6 +4809,28 @@
    "ru": "Запуск",
    "id": "Mulai"
   },
+  "Statistics": {
+   "zh-Hans": "统计",
+   "hi": "आँकड़े",
+   "es": "Estadísticas",
+   "ar": "الإحصاءات",
+   "fr": "Statistiques",
+   "bn": "পরিসংখ্যান",
+   "pt-BR": "Estatísticas",
+   "ru": "Статистика",
+   "id": "Statistik"
+  },
+  "Stop": {
+   "zh-Hans": "停止",
+   "hi": "रोकें",
+   "es": "Detener",
+   "ar": "إيقاف",
+   "fr": "Arrêter",
+   "bn": "থামান",
+   "pt-BR": "Parar",
+   "ru": "Остановить",
+   "id": "Hentikan"
+  },
   "Stop demo": {
    "zh-Hans": "停止演示",
    "hi": "डेमो रोकें",
@@ -3455,6 +4852,39 @@
    "pt-BR": "Armazenado localmente no seu Mac. Nada sai do seu Mac. Mantido por 12 semanas.",
    "ru": "Хранится локально на Mac. Ничего не покидает Mac. Хранится 12 недель.",
    "id": "Disimpan secara lokal di Mac. Tidak ada yang keluar dari Mac Anda. Disimpan selama 12 minggu."
+  },
+  "Stripe, GitHub, Vercel, n8n, Notion and the rest.": {
+   "zh-Hans": "Stripe、GitHub、Vercel、n8n、Notion 等。",
+   "hi": "Stripe, GitHub, Vercel, n8n, Notion और बाकी।",
+   "es": "Stripe, GitHub, Vercel, n8n, Notion y los demás.",
+   "ar": "Stripe وGitHub وVercel وn8n وNotion وغيرها.",
+   "fr": "Stripe, GitHub, Vercel, n8n, Notion et les autres.",
+   "bn": "Stripe, GitHub, Vercel, n8n, Notion আর বাকিগুলো।",
+   "pt-BR": "Stripe, GitHub, Vercel, n8n, Notion e os outros.",
+   "ru": "Stripe, GitHub, Vercel, n8n, Notion и другие.",
+   "id": "Stripe, GitHub, Vercel, n8n, Notion, dan lainnya."
+  },
+  "Style per app": {
+   "zh-Hans": "按 App 设置风格",
+   "hi": "हर ऐप की शैली",
+   "es": "Un estilo por app",
+   "ar": "نمط لكل تطبيق",
+   "fr": "Un style par app",
+   "bn": "প্রতিটি অ্যাপের স্টাইল",
+   "pt-BR": "Um estilo por app",
+   "ru": "Стиль для приложений",
+   "id": "Gaya per aplikasi"
+  },
+  "Styles": {
+   "zh-Hans": "风格",
+   "hi": "शैलियाँ",
+   "es": "Estilos",
+   "ar": "الأنماط",
+   "fr": "Styles",
+   "bn": "স্টাইল",
+   "pt-BR": "Estilos",
+   "ru": "Стили",
+   "id": "Gaya"
   },
   "Subject": {
    "zh-Hans": "主题",
@@ -3488,6 +4918,28 @@
    "pt-BR": "Sucesso",
    "ru": "Успешно",
    "id": "Berhasil"
+  },
+  "Summaries": {
+   "zh-Hans": "摘要",
+   "hi": "सारांश",
+   "es": "Resúmenes",
+   "ar": "الملخصات",
+   "fr": "Résumés",
+   "bn": "সারাংশ",
+   "pt-BR": "Resumos",
+   "ru": "Краткие итоги",
+   "id": "Ringkasan"
+  },
+  "Summary": {
+   "zh-Hans": "摘要",
+   "hi": "सारांश",
+   "es": "Resumen",
+   "ar": "الملخص",
+   "fr": "Résumé",
+   "bn": "সারাংশ",
+   "pt-BR": "Resumo",
+   "ru": "Итог",
+   "id": "Ringkasan"
   },
   "System": {
    "zh-Hans": "系统",
@@ -3533,6 +4985,17 @@
    "ru": "Говорить с Coucou",
    "id": "Bicara ke Coucou"
   },
+  "Tap twice, speak as long as you like, tap once to paste.": {
+   "zh-Hans": "连按两次，想说多久就说多久，再按一次即粘贴。",
+   "hi": "दो बार दबाएँ, जितना चाहें बोलें, चिपकाने के लिए एक बार दबाएँ।",
+   "es": "Pulsa dos veces, habla lo que quieras y pulsa una vez para pegar.",
+   "ar": "اضغط مرتين، وتحدّث كما تشاء، ثم اضغط مرة للصق.",
+   "fr": "Tape deux fois, parle aussi longtemps que tu veux, tape une fois pour coller.",
+   "bn": "দুবার চাপুন, যতক্ষণ খুশি বলুন, পেস্ট করতে একবার চাপুন।",
+   "pt-BR": "Toque duas vezes, fale o quanto quiser, toque uma vez para colar.",
+   "ru": "Нажмите дважды, говорите сколько угодно, нажмите один раз, чтобы вставить.",
+   "id": "Ketuk dua kali, bicara sepuasnya, ketuk sekali untuk menempel."
+  },
   "Tasks": {
    "zh-Hans": "任务",
    "hi": "कार्य",
@@ -3566,6 +5029,149 @@
    "ru": "Тестирует",
    "id": "Menguji"
   },
+  "The AI of the notch's chat, with your own keys.": {
+   "zh-Hans": "刘海聊天使用的 AI，用你自己的密钥。",
+   "hi": "नॉच चैट का AI, आपकी अपनी कुंजियों से।",
+   "es": "La IA del chat del notch, con tus propias claves.",
+   "ar": "ذكاء دردشة النوتش، بمفاتيحك الخاصة.",
+   "fr": "L'IA du chat du notch, avec tes propres clés.",
+   "bn": "নচ চ্যাটের AI, আপনার নিজের কী দিয়ে।",
+   "pt-BR": "A IA do chat do notch, com suas próprias chaves.",
+   "ru": "ИИ для чата в чёлке, с вашими ключами.",
+   "id": "AI untuk obrolan notch, dengan kuncimu sendiri."
+  },
+  "The Notetaker": {
+   "zh-Hans": "会议笔记",
+   "hi": "Notetaker",
+   "es": "El Notetaker",
+   "ar": "Notetaker",
+   "fr": "Le Notetaker",
+   "bn": "Notetaker",
+   "pt-BR": "O Notetaker",
+   "ru": "Notetaker",
+   "id": "Notetaker"
+  },
+  "The clean-up uses your Claude key. Add it in Settings → Chat.": {
+   "zh-Hans": "整理会使用你的 Claude 密钥。请在“设置”→“聊天”中添加。",
+   "hi": "सफ़ाई आपकी Claude कुंजी से होती है। इसे सेटिंग्स → चैट में जोड़ें।",
+   "es": "La limpieza usa tu clave de Claude. Añádela en Ajustes → Chat.",
+   "ar": "يستخدم التنقيح مفتاح Claude الخاص بك. أضفه في الإعدادات ← الدردشة.",
+   "fr": "Le nettoyage utilise ta clé Claude. Ajoute-la dans Réglages → Chat.",
+   "bn": "পরিষ্কার করতে আপনার Claude কী লাগে। সেটিংস → চ্যাট-এ যোগ করুন।",
+   "pt-BR": "A limpeza usa sua chave do Claude. Adicione-a em Ajustes → Chat.",
+   "ru": "Для чистки нужен ваш ключ Claude. Добавьте его в Настройки → Чат.",
+   "id": "Perapian memakai kunci Claude-mu. Tambahkan di Pengaturan → Obrolan."
+  },
+  "The history is off. Turn it on in Settings → Privacy.": {
+   "zh-Hans": "历史记录已关闭。请在“设置”→“隐私”中打开。",
+   "hi": "इतिहास बंद है। इसे सेटिंग्स → गोपनीयता में चालू करें।",
+   "es": "El historial está desactivado. Actívalo en Ajustes → Privacidad.",
+   "ar": "السجل متوقف. شغّله من الإعدادات ← الخصوصية.",
+   "fr": "L'historique est désactivé. Active-le dans Réglages → Confidentialité.",
+   "bn": "ইতিহাস বন্ধ আছে। সেটিংস → গোপনীয়তা-য় চালু করুন।",
+   "pt-BR": "O histórico está desligado. Ative-o em Ajustes → Privacidade.",
+   "ru": "История выключена. Включите её в Настройки → Конфиденциальность.",
+   "id": "Riwayat nonaktif. Aktifkan di Pengaturan → Privasi."
+  },
+  "The history, the statistics and your notes stay on this Mac, in Coucou's folder. Dictations are never saved as audio; a call's audio is deleted as soon as its transcript is written.": {
+   "zh-Hans": "历史记录、统计和你的笔记都保存在这台 Mac 上的 Coucou 文件夹中。听写从不保存为音频；通话的音频在转写完成后立即删除。",
+   "hi": "इतिहास, आँकड़े और आपके नोट्स इसी Mac पर, Coucou के फ़ोल्डर में रहते हैं। डिक्टेशन कभी ऑडियो के रूप में नहीं रखे जाते; कॉल का ऑडियो ट्रांसक्रिप्ट लिखते ही मिटा दिया जाता है।",
+   "es": "El historial, las estadísticas y tus notas se quedan en este Mac, en la carpeta de Coucou. Los dictados nunca se guardan como audio; el audio de una llamada se borra en cuanto se escribe su transcripción.",
+   "ar": "يبقى السجل والإحصاءات وملاحظاتك على جهاز Mac هذا، في مجلد Coucou. لا تُحفظ الإملاءات صوتيًا أبدًا، ويُحذف صوت المكالمة فور كتابة نصها.",
+   "fr": "L'historique, les statistiques et tes notes restent sur ce Mac, dans le dossier de Coucou. Les dictées ne sont jamais gardées en audio ; l'audio d'un call est effacé dès que sa transcription est écrite.",
+   "bn": "ইতিহাস, পরিসংখ্যান আর আপনার নোট এই Mac-এ, Coucou-র ফোল্ডারে থাকে। ডিক্টেশন কখনো অডিও হিসেবে রাখা হয় না; কলের অডিও ট্রান্সক্রিপ্ট লেখা হলেই মুছে ফেলা হয়।",
+   "pt-BR": "O histórico, as estatísticas e suas notas ficam neste Mac, na pasta do Coucou. Os ditados nunca são guardados em áudio; o áudio de uma chamada é apagado assim que a transcrição é escrita.",
+   "ru": "История, статистика и заметки хранятся на этом Mac, в папке Coucou. Диктовки никогда не сохраняются как аудио; запись звонка удаляется, как только готова расшифровка.",
+   "id": "Riwayat, statistik, dan catatanmu tetap di Mac ini, di folder Coucou. Dikte tidak pernah disimpan sebagai audio; audio panggilan dihapus begitu transkripnya selesai ditulis."
+  },
+  "The keys that open the notch and its actions.": {
+   "zh-Hans": "打开刘海及其操作的按键。",
+   "hi": "नॉच और उसकी क्रियाएँ खोलने वाली कुंजियाँ।",
+   "es": "Las teclas que abren el notch y sus acciones.",
+   "ar": "المفاتيح التي تفتح النوتش وإجراءاته.",
+   "fr": "Les touches qui ouvrent le notch et ses actions.",
+   "bn": "নচ আর তার কাজ খোলার কী।",
+   "pt-BR": "As teclas que abrem o notch e suas ações.",
+   "ru": "Клавиши, открывающие чёлку и её действия.",
+   "id": "Tombol untuk membuka notch dan aksinya."
+  },
+  "The most accurate, offline, 25 languages. Downloaded once (about 650 MB).": {
+   "zh-Hans": "最准确，离线可用，支持 25 种语言。只需下载一次（约 650 MB）。",
+   "hi": "सबसे सटीक, ऑफ़लाइन, 25 भाषाएँ। एक बार डाउनलोड (लगभग 650 MB)।",
+   "es": "El más preciso, sin conexión, 25 idiomas. Se descarga una vez (unos 650 MB).",
+   "ar": "الأدق، بلا إنترنت، 25 لغة. يُنزَّل مرة واحدة (نحو 650 ميغابايت).",
+   "fr": "Le plus précis, hors ligne, 25 langues. Téléchargé une fois (environ 650 Mo).",
+   "bn": "সবচেয়ে নির্ভুল, অফলাইন, ২৫টি ভাষা। একবার ডাউনলোড (প্রায় ৬৫০ MB)।",
+   "pt-BR": "O mais preciso, offline, 25 idiomas. Baixado uma vez (cerca de 650 MB).",
+   "ru": "Самый точный, без сети, 25 языков. Скачивается один раз (около 650 МБ).",
+   "id": "Paling akurat, luring, 25 bahasa. Diunduh sekali (sekitar 650 MB)."
+  },
+  "The pills shown in the notch, their order and their colours.": {
+   "zh-Hans": "刘海中显示的胶囊、顺序和颜色。",
+   "hi": "नॉच में दिखने वाली पिल्स, उनका क्रम और रंग।",
+   "es": "Las píldoras del notch, su orden y sus colores.",
+   "ar": "الحبوب الظاهرة في النوتش وترتيبها وألوانها.",
+   "fr": "Les pilules affichées dans le notch, leur ordre et leurs couleurs.",
+   "bn": "নচে দেখানো পিল, তাদের ক্রম আর রং।",
+   "pt-BR": "As pílulas do notch, sua ordem e suas cores.",
+   "ru": "Пилюли в чёлке, их порядок и цвета.",
+   "id": "Pil di notch, urutan dan warnanya."
+  },
+  "The recording of this call is gone.": {
+   "zh-Hans": "这次通话的录音已不存在。",
+   "hi": "इस कॉल की रिकॉर्डिंग अब नहीं है।",
+   "es": "La grabación de esta llamada ya no existe.",
+   "ar": "لم يعد تسجيل هذه المكالمة موجودًا.",
+   "fr": "L'enregistrement de ce call n'existe plus.",
+   "bn": "এই কলের রেকর্ডিং আর নেই।",
+   "pt-BR": "A gravação desta chamada não existe mais.",
+   "ru": "Записи этого звонка больше нет.",
+   "id": "Rekaman panggilan ini sudah tidak ada."
+  },
+  "The text Coucou pastes": {
+   "zh-Hans": "Coucou 要粘贴的文字",
+   "hi": "वह टेक्स्ट जो Coucou चिपकाएगा",
+   "es": "El texto que pega Coucou",
+   "ar": "النص الذي يلصقه Coucou",
+   "fr": "Le texte que Coucou colle",
+   "bn": "যে লেখা Coucou পেস্ট করবে",
+   "pt-BR": "O texto que o Coucou cola",
+   "ru": "Текст, который вставит Coucou",
+   "id": "Teks yang ditempel Coucou"
+  },
+  "The transcript could not be written.": {
+   "zh-Hans": "无法生成转写。",
+   "hi": "ट्रांसक्रिप्ट नहीं लिखा जा सका।",
+   "es": "No se pudo escribir la transcripción.",
+   "ar": "تعذّرت كتابة النص.",
+   "fr": "La transcription n'a pas pu être écrite.",
+   "bn": "ট্রান্সক্রিপ্ট লেখা যায়নি।",
+   "pt-BR": "Não foi possível escrever a transcrição.",
+   "ru": "Не удалось составить расшифровку.",
+   "id": "Transkrip tidak dapat ditulis."
+  },
+  "The words show up here as people speak.": {
+   "zh-Hans": "大家说话时，文字会显示在这里。",
+   "hi": "लोगों के बोलते ही शब्द यहाँ दिखते हैं।",
+   "es": "Las palabras aparecen aquí mientras la gente habla.",
+   "ar": "تظهر الكلمات هنا أثناء حديث الناس.",
+   "fr": "Les mots s'affichent ici pendant que les gens parlent.",
+   "bn": "লোকেরা কথা বলার সাথে সাথে শব্দ এখানে দেখা যায়।",
+   "pt-BR": "As palavras aparecem aqui enquanto as pessoas falam.",
+   "ru": "Слова появляются здесь, пока люди говорят.",
+   "id": "Kata-kata muncul di sini saat orang berbicara."
+  },
+  "Time saved": {
+   "zh-Hans": "节省的时间",
+   "hi": "बचा समय",
+   "es": "Tiempo ahorrado",
+   "ar": "الوقت الموفَّر",
+   "fr": "Temps gagné",
+   "bn": "বাঁচানো সময়",
+   "pt-BR": "Tempo ganho",
+   "ru": "Сэкономлено",
+   "id": "Waktu dihemat"
+  },
   "To": {
    "zh-Hans": "收件人",
    "hi": "प्रति",
@@ -3576,6 +5182,17 @@
    "pt-BR": "Para",
    "ru": "Кому",
    "id": "Kepada"
+  },
+  "To do": {
+   "zh-Hans": "待办",
+   "hi": "करने वाले काम",
+   "es": "Por hacer",
+   "ar": "المهام",
+   "fr": "À faire",
+   "bn": "করণীয়",
+   "pt-BR": "A fazer",
+   "ru": "Задачи",
+   "id": "Tugas"
   },
   "To review": {
    "zh-Hans": "待审查",
@@ -3598,6 +5215,28 @@
    "pt-BR": "Para usar o Google Gemini ou OpenAI pelo chat. As chaves são armazenadas no Keychain.",
    "ru": "Для использования Google Gemini или OpenAI в чате. Ключи хранятся в Keychain.",
    "id": "Untuk menggunakan Google Gemini atau OpenAI dari chat. Kunci disimpan di Keychain."
+  },
+  "To use fn, set System Settings → Keyboard → “Press 🌐 key to” to “Do Nothing”.": {
+   "zh-Hans": "要使用 fn，请在“系统设置”→“键盘”中将“按下 🌐 键时”设为“不执行任何操作”。",
+   "hi": "fn इस्तेमाल करने के लिए, सिस्टम सेटिंग्स → कीबोर्ड में “🌐 कुंजी दबाने पर” को “कुछ न करें” पर सेट करें।",
+   "es": "Para usar fn, en Ajustes del Sistema → Teclado, pon «Pulsar la tecla 🌐 para» en «No hacer nada».",
+   "ar": "لاستخدام fn، اضبط إعدادات النظام ← لوحة المفاتيح ← «اضغط على مفتاح 🌐 لـ» على «عدم القيام بأي شيء».",
+   "fr": "Pour utiliser fn, règle Réglages Système → Clavier → « Appuyer sur la touche 🌐 pour » sur « Ne rien faire ».",
+   "bn": "fn ব্যবহার করতে, সিস্টেম সেটিংস → কিবোর্ডে “🌐 কী চাপলে” “কিছুই করবেন না” সেট করুন।",
+   "pt-BR": "Para usar fn, em Ajustes do Sistema → Teclado, defina “Pressionar a tecla 🌐 para” como “Não fazer nada”.",
+   "ru": "Чтобы использовать fn, в Системных настройках → Клавиатура выберите для «Нажатие клавиши 🌐» вариант «Ничего не делать».",
+   "id": "Untuk memakai fn, atur Pengaturan Sistem → Papan Ketik → “Tekan tombol 🌐 untuk” ke “Jangan Lakukan Apa-apa”."
+  },
+  "Today": {
+   "zh-Hans": "今天",
+   "hi": "आज",
+   "es": "Hoy",
+   "ar": "اليوم",
+   "fr": "Aujourd'hui",
+   "bn": "আজ",
+   "pt-BR": "Hoje",
+   "ru": "Сегодня",
+   "id": "Hari ini"
   },
   "Too many hits at once.": {
    "zh-Hans": "一次点击太多次了。",
@@ -3632,6 +5271,17 @@
    "ru": "Топ проект",
    "id": "Proyek teratas"
   },
+  "Transcript": {
+   "zh-Hans": "转写",
+   "hi": "ट्रांसक्रिप्ट",
+   "es": "Transcripción",
+   "ar": "النص",
+   "fr": "Transcription",
+   "bn": "ট্রান্সক্রিপ্ট",
+   "pt-BR": "Transcrição",
+   "ru": "Расшифровка",
+   "id": "Transkrip"
+  },
   "Try demo mode": {
    "zh-Hans": "试用演示模式",
    "hi": "डेमो मोड आज़माएँ",
@@ -3642,6 +5292,17 @@
    "pt-BR": "Experimentar modo demo",
    "ru": "Попробовать демо",
    "id": "Coba mode demo"
+  },
+  "Turn on dictation": {
+   "zh-Hans": "开启听写",
+   "hi": "डिक्टेशन चालू करें",
+   "es": "Activar el dictado",
+   "ar": "تشغيل الإملاء",
+   "fr": "Activer la dictée",
+   "bn": "ডিক্টেশন চালু করুন",
+   "pt-BR": "Ativar o ditado",
+   "ru": "Включить диктовку",
+   "id": "Aktifkan dikte"
   },
   "Uninstall": {
    "zh-Hans": "卸载",
@@ -3675,6 +5336,28 @@
    "pt-BR": "Desconhecido",
    "ru": "Неизвестно",
    "id": "Tidak diketahui"
+  },
+  "Unlimited and free": {
+   "zh-Hans": "无限制且免费",
+   "hi": "असीमित और मुफ़्त",
+   "es": "Ilimitado y gratis",
+   "ar": "بلا حدود ومجانًا",
+   "fr": "Illimité et gratuit",
+   "bn": "সীমাহীন ও বিনামূল্যে",
+   "pt-BR": "Ilimitado e grátis",
+   "ru": "Без ограничений и бесплатно",
+   "id": "Tanpa batas dan gratis"
+  },
+  "Until Parakeet is downloaded, Coucou uses your Mac's speech recognition.": {
+   "zh-Hans": "在下载 Parakeet 之前，Coucou 使用 Mac 的语音识别。",
+   "hi": "जब तक Parakeet डाउनलोड नहीं होता, Coucou Mac की वाक् पहचान इस्तेमाल करता है।",
+   "es": "Hasta que Parakeet esté descargado, Coucou usa el reconocimiento de voz del Mac.",
+   "ar": "إلى أن يُنزَّل Parakeet، يستخدم Coucou التعرّف على الكلام في Mac.",
+   "fr": "Tant que Parakeet n'est pas téléchargé, Coucou utilise la reconnaissance vocale du Mac.",
+   "bn": "Parakeet ডাউনলোড না হওয়া পর্যন্ত Coucou Mac-এর স্পিচ রিকগনিশন ব্যবহার করে।",
+   "pt-BR": "Até o Parakeet ser baixado, o Coucou usa o reconhecimento de fala do Mac.",
+   "ru": "Пока Parakeet не скачан, Coucou использует распознавание речи Mac.",
+   "id": "Sampai Parakeet diunduh, Coucou memakai pengenalan suara Mac."
   },
   "Update hooks": {
    "zh-Hans": "更新 Hooks",
@@ -3874,6 +5557,39 @@
    "ru": "Что вы хотите с ним сделать?",
    "id": "Apa yang ingin Anda lakukan dengannya?"
   },
+  "What you dictated, how fast, and where.": {
+   "zh-Hans": "你听写了什么、多快、在哪里。",
+   "hi": "आपने क्या बोला, कितनी तेज़ी से, और कहाँ।",
+   "es": "Lo que dictaste, a qué velocidad y dónde.",
+   "ar": "ما أمليته، وبأي سرعة، وأين.",
+   "fr": "Ce que tu as dicté, à quelle vitesse, et où.",
+   "bn": "আপনি কী বলেছেন, কত দ্রুত, আর কোথায়।",
+   "pt-BR": "O que você ditou, em que velocidade e onde.",
+   "ru": "Что вы надиктовали, как быстро и где.",
+   "id": "Apa yang kamu diktekan, seberapa cepat, dan di mana."
+  },
+  "What you say, e.g. my signature": {
+   "zh-Hans": "你说的话，例如 我的签名",
+   "hi": "जो आप बोलते हैं, जैसे मेरा हस्ताक्षर",
+   "es": "Lo que dices, p. ej. mi firma",
+   "ar": "ما تقوله، مثل توقيعي",
+   "fr": "Ce que tu dis, ex. ma signature",
+   "bn": "আপনি যা বলেন, যেমন আমার স্বাক্ষর",
+   "pt-BR": "O que você diz, ex. minha assinatura",
+   "ru": "Что вы говорите, напр. моя подпись",
+   "id": "Yang kamu ucapkan, mis. tanda tanganku"
+  },
+  "When Coucou hears the words on the left, it writes the ones on the right.": {
+   "zh-Hans": "Coucou 听到左边的词时，会写成右边的词。",
+   "hi": "जब Coucou बाईं ओर के शब्द सुनता है, तो दाईं ओर के शब्द लिखता है।",
+   "es": "Cuando Coucou oye las palabras de la izquierda, escribe las de la derecha.",
+   "ar": "عندما يسمع Coucou الكلمات على اليسار، يكتب الكلمات على اليمين.",
+   "fr": "Quand Coucou entend les mots de gauche, il écrit ceux de droite.",
+   "bn": "বাঁ দিকের শব্দ শুনলে Coucou ডান দিকের শব্দ লেখে।",
+   "pt-BR": "Quando o Coucou ouve as palavras da esquerda, escreve as da direita.",
+   "ru": "Услышав слова слева, Coucou пишет слова справа.",
+   "id": "Saat Coucou mendengar kata di kiri, ia menulis kata di kanan."
+  },
   "When enabled, Coucou listens for the wake word « OK Coucou ». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.": {
    "zh-Hans": "启用后，Coucou 会监听唤醒词« OK Coucou »。语音识别完全在设备上运行—任何音频或文字记录都不会离开您的 Mac。",
    "hi": "सक्षम होने पर, Coucou वेक शब्द « OK Coucou » सुनता है। वाक् पहचान पूरी तरह डिवाइस पर चलती है — कोई ऑडियो या ट्रांसक्रिप्ट आपके Mac को नहीं छोड़ता।",
@@ -3884,6 +5600,39 @@
    "pt-BR": "Quando ativado, o Coucou escuta a palavra de ativação « OK Coucou ». O reconhecimento de fala é executado inteiramente no dispositivo — nenhum áudio ou transcrição sai do seu Mac.",
    "ru": "Когда включено, Coucou слушает слово активации « OK Coucou ». Распознавание речи работает полностью на устройстве — никакие аудиозаписи или транскрипции не покидают ваш Mac.",
    "id": "Saat diaktifkan, Coucou mendengarkan kata pengaktif « OK Coucou ». Pengenalan ucapan berjalan sepenuhnya di perangkat — tidak ada audio atau transkrip yang meninggalkan Mac Anda."
+  },
+  "When the words went to the wrong place.": {
+   "zh-Hans": "当文字粘贴到了错误的位置时。",
+   "hi": "जब शब्द गलत जगह चले गए हों।",
+   "es": "Cuando las palabras acabaron en el sitio equivocado.",
+   "ar": "عندما تذهب الكلمات إلى المكان الخطأ.",
+   "fr": "Quand les mots sont partis au mauvais endroit.",
+   "bn": "যখন শব্দগুলো ভুল জায়গায় চলে গেছে।",
+   "pt-BR": "Quando as palavras foram para o lugar errado.",
+   "ru": "Если слова попали не туда.",
+   "id": "Saat kata-katanya masuk ke tempat yang salah."
+  },
+  "Where the pill is": {
+   "zh-Hans": "胶囊位置",
+   "hi": "पिल की जगह",
+   "es": "Posición de la píldora",
+   "ar": "موضع الحبة",
+   "fr": "Position de la pilule",
+   "bn": "পিলের অবস্থান",
+   "pt-BR": "Posição da pílula",
+   "ru": "Где пилюля",
+   "id": "Posisi pil"
+  },
+  "Where you dictate": {
+   "zh-Hans": "你在哪里听写",
+   "hi": "आप कहाँ डिक्टेट करते हैं",
+   "es": "Dónde dictas",
+   "ar": "أين تُملي",
+   "fr": "Où tu dictes",
+   "bn": "আপনি কোথায় ডিক্টেট করেন",
+   "pt-BR": "Onde você dita",
+   "ru": "Где вы диктуете",
+   "id": "Tempat kamu dikte"
   },
   "Which pill do you want to add?": {
    "zh-Hans": "要添加哪个胶囊？",
@@ -3929,6 +5678,50 @@
    "ru": "Во время прослушивания macOS отображает оранжевую точку микрофона в правом верхнем углу строки меню. Это нормальное поведение системы.",
    "id": "Saat mendengarkan, macOS menampilkan titik mikrofon oranye di kanan atas bilah menu. Ini adalah perilaku sistem yang normal."
   },
+  "Who is it?": {
+   "zh-Hans": "这是谁？",
+   "hi": "यह कौन है?",
+   "es": "¿Quién es?",
+   "ar": "من هذا؟",
+   "fr": "C'est qui ?",
+   "bn": "ইনি কে?",
+   "pt-BR": "Quem é?",
+   "ru": "Кто это?",
+   "id": "Siapa ini?"
+  },
+  "With Claude, the transcript (never the audio) goes to Anthropic with your key from Settings → Chat. Apple Intelligence writes it on your Mac (macOS 26).": {
+   "zh-Hans": "使用 Claude 时，转写文字（绝不是音频）会用“设置”→“聊天”中的密钥发送给 Anthropic。Apple 智能则在你的 Mac 上生成（macOS 26）。",
+   "hi": "Claude के साथ ट्रांसक्रिप्ट (ऑडियो कभी नहीं) सेटिंग्स → चैट वाली आपकी कुंजी से Anthropic को जाता है। Apple Intelligence इसे आपके Mac पर लिखता है (macOS 26)।",
+   "es": "Con Claude, la transcripción (nunca el audio) va a Anthropic con tu clave de Ajustes → Chat. Apple Intelligence lo escribe en tu Mac (macOS 26).",
+   "ar": "مع Claude يُرسل النص المكتوب (وليس الصوت أبدًا) إلى Anthropic بمفتاحك من الإعدادات ← الدردشة. أما Apple Intelligence فيكتبه على جهاز Mac (macOS 26).",
+   "fr": "Avec Claude, la transcription (jamais l'audio) part chez Anthropic avec ta clé de Réglages → Chat. Apple Intelligence l'écrit sur ton Mac (macOS 26).",
+   "bn": "Claude-এর সঙ্গে ট্রান্সক্রিপ্ট (কখনো অডিও নয়) সেটিংস → চ্যাট-এর কী দিয়ে Anthropic-এ যায়। Apple Intelligence এটি আপনার Mac-এ লেখে (macOS 26)।",
+   "pt-BR": "Com o Claude, a transcrição (nunca o áudio) vai para a Anthropic com sua chave de Ajustes → Chat. A Apple Intelligence escreve no seu Mac (macOS 26).",
+   "ru": "С Claude расшифровка (но не аудио) уходит в Anthropic с вашим ключом из Настройки → Чат. Apple Intelligence пишет итог прямо на Mac (macOS 26).",
+   "id": "Dengan Claude, transkrip (bukan audio) dikirim ke Anthropic dengan kuncimu dari Pengaturan → Obrolan. Apple Intelligence menulisnya di Mac-mu (macOS 26)."
+  },
+  "With the clean-up on, the text (never your voice) goes to Anthropic with your Claude key. Off, everything stays on your Mac.": {
+   "zh-Hans": "开启整理时，文字（绝不是你的声音）会用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。",
+   "hi": "सफ़ाई चालू होने पर टेक्स्ट (आपकी आवाज़ कभी नहीं) आपकी Claude कुंजी के साथ Anthropic को जाता है। बंद होने पर सब कुछ आपके Mac पर रहता है।",
+   "es": "Con la limpieza activada, el texto (nunca tu voz) va a Anthropic con tu clave de Claude. Desactivada, todo se queda en tu Mac.",
+   "ar": "عند تشغيل التنقيح يُرسل النص (وليس صوتك أبدًا) إلى Anthropic بمفتاح Claude الخاص بك. وعند إيقافه يبقى كل شيء على جهاز Mac.",
+   "fr": "Avec le nettoyage, le texte (jamais ta voix) part chez Anthropic avec ta clé Claude. Sans, tout reste sur ton Mac.",
+   "bn": "পরিষ্কার চালু থাকলে লেখা (কখনো আপনার কণ্ঠ নয়) আপনার Claude কী দিয়ে Anthropic-এ যায়। বন্ধ থাকলে সব আপনার Mac-এই থাকে।",
+   "pt-BR": "Com a limpeza ligada, o texto (nunca sua voz) vai para a Anthropic com sua chave do Claude. Desligada, tudo fica no seu Mac.",
+   "ru": "Когда чистка включена, текст (но не голос) уходит в Anthropic с вашим ключом Claude. Когда выключена, всё остаётся на Mac.",
+   "id": "Saat perapian aktif, teksnya (bukan suaramu) dikirim ke Anthropic dengan kunci Claude-mu. Saat mati, semuanya tetap di Mac-mu."
+  },
+  "Without the “um” and the repeats, your tone kept.": {
+   "zh-Hans": "去掉“嗯”和重复，保留你的语气。",
+   "hi": "बिना “अं” और दोहराव के, आपका लहजा बना रहता है।",
+   "es": "Sin los «eh» ni repeticiones, con tu tono.",
+   "ar": "بلا «أممم» ولا تكرار، مع الحفاظ على أسلوبك.",
+   "fr": "Sans les « euh » ni les répétitions, ton ton gardé.",
+   "bn": "“উম” আর পুনরাবৃত্তি ছাড়া, আপনার সুর বজায় রেখে।",
+   "pt-BR": "Sem os “é…” e as repetições, com o seu tom.",
+   "ru": "Без «э-э» и повторов, ваш тон сохранён.",
+   "id": "Tanpa “eh” dan pengulangan, nadamu tetap."
+  },
   "Woman": {
    "zh-Hans": "女声",
    "hi": "महिला",
@@ -3939,6 +5732,28 @@
    "pt-BR": "Mulher",
    "ru": "Женский",
    "id": "Wanita"
+  },
+  "Words dictated": {
+   "zh-Hans": "听写字数",
+   "hi": "डिक्टेट किए शब्द",
+   "es": "Palabras dictadas",
+   "ar": "كلمات مُملاة",
+   "fr": "Mots dictés",
+   "bn": "ডিক্টেট করা শব্দ",
+   "pt-BR": "Palavras ditadas",
+   "ru": "Слов надиктовано",
+   "id": "Kata didiktekan"
+  },
+  "Words per day": {
+   "zh-Hans": "每日字数",
+   "hi": "प्रति दिन शब्द",
+   "es": "Palabras por día",
+   "ar": "كلمات في اليوم",
+   "fr": "Mots par jour",
+   "bn": "দিনে শব্দ",
+   "pt-BR": "Palavras por dia",
+   "ru": "Слов в день",
+   "id": "Kata per hari"
   },
   "Workflow stopped.": {
    "zh-Hans": "工作流已停止。",
@@ -3962,6 +5777,28 @@
    "ru": "Рабочие процессы",
    "id": "Alur kerja"
   },
+  "Write the summary": {
+   "zh-Hans": "生成摘要",
+   "hi": "सारांश बनाएँ",
+   "es": "Hacer el resumen",
+   "ar": "كتابة الملخص",
+   "fr": "Faire le résumé",
+   "bn": "সারাংশ লিখুন",
+   "pt-BR": "Fazer o resumo",
+   "ru": "Составить итог",
+   "id": "Buat ringkasan"
+  },
+  "Write the summary again": {
+   "zh-Hans": "重新生成摘要",
+   "hi": "सारांश फिर से बनाएँ",
+   "es": "Rehacer el resumen",
+   "ar": "إعادة كتابة الملخص",
+   "fr": "Refaire le résumé",
+   "bn": "আবার সারাংশ লিখুন",
+   "pt-BR": "Refazer o resumo",
+   "ru": "Составить итог заново",
+   "id": "Buat ulang ringkasan"
+  },
   "Writes": {
    "zh-Hans": "写入",
    "hi": "लिखता है",
@@ -3984,6 +5821,50 @@
    "ru": "Запишет:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (резервная копия создаётся сначала)",
    "id": "Akan menulis:\n• ~/.claude/coucou/nb-hook\n• ~/.claude/settings.json (backup dibuat terlebih dahulu)"
   },
+  "Writing the summary…": {
+   "zh-Hans": "正在生成摘要…",
+   "hi": "सारांश लिखा जा रहा है…",
+   "es": "Escribiendo el resumen…",
+   "ar": "جارٍ كتابة الملخص…",
+   "fr": "Écriture du résumé…",
+   "bn": "সারাংশ লেখা হচ্ছে…",
+   "pt-BR": "Escrevendo o resumo…",
+   "ru": "Пишется итог…",
+   "id": "Menulis ringkasan…"
+  },
+  "Written, e.g. Claude Code": {
+   "zh-Hans": "写成，例如 Claude Code",
+   "hi": "लिखा जाए, जैसे Claude Code",
+   "es": "Escrito, p. ej. Claude Code",
+   "ar": "المكتوب، مثل Claude Code",
+   "fr": "Écrit, ex. Claude Code",
+   "bn": "যা লেখা হবে, যেমন Claude Code",
+   "pt-BR": "Escrito, ex. Claude Code",
+   "ru": "Пишется, напр. Claude Code",
+   "id": "Ditulis, mis. Claude Code"
+  },
+  "Yesterday": {
+   "zh-Hans": "昨天",
+   "hi": "कल",
+   "es": "Ayer",
+   "ar": "أمس",
+   "fr": "Hier",
+   "bn": "গতকাল",
+   "pt-BR": "Ontem",
+   "ru": "Вчера",
+   "id": "Kemarin"
+  },
+  "You say": {
+   "zh-Hans": "你说",
+   "hi": "आप बोलते हैं",
+   "es": "Dices",
+   "ar": "تقول",
+   "fr": "Tu dis",
+   "bn": "আপনি বলেন",
+   "pt-BR": "Você diz",
+   "ru": "Вы говорите",
+   "id": "Kamu ucapkan"
+  },
   "You speak": {
    "zh-Hans": "你说的语言",
    "hi": "आप बोलते हैं",
@@ -3995,6 +5876,17 @@
    "ru": "Ты говоришь",
    "id": "Kamu berbicara"
   },
+  "Your Mac's speech recognition": {
+   "zh-Hans": "Mac 的语音识别",
+   "hi": "Mac की वाक् पहचान",
+   "es": "Reconocimiento de voz del Mac",
+   "ar": "التعرّف على الكلام في Mac",
+   "fr": "Reconnaissance vocale du Mac",
+   "bn": "Mac-এর স্পিচ রিকগনিশন",
+   "pt-BR": "Reconhecimento de fala do Mac",
+   "ru": "Распознавание речи Mac",
+   "id": "Pengenalan suara Mac"
+  },
   "Your answer…": {
    "zh-Hans": "您的答案…",
    "hi": "आपका उत्तर…",
@@ -4005,6 +5897,50 @@
    "pt-BR": "Sua resposta…",
    "ru": "Твой ответ…",
    "id": "Jawaban Anda…"
+  },
+  "Your calls transcribed person by person, with a summary and the to-dos. No bot in the meeting.": {
+   "zh-Hans": "通话按人逐句转写，附带摘要和待办。会议里没有机器人。",
+   "hi": "आपकी कॉल हर व्यक्ति के हिसाब से लिखी हुई, सारांश और करने वाले कामों के साथ। मीटिंग में कोई बॉट नहीं।",
+   "es": "Tus llamadas transcritas persona por persona, con un resumen y las tareas. Sin bot en la reunión.",
+   "ar": "مكالماتك مكتوبة شخصًا بشخص، مع ملخص والمهام. بدون روبوت في الاجتماع.",
+   "fr": "Tes calls transcrits personne par personne, avec un résumé et les choses à faire. Sans bot dans la réunion.",
+   "bn": "আপনার কল প্রতিজনের আলাদা ট্রান্সক্রিপ্টসহ, সারাংশ আর করণীয় তালিকা নিয়ে। মিটিংয়ে কোনো বট নেই।",
+   "pt-BR": "Suas chamadas transcritas pessoa por pessoa, com um resumo e as tarefas. Sem bot na reunião.",
+   "ru": "Ваши звонки расшифрованы по участникам, с кратким итогом и задачами. Без бота во встрече.",
+   "id": "Panggilanmu ditranskrip per orang, dengan ringkasan dan daftar tugas. Tanpa bot di rapat."
+  },
+  "Your calls will show here. Click Record a call when one starts.": {
+   "zh-Hans": "你的通话会显示在这里。通话开始时点按“录制通话”。",
+   "hi": "आपकी कॉल यहाँ दिखेंगी। कॉल शुरू होने पर कॉल रिकॉर्ड करें पर क्लिक करें।",
+   "es": "Tus llamadas aparecerán aquí. Haz clic en Grabar una llamada cuando empiece una.",
+   "ar": "ستظهر مكالماتك هنا. انقر على تسجيل مكالمة عند بدئها.",
+   "fr": "Tes calls s'afficheront ici. Clique sur Enregistrer un call quand il commence.",
+   "bn": "আপনার কল এখানে দেখা যাবে। কল শুরু হলে কল রেকর্ড করুন-এ ক্লিক করুন।",
+   "pt-BR": "Suas chamadas aparecerão aqui. Clique em Gravar uma chamada quando ela começar.",
+   "ru": "Здесь появятся ваши звонки. Нажмите «Записать звонок», когда он начнётся.",
+   "id": "Panggilanmu akan muncul di sini. Klik Rekam panggilan saat dimulai."
+  },
+  "Your dictations will show here. Hold {0} in any app and speak.": {
+   "zh-Hans": "你的听写会显示在这里。在任何 App 中按住 {0} 说话即可。",
+   "hi": "आपके डिक्टेशन यहाँ दिखेंगे। किसी भी ऐप में {0} दबाए रखें और बोलें।",
+   "es": "Tus dictados aparecerán aquí. Mantén {0} en cualquier app y habla.",
+   "ar": "ستظهر إملاءاتك هنا. اضغط مطولًا على {0} في أي تطبيق وتحدّث.",
+   "fr": "Tes dictées s'afficheront ici. Maintiens {0} dans n'importe quelle app et parle.",
+   "bn": "আপনার ডিক্টেশন এখানে দেখা যাবে। যেকোনো অ্যাপে {0} চেপে ধরে বলুন।",
+   "pt-BR": "Seus ditados aparecerão aqui. Segure {0} em qualquer app e fale.",
+   "ru": "Здесь появятся ваши диктовки. Удерживайте {0} в любом приложении и говорите.",
+   "id": "Diktemu akan muncul di sini. Tahan {0} di aplikasi apa pun dan bicaralah."
+  },
+  "Your voice is turned into text by your Mac's speech recognition, on-device when your Mac supports it; Coucou sends it nowhere. After pasting, the clipboard gets back what it held.": {
+   "zh-Hans": "你的声音由 Mac 的语音识别转成文字，Mac 支持时在设备上完成；Coucou 不会把它发送到任何地方。粘贴之后，剪贴板会恢复原来的内容。",
+   "hi": "आपकी आवाज़ को आपके Mac की वाक् पहचान टेक्स्ट में बदलती है, जब आपका Mac समर्थन करे तो डिवाइस पर ही; Coucou इसे कहीं नहीं भेजता। चिपकाने के बाद क्लिपबोर्ड में पहले वाली चीज़ वापस आ जाती है।",
+   "es": "Tu voz se convierte en texto con el reconocimiento de voz de tu Mac, en el propio equipo cuando tu Mac lo admite; Coucou no la envía a ningún sitio. Tras pegar, el portapapeles recupera lo que tenía.",
+   "ar": "يحوّل التعرّف على الكلام في جهاز Mac صوتك إلى نص، على الجهاز نفسه عندما يدعم جهازك ذلك؛ ولا يرسله Coucou إلى أي مكان. بعد اللصق تعود الحافظة إلى ما كانت تحتويه.",
+   "fr": "Ta voix est transformée en texte par la reconnaissance vocale de ton Mac, sur l'appareil quand ton Mac le permet ; Coucou ne l'envoie nulle part. Après le collage, le presse-papiers retrouve ce qu'il contenait.",
+   "bn": "আপনার Mac-এর স্পিচ রিকগনিশন আপনার কণ্ঠকে টেক্সটে রূপান্তর করে, Mac সমর্থন করলে ডিভাইসেই; Coucou এটি কোথাও পাঠায় না। পেস্ট করার পর ক্লিপবোর্ডে আগের জিনিস ফিরে আসে।",
+   "pt-BR": "Sua voz vira texto pelo reconhecimento de fala do seu Mac, no próprio aparelho quando o Mac permite; o Coucou não a envia para lugar nenhum. Depois de colar, a área de transferência recupera o que tinha.",
+   "ru": "Ваш голос превращает в текст распознавание речи Mac — прямо на устройстве, если Mac это поддерживает; Coucou никуда его не отправляет. После вставки буфер обмена возвращает прежнее содержимое.",
+   "id": "Suaramu diubah menjadi teks oleh pengenalan suara Mac, langsung di perangkat bila Mac mendukungnya; Coucou tidak mengirimnya ke mana pun. Setelah menempel, papan klip kembali berisi apa yang ada sebelumnya."
   },
   "coding": {
    "zh-Hans": "编程",
@@ -4028,6 +5964,28 @@
    "ru": "команды",
    "id": "perintah"
   },
+  "days in a row": {
+   "zh-Hans": "连续天数",
+   "hi": "लगातार दिन",
+   "es": "días seguidos",
+   "ar": "أيام متتالية",
+   "fr": "jours d'affilée",
+   "bn": "টানা দিন",
+   "pt-BR": "dias seguidos",
+   "ru": "дней подряд",
+   "id": "hari berturut-turut"
+  },
+  "failed": {
+   "zh-Hans": "失败",
+   "hi": "विफल",
+   "es": "error",
+   "ar": "فشل",
+   "fr": "échec",
+   "bn": "ব্যর্থ",
+   "pt-BR": "falhou",
+   "ru": "ошибка",
+   "id": "gagal"
+  },
   "file": {
    "zh-Hans": "个文件",
    "hi": "फ़ाइल",
@@ -4049,6 +6007,17 @@
    "pt-BR": "arquivos",
    "ru": "файлы",
    "id": "berkas"
+  },
+  "fn (🌐)": {
+   "zh-Hans": "fn (🌐)",
+   "hi": "fn (🌐)",
+   "es": "fn (🌐)",
+   "ar": "fn (🌐)",
+   "fr": "fn (🌐)",
+   "bn": "fn (🌐)",
+   "pt-BR": "fn (🌐)",
+   "ru": "fn (🌐)",
+   "id": "fn (🌐)"
   },
   "in {h} h {m}": {
    "zh-Hans": "{h} 小时 {m} 分后",
@@ -4160,6 +6129,17 @@
    "ru": "сессии",
    "id": "sesi"
   },
+  "vs typing at 45 words/min": {
+   "zh-Hans": "相比每分钟打 45 个词",
+   "hi": "45 शब्द/मिनट टाइपिंग की तुलना में",
+   "es": "frente a teclear a 45 palabras/min",
+   "ar": "مقارنة بالكتابة بـ45 كلمة/د",
+   "fr": "face à 45 mots/min au clavier",
+   "bn": "৪৫ শব্দ/মিনিট টাইপিংয়ের তুলনায়",
+   "pt-BR": "contra digitar a 45 palavras/min",
+   "ru": "против набора 45 слов/мин",
+   "id": "dibanding mengetik 45 kata/mnt"
+  },
   "with": {
    "zh-Hans": "附带",
    "hi": "के साथ",
@@ -4181,6 +6161,39 @@
    "pt-BR": "com {name}",
    "ru": "с {name}",
    "id": "dengan {name}"
+  },
+  "words dictated": {
+   "zh-Hans": "字已听写",
+   "hi": "शब्द डिक्टेट किए",
+   "es": "palabras dictadas",
+   "ar": "كلمة مُملاة",
+   "fr": "mots dictés",
+   "bn": "শব্দ ডিক্টেট করা",
+   "pt-BR": "palavras ditadas",
+   "ru": "слов надиктовано",
+   "id": "kata didiktekan"
+  },
+  "words/min": {
+   "zh-Hans": "词/分钟",
+   "hi": "शब्द/मिनट",
+   "es": "palabras/min",
+   "ar": "كلمة/د",
+   "fr": "mots/min",
+   "bn": "শব্দ/মিনিট",
+   "pt-BR": "palavras/min",
+   "ru": "слов/мин",
+   "id": "kata/mnt"
+  },
+  "writing…": {
+   "zh-Hans": "处理中…",
+   "hi": "लिखा जा रहा है…",
+   "es": "procesando…",
+   "ar": "قيد الكتابة…",
+   "fr": "en cours…",
+   "bn": "লেখা হচ্ছে…",
+   "pt-BR": "processando…",
+   "ru": "обработка…",
+   "id": "diproses…"
   },
   "{0} added": {
    "zh-Hans": "已添加 {0}",
@@ -4225,6 +6238,28 @@
    "pt-BR": "{0} não respondeu",
    "ru": "{0} не отвечает",
    "id": "{0} tidak merespons"
+  },
+  "{0} h %02lld": {
+   "zh-Hans": "{0} 小时 %02lld 分",
+   "hi": "{0} घं %02lld मि",
+   "es": "{0} h %02lld",
+   "ar": "{0} س %02lld د",
+   "fr": "{0} h %02lld",
+   "bn": "{0} ঘ %02lld মি",
+   "pt-BR": "{0} h %02lld",
+   "ru": "{0} ч %02lld мин",
+   "id": "{0} j %02lld m"
+  },
+  "{0} min": {
+   "zh-Hans": "{0} 分钟",
+   "hi": "{0} मिनट",
+   "es": "{0} min",
+   "ar": "{0} د",
+   "fr": "{0} min",
+   "bn": "{0} মিনিট",
+   "pt-BR": "{0} min",
+   "ru": "{0} мин",
+   "id": "{0} mnt"
   },
   "{0} removed": {
    "zh-Hans": "已移除 {0}",
@@ -4313,6 +6348,17 @@
    "pt-BR": "há {n} min",
    "ru": "{n} мин назад",
    "id": "{n} menit lalu"
+  },
+  "« OK Coucou », Mochi's voice and the dictation key.": {
+   "zh-Hans": "“OK Coucou”、Mochi 的声音和听写按键。",
+   "hi": "“OK Coucou”, मोची की आवाज़ और डिक्टेशन कुंजी।",
+   "es": "«OK Coucou», la voz de Mochi y la tecla de dictado.",
+   "ar": "«OK Coucou» وصوت موتشي ومفتاح الإملاء.",
+   "fr": "« OK Coucou », la voix de Mochi et la touche de dictée.",
+   "bn": "“OK Coucou”, মোচির কণ্ঠ আর ডিক্টেশন কী।",
+   "pt-BR": "“OK Coucou”, a voz do Mochi e a tecla de ditado.",
+   "ru": "«OK Coucou», голос Мочи и клавиша диктовки.",
+   "id": "“OK Coucou”, suara Mochi, dan tombol dikte."
   },
   "« OK Coucou » — voice wake word": {
    "zh-Hans": "« OK Coucou » — 语音唤醒词",

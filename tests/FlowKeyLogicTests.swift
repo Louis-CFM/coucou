@@ -32,6 +32,15 @@ enum FlowKeyLogicTests {
             check("idle after the drop", k.phase == .idle)
         }
 
+        print("\nThe pill's microphone: hands-free at once")
+        do {
+            var k = FlowKeyLogic()
+            k.lock()
+            check("locked", k.phase == .locked)
+            check("the key pastes", k.keyDown(at: 5) == .finish)
+            check("idle after", k.phase == .idle)
+        }
+
         print("\nDouble tap: hands-free")
         do {
             var k = FlowKeyLogic()

@@ -8,7 +8,11 @@ struct FlowSettingsBox: View {
     var body: some View {
         GroupBox(String(localized: "flow.title")) {
             VStack(alignment: .leading, spacing: 10) {
-                Toggle(String(localized: "flow.enable"), isOn: $flow.isEnabled)
+                HStack {
+                    Toggle(String(localized: "flow.enable"), isOn: $flow.isEnabled)
+                    Spacer()
+                    Button(String(localized: "hub.open")) { FlowHubController.shared.show() }
+                }
 
                 Text(String(format: String(localized: "flow.how %@"), flow.key.label))
                     .font(.system(size: 11))
