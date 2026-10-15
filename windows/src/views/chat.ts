@@ -95,7 +95,10 @@ function buildPicker(onChange: () => void): Picker {
       );
       chip.addEventListener("click", () => {
         if (p.id === State.settings.chatProvider) return;
-        State.settings = { ...State.settings, chatProvider: p.id };
+        const planChats = p.plan && !State.settings.planChats.includes(p.id)
+          ? [...State.settings.planChats, p.id]
+          : State.settings.planChats;
+        State.settings = { ...State.settings, chatProvider: p.id, planChats };
         saveSettings();
         Sound.play("pop");
         drawChips();
@@ -170,7 +173,7 @@ function buildPicker(onChange: () => void): Picker {
       }
       drawModels(p, models);
     } catch (err) {
-      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
+      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key || p.plan));
     }
   }
 

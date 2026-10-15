@@ -95,6 +95,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_hermes", name: "Hermes", color: "#C084FC", category: "agent",
     subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
+  // This fork only: Kiro CLI, through ~/.kiro/hooks/coucou.json (agents.rs).
+  { id: "agent_kiro", name: "Kiro", color: "#9046FF", category: "agent",
+    subtitle: N_("Agent"), source: "agent", support: "yes", connect: hooks },
   // Claude Code sessions run from the Claude desktop app: the relay tags them
   // from CLAUDE_CODE_ENTRYPOINT, so there is nothing to install. The app has no
   // Linux build.

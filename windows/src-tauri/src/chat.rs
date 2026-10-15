@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{claude, local_chat, openai_compat, plan_chat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -48,6 +48,8 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// The Cursor and Kiro CLIs keep their side of the conversation themselves.
+    pub plans: plan_chat::Sessions,
 }
 
 #[derive(Default)]
@@ -76,6 +78,7 @@ impl Chat {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
         *c = Conversation { epoch, ..Default::default() };
+        self.plans.reset();
     }
 
     /// Starts a turn with `provider`, converting the history if another
@@ -169,6 +172,7 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         .map(|m| m.trim().to_string())
         .filter(|m| !m.is_empty())
         .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
+        .or_else(|| plan_chat::is_plan(provider).then(|| plan_chat::DEFAULT_MODEL.to_string()))
         .unwrap_or_default()
 }
 
@@ -196,7 +200,36 @@ fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
 }
 
-/// One chat turn with the provider chosen in the settings.
+/// The providers a turn is tried with, in order: the one chosen in the chat
+/// view, then — once the user turned a plan on in Settings → Chat — the other
+/// plans and the Anthropic key, so a plan that ran out hands over on its own.
+fn fallback_chain(settings: &Settings, anthropic_key: bool) -> Vec<String> {
+    let chosen = if settings.chat_provider.is_empty() { ANTHROPIC } else { settings.chat_provider.as_str() };
+    let mut chain = vec![chosen.to_string()];
+    if settings.plan_chats.is_empty() || !(chosen == ANTHROPIC || plan_chat::is_plan(chosen)) {
+        return chain;
+    }
+    let plans = plan_chat::PLANS.iter().filter(|p| settings.plan_chats.iter().any(|q| q == *p));
+    let others = plans.map(|p| p.to_string()).chain(anthropic_key.then(|| ANTHROPIC.to_string()));
+    for p in others {
+        if !chain.contains(&p) {
+            chain.push(p);
+        }
+    }
+    chain
+}
+
+fn provider_name(provider: &str) -> &str {
+    match provider {
+        ANTHROPIC => "Anthropic",
+        plan_chat::CURSOR => "Cursor",
+        plan_chat::KIRO => "Kiro",
+        other => other,
+    }
+}
+
+/// One chat turn with the provider chosen in the settings, falling back to
+/// the next one of [`fallback_chain`] when it fails.
 pub async fn send(
     app: &AppHandle,
     chat: &Chat,
@@ -205,9 +238,34 @@ pub async fn send(
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
-    let provider = settings.chat_provider.as_str();
+    let chain = fallback_chain(settings, secrets::get(claude::KEY).is_some());
+    let mut errors = Vec::new();
+    for provider in &chain {
+        match send_with(app, chat, settings, provider, query.clone(), context.clone()).await {
+            Ok(reply) => return Ok(reply),
+            Err(err) => errors.push((provider, err)),
+        }
+    }
+    if errors.len() == 1 {
+        return Err(errors.remove(0).1);
+    }
+    Err(errors.iter().map(|(p, e)| format!("{}: {e}", provider_name(p))).collect::<Vec<_>>().join("\n"))
+}
+
+async fn send_with(
+    app: &AppHandle,
+    chat: &Chat,
+    settings: &Settings,
+    provider: &str,
+    query: String,
+    context: Option<ChatContext>,
+) -> Result<ChatReply, String> {
     let model = model_for(settings, provider);
-    if provider == ANTHROPIC || provider.is_empty() {
+    if provider == plan_chat::CURSOR || provider == plan_chat::KIRO {
+        let provider = if provider == plan_chat::KIRO { plan_chat::KIRO } else { plan_chat::CURSOR };
+        return plan_chat::send(chat, provider, &model, query, context).await;
+    }
+    if provider == ANTHROPIC {
         return claude::send(chat, &model, query, context).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
@@ -247,6 +305,9 @@ pub async fn send_for_phone(
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
+    if plan_chat::is_plan(provider) {
+        return plan_chat::models(provider).await;
+    }
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
         return claude::models(&key).await;
@@ -364,6 +425,23 @@ mod tests {
         assert_eq!(model_for(&s, "openai"), "gpt-x");
         assert_eq!(model_for(&s, "ollama"), "llama3.2");
         assert_eq!(model_for(&s, "anthropic"), "claude-haiku-4-5");
+        assert_eq!(model_for(&s, "kiro"), "auto");
+    }
+
+    #[test]
+    fn a_plan_falls_back_only_to_what_the_user_turned_on() {
+        let mut s = Settings::default();
+        s.chat_provider = "cursor".into();
+        // No plan turned on in Settings: the chosen provider alone, as before.
+        assert_eq!(fallback_chain(&s, true), ["cursor"]);
+        s.plan_chats = vec!["kiro".into(), "cursor".into()];
+        assert_eq!(fallback_chain(&s, true), ["cursor", "kiro", "anthropic"]);
+        assert_eq!(fallback_chain(&s, false), ["cursor", "kiro"]);
+        s.chat_provider = "anthropic".into();
+        assert_eq!(fallback_chain(&s, true), ["anthropic", "cursor", "kiro"]);
+        // A provider outside the plans and Anthropic never hands over.
+        s.chat_provider = "ollama".into();
+        assert_eq!(fallback_chain(&s, true), ["ollama"]);
     }
 
     #[test]

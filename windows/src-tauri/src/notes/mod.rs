@@ -510,11 +510,17 @@ fn summarize(app: &AppHandle, id: &str) {
     }
     taker.working.lock().unwrap().push(id.to_string());
     let _ = app.emit_to(crate::HUB_LABEL, "notes-changed", id);
-    let model = app
-        .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().model.clone())
+    let settings = app.try_state::<crate::Shared>().map(|s| s.settings.lock().unwrap().clone()).unwrap_or_default();
+    let model = Some(settings.model.clone())
         .filter(|m| !m.is_empty())
         .unwrap_or_else(|| crate::claude::DEFAULT_MODEL.to_string());
+    // Without an Anthropic key, the plans turned on for the chat write it.
+    let plans: Vec<(String, String)> = settings
+        .plan_chats
+        .iter()
+        .filter(|p| crate::plan_chat::is_plan(p))
+        .map(|p| (p.clone(), crate::chat::model_for(&settings, p)))
+        .collect();
     let mut transcript = plain_transcript(&note);
     if transcript.len() > 400_000 {
         let mut cut = 400_000;
@@ -525,12 +531,19 @@ fn summarize(app: &AppHandle, id: &str) {
     }
     let user = format!("<transcript>\n{transcript}\n</transcript>");
     let reply = tauri::async_runtime::block_on(async {
-        match crate::claude::complete(&model, builder::SUMMARY_INSTRUCTIONS, &user, 2048, Duration::from_secs(120)).await {
-            Ok(text) => Some(text),
-            Err(_) => crate::claude::complete(crate::flow::cleanup::MODEL, builder::SUMMARY_INSTRUCTIONS, &user, 2048, Duration::from_secs(120))
-                .await
-                .ok(),
+        if let Ok(text) = crate::claude::complete(&model, builder::SUMMARY_INSTRUCTIONS, &user, 2048, Duration::from_secs(120)).await {
+            return Some(text);
         }
+        if let Ok(text) = crate::claude::complete(crate::flow::cleanup::MODEL, builder::SUMMARY_INSTRUCTIONS, &user, 2048, Duration::from_secs(120)).await {
+            return Some(text);
+        }
+        for (plan, plan_model) in &plans {
+            match crate::plan_chat::complete(plan, plan_model, builder::SUMMARY_INSTRUCTIONS, &user).await {
+                Ok(text) => return Some(text),
+                Err(err) => crate::log::line(format!("notes: {plan} could not summarize: {err}")),
+            }
+        }
+        None
     });
     taker.working.lock().unwrap().retain(|w| w != id);
     let Some(reply) = reply else {

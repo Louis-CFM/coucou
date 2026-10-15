@@ -69,6 +69,9 @@ mod unix;
 #[cfg(target_os = "linux")]
 use unix::connect;
 
+/// Set by Coucou on the agent CLIs it runs itself (plan_chat.rs).
+const QUIET_ENV: &str = "COUCOU_QUIET";
+
 /// What the command line says: `--agent <name>` and the event name.
 struct Args {
     agent: String,
@@ -109,7 +112,9 @@ fn main() {
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    let Some(event) = prepare(&raw, &args, &env, &cwd) else {
+    // The agent CLIs Coucou runs itself (its chat) are not sessions.
+    let quiet = std::env::var_os(QUIET_ENV).is_some();
+    let Some(event) = prepare(&raw, &args, &env, &cwd).filter(|_| !quiet) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -134,6 +139,10 @@ fn main() {
 
     let decision = rx.recv_timeout(budget).ok().flatten();
     print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    if let Some((message, code)) = reply::exit_status(&args.agent, &event.name, decision.as_deref()) {
+        eprintln!("{message}");
+        std::process::exit(code);
+    }
     std::process::exit(0);
 }
 
@@ -152,6 +161,13 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
     let map = payload.as_object_mut()?;
+
+    // Cursor also runs the Claude Code hooks of ~/.claude/settings.json, with
+    // its own payload. Its own hooks (--agent cursor) already report the same
+    // events on its pill; here they would show up as a Claude Code session.
+    if args.agent.is_empty() && map.contains_key("cursor_version") {
+        return None;
+    }
 
     // Which agent this hook was installed for, so the app routes it to the right
     // pill. Absent means Claude Code, so existing hook commands keep working
@@ -174,7 +190,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .map(str::to_string)
         .unwrap_or_else(|| args.event.clone());
     normalize::fields(map, env);
-    let name = normalize::refine(normalize::event(&raw_event), map);
+    let name = normalize::for_agent(&args.agent, normalize::refine(normalize::event(&raw_event), map), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
     for field in DROPPED_FIELDS {
@@ -422,6 +438,15 @@ mod tests {
         assert!(v.get("coucou_agent").is_none());
         assert_eq!(v["cwd"], "/p");
         assert_eq!(v["tool_name"], "Bash");
+    }
+
+    #[test]
+    fn cursor_running_claude_code_hooks_is_dropped() {
+        let raw = r#"{"hook_event_name":"preToolUse","tool_name":"Shell","cursor_version":"2026.10.14","conversation_id":"c"}"#;
+        let args = Args { agent: String::new(), event: "PreToolUse".into() };
+        assert!(prepare(raw.as_bytes(), &args, &|_| None, "/p").is_none());
+        let (v, _) = run(raw, "cursor", "");
+        assert_eq!(v["coucou_agent"], "cursor");
     }
 
     #[test]
