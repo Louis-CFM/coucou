@@ -2096,61 +2096,61 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "التنقيح باستخدام Claude"
+            "value" : "التنقيح بالذكاء الاصطناعي"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude দিয়ে পরিষ্কার করুন"
+            "value" : "AI দিয়ে পরিষ্কার করুন"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clean up with Claude"
+            "value" : "Clean up with AI"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Limpiar con Claude"
+            "value" : "Limpiar con IA"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nettoyer avec Claude"
+            "value" : "Nettoyer avec l'IA"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude से साफ़ करें"
+            "value" : "AI से साफ़ करें"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rapikan dengan Claude"
+            "value" : "Rapikan dengan AI"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Limpar com o Claude"
+            "value" : "Limpar com IA"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Чистить текст с Claude"
+            "value" : "Чистить текст с ИИ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用 Claude 整理"
+            "value" : "用 AI 整理"
           }
         }
       }
@@ -2226,61 +2226,61 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يستخدم التنقيح مفتاح Claude الخاص بك. أضفه في الإعدادات ← الدردشة."
+            "value" : "يحتاج التنقيح إلى ذكاء اصطناعي: أضف مفتاحاً في الإعدادات ← الدردشة، أو اربط Ollama أو LM Studio."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "পরিষ্কার করতে আপনার Claude কী লাগে। সেটিংস → চ্যাট-এ যোগ করুন।"
+            "value" : "পরিষ্কার করতে একটি AI লাগে: সেটিংস → চ্যাট-এ একটি কী যোগ করুন, অথবা Ollama বা LM Studio যুক্ত করুন।"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The clean-up uses your Claude key. Add it in Settings → Chat."
+            "value" : "The clean-up needs an AI: add a key in Settings → Chat, or connect Ollama or LM Studio."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La limpieza usa tu clave de Claude. Añádela en Ajustes → Chat."
+            "value" : "La limpieza necesita una IA: añade una clave en Ajustes → Chat, o conecta Ollama o LM Studio."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le nettoyage utilise ta clé Claude. Ajoute-la dans Réglages → Chat."
+            "value" : "Le nettoyage a besoin d'une IA : ajoute une clé dans Réglages → Chat, ou connecte Ollama ou LM Studio."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सफ़ाई आपकी Claude कुंजी से होती है। इसे सेटिंग्स → चैट में जोड़ें।"
+            "value" : "सफ़ाई के लिए एक AI चाहिए: सेटिंग्स → चैट में कुंजी जोड़ें, या Ollama या LM Studio जोड़ें।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Perapian memakai kunci Claude-mu. Tambahkan di Pengaturan → Obrolan."
+            "value" : "Perapian butuh AI: tambahkan kunci di Pengaturan → Obrolan, atau hubungkan Ollama atau LM Studio."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A limpeza usa sua chave do Claude. Adicione-a em Ajustes → Chat."
+            "value" : "A limpeza precisa de uma IA: adicione uma chave em Ajustes → Chat, ou conecte o Ollama ou o LM Studio."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Для чистки нужен ваш ключ Claude. Добавьте его в Настройки → Чат."
+            "value" : "Для чистки нужен ИИ: добавьте ключ в Настройки → Чат или подключите Ollama или LM Studio."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整理会使用你的 Claude 密钥。请在“设置”→“聊天”中添加。"
+            "value" : "整理需要一个 AI：请在“设置”→“聊天”中添加密钥，或连接 Ollama 或 LM Studio。"
           }
         }
       }
@@ -2346,6 +2346,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开启整理时，文字（绝不是你的声音）会用你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在你的 Mac 上。"
+          }
+        }
+      }
+    },
+    "hub.cleanup-provider" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يكتبه"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "লিখবে"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written by"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lo escribe"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écrit par"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कौन लिखे"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ditulis oleh"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escrito por"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кто пишет"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由谁整理"
           }
         }
       }
@@ -9571,61 +9635,61 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ينقّح Claude ما تقوله بأسلوب التطبيق الذي تكتب فيه."
+            "value" : "ينقّح الذكاء الاصطناعي الذي تختاره ما تقوله بأسلوب التطبيق الذي تكتب فيه."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "আপনি যে অ্যাপে লিখছেন তার স্টাইলে Claude আপনার কথা পরিষ্কার করে।"
+            "value" : "আপনার বেছে নেওয়া AI আপনি যে অ্যাপে লিখছেন তার স্টাইলে আপনার কথা পরিষ্কার করে।"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude cleans up what you say, in the style of the app you write in."
+            "value" : "The AI you pick cleans up what you say, in the style of the app you write in."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude limpia lo que dices, con el estilo de la app en la que escribes."
+            "value" : "La IA que eliges limpia lo que dices, con el estilo de la app en la que escribes."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude nettoie ce que tu dis, dans le style de l'app où tu écris."
+            "value" : "L'IA que tu choisis nettoie ce que tu dis, dans le style de l'app où tu écris."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude आपकी बात को उस ऐप की शैली में साफ़ करता है जिसमें आप लिख रहे हैं।"
+            "value" : "आपकी चुनी हुई AI आपकी बात को उस ऐप की शैली में साफ़ करती है जिसमें आप लिख रहे हैं।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude merapikan ucapanmu sesuai gaya aplikasi tempat kamu menulis."
+            "value" : "AI pilihanmu merapikan ucapanmu sesuai gaya aplikasi tempat kamu menulis."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Claude limpa o que você diz, no estilo do app em que você escreve."
+            "value" : "A IA que você escolher limpa o que você diz, no estilo do app em que você escreve."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude приводит сказанное в порядок в стиле приложения, где вы пишете."
+            "value" : "Выбранный вами ИИ приводит сказанное в порядок в стиле приложения, где вы пишете."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude 会按你正在输入的 App 的风格整理你说的话。"
+            "value" : "你选择的 AI 会按你正在输入的 App 的风格整理你说的话。"
           }
         }
       }

@@ -85,9 +85,13 @@ final class FlowStore: ObservableObject {
             prune()
         }
     }
-    /// Clean the words with Claude before pasting them (needs the Claude key from Settings).
+    /// Clean the words before pasting them, with `cleanupProvider` (needs its key or server from Settings).
     @Published var cleanupEnabled: Bool = UserDefaults.standard.bool(forKey: FlowStore.cleanupKey) {
         didSet { UserDefaults.standard.set(cleanupEnabled, forKey: Self.cleanupKey) }
+    }
+    /// Who cleans up: Claude, or another chat provider of Settings → Chat with its chat model.
+    @Published var cleanupProvider: ChatProvider = ChatProvider(rawValue: UserDefaults.standard.string(forKey: FlowStore.cleanupProviderKey) ?? "") ?? .anthropic {
+        didSet { UserDefaults.standard.set(cleanupProvider.rawValue, forKey: Self.cleanupProviderKey) }
     }
     /// The style of the apps that have none of their own.
     @Published var defaultStyle: FlowStyle = FlowStyle(rawValue: UserDefaults.standard.string(forKey: FlowStore.defaultStyleKey) ?? "") ?? .natural {
@@ -105,6 +109,7 @@ final class FlowStore: ObservableObject {
     static let engineKey = "flowEngine"
     static let keepDaysKey = "flowKeepDays"
     static let cleanupKey = "flowCleanup"
+    static let cleanupProviderKey = "flowCleanupProvider"
     static let defaultStyleKey = "flowDefaultStyle"
 
     private struct WordsFile: Codable {

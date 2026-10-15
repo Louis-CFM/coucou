@@ -1,12 +1,13 @@
 #if !APPSTORE
 import Foundation
 
-/// The clean-up of Flow dictation: Claude removes the "euh", the repeats and the corrections said
+/// The clean-up of Flow dictation: the AI removes the "euh", the repeats and the corrections said
 /// on the way ("at 3, no, at 4" → "at 4"), fixes the punctuation and writes in the app's style.
-/// Only when it is turned on in the Coucou Flow window and a Claude key is set in Settings; the words
-/// then go to Anthropic with that key (or to the Anthropic-compatible gateway set in
-/// Settings → Chat), and nowhere else. Any problem (no network, slow answer, odd reply)
-/// and the words are pasted as they were heard.
+/// Only when it is turned on in the Coucou Flow window, by the provider picked there: Claude with the
+/// key of Settings (to Anthropic, or to the Anthropic-compatible gateway set in Settings → Chat), or
+/// another chat provider of Settings → Chat with its key or local server. The words go there and
+/// nowhere else. Any problem (no network, slow answer, odd reply) and the words are pasted as they
+/// were heard.
 enum FlowCleanup {
     static let model = "claude-haiku-4-5"
     /// Past this, the words are pasted as heard rather than keeping you waiting.
@@ -16,9 +17,26 @@ enum FlowCleanup {
         !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     }
 
+    /// The providers that can clean up now: Claude with its key, then the others set up in Settings → Chat.
+    @MainActor static var providers: [ChatProvider] {
+        (hasKey ? [.anthropic] : []) + OneShotAI.configured()
+    }
+
+    /// The provider picked in Coucou Flow can answer.
+    @MainActor static var canClean: Bool {
+        providers.contains(FlowStore.shared.cleanupProvider)
+    }
+
     static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> String {
-        guard style != .verbatim, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty,
-              FlowText.wordCount(text) >= 3 else { return text }
+        guard style != .verbatim, FlowText.wordCount(text) >= 3 else { return text }
+        let provider = await MainActor.run { FlowStore.shared.cleanupProvider }
+        guard provider == .anthropic else {
+            let reply = await OneShotAI.ask(provider, system: system(style: style, app: app, words: words),
+                                            user: "<dictation>\n\(text)\n</dictation>",
+                                            timeout: timeout, temperature: 0)
+            return reply.map { cleanedReply($0, from: text) } ?? text
+        }
+        guard let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return text }
         let endpoint: ClaudeEndpoint
         do { endpoint = try ClaudeEndpoint.current() } catch {
             appendAppLog("nb.log", "[Flow] clean-up skipped: \(error.localizedDescription)")
@@ -40,15 +58,20 @@ enum FlowCleanup {
             guard (response as? HTTPURLResponse)?.statusCode == 200,
                   let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
                   let content = json["content"] as? [[String: Any]] else { return text }
-            let cleaned = content.compactMap { $0["text"] as? String }.joined()
-                .replacingOccurrences(of: "<dictation>", with: "")
-                .replacingOccurrences(of: "</dictation>", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return plausible(cleaned, from: text) ? cleaned : text
+            return cleanedReply(content.compactMap { $0["text"] as? String }.joined(), from: text)
         } catch {
             appendAppLog("nb.log", "[Flow] clean-up skipped: \(error.localizedDescription)")
             return text
         }
+    }
+
+    /// The reply without the tags, or the words as heard when it is not a clean-up.
+    private static func cleanedReply(_ reply: String, from text: String) -> String {
+        let cleaned = reply
+            .replacingOccurrences(of: "<dictation>", with: "")
+            .replacingOccurrences(of: "</dictation>", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return plausible(cleaned, from: text) ? cleaned : text
     }
 
     /// A reply that is empty, or much longer or shorter than what was said, is not a clean-up
