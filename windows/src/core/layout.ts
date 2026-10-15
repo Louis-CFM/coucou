@@ -38,7 +38,10 @@ export type BotStateName =
   | "sleeping"
   | "dizzy";
 
-export type BotEmoteName = "love" | "surprised" | "proud" | "wink" | "yawn" | "happy" | "annoyed";
+export type BotEmoteName =
+  | "love" | "surprised" | "proud" | "wink" | "yawn" | "happy" | "annoyed"
+  // Acted out from a chat reply's mood.
+  | "sad" | "shy" | "scared" | "angry" | "hype" | "confused" | "sleepy";
 
 export type AgentLayoutMode = "none" | "grid" | "pills" | "column";
 
@@ -92,7 +95,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // day, longest session, permissions and questions, which the Mac card leaves
   // to the shared image.
   recap: { height: 184, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  wardrobe: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
+  // taller than the Mac's 160, for two rows of outfits and the body shapes.
+  wardrobe: { height: 210, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually
