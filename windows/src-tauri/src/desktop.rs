@@ -512,7 +512,7 @@ fn refresh(app: &AppHandle, d: &Desktop) {
         DesktopMode::Poll => {
             if let Some(flag) = ignore {
                 d.inner.lock().unwrap().ignoring = Some(flag);
-                let _ = win.set_ignore_cursor_events(flag);
+                platform::set_click_through(&win, flag);
             }
             d.gate.set_active(active);
         }
@@ -665,7 +665,7 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
                 let mut i = d.inner.lock().unwrap();
                 if i.ignoring != Some(!accept) {
                     i.ignoring = Some(!accept);
-                    let _ = win.set_ignore_cursor_events(!accept);
+                    platform::set_click_through(&win, !accept);
                 }
             }
             if (local.0 - last.0).abs() >= 1.0 || (local.1 - last.1).abs() >= 1.0 {

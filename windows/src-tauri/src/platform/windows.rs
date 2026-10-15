@@ -34,8 +34,8 @@ use ::windows::Win32::UI::Shell::{
 use ::windows::Win32::UI::WindowsAndMessaging::{
     EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
     GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
-    SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOWNORMAL, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW,
+    SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOWNORMAL, WS_EX_APPWINDOW,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -141,22 +141,23 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
     None
 }
 
-/// Where the Codex CLI may be, best first: %PATH% (codex.exe or npm's
-/// codex.cmd), then npm's global folder and the Volta / Bun / pnpm ones.
-/// Rust quotes the one fixed argument safely for a `.cmd` (see find_on_path).
-pub fn codex_candidates() -> Vec<PathBuf> {
-    let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
+/// Where a CLI installed per user (`codex`, `claude`) may be, best first:
+/// %PATH% (name.exe or npm's name.cmd), then npm's global folder, the Volta /
+/// Bun / pnpm ones and ~/.local/bin (Claude Code's own installer).
+/// Rust quotes arguments safely for a `.cmd` (see find_on_path).
+pub fn cli_candidates(name: &str) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = find_on_path(name).into_iter().collect();
     let var = |k: &str| std::env::var_os(k).map(PathBuf::from).filter(|p| p.is_absolute());
     if let Some(appdata) = var("APPDATA") {
-        out.push(appdata.join("npm").join("codex.cmd"));
+        out.push(appdata.join("npm").join(format!("{name}.cmd")));
     }
     if let Some(local) = var("LOCALAPPDATA") {
-        out.push(local.join("Volta").join("bin").join("codex.exe"));
-        out.push(local.join("pnpm").join("codex.cmd"));
+        out.push(local.join("Volta").join("bin").join(format!("{name}.exe")));
+        out.push(local.join("pnpm").join(format!("{name}.cmd")));
     }
     if let Some(home) = var("USERPROFILE") {
-        out.push(home.join(".bun").join("bin").join("codex.exe"));
-        out.push(home.join(".local").join("bin").join("codex.exe"));
+        out.push(home.join(".bun").join("bin").join(format!("{name}.exe")));
+        out.push(home.join(".local").join("bin").join(format!("{name}.exe")));
     }
     out.retain(|p| p.is_file());
     out
@@ -330,7 +331,7 @@ pub fn make_non_activating(win: &WebviewWindow) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let want = ex | WS_EX_NOACTIVATE.0 as isize | WS_EX_TOOLWINDOW.0 as isize;
+        let want = overlay_bits(ex | WS_EX_NOACTIVATE.0 as isize);
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
     }
 }
@@ -340,13 +341,95 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     let Some(hwnd) = hwnd_of(win) else { return };
     unsafe {
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        let want = if activating {
+        let want = overlay_bits(if activating {
             ex & !(WS_EX_NOACTIVATE.0 as isize)
         } else {
             ex | WS_EX_NOACTIVATE.0 as isize
-        };
+        });
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
     }
+}
+
+/// An overlay, not an app: a tool window without WS_EX_APPWINDOW, so no taskbar
+/// (Windows' own, or a replacement like Bloom) and no Alt+Tab lists it.
+fn overlay_bits(ex: isize) -> isize {
+    (ex | WS_EX_TOOLWINDOW.0 as isize) & !(WS_EX_APPWINDOW.0 as isize)
+}
+
+/// Click-through on or off. The windowing layer rebuilds the extended style
+/// from its own flags when it does this, dropping the overlay bits, so they are
+/// put back right after, queued on the UI thread behind that change (the cursor
+/// polls call this from their own threads).
+pub fn set_click_through(win: &WebviewWindow, ignore: bool) {
+    let _ = win.set_ignore_cursor_events(ignore);
+    let w = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        let Some(hwnd) = hwnd_of(&w) else { return };
+        unsafe {
+            let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let want = overlay_bits(ex);
+            if want != ex {
+                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
+            }
+        }
+    });
+}
+
+/// Tells WebView2 how much memory a window may keep. A hidden window (settings,
+/// the screen overlay) is set to Low: it drops caches and decoded images and
+/// hands its heap slack back, and gets it all back when it is shown again.
+/// It is also made invisible to WebView2, which stops its painting and
+/// animation frames: with occlusion tracking off (BROWSER_ARGS) a hidden
+/// window otherwise kept rendering, the settings window ~60% of a core.
+/// Back to Normal, the window is shown first: made visible to WebView2 while
+/// its window was still hidden, the click-through overlay never painted nor
+/// ran a frame again (the screenshot roam hung, with nothing on screen).
+pub fn set_memory_low(win: &WebviewWindow, low: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
+        COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+    };
+    use wv2_core::Interface;
+    if !low {
+        let _ = win.show();
+    }
+    let _ = win.with_webview(move |wv| unsafe {
+        let _ = wv.controller().SetIsVisible(!low);
+        let Ok(core) = wv.controller().CoreWebView2() else { return };
+        let Ok(core) = core.cast::<ICoreWebView2_19>() else { return };
+        let level = if low {
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW
+        } else {
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL
+        };
+        let _ = core.SetMemoryUsageTargetLevel(level);
+    });
+}
+
+/// Lets the island's own page use the microphone (the chat's mic button)
+/// without WebView2's permission prompt, which has no room in the island. The
+/// island only ever shows Coucou's own pages.
+pub fn allow_microphone(win: &WebviewWindow) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_MICROPHONE,
+        COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+    };
+    use webview2_com::PermissionRequestedEventHandler;
+    let _ = win.with_webview(|wv| unsafe {
+        let Ok(core) = wv.controller().CoreWebView2() else { return };
+        let handler = PermissionRequestedEventHandler::create(Box::new(|_, args| {
+            if let Some(args) = args {
+                let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+                args.PermissionKind(&mut kind)?;
+                if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE {
+                    args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                }
+            }
+            Ok(())
+        }));
+        let mut token = 0i64;
+        let _ = core.add_PermissionRequested(&handler, &mut token);
+    });
 }
 
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.

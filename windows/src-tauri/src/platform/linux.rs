@@ -268,23 +268,24 @@ pub fn open_claude_desktop() -> bool {
     false
 }
 
-/// Where the Codex CLI may be, best first: $PATH, then the usual per-user
-/// install folders, which a desktop launch often leaves out of $PATH (npm's
+/// Where a CLI installed per user (`codex`, `claude`) may be, best first:
+/// $PATH, then the usual per-user install folders, which a desktop launch
+/// often leaves out of $PATH (npm's
 /// global prefix, Volta, Bun, pnpm, and nvm with its newest Node first).
-pub fn codex_candidates() -> Vec<PathBuf> {
+pub fn cli_candidates(name: &str) -> Vec<PathBuf> {
     let home = home_dir();
-    let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
+    let mut out: Vec<PathBuf> = find_on_path(name).into_iter().collect();
     for dir in [".local/bin", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"] {
-        out.push(home.join(dir).join("codex"));
+        out.push(home.join(dir).join(name));
     }
-    out.push(PathBuf::from("/usr/local/bin/codex"));
-    out.push(PathBuf::from("/usr/bin/codex"));
+    out.push(PathBuf::from("/usr/local/bin").join(name));
+    out.push(PathBuf::from("/usr/bin").join(name));
     let nvm = home.join(".nvm/versions/node");
     if let Ok(entries) = std::fs::read_dir(&nvm) {
         let mut versions: Vec<String> =
             entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
         versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
-        out.extend(versions.iter().map(|v| nvm.join(v).join("bin/codex")));
+        out.extend(versions.iter().map(|v| nvm.join(v).join("bin").join(name)));
     }
     out.retain(|p| {
         std::fs::metadata(p)
@@ -322,6 +323,7 @@ mod layer {
     pub const EDGE_TOP: c_int = 2;
     pub const EDGE_BOTTOM: c_int = 3;
     pub const KEYBOARD_NONE: c_int = 0;
+    pub const KEYBOARD_EXCLUSIVE: c_int = 1;
     pub const KEYBOARD_ON_DEMAND: c_int = 2;
 
     #[link(name = "gtk-layer-shell")]
@@ -763,6 +765,120 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     }
     let g = monitor.geometry();
     Some((g.width() as f64, g.height() as f64))
+}
+
+// ── Overlay helpers shared with Windows ───────────────────────────────────────
+
+/// Click-through on or off (Windows needs more; see platform/windows.rs).
+pub fn set_click_through(win: &WebviewWindow, ignore: bool) {
+    let _ = win.set_ignore_cursor_events(ignore);
+}
+
+/// WebKitGTK has no memory target to set.
+pub fn set_memory_low(_win: &WebviewWindow, _low: bool) {}
+
+/// The chat's mic on Linux: WebKitGTK asks through its own permission request.
+// ponytail: not wired yet (needs enable-media-stream and a permission-request
+// handler on the WebView); the mic button reports the error until then.
+pub fn allow_microphone(_win: &WebviewWindow) {}
+
+// ── Screen overlay (screenshot roam, AirPods, media preview) ──────────────────
+
+/// True once the island is a layer-shell surface (centred on the top edge).
+pub fn island_is_layer_surface() -> bool {
+    LAYER_SURFACE.load(Ordering::Relaxed)
+}
+
+/// True once the overlay is a layer-shell surface.
+static ROAM_LAYER: AtomicBool = AtomicBool::new(false);
+
+/// True while a media preview is on the overlay: it then takes the mouse over
+/// its whole surface instead of none of it (a roaming Mochi never takes a click).
+static ROAM_INPUT: AtomicBool = AtomicBool::new(false);
+
+/// The overlay's input region as currently wanted; GTK resets it on every map.
+fn roam_input(gw: &impl IsA<gtk::Widget>) {
+    if ROAM_INPUT.load(Ordering::Relaxed) {
+        apply_input_region(gw, None);
+    } else {
+        apply_input_region(gw, Some((0.0, 0.0, 0.0, 0.0)));
+    }
+}
+
+pub fn set_roam_input(win: &WebviewWindow, take: bool) {
+    ROAM_INPUT.store(take, Ordering::Relaxed);
+    if let Ok(gw) = win.gtk_window() {
+        roam_input(&gw);
+    }
+}
+
+/// Turns the overlay window into a transparent layer-shell surface over the
+/// whole monitor, above everything, that never takes a click. Like the island,
+/// it must be set up before the window is first shown. Without layer-shell
+/// (GNOME, X11) it stays a regular window, made fullscreen when shown.
+pub fn make_roam_overlay(win: &WebviewWindow) {
+    let Ok(gw) = win.gtk_window() else { return };
+    let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
+    if layer_shell_wanted() && supported && !gw.is_realized() {
+        gw.set_titlebar(None::<&gtk::Widget>);
+        let ptr = gtk_window_ptr(&gw);
+        unsafe {
+            layer::gtk_layer_init_for_window(ptr);
+            layer::gtk_layer_set_namespace(ptr, c"coucou-roam".as_ptr());
+            layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
+            for edge in [layer::EDGE_LEFT, layer::EDGE_RIGHT, layer::EDGE_TOP, layer::EDGE_BOTTOM] {
+                layer::gtk_layer_set_anchor(ptr, edge, 1);
+            }
+            layer::gtk_layer_set_exclusive_zone(ptr, -1);
+            layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_NONE);
+        }
+        ROAM_LAYER.store(true, Ordering::Relaxed);
+    }
+    // GTK resets the input region on every map; WebKitGTK in a fresh layer
+    // surface also needs one unmap/map to paint (see make_non_activating).
+    let remapped = std::cell::Cell::new(false);
+    gw.connect_map_event(move |w, _| {
+        roam_input(w);
+        if ROAM_LAYER.load(Ordering::Relaxed) && !remapped.replace(true) {
+            let w = w.clone();
+            gtk::glib::idle_add_local_once(move || {
+                w.hide();
+                w.show_all();
+                roam_input(&w);
+            });
+        }
+        gtk::glib::Propagation::Proceed
+    });
+}
+
+/// Shows the overlay on the island's monitor and gives it the keyboard, so Esc
+/// reaches the page while Mochi roams.
+pub fn show_roam_overlay(win: &WebviewWindow, island: &WebviewWindow) {
+    let (Ok(gw), Ok(igw)) = (win.gtk_window(), island.gtk_window()) else { return };
+    if ROAM_LAYER.load(Ordering::Relaxed) {
+        let ptr = gtk_window_ptr(&gw);
+        if let (Some(display), Some(gdk_window)) = (gtk::gdk::Display::default(), igw.window()) {
+            if let Some(monitor) = display.monitor_at_window(&gdk_window) {
+                unsafe { layer::gtk_layer_set_monitor(ptr, monitor.to_glib_none().0) };
+            }
+        }
+        unsafe { layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_EXCLUSIVE) };
+        let _ = win.show();
+    } else {
+        let _ = win.set_fullscreen(true);
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+    roam_input(&gw);
+}
+
+pub fn hide_roam_overlay(win: &WebviewWindow) {
+    if let Ok(gw) = win.gtk_window() {
+        if ROAM_LAYER.load(Ordering::Relaxed) {
+            unsafe { layer::gtk_layer_set_keyboard_mode(gtk_window_ptr(&gw), layer::KEYBOARD_NONE) };
+        }
+    }
+    let _ = win.hide();
 }
 
 #[cfg(test)]
