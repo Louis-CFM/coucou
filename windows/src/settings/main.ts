@@ -10,7 +10,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_MOCHI_NAMES, DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -22,6 +22,7 @@ import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
+import { extrasSettingsChanged, mediaModelsSection, mochiSection, nameInput, type ExtrasContext } from "./extras";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -49,6 +50,13 @@ function pickColor(next: Record<string, string>) {
   settings.pillColors = next;
   void save();
 }
+
+/** How extras.ts reads and saves the settings, which are replaced on every outside save. */
+const extras: ExtrasContext = {
+  settings: () => settings,
+  save: () => void save(),
+  toggle: (on, onChange) => toggle(on, onChange),
+};
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────
 
@@ -531,6 +539,7 @@ const CLOUD: CloudDef[] = [
 function chatProvidersSection(
   present: Record<string, boolean>,
   keyChanged: (key: string, on: boolean) => void,
+  claudeCode: boolean,
 ): HTMLElement {
   const list = h("div", { style: "display:flex;flex-direction:column;gap:8px" });
   for (const def of CLOUD) {
@@ -588,6 +597,7 @@ function chatProvidersSection(
       h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: t("Key from {site}", { site: def.where }) }),
     );
   }
+  list.append(...claudeCodeRows(claudeCode));
   return h(
     "section",
     {},
@@ -595,6 +605,41 @@ function chatProvidersSection(
     h("div", { class: "hint", text: CHAT_STRINGS.providersHint }),
     list,
   );
+}
+
+/**
+ * The user's Claude Code CLI as a chat provider (claude_code.rs): no key to
+ * enter, only whether it is installed, and a button to chat with it.
+ */
+function claudeCodeRows(found: boolean): HTMLElement[] {
+  const p = providerDef("claude-code");
+  const use = h("button", {}) as HTMLButtonElement;
+  const draw = () => {
+    const inUse = settings.chatProvider === p.id;
+    use.className = inUse ? "" : "primary";
+    use.textContent = inUse ? CHAT_STRINGS.inUse : CHAT_STRINGS.useInChat;
+    use.disabled = inUse || !found;
+  };
+  use.addEventListener("click", () => {
+    settings.chatProvider = p.id;
+    void save().then(draw);
+  });
+  draw();
+  return [
+    h("div", { class: "row" },
+      h("label", {},
+        h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+        h("span", { text: p.name }),
+      ),
+      h("span", { class: "spacer" }),
+      use, statusDot(found),
+    ),
+    h("div", {
+      class: "hint",
+      style: "margin:-4px 0 0 144px",
+      text: found ? t("Uses your Claude Code subscription, no API key.") : t("Claude Code isn't installed."),
+    }),
+  ];
 }
 
 // ── Local models section ──────────────────────────────────────────────────────
@@ -784,6 +829,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter either: the Windows media controls (Windows only, music.rs).
+  { id: "integration_music", name: "Music", color: "#FA2D48", fields: [],
+    hint: "Shows what plays in Spotify, Apple Music, YouTube Music or any other player in the Windows media controls, with play, pause and skip. Mochi dances to music, not to videos." },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -823,6 +871,18 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
+    // This coloured Mochi's name, then its keys.
+    rows.append(
+      h("div", { class: "row" },
+        h("label", { style: "min-width:104px", text: "Mochi's name" }),
+        nameInput(settings.mochiNames?.[def.id] ?? "", DEFAULT_MOCHI_NAMES[def.id] ?? def.name, (v) => {
+          const names = { ...(settings.mochiNames ?? {}) };
+          if (v) names[def.id] = v;
+          else delete names[def.id];
+          settings.mochiNames = names;
+        }, extras.save),
+      ),
+    );
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
@@ -963,6 +1023,11 @@ function generalSection(): HTMLElement {
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: "Keep island visible" }),
+      toggle(settings.keepVisible ?? false, (v) => { settings.keepVisible = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: "At rest the island stays compact at the top, showing what Mochi is doing or the time, instead of hiding." }),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,
@@ -1302,6 +1367,7 @@ async function main() {
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
+    extrasSettingsChanged();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
     applyLanguage();
@@ -1349,16 +1415,19 @@ async function render() {
     chatKeys[key] = (await Bridge.secretPresent(key)) ?? false;
   }
   const customKey = (await Bridge.secretPresent(CUSTOM_SERVER_KEY)) ?? false;
+  const claudeCode = (await Bridge.claudeCodeFound()) ?? false;
 
   declaredViews.length = 0;
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
-    general: () => [generalSection()],
+    general: () => [generalSection(), mochiSection(extras)],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [
+      apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged, claudeCode), localSection(customKey), mediaModelsSection(extras),
+    ],
     integrations: () => [integrationsSection(present)],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

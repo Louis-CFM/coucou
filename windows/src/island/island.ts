@@ -2,23 +2,25 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  EXPANDED_CORNER, EXPANDED_W, NOTCH_H, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
-  type BotEmoteName, type IslandMode, type IslandViewName,
+  type BotEmoteName, type BotStateName, type IslandMode, type IslandViewName,
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
-import { BotEngine, hexToRGB } from "../mochi/engine";
+import { BotEngine, MOOD_ACTS, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
-import { SeasonCache, parseOutfit } from "../mochi/wardrobe";
+import {
+  createMiniBot, forEachMiniBot, pruneMiniBots, setMiniBotsAsleep, setMiniBotsMusic, syncMiniBotStates, tickMiniBots,
+} from "../mochi/minibots";
+import { MAIN_MOCHI, SeasonCache, lookOf, mochiKey, setLook } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
-import { USC, UploadSeq } from "../upload/sequence";
+import { USC, UploadSeq, uploadProgressCurve } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
@@ -26,7 +28,8 @@ import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
-import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { DRAG_THRESHOLD, agentActive, sessionStarted } from "../mochi/desktop-logic";
+import { Pods } from "./pods";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -58,6 +61,8 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  /** The closed island's middle: what the focused Mochi is doing, else the time. */
+  private compactStatus!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -72,6 +77,8 @@ export class Island {
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
+  /** AirPods in Mochi's head and the music notes (pods.ts). */
+  private pods = new Pods(() => this.ensureRunning());
   private greeting = new Greeting();
   private greetingShown = false;
   private seasons = new SeasonCache();
@@ -103,8 +110,11 @@ export class Island {
   onGreetingDone: (() => void) | null = null;
   onWake: (() => void) | null = null;
 
-  /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
-  private botPress: { x: number; y: number } | null = null;
+  /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out,
+   *  to the desktop, or (Ctrl held) for a screenshot of the screen. */
+  private botPress: { x: number; y: number; roam: boolean } | null = null;
+  /** Linux: the screenshot roam's pointer goes through the island (roam_linux.rs). */
+  private roamCarrying = false;
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
@@ -119,6 +129,7 @@ export class Island {
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
+      wake: () => this.noteActivity(),
     });
     this.build();
     this.wireFsm();
@@ -131,7 +142,17 @@ export class Island {
     State.subscribe(() => {
       this.dirty = true;
       this.ensureRunning();
+      // A chat message sent or a coding session starting wakes them; the
+      // pointer, keys and moods don't.
+      const before = this.sessions;
+      const asked = this.asked;
+      this.sessions = new Map(State.tasks.map((t) => [t.id, t.state]));
+      this.asked = State.chatHistory.filter((m) => m.role === "user").length;
+      const started = sessionStarted(before, State.tasks);
+      if (started && State.asleep) void Bridge.log("mochi wake: a session started");
+      if (this.asked > asked || started) this.noteActivity();
     });
+    this.noteActivity();
   }
 
   /** The request has its answer: the card goes and the session carries on. */
@@ -240,8 +261,10 @@ export class Island {
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
-        if (parseOutfit(State.settings.mochiOutfit) === selection) return;
-        State.settings.mochiOutfit = selection;
+        // The wardrobe dresses the focused Mochi (or all of them, in "all" mode).
+        const who = State.focusMochi;
+        if (lookOf(State.settings, who).outfit === selection) return;
+        setLook(State.settings, who, { outfit: selection });
         void Bridge.saveSettings(State.settings);
         Sound.play("pop");
         this.engine.triggerEmote("proud");
@@ -251,6 +274,20 @@ export class Island {
         State.wardrobePreview = outfit;
         State.notify();
       },
+      chooseShape: (id) => {
+        const who = State.focusMochi;
+        if (lookOf(State.settings, who).shape === id) return;
+        setLook(State.settings, who, { shape: id });
+        void Bridge.saveSettings(State.settings);
+        Sound.play("pop");
+        this.engine.squash();
+        State.notify();
+      },
+      wardrobeFor: (id) => {
+        // Right-click on a pill's Mochi: it comes up in the island, in its wardrobe.
+        State.setFocus(id);
+        this.toggleWardrobe();
+      },
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
@@ -259,6 +296,11 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.compactStatus = h("div", { id: "compact-status" });
+    // The clock moves on its own; a timer this slow costs nothing.
+    window.setInterval(() => {
+      if (State.mode === "compact") this.syncCompactStatus();
+    }, 15_000);
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -292,6 +334,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactStatus,
       this.countdown,
     );
 
@@ -301,7 +344,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.pods.el);
     this.applyGeometry();
   }
 
@@ -357,6 +400,8 @@ export class Island {
       // A folded card is still waiting: it keeps the island pinned.
       if (!State.pendingApproval) State.isPinned = false;
       void Bridge.focusWindow(false);
+      // A screenshot nobody asked about must not tag along into a later chat.
+      if (State.droppedFile?.ephemeral && State.chatHistory.length === 0) State.dropAttachment();
     }
     if (mode !== "expanded") {
       closePlanCard();
@@ -454,6 +499,11 @@ export class Island {
    * wardrobe from any state, or goes back if it is already open.
    */
   wardrobeFromDesktop() {
+    // The desktop Mochi's own wardrobe: the main one's, or the dragged-out one's.
+    const who = this.desktop.who;
+    if (!(State.mode === "expanded" && State.view === "wardrobe")) {
+      State.setFocus(who === MAIN_MOCHI ? State.mainPillId : who);
+    }
     this.wardrobeAnywhere();
   }
 
@@ -471,6 +521,46 @@ export class Island {
     this.alert("wardrobe");
   }
 
+  /** Hold the island open while something runs (a push), without the
+   *  approval pin; `false` lets it auto-close again as usual. */
+  hold(on: boolean) {
+    this.fsm.pinned = on || State.isPinned;
+    if (!on && !this.wasInIsland) this.fsm.mouseLeft();
+  }
+
+  // ── Screenshot roam (src-tauri/src/roam.rs) ─────────────────────────────────
+
+  /** Ctrl+dragged out of the island: Mochi goes onto the screen to take a screenshot. */
+  private startRoam() {
+    State.roaming = true;
+    this.cancelBotHover();
+    this.roamCarrying = navigator.userAgent.includes("Linux");
+    void Bridge.roamStart({
+      state: this.engine.state,
+      bodyColor: this.engine.bodyColor,
+      outfit: this.engine.outfit,
+      shape: this.engine.shape,
+    });
+    // Mochi has left: the island goes straight back to its idle size.
+    this.collapse();
+    State.notify();
+  }
+
+  /** Mochi flew back from the screen, with a screenshot when it got one. */
+  onRoamEnd(path: string | null) {
+    State.roaming = false;
+    this.roamCarrying = false;
+    this.engine.squash();
+    Sound.play("open");
+    State.notify();
+    if (!path) return;
+    State.droppedFile = { name: "Screenshot", path, ephemeral: true };
+    State.promptContext = { kind: "file", name: "Screenshot", path };
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    this.alert("prompt");
+  }
+
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
@@ -483,6 +573,28 @@ export class Island {
   emote(name: BotEmoteName) {
     this.engine.triggerEmote(name);
     this.ensureRunning();
+  }
+
+  private emoteHold: number | null = null;
+
+  /**
+   * Settings' emote tester: the island opens for the act and every Mochi on
+   * it plays the mood together, then it closes again by its usual rule.
+   */
+  private playEmote(mood: string) {
+    const act = MOOD_ACTS[mood];
+    if (!act) return;
+    if (State.mode !== "expanded") this.fsm.forceHome();
+    this.hold(true);
+    act(this.engine);
+    // The pills' minis are (re)built by the redraw the opening queued.
+    requestAnimationFrame(() => forEachMiniBot(act));
+    this.ensureRunning();
+    if (this.emoteHold != null) window.clearTimeout(this.emoteHold);
+    this.emoteHold = window.setTimeout(() => {
+      this.emoteHold = null;
+      this.hold(false);
+    }, 2800);
   }
 
   /** Ctrl+P: keep the open island from folding away, or let it fold again. */
@@ -624,6 +736,10 @@ export class Island {
     const dur = State.uploadDuration;
     const p = Math.max(0, Math.min(1, (since - PRE_PROGRESS) / dur));
 
+    // The bar and the percentage follow the same eased curve as Mochi.
+    State.uploadProgress = uploadProgressCurve(p);
+    if (State.view === "uploading") this.views.get("uploading")?.sync();
+
     const tens = Math.floor(p * 10);
     if (tens > this.uploadTens && tens < 10) {
       this.uploadTens = tens;
@@ -735,9 +851,10 @@ export class Island {
       State.lastActivity = performance.now();
       // A click makes a hover-opened island an ordinary open one.
       this.fsm.userInteracted();
-      // A press on Mochi may become a drag out to the desktop.
+      // A press on Mochi may become a drag out to the desktop, or with Ctrl
+      // held, out onto the screen for a screenshot.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
-        this.botPress = { x: e.clientX, y: e.clientY };
+        this.botPress = { x: e.clientX, y: e.clientY, roam: e.ctrlKey };
       }
       // Right-click on Mochi opens the wardrobe, and closes it again.
       if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
@@ -746,11 +863,14 @@ export class Island {
         return;
       }
       if (State.mode !== "expanded") {
+        if (State.asleep) this.noteActivity();
         this.fsm.click();
         return;
       }
       if (this.isBotHit(e.clientX, e.clientY)) {
         this.cancelBotHover();
+        // Asleep, a click wakes them all instead of slapping him.
+        if (State.asleep) return this.noteActivity();
         this.engine.slap();
       }
     });
@@ -761,8 +881,13 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
-    // Dragging Mochi out of the island puts him on the desktop.
+    // Dragging Mochi out of the island puts him on the desktop; Ctrl+drag
+    // carries him onto the screen for a screenshot.
     window.addEventListener("mousemove", (e) => {
+      if (this.roamCarrying) {
+        void Bridge.roamPointer(e.clientX, e.clientY, "move");
+        return;
+      }
       if (this.desktop.carrying) {
         this.desktop.carry(e.clientX, e.clientY);
         return;
@@ -775,14 +900,39 @@ export class Island {
       }
       if (Math.hypot(e.clientX - press.x, e.clientY - press.y) <= DRAG_THRESHOLD) return;
       this.botPress = null;
+      if (press.roam) {
+        if (this.canRoam()) this.startRoam();
+        return;
+      }
       if (!this.canDragOut()) return;
       this.cancelBotHover();
       this.desktop.pickUp(e.clientX, e.clientY);
     });
     window.addEventListener("mouseup", (e) => {
       this.botPress = null;
+      if (this.roamCarrying && e.button === 0) {
+        this.roamCarrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "drop");
+      }
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
+    // Right-click while carrying cancels the screenshot (Linux; Windows polls it).
+    window.addEventListener("mousedown", (e) => {
+      if (this.roamCarrying && e.button === 2) {
+        this.roamCarrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "cancel");
+      }
+    });
+
+    // The chat's reply ends with how the model feels about it: act it out.
+    window.addEventListener("mochi-mood", (e) => {
+      MOOD_ACTS[String((e as CustomEvent).detail)]?.(this.engine);
+      this.ensureRunning();
+    });
+    // Settings' "Play an emote" buttons (settings/extras.ts).
+    void onEvent<string>("mochi-mood", (mood) => this.playEmote(mood));
+    // sound playing, or the mic or camera in use, keeps them up (awake.rs).
+    void onEvent<boolean>("keep-awake", (on) => { this.keptAwake = on; });
 
     // Only keys typed into the island itself land here, never Escape typed in
     // a terminal — so it may fold a waiting card away, as Escape in the notch
@@ -860,8 +1010,8 @@ export class Island {
       this.fsm.mouseLeft();
     }
 
-    // Bot hover → love
-    const overBot = State.mode === "expanded" && State.stateOverride == null && this.isBotHit(x, y);
+    // Bot hover → love (not in his sleep)
+    const overBot = State.mode === "expanded" && State.stateOverride == null && !State.asleep && this.isBotHit(x, y);
     if (overBot && !this.botHovering) this.botHoverIn(x, y);
     if (!overBot && this.botHovering) this.cancelBotHover();
     this.botHovering = overBot;
@@ -876,6 +1026,12 @@ export class Island {
     this.ensureRunning();
   }
 
+  /** A screenshot roam: not while paused, out on the desktop or already roaming. */
+  private canRoam(): boolean {
+    if (State.paused || State.mode === "hidden" || State.roaming || State.mochiOnDesktop) return false;
+    return !(State.mode === "expanded" && (State.view === "greeting" || this.uploadActive));
+  }
+
   /** The greeting and the drop sequence draw a Mochi of their own: not that one. */
   private canDragOut(): boolean {
     if (State.mode === "hidden" || !this.desktop.canPickUp()) return false;
@@ -883,8 +1039,8 @@ export class Island {
   }
 
   private isBotHit(x: number, y: number): boolean {
-    // Out on the desktop, the island's Mochi is invisible: nothing to hit.
-    if (State.mochiOnDesktop) return false;
+    // Out on the desktop or the screen, the island's Mochi is invisible: nothing to hit.
+    if (State.mochiOnDesktop || State.roaming) return false;
     const rect = this.islandRect();
     const cx = rect.x + this.botCx.value;
     const cy = rect.y + this.botCy.value;
@@ -980,9 +1136,22 @@ export class Island {
       // is already in the right place the moment the canvas fades out.
       this.drawBot(dt);
     }
+    this.pods.step(dt, {
+      music: State.musicPlaying,
+      dancing: this.engine.isDancing && !greetingActive,
+      visible: State.mode !== "hidden" && !State.roaming && !State.mochiOnDesktop,
+      islandW: this.width.value,
+      botX: this.botCx.value,
+      botY: this.botCy.value,
+      botSize: this.botSize.value,
+    }, this.engine);
 
     const uploadActive = this.uploadActive;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    if (uploadActive) {
+      // The focused Mochi eats the file in its own shape.
+      this.uploadCanvas.shape = this.engine.shape;
+      this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    }
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
 
@@ -1004,7 +1173,7 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+        greetingActive || this.engine.busy || this.pods.busy || UploadSeq.isActive || viewAnimating;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -1022,8 +1191,8 @@ export class Island {
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     // The drop canvas draws its own Mochi; two of them would overlap. Out on the
-    // desktop, he isn't here at all.
-    const away = State.mochiOnDesktop;
+    // desktop or the screen, he isn't here at all.
+    const away = State.mochiOnDesktop || State.roaming;
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 
@@ -1080,20 +1249,28 @@ export class Island {
         this.engine.slotHVel = 0;
       }
     }
-    // Only the main Mochi is dressed — the one of the main tool's pill (Settings →
-    // Active pills): a focused integration pill shows its own colours, unless
-    // the wardrobe is open (BotCanvasView.showOutfit, macOS).
-    // In the wardrobe the hovered outfit swaps in at once, without the drop-in.
+    // The island's Mochi wears the focused Mochi's look (wardrobe.ts lookOf).
+    // The Mac (BotCanvasView.showOutfit) undresses him in the open island
+    // whenever a pill other than the main one is focused, while the closed
+    // island keeps him dressed: the outfit vanished as the island opened.
+    // dressed in both. In the wardrobe the hovered outfit swaps in at
+    // once, without the drop-in.
     const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
-    const mainFocused = State.focusId == null || State.focusId === State.mainPillId;
-    const showOutfit = mainFocused || State.mode !== "expanded" || inWardrobe;
-    const outfit = State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit));
-    this.engine.setOutfit(showOutfit ? outfit : "none", !inWardrobe);
+    const look = lookOf(State.settings, State.focusMochi);
+    this.engine.setOutfit(State.wardrobePreview ?? this.seasons.get(look.outfit), !inWardrobe);
+    this.engine.shape = look.shape;
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
+    setMiniBotsMusic(State.musicPlaying);
+    // Music starting wakes them to dance (extras); while it plays they stay up.
+    if (State.musicPlaying && !this.musicWas && State.asleep) {
+      void Bridge.log("mochi wake: music started");
+      this.noteActivity();
+    }
+    this.musicWas = State.musicPlaying;
     this.engine.setDancing(islandDances({
-      music: State.spotifyPlaying,
-      state: State.effectiveState,
+      music: State.musicPlaying,
+      state: this.engine.state,
       mode: State.mode,
       view: State.view,
       focusId: State.focusTask?.id,
@@ -1183,15 +1360,86 @@ export class Island {
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
         this.miniGrid.replaceChildren();
-        for (const t of others) {
-          this.miniGrid.append(createMiniBot(t, 13));
-        }
+        // The grid hangs from the screen's top edge: a hat may only reach up
+        // to it (cells 13 px + 3 px gap from NOTCH_H / 2 - 14.5, see above).
+        others.forEach((t, i) => {
+          const slotCenterY = NOTCH_H / 2 - 14.5 + Math.floor(i / 2) * 16 + 6.5;
+          this.miniGrid.append(createMiniBot(t, 13, undefined, slotCenterY));
+        });
         pruneMiniBots();
       }
     }
 
-    syncMiniBotStates(State.tasks);
-    this.engine.setState(State.effectiveState);
+    // Only with "Keep island visible"; otherwise the closed island keeps its usual look.
+    const status = showGrid && State.settings.keepVisible;
+    this.compactStatus.style.opacity = status ? "1" : "0";
+    if (status) this.syncCompactStatus();
+    // An off-screen shimmer would keep the compositor busy while hidden.
+    else this.compactStatus.classList.remove("shimmer");
+
+    // Each pill's Mochi wears its own look.
+    syncMiniBotStates(State.tasks, (task) => {
+      const look = lookOf(State.settings, mochiKey(task, State.mainPillId));
+      return { outfit: this.seasons.get(look.outfit), shape: look.shape };
+    });
+    this.engine.setState(State.asleep ? "sleeping" : State.effectiveState);
+  }
+
+  // ── Sleep ───────────────────────────────────────────────────────────────────
+
+  private sleepTimer: number | null = null;
+  /** Music was playing at the last frame, to see it start. */
+  private musicWas = false;
+  /** Sound, a call or the camera is keeping them up (awake.rs "keep-awake"). */
+  private keptAwake = false;
+  /** Each pill's state at the last redraw, to see a session start. */
+  private sessions = new Map<string, BotStateName>();
+  /** Chat messages sent so far (the chat starts over on a new file). */
+  private asked = 0;
+
+  /** A chat message, a session starting or music starting wakes every Mochi and restarts the
+   *  clock: after 30 s plus the island's own close delay, they fall asleep (not while music plays). */
+  private noteActivity = () => {
+    if (this.sleepTimer != null) window.clearTimeout(this.sleepTimer);
+    this.sleepTimer = window.setTimeout(this.fallAsleep, (30 + State.settings.autoCloseInterval) * 1000);
+    this.setAsleep(false);
+  };
+
+  private fallAsleep = () => {
+    this.sleepTimer = null;
+    // A session still at work keeps them up: look again after another spell.
+    // A finished or failed one is done working: it must not.
+    const working = (t: { state: BotStateName }) => agentActive(t.state) && t.state !== "finished" && t.state !== "error";
+    if (State.tasks.some(working)) return this.noteActivity();
+    // Nobody nods off while anything plays (music, a video, a game, a call)
+    // or an app holds the mic or camera: look again later.
+    if (State.musicPlaying || State.nowPlaying?.playing || this.keptAwake) return this.noteActivity();
+    this.setAsleep(true);
+  };
+
+  /** The island's Mochis, the minis and the desktop one (island/desktop.ts). */
+  private setAsleep(on: boolean) {
+    if (State.asleep === on) return;
+    // Diagnostics (coucou.log): why Mochi sleeps or wakes, with every session's state.
+    void Bridge.log(`mochi ${on ? "asleep" : "awake"}; sessions: ${State.tasks.map((t) => `${t.id.slice(0, 8)}=${t.state}`).join(" ") || "none"}`);
+    State.asleep = on;
+    setMiniBotsAsleep(on);
+    State.notify();
+  }
+
+  /** The closed island's middle: the focused Mochi's current step, else the clock. */
+  private syncCompactStatus() {
+    const t = State.focusTask;
+    const step = t && t.state !== "idle" && t.steps.length > 0
+      ? t.steps[Math.min(t.stepIndex, t.steps.length - 1)]
+      : null;
+    const text = step ?? new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (this.compactStatus.textContent !== text) this.compactStatus.textContent = text;
+    const live = !!step && t!.state !== "finished" && t!.state !== "error";
+    this.compactStatus.classList.toggle("shimmer", live);
+    this.compactStatus.classList.toggle("clock", !step);
+    this.compactStatus.classList.toggle("ok", !!step && t!.state === "finished");
+    this.compactStatus.classList.toggle("bad", !!step && t!.state === "error");
   }
 
   /** Applies settings coming from Rust at boot. */
@@ -1200,6 +1448,10 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.fsm.keepVisible = State.settings.keepVisible ?? false;
+    // Turned on while hidden: come back now rather than at the next hover.
+    // (Paused stays hidden; that is what pausing is for.)
+    if (this.fsm.keepVisible && !State.paused) this.fsm.reveal();
     State.notify();
   }
 

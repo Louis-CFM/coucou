@@ -10,7 +10,7 @@ import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
-import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
+import { DEFAULT_OUTFIT, MAIN_MOCHI, mochiKey, type MochiLook, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
 
@@ -50,6 +50,12 @@ export interface ApprovalInfo {
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /**
+   * Claude Code offered to remember this permission (permission_suggestions):
+   * the "Always allow" button's words. The rules themselves stay with the
+   * relay, which applies exactly what Claude Code offered.
+   */
+  always?: { label: string; detail: string } | null;
 }
 
 /** One question of an AskUserQuestion call. */
@@ -63,7 +69,68 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made, shown above it (e.g. the image was left out). */
+  notice?: string | null;
+  /** A dropped text or code file sent with this message, shown as a code card. */
+  attachment?: { name: string; lang: string; text: string } | null;
+  /** Images, video, speech or 3D a media model made. */
+  media?: MediaFile[];
 }
+
+/** A generated file in the app's media folder, by bare name. */
+export interface MediaFile {
+  name: string;
+  kind: "image" | "video" | "audio" | "3d";
+}
+
+/** What a saved media model makes; "stt" transcribes speech for the mic. */
+export type ModelOutput = "image" | "video" | "audio" | "3d" | "stt";
+
+/** A model on an OpenAI-compatible endpoint that makes something (media.rs). */
+export interface ModelEntry {
+  id: string;
+  label: string;
+  /** "openai" for any OpenAI-compatible endpoint. */
+  kind: string;
+  model: string;
+  endpoint: string;
+  vision: boolean | null;
+  output: ModelOutput;
+  /** Text-to-speech voice for "audio" models; empty = the model's default. */
+  voice: string;
+  /** Output detail for "3d" models that offer it (TRELLIS 2: low/medium/high). */
+  detail: string;
+}
+
+/** A player's track, from the Windows media controls (music.rs). */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  app: string;
+  playing: boolean;
+  /** Music, not a video or a browser tab: what Mochi dances to. */
+  music: boolean;
+  /** The cover's colour, "#RRGGBB"; null without a cover. */
+  color: string | null;
+}
+
+/** The Windows Music pill (music.rs), the Mac's Apple Music id. */
+export const MUSIC_ID = "integration_music";
+/** Melody's colour when the track has no cover to take one from. */
+export const MUSIC_RED = "#FA2D48";
+
+/** Default names of the coloured Mochis: a pun on what each one watches.
+ *  Settings can rename them; the main Mochi is just "Mochi". */
+export const DEFAULT_MOCHI_NAMES: Record<string, string> = {
+  integration_calcom: "Calvin", // Cal.com
+  integration_stripe: "Penny", // money
+  integration_github: "Gitta", // git
+  integration_vercel: "Vera", // Vercel
+  integration_n8n: "Nate", // "n-eight-n"
+  integration_resend: "Mel", // mail
+  integration_notion: "Ida", // ideas
+  integration_music: "Melody", // music
+};
 
 export type PromptContext =
   | { kind: "window"; appName: string; title: string; url?: string }
@@ -135,6 +202,16 @@ export interface Settings {
    * Same raw values as the Mac's "mochiOutfit"; read it through parseOutfit.
    */
   mochiOutfit: string;
+  /** Mochi's body shape, picked in the wardrobe too ("" = the classic Mochi; see wardrobe.ts SHAPES). */
+  mochiShape: string;
+  /**
+   * "perMochi" (each Mochi wears its own look from `mochiLooks`) or "all"
+   * (every Mochi wears `mochiOutfit` and `mochiShape`). Read it through
+   * wardrobe.ts lookOf.
+   */
+  wardrobeMode: string;
+  /** Each Mochi's own look, by wardrobe.ts mochiKey. Rust keeps it in wardrobe-looks.json. */
+  mochiLooks?: Record<string, MochiLook>;
   /**
    * A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB").
    * Empty means the catalog's colours; read it through core/pill-colors.ts.
@@ -162,6 +239,20 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** The main Mochi's name (the chat persona). Empty = "Mochi". */
+  mochiName: string;
+  /** Coloured Mochis' names, by pill id; missing = DEFAULT_MOCHI_NAMES. */
+  mochiNames: Record<string, string>;
+  /** The island stays compact on screen instead of hiding. */
+  keepVisible: boolean;
+  /** Screenshot roam without the scan cutscene. */
+  quickScan: boolean;
+  /** After a spoken question, the mic listens again once the reply is in. */
+  keepMicOn: boolean;
+  /** Media and voice models (image, video, speech, 3D, speech-to-text). */
+  models: ModelEntry[];
+  /** "provider/model" of chat models that refused an image. */
+  textOnlyModels: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -188,8 +279,18 @@ export const DEFAULT_SETTINGS: Settings = {
   customUrl: "",
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
+  mochiShape: "",
+  wardrobeMode: "perMochi",
+  mochiLooks: {},
   pillColors: {},
   language: "",
+  mochiName: "",
+  mochiNames: {},
+  keepVisible: false,
+  quickScan: false,
+  keepMicOn: false,
+  models: [],
+  textOnlyModels: [],
 };
 
 type Listener = () => void;
@@ -221,7 +322,15 @@ class AppState {
   fileDragOver = false;
 
   promptContext: PromptContext | null = null;
-  droppedFile: { name: string; path: string } | null = null;
+  /** The file the next question is about. `ephemeral` = a roam screenshot,
+   *  thrown away if the island closes before it was asked about. */
+  droppedFile: { name: string; path: string; ephemeral?: boolean } | null = null;
+  /** What the Windows media controls say is playing (music.rs); null = nothing. */
+  nowPlaying: NowPlaying | null = null;
+  /** A `git push` Claude Code is running right now, for the GitHub card. */
+  githubPush: { repo: string; state: "pushing" | "done" | "failed"; startedAt: number } | null = null;
+  /** Mochi is out on the screen (screenshot roam); the island hides its own. */
+  roaming = false;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
@@ -253,6 +362,8 @@ class AppState {
    * there — so the island's own Mochi is hidden (AppState.mochiOnDesktop).
    */
   mochiOnDesktop = false;
+  /** every Mochi is asleep after a quiet spell (island.ts "Sleep"). */
+  asleep = false;
 
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
@@ -269,6 +380,59 @@ class AppState {
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Removes the attached file, so the next question goes without it. */
+  dropAttachment() {
+    this.droppedFile = null;
+    this.promptContext = null;
+    this.notify();
+  }
+
+  /** Whose look the island's Mochi wears, and the wardrobe dresses: the focused pill's Mochi. */
+  get focusMochi(): string {
+    return mochiKey(this.focusTask, this.mainPillId);
+  }
+
+  /** The name of the Mochi `key` (wardrobe.ts mochiKey) at rest. */
+  mochiNameOf(key: string): string {
+    if (key === MAIN_MOCHI) return this.mochiName;
+    const task = this.tasks.find((t) => t.id === key);
+    return this.settings.mochiNames?.[key]?.trim() || DEFAULT_MOCHI_NAMES[key] || task?.name || key;
+  }
+
+  /** The main Mochi's name, the one Claude Code's cards and the chat speak for. */
+  get mochiName(): string {
+    return this.settings.mochiName?.trim() || "Mochi";
+  }
+
+  /**
+   * What a pill is called on screen: the usual label, unless the user named
+   * this Mochi in Settings (the main one only at rest, when no session runs).
+   */
+  pillLabel(task: AgentTask): string {
+    const usual = task.id === "integration_claude" ? (pillDefinition(task.id)?.name ?? task.name) : task.name;
+    if (task.steps.length > 0 && task.state !== "idle") return usual;
+    const own = task.id === this.mainPillId
+      ? (task.steps.length === 0 ? this.settings.mochiName : "")
+      : this.settings.mochiNames?.[task.id];
+    return own?.trim() || usual;
+  }
+
+  /** Melody wears the current cover's colour (music.rs), her red without one. */
+  get musicColor(): string {
+    return this.nowPlaying?.color ?? MUSIC_RED;
+  }
+
+  /** Music on the Windows Music pill (not a video, not a browser tab). */
+  get windowsMusicPlaying(): boolean {
+    const np = this.nowPlaying;
+    return !!np?.playing && np.music && sanitizeDeclared(this.settings, this.os).activeIntegrations.includes(MUSIC_ID);
+  }
+
+  /** Mochi dances: Spotify (Linux) or the Windows Music pill is playing. */
+  get musicPlaying(): boolean {
+    return this.spotifyPlaying || this.windowsMusicPlaying;
   }
 
   /** Marks the UI dirty; the island re-renders on the next frame. */
@@ -419,6 +583,8 @@ class AppState {
     for (const t of this.tasks) {
       const def = pillDefinition(t.id);
       if (def) t.color = pillColor(def.id, def.color, this.settings.pillColors);
+      // Melody wears the cover unless a colour of the user's own was picked.
+      if (t.id === MUSIC_ID && !this.settings.pillColors?.[MUSIC_ID]) t.color = this.musicColor;
     }
     this.tasks = orderPills(this.tasks, d.mainPill);
     if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = d.mainPill;

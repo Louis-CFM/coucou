@@ -431,3 +431,71 @@ html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="t
 /* Settings → Android phone: the pairing QR code (an SVG from Rust, black on white). */
 .qr { width: 220px; max-width: 100%; background: #fff; border-radius: 8px; padding: 4px; }
 .qr svg { display: block; width: 100%; height: auto; }
+
+/* Media and voice models: one block per saved model. */
+.model-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.model {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.model > .row {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.model > .row > button {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.model > .row > select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 170px;
+}
+
+/* Mochi → Wardrobe: the island's picker (views/wardrobe.ts), same look. */
+.wardrobe-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wardrobe-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.wardrobe-item {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+}
+
+.wardrobe-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.wardrobe-item.on {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.wardrobe-item canvas {
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}

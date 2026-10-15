@@ -1,9 +1,11 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod agent_hooks;
+mod awake;
 mod agents;
 mod chat;
 mod claude;
+mod claude_code;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -17,6 +19,8 @@ mod integrations;
 mod island;
 mod local_chat;
 mod log;
+mod media;
+mod music;
 mod net;
 mod notes;
 mod openai_compat;
@@ -26,15 +30,19 @@ mod platform;
 #[cfg(target_os = "linux")]
 mod portal;
 mod recap;
+#[cfg_attr(not(windows), path = "roam_linux.rs")]
+mod roam;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod shot;
 mod sounds;
 mod speech;
 mod spotify;
 mod tray;
 mod voice;
+mod watchdog;
 #[cfg(windows)]
 mod webview_drop;
 
@@ -108,6 +116,10 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
+        // A page that never had the Mochis' own looks must not wipe them.
+        if settings.mochi_looks.is_empty() {
+            settings.mochi_looks = current.mochi_looks.clone();
+        }
         *current = settings;
         (screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -328,6 +340,7 @@ fn open_file_in_vscode(path: String) -> bool {
 
 #[tauri::command]
 fn quit_app(app: AppHandle) {
+    log::line("quit: asked from the island or Settings");
     app.exit(0);
 }
 
@@ -489,9 +502,61 @@ async fn chat_send(
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    text_only: Option<bool>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
-    chat::send(&app, &chat, &settings, query, context).await
+    let result = chat::send(&app, &chat, &settings, query, context, text_only.unwrap_or(false)).await;
+    // A model that refused a picture reads text only: remembered, so the island
+    // asks first next time instead of spending a request.
+    if matches!(&result, Err(e) if e == chat::IMAGES_UNSUPPORTED) {
+        let who = format!("{}/{}", settings.chat_provider, chat::model_for(&settings, &settings.chat_provider));
+        let updated = {
+            let mut s = shared.settings.lock().unwrap();
+            (!s.text_only_models.contains(&who)).then(|| {
+                s.text_only_models.push(who);
+                s.clone()
+            })
+        };
+        if let Some(s) = updated {
+            if let Err(err) = settings::save(&s) {
+                log::line(format!("could not save settings: {err}"));
+            }
+            let _ = app.emit("settings-changed", s);
+        }
+    }
+    result
+}
+
+/// A dropped text or code file's contents and language, for the chat's code
+/// card (none for images, PDFs, binaries or big files). Only Coucou's own
+/// copies in the inbox can be read.
+#[tauri::command]
+fn read_attachment(path: String) -> Option<serde_json::Value> {
+    if !chat::is_inside(&files::inbox_dir(), std::path::Path::new(&path)) {
+        return None;
+    }
+    let (text, lang) = chat::read_text(&path)?;
+    Some(serde_json::json!({ "text": text, "lang": lang }))
+}
+
+/// The chat's mic: the recording's bytes in, its words out, through the saved
+/// model that transcribes speech. The page sends the audio type as `x-mime`.
+#[tauri::command]
+async fn transcribe_audio(shared: State<'_, Shared>, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the recording".into());
+    };
+    let audio = bytes.clone();
+    let mime = request.headers().get("x-mime").and_then(|v| v.to_str().ok()).unwrap_or("audio/webm").to_string();
+    let settings = shared.settings.lock().unwrap().clone();
+    media::transcribe_with(&settings, audio, &mime).await
+}
+
+/// The credential name of an endpoint's key (one per provider host), for
+/// Settings -> Media and voice models.
+#[tauri::command]
+fn endpoint_key(endpoint: String) -> String {
+    secrets::endpoint_key(&endpoint)
 }
 
 /// The models a provider offers, for the picker in the chat view. Only asked
@@ -513,6 +578,12 @@ async fn local_connect(provider: String, url: String) -> Result<local_chat::Conn
 #[tauri::command]
 fn local_set_key(url: String, key: String) -> Result<(), String> {
     local_chat::set_custom_key(&url, &key)
+}
+
+/// Settings → Chat providers: is the Claude Code CLI on this computer?
+#[tauri::command]
+fn claude_code_found() -> bool {
+    claude_code::find().is_some()
 }
 
 #[tauri::command]
@@ -618,18 +689,30 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+///
+/// `--renderer-process-limit=1`: the island, settings, desktop Mochi and
+/// screen overlay windows share one renderer process instead of one each.
+///
+/// `CalculateNativeWinOcclusion` off: Chromium's guess at whether a window is
+/// covered. It marks every window occluded when the display turns off or the
+/// session locks, and only re-checks on a few system events; an occluded page
+/// still runs its scripts and plays sounds but gets no animation frames and
+/// paints nothing. The island sat as its 6 px wake strip through a long idle,
+/// was never re-checked, and a session coming back played Mochi's sound over
+/// an island that never drew (port notes, "Island silent after a long idle").
+/// Coucou shows and hides its windows itself, so the guess has nothing to add.
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required --renderer-process-limit=1";
 
-/// In a dev build the pages are served by Vite, so the second window needs the
-/// absolute dev URL; a bundled build resolves it inside the app bundle.
-fn settings_page_url(app: &AppHandle) -> WebviewUrl {
+/// In a dev build the pages are served by Vite, so the extra windows need the
+/// absolute dev URL; a bundled build resolves them inside the app bundle.
+fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
+        base.set_path(&format!("/{page}"));
         return WebviewUrl::External(base);
     }
     let _ = app;
-    WebviewUrl::App("settings.html".into())
+    WebviewUrl::App(page.into())
 }
 
 /// The Coucou window (Flow dictation, the Notetaker and every setting of the
@@ -641,7 +724,7 @@ pub const HUB_LABEL: &str = "settings";
 /// not — silently comes up blank in this app, so the window that works is the
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
-    let url = settings_page_url(app);
+    let url = page_url(app, "settings.html");
     match WebviewWindowBuilder::new(app, HUB_LABEL, url)
         .additional_browser_args(BROWSER_ARGS)
         .title("Coucou")
@@ -653,12 +736,14 @@ fn create_settings_window(app: &AppHandle) {
         .build()
     {
         Ok(win) => {
+            platform::set_memory_low(&win, true);
             // Closing it must only hide it, or it could never be reopened.
             let hidden = win.clone();
             win.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = hidden.hide();
+                    platform::set_memory_low(&hidden, true);
                 }
             });
         }
@@ -677,6 +762,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         log::line("Coucou window missing");
         return;
     };
+    platform::set_memory_low(&win, false);
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
@@ -699,8 +785,25 @@ fn open_settings_window(app: AppHandle, page: Option<String>) {
 }
 
 pub fn run() {
+    // this process may be Coucou's watchdog (watchdog.rs) and nothing else.
+    if watchdog::run_if_asked() {
+        return;
+    }
+    // A panic is written to coucou.log before the default report.
+    let report = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        log::line(format!("panic: {info}"));
+        report(info);
+    }));
     platform::prepare_environment();
-    let loaded = settings::load();
+    let mut loaded = settings::load();
+    // Each Mochi's own look (wardrobe-looks.json); on the first launch with it
+    // the main Mochi's is the look every Mochi wore until then.
+    if settings::load_looks(&mut loaded) {
+        if let Err(err) = settings::save(&loaded) {
+            log::line(format!("could not save settings: {err}"));
+        }
+    }
     i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
 
@@ -765,6 +868,10 @@ pub fn run() {
             local_connect,
             local_set_key,
             chat_reset,
+            claude_code_found,
+            read_attachment,
+            transcribe_audio,
+            endpoint_key,
             ingest_file,
             secret_present,
             secret_set,
@@ -862,6 +969,19 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            music::music_now,
+            music::music_control,
+            media::guess_model_output,
+            media::media_bytes,
+            media::media_download,
+            media::media_preview,
+            media::media_preview_close,
+            roam::roam_start,
+            roam::roam_capture,
+            roam::roam_pointer,
+            roam::roam_end,
+            roam::pods_flight,
+            roam::pods_flight_end,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -869,10 +989,12 @@ pub fn run() {
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
-            // Same rule for Mochi's desktop window and the dictation pill.
+            // Same rule for Mochi's desktop window, the dictation pill and the
+            // screen overlay.
             desktop::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
+            roam::create_window(&handle, page_url(&handle, "roam.html"), BROWSER_ARGS);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the
@@ -883,6 +1005,7 @@ pub fn run() {
                     }
                 });
                 platform::make_non_activating(&win);
+                platform::allow_microphone(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, false);
@@ -898,11 +1021,16 @@ pub fn run() {
             island::spawn_cursor_poll(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
+            // restarts Coucou if it dies, and logs how it ended.
+            watchdog::spawn();
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            music::start(handle.clone());
+            // sound, a call or the camera keeps the Mochis awake.
+            awake::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
@@ -920,6 +1048,9 @@ pub fn run() {
         .run(|app, event| {
             // Withdraw the phone link's announcement on the local network before the process ends.
             if let tauri::RunEvent::Exit = event {
+                // a clean exit says so; a crash or a kill leaves no such line
+                // (the watchdog then logs its exit code).
+                log::line("--- Coucou exiting ---");
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
             }
@@ -929,6 +1060,18 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+
+    #[test]
+    fn every_window_asks_for_the_islands_browser_args() {
+        // A mismatch brings the extra windows up blank; occlusion left on lets a
+        // long idle leave the island silent and unpainted.
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let island = &conf["app"]["windows"][0];
+        assert_eq!(island["label"], "island");
+        assert_eq!(island["additionalBrowserArgs"], super::BROWSER_ARGS);
+        assert!(super::BROWSER_ARGS.contains("CalculateNativeWinOcclusion"));
+        assert_eq!(super::BROWSER_ARGS.matches("--disable-features=").count(), 1);
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
