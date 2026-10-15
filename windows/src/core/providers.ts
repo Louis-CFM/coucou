@@ -69,8 +69,8 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
  */
 export function visibleProviders(settings: Settings): ProviderDef[] {
   return PROVIDERS.filter((p) => {
-    if (settings.chatProvider === p.id) return true;
-    if (p.plan) return settings.planChats.includes(p.id);
+    // The plans are always offered: picking one turns it on (views/chat.ts).
+    if (settings.chatProvider === p.id || p.plan) return true;
     return !p.urlField || settings[p.urlField] !== "";
   });
 }

@@ -36,15 +36,15 @@ test("Claude's model is the existing setting; the others are kept per provider",
 
 test("model servers show in the picker once connected, or while in use", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+  const plans = ["cursor", "kiro"];
+  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter", ...plans]);
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama", ...plans]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom", ...plans]);
 });
 
-test("a plan shows in the picker once turned on in Settings, or while in use", () => {
+test("the plans are always in the picker", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings({ planChats: ["kiro"] })), ["anthropic", "google", "openai", "openrouter", "kiro"]);
-  assert.deepEqual(ids(settings({ chatProvider: "cursor" })), ["anthropic", "google", "openai", "openrouter", "cursor"]);
+  assert.deepEqual(ids(settings({ planChats: [] })), ["anthropic", "google", "openai", "openrouter", "cursor", "kiro"]);
   assert.equal(activeModel(settings({ chatProvider: "kiro" })), "auto");
 });
 
