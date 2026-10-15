@@ -67,6 +67,7 @@ final class KeychainStore: @unchecked Sendable {
         "deepseek-api-key",
         "qwen-api-key",
         "moonshot-api-key",
+        "openrouter-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -200,6 +201,33 @@ final class ClaudeService {
         }
     }
 
+    /// Fetches chat models from OpenRouter: text-output models only, labelled with their
+    /// display name, free models first and then by name — same order as the Windows build.
+    static func fetchOpenRouterModels(apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "https://openrouter.ai/api/v1/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 15)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        func isZero(_ value: Any?) -> Bool { (value as? String).flatMap(Double.init) == 0 }
+        return items
+            .compactMap { item -> (id: String, label: String, free: Bool)? in
+                guard let id = item["id"] as? String, !id.isEmpty else { return nil }
+                // OpenRouter lists image and audio generators too.
+                if let outputs = (item["architecture"] as? [String: Any])?["output_modalities"] as? [String],
+                   !outputs.contains("text") { return nil }
+                let pricing = item["pricing"] as? [String: Any]
+                let free = id.hasSuffix(":free") || (isZero(pricing?["prompt"]) && isZero(pricing?["completion"]))
+                let name = item["name"] as? String ?? id
+                let label = free && !name.lowercased().contains("(free)") ? "\(name) (free)" : name
+                return (id: id, label: label, free: free)
+            }
+            .sorted { $0.free != $1.free ? $0.free : $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+            .map { (id: $0.id, label: $0.label) }
+    }
+
     /// Chosen in Settings; falls back to the default when the field is left empty.
     private var model: String {
         let m = AppState.shared.claudeModel.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -313,6 +341,7 @@ final class ClaudeService {
             case .deepseek:  baseURL = "https://api.deepseek.com/v1"
             case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
             case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
+            case .openrouter: baseURL = "https://openrouter.ai/api/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }

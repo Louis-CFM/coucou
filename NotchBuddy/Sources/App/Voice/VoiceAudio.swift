@@ -20,6 +20,17 @@ import Accelerate
 // - Input format is whatever the mic reports (48 kHz 1ch on most Macs, varies by device).
 // - Buffers delivered to `onBuffer` / stored in preroll are converted to mono 16 kHz Float32
 //   via an AVAudioConverter created once on start. VAD and level metering use the raw format.
+extension AVAudioInputNode {
+    /// False when the Mac has no microphone (a Mac mini or a desktop Mac with nothing
+    /// plugged in). The input node then reports an invalid hardware format, and
+    /// installTap raises an Objective-C exception that Swift cannot catch: the app
+    /// crashed a moment later. Check this before every installTap on the input node.
+    var hasMicrophone: Bool {
+        let hw = inputFormat(forBus: 0)
+        return hw.sampleRate > 0 && hw.channelCount > 0
+    }
+}
+
 final class VoiceAudio: @unchecked Sendable {
 
     private let engine         = AVAudioEngine()
@@ -76,6 +87,11 @@ final class VoiceAudio: @unchecked Sendable {
         guard !tapInstalled else { return }
 
         let input = engine.inputNode
+        guard input.hasMicrophone else {
+            appendAppLog("nb.log", "[Voice] no audio input device")
+            throw NSError(domain: "Voice", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "No microphone found. Connect a microphone, then turn voice off and on again."])
+        }
         let fmt   = input.outputFormat(forBus: 0)
 
         // Build a stateful mono 16 kHz Float32 converter for the recognizer.

@@ -243,6 +243,7 @@ final class ParakeetDictation: @unchecked Sendable {
     nonisolated private static func startEngine(_ engine: AVAudioEngine, into samples: OSAllocatedUnfairLock<[Float]>,
                                                 bands: FlowAudioBands?) -> Bool {
         let input = engine.inputNode
+        guard input.hasMicrophone else { return false }
         let format = input.outputFormat(forBus: 0)
         guard let resampler = Resampler16k(from: format) else { return false }
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
