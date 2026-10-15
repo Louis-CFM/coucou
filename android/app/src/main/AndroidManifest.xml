@@ -67,11 +67,66 @@
         <receiver android:name=".app.ActionReceiver" android:exported="false" />
 
         <!-- The home-screen widget: a short summary, updated by the app when something changes (no timer). -->
-        <receiver android:name=".app.GlanceWidget" android:exported="true" android:label="@string/app_name">
+        <receiver android:name=".app.GlanceWidget" android:exported="true" android:label="@string/widget_glance_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_widget_info" />
+        </receiver>
+
+        <!-- The Solo and List widgets: Mochi and the agents, pushed by the app when something changes (no timer). -->
+        <receiver android:name=".app.SoloWidget" android:exported="true" android:label="@string/widget_solo_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_solo_widget_info" />
+        </receiver>
+        <receiver android:name=".app.ListWidget" android:exported="true" android:label="@string/widget_list_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_list_widget_info" />
+        </receiver>
+
+        <!-- More Widgets: Mochi Big, Status Pill, Waiting Alert, Usage Ring, Today and Mochi Mood. Pushed by the app when something changes (no timer). -->
+        <receiver android:name=".app.MochiBigWidget" android:exported="true" android:label="@string/widget_big_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_big_widget_info" />
+        </receiver>
+        <receiver android:name=".app.StatusPillWidget" android:exported="true" android:label="@string/widget_pill_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_pill_widget_info" />
+        </receiver>
+        <receiver android:name=".app.WaitingAlertWidget" android:exported="true" android:label="@string/widget_alert_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_alert_widget_info" />
+        </receiver>
+        <receiver android:name=".app.UsageRingWidget" android:exported="true" android:label="@string/widget_ring_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_ring_widget_info" />
+        </receiver>
+        <receiver android:name=".app.TodayWidget" android:exported="true" android:label="@string/widget_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!-- The clock or the time zone changed: the day may be another one. (Midnight itself is our own alarm: the system no longer tells manifest receivers that the date changed.) -->
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_today_widget_info" />
+        </receiver>
+        <receiver android:name=".app.MoodWidget" android:exported="true" android:label="@string/widget_mood_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_mood_widget_info" />
         </receiver>
 
         <!-- The quick-settings tile: on while the computer is connected; a tap opens Coucou. -->

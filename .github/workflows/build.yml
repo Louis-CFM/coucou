@@ -33,6 +33,9 @@ jobs:
       - name: Test approval queue
         run: bash scripts/test-approval-queue.sh
 
+      - name: Test Flow dictation keys
+        run: bash scripts/test-flow-keys.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 

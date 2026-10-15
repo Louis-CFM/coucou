@@ -2,7 +2,16 @@
 
 ## Unreleased
 
-- **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
+- **Flow dictation** *(macOS, GitHub build)* — hold a key anywhere on the Mac (right ⌥ by default, or right ⌘, right ⌃ or fn), speak, let go: your words are pasted where you type, like Wispr Flow. A small pill rests at the bottom of the screen while Flow dictation is on; when you speak it opens into Mochi and nine dots rising and falling with the graves and the aigus of your voice. Two quick taps keep it listening hands-free until the next tap; Esc cancels. Speech is recognised by the Mac (on-device when it can), and the clipboard gets back what it held after the paste. Off by default — Settings → Voice; it needs the Accessibility permission to see the key and paste
+
+## Android 0.2.0 — October 13, 2026
+
+- **Home-screen widgets** — nine to pick from, each with a real preview in the widget picker: Mochi at a glance, Mochi's mood, Approvals waiting, Finished today, Plan usage, a one-line status with four buttons, all your agents, Mochi big (Mochi, plan usage and six buttons), and the agents summary, now on the same card. The colour follows your most urgent agent: orange when something waits for you, blue while it works, green when it's done, grey when the computer isn't there. Plan usage has its own colours (teal, yellow from 75 %, red from 90 %, with the time it resets). Read-only: the buttons only open a screen of the app, and a request is always decided in the app, behind your fingerprint. No background refresh: they redraw when something changes, plus once at midnight so Finished today starts again at zero, and that count stays on the phone (#620 by @Rhytam23)
+- Working notes that were not meant to ship are gone from `android/` (#618 by @Rhytam23)
+
+## Android 0.1.0 — October 11, 2026
+
+- **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; a signed APK on the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) (#501 by @Rhytam23)
 
 ## Windows and Linux 0.4.0 — October 11, 2026
 

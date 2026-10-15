@@ -1496,6 +1496,9 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var voiceSection: some View {
+        // Flow dictation: hold a key anywhere, speak, the words are pasted where you type.
+        FlowSettingsBox()
+
         // Claude is Coucou's brain: no model, language or feature switches any more,
         // only the wake word, the Anthropic key it needs, and Coucou's voice.
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {

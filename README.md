@@ -59,7 +59,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
 - 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen. With several displays, pick his screen in Settings → General, or let him follow your mouse *(macOS)*.
 - 📱 **Coucou on iPhone** — your sessions, approvals and services in your pocket, with Live Activities, widgets and Siri. See [Coucou on iPhone](#coucou-on-iphone).
-- 🤖 **Coucou for Android** — your agents, approvals with your fingerprint, questions and chat on an Android phone, linked to Coucou on Windows or Linux over your Wi-Fi. By [@Rhytam23](https://github.com/Rhytam23). See [Coucou for Android](#coucou-for-android).
+- 🤖 **Coucou for Android** — your agents, approvals with your fingerprint, questions, chat and home-screen widgets on an Android phone, linked to Coucou on Windows or Linux over your Wi-Fi. By [@Rhytam23](https://github.com/Rhytam23). See [Coucou for Android](#coucou-for-android).
 - 📅 **Weekly recap** *(macOS)* — every Monday morning Coucou shows a summary of the past week: time coding, sessions, files, lines changed, commands, permissions, top agent and project, busiest day and longest session. Share it as a 1080 × 1920 image with Mochi — project names optional. All local, no sync.
 - 🌍 **10 languages** — English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, Bahasa Indonesia. Pick one in Settings → General → Language; community translations welcome.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain, Windows Credential Manager or Linux Secret Service (GNOME Keyring, KWallet). The app only talks to the services you plug in.
@@ -98,10 +98,11 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🔐 **Approve from your phone** — a permission request rises over any screen, even on a locked phone; **Allow** needs your fingerprint or screen lock, **Deny** doesn't. A command too long to show in full can only be allowed on the computer.
 - 🧑‍💻 **Your agents at a glance** — the agent that needs you, the others below, plan usage and your services when the computer shares them.
 - 💬 **Answers and chat** — answer Claude Code's questions and chat through the computer's own AI keys (the keys never leave the computer).
-- 🏝️ **An island over other apps** *(optional)* — a black island drops from the camera cut-out while an agent works, plus a widget, a quick-settings tile and an ongoing notification.
+- 🏝️ **An island over other apps** *(optional)* — a black island drops from the camera cut-out while an agent works, plus a quick-settings tile and an ongoing notification.
+- 🧩 **Home-screen widgets** — nine of them, from a tiny Mochi to a big card with plan usage and quick buttons. Orange when something waits for you, blue while it works, green when it's done. Read-only: a request is always decided in the app.
 - 🔒 **Local and private** — the phone talks straight to your computer on your Wi-Fi, paired with a QR code and a pinned certificate. The phone link is **off by default**, and nothing listens until you turn it on.
 
-**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. The first signed Android APK is on its way; until then you can [build the app from source](#build-from-source). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
+**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. Download the signed APK from the [latest Android release](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
 
 <table>
 <tr>
@@ -145,6 +146,13 @@ Windows and Linux are released together, under the `windows-v*` and `linux-v*` t
 | 0.2.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.2.0) | Oct 8, 2026 | Catches up with the Mac: nine agents with approvals, chat with any AI, plan usage, GitHub, wardrobe, 10 languages |
 | 0.1.1 · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1) | Oct 1, 2026 | First Linux build (beta) |
 
+Coucou for Android, by [@Rhytam23](https://github.com/Rhytam23), is released under the `android-v*` tags.
+
+| Android | Date | Highlights |
+|---------|------|------------|
+| [0.2.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) | Oct 13, 2026 | Nine home-screen widgets: Mochi, your agents, plan usage and quick buttons, coloured by state |
+| [0.1.0](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) | Oct 11, 2026 | First release: your agents, approvals with your fingerprint, answers and chat, linked to Windows or Linux |
+
 ## Demo mode
 
 No API key, no Claude Code, no setup — open **Settings → General → Demo**, click **Try demo mode**, and Coucou walks through a scripted session: a Claude Code session with live steps and a diff you can read, a permission request, an AskUserQuestion, a parallel Codex session, the GitHub, Stripe, Vercel and other integration pills loaded with sample data, the chat with a streamed response, the weekly recap with a share image you can actually save.
@@ -171,9 +179,7 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Android
 
-The first signed APK is on its way. Until then:
-
-1. **Build the app** from [`android/`](android/) (see [Build from source](#build-from-source)) and install it on your phone (Android 11 or later).
+1. **Download** `Coucou-Android-0.2.0.apk` from the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.2.0) on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager. You can also [build it from source](#build-from-source).
 2. **On your computer**, install Coucou **0.4.0 or later** for [Windows](#windows) or [Linux](#linux): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
 3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
 

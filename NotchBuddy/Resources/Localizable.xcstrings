@@ -2816,6 +2816,851 @@
         }
       }
     },
+    "flow.accessibility" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يستطيع Coucou اللصق بعد ولا رؤية Esc: يحتاج إلى إذن تسهيلات الاستخدام. فعّل Coucou في إعدادات النظام ← الخصوصية والأمن ← تسهيلات الاستخدام. إذا كان مفعّلًا، احذفه بزر − ثم أضفه من جديد: كل إصدار جديد من Coucou يحتاج الإذن مرة أخرى."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou এখনও পেস্ট করতে বা Esc দেখতে পারে না: এর অ্যাক্সেসিবিলিটি অনুমতি দরকার। সিস্টেম সেটিংস → গোপনীয়তা ও নিরাপত্তা → অ্যাক্সেসিবিলিটিতে Coucou চালু করুন। আগে থেকেই চালু থাকলে − দিয়ে সরিয়ে আবার যোগ করুন: Coucou-এর নতুন সংস্করণের আবার অনুমতি লাগে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou can't paste yet, or see Esc: it needs the Accessibility permission. Turn on Coucou in System Settings → Privacy & Security → Accessibility. If it is already on, remove it with − and add it again: a new build of Coucou needs it again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou aún no puede pegar ni ver Esc: necesita el permiso de Accesibilidad. Activa Coucou en Ajustes del Sistema → Privacidad y seguridad → Accesibilidad. Si ya está activado, quítalo con − y vuelve a añadirlo: una nueva versión de Coucou lo necesita de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ne peut pas encore coller, ni voir Échap : il lui faut l'autorisation Accessibilité. Active Coucou dans Réglages Système → Confidentialité et sécurité → Accessibilité. S'il y est déjà, retire-le avec − puis rajoute-le : une nouvelle version de Coucou doit être autorisée à nouveau."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou अभी न चिपका सकता है, न Esc देख सकता है: इसे एक्सेसिबिलिटी अनुमति चाहिए। सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → एक्सेसिबिलिटी में Coucou चालू करें। अगर यह पहले से चालू है, तो − से हटाकर फिर जोड़ें: Coucou के नए संस्करण को फिर से अनुमति चाहिए।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou belum bisa menempel atau melihat Esc: ia butuh izin Aksesibilitas. Aktifkan Coucou di Pengaturan Sistem → Privasi & Keamanan → Aksesibilitas. Jika sudah aktif, hapus dengan − lalu tambahkan lagi: versi baru Coucou perlu izin lagi."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou ainda não consegue colar nem ver o Esc: ele precisa da permissão de Acessibilidade. Ative o Coucou em Ajustes do Sistema → Privacidade e Segurança → Acessibilidade. Se já estiver ativado, remova com − e adicione de novo: uma nova versão do Coucou precisa da permissão outra vez."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou пока не может вставлять текст и видеть Esc: нужен доступ к Универсальному доступу. Включите Coucou в Системных настройках → Конфиденциальность и безопасность → Универсальный доступ. Если он уже включён, удалите его кнопкой − и добавьте снова: новой версии Coucou нужно разрешение заново."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 还不能粘贴，也无法识别 Esc：它需要“辅助功能”权限。请在“系统设置”→“隐私与安全性”→“辅助功能”中打开 Coucou。如果已经打开，请用“−”移除后重新添加：新版本的 Coucou 需要重新授权。"
+          }
+        }
+      }
+    },
+    "flow.access-ok" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم السماح بتسهيلات الاستخدام: يلصق Coucou حيث تكتب."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অ্যাক্সেসিবিলিটি অনুমোদিত: আপনি যেখানে লেখেন Coucou সেখানে পেস্ট করে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility allowed: Coucou pastes where you type."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accesibilidad permitida: Coucou pega donde escribes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibilité autorisée : Coucou colle là où tu écris."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक्सेसिबिलिटी की अनुमति है: Coucou वहीं चिपकाता है जहाँ आप टाइप करते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aksesibilitas diizinkan: Coucou menempel di tempat kamu mengetik."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acessibilidade permitida: o Coucou cola onde você digita."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Универсальный доступ разрешён: Coucou вставляет текст туда, где вы печатаете."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允许辅助功能：Coucou 会粘贴到你输入的位置。"
+          }
+        }
+      }
+    },
+    "flow.accessibility-open" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح إعدادات تسهيلات الاستخدام"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অ্যাক্সেসিবিলিটি সেটিংস খুলুন"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Accessibility settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir ajustes de Accesibilidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir les réglages Accessibilité"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एक्सेसिबिलिटी सेटिंग्स खोलें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka pengaturan Aksesibilitas"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir ajustes de Acessibilidade"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки Универсального доступа"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开辅助功能设置"
+          }
+        }
+      }
+    },
+    "flow.copied-noaccess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تم النسخ · اسمح بتسهيلات الاستخدام للصق"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কপি হয়েছে · পেস্ট করতে অ্যাক্সেসিবিলিটি অনুমতি দিন"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied · allow Accessibility to paste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado · permite Accesibilidad para pegar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copié · autorise l'Accessibilité pour coller"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कॉपी हुआ · चिपकाने के लिए एक्सेसिबिलिटी की अनुमति दें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disalin · izinkan Aksesibilitas untuk menempel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado · permita a Acessibilidade para colar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано · разрешите Универсальный доступ для вставки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制 · 允许辅助功能以粘贴"
+          }
+        }
+      }
+    },
+    "flow.enable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اضغط مطولًا على مفتاح للإملاء في أي مكان"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "যেকোনো জায়গায় ডিক্টেট করতে একটি কী চেপে ধরুন"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold a key to dictate anywhere"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén una tecla para dictar en cualquier lugar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenir une touche pour dicter partout"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कहीं भी बोलकर लिखने के लिए एक कुंजी दबाए रखें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tahan satu tombol untuk mendikte di mana saja"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segure uma tecla para ditar em qualquer lugar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте клавишу, чтобы диктовать где угодно"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住一个键，在任何地方听写"
+          }
+        }
+      }
+    },
+    "flow.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الميكروفون غير متاح"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "মাইক্রোফোন পাওয়া যাচ্ছে না"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone unavailable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micrófono no disponible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micro indisponible"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "माइक्रोफ़ोन उपलब्ध नहीं"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon tidak tersedia"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microfone indisponível"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Микрофон недоступен"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "麦克风不可用"
+          }
+        }
+      }
+    },
+    "flow.fn-help" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لاستخدام fn، اضبط إعدادات النظام ← لوحة المفاتيح ← «اضغط على مفتاح 🌐 لـ» على «عدم القيام بأي شيء»."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn ব্যবহার করতে, সিস্টেম সেটিংস → কিবোর্ডে “🌐 কী চাপলে” “কিছুই করবেন না” সেট করুন।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To use fn, set System Settings → Keyboard → “Press 🌐 key to” to “Do Nothing”."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para usar fn, en Ajustes del Sistema → Teclado, pon «Pulsar la tecla 🌐 para» en «No hacer nada»."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour utiliser fn, règle Réglages Système → Clavier → « Appuyer sur la touche 🌐 pour » sur « Ne rien faire »."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn इस्तेमाल करने के लिए, सिस्टम सेटिंग्स → कीबोर्ड में “🌐 कुंजी दबाने पर” को “कुछ न करें” पर सेट करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untuk memakai fn, atur Pengaturan Sistem → Papan Ketik → “Tekan tombol 🌐 untuk” ke “Jangan Lakukan Apa-apa”."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para usar fn, em Ajustes do Sistema → Teclado, defina “Pressionar a tecla 🌐 para” como “Não fazer nada”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы использовать fn, в Системных настройках → Клавиатура выберите для «Нажатие клавиши 🌐» вариант «Ничего не делать»."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要使用 fn，请在“系统设置”→“键盘”中将“按下 🌐 键时”设为“不执行任何操作”。"
+          }
+        }
+      }
+    },
+    "flow.how %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اضغط مطولًا على %@ وتحدث ثم اترك: تُلصق كلماتك حيث تكتب. اضغط مرتين للإملاء دون استخدام اليدين، ثم مرة أخرى للصق. Esc يلغي."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ চেপে ধরুন, বলুন, ছেড়ে দিন: আপনি যেখানে লেখেন সেখানে আপনার কথা পেস্ট হয়। হাত ছাড়া ডিক্টেট করতে দুবার ট্যাপ করুন, পেস্ট করতে আরেকবার। Esc বাতিল করে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold %@, speak, let go: your words are pasted where you type. Tap it twice to keep listening hands-free, and once more to paste. Esc cancels."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén %@, habla y suelta: tus palabras se pegan donde escribes. Púlsala dos veces para dictar sin manos y otra vez para pegar. Esc cancela."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintiens %@, parle, relâche : tes mots sont collés là où tu écris. Tape deux fois pour dicter sans les mains, puis une fois pour coller. Échap annule."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ दबाए रखें, बोलें, छोड़ दें: आपके शब्द वहीं चिपक जाते हैं जहाँ आप टाइप करते हैं। बिना हाथ लगाए बोलने के लिए दो बार टैप करें, और चिपकाने के लिए एक बार फिर। Esc रद्द करता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tahan %@, bicara, lalu lepas: kata-katamu ditempel di tempat kamu mengetik. Ketuk dua kali untuk mendikte tanpa tangan, lalu sekali lagi untuk menempel. Esc membatalkan."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segure %@, fale e solte: suas palavras são coladas onde você digita. Toque duas vezes para ditar sem as mãos e mais uma vez para colar. Esc cancela."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте %@, говорите, отпустите — слова вставятся туда, где вы печатаете. Нажмите дважды, чтобы диктовать без рук, и ещё раз, чтобы вставить. Esc отменяет."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住 %@，说话，松开：你的话会粘贴到你正在输入的位置。连按两次可免手持听写，再按一次即粘贴。按 Esc 取消。"
+          }
+        }
+      }
+    },
+    "flow.key" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المفتاح"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কী"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tecla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touche"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कुंजी"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tombol"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tecla"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиша"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按键"
+          }
+        }
+      }
+    },
+    "flow.key-fn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fn (🌐)"
+          }
+        }
+      }
+    },
+    "flow.key-right %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ الأيمن"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডান %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ derecha"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ de droite"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "दायाँ %@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kanan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ da direita"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правая %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右侧 %@"
+          }
+        }
+      }
+    },
+    "flow.privacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحوّل التعرّف على الكلام في جهاز Mac صوتك إلى نص، على الجهاز نفسه عندما يدعم جهازك ذلك؛ ولا يرسله Coucou إلى أي مكان. بعد اللصق تعود الحافظة إلى ما كانت تحتويه."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আপনার Mac-এর স্পিচ রিকগনিশন আপনার কণ্ঠকে টেক্সটে রূপান্তর করে, Mac সমর্থন করলে ডিভাইসেই; Coucou এটি কোথাও পাঠায় না। পেস্ট করার পর ক্লিপবোর্ডে আগের জিনিস ফিরে আসে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your voice is turned into text by your Mac's speech recognition, on-device when your Mac supports it; Coucou sends it nowhere. After pasting, the clipboard gets back what it held."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu voz se convierte en texto con el reconocimiento de voz de tu Mac, en el propio equipo cuando tu Mac lo admite; Coucou no la envía a ningún sitio. Tras pegar, el portapapeles recupera lo que tenía."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta voix est transformée en texte par la reconnaissance vocale de ton Mac, sur l'appareil quand ton Mac le permet ; Coucou ne l'envoie nulle part. Après le collage, le presse-papiers retrouve ce qu'il contenait."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आपकी आवाज़ को आपके Mac की वाक् पहचान टेक्स्ट में बदलती है, जब आपका Mac समर्थन करे तो डिवाइस पर ही; Coucou इसे कहीं नहीं भेजता। चिपकाने के बाद क्लिपबोर्ड में पहले वाली चीज़ वापस आ जाती है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suaramu diubah menjadi teks oleh pengenalan suara Mac, langsung di perangkat bila Mac mendukungnya; Coucou tidak mengirimnya ke mana pun. Setelah menempel, papan klip kembali berisi apa yang ada sebelumnya."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua voz vira texto pelo reconhecimento de fala do seu Mac, no próprio aparelho quando o Mac permite; o Coucou não a envia para lugar nenhum. Depois de colar, a área de transferência recupera o que tinha."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш голос превращает в текст распознавание речи Mac — прямо на устройстве, если Mac это поддерживает; Coucou никуда его не отправляет. После вставки буфер обмена возвращает прежнее содержимое."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的声音由 Mac 的语音识别转成文字，Mac 支持时在设备上完成；Coucou 不会把它发送到任何地方。粘贴之后，剪贴板会恢复原来的内容。"
+          }
+        }
+      }
+    },
+    "flow.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إملاء Flow"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow ডিক্টেশন"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow dictation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictado Flow"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictée Flow"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow डिक्टेशन"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dikte Flow"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ditado Flow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Диктовка Flow"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow 听写"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "zh-Hant" : {

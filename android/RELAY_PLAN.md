@@ -24,7 +24,7 @@ Status: **approved by the user on 2026-10-10**, with the decisions and two addit
   asserts "no (key, nonce) twice" over thousands of frames, both directions and two sessions; R2 repeats it in Rust and Kotlin.
 - **Stage R0 (done):** `docs/RELAY_LINK.md` (the wire spec) and `android/relay/test-vectors.json` with its generator.
 
-Sources read: `android/HANDOFF.md`, `docs/ANDROID_LINK.md`, `relay/README.md` and `relay/src/index.ts` (Louis's APNs
+Sources read: `docs/ANDROID_LINK.md`, `relay/README.md` and `relay/src/index.ts` (Louis's APNs
 relay, for style), the former parity plan (stage G, row 16; deleted in the cleanup, it is in the git history), `CLAUDE.md`, and the phone-link code on both sides.
 
 ## 1. Goal and non-goals
@@ -260,7 +260,6 @@ The relay transport lives inside the same service. Design:
   small, self-contained, reviewed change, and no PR is opened without the user's decision.
 - No telemetry, no accounts, no third party in the data path except the user's own Cloudflare account, and the payload is
   end-to-end encrypted, so even that account cannot read it.
-- `android/PROPOSAL_FOR_LOUIS.md` would get a short section with the above after you approve; nothing is sent.
 
 ## 11. Stages
 
