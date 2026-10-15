@@ -16,7 +16,7 @@ APPIMAGE_DIR ?= $(HOME)/.local/bin
 
 # Paquets système nécessaires pour compiler sous Debian / Ubuntu (liste de linux.yml).
 LINUX_APT := build-essential pkg-config libwebkit2gtk-4.1-dev libgtk-layer-shell-dev \
-	libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev patchelf \
+	libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev libasound2-dev patchelf \
 	gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 
 .PHONY: help
