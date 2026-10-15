@@ -216,7 +216,7 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   let directory=root.appendingPathComponent("authentication")
   try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
   try FileManager.default.copyItem(at:root.appendingPathComponent("server.py"),to:directory.appendingPathComponent("server.py"))
-  let connection=CodexConnection(executable:URL(fileURLWithPath:"/usr/bin/python3"),arguments:["-u",directory.appendingPathComponent("server.py").path],requestTimeout:0.3)
+  let connection=CodexConnection(executable:URL(fileURLWithPath:"/usr/bin/python3"),arguments:["-u",directory.appendingPathComponent("server.py").path],requestTimeout:1)
   let lease=connection.retainConnection()
   let chat=CodexChatService(connection:connection),state=AppState()
   func methods()->[String] {
@@ -310,7 +310,8 @@ extension Notification.Name { static let triggerEmote=Notification.Name("testEmo
   assert(startup.codexModel=="restored-fixture-model" && startup.startupResets==1,"Startup restore did not exercise the actual service reset")
   print("PASS startup: restoring the published Codex model can reset the actual shared service without recursive AppState.shared initialization")
   let root=URL(fileURLWithPath:CommandLine.arguments[1])
-  let connection=CodexConnection(executable:URL(fileURLWithPath:"/usr/bin/python3"),arguments:["-u",root.appendingPathComponent("server.py").path],requestTimeout:0.3)
+  // Normal RPCs need scheduling headroom above the fixture's deliberate 150 ms delay.
+  let connection=CodexConnection(executable:URL(fileURLWithPath:"/usr/bin/python3"),arguments:["-u",root.appendingPathComponent("server.py").path],requestTimeout:1)
   let response=try await connection.request("echo",params:["correct":42]);assert(response["correct"] as? Int==42)
   assert(connection.cliVersion=="0.160.0")
   do { _=try await connection.request("hang");assertionFailure("Expected timeout") } catch CodexServiceError.timeout {}
