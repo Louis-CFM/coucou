@@ -11,7 +11,7 @@ import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
 test("the ids and key names match the Rust side and the Mac", () => {
-  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom"]);
+  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "claude-code", "google", "openai", "openrouter", "ollama", "lmstudio", "custom", "media"]);
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
@@ -24,6 +24,7 @@ test("Claude's model is the existing setting; the others are kept per provider",
   assert.equal(activeModel(settings()), "claude-opus-5");
   assert.equal(activeModel(settings({ chatProvider: "google" })), "gemini-2.0-flash");
   assert.equal(activeModel(settings({ chatProvider: "ollama" })), "");
+  assert.equal(activeModel(settings({ chatProvider: "claude-code" })), "claude-haiku-5-5");
   let s = withModel(settings({ chatProvider: "openai" }), "openai", "gpt-5-mini");
   assert.equal(activeModel(s), "gpt-5-mini");
   assert.equal(s.model, "claude-opus-5");
@@ -36,9 +37,18 @@ test("Claude's model is the existing setting; the others are kept per provider",
 
 test("model servers show in the picker once connected, or while in use", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+  assert.deepEqual(ids(settings()), ["anthropic", "claude-code", "google", "openai", "openrouter"]);
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "claude-code", "google", "openai", "openrouter", "ollama"]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "claude-code", "google", "openai", "openrouter", "custom"]);
+});
+
+test("the Create chip shows once a media model is saved, never for speech-to-text alone", () => {
+  const ids = (s) => visibleProviders(s).map((p) => p.id);
+  const entry = (output) => ({ id: `m-${output}`, label: output, kind: "openai", model: output, endpoint: "https://x.dev/v1", vision: null, output, voice: "", detail: "" });
+  assert.ok(!ids(settings({ models: [entry("stt")] })).includes("media"));
+  assert.deepEqual(ids(settings({ models: [entry("stt"), entry("image")] })).at(-1), "media");
+  // In use with nothing left to pick: still shown, so the picker never hides where the chat goes.
+  assert.ok(ids(settings({ chatProvider: "media" })).includes("media"));
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

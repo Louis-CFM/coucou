@@ -7,7 +7,11 @@ import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
-  | "ollama" | "lmstudio" | "custom";
+  /** The user's Claude Code CLI, on their subscription (src-tauri/src/claude_code.rs). */
+  | "claude-code"
+  | "ollama" | "lmstudio" | "custom"
+  /** The media models saved in Settings (src-tauri/src/media.rs): "Create". */
+  | "media";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -25,13 +29,22 @@ export interface ProviderDef {
 
 export const PROVIDERS: readonly ProviderDef[] = [
   { id: "anthropic", name: "Anthropic", accent: "#E07950", key: "anthropic-api-key", urlField: null, defaultModel: "claude-opus-5", prefer: "opus" },
+  { id: "claude-code", name: "Claude Code", accent: "#C15F3C", key: null, urlField: null, defaultModel: "claude-haiku-5-5", prefer: "haiku" },
   { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-2.0-flash", prefer: "flash" },
   { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, defaultModel: "gpt-4o", prefer: "mini" },
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  // Images, video, speech and 3D from the models saved in Settings -> Media
+  // and voice models; its "model" is a saved entry's id.
+  { id: "media", name: "Create", accent: "#E879F9", key: null, urlField: null, defaultModel: "", prefer: null },
 ];
+
+/** The saved models the "Create" chip offers (speech-to-text only serves the mic). */
+export function creators(settings: Settings) {
+  return (settings.models ?? []).filter((m) => m.output !== "stt");
+}
 
 /** Credential store entry of the custom server's optional key. */
 export const CUSTOM_SERVER_KEY = "openai-compatible-key";
@@ -59,8 +72,10 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
  * active one, so the picker never hides where the chat goes.
  */
 export function visibleProviders(settings: Settings): ProviderDef[] {
-  return PROVIDERS.filter(
-    (p) => !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
+  return PROVIDERS.filter((p) =>
+    p.id === "media"
+      ? creators(settings).length > 0 || settings.chatProvider === p.id
+      : !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
   );
 }
 

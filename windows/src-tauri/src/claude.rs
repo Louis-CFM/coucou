@@ -148,7 +148,7 @@ pub async fn send(
 
     let turn = chat.begin(chat::ANTHROPIC);
     let user = json!({ "role": "user", "content": user_content(turn.first, context.as_ref(), &query) });
-    let body = request_body(model, &chat::system_prompt(true), &turn.history, &user);
+    let body = request_body(model, &chat.system_prompt(true), &turn.history, &user);
 
     let response = call(&endpoint, &key, &body).await?;
     let (blocks, text) = interpret(&response)?;
@@ -157,7 +157,7 @@ pub async fn send(
     // next turn has the right context.
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": blocks }), &plain, &text);
-    Ok(ChatReply { text })
+    Ok(ChatReply::text(text))
 }
 
 /// One question, one answer, no history: the dictation clean-up and the notes
