@@ -3,8 +3,8 @@ import Foundation
 // MARK: - ClaudeEndpoint
 //
 // Where Claude requests go: Anthropic's API, or an Anthropic-compatible gateway
-// (MiniMax, LiteLLM, a company proxy…) set in COUCOU_ANTHROPIC_BASE_URL, the
-// variable the Windows and Linux app reads.
+// (MiniMax, LiteLLM, a company proxy…) set in Settings → Chat, or in
+// COUCOU_ANTHROPIC_BASE_URL, the variable the Windows and Linux app reads.
 // Claude Code's own ANTHROPIC_BASE_URL is never read: it may name a proxy the
 // user never meant to hand this key to. Same rules as net::anthropic_endpoint
 // on Windows: https only (plain http only to this Mac), no user name or
@@ -15,6 +15,7 @@ struct ClaudeEndpoint: Equatable, Sendable {
     let messages: URL
 
     static let anthropic = URL(string: "https://api.anthropic.com/v1/messages")!
+    static let settingsKey = "anthropicBaseURL"
     static let environmentVariable = "COUCOU_ANTHROPIC_BASE_URL"
     static let anthropicVersion = "2023-06-01"
 
@@ -35,11 +36,15 @@ struct ClaudeEndpoint: Equatable, Sendable {
         }
     }
 
-    /// The gateway in the environment, else Anthropic. A URL that breaks the rules
-    /// throws rather than falling back: the key was meant for that gateway, and is
-    /// not sent anywhere else.
-    static func current(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> ClaudeEndpoint {
-        let raw = (environment[environmentVariable] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Settings first, then the environment, then Anthropic. A URL that breaks the
+    /// rules throws rather than falling back: the key was meant for that gateway,
+    /// and is not sent anywhere else.
+    static func current(defaults: UserDefaults = .standard,
+                        environment: [String: String] = ProcessInfo.processInfo.environment) throws -> ClaudeEndpoint {
+        let saved = (defaults.string(forKey: settingsKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = saved.isEmpty
+            ? (environment[environmentVariable] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            : saved
         guard !raw.isEmpty else { return ClaudeEndpoint(messages: anthropic) }
         return ClaudeEndpoint(messages: try messagesURL(from: raw))
     }

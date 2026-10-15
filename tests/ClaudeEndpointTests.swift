@@ -71,6 +71,25 @@ enum ClaudeEndpointTests {
         do { _ = try ClaudeEndpoint.current(environment: [ClaudeEndpoint.environmentVariable: "http://gw.example.com"]) } catch { threw = true }
         check("invalid URL throws, never falls back to Anthropic", threw)
 
+        print("ClaudeEndpoint.current with Settings")
+        let suite = "coucou-claude-endpoint-tests"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let other = [ClaudeEndpoint.environmentVariable: "https://env.example.com"]
+        check("empty Settings → environment",
+              (try? ClaudeEndpoint.current(defaults: defaults, environment: other))?.messages.host == "env.example.com")
+        defaults.set("https://api.minimax.io/anthropic", forKey: ClaudeEndpoint.settingsKey)
+        check("Settings wins over the environment",
+              (try? ClaudeEndpoint.current(defaults: defaults, environment: other))?.messages.host == "api.minimax.io")
+        defaults.set("   ", forKey: ClaudeEndpoint.settingsKey)
+        check("blank Settings → environment",
+              (try? ClaudeEndpoint.current(defaults: defaults, environment: other))?.messages.host == "env.example.com")
+        defaults.set("http://gw.example.com", forKey: ClaudeEndpoint.settingsKey)
+        threw = false
+        do { _ = try ClaudeEndpoint.current(defaults: defaults, environment: [:]) } catch { threw = true }
+        check("invalid Settings throws, never falls back to Anthropic", threw)
+        defaults.removePersistentDomain(forName: suite)
+
         print("ClaudeEndpoint requests")
         let anthropic = ClaudeEndpoint(messages: ClaudeEndpoint.anthropic)
         let gateway = ClaudeEndpoint(messages: try! ClaudeEndpoint.messagesURL(from: "https://api.minimax.io/anthropic"))

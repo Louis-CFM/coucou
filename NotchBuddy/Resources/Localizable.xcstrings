@@ -14874,6 +14874,134 @@
         }
       }
     },
+    "chat.anthropic-base-url" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عنوان URL الأساسي (اختياري، مثلاً https://api.minimax.io/anthropic)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "বেস URL (ঐচ্ছিক, যেমন https://api.minimax.io/anthropic)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base URL (optional, e.g. https://api.minimax.io/anthropic)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL base (opcional, p. ej. https://api.minimax.io/anthropic)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL de base (facultative, ex. https://api.minimax.io/anthropic)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बेस URL (वैकल्पिक, जैसे https://api.minimax.io/anthropic)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL dasar (opsional, mis. https://api.minimax.io/anthropic)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL base (opcional, ex.: https://api.minimax.io/anthropic)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Базовый URL (необязательно, напр. https://api.minimax.io/anthropic)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "基础 URL（可选，如 https://api.minimax.io/anthropic）"
+          }
+        }
+      }
+    },
+    "chat.anthropic-base-url.description" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اتركه فارغاً لاستخدام Anthropic. لبوابة متوافقة مع Anthropic (MiniMax وLiteLLM…)، الصق مفتاحها أعلاه واختر نموذجها أدناه ضمن «مخصص…». تمر عندها الدردشة وتنقيح الإملاء والملاحظات عبرها. البحث على الويب متاح مع Anthropic فقط."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthropic-এর জন্য খালি রাখুন। Anthropic-সামঞ্জস্যপূর্ণ গেটওয়ের জন্য (MiniMax, LiteLLM…) উপরে তার কী পেস্ট করুন এবং নিচে \"কাস্টম…\"-এ তার মডেল বেছে নিন। তখন চ্যাট, ডিক্টেশন পরিষ্কার করা এবং নোট সেখানে যাবে। ওয়েব সার্চ শুধু Anthropic-এ।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave empty for Anthropic. For an Anthropic-compatible gateway (MiniMax, LiteLLM…), paste its key above and pick its model below, under Custom…. The chat, the dictation clean-up and the notes then go there. Web search is Anthropic only."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déjalo vacío para Anthropic. Para una pasarela compatible con Anthropic (MiniMax, LiteLLM…), pega su clave arriba y elige su modelo abajo, en Personalizado…. El chat, la limpieza del dictado y las notas pasarán por ella. La búsqueda web solo existe con Anthropic."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez vide pour Anthropic. Pour une passerelle compatible Anthropic (MiniMax, LiteLLM…), collez sa clé ci-dessus et choisissez son modèle ci-dessous, dans Personnalisé…. Le chat, le nettoyage des dictées et les notes passent alors par elle. La recherche web n’existe qu’avec Anthropic."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthropic के लिए खाली छोड़ें। Anthropic-संगत गेटवे (MiniMax, LiteLLM…) के लिए ऊपर उसकी कुंजी पेस्ट करें और नीचे \"कस्टम…\" में उसका मॉडल चुनें। तब चैट, डिक्टेशन की सफ़ाई और नोट्स वहीं जाएंगे। वेब खोज केवल Anthropic के साथ है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biarkan kosong untuk Anthropic. Untuk gateway yang kompatibel dengan Anthropic (MiniMax, LiteLLM…), tempel kuncinya di atas dan pilih modelnya di bawah, pada Kustom…. Chat, perapian dikte, dan catatan lalu dikirim ke sana. Pencarian web hanya ada di Anthropic."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deixe vazio para a Anthropic. Para um gateway compatível com a Anthropic (MiniMax, LiteLLM…), cole a chave dele acima e escolha o modelo abaixo, em Personalizado…. O chat, a limpeza do ditado e as notas passam a ir para lá. A busca na web só existe com a Anthropic."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставьте пустым для Anthropic. Для шлюза, совместимого с Anthropic (MiniMax, LiteLLM…), вставьте его ключ выше и выберите модель ниже, в пункте «Свой…». Тогда чат, очистка диктовки и заметки пойдут через него. Веб-поиск есть только у Anthropic."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 Anthropic 时请留空。若使用兼容 Anthropic 的网关（MiniMax、LiteLLM…），请在上方粘贴其密钥，并在下方“自定义…”中填写其模型。聊天、听写整理和笔记都会经由该网关。网页搜索仅限 Anthropic。"
+          }
+        }
+      }
+    },
     "chat.api-key.claude" : {
       "localizations" : {
         "ar" : {
