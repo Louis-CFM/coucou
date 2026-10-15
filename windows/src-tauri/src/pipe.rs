@@ -14,9 +14,10 @@
 //   * whatever happens we drop the connection after the decision timeout, and
 //     the terminal takes over.
 //
-// What we write back is the bare word `allow` or `deny` — or, when the request
-// was Claude Code asking a question, `{"answers":{…}}` with what was picked on
-// the island. Turning either into the documented hookSpecificOutput JSON is
+// What we write back is the bare word `allow`, `always` or `deny`, or, when
+// the request was Claude Code asking a question, `{"answers":{…}}` with what
+// was picked on the island. `always` carries no rule: the relay applies the
+// permission_suggestions Claude Code itself sent with the request. Turning either into the documented hookSpecificOutput JSON is
 // coucou-hook's job, so the wire format Claude Code expects lives in exactly
 // one place.
 
@@ -237,7 +238,18 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    // Answered in the terminal (or the app) instead: Claude Code ends the relay,
+    // its end of the connection closes, and the island must drop the card at
+    // once rather than keep offering a question that is already settled.
+    let decision = tokio::select! {
+        d = wait_for_decision(&id, &mut rx) => d,
+        () = client_gone(&mut pipe) => {
+            log::line(format!("hook id={id} answered elsewhere"));
+            crate::recap::forget_request(&app, &id);
+            let _ = app.emit_to(WINDOW_LABEL, "hook-resolved", id.clone());
+            None
+        }
+    };
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
@@ -247,6 +259,18 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         let _ = pipe.flush().await;
     }
     pipe.finish();
+}
+
+/// Resolves once the relay has gone (end of stream or a broken pipe). It sends
+/// nothing after its one line, so any read result means it is done.
+async fn client_gone(pipe: &mut impl Relay) {
+    let mut probe = [0u8; 64];
+    loop {
+        match pipe.read(&mut probe).await {
+            Ok(0) | Err(_) => return,
+            Ok(_) => {}
+        }
+    }
 }
 
 /// Finds, once per session, the window it runs in — see session_window.rs.
@@ -339,15 +363,22 @@ pub fn decline(app: &AppHandle, request_id: &str) {
     send(app, request_id, Reply::Decline, false);
 }
 
-/// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
-/// it into Claude Code's JSON is coucou-hook's job.
+/// Called by the island's Allow / Always allow / Deny buttons. Only ever a bare
+/// word: turning it into Claude Code's JSON is coucou-hook's job, and the rule
+/// an "always" saves is the one Claude Code offered, never one from here.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
-    let word = match decision {
-        "allow" | "always" => "allow",
-        _ => "deny",
-    };
+    let word = decision_word(decision);
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// The only words that go down the pipe for a permission; anything else denies.
+fn decision_word(decision: &str) -> &'static str {
+    match decision {
+        "allow" => "allow",
+        "always" => "always",
+        _ => "deny",
+    }
 }
 
 /// Called when an option is picked for a question Claude Code asked. `answers`
@@ -358,4 +389,39 @@ pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<Stri
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    impl Relay for tokio::io::DuplexStream {}
+
+    fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    /// The card's fast exit: the relay hanging up (Claude Code ended it because
+    /// the prompt was answered in the terminal) is seen at once, and a relay
+    /// that is still waiting is not mistaken for one that left.
+    #[test]
+    fn a_relay_that_hangs_up_is_seen_at_once() {
+        block_on(async {
+            let (mut ours, theirs) = tokio::io::duplex(64);
+            let waiting = tokio::time::timeout(Duration::from_millis(50), client_gone(&mut ours)).await;
+            assert!(waiting.is_err(), "a live relay must not count as gone");
+            drop(theirs);
+            let gone = tokio::time::timeout(Duration::from_millis(50), client_gone(&mut ours)).await;
+            assert!(gone.is_ok(), "a closed relay must be seen within the poll");
+        });
+    }
+
+    #[test]
+    fn always_reaches_the_relay_as_its_own_word_and_nothing_else_allows() {
+        assert_eq!(decision_word("always"), "always");
+        assert_eq!(decision_word("allow"), "allow");
+        // A rule from the page is never relayed: only Claude Code's own are applied.
+        assert_eq!(decision_word("{\"updatedPermissions\":[]}"), "deny");
+        assert_eq!(decision_word(""), "deny");
+    }
 }

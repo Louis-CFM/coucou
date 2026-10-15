@@ -5,12 +5,12 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { MUSIC_ID, State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
-import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { musicPillControls, renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import {
@@ -39,7 +39,8 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  /** "always" applies the rule Claude Code offered with the request. */
+  decide(d: "allow" | "deny" | "always"): void;
   /** Answers the question Claude Code asked: question text → chosen label. */
   answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
@@ -53,6 +54,10 @@ export interface ViewActions {
   chooseOutfit(selection: OutfitSelection): void;
   /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
   previewOutfit(outfit: Outfit | null): void;
+  /** Wardrobe click on a body shape: keeps it ("" = the classic Mochi). */
+  chooseShape(id: string): void;
+  /** Right-click on a pill: focuses its Mochi and opens the wardrobe for it. */
+  wardrobeFor(id: string): void;
 }
 
 export interface ViewHost {
@@ -371,11 +376,16 @@ function buildOverview(actions: ViewActions): ViewHost {
           language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
+          task.id === MUSIC_ID ? JSON.stringify(State.nowPlaying) : "",
+          task.id === "integration_github" ? JSON.stringify(State.githubPush) : "",
+          State.pillLabel(task),
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
           mode = "card";
           clear(leftBody);
+          const push = task.id === "integration_github" ? githubPushRow() : null;
+          if (push) leftBody.append(push);
           leftBody.append(renderIntegrationCard(task, hooks));
         }
       }
@@ -424,15 +434,44 @@ export function hasSessionTicker(task: AgentTask): boolean {
   return isSession && (task.state !== "idle" || task.steps.length > 0);
 }
 
+/**
+ * A `git push` Claude Code is running, above the GitHub card: GitHub can't see
+ * a push in flight, the hook can (island/integrations.ts).
+ */
+function githubPushRow(): HTMLElement | null {
+  const live = State.githubPush;
+  if (!live) return null;
+  const pushing = live.state === "pushing";
+  const accent = pushing ? "#F5A524" : live.state === "done" ? "#22C55E" : "#F4505E";
+  const text = pushing ? `Pushing ${live.repo}` : live.state === "done" ? `Pushed ${live.repo}` : `Push failed: ${live.repo}`;
+  return h(
+    "div",
+    { class: pushing ? "gh-push running" : "gh-push", style: `--accent:${accent}` },
+    dot(accent, 5),
+    h("span", { class: "gh-push-text", text }),
+    pushing ? h("span", { class: "gh-push-bar" }, h("i")) : h("span", { class: "int-ago", text: t("just now") }),
+  );
+}
+
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? pillDefinition(task.id)!.name : task.name;
-  const canvas = createMiniBot(task, 24);
+  const label = State.pillLabel(task);
+  // Melody dances on her pill while the music plays.
+  const canvas = createMiniBot(task, 24, task.id === MUSIC_ID ? () => State.windowsMusicPlaying : undefined);
   const pill = h(
     "div",
     { class: "pill", onclick: () => actions.setFocus(task.id) },
     canvas,
     h("span", { class: "lbl", text: label }),
   );
+  // Right-click: this pill's Mochi in its wardrobe (each Mochi has its own look).
+  pill.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    actions.wardrobeFor(task.id);
+  });
+  if (task.id === MUSIC_ID) {
+    pill.classList.add("music");
+    pill.append(musicPillControls());
+  }
   pill.style.borderColor = `${task.color}24`;
   pill.addEventListener("mouseenter", () => {
     pill.style.background = `${task.color}2e`;
@@ -514,7 +553,7 @@ function buildApproval(actions: ViewActions): ViewHost {
   // moments after a new request appears are ignored.
   let shownFor: string | null = null;
   let shownAt = 0;
-  const guarded = (d: "allow" | "deny") => () => {
+  const guarded = (d: "allow" | "deny" | "always") => () => {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
@@ -532,16 +571,25 @@ function buildApproval(actions: ViewActions): ViewHost {
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
       code.textContent = State.pendingApproval?.command || State.pendingApproval?.tool || "…";
-      // Two buttons, built once. Rebuilding them between a mouse-down and a
-      // mouse-up would swallow the click, and there is nothing left to vary:
-      // "Always" is gone until the remembered-rules list exists to back it.
-      if (rowKey === "built") return;
-      rowKey = "built";
+      // Built once per request. Rebuilding them between a mouse-down and a
+      // mouse-up would swallow the click. "Always allow" comes only when Claude
+      // Code offered a rule to remember (permission_suggestions): the relay
+      // hands that very rule back, the terminal's "Yes, and don't ask again".
+      const always = State.pendingApproval?.always ?? null;
+      const key = `${req}~${always?.label ?? ""}`;
+      if (rowKey === key) return;
+      rowKey = key;
       clear(row);
       row.append(
         btn(tl("Deny"), "secondary", guarded("deny"), "N"),
         btn(tl("Allow"), "primary", guarded("allow"), "Y"),
       );
+      if (always) {
+        const b = btn(always.label, "secondary", guarded("always"), "A");
+        b.classList.add("always");
+        b.title = always.detail;
+        row.append(b);
+      }
     },
   };
 }

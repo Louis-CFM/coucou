@@ -8,10 +8,11 @@
 import { Bridge, onEvent } from "../core/bridge";
 import { buildFileDiff, fileName, makeDiffStep, toOneLine } from "../core/diff";
 import { Sound } from "../core/sound";
-import { State, type AskedQuestion } from "../core/state";
+import { State, type ApprovalInfo, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
+import { gitPushCommand, pushEnded, pushStarted } from "./integrations";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
@@ -47,6 +48,101 @@ function cancelStopTimer(id: string): boolean {
 /** Events after which a pending permission request of the same session is moot. */
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
 
+/**
+ * True when `name` (from `agentId`'s session) shows the pending card was
+ * settled somewhere else: the turn is over (interrupted, a new prompt, the
+ * session ended), or the very tool call it asked about has run, so it was
+ * allowed in the terminal or the Claude app. A tool result of another call (a
+ * subagent working alongside) does not count. The relay hanging up is the
+ * fastest sign of all; it arrives as `hook-resolved`.
+ */
+export function settledElsewhere(
+  pending: ApprovalInfo,
+  name: string,
+  agentId: string,
+  sessionId: string,
+  tool: string | undefined,
+  input: Record<string, unknown> | undefined,
+): boolean {
+  if (pending.pillId !== agentId || pending.sessionId !== sessionId) return false;
+  if (TURN_OVER.has(name)) return true;
+  if (name !== "PostToolUse" && name !== "PostToolUseFailure") return false;
+  const t = tool ?? "Tool";
+  return t === pending.tool && approvalTarget(t, input ?? {}) === pending.command;
+}
+
+/** How Claude Code's permission modes read on the Always button. */
+const MODE_WORDS: Record<string, string> = {
+  acceptEdits: "edits",
+  bypassPermissions: "everything",
+};
+
+/** Where Claude Code saves an Always rule, in words. */
+const DESTINATIONS: Record<string, string> = {
+  session: "for this session only",
+  localSettings: "in .claude/settings.local.json",
+  projectSettings: "in .claude/settings.json",
+  userSettings: "in ~/.claude/settings.json",
+};
+
+/**
+ * A prompt as the session's step line. Claude Code also submits text the
+ * user never typed (a background task's `<task-notification>`, system
+ * reminders, slash-command echoes): those show as their summary or command,
+ * or not at all, never as raw tags.
+ */
+export function promptStep(raw: string): string | null {
+  const tag = (name: string) => raw.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1]?.trim();
+  if (raw.includes("<task-notification>")) return tag("summary") ?? null;
+  const command = tag("command-name");
+  if (command) return command;
+  const text = raw
+    .replace(/<(system-reminder|local-command-\w+)>[\s\S]*?<\/\1>/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 60) : null;
+}
+
+/**
+ * Claude Code's `permission_suggestions` (the terminal's "Yes, and don't ask
+ * again…") → the Always button's words, or null when it offered nothing. The
+ * rules stay with the relay, which hands back exactly these; this only says
+ * what they are: "Always allow Bash(npm test:*)".
+ */
+export function alwaysOffer(raw: unknown): { label: string; detail: string } | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const what: string[] = [];
+  const where = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const s = item as Record<string, unknown>;
+    if (typeof s.destination === "string") where.add(s.destination);
+    if ((s.type === "addRules" || s.type === "replaceRules") && Array.isArray(s.rules) && s.behavior !== "deny") {
+      for (const r of s.rules as Record<string, unknown>[]) {
+        if (typeof r?.toolName !== "string" || !r.toolName) continue;
+        const content = typeof r.ruleContent === "string" ? r.ruleContent.trim() : "";
+        what.push(content ? `${r.toolName}(${content})` : r.toolName);
+      }
+    } else if (s.type === "setMode" && typeof s.mode === "string" && MODE_WORDS[s.mode]) {
+      what.push(MODE_WORDS[s.mode]);
+    } else if (s.type === "addDirectories" && Array.isArray(s.directories)) {
+      for (const d of s.directories) {
+        if (typeof d === "string" && d.trim()) what.push(`files in ${lastPathComponent(d.trim()) || d.trim()}`);
+      }
+    }
+  }
+  let rules = what.join(", ");
+  if (rules.length > 48) rules = `${rules.slice(0, 47)}…`;
+  const sessionOnly = where.size > 0 && [...where].every((d) => DESTINATIONS[d] === DESTINATIONS.session);
+  const label = sessionOnly
+    ? (rules ? `Allow ${rules} this session` : "Allow for this session")
+    : rules ? `Always allow ${rules}` : "Always allow";
+  const saved = [...where].map((d) => DESTINATIONS[d] ?? d).join(", ");
+  const detail = `Allow, and let Claude Code remember ${what.length ? what.join(", ") : "this permission"}${saved ? ` ${saved}` : ""}.`;
+  return { label, detail };
+}
+
 interface HookPayload {
   hook_event_name?: string;
   request_id?: string;
@@ -69,6 +165,8 @@ interface HookPayload {
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
+  /** PermissionRequest: what "Yes, and don't ask again" would save (Claude Code). */
+  permission_suggestions?: unknown;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -228,6 +326,15 @@ export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
   void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  // The relay hung up while its card was up: Claude Code ended it because the
+  // prompt was answered in the terminal or the Claude app. The card goes at
+  // once; there is nobody left to release.
+  void onEvent<string>("hook-resolved", (id) => {
+    if (State.pendingApproval?.requestId !== id) return;
+    if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+    dropPendingCard(island);
+  });
 }
 
 function handleHook(island: Island, payload: HookPayload) {
@@ -297,12 +404,7 @@ function handleHook(island: Island, payload: HookPayload) {
   // interrupted, or a new prompt — so the card would be lying. It goes, and the
   // relay is released without a decision. Same rule as the Mac.
   const pending = State.pendingApproval;
-  if (
-    pending &&
-    TURN_OVER.has(name) &&
-    pending.pillId === agentId &&
-    pending.sessionId === (payload.session_id ?? "")
-  ) {
+  if (pending && settledElsewhere(pending, name, agentId, sessionId, payload.tool_name, payload.tool_input)) {
     if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
     pendingTimeout = null;
     if (pending.requestId) void Bridge.approvalDecline(pending.requestId);
@@ -331,8 +433,8 @@ function handleHook(island: Island, payload: HookPayload) {
       clearFinalLine(agentId);
       State.updateTask(agentId, "thinking");
       // The field is `prompt`; reading `message` meant this step was always blank.
-      const asked = payload.prompt ?? payload.message;
-      if (asked) State.appendStep(agentId, asked.slice(0, 60));
+      const asked = promptStep(payload.prompt ?? payload.message ?? "");
+      if (asked) State.appendStep(agentId, asked);
       surface("overview", false);
       break;
     }
@@ -344,7 +446,10 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-      surface("overview", false);
+      // A `git push` brings the GitHub card up with the push on it.
+      const push = isExternalAgent ? null : gitPushCommand(tool, payload.tool_input ?? {});
+      if (push) pushStarted(island, push, payload.cwd);
+      else surface("overview", false);
       break;
     }
 
@@ -362,12 +467,14 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       State.updateTask(agentId, "working");
       recordDiff(agentId, payload);
+      endPush(payload, true);
       break;
 
     case "PostToolUseFailure":
       supersedeStop();
       State.updateTask(agentId, "working");
       State.appendStep(agentId, t("⚠ failed"));
+      endPush(payload, false);
       break;
 
     case "Notification": {
@@ -483,6 +590,9 @@ function handleHook(island: Island, payload: HookPayload) {
       // The card always comes up, even over another pill or an island that is
       // already open: its pill comes to the front, and the one you were on
       // comes back once you answer (Mac #117, #120).
+      // Claude Code may offer to remember the permission: then the card also
+      // has "Always allow". No other agent's relay can save a rule.
+      const always = isExternalAgent || questions ? null : alwaysOffer(payload.permission_suggestions);
       State.beginApproval({
         requestId,
         sessionId,
@@ -490,6 +600,7 @@ function handleHook(island: Island, payload: HookPayload) {
         tool,
         command: approvalTarget(tool, input),
         ...(questions ? { questions } : {}),
+        ...(always ? { always } : {}),
       });
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
@@ -512,4 +623,10 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
   }
   State.notify();
+}
+
+/** A `git push` tool call ended: the GitHub card says how it went. */
+function endPush(payload: HookPayload, ok: boolean) {
+  const push = gitPushCommand(payload.tool_name ?? "", payload.tool_input ?? {});
+  if (push) pushEnded(push, ok);
 }

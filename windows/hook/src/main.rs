@@ -25,7 +25,7 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
@@ -38,6 +38,8 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
+/// How often a waiting relay checks that the process that ran it is still there.
+const PARENT_POLL: Duration = Duration::from_millis(100);
 
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
@@ -62,12 +64,12 @@ const MAX_DIFF_TOTAL: usize = 512 * 1024;
 #[cfg(windows)]
 mod win;
 #[cfg(windows)]
-use win::connect;
+use win::{connect, parent};
 
 #[cfg(target_os = "linux")]
 mod unix;
 #[cfg(target_os = "linux")]
-use unix::connect;
+use unix::{connect, parent};
 
 /// What the command line says: `--agent <name>` and the event name.
 struct Args {
@@ -97,6 +99,9 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// Claude Code's PermissionRequest `permission_suggestions`, as sent: the
+    /// rules an island "Always allow" applies (never one the app makes up).
+    suggestions: Option<Value>,
 }
 
 fn main() {
@@ -132,9 +137,37 @@ fn main() {
         let _ = tx.send(talk(&line, waits_for_answer));
     });
 
-    let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    // Claude Code ends the relay when its prompt is answered in the terminal,
+    // and the app sees the pipe close at once. A shell between them (Git Bash,
+    // cmd) can be the one ended, leaving us orphaned: its going ends us too.
+    let parent = if waits_for_answer { parent() } else { None };
+    let decision = wait(&rx, budget, || parent.as_ref().is_some_and(|p| p.gone()));
+    print(reply::stdout_with(
+        &args.agent,
+        &event.name,
+        decision.as_deref(),
+        event.question.as_ref(),
+        event.suggestions.as_ref(),
+    ));
     std::process::exit(0);
+}
+
+/// The worker's answer, or None once `budget` runs out or `gone()` says the
+/// process that ran us has gone.
+fn wait(rx: &mpsc::Receiver<Option<String>>, budget: Duration, gone: impl Fn() -> bool) -> Option<String> {
+    let deadline = Instant::now() + budget;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            return None;
+        }
+        match rx.recv_timeout(left.min(PARENT_POLL)) {
+            Ok(decision) => return decision,
+            Err(mpsc::RecvTimeoutError::Timeout) if gone() => return None,
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+        }
+    }
 }
 
 fn print(line: Option<String>) {
@@ -192,6 +225,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
         .then(|| map.get("tool_input").cloned())
         .flatten();
+    let suggestions = (name == "PermissionRequest").then(|| map.get("permission_suggestions").cloned()).flatten();
 
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
@@ -199,7 +233,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, suggestions })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -539,4 +573,26 @@ mod tests {
         assert!(multi.to_string().len() < MAX_DIFF_TOTAL + 64 * 1024);
         assert_eq!(multi["coucou_diff_truncated"], serde_json::Value::Bool(true));
     }
+
+    #[test]
+    fn a_waiting_relay_gives_up_as_soon_as_its_parent_is_gone() {
+        let (tx, rx) = mpsc::channel::<Option<String>>();
+        let started = Instant::now();
+        let checks = std::cell::Cell::new(0);
+        let gone = || {
+            checks.set(checks.get() + 1);
+            checks.get() >= 2
+        };
+        assert_eq!(wait(&rx, Duration::from_secs(5), gone), None);
+        assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+        // An answer still wins while the parent is there.
+        tx.send(Some("allow".into())).unwrap();
+        assert_eq!(wait(&rx, Duration::from_secs(5), || false).as_deref(), Some("allow"));
+        // And the budget still ends a wait nobody answers.
+        let started = Instant::now();
+        assert_eq!(wait(&rx, Duration::from_millis(150), || false), None);
+        assert!(started.elapsed() >= Duration::from_millis(150));
+        drop(tx);
+    }
 }
+
