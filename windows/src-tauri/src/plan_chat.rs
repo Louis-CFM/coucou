@@ -91,7 +91,7 @@ fn cli_path(provider: &str) -> Option<PathBuf> {
     })
 }
 
-const WORKDIRS: [&str; 2] = ["cursor-chat", "kiro-chat"];
+const WORKDIRS: [&str; 4] = ["cursor-chat", "kiro-chat", "cursor-notes", "kiro-notes"];
 
 fn workdir(provider: &str) -> Result<PathBuf, String> {
     let dir = crate::settings::local_dir().join(if provider == KIRO { WORKDIRS[1] } else { WORKDIRS[0] });
@@ -135,6 +135,50 @@ async fn run(provider: &str, mut cmd: Command) -> Result<std::process::Output, S
 fn not_found(provider: &str) -> String {
     let login = if provider == KIRO { "kiro-cli login" } else { "agent login" };
     tf("{name} CLI not found. Install it, then sign in with {command}.", &[("name", name(provider)), ("command", login)])
+}
+
+// ── One question, no conversation ─────────────────────────────────────────────
+
+/// The longest prompt passed on the command line: Linux caps one argument at
+/// 128 KiB, Windows a whole command line at 32 767 characters.
+#[cfg(windows)]
+const MAX_ARG_PROMPT: usize = 30_000;
+#[cfg(not(windows))]
+const MAX_ARG_PROMPT: usize = 120_000;
+
+/// One answer from a plan's CLI, outside the chat (the notes' summary). It runs
+/// in a folder of its own, so the chat's `--resume` never picks it up.
+pub async fn complete(provider: &str, model: &str, instructions: &str, user: &str) -> Result<String, String> {
+    let provider = if provider == KIRO { KIRO } else { CURSOR };
+    let cli = cli_path(provider).ok_or_else(|| not_found(provider))?;
+    let dir = crate::settings::local_dir().join(if provider == KIRO { WORKDIRS[5] } else { WORKDIRS[4] });
+    platform::ensure_private_dir(&dir).map_err(|e| e.to_string())?;
+    let mut prompt = format!("{instructions}\n\n{user}");
+    if prompt.len() > MAX_ARG_PROMPT {
+        let mut cut = MAX_ARG_PROMPT;
+        while !prompt.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        prompt.truncate(cut);
+    }
+    let mut cmd = command(provider, &cli);
+    cmd.current_dir(&dir);
+    if provider == KIRO {
+        cmd.args(["chat", "--agent-engine", "v1", "--no-interactive", "--trust-tools=", "--wrap", "never", "--model", model]);
+    } else {
+        cmd.args(["-p", "--output-format", "json", "--mode", "ask", "--trust", "--model", model]);
+    }
+    cmd.arg("--").arg(prompt);
+    let out = run(provider, cmd).await;
+    if provider == KIRO {
+        forget_kiro_sessions(&cli, &dir).await;
+    }
+    let out = out?;
+    if provider == KIRO {
+        parse_kiro_answer(out.status.success(), &out.stdout, &out.stderr)
+    } else {
+        parse_cursor_result(&out.stdout, &out.stderr).map(|(text, _)| text)
+    }
 }
 
 // ── One chat turn ─────────────────────────────────────────────────────────────
