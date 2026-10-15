@@ -11,6 +11,7 @@ import {
   recordPress, type Binding,
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { EDITORS, editorOf } from "../core/editors";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -549,6 +550,26 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   });
   const groups = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
 
+  // The editor the buttons open things in: its own pick, apart from the main tool.
+  const editor = h("select", {}) as HTMLSelectElement;
+  for (const e of EDITORS) editor.append(h("option", { value: e.id, text: e.name }));
+  editor.value = editorOf(settings.editor);
+  const editorState = h("span", { class: "hint" });
+  const showEditorState = (found: Record<string, boolean>) => {
+    const ok = found[editorOf(settings.editor)];
+    editorState.textContent = ok === undefined ? "" : ok ? t("Found on this computer") : t("Not found on this computer");
+  };
+  let editorsFound: Record<string, boolean> = {};
+  void Bridge.editorsStatus().then((found) => {
+    editorsFound = found ?? {};
+    showEditorState(editorsFound);
+  });
+  editor.addEventListener("change", () => {
+    settings.editor = editorOf(editor.value);
+    showEditorState(editorsFound);
+    void save();
+  });
+
   /** Why a pill would show nothing yet, as on the Mac's row. */
   function hint(def: PillDefinition): string | null {
     if (isComingSoon(def.id)) return t("Coming soon");
@@ -607,6 +628,8 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     h("div", { class: "hint", text: t("Choose the tools you use. Coucou only shows what you declare here.") }),
     slots,
     h("div", { class: "row" }, h("label", { text: t("Main tool") }), main),
+    h("div", { class: "row" }, h("label", { text: t("Code editor") }), editor, editorState),
+    h("div", { class: "hint", text: t("Opens the folder for Open terminal and the file for the ↗ of a diff. PhpStorm opens the file on its first changed line.") }),
     groups,
   );
 }

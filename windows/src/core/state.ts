@@ -11,6 +11,7 @@ import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
+import { DEFAULT_EDITOR } from "./editors";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
 
@@ -106,8 +107,10 @@ export interface Settings {
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
-  /** The always-on workspace pill: VS Code, Cursor, Codex or Antigravity. */
+  /** The always-on workspace pill: VS Code, Cursor, PhpStorm, Codex or Antigravity. */
   mainPill: string;
+  /** The editor "Open terminal" and the diff's ↗ open things in: "vscode" or "phpstorm". */
+  editor: string;
   /** "primary", "cursor", or `at:<x>,<y>` for one display (logical origin). */
   screen: string;
   autostart: boolean;
@@ -174,6 +177,7 @@ export const DEFAULT_SETTINGS: Settings = {
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
   ],
   mainPill: DEFAULT_MAIN_PILL,
+  editor: DEFAULT_EDITOR,
   screen: "primary",
   autostart: false,
   hooksInstalled: false,

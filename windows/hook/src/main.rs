@@ -246,12 +246,17 @@ fn agent_tag(arg: &str, env: &dyn Fn(&str) -> Option<String>) -> Option<String> 
         .then(|| "claude-desktop".to_string())
 }
 
-/// `cursor` when the session runs in Cursor's integrated terminal. Cursor sets
+/// `cursor` when the session runs in Cursor's integrated terminal, `phpstorm`
+/// in a JetBrains one (every JetBrains IDE sets the same variable, so a
+/// WebStorm or IntelliJ terminal reads as PhpStorm). Cursor sets
 /// TERM_PROGRAM=vscode like VS Code does, so it is told apart by its own trace
 /// variable, or by its executable behind VS Code's git helper.
 fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
     if env("CURSOR_TRACE_ID").is_some_and(|v| !v.is_empty()) {
         return Some("cursor");
+    }
+    if env("TERMINAL_EMULATOR").as_deref() == Some("JetBrains-JediTerm") {
+        return Some("phpstorm");
     }
     let helper = env("VSCODE_GIT_ASKPASS_NODE").unwrap_or_default();
     let exe = helper.rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
@@ -420,6 +425,17 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn a_jetbrains_terminal_reads_as_phpstorm() {
+        assert_eq!(term_editor(&env_of(&[("TERMINAL_EMULATOR", "JetBrains-JediTerm")])), Some("phpstorm"));
+        assert_eq!(term_editor(&env_of(&[("TERMINAL_EMULATOR", "other")])), None);
+        // Cursor's own variable still wins.
+        assert_eq!(
+            term_editor(&env_of(&[("CURSOR_TRACE_ID", "abc"), ("TERMINAL_EMULATOR", "JetBrains-JediTerm")])),
+            Some("cursor")
+        );
     }
 
     #[test]
