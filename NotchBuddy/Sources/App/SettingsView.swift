@@ -2139,6 +2139,7 @@ struct SettingsView: View {
         let nextGitlab = [KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token")]
         if nextGitlab != prevGitlab {
             GitLabPoller.shared.credentialsChanged()
+            GitLabPanelService.shared.credentialsChanged()
         }
 
         saveKey("stripe-api-key",  value: stripeKey)

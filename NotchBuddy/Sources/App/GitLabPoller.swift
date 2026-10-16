@@ -57,13 +57,13 @@ final class GitLabPoller: @unchecked Sendable {
 
     // MARK: - HTTP
 
-    private final class Reply: @unchecked Sendable {
+    final class Reply: @unchecked Sendable {
         var code = 0
         var data: Data?
     }
 
     /// Guards a dictionary filled from several threads.
-    private final class Collector<Value>: @unchecked Sendable {
+    final class Collector<Value>: @unchecked Sendable {
         private let lock = NSLock()
         private var values: [Int: Value] = [:]
         func set(_ index: Int, _ value: Value) { lock.withLock { values[index] = value } }
@@ -73,7 +73,7 @@ final class GitLabPoller: @unchecked Sendable {
     /// One authenticated GET, blocking: only called from background queues. The
     /// token is never logged. nil when nothing came back, the status is not 2xx
     /// or the body is not JSON.
-    private func get(base: String, token: String, path: String, query: [String: String] = [:]) -> Any? {
+    func get(base: String, token: String, path: String, query: [String: String] = [:]) -> Any? {
         guard var comps = URLComponents(string: GitLab.apiURL(base: base, path: path)) else { return nil }
         if !query.isEmpty {
             comps.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }

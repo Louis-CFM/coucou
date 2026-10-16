@@ -2838,6 +2838,17 @@ struct GitHubPulseCardView: View {
                         .font(.system(size: 11))
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
+                // GitLab only: the panel with every merge request and the threads waiting for you.
+                if provider == .gitlab {
+                    Spacer(minLength: 4)
+                    Button(action: { GitLabPanelController.shared.toggle() }) {
+                        Image(systemName: "sidebar.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    .help(String(localized: "Open the merge request panel"))
+                }
             }
             .padding(.top, 6)
             .padding(.leading, 108)

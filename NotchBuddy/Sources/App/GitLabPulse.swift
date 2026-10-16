@@ -222,6 +222,11 @@ enum GitLab {
         formatDate(epochDay(now) - 366)
     }
 
+    /// The date `days` days before now, "YYYY-MM-DD" (the `after` of an events poll).
+    static func dateDaysAgo(nowMs: Int, days: Int) -> String {
+        formatDate(nowMs / 86_400_000 - days)
+    }
+
     /// Counts events per day over the last 53 weeks (Sunday first, the last week
     /// ends today) and grades each day 0…4 against the busiest one.
     static func parseActivity(events: [[String: Any]], now: Date) -> GitHubActivity {
