@@ -187,7 +187,10 @@ pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
     if visible && (!was || edge_changed) {
         place(app, &pill, &state.edge, state.phase == "listening");
     }
-    if visible != was {
+    // Hidden from the start, `was` and `visible` agree and show() never runs:
+    // on Windows the window would stay wherever it was born (the resting
+    // capsule floating at the top left), so a hidden pill is always parked.
+    if visible != was || (!visible && pill.mode == DesktopMode::Poll) {
         show(app, &pill, visible);
     }
 }
