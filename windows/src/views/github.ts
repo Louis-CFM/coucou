@@ -109,7 +109,7 @@ function ciDot(ci: GitHubPR["ci"]): HTMLElement {
 }
 
 /** What each list row opens: its click, and Ctrl+O when it is highlighted. */
-const rowOpens = new WeakMap<Element, () => void>();
+export const rowOpens = new WeakMap<Element, () => void>();
 
 function row(onOpen: () => void, ...children: (HTMLElement | null)[]): HTMLElement {
   const el = h("button", { class: "gh-row", onclick: onOpen }, ...children);
