@@ -18,6 +18,10 @@ import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
+/** The tag the relay gives a Claude Code session of Claude's desktop app. */
+const CLAUDE_DESKTOP_AGENT = "claude-desktop";
+/** Claude Code's tool for asking the user a question. */
+const QUESTION_TOOL = "AskUserQuestion";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
@@ -456,8 +460,11 @@ function handleHook(island: Island, payload: HookPayload) {
     case "PermissionRequest": {
       // Only Claude Code and the agents the relay can answer for (Codex, Copilot
       // CLI, Muse Code — same as the Mac) get a card. Anyone else's request is
-      // declined at once, so the agent asks in its own terminal.
-      if (isExternalAgent && !APPROVAL_AGENTS.has(validAgent!)) {
+      // declined at once, so the agent asks in its own terminal. Claude's desktop
+      // app answers its own permissions, as on the Mac, but its questions come
+      // to the island too.
+      const desktopQuestion = validAgent === CLAUDE_DESKTOP_AGENT && payload.tool_name === QUESTION_TOOL;
+      if (isExternalAgent && !desktopQuestion && !APPROVAL_AGENTS.has(validAgent!)) {
         if (payload.request_id) void Bridge.approvalDecline(payload.request_id);
         break;
       }
@@ -478,7 +485,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // Claude Code asking a question is not a permission to grant: the island
       // shows the options and sends back the one that was picked. Only Claude
       // Code asks questions this way.
-      const questions = isExternalAgent ? null : askedQuestions(tool, input);
+      const questions = !isExternalAgent || desktopQuestion ? askedQuestions(tool, input) : null;
       const view = questions ? "question" : "approval";
       // The card always comes up, even over another pill or an island that is
       // already open: its pill comes to the front, and the one you were on

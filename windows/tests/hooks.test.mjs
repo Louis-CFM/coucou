@@ -356,6 +356,14 @@ test("a Claude Desktop session gets the Claude Desktop pill, in its colour (Mac 
   // Its permission requests are answered in the app, as on macOS.
   hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: "claude-desktop", tool_name: "Bash" });
   assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+  // Its questions come to the island, with their options.
+  hook({
+    hook_event_name: "PermissionRequest", request_id: "r2", coucou_agent: "claude-desktop", tool_name: "AskUserQuestion",
+    tool_input: { questions: [{ question: "Which colour?", options: [{ label: "Pink" }, { label: "Blue" }] }] },
+  });
+  assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }]);
+  assert.equal(State.pendingApproval?.requestId, "r2");
+  assert.equal(State.pendingApproval?.questions?.length, 1);
 });
 
 // ── Main tool and Cursor ──────────────────────────────────────────────────────
