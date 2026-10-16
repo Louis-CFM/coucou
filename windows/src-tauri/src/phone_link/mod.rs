@@ -18,7 +18,7 @@ mod admission;
 mod chat;
 mod chat_backend;
 mod discovery;
-mod hub;
+use coucou_phone_link::hub;
 #[cfg(test)]
 mod interop;
 mod pairing;

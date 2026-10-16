@@ -8,6 +8,12 @@ on:
   pull_request:
     paths:
       - 'windows/src-tauri/src/phone_link/**'
+      - 'windows/phone-link/**'
+      - 'windows/Cargo.toml'
+      - 'windows/Cargo.lock'
+      - 'windows/src-tauri/Cargo.toml'
+      - 'windows/src/mochi/wardrobe.ts'
+      - 'windows/src/core/pills.ts'
       - 'android/app/src/**'
       - 'docs/ANDROID_LINK.md'
       - '.github/workflows/phone-link.yml'
@@ -15,6 +21,12 @@ on:
     branches: [main]
     paths:
       - 'windows/src-tauri/src/phone_link/**'
+      - 'windows/phone-link/**'
+      - 'windows/Cargo.toml'
+      - 'windows/Cargo.lock'
+      - 'windows/src-tauri/Cargo.toml'
+      - 'windows/src/mochi/wardrobe.ts'
+      - 'windows/src/core/pills.ts'
       - 'android/app/src/**'
       - 'docs/ANDROID_LINK.md'
       - 'docs/RELAY_LINK.md'
@@ -25,6 +37,15 @@ permissions:
   contents: read
 
 jobs:
+  hub:
+    # No desktop packages: this also checks that the hub stays independent of Tauri.
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: windows } }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - run: cargo test -p coucou-phone-link --locked
+
   windows:
     runs-on: windows-latest
     defaults: { run: { working-directory: windows } }

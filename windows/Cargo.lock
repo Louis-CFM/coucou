@@ -722,6 +722,7 @@ name = "coucou"
 version = "0.5.0"
 dependencies = [
  "arboard",
+ "coucou-phone-link",
  "cpal",
  "dbus",
  "futures-util",
@@ -759,6 +760,16 @@ dependencies = [
  "libc",
  "serde_json",
  "windows 0.61.3",
+]
+
+[[package]]
+name = "coucou-phone-link"
+version = "0.5.0"
+dependencies = [
+ "ring",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
