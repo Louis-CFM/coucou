@@ -142,7 +142,7 @@ pub fn find_on_path(stem: &str) -> Option<PathBuf> {
 }
 
 /// Where the Codex CLI may be, best first: %PATH% (codex.exe or npm's
-/// codex.cmd), then npm's global folder and the Volta / Bun / pnpm ones.
+/// codex.cmd), then npm / Volta / Bun / pnpm and the desktop app's bundled CLI.
 /// Rust quotes the one fixed argument safely for a `.cmd` (see find_on_path).
 pub fn codex_candidates() -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
@@ -158,8 +158,47 @@ pub fn codex_candidates() -> Vec<PathBuf> {
         out.push(home.join(".bun").join("bin").join("codex.exe"));
         out.push(home.join(".local").join("bin").join("codex.exe"));
     }
+    if let Some(local) = var("LOCALAPPDATA") {
+        out.extend(desktop_codex_candidates(&local.join("OpenAI").join("Codex").join("bin")));
+    }
     out.retain(|p| p.is_file());
     out
+}
+
+/// Desktop releases use opaque directory names; prefer the newest executable.
+/// Search only the known bin directory, without depending on the parent's PATH.
+fn desktop_codex_candidates(bin: &std::path::Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(bin) else { return Vec::new() };
+    let mut candidates: Vec<_> = entries.flatten().filter_map(|entry| {
+        if !entry.file_type().ok()?.is_dir() { return None; }
+        let path = entry.path().join("codex.exe");
+        let metadata = path.metadata().ok()?;
+        metadata.is_file().then(|| (metadata.modified().ok(), path))
+    }).collect();
+    candidates.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    candidates.into_iter().map(|(_, path)| path).collect()
+}
+
+#[cfg(test)]
+mod codex_discovery_tests {
+    use super::desktop_codex_candidates;
+
+    #[test]
+    fn desktop_codex_discovery_ignores_helpers_and_missing_installs() {
+        let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let root = std::env::temp_dir().join(format!("coucou-codex-{}-{unique}", std::process::id()));
+        assert!(desktop_codex_candidates(&root).is_empty());
+        let cli = root.join("opaque-release");
+        let helper = root.join("another-release");
+        std::fs::create_dir_all(&cli).unwrap();
+        std::fs::create_dir_all(&helper).unwrap();
+        std::fs::write(cli.join("codex.exe"), []).unwrap();
+        std::fs::write(helper.join("rg.exe"), []).unwrap();
+        std::fs::create_dir(helper.join("codex.exe")).unwrap();
+        let found = desktop_codex_candidates(&root);
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(found, vec![cli.join("codex.exe")]);
+    }
 }
 
 // ── Who we are ────────────────────────────────────────────────────────────────
