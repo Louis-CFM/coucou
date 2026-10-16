@@ -3409,7 +3409,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 /* The result: a fixed-height thumbnail (so the log doesn't jump as it loads),
-   then Download. */
+   then Full screen and Download in the code block's button style. */
 .media-card {
   display: flex;
   flex-direction: column;
@@ -3427,6 +3427,10 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.08);
   object-fit: contain;
+}
+
+img.media-view {
+  cursor: zoom-in;
 }
 
 .media-audio {

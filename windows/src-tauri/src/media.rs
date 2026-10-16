@@ -6,21 +6,22 @@
 //
 // Same rules as the chat: the API key stays on this side and only ever goes to
 // the provider's own host (result links on a CDN are fetched without it). The
-// results land in local_dir()/media, and the webview can only read or copy a
-// file from that folder, named by its bare file name.
+// results land in local_dir()/media, and the webview can only read, copy or
+// preview a file from that folder, named by its bare file name.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
 use serde::Serialize;
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::chat::{ChatContext, ChatReply};
 use crate::settings::{ModelEntry, Settings};
-use crate::{island, log, platform, secrets};
+use crate::{island, log, platform, roam, secrets};
 
 /// The chat's "Create" provider: its model is a saved entry's id.
 pub const PROVIDER: &str = "media";
@@ -734,6 +735,79 @@ pub fn media_download(name: String) -> Result<String, String> {
     let dest = free_spot(&dir, &format!("coucou-{name}"));
     std::fs::copy(&src, &dest).map_err(|e| format!("Couldn't copy to Downloads: {e}"))?;
     Ok(dest.to_string_lossy().into_owned())
+}
+
+/// Full-screen preview. The island is a fixed 720×320 panel and a window made
+/// after launch comes up blank (see create_settings_window), so the preview
+/// borrows the roam overlay: already made at launch, covering a monitor,
+/// transparent, and idle unless Mochi is out roaming.
+#[tauri::command]
+pub fn media_preview(app: AppHandle, name: String, kind: String) -> Result<(), String> {
+    media_path(&name)?;
+    let win = app.get_webview_window(roam::LABEL).ok_or("No preview window.")?;
+    // Not while Mochi is out roaming on it (and not twice).
+    if !roam::claim_overlay() {
+        return Err("Mochi is busy on the screen right now.".into());
+    }
+    PREVIEWING.store(true, Ordering::SeqCst);
+    let _ = app.emit_to(roam::LABEL, "preview-open", MediaFile { name, kind });
+    show_overlay(&app, &win);
+    Ok(())
+}
+
+/// Set while the overlay shows a preview, so a stray close can never end a roam.
+static PREVIEWING: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+pub fn media_preview_close(app: AppHandle) {
+    if !PREVIEWING.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(win) = app.get_webview_window(roam::LABEL) {
+        hide_overlay(&win);
+    }
+    roam::release_overlay();
+}
+
+#[cfg(windows)]
+fn show_overlay(app: &AppHandle, win: &tauri::WebviewWindow) {
+    // The island's monitor.
+    let monitor = island::window(app)
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| app.primary_monitor().ok().flatten());
+    if let Some(m) = monitor {
+        let _ = win.set_position(*m.position());
+        let _ = win.set_size(*m.size());
+    }
+    // Unlike a roam, the preview takes clicks and the keyboard (Esc).
+    let _ = win.set_ignore_cursor_events(false);
+    platform::set_activating(win, true);
+    platform::set_memory_low(win, false);
+    let _ = win.show();
+    let _ = win.set_always_on_top(true);
+    let _ = win.set_focus();
+}
+
+#[cfg(windows)]
+fn hide_overlay(win: &tauri::WebviewWindow) {
+    let _ = win.hide();
+    let _ = win.set_ignore_cursor_events(true);
+    platform::set_activating(win, false);
+    platform::set_memory_low(win, true);
+}
+
+#[cfg(target_os = "linux")]
+fn show_overlay(app: &AppHandle, win: &tauri::WebviewWindow) {
+    if let Some(isl) = island::window(app) {
+        platform::set_roam_input(win, true);
+        platform::show_roam_overlay(win, &isl);
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn hide_overlay(win: &tauri::WebviewWindow) {
+    platform::set_roam_input(win, false);
+    platform::hide_roam_overlay(win);
 }
 
 #[cfg(test)]

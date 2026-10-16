@@ -83,6 +83,8 @@ export const ICONS = {
   // trash: the chat's Clear button.
   trash: "M9 2.8h6l.7 1.7H20v1.8H4V4.5h4.3L9 2.8zM5.6 7.6h12.8l-1 12.1a1.9 1.9 0 0 1-1.9 1.7H8.5a1.9 1.9 0 0 1-1.9-1.7L5.6 7.6zm2 1.8.8 10.2h7.2l.8-10.2H7.6z",
   // ── The chat: generated media ──
+  // arrow.up.left.and.arrow.down.right
+  expand: "M4 4h6v2H7.4l3.8 3.8-1.4 1.4L6 7.4V10H4V4zm16 16h-6v-2h2.6l-3.8-3.8 1.4-1.4 3.8 3.8V14h2v6z",
   // arrow.down.to.line
   download: "M11 3h2v10.2l3.8-3.8 1.4 1.4-6.2 6.2-6.2-6.2 1.4-1.4 3.8 3.8V3zM4 19h16v2H4v-2z",
 } as const;

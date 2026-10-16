@@ -232,7 +232,7 @@ test("a failed turn shows a note that knows the way back to the chat", async () 
   assert.ok(State.noteAt > 0);
 });
 
-test("a media model's answer is a card per file: the picture with Download, a 3D model as a file", async () => {
+test("a media model's answer is a card per file: the picture with Full screen and Download, a 3D model as a file", async () => {
   State.settings = {
     ...State.settings,
     chatProvider: "media",
@@ -257,7 +257,7 @@ test("a media model's answer is a card per file: the picture with Download, a 3D
   view.sync();
   assert.equal($(".gen-card"), null);
   assert.equal(view.el.find(".reply").length, 0, "no empty text bubble");
-  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Download"], ["Download .glb"]]);
+  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Full screen", "Download"], ["Download .glb"]]);
 });
 
 test("with a speech-to-text model saved, Send is the mic while the field is empty", () => {
