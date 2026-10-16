@@ -202,6 +202,34 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 1quinquies. GitLab (pulse)
+
+**Plateforme** : macOS (build GitHub et App Store), Windows et Linux. Pill `integration_gitlab`, indépendante de GitHub : on peut activer l'une, l'autre ou les deux.
+
+**Token** : token d'accès personnel avec le scope `read_api`, stocké dans le Trousseau (`gitlab-token`). **Instance** : URL dans le Trousseau (`gitlab-url`), `https://gitlab.com` si vide, ou une instance auto-hébergée. `https` obligatoire (`http` accepté seulement pour `localhost`) ; seuls les liens vers cet hôte s'ouvrent. Un seul compte GitLab pour l'instant.
+
+### Données récupérées
+
+API REST v4 de l'instance, en-tête `PRIVATE-TOKEN` (`GitLabPoller.swift`, parsing pur dans `GitLabPulse.swift`) :
+- **Mes MR ouvertes** (20 dernières) : `GET /merge_requests?scope=created_by_me&state=opened`, puis `GET /projects/:id/merge_requests/:iid` pour le `head_pipeline.status` (la liste n'en porte pas).
+- **MR à relire** : celles où je suis relecteur (`reviewer_username`) puis celles qui me sont assignées (`scope=assigned_to_me`), sans les miennes ni les doublons.
+- **Pipelines des branches par défaut** : `GET /projects?owned=true&archived=false&order_by=last_activity_at` (10 projets), puis `GET /projects/:id/pipelines?ref=<défaut>&per_page=1`.
+- **Stats** : nombre de projets et d'étoiles (`GET /projects?owned=true`).
+- **Activité** : GitLab n'a pas de calendrier de contributions dans son API ; la grille compte les événements de l'utilisateur (`GET /events?after=…`, 10 pages de 100 au plus) par jour sur 53 semaines, niveaux 0 à 4 relatifs au jour le plus chargé. Proche du calendrier GitLab, pas identique.
+
+Les réponses sont converties dans les types de GitHub (`GitHubPulse`, `GitHubPR`, `GitHubRepoCI`, `GitHubActivity`) : mêmes vues (`GitProvider` donne le nom, la couleur, « MR » / « Pipelines » et l'hôte autorisé), mêmes règles d'alertes que ci-dessus, mêmes cadences (stats 5 min, pulse 5 min ou 60 s si un pipeline tourne, activité 30 min). Données en mémoire (`AppState.gitlabPulse`, `gitlabActivity`, `gitlabStats`), remises à nil si le token ou l'URL change, ou si la pill est désactivée.
+
+| Statut de pipeline GitLab | `CIState` |
+|---------------------------|-----------|
+| `created`, `waiting_for_resource`, `preparing`, `pending`, `running`, `scheduled` | `.pending` |
+| `success`, `success_with_warnings` | `.success` |
+| `failed` | `.failure` |
+| `canceled`, `skipped`, `manual`, autre ou absent | `.unknown` |
+
+**Pas encore** : synchro iPhone, widgets, voix.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.
