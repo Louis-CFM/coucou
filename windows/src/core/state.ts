@@ -63,6 +63,8 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made, shown above it (e.g. the image was left out). */
+  notice?: string | null;
 }
 
 export type PromptContext =
@@ -162,6 +164,8 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** "provider/model" of chat models that refused an image. */
+  textOnlyModels: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -190,6 +194,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  textOnlyModels: [],
 };
 
 type Listener = () => void;

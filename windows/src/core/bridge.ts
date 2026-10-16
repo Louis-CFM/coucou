@@ -178,6 +178,13 @@ export interface PhoneAnswersStatus {
   enabled: boolean;
 }
 
+/** A chat answer: the text, and what came with it. */
+export interface ChatAnswer {
+  text: string;
+  /** How the answer was made (the image was left out...), shown above it. */
+  notice: string | null;
+}
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -328,8 +335,8 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
+    callOrThrow<ChatAnswer>("chat_send", { query, context, textOnly }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
