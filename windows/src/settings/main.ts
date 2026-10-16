@@ -751,6 +751,66 @@ function localSection(customKey: boolean): HTMLElement {
   return section;
 }
 
+// ── MCP Servers section ───────────────────────────────────────────────────────
+
+function mcpSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
+  const scanBtn = h("button", { class: "primary", text: t("Scan for servers") });
+
+  const loadServers = async () => {
+    clear(body);
+    body.append(h("div", { class: "hint", text: t("Loading MCP servers…") }));
+    try {
+      const servers = (await Bridge.mcpServersList()) ?? [];
+      clear(body);
+      if (servers.length === 0) {
+        body.append(h("div", { class: "hint", text: t("No MCP servers found on this computer. Use 'Scan for servers' to detect Claude Desktop, VS Code, or OpenCode tools.") }));
+      } else {
+        for (const s of servers) {
+          const sources = s.sources.join(", ");
+          const details = s.transport.type === "stdio" ? `${s.transport.command} ${s.transport.args.join(" ")}` : s.transport.url;
+          body.append(
+            h("div", { class: "row", style: "align-items:flex-start" },
+              h("div", { style: "flex:1 1 auto;min-width:0" },
+                h("div", { style: "display:flex;align-items:center;gap:8px" },
+                  h("span", { style: "font-weight:600", text: s.name }),
+                  h("span", { class: "tag", text: sources || "local" }),
+                ),
+                h("div", { class: "hint path", text: details }),
+              ),
+              statusDot(s.isEnabled),
+            )
+          );
+        }
+      }
+    } catch (e) {
+      clear(body);
+      body.append(h("div", { class: "notice err", text: String(e) }));
+    }
+  };
+
+  scanBtn.addEventListener("click", async () => {
+    scanBtn.disabled = true;
+    try {
+      await Bridge.mcpServersScan();
+      await loadServers();
+    } finally {
+      scanBtn.disabled = false;
+    }
+  });
+
+  void loadServers();
+
+  return h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: t("Model Context Protocol (MCP)") })),
+    h("div", { class: "hint", text: t("Connect tools and integrations from Claude Desktop, VS Code, Cursor, and OpenCode directly into Mochi's chat.") }),
+    body,
+    h("div", { class: "row", style: "margin-top:10px" }, scanBtn),
+  );
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -1358,7 +1418,7 @@ async function render() {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey), mcpSection()],
     integrations: () => [integrationsSection(present)],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

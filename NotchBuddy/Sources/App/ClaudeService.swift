@@ -383,6 +383,10 @@ final class ClaudeService {
             "max_tokens": 4096,
             "messages": msgs,
         ]
+        let toolsPayload = MCPToolRegistry.shared.openAIToolsPayload()
+        if !toolsPayload.isEmpty {
+            body["tools"] = toolsPayload
+        }
         if useStream { body["stream"] = true }
 
         var req = URLRequest(url: url, timeoutInterval: useStream ? 120 : 30)
@@ -464,8 +468,39 @@ final class ClaudeService {
                 }
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let choices = json["choices"] as? [[String: Any]],
-                      let message = choices.first?["message"] as? [String: Any],
-                      let content = message["content"] as? String else {
+                      let message = choices.first?["message"] as? [String: Any] else {
+                    throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])
+                }
+
+                // Handle MCP tool calls if requested by the model
+                if let toolCalls = message["tool_calls"] as? [[String: Any]], !toolCalls.isEmpty {
+                    state.stateOverride = .working
+                    let toolResponses = await MCPChatCoordinator.shared.handleToolCalls(toolCalls)
+                    msgs.append(message)
+                    msgs.append(contentsOf: toolResponses)
+
+                    var followUpBody = body
+                    followUpBody["messages"] = msgs
+                    var followUpReq = req
+                    followUpReq.httpBody = try? JSONSerialization.data(withJSONObject: followUpBody)
+
+                    let (followData, followResp) = try await URLSession.shared.data(for: followUpReq)
+                    if (followResp as? HTTPURLResponse)?.statusCode == 200,
+                       let followJson = try? JSONSerialization.jsonObject(with: followData) as? [String: Any],
+                       let followChoices = followJson["choices"] as? [[String: Any]],
+                       let followMsg = followChoices.first?["message"] as? [String: Any],
+                       let followContent = followMsg["content"] as? String {
+                        let trimmed = followContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                        conversationMessages.append(["role": "assistant", "content": trimmed])
+                        state.chatHistory.append(ChatMessage(role: .assistant, content: trimmed))
+                        state.stateOverride = nil
+                        state.view = .prompt
+                        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+                        return
+                    }
+                }
+
+                guard let content = message["content"] as? String else {
                     throw NSError(domain: "ChatAPI", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])
                 }
                 let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)

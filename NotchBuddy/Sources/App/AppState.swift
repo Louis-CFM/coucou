@@ -152,6 +152,40 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
     }
 
+    /// Discovered and configured MCP servers for chat tools.
+    @Published var mcpServers: [MCPServerConfig] = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(mcpServers) {
+                UserDefaults.standard.set(data, forKey: "mcpServers")
+            }
+        }
+    }
+    @Published var isScanningMCPServers = false
+
+    func scanMCPServers() {
+        guard !isScanningMCPServers else { return }
+        isScanningMCPServers = true
+        let discovered = MCPScanner.scanAll()
+        var updated = mcpServers
+        for server in discovered {
+            if let index = updated.firstIndex(where: { $0.id == server.id }) {
+                updated[index].sources = server.sources
+                updated[index].notes = server.notes
+            } else {
+                updated.append(server)
+            }
+        }
+        mcpServers = updated
+        isScanningMCPServers = false
+        Task { await MCPToolRegistry.shared.refreshTools(from: updated) }
+    }
+
+    func toggleMCPServer(id: String) {
+        guard let index = mcpServers.firstIndex(where: { $0.id == id }) else { return }
+        mcpServers[index].isEnabled.toggle()
+        Task { await MCPToolRegistry.shared.refreshTools(from: mcpServers) }
+    }
+
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
@@ -536,6 +570,11 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
+        if let data = ud.data(forKey: "mcpServers"),
+           let saved = try? JSONDecoder().decode([MCPServerConfig].self, from: data) {
+            mcpServers = saved
+            Task { await MCPToolRegistry.shared.refreshTools(from: saved) }
+        }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {

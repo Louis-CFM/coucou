@@ -352,8 +352,14 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
-    let Some(win) = window(app) else { return };
-    let Some(m) = target_monitor(app, pref) else { return };
+    let Some(win) = window(app) else {
+        crate::log::line("apply_geometry: window missing");
+        return;
+    };
+    let Some(m) = target_monitor(app, pref) else {
+        crate::log::line(format!("apply_geometry: target_monitor for '{pref}' missing"));
+        return;
+    };
 
     let scale = m.scale_factor();
     let mp = *m.position();
@@ -364,6 +370,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
     let y = mp.y;
+    crate::log::line(format!("apply_geometry: placing at ({x}, {y}) size ({pw}, {ph}) scale {scale}"));
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao

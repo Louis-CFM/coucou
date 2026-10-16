@@ -389,12 +389,17 @@ pub fn make_non_activating(win: &WebviewWindow) {
             // On X11 a Dock is kept above everything and is the only kind of
             // window, besides the desktop, that "show desktop" leaves alone.
             // COUCOU_DOCK=0 falls back to a utility window.
-            let dock = std::env::var("COUCOU_DOCK").map(|v| v != "0").unwrap_or(true);
-            gw.set_type_hint(if dock {
-                gtk::gdk::WindowTypeHint::Dock
-            } else {
+            // COUCOU_DOCK=normal allows testing under environments like WSLg without a dock manager.
+            let dock_env = std::env::var("COUCOU_DOCK").unwrap_or_default();
+            let hint = if dock_env == "normal" {
+                let _ = win.set_skip_taskbar(false);
+                gtk::gdk::WindowTypeHint::Normal
+            } else if dock_env == "0" {
                 gtk::gdk::WindowTypeHint::Utility
-            });
+            } else {
+                gtk::gdk::WindowTypeHint::Dock
+            };
+            gw.set_type_hint(hint);
         }
         gw.set_keep_above(true);
         return;
