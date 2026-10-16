@@ -1,5 +1,12 @@
 # Changelog
 
+## Windows and Linux 0.6.0 — October 16, 2026
+
+GitLab joins GitHub in the island.
+
+- **GitLab** — a GitLab pill next to GitHub's, which stays as it is: switch on one, the other or both (Settings → Integrations → GitLab). With a personal access token that has the `read_api` scope, its card shows **My MRs** (your open merge requests and the status of their pipeline), **To review** (the merge requests where you are a reviewer or the assignee), **Default branch pipelines** (the latest pipeline on the default branch of your 10 most recently active projects), your stars and the last days of activity, with the past 23 weeks one click away. It is the GitHub card with GitLab's words, so the badge, the sound and the keyboard shortcuts are the same: the pill is badged when a pipeline of yours turns red or green, when a default branch breaks, or when a merge request waits for you. Merge requests are checked every 5 minutes, every minute while a pipeline runs, and as soon as you open the card on data older than a minute; activity every 30 minutes. Nothing is fetched while the pill is off or Coucou is paused
+- **Self-hosted GitLab** — the same field takes the URL of your instance; leave it empty for gitlab.com. It has to be `https://` (`http://` only for `localhost`), because the token travels with every request, and links only open on that host. One GitLab account for now. GitLab has no contribution calendar in its API, so the activity grid counts your own events (pushes, merge requests, comments…) per day, up to the last 1000 of the year: close to GitLab's calendar, not identical to it. The token and the URL are stored like the other keys, in the Credential Manager or the Secret Service
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
