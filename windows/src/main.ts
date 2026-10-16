@@ -154,6 +154,10 @@ async function main() {
 
   island.launch();
 
+  // The island never hides its own page, so a "hidden" here means WebView2
+  // stopped giving it frames: it would play sounds but draw nothing.
+  document.addEventListener("visibilitychange", () => void Bridge.log(`island page ${document.visibilityState}`));
+
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.
   if (!IS_TAURI) {
