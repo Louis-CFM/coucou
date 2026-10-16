@@ -411,6 +411,8 @@ export const Bridge = {
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
     callOrThrow<ChatAnswer>("chat_send", { query, context, textOnly }),
+  /** A dropped text or code file's contents, for the chat's code card. */
+  readAttachment: (path: string) => call<{ text: string; lang: string }>("read_attachment", { path }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks

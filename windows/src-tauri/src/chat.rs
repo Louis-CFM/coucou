@@ -315,6 +315,40 @@ pub fn is_image(path: &str) -> bool {
     matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp")
 }
 
+/// A text or code file's contents and its Markdown language, if it is small
+/// enough to show and really text: the island's code card for a dropped file.
+pub fn read_text(path: &str) -> Option<(String, String)> {
+    if std::fs::metadata(path).ok()?.len() > 200_000 {
+        return None;
+    }
+    let text = std::fs::read_to_string(path).ok()?;
+    if text.contains('\0') {
+        return None;
+    }
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let lang = match ext.as_str() {
+        "rs" => "rust",
+        "py" => "python",
+        "js" | "mjs" | "cjs" => "javascript",
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" => "tsx",
+        "jsx" => "jsx",
+        "ps1" | "psm1" => "powershell",
+        "bat" | "cmd" => "batch",
+        "sh" | "bash" | "zsh" => "bash",
+        "cs" => "csharp",
+        "cpp" | "cc" | "cxx" | "hpp" | "hh" => "cpp",
+        "h" => "c",
+        "kt" | "kts" => "kotlin",
+        "rb" => "ruby",
+        "yml" => "yaml",
+        "md" => "markdown",
+        "txt" | "log" => "",
+        other => other,
+    };
+    Some((text, lang.to_string()))
+}
+
 /// The window context line, as ClaudeService.chat() writes it.
 pub fn window_line(app_name: &str, title: &str, url: Option<&str>) -> String {
     let mut text = format!("Context — App: {app_name}, Window: {title}");
@@ -819,5 +853,17 @@ mod tests {
         assert!(!refused_image(401, true) && !refused_image(500, true));
         assert!(has_image(&json!({"role":"user","content":[{"type":"image_url","image_url":{"url":"data:x"}},{"type":"text","text":"q"}]})));
         assert!(!has_image(&json!({"role":"user","content":"q"})));
+    }
+
+    #[test]
+    fn a_code_file_is_read_with_its_language() {
+        let dir = std::env::temp_dir().join(format!("coucou-read-text-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.rs"), "fn main() {}").unwrap();
+        std::fs::write(dir.join("blob.bin"), b"a\0b").unwrap();
+        assert_eq!(read_text(&dir.join("main.rs").to_string_lossy()), Some(("fn main() {}".into(), "rust".into())));
+        assert_eq!(read_text(&dir.join("blob.bin").to_string_lossy()), None);
+        assert_eq!(read_text(&dir.join("missing.txt").to_string_lossy()), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

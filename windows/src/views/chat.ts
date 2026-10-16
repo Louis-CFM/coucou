@@ -8,7 +8,7 @@
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
-import { renderMarkdown } from "./markdown";
+import { copyButton, renderMarkdown } from "./markdown";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
   PROVIDERS, activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
@@ -41,10 +41,17 @@ let nextId = 1;
 
 function bubble(message: ChatMessage): HTMLElement {
   if (message.role === "user") {
+    const a = message.attachment;
     return h(
       "div",
       { class: "chat-row user" },
-      h("div", { class: "bubble", text: message.content }),
+      h(
+        "div",
+        { class: "user-turn" },
+        // The dropped code file, as the model got it.
+        a ? fileCard(a.text, `${a.name} · ${a.text.split("\n").length} lines`) : null,
+        h("div", { class: "bubble", text: message.content }),
+      ),
     );
   }
   const reply = h("div", { class: "reply" });
@@ -66,6 +73,16 @@ function typingDots(): HTMLElement {
     "div",
     { class: "chat-row" },
     h("div", { class: "typing" }, h("i"), h("i"), h("i")),
+  );
+}
+
+/** A dropped text or code file, as the model got it: its name, the code, a copy button. */
+function fileCard(code: string, title: string): HTMLElement {
+  return h(
+    "div",
+    { class: "code-block" },
+    h("div", { class: "code-head" }, h("span", { class: "code-lang", text: title }), copyButton(code)),
+    h("pre", {}, h("code", { text: code })),
   );
 }
 
@@ -431,7 +448,16 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     drawModelButton();
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    // A dropped text or code file goes along on the first turn: show it too.
+    const firstTurn = State.chatHistory.length === 0;
+    const attachment =
+      firstTurn && file?.path && !IMAGE_FILE.test(file.path) ? await Bridge.readAttachment(file.path) : null;
+    State.chatHistory.push({
+      id: nextId++,
+      role: "user",
+      content: query,
+      attachment: attachment ? { name: file!.name, ...attachment } : null,
+    });
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();

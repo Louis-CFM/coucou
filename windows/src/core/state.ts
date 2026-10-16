@@ -83,6 +83,8 @@ export interface ChatMessage {
   /** How the answer was made (Claude Code answered for Claude, the image was
    *  left out...), shown above it. */
   notice?: string | null;
+  /** A dropped text or code file sent with this message, shown as a code card. */
+  attachment?: { name: string; lang: string; text: string } | null;
 }
 
 /** Default names of the coloured Mochis: a pun on what each one watches.
