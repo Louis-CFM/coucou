@@ -63,6 +63,8 @@ interface HookPayload {
   coucou_diff_truncated?: boolean;
   /** Optional agent tag: lowercase, digits and hyphens, ≤ 24 chars. */
   coucou_agent?: string;
+  /** Optional title of the session (e.g. from Antigravity summaries or project name). */
+  session_title?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
@@ -113,18 +115,28 @@ const TOOL_LABELS: Record<string, string> = {
   replace_file_content: N_("Edits"),
   read_url_content: N_("Fetches"),
   search_web: N_("Searches the web"),
+  list_dir: N_("Lists"),
 };
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
-  const label = TOOL_LABELS[tool] ? t(TOOL_LABELS[tool]) : tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
-  const cmd = str("command");
+  if (tool === "call_mcp_tool") {
+    const server = str("ServerName") || str("server_name") || str("server");
+    const sub = str("ToolName") || str("tool_name") || str("tool");
+    if (server && sub) return `MCP · ${server}/${sub}`;
+    if (sub) return `MCP · ${sub}`;
+    if (server) return `MCP · ${server}`;
+    return "MCP";
+  }
+
+  const label = TOOL_LABELS[tool] ? t(TOOL_LABELS[tool]) : tool;
+  const cmd = str("command") || str("CommandLine");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
-  const path = str("path");
+  const path = str("path") || str("DirectoryPath");
   if (path) return `${label} · ${lastPathComponent(path)}`;
-  const file = str("file_path");
+  const file = str("file_path") || str("AbsolutePath") || str("TargetFile") || str("FilePath") || str("target_file");
   if (file) return `${label} · ${lastPathComponent(file)}`;
-  const query = str("query");
+  const query = str("query") || str("Query");
   if (query) return `${label} · ${query.slice(0, 40)}`;
   return label;
 }
@@ -139,10 +151,17 @@ function stepLabel(tool: string, input: Record<string, unknown>): string {
  */
 const APPROVAL_FIELDS = [
   "command", // Bash, PowerShell
+  "CommandLine",
   "file_path", // Write, Edit, MultiEdit, NotebookEdit
+  "TargetFile",
+  "AbsolutePath",
+  "FilePath",
   "path", // Read, LS
+  "DirectoryPath",
   "url", // WebFetch
+  "Url",
   "query", // WebSearch
+  "Query",
   "pattern", // Glob, Grep
   "prompt", // Task
 ] as const;
@@ -275,7 +294,9 @@ function handleHook(island: Island, payload: HookPayload) {
   /** Ensure the agent pill exists (no-op for Claude Code). */
   const ensurePill = () => {
     if (isExternalAgent) {
-      State.upsertExternalAgent(agentId, agentName(validAgent!), agentColor(validAgent!));
+      const base = agentName(validAgent!);
+      const title = payload.session_title ? `${base} · ${payload.session_title}` : base;
+      State.upsertExternalAgent(agentId, title, agentColor(validAgent!));
       const t = State.tasks.find((x) => x.id === agentId);
       if (t && cwd) t.sessionCwd = cwd;
       if (t && sessionId) t.sessionId = sessionId;

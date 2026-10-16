@@ -32,6 +32,8 @@ export interface ShortcutHost {
   flyOutOrHome(): void;
   /** Hands Ctrl+O / Ctrl+E to the view on screen (the Mac posts notifications). */
   viewCommand(command: ViewCommand): void;
+  /** Allow or deny a pending approval card directly. */
+  decide(d: "allow" | "deny"): void;
 }
 
 /** What the open view is asked to do: open the highlighted item, toggle the diff. */
@@ -202,7 +204,26 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
     "keydown",
     (e: KeyboardEvent) => {
       if (State.mode !== "expanded") return;
-      const action = islandKeyAction(e, { view: State.view, inTextField: inTextField(e.target) });
+      if (inTextField(e.target)) return;
+
+      // Pending permission card: Y (Allow) or N (Deny)
+      if (State.pendingApproval && !State.pendingApproval.questions?.length && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        const letter = e.key.toLowerCase();
+        if (letter === "y") {
+          e.preventDefault();
+          e.stopPropagation();
+          host.decide("allow");
+          return;
+        }
+        if (letter === "n") {
+          e.preventDefault();
+          e.stopPropagation();
+          host.decide("deny");
+          return;
+        }
+      }
+
+      const action = islandKeyAction(e, { view: State.view, inTextField: false });
       if (!action) return;
       e.preventDefault();
       e.stopPropagation();

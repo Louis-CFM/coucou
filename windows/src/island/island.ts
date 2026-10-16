@@ -197,14 +197,7 @@ export class Island {
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);
       },
-      decide: (d) => {
-        const req = State.pendingApproval;
-        void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
-        if (!req) return;
-        Sound.play(d === "deny" ? "blip" : "approve");
-        void Bridge.approvalDecision(req.requestId, d);
-        this.closeApproval();
-      },
+      decide: (d) => this.decide(d),
       answer: (answers) => {
         const req = State.pendingApproval;
         if (!req) return;
@@ -427,6 +420,7 @@ export class Island {
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
+    void Bridge.focusWindow(true);
   }
 
   reveal() {
@@ -521,6 +515,16 @@ export class Island {
   /** Ctrl+O / Ctrl+E go to the view on screen. */
   viewCommand(command: ViewCommand) {
     this.views.get(State.view)?.command?.(command);
+  }
+
+  /** Decide pending approval with allow or deny */
+  decide(d: "allow" | "deny") {
+    const req = State.pendingApproval;
+    void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
+    if (!req) return;
+    Sound.play(d === "deny" ? "blip" : "approve");
+    void Bridge.approvalDecision(req.requestId, d);
+    this.closeApproval();
   }
 
   // ── File drop ───────────────────────────────────────────────────────────────
