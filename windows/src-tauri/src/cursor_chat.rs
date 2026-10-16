@@ -38,7 +38,7 @@ fn cli_path() -> Option<std::path::PathBuf> {
 /// gave one.
 pub async fn send(
     model: String,
-    system_prompt: &str,
+    system_prompt: String,
     first: bool,
     session: Option<String>,
     query: String,

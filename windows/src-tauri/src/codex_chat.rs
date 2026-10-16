@@ -30,7 +30,7 @@ fn cli_path() -> Option<std::path::PathBuf> {
 /// never runs into the ~32k argv cap a file context can hit.
 pub async fn send(
     model: String,
-    system_prompt: &str,
+    system_prompt: String,
     _first: bool,
     session: Option<String>,
     query: String,

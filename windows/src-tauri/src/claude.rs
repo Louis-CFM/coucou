@@ -163,7 +163,7 @@ pub async fn send(
     // next turn has the right context.
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": blocks }), &plain, &text);
-    Ok(ChatReply { text })
+    Ok(ChatReply::text(text))
 }
 
 /// One question, one answer, no history: the dictation clean-up and the notes

@@ -42,7 +42,7 @@ fn private_config(dir: &Path) -> Result<std::path::PathBuf, String> {
 /// the shared Chat stores is only this marker).
 pub async fn send(
     model: String,
-    system_prompt: &str,
+    system_prompt: String,
     first: bool,
     session: Option<String>,
     query: String,

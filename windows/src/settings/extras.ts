@@ -13,6 +13,8 @@ import { pillColor } from "../core/pill-colors";
 import { wardrobePicker } from "../views/wardrobe";
 import { h } from "../views/dom";
 import { t } from "../i18n/i18n";
+import { MOOD_ACTS } from "../mochi/engine";
+import { emit } from "@tauri-apps/api/event";
 
 export interface ExtrasContext {
   settings(): Settings;
@@ -125,6 +127,11 @@ export function mochiSection(ctx: ExtrasContext): HTMLElement {
     h("div", { class: "row" }, h("label", { text: t("Wardrobe") }), mode),
     mochis,
     h("div", { class: "hint" }, picker.note),
-    picker.el,
+    picker.el,    h("div", { class: "subhead", text: t("Play an emote") }),
+    h("div", { class: "row" }, ...Object.keys(MOOD_ACTS).map((mood) => {
+      const button = h("button", { text: mood });
+      button.addEventListener("click", () => void emit("mochi-mood", mood));
+      return button;
+    })),
   );
 }

@@ -26,7 +26,7 @@ fn cli_path() -> Option<std::path::PathBuf> {
 /// (the "session" the shared Chat stores is only this marker).
 pub async fn send(
     model: String,
-    system_prompt: &str,
+    system_prompt: String,
     started: bool,
     query: String,
     context: Option<ChatContext>,

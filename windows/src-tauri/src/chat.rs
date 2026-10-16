@@ -34,10 +34,18 @@ pub enum ChatContext {
     Window { app_name: String, title: String, url: Option<String> },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatReply {
     pub text: String,
+    /// How the model felt about its answer, for Mochi to act out (take_mood).
+    pub mood: Option<String>,
+}
+
+impl ChatReply {
+    pub fn text(text: String) -> Self {
+        Self { text, ..Default::default() }
+    }
 }
 
 /// A model a provider offers, for the picker in the chat view.
@@ -103,6 +111,8 @@ impl Chat {
     pub fn system_prompt(&self, web_search: bool) -> String {
         let name = self.persona.lock().unwrap().clone();
         system_prompt_for(crate::identity::first_name(), web_search, &name)
+    }
+
     /// The running app's chat: what its providers refused is read from
     /// `refused-models.json`, next to the log, and written back as it changes.
     /// Only model names are in it, and it never leaves the machine.
@@ -214,12 +224,36 @@ impl Chat {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
+/// The moods Mochi can act out (see the end of the system prompt).
+const MOODS: [&str; 13] = [
+    "happy", "sad", "shy", "angry", "thankful", "welcome", "scared", "celebration", "surprised", "proud",
+    "hype", "confused", "sleepy",
+];
+
+/// When to pick each mood, for the prompt. Mochi reacts to how the user
+/// treats it, not only to the topic: rudeness and insults make it angry.
+const MOOD_GUIDE: &str = "happy (a friendly, pleased answer: the default for ordinary replies), \
+sad (bad news, a loss, or you couldn't help), \
+shy (the user compliments or flirts with you), \
+angry (the user insults you, swears at you, uses slurs or is rude or hostile to you, or something unfair or infuriating happened), \
+thankful (the user thanks you or does something kind for you), \
+welcome (a greeting, hello or goodbye), \
+scared (something alarming, dangerous or creepy), \
+celebration (something was finished, won or achieved), \
+surprised (something unexpected or astonishing), \
+proud (you solved something hard or gave a great answer), \
+hype (big excitement, a huge win, or the user wants to get pumped up), \
+confused (the message is unclear, nonsense or you had to guess), \
+sleepy (late at night, or the user says they're tired or bored)";
+
 /// Mochi's instructions. Greets the user by their first name when the account
 /// has one worth using (identity.rs), goes by the name given in Settings, and
-/// only claims web search where the provider runs it (Claude).
+/// only claims web search where the provider runs it (Claude). It also asks
+/// every reply to end with a mood line for Mochi to act out (MOOD_GUIDE).
 fn system_prompt_for(first_name: Option<&str>, web_search: bool, mochi: &str) -> String {
     let mochi: String = mochi.trim().chars().take(32).collect();
     let mochi = if mochi.is_empty() { "Mochi".to_string() } else { mochi };
+
     let opening = match first_name {
         Some(name) => format!("You are {mochi}, {name}'s personal AI assistant living at the top of their screen."),
         None => format!("You are {mochi}, a personal AI assistant living at the top of the user's screen."),
@@ -232,8 +266,28 @@ fn system_prompt_for(first_name: Option<&str>, web_search: bool, mochi: &str) ->
     format!(
         "{opening} {abilities} \
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small."
+Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small. \
+End every reply with one last line holding only a JSON object with how you feel about it, for your avatar to act out, \
+exactly like {{\"mood\":\"happy\"}}. Pick the one that fits best: {MOOD_GUIDE}. Write nothing after that line and never mention it."
     )
+}
+
+/// Splits the trailing `{"mood": "..."}` off a reply. Tolerates a code fence
+/// around it and stray whitespace; an unknown or missing mood leaves the text
+/// as it is.
+pub fn take_mood(text: &str) -> (String, Option<String>) {
+    let Some(start) = text.rfind('{') else { return (text.to_string(), None) };
+    let tail = text[start..].trim().trim_end_matches('`').trim();
+    let Ok(value) = serde_json::from_str::<Value>(tail) else { return (text.to_string(), None) };
+    let Some(mood) = value.get("mood").and_then(Value::as_str).map(str::to_lowercase) else {
+        return (text.to_string(), None);
+    };
+    if !MOODS.contains(&mood.as_str()) {
+        return (text.to_string(), None);
+    }
+    let body = text[..start].trim_end();
+    let body = body.strip_suffix("```json").or_else(|| body.strip_suffix("```")).unwrap_or(body).trim_end();
+    (body.to_string(), Some(mood))
 }
 
 /// The window context line, as ClaudeService.chat() writes it.
@@ -335,10 +389,11 @@ where
     if let Some(id) = resumed {
         chat.set_cli_session(&turn, id);
     }
-    Ok(ChatReply { text })
+    Ok(ChatReply { text, mood: None })
 }
 
-/// One chat turn with the provider chosen in the settings.
+/// One chat turn with the provider chosen in the settings. The reply's last
+/// line, Mochi's mood, is split off here.
 pub async fn send(
     app: &AppHandle,
     chat: &Chat,
@@ -350,70 +405,77 @@ pub async fn send(
     let provider = settings.chat_provider.as_str();
     *chat.persona.lock().unwrap() = settings.mochi_name.clone();
     let model = model_for(settings, provider);
-    if provider == ANTHROPIC || provider.is_empty() {
-        return claude::send(chat, &model, query, context).await;
-    }
-    if provider == CURSOR {
-        return cli_send(chat, provider, query, context, |s, first, c, q| {
+    let reply = if provider == ANTHROPIC || provider.is_empty() {
+        claude::send(chat, &model, query, context).await
+    } else if provider == CURSOR {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
             cursor_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
         })
-        .await;
-    }
-    if provider == KIRO {
-        return cli_send(chat, provider, query, context, |s, _first, c, q| {
+        .await
+    } else if provider == KIRO {
+        cli_send(chat, provider, query, context, |s, _first, c, q| {
             // `first` is not Kiro's to know — its resume is the folder's latest.
             kiro_chat::send(model.clone(), chat.system_prompt(false), s.is_some(), q, c)
         })
-        .await;
-    }
-    if provider == CLAUDE_CLI {
-        return cli_send(chat, provider, query, context, |s, first, c, q| {
+        .await
+    } else if provider == CLAUDE_CLI {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
             claude_cli::send(model.clone(), chat.system_prompt(true), first, s, q, c)
         })
-        .await;
-    }
-    if provider == DEVIN {
-        return cli_send(chat, provider, query, context, |s, first, c, q| {
+        .await
+    } else if provider == DEVIN {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
             devin_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
         })
-        .await;
-    }
-    if provider == CODEX {
-        return cli_send(chat, provider, query, context, |s, first, c, q| {
+        .await
+    } else if provider == CODEX {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
             codex_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
         })
-        .await;
-    }
-    if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, &model, query, context).await;
-    }
-    if let Some(server) = local_chat::server(settings, provider) {
-        return local_chat::send(app, chat, &server, &model, query, context).await;
-    }
-    Err(format!("Unknown chat provider: {provider}"))
+        .await
+    } else if let Some(p) = openai_compat::provider(provider) {
+        openai_compat::send(chat, p, &model, query, context).await
+    } else if let Some(server) = local_chat::server(settings, provider) {
+        local_chat::send(app, chat, &server, &model, query, context).await
+    } else {
+        Err(format!("Unknown chat provider: {provider}"))
+    }?;
+    let (text, mood) = take_mood(&reply.text);
+    Ok(ChatReply { text, mood })
 }
 
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as
 /// [`send`], with no file or window context and no `AppHandle`. `on_delta` gets the streamed
 /// text so far, which only the model servers produce; the cloud providers answer all at once.
+/// Mochi's mood line (the system prompt asks for one) never reaches the phone.
 pub async fn send_for_phone(
     settings: &Settings,
     chat: &Chat,
     provider: &str,
     model: &str,
     query: String,
-    on_delta: impl FnMut(String),
+    mut on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
-    if provider == ANTHROPIC {
-        return claude::send(chat, model, query, None).await;
-    }
-    if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, model, query, None).await;
-    }
-    if let Some(server) = local_chat::server(settings, provider) {
-        return local_chat::send_with(chat, &server, model, query, None, on_delta).await;
-    }
-    Err(format!("Unknown chat provider: {provider}"))
+    let reply = if provider == ANTHROPIC {
+        claude::send(chat, model, query, None).await
+    } else if let Some(p) = openai_compat::provider(provider) {
+        openai_compat::send(chat, p, model, query, None).await
+    } else if let Some(server) = local_chat::server(settings, provider) {
+        local_chat::send_with(chat, &server, model, query, None, |so_far| on_delta(hide_mood_tail(&so_far))).await
+    } else {
+        Err(format!("Unknown chat provider: {provider}"))
+    }?;
+    let (text, _) = take_mood(&reply.text);
+    Ok(ChatReply { text, ..reply })
+}
+
+/// Streamed text without the mood line coming in at its end (as views/chat.ts hides it).
+fn hide_mood_tail(text: &str) -> String {
+    let Some(start) = text.rfind('{').filter(|&i| text[i + 1..].trim_start().starts_with("\"mood")) else {
+        return text.to_string();
+    };
+    let body = text[..start].trim_end();
+    body.strip_suffix("```json").or_else(|| body.strip_suffix("```")).unwrap_or(body).trim_end().to_string()
 }
 
 /// The models `provider` offers. Asked only when the user opens the picker on
@@ -678,5 +740,26 @@ mod tests {
         // An absurdly long name is cut, never sent whole.
         let p = system_prompt_for(None, false, &"x".repeat(100));
         assert!(p.starts_with(&format!("You are {}, a", "x".repeat(32))));
+}
+
+    #[test]
+    fn the_prompt_asks_for_a_mood() {
+        let p = system_prompt_for(Some("Louis"), false, "");
+        assert!(p.contains("{\"mood\":\"happy\"}"), "{p}");
+        assert!(p.contains("celebration"));
+    }
+
+    #[test]
+    fn a_trailing_mood_is_split_off_the_answer() {
+        assert_eq!(take_mood("Done!\n{\"mood\":\"happy\"}"), ("Done!".into(), Some("happy".into())));
+        assert_eq!(
+            take_mood("Hi\n\n```json\n{ \"mood\": \"Thankful\" }\n```\n"),
+            ("Hi".into(), Some("thankful".into()))
+        );
+        // Unknown mood, or JSON that is the answer itself: left alone.
+        assert_eq!(take_mood("x {\"mood\":\"bored\"}").1, None);
+        assert_eq!(take_mood("Use {\"a\": 1} here.").1, None);
+        assert_eq!(take_mood("No mood at all").0, "No mood at all");
+
     }
 }

@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import { wipe } from "../core/canvas";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_H, NOTCH_W, PANEL_H, PANEL_W,
@@ -14,9 +14,9 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
-import { BotEngine, hexToRGB } from "../mochi/engine";
+import { BotEngine, MOOD_ACTS, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
-import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
+import { createMiniBot, forEachMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
 import { MAIN_MOCHI, SeasonCache, lookOf, mochiKey, setLook } from "../mochi/wardrobe";
 import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
@@ -552,11 +552,40 @@ export class Island {
     if (!this.wasInIsland) this.fsm.mouseLeft();
   }
 
+  /** Hold the island open while something plays, without the approval pin;
+   *  `false` lets it auto-close again as usual. */
+  hold(on: boolean) {
+    this.fsm.pinned = on || State.isPinned;
+    if (!on && !this.wasInIsland) this.fsm.mouseLeft();
+  }
+
   // ── Keyboard shortcuts (island/shortcuts.ts) ────────────────────────────────
 
   emote(name: BotEmoteName) {
     this.engine.triggerEmote(name);
     this.ensureRunning();
+  }
+
+  private emoteHold: number | null = null;
+
+  /**
+   * Settings' emote tester: the island opens for the act and every Mochi on
+   * it plays the mood together, then it closes again by its usual rule.
+   */
+  private playEmote(mood: string) {
+    const act = MOOD_ACTS[mood];
+    if (!act) return;
+    if (State.mode !== "expanded") this.fsm.forceHome();
+    this.hold(true);
+    act(this.engine);
+    // The pills' minis are (re)built by the redraw the opening queued.
+    requestAnimationFrame(() => forEachMiniBot(act));
+    this.ensureRunning();
+    if (this.emoteHold != null) window.clearTimeout(this.emoteHold);
+    this.emoteHold = window.setTimeout(() => {
+      this.emoteHold = null;
+      this.hold(false);
+    }, 2800);
   }
 
   /** Ctrl+P: keep the open island from folding away, or let it fold again. */
@@ -937,6 +966,15 @@ export class Island {
     window.addEventListener("mousedown", () => {
       if (State.mode === "expanded") this.takeKeyboard();
     });
+
+    // The chat's reply ends with how the model feels about it: act it out.
+    window.addEventListener("mochi-mood", (e) => {
+      MOOD_ACTS[String((e as CustomEvent).detail)]?.(this.engine);
+      this.ensureRunning();
+    });
+    // Settings' "Play an emote" buttons (settings/extras.ts).
+    void onEvent<string>("mochi-mood", (mood) => this.playEmote(mood));
+
 
     // Only keys typed into the island itself land here, never Escape typed in
     // a terminal — so it may fold a waiting card away, as Escape in the notch

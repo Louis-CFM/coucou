@@ -5520,6 +5520,17 @@
       "pt-BR": "Tofu",
       "ru": "Тофу",
       "id": "Tahu"
+    },
+    "Play an emote": {
+      "zh-Hans": "播放表情",
+      "hi": "इमोट चलाएँ",
+      "es": "Reproducir un emote",
+      "ar": "تشغيل تعبير",
+      "fr": "Jouer une émote",
+      "bn": "ইমোট চালান",
+      "pt-BR": "Tocar um emote",
+      "ru": "Показать эмоцию",
+      "id": "Putar emote"
     }
   }
 }
