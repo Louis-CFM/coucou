@@ -11,7 +11,7 @@ import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
-import { githubDetail, githubPulseCard } from "./github";
+import { githubDetail, githubPulseCard, type ForgeCardOptions } from "./github";
 import { N_, language, t } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
@@ -271,6 +271,14 @@ function githubCard(): HTMLElement {
   );
 }
 
+function gitlabCard(): HTMLElement {
+  const d = get("integration_gitlab");
+  return h("div", { class: "int-card" }, header("#FC6D26", "GitLab", t("Overview")), h("div", { class: "int-stats" },
+    statRow(ICONS.stack, "#6B7079", t("Projects"), String(d.projects ?? 0)),
+    statRow(ICONS.pull, "#FC6D26", t("My PRs"), String(d.myMergeRequests ?? 0)),
+    statRow(ICONS.eye, "#8AB4F8", t("To review"), String(d.reviewRequests ?? 0))));
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -434,6 +442,7 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "emails").length > 0;
     case "integration_github":
       return get(id).totalRepos != null || readPulse(get(id)) != null;
+    case "integration_gitlab": return get(id).projects != null;
     case "integration_stripe":
       return info.loaded;
     case "integration_notion":
@@ -467,12 +476,18 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
         : githubPulseCard(pulse, readStats(d), readActivity(d), hooks.openDetail);
     }
   }
+  if (task.id === "integration_gitlab") {
+    const d = get(task.id); const pulse = readPulse(d);
+    if (pulse) { const options: ForgeCardOptions = { title: "GitLab", color: "#FC6D26", provider: "gitlab", refreshId: "integration_gitlab", profileUrl: typeof d.profileUrl === "string" ? d.profileUrl : undefined };
+      return hooks.detailOpen ? githubDetail(pulse, readStats(d), readActivity(d), hooks.closeDetail, options) : githubPulseCard(pulse, readStats(d), readActivity(d), hooks.openDetail, options); }
+  }
 
   switch (task.id) {
     case "integration_resend":
       return resendCard();
     case "integration_github":
       return githubCard();
+    case "integration_gitlab": return gitlabCard();
     case "integration_stripe":
       return stripeCard();
     case "integration_notion":

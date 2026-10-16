@@ -1607,6 +1607,17 @@
    "ru": "Платёж",
    "id": "Pembayaran"
   },
+  "Personal access token with read_api and read_user scopes.": {
+   "zh-Hans": "具有 read_api 和 read_user 范围的个人访问令牌。",
+   "hi": "read_api और read_user स्कोप वाला व्यक्तिगत एक्सेस टोकन।",
+   "es": "Token de acceso personal con los alcances read_api y read_user.",
+   "ar": "رمز وصول شخصي بنطاقي read_api وread_user.",
+   "fr": "Jeton d’accès personnel avec les portées read_api et read_user.",
+   "bn": "read_api এবং read_user স্কোপসহ ব্যক্তিগত অ্যাক্সেস টোকেন।",
+   "pt-BR": "Token de acesso pessoal com os escopos read_api e read_user.",
+   "ru": "Персональный токен с правами read_api и read_user.",
+   "id": "Token akses pribadi dengan cakupan read_api dan read_user."
+  },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
    "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",

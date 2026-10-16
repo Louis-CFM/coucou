@@ -47,12 +47,18 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
   assert.deepEqual(
-    PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
+    PILL_CATALOG.filter((p) => p.id !== "integration_gitlab").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
   ]);
+});
+
+test("GitLab is a supported service integration", () => {
+  const def = pillDefinition("integration_gitlab");
+  assert.deepEqual([def.name, def.color, def.category, def.support], ["GitLab", "#FC6D26", "service", "yes"]);
+  assert.ok(!isComingSoon("integration_gitlab"));
 });
 
 test("the shipped pills keep their IDs, colours and sources with current display names", () => {

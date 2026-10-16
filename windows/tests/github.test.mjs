@@ -211,6 +211,30 @@ test("showing the GitHub card asks Rust for a refresh, once per showing", () => 
   assert.deepEqual(sent("github_refresh"), [{ section: "pulse" }, { section: "pulse" }]);
 });
 
+test("the shared pulse card renders GitLab branding, stars, activity and safe profile links", async () => {
+  const { installFakeDom } = await import("./fakedom.mjs");
+  installFakeDom();
+  const { githubDetail, githubPulseCard } = await import("../src/views/github.ts");
+  const pulse = { login: "me", fetchedAt: 1, myPRs: [], toReview: [], mainCI: [] };
+  const options = {
+    title: "GitLab", color: "#FC6D26", provider: "gitlab", refreshId: "integration_gitlab",
+    profileUrl: "https://gitlab.example/me",
+  };
+
+  calls.length = 0;
+  const card = githubPulseCard(pulse, { totalRepos: 2, totalStars: 7 }, activity, () => {}, options);
+  assert.match(card.textContent, /GitLab/);
+  assert.match(card.textContent, /★ 7/);
+  card.find(".gh-spark")[0].fire("click");
+  assert.deepEqual(sent("refresh_integration"), [{ id: "integration_gitlab" }]);
+
+  const detail = githubDetail(pulse, { totalRepos: 2, totalStars: 7 }, activity, () => {}, options);
+  assert.ok(detail.find(".gh-cell").length > 0);
+  detail.find(".gh-head-right")[0].fire("click");
+  assert.deepEqual(sent("open_gitlab_url"), [{ url: "https://gitlab.example/me" }]);
+  card.find(".gh-stat")[0].fire("click"); // leave the shared view state on its default section
+});
+
 // ── The lists from the keyboard (GitHubDetailView: ⌘↓ ⌘↑ ⌘O) ──────────────────
 
 test("Ctrl+↓ ↑ highlight a list row, Ctrl+O does what its click does", async () => {

@@ -18,11 +18,20 @@ import {
 } from "../core/github";
 
 const GITHUB_RED = "#F4505E";
+export interface ForgeCardOptions {
+  title: string;
+  color: string;
+  provider?: "github" | "gitlab";
+  refreshId?: string;
+  profileUrl?: string;
+}
+let forge: ForgeCardOptions = { title: "GitHub", color: GITHUB_RED };
 
 /** Which list the detail view shows; kept across re-renders of the card. */
 let openSection: GitHubSection = "myPRs";
 
 function open(url: string) {
+  if (forge.provider === "gitlab") { void Bridge.openGitLabUrl(url); return; }
   const safe = safeGitHubUrl(url);
   if (safe) void Bridge.openUrl(safe);
 }
@@ -53,14 +62,16 @@ export function githubPulseCard(
   stats: GitHubStats | null,
   activity: GitHubActivity | null,
   openDetail: () => void,
+  options: ForgeCardOptions = { title: "GitHub", color: GITHUB_RED },
 ): HTMLElement {
+  forge = options;
   const show = (section: GitHubSection) => {
     openSection = section;
-    void Bridge.githubRefresh(section === "activity" ? "activity" : "pulse");
+    if (forge.refreshId) void Bridge.refreshIntegration(forge.refreshId); else void Bridge.githubRefresh(section === "activity" ? "activity" : "pulse");
     openDetail();
   };
 
-  const head = h("div", { class: "int-head" }, dot(GITHUB_RED, 7), h("b", { text: GH_STRINGS.title }));
+  const head = h("div", { class: "int-head" }, dot(forge.color, 7), h("b", { text: forge.title }));
   if (stats || activity) {
     const spark = h("button", { class: "gh-spark", onclick: () => show("activity") });
     if (stats) spark.append(h("span", { text: `★ ${formatCount(stats.totalStars)}` }));
@@ -130,7 +141,7 @@ function prRow(pr: GitHubPR, showCI: boolean): HTMLElement {
 function repoRow(repo: GitHubRepoCI): HTMLElement {
   const word = ciWord(repo.ci);
   return row(
-    () => open(actionsUrl(repo.url)),
+    () => open(forge.provider === "gitlab" ? repo.url : actionsUrl(repo.url)),
     ciDot(repo.ci),
     h("span", { class: "gh-ref", text: shortRepo(repo.repo) }),
     h("span", { class: "gh-title", text: repo.branch }),
@@ -190,7 +201,7 @@ function activityDetail(
   const right = h("button", {
     class: "gh-head-right",
     text: activityHeader(activity, stats, null),
-    onclick: () => open(profileUrl(login)),
+    onclick: () => open(forge.profileUrl ?? profileUrl(login)),
   });
 
   let picked: ContributionDay | null = null;
@@ -230,7 +241,9 @@ export function githubDetail(
   stats: GitHubStats | null,
   activity: GitHubActivity | null,
   onBack: () => void,
+  options: ForgeCardOptions = { title: "GitHub", color: GITHUB_RED },
 ): HTMLElement {
+  forge = options;
   return openSection === "activity"
     ? activityDetail(activity, stats, pulse.login, onBack)
     : listDetail(openSection, pulse, onBack);
