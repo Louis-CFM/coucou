@@ -41,11 +41,11 @@ test("model servers show in the picker once connected, or while in use", () => {
   assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
 });
 
-test("the Create chip shows once a media model is saved", () => {
+test("the Create chip shows once a media model is saved, never for speech-to-text alone", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
   const entry = (output) => ({ id: `m-${output}`, label: output, kind: "openai", model: output, endpoint: "https://x.dev/v1", vision: null, output, voice: "", detail: "" });
-  assert.ok(!ids(settings()).includes("media"));
-  assert.deepEqual(ids(settings({ models: [entry("image")] })).at(-1), "media");
+  assert.ok(!ids(settings({ models: [entry("stt")] })).includes("media"));
+  assert.deepEqual(ids(settings({ models: [entry("stt"), entry("image")] })).at(-1), "media");
   // In use with nothing left to pick: still shown, so the picker never hides where the chat goes.
   assert.ok(ids(settings({ chatProvider: "media" })).includes("media"));
 });

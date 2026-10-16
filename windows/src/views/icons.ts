@@ -74,7 +74,9 @@ export const ICONS = {
   volume1: "M3.5 9.5h3L11 5.8v12.4l-4.5-3.7h-3zM14.5 9.6a3.4 3.4 0 0 1 0 4.8",
   volume2: "M3.5 9.5h3L11 5.8v12.4l-4.5-3.7h-3zM14.5 9.6a3.4 3.4 0 0 1 0 4.8M17 7.2a6.8 6.8 0 0 1 0 9.6",
   volume3: "M3.5 9.5h3L11 5.8v12.4l-4.5-3.7h-3zM14.5 9.6a3.4 3.4 0 0 1 0 4.8M17 7.2a6.8 6.8 0 0 1 0 9.6M19.4 4.8a10.2 10.2 0 0 1 0 14.4",
-  // ── The chat: generated media ──
+  // ── The chat: mic, generated media ──
+  // mic.fill: the chat's speak-instead-of-typing button.
+  mic: "M12 2.8a3.2 3.2 0 0 0-3.2 3.2v6a3.2 3.2 0 0 0 6.4 0V6A3.2 3.2 0 0 0 12 2.8zM5.6 11h1.8a4.6 4.6 0 0 0 9.2 0h1.8a6.4 6.4 0 0 1-5.5 6.33V20h3v1.8H8.1V20h3v-2.67A6.4 6.4 0 0 1 5.6 11z",
   // arrow.down.to.line
   download: "M11 3h2v10.2l3.8-3.8 1.4 1.4-6.2 6.2-6.2-6.2 1.4-1.4 3.8 3.8V3zM4 19h16v2H4v-2z",
 } as const;

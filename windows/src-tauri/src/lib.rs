@@ -516,6 +516,19 @@ fn local_set_key(url: String, key: String) -> Result<(), String> {
     local_chat::set_custom_key(&url, &key)
 }
 
+/// The chat's mic: the recording's bytes in, its words out, through the saved
+/// model that transcribes speech. The page sends the audio type as `x-mime`.
+#[tauri::command]
+async fn transcribe_audio(shared: State<'_, Shared>, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the recording".into());
+    };
+    let audio = bytes.clone();
+    let mime = request.headers().get("x-mime").and_then(|v| v.to_str().ok()).unwrap_or("audio/webm").to_string();
+    let settings = shared.settings.lock().unwrap().clone();
+    media::transcribe_with(&settings, audio, &mime).await
+}
+
 /// The credential name of an endpoint's key (one per provider host), for
 /// Settings -> Media and voice models.
 #[tauri::command]
@@ -773,6 +786,7 @@ pub fn run() {
             local_connect,
             local_set_key,
             chat_reset,
+            transcribe_audio,
             endpoint_key,
             ingest_file,
             secret_present,
@@ -895,6 +909,7 @@ pub fn run() {
                     }
                 });
                 platform::make_non_activating(&win);
+                platform::allow_microphone(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, false);

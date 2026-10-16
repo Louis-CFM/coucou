@@ -1,5 +1,6 @@
 // Settings sections for the Windows and Linux additions, drawn like the
-// rest of the window: the media and voice models (images, video, speech, 3D).
+// rest of the window: the media and voice models (images, video, speech, 3D,
+// and speech-to-text for the chat's mic).
 //
 // The page's `settings` object is replaced whenever another window saves, so
 // every section reads it through `ctx.settings()`.
@@ -13,6 +14,8 @@ import { N_, t } from "../i18n/i18n";
 export interface ExtrasContext {
   settings(): Settings;
   save(): void;
+  /** The window's on/off switch. */
+  toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement;
 }
 
 /** Redraws what follows other windows' saves (the media list learns keys in the background). */
@@ -37,6 +40,7 @@ const OUTPUTS: [ModelOutput, string][] = [
   ["video", "Video"],
   ["audio", "Speech"],
   ["3d", "3D"],
+  ["stt", "Transcribes speech (the chat's mic)"],
 ];
 
 /** Groq's Orpheus English voices (console.groq.com/docs/text-to-speech/orpheus). */
@@ -104,6 +108,8 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
     for (const m of s.models ?? []) {
       const inUse = s.chatProvider === "media" && s.chatModels.media === m.id;
       const use = h("button", { class: inUse ? "primary" : "", text: inUse ? t("In use") : t("Use in chat") });
+      // A speech-to-text model serves the mic, never the chat.
+      if (m.output === "stt") use.hidden = true;
       use.addEventListener("click", () => {
         const now = ctx.settings();
         now.chatProvider = "media";
@@ -145,6 +151,9 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
         m.output === "audio"
           ? h("div", { class: "row" }, h("span", { class: "hint", text: t("Voice") }), voiceInput(m, ctx.save))
           : null,
+        m.output === "stt"
+          ? h("div", { class: "hint", text: "The chat's mic uses this to turn your voice into text as you speak." })
+          : null,
         m.output === "3d"
           ? h("div", { class: "row" },
               /trellis/i.test(m.model) ? detailInput(m, ctx.save) : null,
@@ -162,7 +171,7 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
   provider.append(h("option", { value: "", text: t("Other…") }));
   const endpoint = input("https://…/v1");
   endpoint.value = PROVIDERS[0][0];
-  const modelId = input("Model id, e.g. gpt-image-1");
+  const modelId = input("Model id, e.g. whisper-large-v3-turbo");
   const label = input("Name in the picker (optional)");
   // Guessed from the model id until the user picks one.
   const makes = outputSelect("image");
@@ -218,7 +227,12 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
     label.value = "";
     key.value = "";
     makesPicked = false;
-    feedback.append(h("div", { class: "notice ok", text: `Added ${entry.label}: pick it on "Create" above the chat box.` }));
+    feedback.append(h("div", {
+      class: "notice ok",
+      text: entry.output === "stt"
+        ? `Added ${entry.label}: the chat's mic uses it.`
+        : `Added ${entry.label}: pick it on "Create" above the chat box.`,
+    }));
     void draw();
     void syncProvider();
   });
@@ -231,7 +245,7 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
     h("h2", {}, h("span", { text: "Media and voice models" })),
     h("div", {
       class: "hint",
-      text: "Image, video, speech and 3D models turn your message into a file instead of answering; pick them on \"Create\" above the chat box. Keys go to the Credential Manager, one per provider.",
+      text: "Image, video, speech and 3D models turn your message into a file instead of answering; pick them on \"Create\" above the chat box. A speech-to-text model turns the chat's Send button into a mic while the field is empty. Keys go to the Credential Manager, one per provider.",
     }),
     list,
     h("div", { class: "subhead", text: "Add a model" }),
@@ -242,5 +256,13 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
     h("div", { class: "row" }, h("label", { text: t("API key") }), key),
     h("div", { class: "row" }, add),
     feedback,
+    h("div", { class: "row" },
+      h("label", { text: "Keep the mic on" }),
+      ctx.toggle(ctx.settings().keepMicOn ?? false, (v) => {
+        ctx.settings().keepMicOn = v;
+        ctx.save();
+      }),
+    ),
+    h("div", { class: "hint", text: "After a spoken question, the mic listens again once the reply is in." }),
   );
 }

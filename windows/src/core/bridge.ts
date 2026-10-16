@@ -346,6 +346,13 @@ export const Bridge = {
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<ChatAnswer>("chat_send", { query, context }),
+  /** The mic's recording to text, through the saved speech-to-text model. */
+  transcribe: async (audio: Blob): Promise<string> => {
+    if (!IS_TAURI) throw new Error("not running inside Coucou");
+    return invoke<string>("transcribe_audio", new Uint8Array(await audio.arrayBuffer()), {
+      headers: { "x-mime": audio.type || "audio/webm" },
+    });
+  },
   /** A generated file as a blob: URL (revoke it when done), or null. Only
    *  files in the app's media folder can be read, by bare name. */
   mediaUrl: async (name: string): Promise<string | null> => {
@@ -356,7 +363,7 @@ export const Bridge = {
   },
   /** Copies a generated file into Downloads; returns where it went. */
   mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
-  /** "image", "video", "audio", "3d" or "text", guessed from a model id. */
+  /** "image", "video", "audio", "3d", "stt" or "text", guessed from a model id. */
   guessOutput: (model: string) => call<string>("guess_model_output", { model }),
   /** Credential name of an endpoint's key (one per provider host). */
   endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
