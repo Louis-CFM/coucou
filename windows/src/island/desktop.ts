@@ -26,6 +26,8 @@ export interface DesktopHost {
   dizzyFromDesktop(): void;
   /** Dropped on a window: the island expands to the chat with it as context. */
   attachContext(ctx: { appName: string; title: string }): void;
+  /** A click on the sleeping desktop Mochi. */
+  wake(): void;
 }
 
 export class DesktopLink {
@@ -88,6 +90,7 @@ export class DesktopLink {
     await onEvent<null>(DESKTOP_EVENTS.home, () => void this.controller.flyHome());
     await onEvent<null>(DESKTOP_EVENTS.wardrobe, () => this.host.wardrobeFromDesktop());
     await onEvent<null>(DESKTOP_EVENTS.dizzy, () => this.host.dizzyFromDesktop());
+    await onEvent<null>(DESKTOP_EVENTS.wake, () => this.host.wake());
     // The window's page (re)loaded: it knows nothing yet.
     await onEvent<null>(DESKTOP_EVENTS.ready, () => {
       this.pushed = "";
@@ -206,6 +209,7 @@ export class DesktopLink {
       outfit: (State.focusMochi === this.who ? State.wardrobePreview : null) ?? this.seasons.get(look.outfit),
       soundEnabled: State.settings.soundEnabled,
       soundVolume: State.settings.soundVolume,
+      asleep: State.asleep,
       paused: State.paused,
       dancing: desktopDances(State.musicPlaying, State.effectiveState),
       shape: look.shape,

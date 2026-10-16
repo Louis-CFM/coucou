@@ -14,7 +14,7 @@ import { shapeOf, shapePoint, taperAt, type ShapeDef } from "./shapes";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type EyeShape =
-  | "pill" | "wide" | "dot" | "line" | "flat" | "happy" | "closed"
+  | "pill" | "wide" | "dot" | "line" | "flat" | "happy" | "closed" | "droop"
   | "spiral" | "heart" | "star" | "tired" | "wink" | "cup"
   // Chat moods: brimming with tears, furrowed, charged up.
   | "teary" | "angry" | "glow";
@@ -387,6 +387,16 @@ export class BotEngine {
         break;
       case "question":
         this.blink();
+        break;
+      case "sleeping":
+        // Falling asleep. The lids droop, flutter half open once, droop
+        // shut, then he sleeps with closed eyes (the head nods down, update).
+        this.eyeOverride = "droop";
+        this.eyeOverrideUntil = now() + 2.5;
+        this.anim("open", [
+          [0.5, 700, Ease.inOut], [0.8, 220, Ease.out], [0.3, 650, Ease.inOut],
+          [0.45, 200, Ease.out], [0.05, 650, Ease.inOut], [0.05, 200, Ease.lin], [1, 1, Ease.lin],
+        ]);
         break;
       case "ratelimit":
         this.emit("sweat", 1);
@@ -1428,6 +1438,13 @@ export class BotEngine {
         x.fill();
         x.fillStyle = ink;
         break;
+      case "droop": {
+        // A pill whose top lid comes down: the bottom edge stays put.
+        const hh = Math.max(h * this.open, w * 0.22);
+        roundRectPath(x, -w / 2, h / 2 - hh, w, hh, Math.min(w / 2, hh / 2));
+        x.fill();
+        break;
+      }
       case "tired":
         roundRectPath(x, -w / 2, -h * 0.02, w, h * 0.38, w / 2);
         x.fill();
