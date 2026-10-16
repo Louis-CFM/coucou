@@ -17,7 +17,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Notify;
 
-use crate::github::{self, GitHubActivity, GitHubPulse};
+use crate::github::{self, CiState, ContributionDay, GitHubActivity, GitHubPr, GitHubPulse, GitHubRepoCi, ReviewState};
 use crate::island::WINDOW_LABEL;
 use crate::log;
 use crate::secrets;
@@ -70,6 +70,7 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
+    spawn(app.clone(), "integration_gitea", 7, 300, poll_gitea);
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
@@ -115,12 +116,142 @@ pub async fn poll_once(app: AppHandle, id: &str) {
             github_refresh_if_stale("activity");
             poll_github(app).await
         }
+        "integration_gitea" => poll_gitea(app).await,
         "integration_vercel" => poll_vercel(app).await,
         "integration_n8n" => poll_n8n(app).await,
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
         _ => {}
+    }
+}
+
+// ── Gitea ────────────────────────────────────────────────────────────────────
+// Gitea deliberately has its own REST poller: self-hosted instances need an
+// address, and unlike GitHub there is no GraphQL endpoint shared by all of them.
+fn gitea_api_base() -> Option<String> {
+    let url = secrets::get("gitea-url")?;
+    let parsed = reqwest::Url::parse(url.trim()).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
+        return None;
+    }
+    Some(format!("{}/api/v1", url.trim_end_matches('/')))
+}
+
+async fn poll_gitea(app: AppHandle) {
+    let (Some(token), Some(base)) = (secrets::get("gitea-token"), gitea_api_base()) else { return };
+    let http = client();
+    let user = http.get(format!("{base}/user")).header("Authorization", format!("token {token}")).send().await;
+    let Ok(response) = user else { return };
+    if !response.status().is_success() {
+        emit(&app, IntegrationUpdate { id: "integration_gitea", data: json!({}),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks the needed scope"))), event: None });
+        return;
+    }
+    let user: Value = response.json().await.unwrap_or(json!({}));
+    let repos_response = http.get(format!("{base}/user/repos?limit=100&sort=updated"))
+        .header("Authorization", format!("token {token}")).send().await;
+    let repos: Vec<Value> = match repos_response {
+        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    let stars: i64 = repos.iter().filter_map(|r| r.get("stars_count").and_then(Value::as_i64)).sum();
+    let open_prs: i64 = repos.iter().filter_map(|r| r.get("open_pr_counter").and_then(Value::as_i64)).sum();
+    let profile_url = user.get("html_url").and_then(Value::as_str).unwrap_or("");
+    // Gitea's heatmap API is the equivalent of GitHub's contribution calendar.
+    // Keep just the latest week for the compact card: the endpoint is optional
+    // on older/self-hosted instances, so a missing one never hides the stats.
+    let login = user.get("login").and_then(Value::as_str).unwrap_or("");
+    let heatmap: Vec<Value> = if login.is_empty() {
+        Vec::new()
+    } else {
+        match http.get(format!("{base}/users/{login}/heatmap"))
+            .header("Authorization", format!("token {token}")).send().await {
+            Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+            _ => Vec::new(),
+        }
+    };
+    let activity = gitea_activity(&heatmap, now_ms());
+    let my_raw = gitea_get(&http, &token, format!("{base}/repos/issues/search?state=open&type=pulls&created=true&limit=20")).await;
+    let review_raw = gitea_get(&http, &token, format!("{base}/repos/issues/search?state=open&type=pulls&review_requested=true&limit=20")).await;
+    let my_prs = gitea_prs(&my_raw);
+    let to_review = gitea_prs(&review_raw);
+    let main_ci = gitea_main_ci(&http, &token, &base, &repos).await;
+    let pulse = GitHubPulse { login: login.to_string(), my_prs, to_review, main_ci, fetched_at: now_ms() };
+    emit(&app, IntegrationUpdate { id: "integration_gitea", data: json!({
+        "totalRepos": repos.len(), "totalStars": stars, "openPRs": open_prs,
+        "profileUrl": profile_url, "pulse": pulse, "activity": activity,
+    }), error: None, event: None });
+}
+
+async fn gitea_get(http: &reqwest::Client, token: &str, url: String) -> Vec<Value> {
+    match http.get(url).header("Authorization", format!("token {token}")).send().await {
+        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+        _ => Vec::new(),
+    }
+}
+
+fn gitea_prs(raw: &[Value]) -> Vec<GitHubPr> {
+    raw.iter().filter_map(|pr| {
+        let repo = pr.get("repository")?.get("full_name")?.as_str()?.to_string();
+        let number = pr.get("number")?.as_i64()?;
+        Some(GitHubPr { id: format!("{repo}#{number}"), title: pr.get("title").and_then(Value::as_str).unwrap_or("").to_string(),
+            url: pr.get("html_url").and_then(Value::as_str).unwrap_or("").to_string(), repo, number,
+            is_draft: pr.get("is_draft").and_then(Value::as_bool).unwrap_or(false), ci: CiState::Unknown,
+            review: ReviewState::Unknown, head_sha: None })
+    }).collect()
+}
+
+fn gitea_ci(state: Option<&str>) -> CiState {
+    match state.map(str::to_ascii_lowercase).as_deref() {
+        Some("success") => CiState::Success,
+        Some("pending") => CiState::Pending,
+        Some("failure") | Some("error") => CiState::Failure,
+        _ => CiState::Unknown,
+    }
+}
+
+async fn gitea_main_ci(http: &reqwest::Client, token: &str, base: &str, repos: &[Value]) -> Vec<GitHubRepoCi> {
+    let mut out = Vec::new();
+    for repo in repos.iter().take(20) {
+        let Some(name) = repo.get("full_name").and_then(Value::as_str) else { continue };
+        let branch = repo.get("default_branch").and_then(Value::as_str).unwrap_or("main");
+        let statuses = gitea_get(http, token, format!("{base}/repos/{name}/commits/{branch}/statuses?limit=1&sort=recentupdate")).await;
+        out.push(GitHubRepoCi { repo: name.to_string(), url: repo.get("html_url").and_then(Value::as_str).unwrap_or("").to_string(),
+            branch: branch.to_string(), ci: gitea_ci(statuses.first().and_then(|s| s.get("state")).and_then(Value::as_str)), head_sha: None });
+    }
+    out
+}
+
+fn civil_day(day: i64) -> (i32, u32, u32, u8) {
+    // Days since Unix epoch → Gregorian date and Sunday-based weekday.
+    let z = day + 719_468; let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097; let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400; let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153; let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = mp + if mp < 10 { 3 } else { -9 }; let year = y + if m <= 2 { 1 } else { 0 };
+    (year as i32, m as u32, d as u32, ((day + 4).rem_euclid(7)) as u8)
+}
+
+fn gitea_activity(heatmap: &[Value], fetched_at: u64) -> GitHubActivity {
+    let today = (fetched_at / 86_400_000) as i64;
+    let mut weeks: Vec<Vec<ContributionDay>> = Vec::new();
+    for chunk in (0..161).map(|offset| today - 160 + offset).collect::<Vec<_>>().chunks(7) {
+        weeks.push(chunk.iter().map(|&day| {
+            let count = heatmap.iter().find_map(|entry| { let ts = entry.get("timestamp")?.as_i64()?; let d = if ts > 10_000_000_000 { ts / 86_400_000 } else { ts / 86_400 }; (d == day).then(|| entry.get("contributions").and_then(Value::as_i64).unwrap_or(0)) }).unwrap_or(0);
+            let (y, m, d, weekday) = civil_day(day); ContributionDay { date: format!("{y:04}-{m:02}-{d:02}"), count,
+                level: if count == 0 { 0 } else if count == 1 { 1 } else if count < 4 { 2 } else if count < 8 { 3 } else { 4 }, weekday }
+        }).collect());
+    }
+    let total = weeks.iter().flatten().map(|d| d.count).sum(); GitHubActivity { total, weeks, fetched_at }
+}
+
+/// A Gitea address or token changed: old totals belong to the previous account
+/// and must not remain on the card while the new credentials are checked.
+pub fn gitea_credentials_changed(app: &AppHandle) {
+    emit(app, IntegrationUpdate { id: "integration_gitea", data: json!({}), error: None, event: None });
+    if !PAUSED.load(Ordering::Relaxed) && enabled(app, "integration_gitea") {
+        tauri::async_runtime::spawn(poll_gitea(app.clone()));
     }
 }
 

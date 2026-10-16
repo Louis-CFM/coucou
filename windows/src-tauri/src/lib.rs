@@ -229,6 +229,25 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
+/// The configured Gitea address is a credential-store value, so the island
+/// asks Rust to open it instead of ever receiving it.
+#[tauri::command]
+fn open_gitea() {
+    if let Some(url) = secrets::get("gitea-url") {
+        open_url(url);
+    }
+}
+
+#[tauri::command]
+fn open_gitea_url(url: String) {
+    let (Ok(target), Some(base)) = (reqwest::Url::parse(&url), secrets::get("gitea-url")) else { return };
+    let Ok(instance) = reqwest::Url::parse(&base) else { return };
+    if matches!(target.scheme(), "http" | "https") && target.scheme() == instance.scheme()
+        && target.host_str() == instance.host_str() && target.port_or_known_default() == instance.port_or_known_default() {
+        open_url(url);
+    }
+}
+
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
 /// and falls back to the file manager otherwise.
 #[tauri::command]
@@ -548,6 +567,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
             integrations::github_token_changed(&app);
         }
     }
+    if key == "gitea-token" || key == "gitea-url" {
+        integrations::gitea_credentials_changed(&app);
+    }
     Ok(())
 }
 
@@ -560,6 +582,9 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     }
     if had {
         integrations::github_token_changed(&app);
+    }
+    if key == "gitea-token" || key == "gitea-url" {
+        integrations::gitea_credentials_changed(&app);
     }
     Ok(())
 }
@@ -740,6 +765,8 @@ pub fn run() {
             fit_zoom,
             list_monitors,
             open_url,
+            open_gitea,
+            open_gitea_url,
             open_in_vscode,
             open_session,
             open_claude_desktop,
