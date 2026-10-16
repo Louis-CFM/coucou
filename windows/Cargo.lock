@@ -729,6 +729,7 @@ dependencies = [
  "keyring",
  "libc",
  "mdns-sd",
+ "png 0.17.16",
  "qrcode",
  "rcgen",
  "reqwest 0.12.28",

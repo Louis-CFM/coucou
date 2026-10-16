@@ -322,6 +322,7 @@ mod layer {
     pub const EDGE_TOP: c_int = 2;
     pub const EDGE_BOTTOM: c_int = 3;
     pub const KEYBOARD_NONE: c_int = 0;
+    pub const KEYBOARD_EXCLUSIVE: c_int = 1;
     pub const KEYBOARD_ON_DEMAND: c_int = 2;
 
     #[link(name = "gtk-layer-shell")]
@@ -763,6 +764,94 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     }
     let g = monitor.geometry();
     Some((g.width() as f64, g.height() as f64))
+}
+
+/// WebKitGTK has no memory target to set.
+pub fn set_memory_low(_win: &WebviewWindow, _low: bool) {}
+
+// ── Screen overlay (screenshot roam) ──────────────────────────────────────────
+
+/// True once the island is a layer-shell surface (centred on the top edge).
+pub fn island_is_layer_surface() -> bool {
+    LAYER_SURFACE.load(Ordering::Relaxed)
+}
+
+/// True once the overlay is a layer-shell surface.
+static ROAM_LAYER: AtomicBool = AtomicBool::new(false);
+
+/// The overlay never takes the mouse (a roaming Mochi never takes a click);
+/// GTK resets the input region on every map.
+fn roam_input(gw: &impl IsA<gtk::Widget>) {
+    apply_input_region(gw, Some((0.0, 0.0, 0.0, 0.0)));
+}
+
+/// Turns the overlay window into a transparent layer-shell surface over the
+/// whole monitor, above everything, that never takes a click. Like the island,
+/// it must be set up before the window is first shown. Without layer-shell
+/// (GNOME, X11) it stays a regular window, made fullscreen when shown.
+pub fn make_roam_overlay(win: &WebviewWindow) {
+    let Ok(gw) = win.gtk_window() else { return };
+    let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
+    if layer_shell_wanted() && supported && !gw.is_realized() {
+        gw.set_titlebar(None::<&gtk::Widget>);
+        let ptr = gtk_window_ptr(&gw);
+        unsafe {
+            layer::gtk_layer_init_for_window(ptr);
+            layer::gtk_layer_set_namespace(ptr, c"coucou-roam".as_ptr());
+            layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
+            for edge in [layer::EDGE_LEFT, layer::EDGE_RIGHT, layer::EDGE_TOP, layer::EDGE_BOTTOM] {
+                layer::gtk_layer_set_anchor(ptr, edge, 1);
+            }
+            layer::gtk_layer_set_exclusive_zone(ptr, -1);
+            layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_NONE);
+        }
+        ROAM_LAYER.store(true, Ordering::Relaxed);
+    }
+    // GTK resets the input region on every map; WebKitGTK in a fresh layer
+    // surface also needs one unmap/map to paint (see make_non_activating).
+    let remapped = std::cell::Cell::new(false);
+    gw.connect_map_event(move |w, _| {
+        roam_input(w);
+        if ROAM_LAYER.load(Ordering::Relaxed) && !remapped.replace(true) {
+            let w = w.clone();
+            gtk::glib::idle_add_local_once(move || {
+                w.hide();
+                w.show_all();
+                roam_input(&w);
+            });
+        }
+        gtk::glib::Propagation::Proceed
+    });
+}
+
+/// Shows the overlay on the island's monitor and gives it the keyboard, so Esc
+/// reaches the page while Mochi roams.
+pub fn show_roam_overlay(win: &WebviewWindow, island: &WebviewWindow) {
+    let (Ok(gw), Ok(igw)) = (win.gtk_window(), island.gtk_window()) else { return };
+    if ROAM_LAYER.load(Ordering::Relaxed) {
+        let ptr = gtk_window_ptr(&gw);
+        if let (Some(display), Some(gdk_window)) = (gtk::gdk::Display::default(), igw.window()) {
+            if let Some(monitor) = display.monitor_at_window(&gdk_window) {
+                unsafe { layer::gtk_layer_set_monitor(ptr, monitor.to_glib_none().0) };
+            }
+        }
+        unsafe { layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_EXCLUSIVE) };
+        let _ = win.show();
+    } else {
+        let _ = win.set_fullscreen(true);
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+    roam_input(&gw);
+}
+
+pub fn hide_roam_overlay(win: &WebviewWindow) {
+    if let Ok(gw) = win.gtk_window() {
+        if ROAM_LAYER.load(Ordering::Relaxed) {
+            unsafe { layer::gtk_layer_set_keyboard_mode(gtk_window_ptr(&gw), layer::KEYBOARD_NONE) };
+        }
+    }
+    let _ = win.hide();
 }
 
 #[cfg(test)]

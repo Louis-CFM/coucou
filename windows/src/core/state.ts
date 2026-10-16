@@ -162,6 +162,8 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** Screenshot roam without the scan cutscene. */
+  quickScan: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -190,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  quickScan: false,
 };
 
 type Listener = () => void;
@@ -221,7 +224,11 @@ class AppState {
   fileDragOver = false;
 
   promptContext: PromptContext | null = null;
-  droppedFile: { name: string; path: string } | null = null;
+  /** The file the next question is about. `ephemeral` = a roam screenshot,
+   *  thrown away if the island closes before it was asked about. */
+  droppedFile: { name: string; path: string; ephemeral?: boolean } | null = null;
+  /** Mochi is out on the screen (screenshot roam); the island hides its own. */
+  roaming = false;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];

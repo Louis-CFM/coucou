@@ -22,6 +22,7 @@ import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
+import { mochiSection, type ExtrasContext } from "./extras";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -49,6 +50,13 @@ function pickColor(next: Record<string, string>) {
   settings.pillColors = next;
   void save();
 }
+
+/** How extras.ts reads and saves the settings, which are replaced on every outside save. */
+const extras: ExtrasContext = {
+  settings: () => settings,
+  save: () => void save(),
+  toggle: (on, onChange) => toggle(on, onChange),
+};
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────
 
@@ -1355,7 +1363,7 @@ async function render() {
   shortcutsListener = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
-    general: () => [generalSection()],
+    general: () => [generalSection(), mochiSection(extras)],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
     chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],

@@ -8,6 +8,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -176,6 +177,14 @@ export interface PhoneLinkQuestion {
 
 export interface PhoneAnswersStatus {
   enabled: boolean;
+}
+
+/** What the island's Mochi looks like when it is carried out for a screenshot. */
+export interface RoamLook {
+  state: string;
+  bodyColor: readonly [number, number, number] | null;
+  /** The wardrobe's outfit (mochi/wardrobe.ts). */
+  outfit?: Outfit;
 }
 
 export const Bridge = {
@@ -355,6 +364,17 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** The AirPods' trip to or from the monitor's edges on the screen overlay,
+   *  from (x, y) in the island window; false when the overlay is busy. */
+  podsFlight: (out: boolean, x: number, y: number, size: number) =>
+    call<boolean>("pods_flight", { out, x, y, size }),
+
+  // ── Screenshot roam (src-tauri/src/roam.rs) ───────────────────────────────
+  /** Mochi was Ctrl+dragged out of the island: the screen overlay takes over. */
+  roamStart: (look: RoamLook) => call<void>("roam_start", { look }),
+  /** Linux: the carried pointer, in island coordinates ("move", "drop", "cancel"). */
+  roamPointer: (x: number, y: number, phase: "move" | "drop" | "cancel") =>
+    call<void>("roam_pointer", { x, y, phase }),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
