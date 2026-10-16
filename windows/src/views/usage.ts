@@ -29,18 +29,14 @@ export function codexPillVisible(): boolean {
   return State.view === "overview" && State.settings.showCodexPlanInNotch;
 }
 
-/** Cursor pill: overview, toggle on, and the Cursor plan turned on in Chat. */
+/** Cursor pill: overview and toggle on (same idea as Codex — nothing to install). */
 export function cursorPillVisible(): boolean {
-  return State.view === "overview"
-    && State.settings.showCursorPlanInNotch
-    && State.settings.planChats.includes("cursor");
+  return State.view === "overview" && State.settings.showCursorPlanInNotch;
 }
 
-/** Kiro pill: overview, toggle on, and the Kiro plan turned on in Chat. */
+/** Kiro pill: overview and toggle on. */
 export function kiroPillVisible(): boolean {
-  return State.view === "overview"
-    && State.settings.showKiroPlanInNotch
-    && State.settings.planChats.includes("kiro");
+  return State.view === "overview" && State.settings.showKiroPlanInNotch;
 }
 
 function kindVisible(kind: PlanKind): boolean {
@@ -143,12 +139,15 @@ export function refreshCodexPlanUsage(): void {
 
 const CLI_STALE_MS = 60_000;
 
-/** Cursor and Kiro `/usage` when a pill is shown and numbers are stale. */
+/** Cursor and Kiro `/usage` when a pill is shown and numbers are missing or stale. */
 export function refreshCliPlanUsage(): void {
   const wantsCursor = cursorPillVisible();
   const wantsKiro = kiroPillVisible();
   if (cliInFlight || State.paused || (!wantsCursor && !wantsKiro)) return;
-  if (State.cliPlanFetchedAt && Date.now() - State.cliPlanFetchedAt < CLI_STALE_MS) return;
+  const missing =
+    (wantsCursor && !State.cursorPlanUsage) || (wantsKiro && !State.kiroPlanUsage);
+  const stale = !State.cliPlanFetchedAt || Date.now() - State.cliPlanFetchedAt >= CLI_STALE_MS;
+  if (!missing && !stale) return;
   cliInFlight = true;
   void Bridge.planUsage()
     .then((result) => {

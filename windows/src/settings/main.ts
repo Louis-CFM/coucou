@@ -249,9 +249,9 @@ const PLAN_SETTINGS_TEXT = {
   get showClaude() { return t("Show in notch"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
-  get cursor() { return t("Shows your Cursor plan usage in the island's header. Coucou asks the Cursor CLI (/usage) when the pill shows. Turn the Cursor plan on under Chat first. On Windows the numbers are not available yet."); },
+  get cursor() { return t("Shows your Cursor plan usage in the island's header. Coucou asks the Cursor CLI (/usage) when the pill shows. On Windows the numbers are not available yet."); },
   get showCursor() { return t("Show Cursor plan in the notch"); },
-  get kiro() { return t("Shows your Kiro plan usage in the island's header. Coucou asks the Kiro CLI (/usage) when the pill shows. Turn the Kiro plan on under Chat first."); },
+  get kiro() { return t("Shows your Kiro plan usage in the island's header. Coucou asks the Kiro CLI (/usage) when the pill shows."); },
   get showKiro() { return t("Show Kiro plan in the notch"); },
 }
 

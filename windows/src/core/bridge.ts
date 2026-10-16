@@ -274,7 +274,7 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
-  /** Cursor and Kiro `/usage` for the header pills (plans turned on in Chat). */
+  /** Cursor and Kiro `/usage` for the header pills (Plan usage toggles). */
   planUsage: () => call<{ cursor: CursorPlanUsage | null; kiro: KiroPlanUsage | null }>("plan_usage"),
 
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>

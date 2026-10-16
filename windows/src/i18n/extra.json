@@ -3669,27 +3669,27 @@
    "ru": "Показывает использование тарифа Codex (недельный лимит и оставшиеся бесплатные сбросы) в заголовке острова. Coucou спрашивает Codex CLI (codex app-server), когда видна вкладка; ничего не устанавливается. В Codex нужно войти через ChatGPT.",
    "id": "Menampilkan pemakaian paket Codex Anda (batas mingguan dan sisa reset gratis) di header pulau. Coucou menanyakan Codex CLI (codex app-server) saat tab tampil; tidak ada yang dipasang. Codex harus masuk dengan ChatGPT."
   },
-  "Shows your Cursor plan usage in the island's header. Coucou asks the Cursor CLI (/usage) when the pill shows. Turn the Cursor plan on under Chat first. On Windows the numbers are not available yet.": {
-   "zh-Hans": "在岛的标题栏显示 Cursor 套餐用量。药丸出现时 Coucou 会询问 Cursor CLI（/usage）。请先在聊天中开启 Cursor 计划。Windows 上暂不可用。",
-   "hi": "आइलैंड हेडर में Cursor प्लान उपयोग दिखाता है। पिल दिखने पर Coucou Cursor CLI (/usage) से पूछता है। पहले चैट में Cursor प्लान चालू करें। Windows पर अभी उपलब्ध नहीं।",
-   "es": "Muestra el uso del plan de Cursor en la cabecera de la isla. Coucou consulta el CLI de Cursor (/usage) cuando aparece la pastilla. Activa primero el plan Cursor en Chat. En Windows aún no está disponible.",
-   "ar": "يعرض استخدام خطة Cursor في رأس الجزيرة. يسأل Coucou واجهة Cursor (/usage) عند ظهور الحبة. فعّل خطة Cursor في الدردشة أولاً. غير متاح على Windows بعد.",
-   "fr": "Affiche l'utilisation du forfait Cursor dans l'en-tête de l'île. Coucou interroge le CLI Cursor (/usage) quand la pastille apparaît. Active d'abord le forfait Cursor dans Chat. Pas encore disponible sous Windows.",
-   "bn": "আইল্যান্ড হেডারে Cursor প্ল্যানের ব্যবহার দেখায়। পিল দেখা গেলে Coucou Cursor CLI (/usage) জিজ্ঞেস করে। আগে চ্যাটে Cursor প্ল্যান চালু করুন। Windows-এ এখনও পাওয়া যায় না।",
-   "pt-BR": "Mostra o uso do plano Cursor no cabeçalho da ilha. O Coucou consulta o CLI do Cursor (/usage) quando a pill aparece. Ligue o plano Cursor em Chat primeiro. No Windows ainda não está disponível.",
-   "ru": "Показывает использование тарифа Cursor в заголовке острова. Coucou спрашивает Cursor CLI (/usage), когда появляется пилюля. Сначала включите план Cursor в чате. В Windows пока недоступно.",
-   "id": "Menampilkan pemakaian paket Cursor di header island. Coucou menanyakan Cursor CLI (/usage) saat pill muncul. Nyalakan dulu paket Cursor di Chat. Belum tersedia di Windows."
+  "Shows your Cursor plan usage in the island's header. Coucou asks the Cursor CLI (/usage) when the pill shows. On Windows the numbers are not available yet.": {
+   "zh-Hans": "在岛的标题栏显示 Cursor 套餐用量。药丸出现时 Coucou 会询问 Cursor CLI（/usage）。Windows 上暂不可用。",
+   "hi": "आइलैंड हेडर में Cursor प्लान उपयोग दिखाता है। पिल दिखने पर Coucou Cursor CLI (/usage) से पूछता है। Windows पर अभी उपलब्ध नहीं।",
+   "es": "Muestra el uso del plan de Cursor en la cabecera de la isla. Coucou consulta el CLI de Cursor (/usage) cuando aparece la pastilla. En Windows aún no está disponible.",
+   "ar": "يعرض استخدام خطة Cursor في رأس الجزيرة. يسأل Coucou واجهة Cursor (/usage) عند ظهور الحبة. غير متاح على Windows بعد.",
+   "fr": "Affiche l'utilisation du forfait Cursor dans l'en-tête de l'île. Coucou interroge le CLI Cursor (/usage) quand la pastille apparaît. Pas encore disponible sous Windows.",
+   "bn": "আইল্যান্ড হেডারে Cursor প্ল্যানের ব্যবহার দেখায়। পিল দেখা গেলে Coucou Cursor CLI (/usage) জিজ্ঞেস করে। Windows-এ এখনও পাওয়া যায় না।",
+   "pt-BR": "Mostra o uso do plano Cursor no cabeçalho da ilha. O Coucou consulta o CLI do Cursor (/usage) quando a pill aparece. No Windows ainda não está disponível.",
+   "ru": "Показывает использование тарифа Cursor в заголовке острова. Coucou спрашивает Cursor CLI (/usage), когда появляется пилюля. В Windows пока недоступно.",
+   "id": "Menampilkan pemakaian paket Cursor di header island. Coucou menanyakan Cursor CLI (/usage) saat pill muncul. Belum tersedia di Windows."
   },
-  "Shows your Kiro plan usage in the island's header. Coucou asks the Kiro CLI (/usage) when the pill shows. Turn the Kiro plan on under Chat first.": {
-   "zh-Hans": "在岛的标题栏显示 Kiro 套餐用量。药丸出现时 Coucou 会询问 Kiro CLI（/usage）。请先在聊天中开启 Kiro 计划。",
-   "hi": "आइलैंड हेडर में Kiro प्लान उपयोग दिखाता है। पिल दिखने पर Coucou Kiro CLI (/usage) से पूछता है। पहले चैट में Kiro प्लान चालू करें।",
-   "es": "Muestra el uso del plan de Kiro en la cabecera de la isla. Coucou consulta el CLI de Kiro (/usage) cuando aparece la pastilla. Activa primero el plan Kiro en Chat.",
-   "ar": "يعرض استخدام خطة Kiro في رأس الجزيرة. يسأل Coucou واجهة Kiro (/usage) عند ظهور الحبة. فعّل خطة Kiro في الدردشة أولاً.",
-   "fr": "Affiche l'utilisation du forfait Kiro dans l'en-tête de l'île. Coucou interroge le CLI Kiro (/usage) quand la pastille apparaît. Active d'abord le forfait Kiro dans Chat.",
-   "bn": "আইল্যান্ড হেডারে Kiro প্ল্যানের ব্যবহার দেখায়। পিল দেখা গেলে Coucou Kiro CLI (/usage) জিজ্ঞেস করে। আগে চ্যাটে Kiro প্ল্যান চালু করুন।",
-   "pt-BR": "Mostra o uso do plano Kiro no cabeçalho da ilha. O Coucou consulta o CLI do Kiro (/usage) quando a pill aparece. Ligue o plano Kiro em Chat primeiro.",
-   "ru": "Показывает использование тарифа Kiro в заголовке острова. Coucou спрашивает Kiro CLI (/usage), когда появляется пилюля. Сначала включите план Kiro в чате.",
-   "id": "Menampilkan pemakaian paket Kiro di header island. Coucou menanyakan Kiro CLI (/usage) saat pill muncul. Nyalakan dulu paket Kiro di Chat."
+  "Shows your Kiro plan usage in the island's header. Coucou asks the Kiro CLI (/usage) when the pill shows.": {
+   "zh-Hans": "在岛的标题栏显示 Kiro 套餐用量。药丸出现时 Coucou 会询问 Kiro CLI（/usage）。",
+   "hi": "आइलैंड हेडर में Kiro प्लान उपयोग दिखाता है। पिल दिखने पर Coucou Kiro CLI (/usage) से पूछता है।",
+   "es": "Muestra el uso del plan de Kiro en la cabecera de la isla. Coucou consulta el CLI de Kiro (/usage) cuando aparece la pastilla.",
+   "ar": "يعرض استخدام خطة Kiro في رأس الجزيرة. يسأل Coucou واجهة Kiro (/usage) عند ظهور الحبة.",
+   "fr": "Affiche l'utilisation du forfait Kiro dans l'en-tête de l'île. Coucou interroge le CLI Kiro (/usage) quand la pastille apparaît.",
+   "bn": "আইল্যান্ড হেডারে Kiro প্ল্যানের ব্যবহার দেখায়। পিল দেখা গেলে Coucou Kiro CLI (/usage) জিজ্ঞেস করে।",
+   "pt-BR": "Mostra o uso do plano Kiro no cabeçalho da ilha. O Coucou consulta o CLI do Kiro (/usage) quando a pill aparece.",
+   "ru": "Показывает использование тарифа Kiro в заголовке острова. Coucou спрашивает Kiro CLI (/usage), когда появляется пилюля.",
+   "id": "Menampilkan pemakaian paket Kiro di header island. Coucou menanyakan Kiro CLI (/usage) saat pill muncul."
   },
   "Sign in": {
    "zh-Hans": "登录",

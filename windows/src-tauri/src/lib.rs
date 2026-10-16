@@ -451,15 +451,27 @@ struct PlansUsage {
     kiro: Option<plan_chat::KiroPlan>,
 }
 
-/// Cursor and Kiro plan usage for the header pills (plans turned on in Chat).
+/// Cursor and Kiro plan usage for the header pills (Settings → Plan usage toggles).
 #[tauri::command]
 async fn plan_usage(shared: State<'_, Shared>) -> Result<PlansUsage, String> {
-    let on = shared.settings.lock().unwrap().plan_chats.clone();
-    let wants = |p: &str| on.iter().any(|q| q == p);
-    let kiro = wants(plan_chat::KIRO).then(|| tauri::async_runtime::spawn(plan_chat::kiro_usage()));
-    let cursor = if wants(plan_chat::CURSOR) { plan_chat::cursor_usage().await.ok() } else { None };
+    let (wants_cursor, wants_kiro) = {
+        let s = shared.settings.lock().unwrap();
+        (s.show_cursor_plan_in_notch, s.show_kiro_plan_in_notch)
+    };
+    let kiro = wants_kiro.then(|| tauri::async_runtime::spawn(plan_chat::kiro_usage()));
+    let cursor = if wants_cursor { plan_chat::cursor_usage().await.ok() } else { None };
     let kiro = match kiro {
-        Some(h) => h.await.ok().and_then(Result::ok),
+        Some(h) => match h.await {
+            Ok(Ok(plan)) => Some(plan),
+            Ok(Err(err)) => {
+                crate::log::line(format!("kiro plan usage: {err}"));
+                None
+            }
+            Err(err) => {
+                crate::log::line(format!("kiro plan usage task: {err}"));
+                None
+            }
+        },
         None => None,
     };
     Ok(PlansUsage { cursor, kiro })
