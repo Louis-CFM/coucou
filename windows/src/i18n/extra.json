@@ -5205,6 +5205,127 @@
       "pt-BR": "⚠ falhou",
       "ru": "⚠ ошибка",
       "zh-Hans": "⚠ 失败"
+    },
+    "Done": {
+      "zh-Hans": "完成",
+      "hi": "हो गया",
+      "es": "Listo",
+      "ar": "تم",
+      "fr": "Valider",
+      "bn": "হয়েছে",
+      "pt-BR": "Concluir",
+      "ru": "Готово",
+      "id": "Selesai"
+    },
+    "No detail available.": {
+      "zh-Hans": "没有可用的详情。",
+      "hi": "कोई विवरण उपलब्ध नहीं।",
+      "es": "No hay detalles disponibles.",
+      "ar": "لا توجد تفاصيل.",
+      "fr": "Aucun détail disponible.",
+      "bn": "কোনো বিস্তারিত নেই।",
+      "pt-BR": "Nenhum detalhe disponível.",
+      "ru": "Подробностей нет.",
+      "id": "Tidak ada detail."
+    },
+    "Sending by email isn't in this version.": {
+      "zh-Hans": "此版本暂不支持通过邮件发送。",
+      "hi": "ईमेल से भेजना इस संस्करण में नहीं है।",
+      "es": "El envío por correo no está en esta versión.",
+      "ar": "الإرسال بالبريد الإلكتروني غير متاح في هذا الإصدار.",
+      "fr": "L'envoi par e-mail n'est pas dans cette version.",
+      "bn": "ইমেলে পাঠানো এই সংস্করণে নেই।",
+      "pt-BR": "O envio por e-mail não está nesta versão.",
+      "ru": "Отправки по почте в этой версии нет.",
+      "id": "Mengirim lewat email belum ada di versi ini."
+    },
+    "Session stopped on an error.": {
+      "zh-Hans": "会话因错误而停止。",
+      "hi": "सत्र एक त्रुटि पर रुक गया।",
+      "es": "La sesión se detuvo por un error.",
+      "ar": "توقفت الجلسة بسبب خطأ.",
+      "fr": "La session s'est arrêtée sur une erreur.",
+      "bn": "একটি ত্রুটিতে সেশন থেমে গেছে।",
+      "pt-BR": "A sessão parou por um erro.",
+      "ru": "Сессия остановилась из-за ошибки.",
+      "id": "Sesi berhenti karena galat."
+    },
+    "Bee": {
+      "zh-Hans": "蜜蜂",
+      "hi": "मधुमक्खी",
+      "es": "Abeja",
+      "ar": "نحلة",
+      "fr": "Abeille",
+      "bn": "মৌমাছি",
+      "pt-BR": "Abelha",
+      "ru": "Пчела",
+      "id": "Lebah"
+    },
+    "Frog": {
+      "zh-Hans": "青蛙",
+      "hi": "मेंढक",
+      "es": "Rana",
+      "ar": "ضفدع",
+      "fr": "Grenouille",
+      "bn": "ব্যাঙ",
+      "pt-BR": "Sapo",
+      "ru": "Лягушка",
+      "id": "Katak"
+    },
+    "Ghost": {
+      "zh-Hans": "幽灵",
+      "hi": "भूत",
+      "es": "Fantasma",
+      "ar": "شبح",
+      "fr": "Fantôme",
+      "bn": "ভূত",
+      "pt-BR": "Fantasma",
+      "ru": "Привидение",
+      "id": "Hantu"
+    },
+    "Ladybug": {
+      "zh-Hans": "瓢虫",
+      "hi": "लेडीबग",
+      "es": "Mariquita",
+      "ar": "دعسوقة",
+      "fr": "Coccinelle",
+      "bn": "লেডিবাগ",
+      "pt-BR": "Joaninha",
+      "ru": "Божья коровка",
+      "id": "Kepik"
+    },
+    "Panda": {
+      "zh-Hans": "熊猫",
+      "hi": "पांडा",
+      "es": "Panda",
+      "ar": "باندا",
+      "fr": "Panda",
+      "bn": "পান্ডা",
+      "pt-BR": "Panda",
+      "ru": "Панда",
+      "id": "Panda"
+    },
+    "Robot": {
+      "zh-Hans": "机器人",
+      "hi": "रोबोट",
+      "es": "Robot",
+      "ar": "روبوت",
+      "fr": "Robot",
+      "bn": "রোবট",
+      "pt-BR": "Robô",
+      "ru": "Робот",
+      "id": "Robot"
+    },
+    "Strawberry": {
+      "zh-Hans": "草莓",
+      "hi": "स्ट्रॉबेरी",
+      "es": "Fresa",
+      "ar": "فراولة",
+      "fr": "Fraise",
+      "bn": "স্ট্রবেরি",
+      "pt-BR": "Morango",
+      "ru": "Клубника",
+      "id": "Stroberi"
     }
   }
 }
