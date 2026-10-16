@@ -87,6 +87,7 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   let current: PageId = "dictation";
   let status: FlowStatus = (await FlowBridge.status()) ?? DEFAULT_STATUS;
   const items = new Map<PageId, HTMLElement>();
+  const labels = new Map<PageId, HTMLElement>();
   const statusLine = h("div", { class: "hub-status" });
   const scroll = h("div", { class: "hub-scroll" });
   let rendering = 0;
@@ -160,16 +161,20 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
   side.append(h("div", { class: "hub-brand" }, logo, h("span", { text: "Coucou" })));
   liveMochi(logo as HTMLCanvasElement);
   const group = (title: string, pages: PageDef[]) => {
-    side.append(h("div", { class: "hub-group", text: title }));
+    const heading = h("div", { class: "hub-group", text: title });
+    side.append(heading);
     for (const p of pages) {
       const b = h("button", { class: "hub-item", onclick: () => void show(p.id) });
-      b.append(icon(p.icon), h("span", { text: p.title() }));
+      const label = h("span", { text: p.title() });
+      b.append(icon(p.icon), label);
       items.set(p.id, b);
+      labels.set(p.id, label);
       side.append(b);
     }
+    return heading;
   };
   group("Flow", FLOW_PAGES);
-  group(t("Notch"), NOTCH_PAGES);
+  const notchGroup = group(t("Notch"), NOTCH_PAGES);
   side.append(h("div", { class: "spacer" }), statusLine, h("div", { class: "hub-version", text: `Coucou ${opts.version}` }));
 
   clear(root);
@@ -190,7 +195,15 @@ export async function startHub(root: HTMLElement, opts: HubOptions) {
     drawStatus();
   });
   return {
-    redraw: () => void show(current),
+    redraw: () => {
+      for (const p of ALL) {
+        const label = labels.get(p.id);
+        if (label) label.textContent = p.title();
+      }
+      notchGroup.textContent = t("Notch");
+      drawStatus();
+      void show(current);
+    },
     current: () => current,
   };
 }
