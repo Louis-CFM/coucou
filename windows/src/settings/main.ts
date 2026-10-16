@@ -1423,6 +1423,9 @@ async function render() {
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };
+  root.append(...(sections[notchPage]?.() ?? []));
+  if (notchPage === "general") {
+    root.append(h("div", {
       class: "hint",
       text: t("No telemetry. Network requests only go to the services you configure yourself."),
     }));
