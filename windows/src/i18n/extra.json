@@ -4394,6 +4394,83 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Bee": {
+   "zh-Hans": "蜜蜂",
+   "hi": "मधुमक्खी",
+   "es": "Abeja",
+   "ar": "نحلة",
+   "fr": "Abeille",
+   "bn": "মৌমাছি",
+   "pt-BR": "Abelha",
+   "ru": "Пчела",
+   "id": "Lebah"
+  },
+  "Frog": {
+   "zh-Hans": "青蛙",
+   "hi": "मेंढक",
+   "es": "Rana",
+   "ar": "ضفدع",
+   "fr": "Grenouille",
+   "bn": "ব্যাঙ",
+   "pt-BR": "Sapo",
+   "ru": "Лягушка",
+   "id": "Katak"
+  },
+  "Ghost": {
+   "zh-Hans": "幽灵",
+   "hi": "भूत",
+   "es": "Fantasma",
+   "ar": "شبح",
+   "fr": "Fantôme",
+   "bn": "ভূত",
+   "pt-BR": "Fantasma",
+   "ru": "Привидение",
+   "id": "Hantu"
+  },
+  "Ladybug": {
+   "zh-Hans": "瓢虫",
+   "hi": "लेडीबग",
+   "es": "Mariquita",
+   "ar": "دعسوقة",
+   "fr": "Coccinelle",
+   "bn": "লেডিবাগ",
+   "pt-BR": "Joaninha",
+   "ru": "Божья коровка",
+   "id": "Kepik"
+  },
+  "Panda": {
+   "zh-Hans": "熊猫",
+   "hi": "पांडा",
+   "es": "Panda",
+   "ar": "باندا",
+   "fr": "Panda",
+   "bn": "পান্ডা",
+   "pt-BR": "Panda",
+   "ru": "Панда",
+   "id": "Panda"
+  },
+  "Robot": {
+   "zh-Hans": "机器人",
+   "hi": "रोबोट",
+   "es": "Robot",
+   "ar": "روبوت",
+   "fr": "Robot",
+   "bn": "রোবট",
+   "pt-BR": "Robô",
+   "ru": "Робот",
+   "id": "Robot"
+  },
+  "Strawberry": {
+   "zh-Hans": "草莓",
+   "hi": "स्ट्रॉबेरी",
+   "es": "Fresa",
+   "ar": "فراولة",
+   "fr": "Fraise",
+   "bn": "স্ট্রবেরি",
+   "pt-BR": "Morango",
+   "ru": "Клубника",
+   "id": "Stroberi"
   }
  }
 }
