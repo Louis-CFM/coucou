@@ -24,6 +24,9 @@ jobs:
       - name: Test Claude hook detection
         run: bash scripts/test-claude-hooks.sh
 
+      - name: Test OpenCode plugin template
+        run: bash scripts/test-opencode-plugin.sh
+
       - name: Test display choice
         run: bash scripts/test-display-choice.sh
 

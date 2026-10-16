@@ -179,10 +179,33 @@ Muse uses PascalCase event names. Coucou shows a real Allow / Deny card for Muse
 ### OpenCode (macOS)
 
 Coucou supports OpenCode via **Settings → OpenCode Plugin → Install plugin**.
-The installer writes a JS plugin to `~/.config/opencode/plugins/coucou.js`.
-The plugin maps OpenCode event types to canonical Coucou names and forwards them fire-and-forget; OpenCode is never blocked.
+The installer writes a JS plugin to `~/.config/opencode/plugins/coucou.js`,
+with a dual export: OpenCode 2 requires a default definition with an id and
+a setup function (it refuses a V1-only named export with *"Plugin must export
+a default definition…"*), while OpenCode 1 loads the named export. The plugin
+forwards events fire-and-forget; OpenCode is never blocked.
 
-| OpenCode event | Canonical event |
+On OpenCode 2 the service loads one plugin instance per location and every
+instance sees the global event stream, so a session event arrives once per
+instance. Each stream event carries a unique id: instances race an atomic
+claim file (`os.tmpdir()/coucou-opencode-claims/`) and only the winner
+forwards. Tool hooks are invoked once, by the owning location's runtime.
+
+OpenCode 2 event types (verified against 2.0.29's public event stream; the
+1.x-only types below never fire on 2.x):
+
+| OpenCode 2 event | Canonical event |
+|---|---|
+| `session.created` | `SessionStart` |
+| `session.execution.started` | `UserPromptSubmit` |
+| `session.execution.succeeded` | `Stop` |
+| `session.execution.failed` | `StopFailure` |
+| `tool.execute.before` (hook) | `PreToolUse` |
+| `tool.execute.after` (hook) | `PostToolUse` |
+
+OpenCode 1 event types:
+
+| OpenCode 1 event | Canonical event |
 |---|---|
 | `session.created` | `SessionStart` |
 | `session.idle` | `Stop` |
@@ -191,6 +214,10 @@ The plugin maps OpenCode event types to canonical Coucou names and forwards them
 | `tool.execute.before` | `PreToolUse` |
 | `tool.execute.after` | `PostToolUse` |
 | `permission.asked` | `PermissionRequest` |
+
+`permission.asked` has not been observed on OpenCode 2's stream yet and is
+mapped defensively; approval cards for OpenCode are not implemented either
+way — permission events are display-only at best.
 
 ### Amp (macOS)
 

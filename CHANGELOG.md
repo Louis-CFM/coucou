@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **OpenCode loads Coucou's plugin again on the Mac** — the generated `coucou.js` now carries the default definition OpenCode 2 requires (it refused the V1-only named export with *"Plugin must export a default definition…"*), maps the event types 2.0.29 actually emits (`session.execution.*`; `session.idle` never fires there, so `Stop` was never forwarded), and deduplicates session events across the one-plugin-instance-per-location model with atomic claim files. OpenCode 1 keeps working through the named export (#609)
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
