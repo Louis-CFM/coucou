@@ -118,27 +118,34 @@ final class KeychainStore: @unchecked Sendable {
 final class ClaudeService {
     static let shared = ClaudeService()
 
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
-    private let anthropicVersion = "2023-06-01"
-
     // MARK: - Model list
 
     /// Fetches available models from the Anthropic API in the order the API returns them
     /// (newest first). Returns an empty array on any error — callers fall back to a static list.
+    /// A gateway without a model list (MiniMax…) offers the model typed in Settings.
     static func fetchModels(apiKey: String) async -> [(id: String, label: String)] {
-        guard let url = URL(string: "https://api.anthropic.com/v1/models?limit=100") else { return [] }
-        var req = URLRequest(url: url, timeoutInterval: 10)
-        req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        guard let (data, response) = try? await URLSession.shared.data(for: req),
-              (response as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let items = json["data"] as? [[String: Any]] else { return [] }
-        return items.compactMap { item in
-            guard let id = item["id"] as? String,
-                  let name = item["display_name"] as? String else { return nil }
-            return (id: id, label: name)
+        guard let endpoint = try? ClaudeEndpoint.current() else { return [] }
+        var req = URLRequest(url: endpoint.models, timeoutInterval: 10)
+        endpoint.authorize(&req, key: apiKey)
+        var models: [(id: String, label: String)] = []
+        if let (data, response) = try? await endpoint.session.data(for: req),
+           (response as? HTTPURLResponse)?.statusCode == 200,
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let items = json["data"] as? [[String: Any]] {
+            models = items.compactMap { item in
+                guard let id = item["id"] as? String else { return nil }
+                // Gateways often list models without a display name.
+                guard let name = item["display_name"] as? String else {
+                    return endpoint.isGateway ? (id: id, label: id) : nil
+                }
+                return (id: id, label: name)
+            }
         }
+        if models.isEmpty && endpoint.isGateway {
+            let current = AppState.shared.claudeModel.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !current.isEmpty { models = [(id: current, label: current)] }
+        }
+        return models
     }
 
     /// Fetches Gemini models via the OpenAI-compatible endpoint.
@@ -217,19 +224,24 @@ final class ClaudeService {
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
-    private let systemPrompt = ClaudeService.makeSystemPrompt()
+    private let systemPrompt = ClaudeService.makeSystemPrompt(webSearch: true)
+    /// For an Anthropic-compatible gateway, which does not run Anthropic's web search.
+    private let gatewaySystemPrompt = ClaudeService.makeSystemPrompt(webSearch: false)
 
     /// Greets the user by their macOS first name when there is one worth using, and stays
-    /// neutral otherwise — same wording as the Windows build.
-    private nonisolated static func makeSystemPrompt() -> String {
+    /// neutral otherwise — same wording as the Windows build, which also claims web search
+    /// only where the provider runs it.
+    private nonisolated static func makeSystemPrompt(webSearch: Bool) -> String {
         let opening = if let firstName = resolveUserFirstName() {
             "You are Mochi, \(firstName)'s personal AI assistant embedded in the notch of their Mac."
         } else {
             "You are Mochi, a personal AI assistant embedded in the notch of the user's Mac."
         }
+        let abilities = webSearch
+            ? "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
+            : "You can help with absolutely anything — research, coding, recommendations, tasks, questions. You have no web access: say so when something needs current information."
         return """
-        \(opening) \
-        You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions. \
+        \(opening) \(abilities) \
         Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
         Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small.
         """
@@ -282,7 +294,7 @@ final class ClaudeService {
             "model": model,
             "max_tokens": 4096,
             "tools": webSearchTools,
-            "system": systemPrompt,
+            "system": (try? ClaudeEndpoint.current())?.isGateway == true ? gatewaySystemPrompt : systemPrompt,
             "messages": conversationMessages,
         ]
 
@@ -543,11 +555,13 @@ final class ClaudeService {
         func body(_ model: String) -> [String: Any] {
             ["model": model, "max_tokens": 2048, "system": system, "tools": tools, "messages": messages]
         }
+        let first = (try? ClaudeEndpoint.current())?.model(fast: Self.voiceModel, chat: model) ?? Self.voiceModel
         let data: Data
         do {
-            data = try await callAPI(body: body(Self.voiceModel), key: key, beta: "web-search-2025-03-05")
+            data = try await callAPI(body: body(first), key: key, beta: "web-search-2025-03-05")
         } catch {
-            guard let retry = try? await callAPI(body: body(model), key: key, beta: "web-search-2025-03-05") else {
+            guard first != model,
+                  let retry = try? await callAPI(body: body(model), key: key, beta: "web-search-2025-03-05") else {
                 appendAppLog("nb.log", "[Voice] Claude turn failed: \(error.localizedDescription)")
                 return nil
             }
@@ -600,12 +614,14 @@ final class ClaudeService {
         func body(_ model: String) -> [String: Any] {
             ["model": model, "max_tokens": 700, "system": system, "tools": [search], "messages": messages]
         }
+        let first = (try? ClaudeEndpoint.current())?.model(fast: Self.voiceModel, chat: model) ?? Self.voiceModel
         let data: Data
         do {
-            data = try await callAPI(body: body(Self.voiceModel), key: key, beta: "web-search-2025-03-05")
+            data = try await callAPI(body: body(first), key: key, beta: "web-search-2025-03-05")
         } catch {
             // The fast model is not available to this key: the Settings model instead.
-            guard let retry = try? await callAPI(body: body(model), key: key, beta: "web-search-2025-03-05") else {
+            guard first != model,
+                  let retry = try? await callAPI(body: body(model), key: key, beta: "web-search-2025-03-05") else {
                 appendAppLog("nb.log", "[Voice] web answer failed")
                 return nil
             }
@@ -622,16 +638,20 @@ final class ClaudeService {
     // MARK: - API call
 
     private func callAPI(body: [String: Any], key: String, beta: String? = nil) async throws -> Data {
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        if let beta { request.setValue(beta, forHTTPHeaderField: "anthropic-beta") }
+        let endpoint = try ClaudeEndpoint.current()
+        var body = body
+        var request = endpoint.request(key: key, timeout: 45)
+        if endpoint.isGateway {
+            // Web search runs on Anthropic's servers only: a gateway gets Coucou's own tools.
+            let tools = (body["tools"] as? [[String: Any]] ?? [])
+                .filter { !(($0["type"] as? String)?.hasPrefix("web_search") ?? false) }
+            body["tools"] = tools.isEmpty ? nil : tools
+        } else if let beta {
+            request.setValue(beta, forHTTPHeaderField: "anthropic-beta")
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 45
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await endpoint.session.data(for: request)
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             // Parse Anthropic error format: {"type":"error","error":{"type":"…","message":"…"}}
