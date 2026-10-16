@@ -1575,6 +1575,17 @@
    "ru": "По умолчанию",
    "id": "Bawaan"
   },
+  "Default branch pipelines": {
+   "zh-Hans": "默认分支流水线",
+   "hi": "डिफ़ॉल्ट ब्रांच की पाइपलाइनें",
+   "es": "Pipelines de la rama por defecto",
+   "ar": "مسارات CI للفرع الافتراضي",
+   "fr": "Pipelines de la branche par défaut",
+   "bn": "ডিফল্ট ব্রাঞ্চের পাইপলাইন",
+   "pt-BR": "Pipelines da branch padrão",
+   "ru": "Пайплайны основной ветки",
+   "id": "Pipeline cabang default"
+  },
   "Delete": {
    "zh-Hans": "删除",
    "hi": "हटाएँ",
@@ -3368,6 +3379,17 @@
    "ru": "Без звука в группах (если меня не упомянули)",
    "id": "Bisukan grup (kecuali saya disebut)"
   },
+  "My MRs": {
+   "zh-Hans": "我的 MR",
+   "hi": "मेरे MR",
+   "es": "Mis MR",
+   "ar": "طلبات الدمج الخاصة بي",
+   "fr": "Mes MR",
+   "bn": "আমার MR",
+   "pt-BR": "Meus MRs",
+   "ru": "Мои MR",
+   "id": "MR saya"
+  },
   "My PRs": {
    "zh-Hans": "我的 PR",
    "hi": "मेरे PR",
@@ -4555,6 +4577,17 @@
    "pt-BR": "Foto",
    "ru": "Фото",
    "id": "Foto"
+  },
+  "Personal access token with the read_api scope. Leave the URL empty for gitlab.com.": {
+   "zh-Hans": "具有 read_api 权限范围的个人访问令牌。使用 gitlab.com 时请将 URL 留空。",
+   "hi": "read_api स्कोप वाला पर्सनल एक्सेस टोकन। gitlab.com के लिए URL खाली छोड़ें।",
+   "es": "Token de acceso personal con el alcance read_api. Deja la URL vacía para gitlab.com.",
+   "ar": "رمز وصول شخصي بنطاق read_api. اترك العنوان فارغًا لاستخدام gitlab.com.",
+   "fr": "Jeton d'accès personnel avec la portée read_api. Laissez l'URL vide pour gitlab.com.",
+   "bn": "read_api স্কোপসহ পার্সোনাল অ্যাক্সেস টোকেন। gitlab.com-এর জন্য URL ফাঁকা রাখুন।",
+   "pt-BR": "Token de acesso pessoal com o escopo read_api. Deixe a URL vazia para gitlab.com.",
+   "ru": "Персональный токен доступа с областью read_api. Для gitlab.com оставьте URL пустым.",
+   "id": "Token akses pribadi dengan cakupan read_api. Kosongkan URL untuk gitlab.com."
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",

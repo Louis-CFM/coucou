@@ -4527,28 +4527,6 @@
    "ru": "Недопустимый URL GitLab",
    "id": "URL GitLab tidak valid"
   },
-  "My MRs": {
-   "zh-Hans": "我的 MR",
-   "hi": "मेरे MR",
-   "es": "Mis MR",
-   "ar": "طلبات الدمج الخاصة بي",
-   "fr": "Mes MR",
-   "bn": "আমার MR",
-   "pt-BR": "Meus MRs",
-   "ru": "Мои MR",
-   "id": "MR saya"
-  },
-  "Default branch pipelines": {
-   "zh-Hans": "默认分支流水线",
-   "hi": "डिफ़ॉल्ट ब्रांच की पाइपलाइनें",
-   "es": "Pipelines de la rama por defecto",
-   "ar": "مسارات CI للفرع الافتراضي",
-   "fr": "Pipelines de la branche par défaut",
-   "bn": "ডিফল্ট ব্রাঞ্চের পাইপলাইন",
-   "pt-BR": "Pipelines da branch padrão",
-   "ru": "Пайплайны основной ветки",
-   "id": "Pipeline cabang default"
-  },
   "Personal access token with the read_api scope. Leave the instance URL empty for gitlab.com.": {
    "zh-Hans": "具有 read_api 权限范围的个人访问令牌。使用 gitlab.com 时请将实例 URL 留空。",
    "hi": "read_api स्कोप वाला पर्सनल एक्सेस टोकन। gitlab.com के लिए इंस्टेंस URL खाली छोड़ें।",
@@ -4625,17 +4603,6 @@
    "pt-BR": "Abrir no GitLab",
    "ru": "Открыть в GitLab",
    "id": "Buka di GitLab"
-  },
-  "You": {
-   "zh-Hans": "你",
-   "hi": "आप",
-   "es": "Tú",
-   "ar": "أنت",
-   "fr": "Vous",
-   "bn": "আপনি",
-   "pt-BR": "Você",
-   "ru": "Вы",
-   "id": "Anda"
   },
   "Reopen": {
    "zh-Hans": "重新打开",
