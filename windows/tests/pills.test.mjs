@@ -46,15 +46,25 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
-  // PhpStorm is Windows and Linux's own (the Mac has no such pill): it is
-  // checked apart below.
+  // PhpStorm and GitLab are Windows and Linux's own for now (the Mac has no
+  // such pill yet): they are checked apart below.
   assert.deepEqual(
-    PILL_CATALOG.filter((p) => p.id !== "agent_phpstorm").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
+    PILL_CATALOG.filter((p) => p.id !== "agent_phpstorm" && p.id !== "integration_gitlab").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
   ]);
+});
+
+test("GitLab is a service pill right after GitHub, connected by its token", () => {
+  const ids = PILL_CATALOG.map((p) => p.id);
+  assert.equal(ids.indexOf("integration_gitlab"), ids.indexOf("integration_github") + 1);
+  const def = pillDefinition("integration_gitlab");
+  assert.deepEqual(
+    [def.name, def.color, def.category, def.subtitle, def.source, def.support, def.connect],
+    ["GitLab", "#FC6D26", "service", "Integration", "n8n", "yes", { kind: "key", key: "gitlab-token" }],
+  );
 });
 
 test("PhpStorm is a workspace pill after Cursor, carried by Claude Code's hooks", () => {

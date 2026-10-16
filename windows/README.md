@@ -355,6 +355,27 @@ minute while a CI is running, and as soon as you open the card on data older
 than a minute; contributions every 30 minutes. Nothing is fetched while the pill
 is off or Coucou is paused.
 
+## GitLab
+
+Next to GitHub, not instead of it: switch either pill on in **Settings… →
+Integrations**, or both. With a personal access token that has the `read_api`
+scope in **GitLab**, the pill shows the same card with GitLab's words:
+
+- **My MRs**: your open merge requests and the status of their pipeline.
+- **To review**: the merge requests where you are a reviewer or the assignee.
+- **Default branch pipelines**: the latest pipeline on the default branch of your
+  10 most recently active projects.
+- Your stars and the **last 7 days of activity** in the card header; click them
+  for the past 23 weeks. GitLab has no contribution calendar in its API, so the
+  grid counts your own events (pushes, merge requests, comments…) per day, up to
+  the last 1000 of the year: close to GitLab's calendar, not identical to it.
+
+The URL of your instance goes in the same place, for a self-hosted GitLab; leave
+it empty for gitlab.com. It has to be `https://` (`http://` is only accepted for
+`localhost`), and links only open on that host. The badge, the sound and the
+refresh rhythm are GitHub's. The token and the URL are stored like the other
+keys, in the Credential Manager or the Secret Service.
+
 ## Build it yourself
 
 You need [Rust](https://rustup.rs), [Node 22.18+](https://nodejs.org) (`windows/.nvmrc` names the version the CI uses: `nvm use`), and the

@@ -11,6 +11,7 @@ mod editor;
 mod files;
 mod flow;
 mod github;
+mod gitlab;
 mod hooks;
 mod i18n;
 mod identity;
@@ -705,14 +706,15 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     if key == local_chat::CUSTOM_KEY {
         return Err("use local_set_key".into());
     }
-    let before = (key == "github-token").then(|| secrets::get(&key));
+    let watched = matches!(key.as_str(), "github-token" | "gitlab-token" | "gitlab-url");
+    let before = watched.then(|| secrets::get(&key));
     secrets::set(&key, &value)?;
     if key == claude::KEY {
         voice::sync(&app);
     }
     if let Some(before) = before {
         if secrets::get(&key) != before {
-            integrations::github_token_changed(&app);
+            credentials_changed(&app, &key);
         }
     }
     Ok(())
@@ -720,15 +722,25 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
 
 #[tauri::command]
 fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
-    let had = key == "github-token" && secrets::present(&key);
+    let had = matches!(key.as_str(), "github-token" | "gitlab-token" | "gitlab-url") && secrets::present(&key);
     secrets::clear(&key)?;
     if key == claude::KEY {
         voice::sync(&app);
     }
     if had {
-        integrations::github_token_changed(&app);
+        credentials_changed(&app, &key);
     }
     Ok(())
+}
+
+/// A GitHub or GitLab credential changed: that integration forgets what the
+/// old one fetched and starts again.
+fn credentials_changed(app: &AppHandle, key: &str) {
+    if key == "github-token" {
+        integrations::github_token_changed(app);
+    } else {
+        integrations::gitlab_credentials_changed(app);
+    }
 }
 
 /// Opens the configured n8n instance — the URL lives in the Credential Manager.
@@ -750,6 +762,12 @@ async fn refresh_integration(app: AppHandle, id: String) {
 #[tauri::command]
 fn github_refresh(section: String) {
     integrations::github_refresh_if_stale(&section);
+}
+
+/// The GitLab card was opened: same as `github_refresh`.
+#[tauri::command]
+fn gitlab_refresh(section: String) {
+    integrations::gitlab_refresh_if_stale(&section);
 }
 
 /// Lets the island write to the same log as the Rust side.
@@ -944,6 +962,7 @@ pub fn run() {
             secret_clear,
             refresh_integration,
             github_refresh,
+            gitlab_refresh,
             open_n8n,
             open_settings_window,
             set_paused,

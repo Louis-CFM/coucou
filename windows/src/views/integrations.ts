@@ -12,6 +12,8 @@ import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
 import { readActivity, readPulse, readStats } from "../core/github";
 import { githubDetail, githubPulseCard } from "./github";
+import { gitlabDetail, gitlabPulseCard } from "./gitlab";
+import { readBaseUrl } from "../core/gitlab";
 import { N_, language, t } from "../i18n/i18n";
 
 /** Same shape as the Swift `timeAgo` computed properties. */
@@ -53,6 +55,7 @@ const OPEN_URLS: Record<string, string> = {
   integration_resend: "https://resend.com/emails",
   integration_vercel: "https://vercel.com/dashboard",
   integration_github: "https://github.com",
+  integration_gitlab: "https://gitlab.com",
   integration_stripe: "https://dashboard.stripe.com/payments",
   integration_notion: "https://notion.so",
   integration_calcom: "https://app.cal.com/bookings",
@@ -271,6 +274,24 @@ function githubCard(): HTMLElement {
   );
 }
 
+function gitlabCard(): HTMLElement {
+  const d = get("integration_gitlab");
+  const stars = Number(d.totalStars ?? 0);
+  const repos = Number(d.totalRepos ?? 0);
+  const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  return h(
+    "div",
+    { class: "int-card" },
+    header("#FC6D26", "GitLab", t("Overview")),
+    h(
+      "div",
+      { class: "int-stats" },
+      statRow(ICONS.star, "#F5A524", t("Total stars"), fmt(stars)),
+      statRow(ICONS.stack, "#6B7079", t("Repositories"), String(repos)),
+    ),
+  );
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -434,6 +455,8 @@ export function hasIntegrationData(id: string): boolean {
       return arr(id, "emails").length > 0;
     case "integration_github":
       return get(id).totalRepos != null || readPulse(get(id)) != null;
+    case "integration_gitlab":
+      return get(id).totalRepos != null || readPulse(get(id)) != null;
     case "integration_stripe":
       return info.loaded;
     case "integration_notion":
@@ -468,11 +491,24 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     }
   }
 
+  if (task.id === "integration_gitlab") {
+    const d = get(task.id);
+    const pulse = readPulse(d);
+    if (pulse) {
+      const base = readBaseUrl(d);
+      return hooks.detailOpen
+        ? gitlabDetail(pulse, readStats(d), readActivity(d), base, hooks.closeDetail)
+        : gitlabPulseCard(pulse, readStats(d), readActivity(d), hooks.openDetail);
+    }
+  }
+
   switch (task.id) {
     case "integration_resend":
       return resendCard();
     case "integration_github":
       return githubCard();
+    case "integration_gitlab":
+      return gitlabCard();
     case "integration_stripe":
       return stripeCard();
     case "integration_notion":
