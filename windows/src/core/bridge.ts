@@ -447,6 +447,10 @@ export const Bridge = {
   musicNow: () => call<NowPlaying | null>("music_now"),
   /** Play/pause, next or previous on the player that's on show. */
   musicControl: (action: "toggle" | "next" | "previous") => call<void>("music_control", { action }),
+  /** The AirPods' trip to or from the monitor's edges on the screen overlay,
+   *  from (x, y) in the island window; false when the overlay is busy. */
+  podsFlight: (out: boolean, x: number, y: number, size: number) =>
+    call<boolean>("pods_flight", { out, x, y, size }),
 
   // ── Screenshot roam (src-tauri/src/roam.rs) ───────────────────────────────
   /** Mochi was Ctrl+dragged out of the island: the screen overlay takes over. */

@@ -1156,6 +1156,8 @@ pub fn run() {
             roam::roam_capture,
             roam::roam_pointer,
             roam::roam_end,
+            roam::pods_flight,
+            roam::pods_flight_end,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
