@@ -486,11 +486,13 @@ function handleHook(island: Island, payload: HookPayload) {
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
-      // Kiro's shell command arrives only as this request: it is the turn's step too.
-      if (validAgent === "kiro") State.appendStep(agentId, stepLabel(tool, input));
+      // Kiro/Cursor shell commands arrive only as this request: they are the turn's step too.
+      if (validAgent === "kiro" || validAgent === "cursor") {
+        State.appendStep(agentId, stepLabel(tool, input));
+      }
       // Claude Code asking a question is not a permission to grant: the island
       // shows the options and sends back the one that was picked. Only Claude
-      // Code asks questions this way.
+      // Code asks questions this way (Cursor/Kiro have no AskUserQuestion hook).
       const questions = isExternalAgent ? null : askedQuestions(tool, input);
       const view = questions ? "question" : "approval";
       // The card always comes up, even over another pill or an island that is

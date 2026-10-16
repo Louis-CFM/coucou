@@ -1,5 +1,14 @@
 # Changelog
 
+## Windows and Linux 0.5.1 — October 15, 2026
+
+Cursor and Kiro get the same island UI Claude already had — without the home card.
+
+- **Cursor Agent**: Allow / Deny for shell commands from the island (`beforeShellExecution`); live diffs from `afterFileEdit`; plan usage pill in the header (Cursor CLI `/usage`, Unix for now). Reinstall the Cursor hooks in Settings → Agents after upgrading.
+- **Kiro CLI**: live diffs keep the full edit text; plan usage pill in the header (Kiro CLI `/usage`).
+- Plan usage toggles for Cursor and Kiro live under Settings → Agents → Plan usage, like Codex.
+
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.

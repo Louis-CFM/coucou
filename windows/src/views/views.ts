@@ -14,7 +14,8 @@ import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import {
-  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
+  PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, cursorPillVisible, kiroPillVisible,
+  planCardOpen, refreshCliPlanUsage, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
 import { lastTextStep } from "../core/diff";
@@ -114,10 +115,13 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
-  const claudePill = buildPlanPill(false);
-  const codexPill = buildPlanPill(true);
-  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
+  const claudePill = buildPlanPill("claude");
+  const codexPill = buildPlanPill("codex");
+  const cursorPill = buildPlanPill("cursor");
+  const kiroPill = buildPlanPill("kiro");
+  const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el, cursorPill.el, kiroPill.el);
   let codexShown = false;
+  let cliShown = false;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -152,17 +156,26 @@ export function buildHeader(actions: ViewActions): ViewHost {
   function syncPlanPills() {
     const claudeOn = claudePillVisible();
     const codexOn = codexPillVisible();
+    const cursorOn = cursorPillVisible();
+    const kiroOn = kiroPillVisible();
     claudePill.el.style.display = claudeOn ? "" : "none";
     codexPill.el.style.display = codexOn ? "" : "none";
-    planPills.classList.toggle("on", claudeOn || codexOn);
-    // Both pills: the right side tightens so it still clears the screen edge.
-    headerActions.classList.toggle("both-plans", claudeOn && codexOn);
+    cursorPill.el.style.display = cursorOn ? "" : "none";
+    kiroPill.el.style.display = kiroOn ? "" : "none";
+    const any = claudeOn || codexOn || cursorOn || kiroOn;
+    const many = [claudeOn, codexOn, cursorOn, kiroOn].filter(Boolean).length >= 2;
+    planPills.classList.toggle("on", any);
+    // Several pills: the right side tightens so it still clears the screen edge.
+    headerActions.classList.toggle("both-plans", many);
     if (claudeOn) claudePill.sync();
     if (codexOn) codexPill.sync();
-    // Codex is asked when its pill comes into view (stale answers only).
-    const shown = codexOn && State.mode === "expanded";
-    if (shown && !codexShown) refreshCodexPlanUsage();
-    codexShown = shown;
+    if (cursorOn) cursorPill.sync();
+    if (kiroOn) kiroPill.sync();
+    const shown = State.mode === "expanded";
+    if (codexOn && shown && !codexShown) refreshCodexPlanUsage();
+    codexShown = codexOn && shown;
+    if ((cursorOn || kiroOn) && shown && !cliShown) refreshCliPlanUsage();
+    cliShown = (cursorOn || kiroOn) && shown;
   }
 }
 

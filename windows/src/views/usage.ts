@@ -1,15 +1,11 @@
-// Plan usage in the island: the Claude and Codex pills in the header and the
-// card behind each. Same behaviour as ClaudePlanHeaderPill, ClaudePlanCardView
-// and CodexPlanCardView on the Mac; the numbers and labels come from
-// core/plan.ts.
+// Plan usage in the island: Claude, Codex, Cursor and Kiro pills in the header
+// and the card behind each. Claude/Codex match the Mac; Cursor/Kiro read their
+// CLI `/usage` (no home card).
 //
 // The pills sit in the header's right side, before the gear, on the overview
-// only, Claude first. Clicking one puts its card in place of the overview's
-// left card (clicking it again, or the other pill, closes or swaps it), and
-// Mochi wears the plan's colour while it is open. It closes when the view, the
-// mode or the focused pill changes.
+// only. Clicking one puts its card in place of the overview's left card.
 
-import { Bridge } from "../core/bridge";
+import { Bridge, type CursorPlanUsage, type KiroPlanUsage } from "../core/bridge";
 import {
   PLAN_TEXT, claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct,
   effectivePct, parseCodexPlan, pillLabel, planColor, resetLabel,
@@ -18,7 +14,9 @@ import {
 import { State } from "../core/state";
 import { clear, dot, h, svg } from "./dom";
 import { ICONS } from "./icons";
-import { language, tl } from "../i18n/i18n";
+import { language, t } from "../i18n/i18n";
+
+export type PlanKind = "claude" | "codex" | "cursor" | "kiro";
 
 /** The Claude pill is in the header: overview, turned on, relay in. */
 export function claudePillVisible(): boolean {
@@ -31,23 +29,59 @@ export function codexPillVisible(): boolean {
   return State.view === "overview" && State.settings.showCodexPlanInNotch;
 }
 
+/** Cursor pill: overview and toggle on (same idea as Codex — nothing to install). */
+export function cursorPillVisible(): boolean {
+  return State.view === "overview" && State.settings.showCursorPlanInNotch;
+}
+
+/** Kiro pill: overview and toggle on. */
+export function kiroPillVisible(): boolean {
+  return State.view === "overview" && State.settings.showKiroPlanInNotch;
+}
+
+function kindVisible(kind: PlanKind): boolean {
+  switch (kind) {
+    case "claude": return claudePillVisible();
+    case "codex": return codexPillVisible();
+    case "cursor": return cursorPillVisible();
+    case "kiro": return kiroPillVisible();
+  }
+}
+
 /** A plan card is open and its pill is still there. */
 export function planCardOpen(): boolean {
-  if (!State.showingPlanDetail) return false;
-  return State.planDetailIsCodex ? codexPillVisible() : claudePillVisible();
+  const kind = State.planDetailKind;
+  if (!State.showingPlanDetail || !kind) return false;
+  return kindVisible(kind);
 }
 
 const claudeColor = (now = Date.now()) => planColor(dominantPct(State.planUsage, now));
 const codexColor = (now = Date.now()) => planColor(dominantPct(State.codexPlanUsage, now));
+const cursorColor = () => planColor(State.cursorPlanUsage?.percent ?? 0);
+const kiroColor = () => {
+  const u = State.kiroPlanUsage;
+  if (!u || u.limit <= 0) return planColor(0);
+  return planColor(Math.min(100, (u.used / u.limit) * 100));
+};
+
+function kindColor(kind: PlanKind, now = Date.now()): string {
+  switch (kind) {
+    case "claude": return claudeColor(now);
+    case "codex": return codexColor(now);
+    case "cursor": return cursorColor();
+    case "kiro": return kiroColor();
+  }
+}
 
 /** The colour of the open card's plan, which Mochi wears while it is open. */
 export function openPlanColor(): string {
-  return State.planDetailIsCodex ? codexColor() : claudeColor();
+  return kindColor(State.planDetailKind ?? "claude");
 }
 
 /** Closes the plan card (view, mode or focus changed). */
 export function closePlanCard(): void {
   State.showingPlanDetail = false;
+  State.planDetailKind = null;
 }
 
 // ── Claude numbers ────────────────────────────────────────────────────────────
@@ -66,8 +100,6 @@ export function setClaudePlanUsage(usage: PlanUsage): void {
       // Storage off or full: the numbers just will not outlive this run.
     }
   }
-  // The relay calls in with every Claude Code update: a hidden island is only
-  // woken when the numbers actually moved.
   if (!same || State.mode === "expanded") State.notify();
 }
 
@@ -80,14 +112,14 @@ export function storedClaudePlanUsage(): string | null {
   }
 }
 
-// ── Codex numbers ─────────────────────────────────────────────────────────────
+// ── Codex / Cursor / Kiro refresh ─────────────────────────────────────────────
 
 let codexInFlight = false;
+let cliInFlight = false;
 
 /**
  * Asks Codex again when the numbers are missing or older than a minute. Only
- * from the pill (shown or clicked), never on a timer, and never while paused:
- * `codex app-server` talks to Codex's own service.
+ * from the pill (shown or clicked), never on a timer, and never while paused.
  */
 export function refreshCodexPlanUsage(): void {
   if (codexInFlight || State.paused || !codexIsStale(State.codexPlanUsage)) return;
@@ -105,6 +137,31 @@ export function refreshCodexPlanUsage(): void {
     });
 }
 
+const CLI_STALE_MS = 60_000;
+
+/** Cursor and Kiro `/usage` when a pill is shown and numbers are missing or stale. */
+export function refreshCliPlanUsage(): void {
+  const wantsCursor = cursorPillVisible();
+  const wantsKiro = kiroPillVisible();
+  if (cliInFlight || State.paused || (!wantsCursor && !wantsKiro)) return;
+  const missing =
+    (wantsCursor && !State.cursorPlanUsage) || (wantsKiro && !State.kiroPlanUsage);
+  const stale = !State.cliPlanFetchedAt || Date.now() - State.cliPlanFetchedAt >= CLI_STALE_MS;
+  if (!missing && !stale) return;
+  cliInFlight = true;
+  void Bridge.planUsage()
+    .then((result) => {
+      if (!result) return;
+      State.cursorPlanUsage = result.cursor;
+      State.kiroPlanUsage = result.kiro;
+      State.cliPlanFetchedAt = Date.now();
+      State.notify();
+    })
+    .finally(() => {
+      cliInFlight = false;
+    });
+}
+
 // ── Pill ──────────────────────────────────────────────────────────────────────
 
 export interface PlanPill {
@@ -112,32 +169,49 @@ export interface PlanPill {
   sync(): void;
 }
 
+const KIND_TITLE: Record<PlanKind, () => string> = {
+  claude: () => t("Claude plan usage"),
+  codex: () => t("Codex plan usage"),
+  cursor: () => t("Cursor plan usage"),
+  kiro: () => t("Kiro plan usage"),
+};
+
 /** One pill: colour dot and label, lit while hovered or while its card is open. */
-export function buildPlanPill(codex: boolean): PlanPill {
+export function buildPlanPill(kind: PlanKind): PlanPill {
   const label = h("span", { class: "plan-pill-label" });
   const dotEl = h("i", { class: "plan-pill-dot" });
-  const isOpen = () => State.showingPlanDetail && State.planDetailIsCodex === codex;
+  const isOpen = () => State.showingPlanDetail && State.planDetailKind === kind;
   const el = h("button", {
     class: "plan-pill",
-    title: codex ? tl("Codex plan usage") : tl("Claude plan usage"),
+    title: KIND_TITLE[kind](),
     onclick: () => {
       const open = isOpen();
-      State.planDetailIsCodex = codex;
+      State.planDetailKind = kind;
       State.showingPlanDetail = !open;
-      if (codex) refreshCodexPlanUsage();
+      if (kind === "codex") refreshCodexPlanUsage();
+      if (kind === "cursor" || kind === "kiro") refreshCliPlanUsage();
       State.notify();
     },
   }, dotEl, label);
   return {
     el,
     sync() {
-      const color = codex ? codexColor() : claudeColor();
+      const color = kindColor(kind);
       el.style.setProperty("--plan", color);
       el.classList.toggle("active", isOpen());
+      el.title = KIND_TITLE[kind]();
       dotEl.style.background = color;
-      label.textContent = codex
-        ? pillLabel("Codex", State.codexPlanUsage)
-        : pillLabel("Claude", State.planUsage);
+      if (kind === "claude") label.textContent = pillLabel("Claude", State.planUsage);
+      else if (kind === "codex") label.textContent = pillLabel("Codex", State.codexPlanUsage);
+      else if (kind === "cursor") {
+        const u = State.cursorPlanUsage;
+        label.textContent = u ? `Cursor ${Math.round(u.percent)}%` : "Cursor";
+      } else {
+        const u = State.kiroPlanUsage;
+        label.textContent = u && u.limit > 0
+          ? `Kiro ${Math.round((u.used / u.limit) * 100)}%`
+          : "Kiro";
+      }
     },
   };
 }
@@ -163,6 +237,24 @@ function gaugeRow(label: string, w: PlanWindow | undefined, weekly: boolean, now
   return row;
 }
 
+function pctRow(label: string, pct: number | null | undefined, reset: string): HTMLElement {
+  const row = h("div", { class: "plan-row" }, h("span", { class: "plan-label", text: label }));
+  if (pct == null || !Number.isFinite(pct)) {
+    row.append(h("span", { class: "plan-none", text: PLAN_TEXT.none }));
+    return row;
+  }
+  const fill = h("i", { class: "plan-fill" });
+  fill.style.width = `${Math.min(100, pct)}%`;
+  fill.style.background = planColor(pct);
+  row.append(
+    h("span", { class: "plan-bar" }, fill),
+    h("span", { class: "plan-pct", text: `${Math.round(pct)}%` }),
+    h("span", { class: "plan-reset-icon" }, svg(ICONS.arrowClockwise, 8, { stroke: 2.6 })),
+    h("span", { class: "plan-reset", text: reset || PLAN_TEXT.none }),
+  );
+  return row;
+}
+
 function head(color: string, title: string, subtitle: string): HTMLElement {
   return h("div", { class: "plan-head" },
     dot(color, 7),
@@ -178,14 +270,22 @@ export class PlanCard {
 
   /** Re-renders when the numbers change, or every 30 s for the countdowns. */
   sync(now = Date.now()) {
-    const codex = State.planDetailIsCodex;
-    const u = codex ? State.codexPlanUsage : State.planUsage;
-    const key = `${language()}|${codex}|${JSON.stringify(u)}|${Math.floor(now / 30_000)}`;
+    const kind = State.planDetailKind ?? "claude";
+    const key = `${language()}|${kind}|${JSON.stringify({
+      claude: State.planUsage,
+      codex: State.codexPlanUsage,
+      cursor: State.cursorPlanUsage,
+      kiro: State.kiroPlanUsage,
+    })}|${Math.floor(now / 30_000)}`;
     if (key === this.key) return;
     this.key = key;
     clear(this.el);
-    if (codex) this.drawCodex(State.codexPlanUsage, now);
-    else this.drawClaude(State.planUsage, now);
+    switch (kind) {
+      case "codex": this.drawCodex(State.codexPlanUsage, now); break;
+      case "cursor": this.drawCursor(State.cursorPlanUsage); break;
+      case "kiro": this.drawKiro(State.kiroPlanUsage); break;
+      default: this.drawClaude(State.planUsage, now); break;
+    }
   }
 
   private drawClaude(u: PlanUsage | null, now: number) {
@@ -200,7 +300,6 @@ export class PlanCard {
 
   private drawCodex(u: CodexPlanUsage | null, now: number) {
     const rows = h("div", { class: "plan-rows" });
-    // Codex plans without a 5-hour window show the week alone, as on the Mac.
     if (u?.fiveHour) rows.append(gaugeRow(PLAN_TEXT.fiveHours, u.fiveHour, false, now));
     rows.append(
       gaugeRow(PLAN_TEXT.week, u?.sevenDay, true, now),
@@ -210,5 +309,33 @@ export class PlanCard {
       ),
     );
     this.el.append(head(codexColor(now), PLAN_TEXT.codexTitle, codexSubtitle(u, now)), rows);
+  }
+
+  private drawCursor(u: CursorPlanUsage | null) {
+    const sub = u ? `${u.plan}${u.resets ? ` · ${u.resets}` : ""}` : t("Asking Cursor…");
+    const rows = h("div", { class: "plan-rows" },
+      pctRow(t("Included"), u?.percent ?? null, u?.resets ?? ""),
+    );
+    if (u?.auto != null) rows.append(pctRow(t("Auto"), u.auto, ""));
+    if (u?.api != null) rows.append(pctRow(t("API"), u.api, ""));
+    this.el.append(head(cursorColor(), t("Cursor plan"), sub), rows);
+  }
+
+  private drawKiro(u: KiroPlanUsage | null) {
+    const pct = u && u.limit > 0 ? (u.used / u.limit) * 100 : null;
+    const sub = u ? `${u.plan}${u.resets ? ` · ${u.resets}` : ""}` : t("Asking Kiro…");
+    const credits = u
+      ? `${u.used.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${u.limit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+      : PLAN_TEXT.none;
+    this.el.append(
+      head(kiroColor(), t("Kiro plan"), sub),
+      h("div", { class: "plan-rows" },
+        pctRow(t("Credits"), pct, u?.resets ?? ""),
+        h("div", { class: "plan-row" },
+          h("span", { class: "plan-label", text: PLAN_TEXT.resets }),
+          h("span", { class: "plan-credits", text: credits }),
+        ),
+      ),
+    );
   }
 }
