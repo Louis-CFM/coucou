@@ -20,6 +20,7 @@ mod island;
 mod local_chat;
 mod log;
 mod mail;
+mod music;
 mod net;
 mod notes;
 mod openai_compat;
@@ -1045,6 +1046,8 @@ pub fn run() {
             update::update_dismiss,
             update::update_install,
             update::update_open_page,
+            music::music_now,
+            music::music_control,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1089,6 +1092,7 @@ pub fn run() {
             spotify::sync(&handle, &loaded.active_integrations);
             // WhatsApp (experimental): nothing runs unless it is turned on and its pill is active.
             whatsapp::start(&handle, &loaded.active_integrations);
+            music::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
