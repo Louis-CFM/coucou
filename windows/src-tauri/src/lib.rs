@@ -538,18 +538,35 @@ async fn chat_send(
     query: String,
     context: Option<ChatContext>,
     mail: Option<bool>,
+    text_only: Option<bool>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
     // The chat's Mail switch: the latest Outlook messages ride under the request, and the
     // system prompt says how to write a plan (mail/plan.rs) that runs only after a click.
-    if mail == Some(true) {
-        let query = mail::decorate(&query).await;
-        mail::MAIL_TURN.store(true, std::sync::atomic::Ordering::Relaxed);
-        let reply = chat::send(&app, &chat, &settings, query, context).await;
-        mail::MAIL_TURN.store(false, std::sync::atomic::Ordering::Relaxed);
-        return reply;
+    let with_mail = mail == Some(true);
+    let query = if with_mail { mail::decorate(&query).await } else { query };
+    mail::MAIL_TURN.store(with_mail, std::sync::atomic::Ordering::Relaxed);
+    let result = chat::send(&app, &chat, &settings, query, context, text_only.unwrap_or(false)).await;
+    mail::MAIL_TURN.store(false, std::sync::atomic::Ordering::Relaxed);
+    // A model that refused a picture reads text only: remembered, so the island
+    // asks first next time instead of spending a request.
+    if matches!(&result, Err(e) if e == chat::IMAGES_UNSUPPORTED) {
+        let who = format!("{}/{}", settings.chat_provider, chat::model_for(&settings, &settings.chat_provider));
+        let updated = {
+            let mut s = shared.settings.lock().unwrap();
+            (!s.text_only_models.contains(&who)).then(|| {
+                s.text_only_models.push(who);
+                s.clone()
+            })
+        };
+        if let Some(s) = updated {
+            if let Err(err) = settings::save(&s) {
+                log::line(format!("could not save settings: {err}"));
+            }
+            let _ = app.emit("settings-changed", s);
+        }
     }
-    chat::send(&app, &chat, &settings, query, context).await
+    result
 }
 
 /// The models a provider offers, for the picker in the chat view. Only asked
