@@ -487,7 +487,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
           ? t(STRINGS.placeholderNext)
           : named
             ? `Ask ${named} anything…`
-            : t(STRINGS.placeholderFirst); (feat(windows): name Mochi and each coloured Mochi)
+            : t(STRINGS.placeholderFirst);
       input.disabled = sending;
       mic.disabled = sending;
     },

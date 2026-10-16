@@ -1542,7 +1542,7 @@ function withLayer(ctx: Ctx, alpha: number, fn: (c: Ctx) => void) {
 
 /** Glasses, bow, scarf and the skins (pumpkin included) are on the face: behind the head once it has turned away. */
 const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", ...(Object.keys(SKIN_BODY) as Outfit[])]);
-const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat", ...SVG_OUTFITS]); (feat(windows): seven hats drawn from SVG in the wardrobe)
+const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat", ...SVG_OUTFITS]);
 
 export interface OutfitState {
   /** 0 = gone, 1 = fully on. Animated by the engine. */
@@ -1656,6 +1656,49 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
     }
   });
   ctx.restore();
+}
+
+// ── Room for an outfit (the minis wear their outfits too) ─────────────────────
+
+const reachCache = new Map<Outfit, number>();
+
+/**
+ * How far above the body centre `outfit` reaches, at rest, in R. Measured once
+ * per outfit by drawing it and finding its top row.
+ */
+export function outfitReach(outfit: Outfit): number {
+  let reach = reachCache.get(outfit);
+  if (reach == null) {
+    const R = 40;
+    const S = R * 8;
+    const H = makeHead(R);
+    reach = H.ry / R;
+    const c = document.createElement("canvas");
+    c.width = S;
+    c.height = S;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    if (ctx) {
+      ctx.translate(S / 2, S / 2);
+      const st = { presence: 1, morph: 0 };
+      drawOutfitBehind(ctx, outfit, H, st);
+      drawOutfitFront(ctx, outfit, H, st);
+      const px = ctx.getImageData(0, 0, S, S / 2).data;
+      const top = px.findIndex((v, i) => i % 4 === 3 && v > 8);
+      if (top >= 0) reach = Math.max(reach, (S / 2 - Math.floor(top / 4 / S)) / R);
+    }
+    reachCache.set(outfit, reach);
+  }
+  return reach;
+}
+
+/**
+ * The scale (about the top of the head) that keeps an outfit reaching `reach`
+ * within `room`, both above the body centre in R; `headTop` is the body's ry.
+ * 1 when it already fits: only a Mochi with no room above it shrinks its hat.
+ */
+export function outfitFit(reach: number, headTop: number, room: number): number {
+  if (reach <= room) return 1;
+  return Math.min(1, Math.max(0, (room - headTop) / (reach - headTop)));
 }
 
 // ── Wardrobe icons ────────────────────────────────────────────────────────────

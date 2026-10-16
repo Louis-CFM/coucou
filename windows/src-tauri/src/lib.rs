@@ -939,7 +939,14 @@ fn open_settings_window(app: AppHandle, page: Option<String>) {
 
 pub fn run() {
     platform::prepare_environment();
-    let loaded = settings::load();
+    let mut loaded = settings::load();
+    // Each Mochi's own look (wardrobe-looks.json); on the first launch with it
+    // the main Mochi's is the outfit every Mochi wore until then.
+    if settings::load_looks(&mut loaded) {
+        if let Err(err) = settings::save(&loaded) {
+            log::line(format!("could not save settings: {err}"));
+        }
+    }
     i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
 

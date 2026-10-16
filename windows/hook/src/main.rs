@@ -141,11 +141,7 @@ fn main() {
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-<<<<<<< HEAD
-    let Some(event) = prepare(&raw, &args, &env, &cwd, now_ms) else {
-=======
-    let Some(event) = prepare(&raw, &args, &env, &cwd, &claude_session_name) else {
->>>>>>> 1c1ca5c (Name session pills after the session)
+    let Some(event) = prepare(&raw, &args, &env, &cwd, now_ms, &claude_session_name) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -217,12 +213,8 @@ fn print(line: Option<String>) {
 
 /// The payload to forward, from the raw stdin bytes. `env` reads an environment
 /// variable and `cwd` is the working directory, so tests stay pure.
-<<<<<<< HEAD
-fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str, now_ms: u64) -> Option<Event> {
-=======
-fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str,
+fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str, now_ms: u64,
            names: &dyn Fn(&str) -> Option<String>) -> Option<Event> {
->>>>>>> 1c1ca5c (Name session pills after the session)
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     if headless(env) {
@@ -492,11 +484,7 @@ mod tests {
 
     fn run(raw: &str, agent: &str, event: &str) -> (Value, Event) {
         let args = Args { agent: agent.into(), event: event.into() };
-<<<<<<< HEAD
-        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", 1234).expect("forwarded");
-=======
-        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", &|_| None).expect("forwarded");
->>>>>>> 1c1ca5c (Name session pills after the session)
+        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", 1234, &|_| None).expect("forwarded");
         let v = serde_json::from_str(ev.line.trim_end()).unwrap();
         (v, ev)
     }
@@ -506,11 +494,11 @@ mod tests {
         let args = Args { agent: "".into(), event: "SessionStart".into() };
         let names = |id: &str| (id == "s1").then(|| "coucou-mac".to_string());
         let raw = br#"{"session_id":"s1","hook_event_name":"SessionStart","cwd":"/home/me"}"#;
-        let ev = prepare(raw, &args, &env_of(&[("HOME", "/home/me")]), "/home/me", &names).unwrap();
+        let ev = prepare(raw, &args, &env_of(&[("HOME", "/home/me")]), "/home/me", 1234, &names).unwrap();
         let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
         assert_eq!(v["session_name"], "coucou-mac");
         assert_eq!(v["home"], "/home/me");
-        let ev = prepare(raw, &args, &|_| None, "/home/me", &|_| None).unwrap();
+        let ev = prepare(raw, &args, &|_| None, "/home/me", 1234, &|_| None).unwrap();
         let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
         assert!(v.get("session_name").is_none());
     }
@@ -532,7 +520,7 @@ mod tests {
     fn headless_runs_are_not_forwarded_unless_watched() {
         let raw = br#"{"hook_event_name":"Stop","session_id":"s"}"#;
         let args = Args { agent: String::new(), event: String::new() };
-        let run = |vars: &'static [(&'static str, &'static str)]| prepare(raw, &args, &env_of(vars), "/p", 0).is_some();
+        let run = |vars: &'static [(&'static str, &'static str)]| prepare(raw, &args, &env_of(vars), "/p", 0, &|_| None).is_some();
         assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli")]));
         assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-py")]));
         assert!(run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli"), ("COUCOU_WATCHED", "1")]));
@@ -661,20 +649,12 @@ mod tests {
     fn what_cannot_be_read_is_not_forwarded() {
         let args = Args { agent: "copilot".into(), event: "preToolUse".into() };
         for raw in ["", "not json", "[1,2]"] {
-<<<<<<< HEAD
-            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", 1234).is_none());
-=======
-            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", &|_| None).is_none());
->>>>>>> 1c1ca5c (Name session pills after the session)
+            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", 1234, &|_| None).is_none());
         }
         // A BOM is not a reason to drop the event.
         let mut bom = vec![0xEF, 0xBB, 0xBF];
         bom.extend_from_slice(br#"{"hook_event_name":"Stop"}"#);
-<<<<<<< HEAD
-        assert!(prepare(&bom, &args, &|_| None, "/", 1234).is_some());
-=======
-        assert!(prepare(&bom, &args, &|_| None, "/", &|_| None).is_some());
->>>>>>> 1c1ca5c (Name session pills after the session)
+        assert!(prepare(&bom, &args, &|_| None, "/", 1234, &|_| None).is_some());
     }
 
     #[test]

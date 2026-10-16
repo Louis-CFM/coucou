@@ -5206,50 +5206,6 @@
       "ru": "⚠ ошибка",
       "zh-Hans": "⚠ 失败"
     },
-    "Done": {
-      "zh-Hans": "完成",
-      "hi": "हो गया",
-      "es": "Listo",
-      "ar": "تم",
-      "fr": "Valider",
-      "bn": "হয়েছে",
-      "pt-BR": "Concluir",
-      "ru": "Готово",
-      "id": "Selesai"
-    },
-    "No detail available.": {
-      "zh-Hans": "没有可用的详情。",
-      "hi": "कोई विवरण उपलब्ध नहीं।",
-      "es": "No hay detalles disponibles.",
-      "ar": "لا توجد تفاصيل.",
-      "fr": "Aucun détail disponible.",
-      "bn": "কোনো বিস্তারিত নেই।",
-      "pt-BR": "Nenhum detalhe disponível.",
-      "ru": "Подробностей нет.",
-      "id": "Tidak ada detail."
-    },
-    "Sending by email isn't in this version.": {
-      "zh-Hans": "此版本暂不支持通过邮件发送。",
-      "hi": "ईमेल से भेजना इस संस्करण में नहीं है।",
-      "es": "El envío por correo no está en esta versión.",
-      "ar": "الإرسال بالبريد الإلكتروني غير متاح في هذا الإصدار.",
-      "fr": "L'envoi par e-mail n'est pas dans cette version.",
-      "bn": "ইমেলে পাঠানো এই সংস্করণে নেই।",
-      "pt-BR": "O envio por e-mail não está nesta versão.",
-      "ru": "Отправки по почте в этой версии нет.",
-      "id": "Mengirim lewat email belum ada di versi ini."
-    },
-    "Session stopped on an error.": {
-      "zh-Hans": "会话因错误而停止。",
-      "hi": "सत्र एक त्रुटि पर रुक गया।",
-      "es": "La sesión se detuvo por un error.",
-      "ar": "توقفت الجلسة بسبب خطأ.",
-      "fr": "La session s'est arrêtée sur une erreur.",
-      "bn": "একটি ত্রুটিতে সেশন থেমে গেছে।",
-      "pt-BR": "A sessão parou por um erro.",
-      "ru": "Сессия остановилась из-за ошибки.",
-      "id": "Sesi berhenti karena galat."
-    },
     "Bee": {
       "zh-Hans": "蜜蜂",
       "hi": "मधुमक्खी",
@@ -5259,7 +5215,8 @@
       "bn": "মৌমাছি",
       "pt-BR": "Abelha",
       "ru": "Пчела",
-      "id": "Lebah"
+      "id": "Lebah",
+      "cs": "Včela"
     },
     "Frog": {
       "zh-Hans": "青蛙",
@@ -5270,7 +5227,8 @@
       "bn": "ব্যাঙ",
       "pt-BR": "Sapo",
       "ru": "Лягушка",
-      "id": "Katak"
+      "id": "Katak",
+      "cs": "Žába"
     },
     "Ghost": {
       "zh-Hans": "幽灵",
@@ -5281,7 +5239,8 @@
       "bn": "ভূত",
       "pt-BR": "Fantasma",
       "ru": "Привидение",
-      "id": "Hantu"
+      "id": "Hantu",
+      "cs": "Duch"
     },
     "Ladybug": {
       "zh-Hans": "瓢虫",
@@ -5292,7 +5251,8 @@
       "bn": "লেডিবাগ",
       "pt-BR": "Joaninha",
       "ru": "Божья коровка",
-      "id": "Kepik"
+      "id": "Kepik",
+      "cs": "Beruška"
     },
     "Panda": {
       "zh-Hans": "熊猫",
@@ -5303,7 +5263,8 @@
       "bn": "পান্ডা",
       "pt-BR": "Panda",
       "ru": "Панда",
-      "id": "Panda"
+      "id": "Panda",
+      "cs": "Panda"
     },
     "Robot": {
       "zh-Hans": "机器人",
@@ -5314,7 +5275,8 @@
       "bn": "রোবট",
       "pt-BR": "Robô",
       "ru": "Робот",
-      "id": "Robot"
+      "id": "Robot",
+      "cs": "Robot"
     },
     "Strawberry": {
       "zh-Hans": "草莓",
@@ -5325,7 +5287,8 @@
       "bn": "স্ট্রবেরি",
       "pt-BR": "Morango",
       "ru": "Клубника",
-      "id": "Stroberi"
+      "id": "Stroberi",
+      "cs": "Jahoda"
     },
     "Cat ears": {
       "zh-Hans": "猫耳朵",
@@ -5336,7 +5299,8 @@
       "bn": "বিড়ালের কান",
       "pt-BR": "Orelhas de gato",
       "ru": "Кошачьи ушки",
-      "id": "Telinga kucing"
+      "id": "Telinga kucing",
+      "cs": "Kočičí uši"
     },
     "Chef hat": {
       "zh-Hans": "厨师帽",
@@ -5347,7 +5311,8 @@
       "bn": "শেফের টুপি",
       "pt-BR": "Chapéu de chef",
       "ru": "Поварской колпак",
-      "id": "Topi koki"
+      "id": "Topi koki",
+      "cs": "Kuchařská čepice"
     },
     "Cowboy hat": {
       "zh-Hans": "牛仔帽",
@@ -5358,7 +5323,8 @@
       "bn": "কাউবয় টুপি",
       "pt-BR": "Chapéu de caubói",
       "ru": "Ковбойская шляпа",
-      "id": "Topi koboi"
+      "id": "Topi koboi",
+      "cs": "Kovbojský klobouk"
     },
     "Graduation cap": {
       "zh-Hans": "学位帽",
@@ -5369,7 +5335,8 @@
       "bn": "স্নাতক টুপি",
       "pt-BR": "Capelo",
       "ru": "Выпускная шапочка",
-      "id": "Topi wisuda"
+      "id": "Topi wisuda",
+      "cs": "Promoční čepice"
     },
     "Sprout": {
       "zh-Hans": "嫩芽",
@@ -5380,7 +5347,8 @@
       "bn": "অঙ্কুর",
       "pt-BR": "Broto",
       "ru": "Росток",
-      "id": "Tunas"
+      "id": "Tunas",
+      "cs": "Výhonek"
     },
     "Straw hat": {
       "zh-Hans": "草帽",
@@ -5391,7 +5359,8 @@
       "bn": "খড়ের টুপি",
       "pt-BR": "Chapéu de palha",
       "ru": "Соломенная шляпа",
-      "id": "Topi jerami"
+      "id": "Topi jerami",
+      "cs": "Slaměný klobouk"
     },
     "Top hat": {
       "zh-Hans": "高礼帽",
@@ -5402,7 +5371,56 @@
       "bn": "টপ হ্যাট",
       "pt-BR": "Cartola",
       "ru": "Цилиндр",
-      "id": "Topi tinggi"
+      "id": "Topi tinggi",
+      "cs": "Válec"
+    },
+    "Each Mochi has its own outfit": {
+      "zh-Hans": "每个 Mochi 都有自己的装扮",
+      "hi": "हर Mochi का अपना पहनावा",
+      "es": "Cada Mochi tiene su propio atuendo",
+      "ar": "لكل Mochi زيّه الخاص",
+      "fr": "Chaque Mochi a sa propre tenue",
+      "bn": "প্রতিটি Mochi-র নিজস্ব পোশাক",
+      "pt-BR": "Cada Mochi tem sua própria roupa",
+      "ru": "У каждого Mochi свой наряд",
+      "id": "Setiap Mochi punya pakaiannya sendiri",
+      "cs": "Každý Mochi má vlastní obleček"
+    },
+    "Same outfit for every Mochi": {
+      "zh-Hans": "所有 Mochi 使用同一套装扮",
+      "hi": "हर Mochi के लिए एक ही पहनावा",
+      "es": "El mismo atuendo para todos los Mochi",
+      "ar": "الزي نفسه لكل Mochi",
+      "fr": "La même tenue pour tous les Mochi",
+      "bn": "সব Mochi-র জন্য একই পোশাক",
+      "pt-BR": "A mesma roupa para todos os Mochi",
+      "ru": "Один наряд для всех Mochi",
+      "id": "Pakaian yang sama untuk semua Mochi",
+      "cs": "Stejný obleček pro všechny Mochi"
+    },
+    "Mochi's name": {
+      "cs": "Jméno Mochiho",
+      "ar": "اسم موتشي",
+      "bn": "মোচির নাম",
+      "es": "Nombre de Mochi",
+      "fr": "Nom de Mochi",
+      "hi": "मोची का नाम",
+      "id": "Nama Mochi",
+      "pt-BR": "Nome do Mochi",
+      "ru": "Имя Мочи",
+      "zh-Hans": "Mochi 的名字"
+    },
+    "What the chat calls itself, and the main Mochi's pill when nothing runs. Each coloured Mochi's name is under Integrations.": {
+      "cs": "Jak se chat jmenuje a jak se jmenuje pilulka hlavního Mochiho, když nic neběží. Jména barevných Mochi jsou v Integracích.",
+      "ar": "كيف يسمي الدردشة نفسها، واسم حبة موتشي الرئيسي عندما لا يعمل شيء. أسماء موتشي الملونة تحت عمليات الدمج.",
+      "bn": "চ্যাট নিজেকে যা বলে, এবং কিছু না চললে প্রধান মোচির পিলের নাম। রঙিন মোচিদের নাম ইন্টিগ্রেশনের নিচে।",
+      "es": "Cómo se llama el chat y la píldora del Mochi principal cuando nada corre. El nombre de cada Mochi de color está en Integraciones.",
+      "fr": "Comment le chat s'appelle et le nom de la pilule du Mochi principal quand rien ne tourne. Le nom de chaque Mochi coloré est dans Intégrations.",
+      "hi": "चैट खुद को क्या कहता है, और कुछ न चलने पर मुख्य मोची की पिल का नाम। रंगीन मोची के नाम इंटीग्रेशन में हैं।",
+      "id": "Apa yang chat sebut dirinya, dan nama pil Mochi utama saat tidak ada yang berjalan. Nama setiap Mochi berwarna ada di Integrations.",
+      "pt-BR": "Como o chat se chama e o nome da pílula do Mochi principal quando nada roda. O nome de cada Mochi colorido está em Integrações.",
+      "ru": "Как чат себя называет и имя пилюли главного Мочи, когда ничего не работает. Имена цветных Мочи — в разделе Интеграции.",
+      "zh-Hans": "聊天如何自称，以及空闲时主 Mochi 药丸的名称。每个彩色 Mochi 的名字在“集成”下。"
     }
   }
 }

@@ -57,6 +57,16 @@ pub struct Settings {
     /// season), "none" or an outfit id — the Mac's raw values. The island reads
     /// anything it doesn't know as "auto", so the value is stored as it comes.
     pub mochi_outfit: String,
+    /// "perMochi": each Mochi wears its own outfit (`mochi_looks`). "all":
+    /// every Mochi wears `mochi_outfit`. Anything else reads as "perMochi"
+    /// (src/mochi/wardrobe.ts parseWardrobeMode).
+    pub wardrobe_mode: String,
+    /// Each Mochi's own look, by Mochi: `MAIN_MOCHI` or a coloured Mochi's pill
+    /// id. Sent to the webviews with the rest, but kept in wardrobe-looks.json,
+    /// never in settings.json (see `load_looks`). Both sets are kept whatever
+    /// the mode, so switching back finds every Mochi dressed as before.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub mochi_looks: BTreeMap<String, MochiLook>,
     /// A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB"),
     /// picked in Settings → Active pills. Empty means the catalog's colours.
     /// Kept as it comes, like `mochi_outfit`: src/core/pill-colors.ts reads
@@ -121,6 +131,25 @@ pub struct Settings {
     pub mochi_names: BTreeMap<String, String>,
 }
 
+/// One Mochi's own look: an outfit as `mochi_outfit` stores it. Kept as it
+/// comes; the island reads what it doesn't know as "auto".
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct MochiLook {
+    pub outfit: String,
+}
+
+/// The main Mochi's key in `mochi_looks` (the coloured ones use their pill id).
+pub const MAIN_MOCHI: &str = "main";
+
+/// Gives the main Mochi the outfit every Mochi shares, unless he has his own.
+/// Returns true: the caller saves, so wardrobe-looks.json exists from then on.
+fn seed_looks(s: &mut Settings) -> bool {
+    let main = MochiLook { outfit: s.mochi_outfit.clone() };
+    s.mochi_looks.entry(MAIN_MOCHI.into()).or_insert(main);
+    true
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DesktopMochiPref {
@@ -171,6 +200,8 @@ impl Default for Settings {
             custom_url: String::new(),
             shortcuts: Default::default(),
             mochi_outfit: "auto".into(),
+            wardrobe_mode: "perMochi".into(),
+            mochi_looks: BTreeMap::new(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
             desktop_mochi: DesktopMochiPref::default(),
@@ -222,6 +253,10 @@ impl Settings {
         incoming.phone_services = self.phone_services.clone();
         incoming.phone_relay = self.phone_relay;
         incoming.phone_relay_url = self.phone_relay_url.clone();
+        // A page that never had the Mochis' own looks must not wipe them.
+        if incoming.mochi_looks.is_empty() {
+            incoming.mochi_looks = self.mochi_looks.clone();
+        }
         incoming
     }
 }
@@ -236,14 +271,71 @@ fn settings_path() -> PathBuf {
     config_dir().join("settings.json")
 }
 
+/// Each Mochi's own look (`Settings::mochi_looks`), apart from the settings
+/// the window shows.
+fn looks_path() -> PathBuf {
+    config_dir().join("wardrobe-looks.json")
+}
+
 pub fn load() -> Settings {
     load_from(&settings_path())
 }
 
+/// Writes settings.json, then wardrobe-looks.json: the first error is
+/// returned, but one file failing never keeps the other from being written.
 pub fn save(settings: &Settings) -> std::io::Result<()> {
     let dir = config_dir();
     crate::platform::ensure_private_dir(&dir)?;
-    save_to(&settings_path(), settings)
+    let main = save_to(&settings_path(), settings);
+    let looks = save_looks_to(&looks_path(), &settings.mochi_looks);
+    main.and(looks)
+}
+
+/// Reads each Mochi's own look from wardrobe-looks.json into `s`, at launch.
+/// Returns true when there was none to read: the first launch with it, or a
+/// file that could not be read or used (copied aside first, or else left as
+/// it is: no save writes over it, see `protect`). The main Mochi then starts
+/// in the outfit settings.json gives every Mochi, and the caller saves.
+pub fn load_looks(s: &mut Settings) -> bool {
+    load_looks_from(&looks_path(), s)
+}
+
+fn load_looks_from(path: &Path, s: &mut Settings) -> bool {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(err) if err.kind() == ErrorKind::NotFound => return seed_looks(s),
+        Err(err) => {
+            note(format!("can't read {}: {err}", path.display()));
+            protect(path);
+            return seed_looks(s);
+        }
+    };
+    let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
+    if text.iter().all(u8::is_ascii_whitespace) {
+        return seed_looks(s);
+    }
+    match serde_json::from_slice::<BTreeMap<String, MochiLook>>(text) {
+        Ok(looks) => {
+            s.mochi_looks = looks;
+            false
+        }
+        Err(_) => {
+            match set_aside(path, "corrupt", &bytes) {
+                Ok(copy) => note(format!("{} is not usable, kept as {}", path.display(), copy.display())),
+                Err(err) => {
+                    note(format!("{} is not usable and could not be copied: {err}", path.display()));
+                    protect(path);
+                }
+            }
+            seed_looks(s)
+        }
+    }
+}
+
+/// `save`'s half for wardrobe-looks.json: the map as it is, by Mochi.
+fn save_looks_to(path: &Path, looks: &BTreeMap<String, MochiLook>) -> std::io::Result<()> {
+    let json = serde_json::to_vec_pretty(looks).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    write_atomic(path, &json)
 }
 
 /// How many copies `set_aside` can make within one second before it gives up.
@@ -442,11 +534,21 @@ fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
     file.sync_all()
 }
 
-/// `save`, for the file at `path`, whose directory already exists.
+/// `save`, for the file at `path`, whose directory already exists. Each
+/// Mochi's look is left out: it goes to wardrobe-looks.json.
 fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
+    let mut value = serde_json::to_value(settings).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    if let Value::Object(fields) = &mut value {
+        fields.remove("mochiLooks");
+    }
+    let json = serde_json::to_vec_pretty(&value).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    write_atomic(path, &json)
+}
+
+/// Writes `json` over the file at `path` in one go, never over one that could
+/// not be loaded and could not be copied aside (`keep_what_was_not_loaded`).
+fn write_atomic(path: &Path, json: &[u8]) -> std::io::Result<()> {
     keep_what_was_not_loaded(path)?;
-    let json = serde_json::to_vec_pretty(settings)
-        .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
 
     // A dotfiles setup can make settings.json a symlink: write to the file it
     // points at, so the link survives the rename below.
@@ -459,7 +561,7 @@ fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
     // power cut leaves the previous settings.json intact rather than half a file.
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     let written = std::fs::File::create(&temp)
-        .and_then(|mut file| write_whole(&mut file, &json))
+        .and_then(|mut file| write_whole(&mut file, json))
         .and_then(|()| std::fs::rename(&temp, path));
     if written.is_err() {
         let _ = std::fs::remove_file(&temp);
@@ -522,6 +624,7 @@ mod tests {
   "customUrl": "https://llm.example.com",
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
   "mochiOutfit": "witchHat",
+  "wardrobeMode": "all",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
@@ -1038,6 +1141,7 @@ mod tests {
                 "customUrl",
                 "shortcuts",
                 "mochiOutfit",
+                "wardrobeMode",
                 "pillColors",
                 "language",
                 "desktopMochi",
@@ -1094,6 +1198,81 @@ mod tests {
 
         assert!(save_to(&file, &Settings::default()).is_err());
         assert_eq!(std::fs::read(&file).unwrap(), CUSTOM.as_bytes());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── Each Mochi's own look (wardrobe-looks.json) ───────────────────────────
+
+    #[test]
+    fn the_first_launch_gives_the_shared_outfit_to_the_main_mochi_too() {
+        let (dir, file) = scratch("looks-first");
+        let looks = dir.join("wardrobe-looks.json");
+        let mut s = Settings { mochi_outfit: "crown".into(), ..Default::default() };
+        assert!(load_looks_from(&looks, &mut s));
+        let main = MochiLook { outfit: "crown".into() };
+        assert_eq!(s.mochi_looks.get(MAIN_MOCHI), Some(&main));
+        // The shared outfit stays what "all" mode wears.
+        assert_eq!(s.mochi_outfit, "crown");
+
+        // Saved apart: settings.json never holds them, the next launch reads them back.
+        s.mochi_looks.insert("integration_github".into(), MochiLook { outfit: "scarf".into() });
+        save_to(&file, &s).unwrap();
+        save_looks_to(&looks, &s.mochi_looks).unwrap();
+        let written: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+        assert!(written.get("mochiLooks").is_none());
+        let mut again = load_from(&file);
+        assert!(!load_looks_from(&looks, &mut again));
+        assert_eq!(again.mochi_looks, s.mochi_looks);
+        assert_eq!(names(&dir), ["settings.json", "wardrobe-looks.json"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn switching_modes_keeps_both_sets_of_looks() {
+        let (dir, file) = scratch("looks-modes");
+        let looks = dir.join("wardrobe-looks.json");
+        let mut s = Settings { mochi_outfit: "crown".into(), ..Default::default() };
+        s.mochi_looks.insert(MAIN_MOCHI.into(), MochiLook { outfit: "beanie".into() });
+        for mode in ["all", "perMochi", "all"] {
+            s.wardrobe_mode = mode.into();
+            save_to(&file, &s).unwrap();
+            save_looks_to(&looks, &s.mochi_looks).unwrap();
+            let mut back = load_from(&file);
+            load_looks_from(&looks, &mut back);
+            assert_eq!(back.wardrobe_mode, mode);
+            assert_eq!(back.mochi_outfit, "crown");
+            assert_eq!(back.mochi_looks, s.mochi_looks);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_corrupt_looks_file_is_kept_aside_before_anything_is_saved() {
+        let (dir, _) = scratch("looks-corrupt");
+        let looks = dir.join("wardrobe-looks.json");
+        let garbage = b"{ \"main\": { \"outfit\": ";
+        std::fs::write(&looks, garbage).unwrap();
+        let mut s = Settings { mochi_outfit: "scarf".into(), ..Default::default() };
+        assert!(load_looks_from(&looks, &mut s));
+        assert_eq!(s.mochi_looks.get(MAIN_MOCHI).map(|l| l.outfit.as_str()), Some("scarf"));
+        let copies: Vec<String> = names(&dir).into_iter().filter(|n| n.starts_with("wardrobe-looks.json.corrupt-")).collect();
+        assert_eq!(copies.len(), 1);
+        assert_eq!(std::fs::read(dir.join(&copies[0])).unwrap(), garbage);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_looks_file_that_cannot_be_read_is_never_written_over() {
+        // A directory squatting on the name cannot be read as a file.
+        let (dir, _) = scratch("looks-unread");
+        let looks = dir.join("wardrobe-looks.json");
+        std::fs::create_dir(&looks).unwrap();
+        std::fs::write(looks.join("keep"), b"x").unwrap();
+        let mut s = Settings::default();
+        assert!(load_looks_from(&looks, &mut s));
+        assert!(save_looks_to(&looks, &s.mochi_looks).is_err());
+        assert_eq!(std::fs::read(looks.join("keep")).unwrap(), b"x");
+        not_loaded().retain(|p| p != &looks);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -1685,7 +1685,7 @@ mod tests {
         let ts = include_str!("../../../src/mochi/wardrobe.ts");
         let body = ts.split("export const OUTFIT_SELECTIONS = [").nth(1).unwrap().split("] as const").next().unwrap();
         let ids: Vec<&str> = body.split('"').skip(1).step_by(2).collect();
-        // The Windows and Linux island has more (its skins and SVG hats); the phone gets "auto" for those (island/phone-link.ts). (feat(windows): seven hats drawn from SVG in the wardrobe)
+        // The Windows and Linux island has more (its skins and SVG hats); the phone gets "auto" for those (island/phone-link.ts).
         for choice in OUTFIT_CHOICES {
             assert!(ids.contains(&choice), "{choice}");
         }

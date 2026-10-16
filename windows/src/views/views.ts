@@ -10,7 +10,7 @@ import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildMail, buildUpload, buildUploading } from "./upload";
-import { musicPillControls, renderIntegrationCard, type IntegrationCardHooks } from "./integrations"; (feat(windows): a Music pill for whatever plays in the media controls)
+import { musicPillControls, renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import { providerDef } from "../core/providers";
@@ -61,6 +61,8 @@ export interface ViewActions {
   chooseOutfit(selection: OutfitSelection): void;
   /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
   previewOutfit(outfit: Outfit | null): void;
+  /** Right-click on a pill: focuses its Mochi and opens the wardrobe for it. */
+  wardrobeFor(id: string): void;
 }
 
 export interface ViewHost {
@@ -389,7 +391,7 @@ function buildOverview(actions: ViewActions): ViewHost {
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
           State.pillLabel(task),
-          task.id === MUSIC_ID ? JSON.stringify(State.nowPlaying) : "", (feat(windows): a Music pill for whatever plays in the media controls)
+          task.id === MUSIC_ID ? JSON.stringify(State.nowPlaying) : "",
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
@@ -459,6 +461,11 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
     pill.classList.add("music");
     pill.append(musicPillControls());
   }
+  // Right-click: this pill's Mochi in its wardrobe (each Mochi has its own look).
+  pill.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    actions.wardrobeFor(task.id);
+  });
   pill.style.borderColor = `${task.color}24`;
   pill.addEventListener("mouseenter", () => {
     pill.style.background = `${task.color}2e`;

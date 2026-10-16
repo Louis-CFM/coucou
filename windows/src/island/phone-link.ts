@@ -10,14 +10,14 @@ import { Bridge, onEvent, type PhoneLinkPlan, type PhoneLinkUsage, type PhoneLin
 import { fileName, parseDiffStep, type FileDiff } from "../core/diff";
 import type { PlanUsage, CodexPlanUsage } from "../core/plan";
 import { State } from "../core/state";
-import { parseOutfit } from "../mochi/wardrobe";
+import { MAIN_MOCHI, lookOf } from "../mochi/wardrobe";
 import { dropPendingCard } from "./hooks";
 import { serviceCards } from "./phone-services";
 import type { Island } from "./island";
 
 /**
  * The outfits the phone draws (hub.rs OUTFIT_CHOICES). The Windows and Linux
- * skins and SVG hats (frog, topHat...) are not among them: the phone gets "auto" for those. (feat(windows): seven hats drawn from SVG in the wardrobe)
+ * skins and SVG hats (frog, topHat...) are not among them: the phone gets "auto" for those.
  */
 const PHONE_OUTFITS: readonly string[] = [
   "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
@@ -177,7 +177,9 @@ export function registerPhoneLink(island: Island): () => void {
   };
 
   const publishOutfit = () => {
-    const worn = parseOutfit(State.settings.mochiOutfit);
+    // The main Mochi's own look (or the shared one in "all" mode); the skins and
+    // SVG hats the phone does not draw go as "auto".
+    const worn = lookOf(State.settings, MAIN_MOCHI).outfit;
     const outfit = PHONE_OUTFITS.includes(worn) ? worn : "auto";
     if (outfit === lastOutfit) return;
     lastOutfit = outfit;

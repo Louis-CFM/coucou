@@ -22,7 +22,7 @@ import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
-import { mochiSection, nameInput, type ExtrasContext } from "./extras";
+import { extrasSettingsChanged, mochiSection, nameInput, type ExtrasContext } from "./extras";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -45,17 +45,17 @@ async function save() {
   await Bridge.saveSettings(settings);
 }
 
-/** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */
-function pickColor(next: Record<string, string>) {
-  settings.pillColors = next;
-  void save();
-}
-
 /** How extras.ts reads and saves the settings, which are replaced on every outside save. */
 const extras: ExtrasContext = {
   settings: () => settings,
   save: () => void save(),
 };
+
+/** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */
+function pickColor(next: Record<string, string>) {
+  settings.pillColors = next;
+  void save();
+}
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────
 
@@ -1069,7 +1069,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     // This coloured Mochi's name, then its keys.
     rows.append(
       h("div", { class: "row" },
-        h("label", { style: "min-width:104px", text: "Mochi's name" }),
+        h("label", { style: "min-width:104px", text: t("Mochi's name") }),
         nameInput(settings.mochiNames?.[def.id] ?? "", DEFAULT_MOCHI_NAMES[def.id] ?? def.name, (v) => {
           const names = { ...(settings.mochiNames ?? {}) };
           if (v) names[def.id] = v;
@@ -1577,6 +1577,7 @@ async function main() {
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
+    extrasSettingsChanged();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
     applyLanguage();
