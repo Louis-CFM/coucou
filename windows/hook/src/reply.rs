@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and OpenCode. Any decision for
+/// another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "opencode")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -48,6 +48,17 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
                 None if agent == "copilot" => Some(json!({ "permissionDecision": "ask" }).to_string()),
                 None => None,
             }
+        }
+        // OpenCode's plugin sets `output.status` on its `permission.ask` hook, so
+        // the same bare word works here. Silence leaves that status on "ask" and
+        // OpenCode shows its own prompt — the fail-open the house rules want.
+        "opencode" => {
+            let word = match decision.map(str::trim) {
+                Some("allow" | "always") => "allow",
+                Some("deny") => "deny",
+                _ => return None,
+            };
+            Some(json!({ "status": word }).to_string())
         }
         // Claude Code and Codex share the documented hookSpecificOutput. Only
         // Claude Code asks questions.
@@ -217,6 +228,21 @@ mod tests {
         }
         // Hermes approvals are not supported: its decisions are never relayed.
         assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None), None);
+    }
+
+    #[test]
+    fn opencode_gets_the_status_its_ask_hook_sets() {
+        // The plugin parses this exact line and copies it onto output.status.
+        assert_eq!(stdout("opencode", "PermissionRequest", Some("allow"), None).unwrap(), r#"{"status":"allow"}"#);
+        assert_eq!(stdout("opencode", "PermissionRequest", Some("always"), None).unwrap(), r#"{"status":"allow"}"#);
+        assert_eq!(stdout("opencode", "PermissionRequest", Some("deny"), None).unwrap(), r#"{"status":"deny"}"#);
+        // Fail-open: silence leaves OpenCode's own prompt up. Never an implicit allow.
+        assert_eq!(stdout("opencode", "PermissionRequest", None, None), None);
+        assert_eq!(stdout("opencode", "PermissionRequest", Some("maybe"), None), None);
+        // The fire-and-forget forwards say nothing at all, as before.
+        for event in ["SessionStart", "PreToolUse", "PostToolUse", "Stop"] {
+            assert_eq!(stdout("opencode", event, None, None), None, "{event}");
+        }
     }
 
     #[test]

@@ -242,7 +242,7 @@ test("an agent's pill goes away when its session ends, or 5.2 s after it stops",
 });
 
 test("an agent's permission request is declined, never shown as Claude Code's", () => {
-  for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
+  for (const agent of ["gemini", "antigravity", "cursor", "amp", "hermes", "my-tool"]) {
     calls.length = 0;
     hook({ hook_event_name: "PermissionRequest", request_id: "r1", coucou_agent: agent, tool_name: "Bash" });
     assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], agent);
@@ -251,8 +251,8 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   }
 });
 
-test("Codex, Copilot CLI and Muse Code get the card on their own pill", () => {
-  for (const agent of ["codex", "copilot", "muse"]) {
+test("Codex, Copilot CLI, Muse Code and OpenCode get the card on their own pill", () => {
+  for (const agent of ["codex", "copilot", "muse", "opencode"]) {
     State.pendingApproval = null;
     State.focusId = CLAUDE;
     calls.length = 0;
