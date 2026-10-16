@@ -5,16 +5,19 @@
 // answer: Rust sends `chat-delta` events with the text visible so far. The
 // model name above the text field opens the picker: provider chips, then the
 // models of the chosen provider, asked for only once it is picked.
+// The "Create" chip lists the media models saved in Settings (images, video,
+// speech, 3D): their answer is a file, shown as a media card.
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
+import { generatingCard, mediaCard, resetProgress } from "./media";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  activeModel, creators, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
-import { State, type ChatMessage } from "../core/state";
+import { State, type ChatMessage, type ModelOutput } from "../core/state";
 import type { ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
 
@@ -40,8 +43,19 @@ function bubble(message: ChatMessage): HTMLElement {
     );
   }
   const reply = h("div", { class: "reply" });
-  renderMarkdown(reply, message.content);
-  return h("div", { class: "chat-row" }, reply);
+  if (message.content) renderMarkdown(reply, message.content);
+  return h(
+    "div",
+    { class: "chat-row" },
+    h(
+      "div",
+      { class: "answer" },
+      message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
+      // A media model may answer with files only.
+      message.content ? reply : null,
+      ...(message.media ?? []).map(mediaCard),
+    ),
+  );
 }
 
 function typingDots(): HTMLElement {
@@ -61,6 +75,28 @@ function contextChip(label: string): HTMLElement {
 
 function saveSettings() {
   void Bridge.saveSettings(State.settings);
+}
+
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp)$/i;
+
+/** The saved media model in use on the "Create" chip, if that is the provider. */
+function creator() {
+  if (State.settings.chatProvider !== "media") return null;
+  return creators(State.settings).find((m) => m.id === activeModel(State.settings)) ?? null;
+}
+
+/** What the next answer will be: text, or a file of this kind. */
+function making(): ModelOutput | "text" {
+  return creator()?.output ?? "text";
+}
+
+/** The model button's words: a media model by its name, any other by its id. */
+function modelLabel(): string {
+  if (State.settings.chatProvider === "media") {
+    const m = creator();
+    return m ? `${m.label || m.model} · ${m.output}` : t(STRINGS.noModel);
+  }
+  return activeModel(State.settings) || t(STRINGS.noModel);
 }
 
 // ── Model picker ──────────────────────────────────────────────────────────────
@@ -146,6 +182,22 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
+    // The media models are the ones saved in Settings: nothing to ask anyone.
+    if (p.id === "media") {
+      const saved = creators(State.settings).map((m) => ({ id: m.id, label: `${m.label || m.model} · ${m.output}` }));
+      if (saved.length === 0) {
+        status("No media model yet: add one in Settings → Media and voice models.", true);
+        return;
+      }
+      const keep = pickModel(p, saved.map((m) => m.id), activeModel(State.settings));
+      if (keep && keep !== activeModel(State.settings)) {
+        State.settings = withModel(State.settings, p.id, keep);
+        saveSettings();
+        onChange();
+      }
+      drawModels(p, saved);
+      return;
+    }
     const cached = p.urlField ? undefined : cache.get(p.id);
     if (cached) {
       drawModels(p, cached);
@@ -238,11 +290,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   let renderedCount = -1;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
+  /** What the request in flight makes; anything but text shows the "making it" card. */
+  let inFlight: ModelOutput | "text" = "text";
 
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    modelName.textContent = modelLabel();
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -265,11 +319,14 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   });
 
   async function submit() {
-    const query = input.value.trim();
+    // A picture-to-3D model needs no words: the picture is the prompt.
+    const query = input.value.trim() || (making() === "3d" ? "3D model" : "");
     if (!query || sending) return;
     if (picker.isOpen) picker.close();
     input.value = "";
     sending = true;
+    inFlight = making();
+    resetProgress();
     drawModelButton();
     Sound.play("send");
 
@@ -279,12 +336,16 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     onHeightChange();
 
     const file = State.droppedFile;
+    // A picture-to-3D model works from the dropped picture on every turn.
+    const pictureTo3d = inFlight === "3d" && !!file && IMAGE_FILE.test(file.path);
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+      (State.chatHistory.length === 1 || pictureTo3d) && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
       const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      State.chatHistory.push({
+        id: nextId++, role: "assistant", content: reply.text, notice: reply.notice ?? null, media: reply.media ?? [],
+      });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
@@ -333,7 +394,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         renderedCount = count;
         clear(log);
         for (const m of State.chatHistory) log.append(bubble(m));
-        if (thinking) log.append(typingDots());
+        if (thinking) log.append(inFlight === "text" ? typingDots() : generatingCard(inFlight));
         log.scrollTop = log.scrollHeight;
       }
 
@@ -341,7 +402,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      const hints: Record<string, string> = {
+        image: "Describe an image…",
+        video: "Describe a video…",
+        audio: "Text to speak…",
+        "3d": State.droppedFile ? "Press Enter to make it 3D…" : "Drop a picture to make it 3D…",
+      };
+      const output = making();
+      input.placeholder =
+        output !== "text"
+          ? hints[output] ?? ""
+          : t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
       input.disabled = sending;
     },
     focus() {

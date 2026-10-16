@@ -99,6 +99,38 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// Screenshot roam without the scan cutscene: a quick sweep, then capture.
     pub quick_scan: bool,
+    /// Models that make something other than chat text: images, video,
+    /// speech or 3D (media.rs). Each has its endpoint; its key is per host
+    /// (secrets::endpoint_key).
+    pub models: Vec<ModelEntry>,
+}
+
+/// A model on an OpenAI-compatible endpoint that makes something.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ModelEntry {
+    pub id: String,
+    pub label: String,
+    /// "openai" for any OpenAI-compatible endpoint.
+    pub kind: String,
+    pub model: String,
+    pub endpoint: String,
+    /// Whether it reads images (unused by media models, kept as it comes).
+    pub vision: Option<bool>,
+    /// What it makes: "image", "video", "audio" or "3d". Empty or "text"
+    /// makes nothing media.rs can use (see `is_text`).
+    pub output: String,
+    /// Text-to-speech voice, for "audio" models. Empty = the model's default.
+    pub voice: String,
+    /// Output detail for "3d" models that offer it (TRELLIS 2: "low",
+    /// "medium" or "high"). Empty = the model's default.
+    pub detail: String,
+}
+
+impl ModelEntry {
+    pub fn is_text(&self) -> bool {
+        matches!(self.output.as_str(), "" | "text")
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -165,6 +197,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             quick_scan: false,
+            models: Vec::new(),
         }
     }
 }
@@ -452,7 +485,9 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "quickScan": true
+  "quickScan": true,
+  "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
+    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }]
 }"##;
 
     fn custom() -> Value {
@@ -961,6 +996,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "quickScan",
+                "models",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

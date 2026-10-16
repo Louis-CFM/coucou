@@ -52,6 +52,10 @@ cpal = "0.18"
 # Already in the tree through Tauri: Linux crops a picked screenshot area out of
 # the desktop tool's PNG.
 png = "0.17"
+# Both already in the tree through Tauri: generated media arrives as base64,
+# and Download needs the real Downloads folder (it can be moved on Windows).
+base64 = "0.22"
+dirs = "7"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

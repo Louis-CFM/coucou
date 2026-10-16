@@ -63,6 +63,35 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made, shown above it (e.g. the attachment was left out). */
+  notice?: string | null;
+  /** Images, video, speech or 3D a media model made. */
+  media?: MediaFile[];
+}
+
+/** A generated file in the app's media folder, by bare name. */
+export interface MediaFile {
+  name: string;
+  kind: "image" | "video" | "audio" | "3d";
+}
+
+/** What a saved media model makes. */
+export type ModelOutput = "image" | "video" | "audio" | "3d";
+
+/** A model on an OpenAI-compatible endpoint that makes something (media.rs). */
+export interface ModelEntry {
+  id: string;
+  label: string;
+  /** "openai" for any OpenAI-compatible endpoint. */
+  kind: string;
+  model: string;
+  endpoint: string;
+  vision: boolean | null;
+  output: ModelOutput;
+  /** Text-to-speech voice for "audio" models; empty = the model's default. */
+  voice: string;
+  /** Output detail for "3d" models that offer it (TRELLIS 2: low/medium/high). */
+  detail: string;
 }
 
 export type PromptContext =
@@ -164,6 +193,8 @@ export interface Settings {
   };
   /** Screenshot roam without the scan cutscene. */
   quickScan: boolean;
+  /** Media models (image, video, speech, 3D). */
+  models: ModelEntry[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -193,6 +224,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pillColors: {},
   language: "",
   quickScan: false,
+  models: [],
 };
 
 type Listener = () => void;
