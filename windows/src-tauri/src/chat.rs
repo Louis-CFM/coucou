@@ -135,6 +135,40 @@ Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inl
     )
 }
 
+/// A text or code file's contents and its Markdown language, if it is small
+/// enough to show and really text: the island's code card for a dropped file.
+pub fn read_text(path: &str) -> Option<(String, String)> {
+    if std::fs::metadata(path).ok()?.len() > 200_000 {
+        return None;
+    }
+    let text = std::fs::read_to_string(path).ok()?;
+    if text.contains('\0') {
+        return None;
+    }
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let lang = match ext.as_str() {
+        "rs" => "rust",
+        "py" => "python",
+        "js" | "mjs" | "cjs" => "javascript",
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" => "tsx",
+        "jsx" => "jsx",
+        "ps1" | "psm1" => "powershell",
+        "bat" | "cmd" => "batch",
+        "sh" | "bash" | "zsh" => "bash",
+        "cs" => "csharp",
+        "cpp" | "cc" | "cxx" | "hpp" | "hh" => "cpp",
+        "h" => "c",
+        "kt" | "kts" => "kotlin",
+        "rb" => "ruby",
+        "yml" => "yaml",
+        "md" => "markdown",
+        "txt" | "log" => "",
+        other => other,
+    };
+    Some((text, lang.to_string()))
+}
+
 /// The window context line, as ClaudeService.chat() writes it.
 pub fn window_line(app_name: &str, title: &str, url: Option<&str>) -> String {
     let mut text = format!("Context — App: {app_name}, Window: {title}");
@@ -190,7 +224,7 @@ fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
 
 /// True when `path` is a regular file directly inside `dir`, both resolved
 /// (no `..`, no symlink pointing out of it).
-fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
+pub(crate) fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
     let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else { return false };
     file.parent() == Some(dir.as_path())
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
@@ -386,5 +420,17 @@ mod tests {
             assert!(!is_inside(&inbox, &inbox.join("link.txt")));
         }
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn a_code_file_is_read_with_its_language() {
+        let dir = std::env::temp_dir().join(format!("coucou-read-text-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.rs"), "fn main() {}").unwrap();
+        std::fs::write(dir.join("blob.bin"), b"a\0b").unwrap();
+        assert_eq!(read_text(&dir.join("main.rs").to_string_lossy()), Some(("fn main() {}".into(), "rust".into())));
+        assert_eq!(read_text(&dir.join("blob.bin").to_string_lossy()), None);
+        assert_eq!(read_text(&dir.join("missing.txt").to_string_lossy()), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
