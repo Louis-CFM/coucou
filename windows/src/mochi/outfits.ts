@@ -811,9 +811,24 @@ function scarf(ctx: Ctx, H: Head) {
   ctx.fill();
 }
 
-// ── Pumpkin (the body colours come from the engine) ───────────────────────────
+// ── Full skins: pumpkin, frog, bee… (the body colours come from the engine) ───
 
-export const PUMPKIN_BODY: readonly [string, string] = ["#FFA94D", "#E8590C"];
+/** The body gradient (top, bottom) of the outfits that recolour all of Mochi. */
+export const SKIN_BODY: Partial<Record<Outfit, readonly [string, string]>> = {
+  pumpkin: ["#FFA94D", "#E8590C"],
+  frog: ["#8CE99A", "#2F9E44"],
+  bee: ["#FFE066", "#F59F00"],
+  strawberry: ["#FF6B7A", "#D6243A"],
+  robot: ["#DEE3E9", "#7D8794"],
+  ladybug: ["#F0453A", "#A61E14"],
+  panda: ["#FFFFFF", "#D3D6DC"],
+  ghost: ["#FBFDFF", "#B8CAEB"],
+};
+
+/** Mochi's eye colour on a skin that needs another (the panda's show on its dark patches). */
+export const SKIN_EYE_INK: Partial<Record<Outfit, string>> = {
+  panda: "#FAFAFC",
+};
 
 function pumpkin(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
   if (!simple) {
@@ -878,7 +893,251 @@ function pumpkin(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
   ctx.stroke();
 }
 
-// ── Bow (anchored in 3D, turns with the head) ─────────────────────────────────
+/** Clips to the body less a margin around each eye: a skin never draws on them. */
+function clipSkin(ctx: Ctx, H: Head, body: Path2D) {
+  ctx.clip(body);
+  const p = new Path2D();
+  p.rect(-H.rx * 4, -H.ry * 4, H.rx * 8, H.ry * 8);
+  for (const e of eyeFrames(H)) {
+    if (!e.visible) continue;
+    const rx = e.w * e.fx * 0.85;
+    p.moveTo(e.x + rx, e.y);
+    p.ellipse(e.x, e.y, rx, e.h * e.fy * 0.85, 0, 0, Math.PI * 2);
+  }
+  ctx.clip(p, "evenodd");
+}
+
+type Patch = readonly [y: number, lon: number, r: number];
+
+/** Round patches of the head surface (spots, seeds, rivets), in head units. */
+function patches(ctx: Ctx, H: Head, list: readonly Patch[], color: string) {
+  ctx.fillStyle = color;
+  for (const [y, lon, r] of list) {
+    if (proj(H, surf(y, lon)).z < 0.08) continue;
+    const pts: P3[] = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      pts.push(proj(H, surf(y + r * Math.sin(a), lon + (r * Math.cos(a)) / Math.max(0.3, ringR(y)))));
+    }
+    polyline(ctx, pts);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** A line around the body at height y (stripes, seams), cut at the silhouette. */
+function band(ctx: Ctx, H: Head, y: number, width: number, color: string, dy = 0) {
+  polyline(ctx, frontArc(H, y, 1).map((q) => ({ x: q.x, y: q.y + dy * H.R })));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = H.R * width;
+  ctx.stroke();
+}
+
+/** A stalk from the top of the head at `lon`, leaning `out` that way, with a round tip; returns the tip. */
+function antenna(ctx: Ctx, H: Head, lon: number, out: number, len: number, color: string, tipR: number): Pt {
+  const [bx, by, bz] = surf(0.93, lon);
+  const b = proj(H, [bx, by, bz]);
+  const c = proj(H, [bx, by + len * 0.8, bz]);
+  const t = proj(H, [bx + out * Math.sin(lon), by + len, bz]);
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.quadraticCurveTo(c.x, c.y, t.x, t.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = H.R * 0.05;
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(t.x, t.y, H.R * tipR, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  return t;
+}
+
+function frog(ctx: Ctx, H: Head, body: Path2D) {
+  ctx.save();
+  clipSkin(ctx, H, body);
+  patches(ctx, H, [[-0.02, -0.7, 0.13], [-0.02, 0.7, 0.13]], "rgba(255,140,170,0.7)");
+  ctx.restore();
+}
+
+/** The frog's eye bumps on top of the head, the far one first. The engine
+ *  draws Mochi's own eyes on them, so they still blink and emote. */
+export function frogBumps(H: Head): (P3 & { sd: number })[] {
+  return [-1, 1].map((sd) => {
+    const [x, , z] = surf(0.92, sd * 0.6);
+    return { ...proj(H, [x, 1.12, z]), sd };
+  }).sort((a, b) => a.z - b.z);
+}
+
+/** Mochi's eyes on the frog's bumps are this much smaller, to fit them. */
+export const FROG_EYE_SCALE = 0.72;
+
+/** Behind the body: the head's top hides their lower half. */
+function frogBumpsBack(ctx: Ctx, H: Head, simple: boolean) {
+  const r = H.R * 0.24;
+  for (const c of frogBumps(H)) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = rad(ctx, c.x - r * 0.3, c.y - r * 0.4, 0, r * 1.2, [[0, "#B2F2BB"], [1, "#37B24D"]]);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.strokeStyle = "rgba(20,80,30,0.35)";
+    ctx.lineWidth = H.R * 0.04;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    if (simple) continue;
+    ctx.beginPath();
+    ctx.arc(c.x - r * 0.35, c.y - r * 0.4, r * 0.22, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fill();
+  }
+}
+
+function bee(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
+  ctx.save();
+  clipSkin(ctx, H, body);
+  for (const y of simple ? [-0.3, -0.68] : [0.62, -0.3, -0.68]) band(ctx, H, y, 0.17, "#3B2A1A");
+  ctx.restore();
+  for (const sd of [-1, 1]) antenna(ctx, H, sd * 0.32, 0.3, 0.42, "#3B2A1A", 0.08);
+}
+
+/** The strawberry's seeds: staggered rows, none near the eyes. */
+const SEEDS: Patch[] = [];
+for (let i = 0; i < 5; i++) {
+  const y = 0.4 - i * 0.3;
+  for (let lon = -1.55 + (i % 2) * 0.22; lon < 1.6; lon += 0.45) {
+    if (Math.abs(y - 0.19) < 0.26 && Math.abs(Math.abs(lon) - 0.37) < 0.3) continue;
+    SEEDS.push([y, lon, 0.055]);
+  }
+}
+
+function strawberry(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
+  ctx.save();
+  clipSkin(ctx, H, body);
+  patches(ctx, H, SEEDS, "rgba(255,240,180,0.9)");
+  // the calyx: pointed leaves lying on top of the head
+  ctx.fillStyle = lin(ctx, 0, -H.ry, 0, -H.ry * 0.3, [[0, "#69DB7C"], [1, "#2B8A3E"]]);
+  for (let k = 0; k < 6; k++) {
+    const lon = (k / 6) * Math.PI * 2 + 0.26;
+    polyline(ctx, [proj(H, [0, 1, 0]), proj(H, surf(0.9, lon - 0.4)), proj(H, surf(0.62, lon)), proj(H, surf(0.9, lon + 0.4))]);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  const t = proj(H, [0, 1, 0]);
+  ctx.beginPath();
+  ctx.moveTo(t.x - H.R * 0.04, t.y);
+  ctx.quadraticCurveTo(t.x - H.R * 0.02, t.y - H.R * 0.16, t.x + H.R * 0.06, t.y - H.R * 0.22);
+  ctx.strokeStyle = "#2B8A3E";
+  ctx.lineWidth = H.R * (simple ? 0.08 : 0.06);
+  ctx.lineCap = "round";
+  ctx.stroke();
+}
+
+function robot(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
+  ctx.save();
+  clipSkin(ctx, H, body);
+  if (!simple) {
+    // brushed metal
+    for (let i = 0; i < 13; i++) band(ctx, H, -0.9 + i * 0.15, 0.025, i % 2 ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.05)");
+  }
+  // panel seam and its rivets
+  band(ctx, H, -0.25, 0.04, "rgba(40,48,60,0.55)");
+  band(ctx, H, -0.25, 0.03, "rgba(255,255,255,0.6)", 0.04);
+  const rivets = [-0.9, -0.3, 0.3, 0.9].map((lon): Patch => [-0.48, lon, 0.07]);
+  patches(ctx, H, rivets, "#5C6673");
+  if (!simple) patches(ctx, H, rivets.map(([y, lon]): Patch => [y + 0.02, lon - 0.02, 0.03]), "rgba(255,255,255,0.75)");
+  ctx.restore();
+  const t = antenna(ctx, H, 0, 0, 0.4, "#5C6673", 0.06);
+  const glow = H.R * (simple ? 0.1 : 0.2);
+  ctx.beginPath();
+  ctx.arc(t.x, t.y, glow, 0, Math.PI * 2);
+  ctx.fillStyle = rad(ctx, t.x, t.y, 0, glow, [[0, "#FFFFFF"], [0.35, "#66E8FF"], [1, "rgba(34,184,207,0)"]]);
+  ctx.fill();
+}
+
+function ladybug(ctx: Ctx, H: Head, body: Path2D, simple: boolean) {
+  ctx.save();
+  clipSkin(ctx, H, body);
+  const spots: Patch[] = [[0.66, -0.55, 0.17], [0.66, 0.55, 0.17], [-0.4, -0.62, 0.17], [-0.4, 0.62, 0.17], [-0.72, 0, 0.15]];
+  if (!simple) spots.push([-0.05, -1.2, 0.14], [-0.05, 1.2, 0.14]);
+  patches(ctx, H, spots, "#1A1412");
+  // the seam between the wing cases, from the top of the head
+  const seam: P3[] = [];
+  for (let i = 0; i <= 12; i++) {
+    const q = proj(H, surf(0.5 + (0.5 * i) / 12, 0));
+    if (q.z > 0) seam.push(q);
+  }
+  polyline(ctx, seam);
+  ctx.strokeStyle = "#1A1412";
+  ctx.lineWidth = H.R * 0.05;
+  ctx.stroke();
+  ctx.restore();
+  for (const sd of [-1, 1]) antenna(ctx, H, sd * 0.25, 0.2, 0.28, "#1A1412", 0.06);
+}
+
+/** A dark oval on the front of the face below the eyes (the panda's nose, the ghost's "ooh"). */
+function faceDot(ctx: Ctx, H: Head, y: number, rx: number, ry: number, color: string) {
+  const c = proj(H, surf(y, 0));
+  if (c.z < 0.1) return;
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, H.R * rx * Math.max(0.3, Math.cos(H.yaw)), H.R * ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/** Behind the body, like the frog's bumps: the head's top hides their lower half. */
+function pandaEars(ctx: Ctx, H: Head) {
+  const r = H.R * 0.27;
+  for (const sd of [-1, 1]) {
+    const [x, , z] = surf(0.85, sd * 0.8);
+    const c = proj(H, [x, 1.25, z]);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = rad(ctx, c.x - r * 0.3, c.y - r * 0.4, 0, r * 1.2, [[0, "#4A4A52"], [1, "#141418"]]);
+    ctx.fill();
+  }
+}
+
+/** The patches around the panda's eyes, drooping outward; `eyes` is Mochi's eye size. */
+function pandaPatches(ctx: Ctx, H: Head, body: Path2D, eyes: number) {
+  ctx.clip(body);
+  ctx.fillStyle = "#1F1F25";
+  for (const e of eyeFrames(H)) {
+    if (!e.visible) continue;
+    const w = e.w * eyes;
+    const h = e.h * eyes;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.scale(e.fx, e.fy);
+    ctx.beginPath();
+    ctx.ellipse(e.sd * w * 0.3, h * 0.3, w * 1.5, h * 1.05, e.sd * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/** Behind the body: a soft glow, and the wavy hem whose top the body covers. */
+function ghostBack(ctx: Ctx, H: Head, simple: boolean) {
+  if (!simple) {
+    ctx.beginPath();
+    ctx.ellipse(0, 0, H.rx * 1.2, H.ry * 1.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rad(ctx, 0, 0, H.R * 0.8, H.R * 1.35, [[0, "rgba(200,225,255,0.5)"], [1, "rgba(200,225,255,0)"]]);
+    ctx.fill();
+  }
+  const n = simple ? 3 : 4;
+  const r = H.R * 0.26;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const q = proj(H, surf(-0.78, (i - (n - 1) / 2) * 0.62));
+    ctx.moveTo(q.x + r, q.y + H.R * 0.06);
+    ctx.arc(q.x, q.y + H.R * 0.06, r, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = lin(ctx, 0, H.ry * 0.6, 0, H.ry * 1.3, [[0, "#D6E2F6"], [1, "#B0C4E7"]]);
+  ctx.fill();
+}
+
 
 function bow(ctx: Ctx, H: Head) {
   const a = proj(H, surf(0.86, 0.55, 1.02));
@@ -975,8 +1234,8 @@ function withLayer(ctx: Ctx, alpha: number, fn: (c: Ctx) => void) {
   ctx.restore();
 }
 
-/** Glasses, bow, scarf and pumpkin are on the face: behind the head once it has turned away. */
-const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", "pumpkin"]);
+/** Glasses, bow, scarf and the skins are on the face: behind the head once it has turned away. */
+const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", ...(Object.keys(SKIN_BODY) as Outfit[])]);
 const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat"]);
 
 export interface OutfitState {
@@ -984,6 +1243,8 @@ export interface OutfitState {
   presence: number;
   /** Mochi's mailbox morph: outfits fade away as he turns into a box. */
   morph: number;
+  /** Mochi's eye size, 1 = the outfits' own: drawSkinUnder fits them. */
+  eyes?: number;
 }
 
 function faceTurnedAway(H: Head): boolean {
@@ -996,6 +1257,13 @@ function drawFace(ctx: Ctx, outfit: Outfit, H: Head, body: Path2D, simple: boole
     case "roundGlasses": roundGlasses(ctx, H, body); break;
     case "scarf": scarf(ctx, H); break;
     case "pumpkin": pumpkin(ctx, H, body, simple); break;
+    case "frog": frog(ctx, H, body); break;
+    case "bee": bee(ctx, H, body, simple); break;
+    case "strawberry": strawberry(ctx, H, body, simple); break;
+    case "robot": robot(ctx, H, body, simple); break;
+    case "ladybug": ladybug(ctx, H, body, simple); break;
+    case "panda": if (!simple) faceDot(ctx, H, -0.45, 0.07, 0.05, "#1F1F25"); break;
+    case "ghost": faceDot(ctx, H, -0.47, 0.075, 0.1, "#2A3142"); break;
     case "bow": bow(ctx, H); break;
     default: break;
   }
@@ -1017,6 +1285,9 @@ export function drawOutfitBehind(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSt
   const simple = H.R < SIMPLIFY_BELOW_R;
   const body = bodyOutline(H.rx, H.ry);
 
+  if (outfit === "frog") withLayer(ctx, alpha, (l) => frogBumpsBack(l, H, simple));
+  if (outfit === "panda") withLayer(ctx, alpha, (l) => pandaEars(l, H));
+  if (outfit === "ghost") withLayer(ctx, alpha, (l) => ghostBack(l, H, simple));
   if (ON_FACE.has(outfit)) {
     if (faceTurnedAway(H)) withLayer(ctx, alpha, (l) => drawFace(l, outfit, H, body, simple));
     return;
@@ -1032,6 +1303,13 @@ export function drawOutfitBehind(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSt
     else if (outfit === "witchHat") witchHatBack(l, H);
   });
   ctx.restore();
+}
+
+/** Skin details under Mochi's eyes (the panda's patches), drawn after the body and before the eyes. */
+export function drawSkinUnder(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitState) {
+  const alpha = layerAlpha(st);
+  if (outfit !== "panda" || alpha <= 0.005) return;
+  withLayer(ctx, alpha, (l) => pandaPatches(l, H, bodyOutline(H.rx, H.ry), st.eyes ?? 1));
 }
 
 /** The parts in front of Mochi, drawn after the body and the eyes. */
@@ -1075,10 +1353,9 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
 
 const INK = "rgb(26,20,18)";
 
-/** A little Mochi wearing `outfit`, centred in a `size`×`size` icon. */
-function iconMochi(ctx: Ctx, size: number, outfit: Outfit) {
-  const R = 10;
-  const H = makeHead(R);
+/** A little Mochi wearing `outfit`, centred in a `size`×`size` icon (dev/skins-preview.ts also turns and sizes it). */
+export function iconMochi(ctx: Ctx, size: number, outfit: Outfit, R = 10, yaw = 0) {
+  const H = makeHead(R, yaw);
   const cx = size / 2;
   const cy = size / 2 + R * 0.62;
   const st: OutfitState = { presence: 1, morph: 0 };
@@ -1086,21 +1363,26 @@ function iconMochi(ctx: Ctx, size: number, outfit: Outfit) {
   ctx.translate(cx, cy);
   drawOutfitBehind(ctx, outfit, H, st);
   const body = bodyOutline(H.rx, H.ry);
-  const [top, bottom] = outfit === "pumpkin" ? PUMPKIN_BODY : ["rgb(237,237,239)", "rgb(196,197,202)"];
+  const [top, bottom] = SKIN_BODY[outfit] ?? ["rgb(237,237,239)", "rgb(196,197,202)"];
   ctx.fillStyle = lin(ctx, H.rx * 0.7, -H.ry * 0.85, -H.rx * 0.8, H.ry * 0.9, [[0, top], [1, bottom]]);
   ctx.fill(body);
   ctx.fillStyle = rad(ctx, 0, 0, R * 0.15, R * 1.25, [[0, "rgba(0,0,0,0)"], [0.6, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0.2)"]]);
   ctx.fill(body);
   ctx.fillStyle = rad(ctx, H.rx * 0.34, -H.ry * 0.46, 0, R * 0.42, [[0, "rgba(255,255,255,0.55)"], [1, "rgba(255,255,255,0)"]]);
   ctx.fill(body);
+  // The frog wears its eyes on the bumps above the head, outside the body.
+  const bumps = outfit === "frog" ? frogBumps(H) : null;
+  drawSkinUnder(ctx, outfit, H, st);
   ctx.save();
-  ctx.clip(body);
-  ctx.fillStyle = INK;
+  if (!bumps) ctx.clip(body);
+  ctx.fillStyle = SKIN_EYE_INK[outfit] ?? INK;
   for (const e of eyeFrames(H)) {
     if (!e.visible) continue;
+    const b = bumps?.find((c) => c.sd === e.sd);
+    const k = b ? FROG_EYE_SCALE : 1;
     ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.scale(e.fx, e.fy);
+    ctx.translate(b?.x ?? e.x, b?.y ?? e.y);
+    ctx.scale(e.fx * k, e.fy * k);
     const hh = Math.max(e.h, e.w * 0.3);
     roundRect(ctx, -e.w / 2, -hh / 2, e.w, hh, Math.min(e.w / 2, hh / 2));
     ctx.fill();
