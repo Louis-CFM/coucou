@@ -80,6 +80,36 @@ final class SoundEngine {
     /// Re-reads the sounds (after the user changed the custom folder).
     func reload() { preload() }
 
+    /// Copies `file` into the custom folder as `name.<ext>` (replacing any earlier custom file
+    /// for that sound) and reloads. Returns false if the file can't be read as audio.
+    @discardableResult
+    func setCustom(_ name: String, from file: URL) -> Bool {
+        guard Self.soundNames.contains(name), let dir = Self.customFolder,
+              (try? AVAudioPlayer(contentsOf: file)) != nil else { return false }
+        let ext = file.pathExtension.lowercased()
+        guard Self.customExtensions.contains(ext) else { return false }
+        let fm = FileManager.default
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        removeCustomFiles(name)
+        let dest = dir.appendingPathComponent(name).appendingPathExtension(ext)
+        guard (try? fm.copyItem(at: file, to: dest)) != nil else { return false }
+        preload()
+        return true
+    }
+
+    /// Goes back to the built-in sound.
+    func removeCustom(_ name: String) {
+        removeCustomFiles(name)
+        preload()
+    }
+
+    private func removeCustomFiles(_ name: String) {
+        guard let dir = Self.customFolder else { return }
+        for ext in Self.customExtensions {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name).appendingPathExtension(ext))
+        }
+    }
+
     /// Creates the custom folder if needed and shows it in the Finder.
     func revealCustomFolder() {
         guard let dir = Self.customFolder else { return }

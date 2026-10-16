@@ -4548,6 +4548,17 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "This file can't be used as a sound": {
+   "zh-Hans": "此文件无法用作声音",
+   "hi": "इस फ़ाइल को साउंड के रूप में इस्तेमाल नहीं किया जा सकता",
+   "es": "Este archivo no se puede usar como sonido",
+   "ar": "لا يمكن استخدام هذا الملف كصوت",
+   "fr": "Ce fichier ne peut pas servir de son",
+   "bn": "এই ফাইলটি সাউন্ড হিসেবে ব্যবহার করা যাবে না",
+   "pt-BR": "Este arquivo não pode ser usado como som",
+   "ru": "Этот файл нельзя использовать как звук",
+   "id": "File ini tidak dapat dipakai sebagai suara"
   }
  }
 }
