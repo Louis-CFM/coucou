@@ -1,16 +1,20 @@
-/* The GitLab panel: a slim dark card that floats next to the island. */
+/* The GitLab panel: a floating card with rounded corners, one rounded card per
+   section, round icons and avatars. The window itself is see-through. */
 
 :root {
   color-scheme: dark;
-  --bg: #0e0f11;
-  --card: #141518;
+  --bg: #0f1013;
+  --card: #17181c;
+  --card-2: #1d1f24;
   --ink: #f5f6f8;
-  --ink-2: #c5c8cd;
+  --ink-2: #c9ccd2;
   --dim: #9398a1;
   --dim-3: #6b7079;
   --line: rgba(255, 255, 255, 0.07);
   --orange: #fc6d26;
   --red: #f4505e;
+  --green: #22c55e;
+  --amber: #f5a524;
   --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
     "Noto Sans Arabic", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
   --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
@@ -27,7 +31,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  background: transparent;
   color: var(--ink);
   font: 500 12px var(--font);
   user-select: none;
@@ -35,20 +39,24 @@ body {
   cursor: default;
 }
 
-/* The window follows the content's height; past the screen's, the page scrolls. */
+/* The card. The window follows the content's height; past the screen's, it scrolls. */
 #gp {
   position: absolute;
   inset: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: var(--bg);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
 
+/* No min-height here: the window is sized from this element, and a floor at the
+   window's own height would stop it from ever shrinking. */
 .gp-inner {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
 }
 
 button {
@@ -73,76 +81,109 @@ button:disabled {
 .gp-head {
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 34px;
-  padding: 0 8px 0 12px;
+  gap: 8px;
+  height: 42px;
+  padding: 0 10px 0 14px;
   flex: none;
   cursor: grab;
 }
 
+.gp-head:active {
+  cursor: grabbing;
+}
+
+.gp-logo {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  background: linear-gradient(145deg, #ff8a4c, var(--orange));
+  box-shadow: 0 2px 8px rgba(252, 109, 38, 0.35);
+}
+
 .gp-head b {
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.1px;
 }
 
 .gp-x {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   color: var(--dim);
+  transition: background 0.12s, color 0.12s;
 }
 
 .gp-x:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--ink);
 }
 
-/* ── Sections ─────────────────────────────────────────────────────────────── */
+/* ── Sections: one rounded card each ──────────────────────────────────────── */
 
 .gp-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 6px 8px;
+  gap: 8px;
+  padding: 0 10px 12px;
 }
 
 .gp-sec {
-  border-radius: 8px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+/* Something waits for you: the card takes its colour. */
 .gp-sec.waiting {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
-  box-shadow: inset 2px 0 0 var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 4px 16px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .gp-sec-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 8px;
+  height: 40px;
+  padding: 0 10px 0 8px;
+  border-radius: 14px;
   text-align: start;
 }
 
 .gp-sec-head:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* The round-cornered tile that carries the section's icon. */
+.gp-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
 }
 
 .gp-sec-title {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .gp-chev {
   display: grid;
   place-items: center;
-  width: 10px;
+  width: 12px;
   color: var(--dim-3);
-  transition: transform 0.12s;
+  transition: transform 0.14s;
 }
 
 .gp-chev.open {
@@ -158,67 +199,143 @@ html[dir="rtl"] .gp-chev.open {
 }
 
 .gp-count {
-  min-width: 18px;
-  text-align: center;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
   color: var(--dim);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .gp-sec.waiting .gp-count {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--ink);
   font-weight: 700;
 }
 
 /* "+N": new since you last opened the section. */
 .gp-new {
-  padding: 1px 6px;
-  border-radius: 9px;
+  padding: 1px 7px;
+  border-radius: 10px;
   color: #0b0b0d;
   font-size: 10.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  animation: gp-pop 0.25s ease-out;
+}
+
+@keyframes gp-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .gp-list {
   display: flex;
   flex-direction: column;
-  padding: 0 2px 6px;
+  gap: 2px;
+  padding: 0 6px 8px;
+  animation: gp-fade 0.16s ease-out;
+}
+
+@keyframes gp-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .gp-empty {
-  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
   color: var(--dim-3);
-  font-size: 11px;
+  font-size: 11.5px;
+}
+
+.gp-empty i {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* ── Rows ─────────────────────────────────────────────────────────────────── */
 
 .gp-row {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 9px;
   width: 100%;
-  padding: 6px 8px;
-  border-radius: 7px;
+  padding: 7px 8px;
+  border-radius: 10px;
   text-align: start;
+  transition: background 0.12s;
 }
 
 .gp-row:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* A round icon for the pipeline. */
 .gp-ci {
+  display: grid;
+  place-items: center;
   flex: none;
-  width: 6px;
-  height: 6px;
-  margin-top: 5px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  color: var(--c);
+}
+
+.gp-ci.unknown {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.14);
+}
+
+.gp-ci.pending svg {
+  animation: gp-spin 2.4s linear infinite;
+}
+
+@keyframes gp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gp-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(145deg, hsl(var(--h) 60% 52%), hsl(calc(var(--h) + 24) 55% 38%));
+  color: #fff;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .gp-row-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   flex: 1;
 }
@@ -227,64 +344,88 @@ html[dir="rtl"] .gp-chev.open {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ink-2);
+  color: var(--ink);
   font-size: 12px;
-}
-
-.gp-draft {
-  margin-inline-start: 6px;
-  color: var(--dim-3);
-  font-size: 10px;
-  font-style: normal;
 }
 
 .gp-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   overflow: hidden;
   white-space: nowrap;
   color: var(--dim-3);
   font-size: 10.5px;
 }
 
-.gp-proj {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 110px;
-  color: var(--dim);
-}
-
-.gp-badge {
-  padding: 0 5px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.08);
+.gp-iid {
   color: var(--dim);
   font-variant-numeric: tabular-nums;
 }
 
-.gp-badge.warn {
-  color: #f5a524;
+.gp-age {
+  flex: none;
+  color: var(--dim-3);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small rounded labels. */
+.gp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-chip.proj {
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  color: var(--ink-2);
+}
+
+.gp-chip.draft {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--dim-3);
+}
+
+.gp-chip.ok {
+  background: color-mix(in srgb, var(--green) 16%, transparent);
+  color: var(--green);
+}
+
+.gp-chip.warn {
+  background: color-mix(in srgb, var(--amber) 16%, transparent);
+  color: var(--amber);
 }
 
 /* ── A thread, open in place ──────────────────────────────────────────────── */
 
 .gp-thread.open {
   margin: 2px 0 6px;
-  border-radius: 8px;
-  background: var(--card);
+  border-radius: 12px;
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
-.gp-thread.done .gp-row-title {
+.gp-thread.done .gp-row-title,
+.gp-thread.done .gp-avatar {
   opacity: 0.5;
-  text-decoration: line-through;
 }
 
 .gp-detail {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 2px 10px 10px;
+  gap: 10px;
+  padding: 2px 12px 12px;
   user-select: text;
   -webkit-user-select: text;
   cursor: auto;
@@ -293,14 +434,18 @@ html[dir="rtl"] .gp-chev.open {
 .gp-mr {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   color: var(--dim);
   font-size: 11px;
 }
 
 .gp-mr-ref {
   flex: none;
+  padding: 1px 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
   color: var(--ink-2);
+  font-weight: 600;
 }
 
 .gp-mr-title {
@@ -314,35 +459,37 @@ html[dir="rtl"] .gp-chev.open {
   display: grid;
   place-items: center;
   flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  color: var(--dim);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink-2);
+  transition: background 0.12s;
 }
 
 .gp-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .gp-code {
   overflow-x: auto;
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--bg);
-  font: 11px/1.5 var(--mono);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: 11px/1.55 var(--mono);
   direction: ltr;
 }
 
 .gp-code-file {
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-bottom: 1px solid var(--line);
   color: var(--dim);
 }
 
 .gp-code-line {
   display: flex;
-  gap: 8px;
-  padding: 0 8px;
+  gap: 10px;
+  padding: 0 10px;
   white-space: pre;
 }
 
@@ -360,22 +507,35 @@ html[dir="rtl"] .gp-chev.open {
 }
 
 .gp-code-line.target {
-  background: color-mix(in srgb, var(--orange) 16%, transparent);
+  background: color-mix(in srgb, var(--orange) 18%, transparent);
+  box-shadow: inset 2px 0 0 var(--orange);
 }
 
 .gp-notes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .gp-note {
-  padding-inline-start: 8px;
-  border-inline-start: 2px solid var(--line);
+  display: flex;
+  gap: 8px;
 }
 
-.gp-note.me {
-  border-inline-start-color: var(--orange);
+.gp-note-main {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px 7px;
+  border-radius: 4px 12px 12px 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gp-note.me .gp-note-main {
+  background: color-mix(in srgb, var(--orange) 10%, transparent);
+}
+
+html[dir="rtl"] .gp-note-main {
+  border-radius: 12px 4px 12px 12px;
 }
 
 .gp-note-head {
@@ -388,13 +548,13 @@ html[dir="rtl"] .gp-chev.open {
 
 .gp-note-head b {
   color: var(--ink-2);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .gp-note-body {
   color: var(--ink-2);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.42;
   overflow-wrap: anywhere;
 }
 
@@ -406,12 +566,12 @@ html[dir="rtl"] .gp-chev.open {
 
 .gp-note-body .md-h {
   margin: 4px 0 2px;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .gp-note-body .md-code {
-  padding: 0 4px;
-  border-radius: 4px;
+  padding: 0 5px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.09);
   font: 11px var(--mono);
 }
@@ -425,9 +585,9 @@ html[dir="rtl"] .gp-chev.open {
 .gp-note-body .md-pre {
   position: relative;
   margin: 4px 0;
-  padding: 6px 8px;
+  padding: 7px 9px;
   overflow-x: auto;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg);
   font: 11px/1.45 var(--mono);
 }
@@ -455,6 +615,7 @@ html[dir="rtl"] .gp-chev.open {
 .gp-note-body .md-quote i {
   flex: none;
   width: 2px;
+  border-radius: 1px;
   background: var(--line);
 }
 
@@ -469,26 +630,28 @@ html[dir="rtl"] .gp-chev.open {
 .gp-reply {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .gp-box {
   width: 100%;
-  min-height: 56px;
+  min-height: 60px;
   resize: vertical;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 12px;
   background: var(--bg);
   color: var(--ink);
   font: 12px/1.4 var(--font);
   user-select: text;
   -webkit-user-select: text;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .gp-box:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--orange) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 14%, transparent);
 }
 
 .gp-actions {
@@ -498,25 +661,30 @@ html[dir="rtl"] .gp-chev.open {
 }
 
 .gp-btn {
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 5px 13px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--ink-2);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 650;
+  transition: background 0.12s, transform 0.08s;
 }
 
 .gp-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.gp-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .gp-btn.primary {
-  background: var(--orange);
+  background: linear-gradient(145deg, #ff8a4c, var(--orange));
   color: #0b0b0d;
 }
 
 .gp-btn.primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--orange) 88%, white);
+  background: linear-gradient(145deg, #ff9a63, #ff7a38);
 }
 
 .gp-error {

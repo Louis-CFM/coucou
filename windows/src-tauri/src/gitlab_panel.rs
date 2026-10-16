@@ -111,7 +111,9 @@ pub fn setup(app: &AppHandle) {
         // island::apply_geometry); the panel is resized by the page's content.
         .resizable(cfg!(target_os = "linux"))
         .decorations(false)
-        .shadow(true)
+        // See-through, so the card inside has rounded corners.
+        .transparent(true)
+        .shadow(false)
         .always_on_top(true)
         .skip_taskbar(true)
         .maximizable(false)
@@ -136,33 +138,59 @@ pub fn setup(app: &AppHandle) {
     }
 }
 
-/// Snaps the window to the screen's edges when it is let go near one, and
-/// remembers where it ended once it stops moving.
+/// Where the window ends up: kept inside the screen's work area (it cannot be
+/// pushed off an edge) and pulled to an edge it was left within `SNAP` of.
+/// `pos` and `size` are the window's, `area` the screen's (left, top, right,
+/// bottom), all in physical pixels.
+pub fn settle_position(pos: (i32, i32), size: (i32, i32), area: (i32, i32, i32, i32)) -> (i32, i32) {
+    let (left, top, right, bottom) = area;
+    let fit = |value: i32, low: i32, high: i32| {
+        // A window larger than the screen sticks to its top left.
+        let high = high.max(low);
+        let value = value.clamp(low, high);
+        if value - low <= SNAP {
+            low
+        } else if high - value <= SNAP {
+            high
+        } else {
+            value
+        }
+    };
+    (fit(pos.0, left, right - size.0), fit(pos.1, top, bottom - size.1))
+}
+
+/// The window moved. A drag sends a stream of moves and the window manager owns
+/// the position meanwhile, so nothing is done until it has stopped for a moment:
+/// then it is pulled back inside the screen, snapped to the edge it is near, and
+/// its place is remembered.
 fn moved(win: &WebviewWindow) {
     if !PANEL.open.load(Ordering::Relaxed) {
         return;
     }
+    let at = std::time::Instant::now();
+    *PANEL.moved_at.lock().unwrap() = Some(at);
+    let win = win.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(140)).await;
+        if *PANEL.moved_at.lock().unwrap() == Some(at) {
+            settle(&win);
+        }
+    });
+}
+
+fn settle(win: &WebviewWindow) {
     let (Ok(pos), Ok(size), Ok(Some(monitor))) = (win.outer_position(), win.outer_size(), win.current_monitor()) else {
         return;
     };
-    let area = monitor.work_area();
-    let (left, top) = (area.position.x, area.position.y);
-    let (right, bottom) = (left + area.size.width as i32, top + area.size.height as i32);
-    let snap = |value: i32, near: i32| if (value - near).abs() <= SNAP { near } else { value };
-    let x = snap(snap(pos.x, left), right - size.width as i32);
-    let y = snap(snap(pos.y, top), bottom - size.height as i32);
+    let a = monitor.work_area();
+    let area = (a.position.x, a.position.y, a.position.x + a.size.width as i32, a.position.y + a.size.height as i32);
+    let (x, y) = settle_position((pos.x, pos.y), (size.width as i32, size.height as i32), area);
     if (x, y) != (pos.x, pos.y) {
+        // The move this makes comes back here and, finding nothing to change, saves.
         let _ = win.set_position(PhysicalPosition::new(x, y));
-        return;
+    } else {
+        save_place(Place { x, y });
     }
-    let now = std::time::Instant::now();
-    *PANEL.moved_at.lock().unwrap() = Some(now);
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        if *PANEL.moved_at.lock().unwrap() == Some(now) {
-            save_place(Place { x, y });
-        }
-    });
 }
 
 /// Puts the window where it was left, or at the top right of the screen the
@@ -621,4 +649,45 @@ pub async fn gitlab_snippet(project_id: i64, file: String, sha: String, line: i6
     }
     let text = response.text().await.ok()?;
     Some(gitlab_dash::snippet(&text, line, 3))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const AREA: (i32, i32, i32, i32) = (0, 0, 1920, 1080);
+
+    #[test]
+    fn a_window_inside_the_screen_stays_where_it_is() {
+        assert_eq!(settle_position((600, 300), (340, 400), AREA), (600, 300));
+    }
+
+    #[test]
+    fn it_snaps_to_an_edge_it_is_left_near() {
+        // Right edge: the window ends at 1920.
+        assert_eq!(settle_position((1570, 300), (340, 400), AREA), (1580, 300));
+        assert_eq!(settle_position((10, 300), (340, 400), AREA), (0, 300));
+        assert_eq!(settle_position((600, 8), (340, 400), AREA), (600, 0));
+        assert_eq!(settle_position((600, 670), (340, 400), AREA), (600, 680));
+    }
+
+    #[test]
+    fn it_cannot_be_pushed_off_the_screen() {
+        assert_eq!(settle_position((1900, 300), (340, 400), AREA), (1580, 300));
+        assert_eq!(settle_position((-200, -50), (340, 400), AREA), (0, 0));
+        assert_eq!(settle_position((600, 2000), (340, 400), AREA), (600, 680));
+    }
+
+    #[test]
+    fn it_works_on_a_second_screen() {
+        let right = (1920, 0, 3840, 1080);
+        assert_eq!(settle_position((3500, 100), (340, 400), right), (3500, 100));
+        assert_eq!(settle_position((1930, 100), (340, 400), right), (1920, 100));
+        assert_eq!(settle_position((3830, 100), (340, 400), right), (3500, 100));
+    }
+
+    #[test]
+    fn a_window_taller_than_the_screen_sticks_to_the_top() {
+        assert_eq!(settle_position((600, 300), (340, 2000), AREA), (600, 0));
+    }
 }

@@ -319,7 +319,7 @@ test("the window follows the content's height", () => {
   const inner = root.children[0];
   inner.offsetHeight = 321.4;
   view.setDashboard(dash());
-  assert.deepEqual(sent("gitlab_panel_resize"), [{ height: 322 }]);
+  assert.deepEqual(sent("gitlab_panel_resize"), [{ height: 324 }], "the content and the card's border");
   view.render();
   assert.equal(sent("gitlab_panel_resize").length, 1, "only when it changes");
 });
@@ -334,4 +334,16 @@ test("the close button closes, the header drags", () => {
   assert.equal(sent("gitlab_panel_drag").length, 1);
   for (const fn of head.listeners.get("mousedown")) fn({ target: { closest: () => ({}) } });
   assert.equal(sent("gitlab_panel_drag").length, 1, "a button keeps its click");
+});
+
+test("an avatar carries the initials of a person and a colour that is theirs", async () => {
+  const { initials, avatarHue } = await import("../src/core/gitlab-panel.ts");
+  assert.equal(initials("Jane Doe"), "JD");
+  assert.equal(initials("bob"), "B");
+  assert.equal(initials("anne-marie.dupont"), "AD");
+  assert.equal(initials("  "), "?");
+  assert.equal(initials("élodie"), "É");
+  assert.equal(avatarHue("bob"), avatarHue("bob"));
+  assert.notEqual(avatarHue("bob"), avatarHue("alice"));
+  assert.ok(avatarHue("anyone") >= 0 && avatarHue("anyone") < 360);
 });
