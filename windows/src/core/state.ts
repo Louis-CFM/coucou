@@ -271,6 +271,13 @@ class AppState {
     return () => this.listeners.delete(fn);
   }
 
+  /** Removes the attached file, so the next question goes without it. */
+  dropAttachment() {
+    this.droppedFile = null;
+    this.promptContext = null;
+    this.notify();
+  }
+
   /** Marks the UI dirty; the island re-renders on the next frame. */
   notify() {
     for (const fn of this.listeners) fn();
