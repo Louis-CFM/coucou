@@ -533,6 +533,25 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
     unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
+/// Logical pixels a shell panel (the GNOME top bar) takes off the top of the
+/// display whose logical origin is (`x`, `y`). A regular window at `y = 0` would
+/// sit behind it; a layer surface is placed by the compositor, so 0 for it.
+pub fn top_inset(win: &WebviewWindow, x: i32, y: i32) -> i32 {
+    if LAYER_SURFACE.load(Ordering::Relaxed) {
+        return 0;
+    }
+    let Ok(gw) = win.gtk_window() else { return 0 };
+    let display = gw.display();
+    (0..display.n_monitors())
+        .filter_map(|i| display.monitor(i))
+        .find(|m| {
+            let g = m.geometry();
+            g.x() == x && g.y() == y
+        })
+        .map(|m| (m.workarea().y() - m.geometry().y()).max(0))
+        .unwrap_or(0)
+}
+
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
@@ -765,85 +784,6 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     Some((g.width() as f64, g.height() as f64))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_a_private_directory_of_ours_can_hold_the_relay_socket() {
-        let base = std::env::temp_dir().join(format!("coucou-rt-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&base);
-        let dir = base.join("runtime");
-        std::fs::create_dir_all(&dir).unwrap();
-        let set = |mode| std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
-
-        set(0o700);
-        assert!(is_private_dir(&dir));
-
-        // Readable or reachable by group or others: no.
-        for open in [0o750, 0o705, 0o755, 0o777, 0o1777] {
-            set(open);
-            assert!(!is_private_dir(&dir), "{open:o} must be refused");
-        }
-
-        // A symlink to a private directory: no, the link itself is what we got.
-        set(0o700);
-        let link = base.join("link");
-        std::os::unix::fs::symlink(&dir, &link).unwrap();
-        assert!(!is_private_dir(&link));
-
-        // Missing: no.
-        assert!(!is_private_dir(&base.join("missing")));
-
-        let _ = std::fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn x11_is_only_preferred_on_gnome_wayland_unless_opted_out() {
-        assert!(should_prefer_x11("wayland", "ubuntu:GNOME", "", ":0"));
-        assert!(!should_prefer_x11("x11", "ubuntu:GNOME", "", ":0"));
-        assert!(!should_prefer_x11("wayland", "KDE", "", ":0"));
-        assert!(!should_prefer_x11("wayland", "GNOME", "0", ":0"));
-        // No XWayland: keep the Wayland window rather than no display at all.
-        assert!(!should_prefer_x11("wayland", "GNOME", "", ""));
-    }
-
-    #[test]
-    fn text_scaling_is_undone_for_the_island() {
-        assert_eq!(dpi_scale_for("1.25\n").as_deref(), Some("0.8"));
-        assert_eq!(dpi_scale_for("1.5").as_deref(), Some("0.6667"));
-        assert_eq!(dpi_scale_for("1.0").as_deref(), None);
-        assert_eq!(dpi_scale_for("").as_deref(), None);
-        assert_eq!(dpi_scale_for("nonsense").as_deref(), None);
-        assert_eq!(dpi_scale_for("40").as_deref(), None);
-    }
-
-    #[test]
-    fn private_dirs_are_closed_to_everyone_else() {
-        use std::os::unix::fs::MetadataExt;
-        let dir = std::env::temp_dir().join(format!("coucou-priv-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
-        ensure_private_dir(&dir).unwrap();
-        assert_eq!(std::fs::metadata(&dir).unwrap().mode() & 0o777, 0o700);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn the_pictures_folder_comes_from_user_dirs() {
-        let home = Path::new("/home/me");
-        let text = "# written by xdg-user-dirs-update\nXDG_DESKTOP_DIR=\"$HOME/Desktop\"\nXDG_PICTURES_DIR=\"$HOME/Images\"\n";
-        assert_eq!(xdg_user_dir(text, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/home/me/Images")));
-        let absolute = "XDG_PICTURES_DIR=\"/data/pics\"";
-        assert_eq!(xdg_user_dir(absolute, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/data/pics")));
-        // "$HOME/" means the folder is disabled; relative paths are not paths.
-        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"$HOME/\"", "XDG_PICTURES_DIR", home), None);
-        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home), None);
-        assert_eq!(xdg_user_dir("", "XDG_PICTURES_DIR", home), None);
-    }
-}
-
 // ── Flow dictation's pill ─────────────────────────────────────────────────────
 //
 // The pill rests at the bottom (or on the left or right edge) of the screen.
@@ -936,4 +876,83 @@ fn apply_rects(gw: &impl IsA<gtk::Widget>, rects: &[(f64, f64, f64, f64)]) {
         ));
     }
     gdk_window.input_shape_combine_region(&region, 0, 0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_private_directory_of_ours_can_hold_the_relay_socket() {
+        let base = std::env::temp_dir().join(format!("coucou-rt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let dir = base.join("runtime");
+        std::fs::create_dir_all(&dir).unwrap();
+        let set = |mode| std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode)).unwrap();
+
+        set(0o700);
+        assert!(is_private_dir(&dir));
+
+        // Readable or reachable by group or others: no.
+        for open in [0o750, 0o705, 0o755, 0o777, 0o1777] {
+            set(open);
+            assert!(!is_private_dir(&dir), "{open:o} must be refused");
+        }
+
+        // A symlink to a private directory: no, the link itself is what we got.
+        set(0o700);
+        let link = base.join("link");
+        std::os::unix::fs::symlink(&dir, &link).unwrap();
+        assert!(!is_private_dir(&link));
+
+        // Missing: no.
+        assert!(!is_private_dir(&base.join("missing")));
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn x11_is_only_preferred_on_gnome_wayland_unless_opted_out() {
+        assert!(should_prefer_x11("wayland", "ubuntu:GNOME", "", ":0"));
+        assert!(!should_prefer_x11("x11", "ubuntu:GNOME", "", ":0"));
+        assert!(!should_prefer_x11("wayland", "KDE", "", ":0"));
+        assert!(!should_prefer_x11("wayland", "GNOME", "0", ":0"));
+        // No XWayland: keep the Wayland window rather than no display at all.
+        assert!(!should_prefer_x11("wayland", "GNOME", "", ""));
+    }
+
+    #[test]
+    fn text_scaling_is_undone_for_the_island() {
+        assert_eq!(dpi_scale_for("1.25\n").as_deref(), Some("0.8"));
+        assert_eq!(dpi_scale_for("1.5").as_deref(), Some("0.6667"));
+        assert_eq!(dpi_scale_for("1.0").as_deref(), None);
+        assert_eq!(dpi_scale_for("").as_deref(), None);
+        assert_eq!(dpi_scale_for("nonsense").as_deref(), None);
+        assert_eq!(dpi_scale_for("40").as_deref(), None);
+    }
+
+    #[test]
+    fn private_dirs_are_closed_to_everyone_else() {
+        use std::os::unix::fs::MetadataExt;
+        let dir = std::env::temp_dir().join(format!("coucou-priv-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        ensure_private_dir(&dir).unwrap();
+        assert_eq!(std::fs::metadata(&dir).unwrap().mode() & 0o777, 0o700);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_pictures_folder_comes_from_user_dirs() {
+        let home = Path::new("/home/me");
+        let text = "# written by xdg-user-dirs-update\nXDG_DESKTOP_DIR=\"$HOME/Desktop\"\nXDG_PICTURES_DIR=\"$HOME/Images\"\n";
+        assert_eq!(xdg_user_dir(text, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/home/me/Images")));
+        let absolute = "XDG_PICTURES_DIR=\"/data/pics\"";
+        assert_eq!(xdg_user_dir(absolute, "XDG_PICTURES_DIR", home), Some(PathBuf::from("/data/pics")));
+        // "$HOME/" means the folder is disabled; relative paths are not paths.
+        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"$HOME/\"", "XDG_PICTURES_DIR", home), None);
+        assert_eq!(xdg_user_dir("XDG_PICTURES_DIR=\"pics\"", "XDG_PICTURES_DIR", home), None);
+        assert_eq!(xdg_user_dir("", "XDG_PICTURES_DIR", home), None);
+    }
 }

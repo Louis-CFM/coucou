@@ -23,6 +23,10 @@ pub struct Settings {
     pub active_integrations: Vec<String>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
     pub main_pill: String,
+    /// The editor "Open terminal" and the diff's ↗ open things in: "vscode" or
+    /// "phpstorm" (editor.rs reads anything else as VS Code). Always the user's
+    /// own pick; nothing is detected.
+    pub editor: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
@@ -135,6 +139,7 @@ impl Default for Settings {
                 "integration_github".into(),
             ],
             main_pill: "integration_claude".into(),
+            editor: "vscode".into(),
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
@@ -422,6 +427,7 @@ mod tests {
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
+  "editor": "phpstorm",
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
@@ -711,6 +717,7 @@ mod tests {
             ("soundEnabled", json!(1)),
             ("activeIntegrations", json!("integration_n8n")),
             ("mainPill", json!(["agent_cursor"])),
+            ("editor", json!(7)),
             ("screen", Value::Null),
             ("shortcuts", json!("Ctrl+Alt+A")),
         ] {
@@ -929,6 +936,7 @@ mod tests {
                 "absenceInterval",
                 "activeIntegrations",
                 "mainPill",
+                "editor",
                 "screen",
                 "autostart",
                 "hooksInstalled",

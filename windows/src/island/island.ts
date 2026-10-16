@@ -192,7 +192,11 @@ export class Island {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
-        else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
+        else if (task.id === "integration_gitlab") {
+          // The user's own instance, as the card learned it from the poll.
+          const base = State.integrations[task.id]?.data?.baseUrl;
+          void Bridge.openUrl(`${typeof base === "string" ? base : "https://gitlab.com"}/dashboard/merge_requests`);
+        } else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);

@@ -147,9 +147,119 @@ pub fn pick_window<'a, W>(windows: &'a [(W, String)], folder: &str) -> Option<&'
     named.or_else(|| windows.first()).map(|(w, _)| w)
 }
 
+/// Whether a window title names a project folder: JetBrains titles are the
+/// project's name, then " – " and the open file; `folder` is lower case. The
+/// name must be a whole word of the title, so "app" does not match "webapp".
+#[cfg_attr(windows, allow(dead_code))]
+pub fn title_names_folder(title: &str, folder: &str) -> bool {
+    if folder.is_empty() {
+        return false;
+    }
+    let title = title.to_lowercase();
+    let name = title.split(['–', '—', '[']).next().unwrap_or_default().trim();
+    name == folder
+}
+
+/// The project a session's folder belongs to: the nearest folder up from it
+/// that holds an `.idea` (a JetBrains project), else the nearest that holds a
+/// `.git`, else the folder itself. Claude Code reports the folder its shell is
+/// in, which drifts into a sub-folder after a `cd`; the editor has the project
+/// open, not that sub-folder.
+pub fn project_root(path: &str) -> String {
+    let start = std::path::Path::new(path);
+    if !start.is_absolute() || !start.is_dir() {
+        return path.to_string();
+    }
+    let up = |marker: &str| start.ancestors().find(|dir| dir.parent().is_some() && dir.join(marker).is_dir());
+    up(".idea")
+        .or_else(|| up(".git"))
+        .map_or_else(|| path.to_string(), |dir| dir.to_string_lossy().into_owned())
+}
+
 /// The last folder name of a path, either separator.
 pub fn folder_name(path: &str) -> &str {
     path.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or_default()
+}
+
+// ── What the relay sent about its own parents ─────────────────────────────────
+
+/// The relay's chain from the payload (`coucou_procs`: `[[pid, parent, exe], …]`,
+/// the relay first), as the process table `ancestors` walks. The relay takes it
+/// while it is alive: by the time the event is handled it has usually gone, and
+/// a snapshot taken here would find nothing. None for an older relay, or when
+/// the field is not what it should be (it comes from a local program, but is
+/// still read as untrusted).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn procs_from_payload(payload: &serde_json::Value) -> Option<(u32, HashMap<u32, Proc>)> {
+    let rows = payload.get("coucou_procs")?.as_array()?;
+    if rows.is_empty() || rows.len() > 64 {
+        return None;
+    }
+    let mut procs = HashMap::new();
+    let mut first = None;
+    for row in rows {
+        let row = row.as_array()?;
+        let pid = u32::try_from(row.first()?.as_u64()?).ok()?;
+        let parent = u32::try_from(row.get(1)?.as_u64()?).ok()?;
+        let exe = row.get(2)?.as_str()?;
+        if exe.len() > 260 {
+            return None;
+        }
+        first.get_or_insert(pid);
+        procs.insert(pid, Proc { parent, exe: exe.to_string() });
+    }
+    first.map(|start| (start, procs))
+}
+
+/// The window in front when the relay started (`coucou_foreground`: `[pid,
+/// hwnd]`): the process that owns it, and the window.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn foreground_from_payload(payload: &serde_json::Value) -> Option<(u32, isize)> {
+    let pair = payload.get("coucou_foreground")?.as_array()?;
+    let pid = u32::try_from(pair.first()?.as_u64()?).ok()?;
+    let hwnd = isize::try_from(pair.get(1)?.as_i64()?).ok()?;
+    (pid != 0 && hwnd != 0).then_some((pid, hwnd))
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+/// The tab a session is in, inside a terminal window that has tabs (Windows
+/// Terminal): the window, the tab's UI Automation runtime ID — which names it for
+/// as long as it lives — and its title, for when the ID no longer matches.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub struct TabRef {
+    pub hwnd: isize,
+    pub runtime_id: Vec<i32>,
+    pub title: String,
+}
+
+/// A tab's title without the state glyph Claude Code puts in front of it (✳, a
+/// spinner…), which changes while the title does not.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn strip_glyph(title: &str) -> &str {
+    title.trim_start_matches(|c: char| !c.is_alphanumeric())
+}
+
+/// Which of a window's tabs is the one remembered: by runtime ID; failing that,
+/// by title, but only when that names exactly one tab (two tabs called `claude`
+/// would be a guess).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn pick_tab(tabs: &[(Vec<i32>, String)], wanted: &TabRef) -> Option<usize> {
+    if !wanted.runtime_id.is_empty() {
+        if let Some(i) = tabs.iter().position(|(id, _)| *id == wanted.runtime_id) {
+            return Some(i);
+        }
+    }
+    let title = strip_glyph(&wanted.title);
+    if title.is_empty() {
+        return None;
+    }
+    let mut named = tabs.iter().enumerate().filter(|(_, (_, name))| strip_glyph(name) == title);
+    match (named.next(), named.next()) {
+        (Some((i, _)), None) => Some(i),
+        _ => None,
+    }
 }
 
 // ── Sessions seen so far ──────────────────────────────────────────────────────
@@ -192,12 +302,108 @@ pub fn lookup(session: &str) -> Option<Vec<u32>> {
     list.iter().find(|(s, _)| s == session).map(|(_, pids)| pids.clone()).filter(|pids| !pids.is_empty())
 }
 
+/// Session ID → the port of the IDE it runs in (`ide_port` of the payload, from
+/// CLAUDE_CODE_SSE_PORT), see jetbrains.rs. Kept apart from `SESSIONS`: it comes
+/// with every event, the window is looked for once.
+static IDE_PORTS: Mutex<Vec<(String, u16)>> = Mutex::new(Vec::new());
+
+/// The IDE port the relay sent: a number that is a port, nothing else.
+pub fn ide_port_from_payload(payload: &serde_json::Value) -> Option<u16> {
+    payload.get("ide_port")?.as_u64().and_then(|p| u16::try_from(p).ok()).filter(|p| *p > 0)
+}
+
+pub fn remember_ide_port(session: &str, port: u16) {
+    if !valid_session(session) {
+        return;
+    }
+    let mut list = IDE_PORTS.lock().unwrap_or_else(|e| e.into_inner());
+    list.retain(|(s, _)| s != session);
+    list.push((session.to_string(), port));
+    let excess = list.len().saturating_sub(MAX_SESSIONS);
+    list.drain(..excess);
+}
+
+pub fn ide_port(session: &str) -> Option<u16> {
+    let list = IDE_PORTS.lock().unwrap_or_else(|e| e.into_inner());
+    list.iter().find(|(s, _)| s == session).map(|(_, port)| *port)
+}
+
 pub fn forget(session: &str) {
     SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+    IDE_PORTS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+    TABS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(s, _)| s != session);
+}
+
+/// Session ID → its tab. Kept apart from `SESSIONS`: it is looked at again at
+/// every prompt (the tab may have been moved or recreated), the window is not.
+#[cfg_attr(not(windows), allow(dead_code))]
+static TABS: Mutex<Vec<(String, TabRef)>> = Mutex::new(Vec::new());
+
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn remember_tab(session: &str, tab: TabRef) {
+    if !valid_session(session) {
+        return;
+    }
+    let mut list = TABS.lock().unwrap_or_else(|e| e.into_inner());
+    list.retain(|(s, _)| s != session);
+    list.push((session.to_string(), tab));
+    let excess = list.len().saturating_sub(MAX_SESSIONS);
+    list.drain(..excess);
+}
+
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn tab_of(session: &str) -> Option<TabRef> {
+    let list = TABS.lock().unwrap_or_else(|e| e.into_inner());
+    list.iter().find(|(s, _)| s == session).map(|(_, tab)| tab.clone())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::project_root;
+
+    #[test]
+    fn a_sub_folder_belongs_to_the_project_that_holds_it() {
+        let base = std::env::temp_dir().join(format!("coucou-root-{}", std::process::id()));
+        let sub = base.join("app/src/deep");
+        std::fs::create_dir_all(&sub).unwrap();
+        std::fs::create_dir_all(base.join("app/.git")).unwrap();
+        let text = |p: &std::path::Path| p.to_string_lossy().into_owned();
+        // Only a .git: that is the root.
+        assert_eq!(project_root(&text(&sub)), text(&base.join("app")));
+        // An .idea nearer than the .git wins; one above it does not.
+        std::fs::create_dir_all(base.join("app/src/.idea")).unwrap();
+        assert_eq!(project_root(&text(&sub)), text(&base.join("app/src")));
+        // Nothing: the folder itself, and a path that is not a folder is left alone.
+        let bare = base.join("bare");
+        std::fs::create_dir_all(&bare).unwrap();
+        assert_eq!(project_root(&text(&bare)), text(&bare));
+        assert_eq!(project_root("/nowhere/at/all"), "/nowhere/at/all");
+        assert_eq!(project_root("relative/dir"), "relative/dir");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    use super::{ide_port_from_payload, title_names_folder};
+
+    #[test]
+    fn the_ide_port_of_a_payload_is_a_port_or_nothing() {
+        use serde_json::json;
+        assert_eq!(ide_port_from_payload(&json!({ "ide_port": 46143 })), Some(46143));
+        for bad in [json!({ "ide_port": 0 }), json!({ "ide_port": 70000 }), json!({ "ide_port": "46143" }),
+                    json!({ "ide_port": -1 }), json!({ "ide_port": null }), json!({})] {
+            assert_eq!(ide_port_from_payload(&bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_title_names_a_project_by_its_first_part() {
+        assert!(title_names_folder("coucou", "coucou"));
+        assert!(title_names_folder("Coucou – main.rs", "coucou"));
+        assert!(title_names_folder("coucou [~/Projets/coucou] – src/lib.rs", "coucou"));
+        assert!(!title_names_folder("meyclub – coucou.php", "coucou"));
+        assert!(!title_names_folder("webapp", "app"));
+        assert!(!title_names_folder("coucou", ""));
+    }
+
     use super::*;
 
     fn tree(entries: &[(u32, u32, &str)]) -> HashMap<u32, Proc> {
@@ -205,6 +411,81 @@ mod tests {
             .iter()
             .map(|(pid, parent, exe)| (*pid, Proc { parent: *parent, exe: exe.to_string() }))
             .collect()
+    }
+
+    #[test]
+    fn the_relays_own_chain_becomes_a_process_table() {
+        use serde_json::json;
+        let payload = json!({ "coucou_procs": [
+            [600, 500, "coucou-hook.exe"], [500, 300, "wsl.exe"], [300, 200, "wsl.exe"],
+            [200, 100, "WindowsTerminal.exe"], [100, 4, "explorer.exe"], [4, 0, "System"],
+        ]});
+        let (start, procs) = procs_from_payload(&payload).unwrap();
+        assert_eq!(start, 600);
+        // Walked like a live snapshot: up to the terminal, not into the desktop.
+        assert_eq!(ancestors_below(&procs, start, WINDOWS_TREE_TOPS), [500, 300, 200]);
+        assert_eq!(window_owner(&procs, start, |pid| pid == 200), Some(200));
+        // Absent, empty or malformed: nothing, so the live snapshot is tried.
+        assert!(procs_from_payload(&json!({})).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [] })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": "x" })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [[1, 2]] })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [[-1, 2, "a"]] })).is_none());
+        assert!(procs_from_payload(&json!({ "coucou_procs": [[1, 2, "a".repeat(300)]] })).is_none());
+        let many: Vec<_> = (1..80).map(|i| json!([i, i + 1, "x.exe"])).collect();
+        assert!(procs_from_payload(&json!({ "coucou_procs": many })).is_none());
+    }
+
+    #[test]
+    fn the_window_in_front_is_read_from_the_payload() {
+        use serde_json::json;
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [200, 853906] })), Some((200, 853906)));
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [0, 853906] })), None);
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [200, 0] })), None);
+        assert_eq!(foreground_from_payload(&json!({ "coucou_foreground": [200] })), None);
+        assert_eq!(foreground_from_payload(&json!({})), None);
+    }
+
+    #[test]
+    fn the_state_glyph_in_a_tab_title_is_ignored() {
+        assert_eq!(strip_glyph("✳ Claude Code"), "Claude Code");
+        assert_eq!(strip_glyph("⠂ coucou"), "coucou");
+        assert_eq!(strip_glyph("Ubuntu"), "Ubuntu");
+        assert_eq!(strip_glyph("✳"), "");
+    }
+
+    #[test]
+    fn a_tab_is_found_by_its_id_or_by_a_title_that_is_its_alone() {
+        let tabs = vec![
+            (vec![42, 7, 1], "✳ coucou".to_string()),
+            (vec![42, 7, 2], "pulse".to_string()),
+            (vec![42, 7, 3], "pulse".to_string()),
+        ];
+        let tab = |id: Vec<i32>, title: &str| TabRef { hwnd: 1, runtime_id: id, title: title.into() };
+        // The ID wins, even when the title has changed.
+        assert_eq!(pick_tab(&tabs, &tab(vec![42, 7, 2], "something else")), Some(1));
+        // The ID is gone (tab recreated): the title, glyph or not, if it is unique.
+        assert_eq!(pick_tab(&tabs, &tab(vec![42, 9, 9], "⠂ coucou")), Some(0));
+        // Two tabs with that title, or none: no guess.
+        assert_eq!(pick_tab(&tabs, &tab(vec![42, 9, 9], "pulse")), None);
+        assert_eq!(pick_tab(&tabs, &tab(vec![], "nothing")), None);
+        assert_eq!(pick_tab(&tabs, &tab(vec![], "")), None);
+        assert_eq!(pick_tab(&[], &tab(vec![1], "a")), None);
+    }
+
+    #[test]
+    fn a_session_keeps_its_tab_until_it_ends() {
+        let tab = TabRef { hwnd: 5, runtime_id: vec![1, 2], title: "x".into() };
+        remember_tab("tab-session-1", tab.clone());
+        assert_eq!(tab_of("tab-session-1"), Some(tab.clone()));
+        let moved = TabRef { runtime_id: vec![3], ..tab };
+        remember_tab("tab-session-1", moved.clone());
+        assert_eq!(tab_of("tab-session-1"), Some(moved));
+        forget("tab-session-1");
+        assert_eq!(tab_of("tab-session-1"), None);
+        // Nothing valid to key on, nothing kept.
+        remember_tab("bad id!", TabRef { hwnd: 1, runtime_id: vec![], title: String::new() });
+        assert_eq!(tab_of("bad id!"), None);
     }
 
     #[test]

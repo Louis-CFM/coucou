@@ -475,6 +475,17 @@
    "ru": "Запросы подтверждения обрабатывает Hermes (терминал или шлюз).",
    "id": "Permintaan persetujuan ditangani oleh Hermes (terminal atau gateway)."
   },
+  "Approvals": {
+   "zh-Hans": "批准数",
+   "hi": "स्वीकृतियाँ",
+   "es": "Aprobaciones",
+   "ar": "الموافقات",
+   "fr": "Approbations",
+   "bn": "অনুমোদন",
+   "pt-BR": "Aprovações",
+   "ru": "Одобрения",
+   "id": "Persetujuan"
+  },
   "Approved": {
    "zh-Hans": "已批准",
    "hi": "अनुमोदित",
@@ -782,6 +793,17 @@
    "pt-BR": "Chat — outros provedores",
    "ru": "Чат — другие провайдеры",
    "id": "Chat — penyedia lain"
+  },
+  "Choose file…": {
+   "zh-Hans": "选择文件…",
+   "hi": "फ़ाइल चुनें…",
+   "es": "Elegir archivo…",
+   "ar": "اختيار ملف…",
+   "fr": "Choisir un fichier…",
+   "bn": "ফাইল বেছে নিন…",
+   "pt-BR": "Escolher arquivo…",
+   "ru": "Выбрать файл…",
+   "id": "Pilih file…"
   },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
@@ -1091,6 +1113,17 @@
    "ru": "Команда не распознана",
    "id": "Perintah tidak dikenali"
   },
+  "Comments waiting": {
+   "zh-Hans": "待回复的评论",
+   "hi": "प्रतीक्षा में टिप्पणियाँ",
+   "es": "Comentarios en espera",
+   "ar": "تعليقات بانتظارك",
+   "fr": "Commentaires en attente",
+   "bn": "অপেক্ষমাণ মন্তব্য",
+   "pt-BR": "Comentários pendentes",
+   "ru": "Комментарии в ожидании",
+   "id": "Komentar menunggu"
+  },
   "Completed successfully.": {
    "zh-Hans": "已成功完成。",
    "hi": "सफलतापूर्वक पूर्ण हुआ।",
@@ -1355,6 +1388,17 @@
    "ru": "Coucou записывает звонки текстом прямо на Mac с помощью Parakeet и различает голоса второй небольшой моделью. Обе скачиваются один раз (около 650 МБ), дальше всё работает без сети.",
    "id": "Coucou menulis panggilanmu di Mac dengan Parakeet, dan membedakan suara dengan model kecil kedua. Keduanya diunduh sekali (sekitar 650 MB), lalu semuanya bekerja luring."
   },
+  "Could not reach GitLab. Your text is kept.": {
+   "zh-Hans": "无法连接 GitLab。你的文字已保留。",
+   "hi": "GitLab तक नहीं पहुँच सके। आपका पाठ सुरक्षित है।",
+   "es": "No se pudo contactar con GitLab. Tu texto se conserva.",
+   "ar": "تعذّر الوصول إلى GitLab. تم الاحتفاظ بنصك.",
+   "fr": "Impossible de joindre GitLab. Votre texte est conservé.",
+   "bn": "GitLab-এ পৌঁছানো যায়নি। আপনার লেখা রাখা আছে।",
+   "pt-BR": "Não foi possível contatar o GitLab. Seu texto foi mantido.",
+   "ru": "Не удалось связаться с GitLab. Ваш текст сохранён.",
+   "id": "Tidak dapat menjangkau GitLab. Teks Anda disimpan."
+  },
   "Counted on your Mac, never sent anywhere.": {
    "zh-Hans": "在你的 Mac 上统计，从不发送。",
    "hi": "आपके Mac पर गिनी जाती हैं, कहीं भेजी नहीं जातीं।",
@@ -1398,6 +1442,17 @@
    "pt-BR": "Padrão",
    "ru": "По умолчанию",
    "id": "Bawaan"
+  },
+  "Default branch pipelines": {
+   "zh-Hans": "默认分支流水线",
+   "hi": "डिफ़ॉल्ट ब्रांच की पाइपलाइनें",
+   "es": "Pipelines de la rama por defecto",
+   "ar": "مسارات CI للفرع الافتراضي",
+   "fr": "Pipelines de la branche par défaut",
+   "bn": "ডিফল্ট ব্রাঞ্চের পাইপলাইন",
+   "pt-BR": "Pipelines da branch padrão",
+   "ru": "Пайплайны основной ветки",
+   "id": "Pipeline cabang default"
   },
   "Delete": {
    "zh-Hans": "删除",
@@ -1927,6 +1982,17 @@
    "ru": "Диктовка Flow",
    "id": "Dikte Flow"
   },
+  "Fold the panel": {
+   "zh-Hans": "收起面板",
+   "hi": "पैनल समेटें",
+   "es": "Plegar el panel",
+   "ar": "طيّ اللوحة",
+   "fr": "Replier le panneau",
+   "bn": "প্যানেল গুটিয়ে নিন",
+   "pt-BR": "Recolher o painel",
+   "ru": "Свернуть панель",
+   "id": "Lipat panel"
+  },
   "For a more natural voice, download a Premium voice: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices. In English: Ava for a woman, Jamie for a man (British).": {
    "zh-Hans": "想要更自然的声音，请下载 Premium 语音：系统设置 → 辅助功能 → 朗读内容 → 系统语音 → 管理语音。英语：女声选 Ava，男声选 Jamie（英式）。",
    "hi": "ज़्यादा स्वाभाविक आवाज़ के लिए Premium आवाज़ डाउनलोड करें: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices। अंग्रेज़ी में: महिला के लिए Ava, पुरुष के लिए Jamie (ब्रिटिश)।",
@@ -2014,6 +2080,17 @@
    "pt-BR": "Hooks do GitHub Copilot CLI",
    "ru": "Хуки GitHub Copilot CLI",
    "id": "Hooks GitHub Copilot CLI"
+  },
+  "GitLab refused it. Your text is kept.": {
+   "zh-Hans": "GitLab 拒绝了。你的文字已保留。",
+   "hi": "GitLab ने इसे अस्वीकार किया। आपका पाठ सुरक्षित है।",
+   "es": "GitLab lo rechazó. Tu texto se conserva.",
+   "ar": "رفض GitLab ذلك. تم الاحتفاظ بنصك.",
+   "fr": "GitLab l'a refusé. Votre texte est conservé.",
+   "bn": "GitLab এটি প্রত্যাখ্যান করেছে। আপনার লেখা রাখা আছে।",
+   "pt-BR": "O GitLab recusou. Seu texto foi mantido.",
+   "ru": "GitLab отклонил это. Ваш текст сохранён.",
+   "id": "GitLab menolaknya. Teks Anda disimpan."
   },
   "Give me a sec — back to work in three seconds.": {
    "zh-Hans": "给我一秒钟——三秒后恢复工作。",
@@ -3016,6 +3093,17 @@
    "ru": "Выключить / включить звук",
    "id": "Bisukan / aktifkan suara"
   },
+  "My MRs": {
+   "zh-Hans": "我的 MR",
+   "hi": "मेरे MR",
+   "es": "Mis MR",
+   "ar": "طلبات الدمج الخاصة بي",
+   "fr": "Mes MR",
+   "bn": "আমার MR",
+   "pt-BR": "Meus MRs",
+   "ru": "Мои MR",
+   "id": "MR saya"
+  },
   "My PRs": {
    "zh-Hans": "我的 PR",
    "hi": "मेरे PR",
@@ -3158,6 +3246,17 @@
    "pt-BR": "Próxima faixa",
    "ru": "Следующий трек",
    "id": "Lagu berikutnya"
+  },
+  "No GitLab token.": {
+   "zh-Hans": "没有 GitLab 令牌。",
+   "hi": "कोई GitLab टोकन नहीं।",
+   "es": "No hay token de GitLab.",
+   "ar": "لا يوجد رمز GitLab.",
+   "fr": "Pas de jeton GitLab.",
+   "bn": "কোনো GitLab টোকেন নেই।",
+   "pt-BR": "Sem token do GitLab.",
+   "ru": "Нет токена GitLab.",
+   "id": "Tidak ada token GitLab."
   },
   "No activity last week": {
    "zh-Hans": "上周无活动",
@@ -3819,6 +3918,17 @@
    "ru": "Открыть чат",
    "id": "Buka chat"
   },
+  "Open in GitLab": {
+   "zh-Hans": "在 GitLab 中打开",
+   "hi": "GitLab में खोलें",
+   "es": "Abrir en GitLab",
+   "ar": "افتح في GitLab",
+   "fr": "Ouvrir dans GitLab",
+   "bn": "GitLab-এ খুলুন",
+   "pt-BR": "Abrir no GitLab",
+   "ru": "Открыть в GitLab",
+   "id": "Buka di GitLab"
+  },
   "Open in Mail": {
    "zh-Hans": "在“邮件”中打开",
    "hi": "Mail में खोलें",
@@ -3906,6 +4016,17 @@
    "pt-BR": "Abrir o Notetaker →",
    "ru": "Открыть Notetaker →",
    "id": "Buka Notetaker →"
+  },
+  "Open the merge request panel": {
+   "zh-Hans": "打开合并请求面板",
+   "hi": "मर्ज रिक्वेस्ट पैनल खोलें",
+   "es": "Abrir el panel de merge requests",
+   "ar": "افتح لوحة طلبات الدمج",
+   "fr": "Ouvrir le panneau des merge requests",
+   "bn": "মার্জ রিকোয়েস্ট প্যানেল খুলুন",
+   "pt-BR": "Abrir o painel de merge requests",
+   "ru": "Открыть панель merge request",
+   "id": "Buka panel merge request"
   },
   "Open this window when you open Coucou": {
    "zh-Hans": "打开 Coucou 时打开此窗口",
@@ -4126,6 +4247,17 @@
    "pt-BR": "Pessoa {0}",
    "ru": "Участник {0}",
    "id": "Orang {0}"
+  },
+  "Personal access token with the read_api scope. Leave the URL empty for gitlab.com.": {
+   "zh-Hans": "具有 read_api 权限范围的个人访问令牌。使用 gitlab.com 时请将 URL 留空。",
+   "hi": "read_api स्कोप वाला पर्सनल एक्सेस टोकन। gitlab.com के लिए URL खाली छोड़ें।",
+   "es": "Token de acceso personal con el alcance read_api. Deja la URL vacía para gitlab.com.",
+   "ar": "رمز وصول شخصي بنطاق read_api. اترك العنوان فارغًا لاستخدام gitlab.com.",
+   "fr": "Jeton d'accès personnel avec la portée read_api. Laissez l'URL vide pour gitlab.com.",
+   "bn": "read_api স্কোপসহ পার্সোনাল অ্যাক্সেস টোকেন। gitlab.com-এর জন্য URL ফাঁকা রাখুন।",
+   "pt-BR": "Token de acesso pessoal com o escopo read_api. Deixe a URL vazia para gitlab.com.",
+   "ru": "Персональный токен доступа с областью read_api. Для gitlab.com оставьте URL пустым.",
+   "id": "Token akses pribadi dengan cakupan read_api. Kosongkan URL untuk gitlab.com."
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -4490,6 +4622,17 @@
    "ru": "Убирает «э-э», повторы и поправки, сделанные на ходу, и исправляет пунктуацию.",
    "id": "Menghapus “eh”, pengulangan dan koreksi saat bicara, lalu merapikan tanda baca."
   },
+  "Reopen": {
+   "zh-Hans": "重新打开",
+   "hi": "फिर से खोलें",
+   "es": "Reabrir",
+   "ar": "إعادة الفتح",
+   "fr": "Rouvrir",
+   "bn": "আবার খুলুন",
+   "pt-BR": "Reabrir",
+   "ru": "Открыть снова",
+   "id": "Buka lagi"
+  },
   "Repeat all": {
    "zh-Hans": "全部重复",
    "hi": "सभी दोहराएँ",
@@ -4589,6 +4732,17 @@
    "ru": "Повторить",
    "id": "Kirim ulang"
   },
+  "Reset": {
+   "zh-Hans": "重置",
+   "hi": "रीसेट करें",
+   "es": "Restablecer",
+   "ar": "إعادة تعيين",
+   "fr": "Réinitialiser",
+   "bn": "রিসেট করুন",
+   "pt-BR": "Redefinir",
+   "ru": "Сбросить",
+   "id": "Atur ulang"
+  },
   "Reset all to defaults": {
    "zh-Hans": "全部重置为默认值",
    "hi": "सभी को डिफ़ॉल्ट पर रीसेट करें",
@@ -4610,6 +4764,28 @@
    "pt-BR": "Reiniciando…",
    "ru": "Сброс…",
    "id": "Mereset…"
+  },
+  "Resolve": {
+   "zh-Hans": "标记为已解决",
+   "hi": "सुलझाएँ",
+   "es": "Resolver",
+   "ar": "حل",
+   "fr": "Résoudre",
+   "bn": "সমাধান করুন",
+   "pt-BR": "Resolver",
+   "ru": "Решить",
+   "id": "Selesaikan"
+  },
+  "Resolved": {
+   "zh-Hans": "已解决",
+   "hi": "सुलझा हुआ",
+   "es": "Resuelto",
+   "ar": "تم الحل",
+   "fr": "Résolu",
+   "bn": "সমাধান হয়েছে",
+   "pt-BR": "Resolvido",
+   "ru": "Решено",
+   "id": "Terselesaikan"
   },
   "Restart Coucou": {
    "zh-Hans": "重启 Coucou",
@@ -5568,6 +5744,28 @@
    "ru": "Эта модель недоступна.",
    "id": "Model ini tidak tersedia."
   },
+  "This thread no longer exists.": {
+   "zh-Hans": "此讨论已不存在。",
+   "hi": "यह थ्रेड अब मौजूद नहीं है।",
+   "es": "Este hilo ya no existe.",
+   "ar": "لم تعد هذه المناقشة موجودة.",
+   "fr": "Ce fil n'existe plus.",
+   "bn": "এই থ্রেডটি আর নেই।",
+   "pt-BR": "Este thread não existe mais.",
+   "ru": "Это обсуждение больше не существует.",
+   "id": "Thread ini sudah tidak ada."
+  },
+  "This token is read-only: add the api scope to reply": {
+   "zh-Hans": "此令牌为只读：添加 api 权限范围后才能回复",
+   "hi": "यह टोकन केवल पढ़ने के लिए है: जवाब देने के लिए api स्कोप जोड़ें",
+   "es": "Este token es de solo lectura: añade el alcance api para responder",
+   "ar": "هذا الرمز للقراءة فقط: أضف نطاق api للرد",
+   "fr": "Ce jeton est en lecture seule : ajoutez la portée api pour répondre",
+   "bn": "এই টোকেন শুধু পড়ার জন্য: উত্তর দিতে api স্কোপ যোগ করুন",
+   "pt-BR": "Este token é somente leitura: adicione o escopo api para responder",
+   "ru": "Этот токен только для чтения: добавьте область api, чтобы отвечать",
+   "id": "Token ini hanya baca: tambahkan cakupan api untuk membalas"
+  },
   "Time saved": {
    "zh-Hans": "节省的时间",
    "hi": "बचा समय",
@@ -5765,6 +5963,17 @@
    "pt-BR": "Ilimitado e grátis",
    "ru": "Без ограничений и бесплатно",
    "id": "Tanpa batas dan gratis"
+  },
+  "Unresolved threads": {
+   "zh-Hans": "未解决的讨论",
+   "hi": "अनसुलझे थ्रेड",
+   "es": "Hilos sin resolver",
+   "ar": "نقاشات غير محلولة",
+   "fr": "Fils non résolus",
+   "bn": "অমীমাংসিত থ্রেড",
+   "pt-BR": "Threads não resolvidos",
+   "ru": "Неразрешённые обсуждения",
+   "id": "Thread belum selesai"
   },
   "Until Parakeet is downloaded, Coucou uses your Mac's speech recognition.": {
    "zh-Hans": "在下载 Parakeet 之前，Coucou 使用 Mac 的语音识别。",
@@ -6206,6 +6415,17 @@
    "ru": "Рабочие процессы",
    "id": "Alur kerja"
   },
+  "Write a reply…": {
+   "zh-Hans": "写下回复…",
+   "hi": "जवाब लिखें…",
+   "es": "Escribe una respuesta…",
+   "ar": "اكتب ردًا…",
+   "fr": "Écrire une réponse…",
+   "bn": "উত্তর লিখুন…",
+   "pt-BR": "Escreva uma resposta…",
+   "ru": "Напишите ответ…",
+   "id": "Tulis balasan…"
+  },
   "Write the summary": {
    "zh-Hans": "生成摘要",
    "hi": "सारांश बनाएँ",
@@ -6282,6 +6502,17 @@
    "pt-BR": "Ontem",
    "ru": "Вчера",
    "id": "Kemarin"
+  },
+  "You": {
+   "zh-Hans": "你",
+   "hi": "आप",
+   "es": "Tú",
+   "ar": "أنت",
+   "fr": "Vous",
+   "bn": "আপনি",
+   "pt-BR": "Você",
+   "ru": "Вы",
+   "id": "Anda"
   },
   "You say": {
    "zh-Hans": "你说",

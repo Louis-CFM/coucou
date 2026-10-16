@@ -10,14 +10,17 @@ import { State } from "../core/state";
 import type { Island } from "./island";
 
 const GITHUB = "integration_github";
+const GITLAB = "integration_gitlab";
 
 const clearTimers = new Map<string, number>();
 
 export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
   void onEvent<GitHubEvent[]>("github-alerts", handleGitHubAlerts);
+  void onEvent<GitHubEvent[]>("gitlab-alerts", handleGitLabAlerts);
   void refreshConfigured();
   State.subscribe(refreshGitHubWhenShown);
+  State.subscribe(refreshGitLabWhenShown);
 }
 
 /**
@@ -27,12 +30,21 @@ export function registerIntegrationHandlers(island: Island) {
  * is focused, as on macOS.
  */
 export function handleGitHubAlerts(events: GitHubEvent[]) {
+  raiseAlert(GITHUB, events);
+}
+
+/** Same rules for GitLab: its merge requests and pipelines raise the same events. */
+export function handleGitLabAlerts(events: GitHubEvent[]) {
+  raiseAlert(GITLAB, events);
+}
+
+function raiseAlert(id: string, events: GitHubEvent[]) {
   if (State.paused) return;
   const alert = gitHubAlert(events);
   if (!alert) return;
-  const task = State.tasks.find((t) => t.id === GITHUB);
+  const task = State.tasks.find((t) => t.id === id);
   if (!task) return;
-  if (State.focusId !== GITHUB) task.pillBadge = alert.badge;
+  if (State.focusId !== id) task.pillBadge = alert.badge;
   Sound.play(alert.sound);
   State.notify();
 }
@@ -44,6 +56,15 @@ function refreshGitHubWhenShown() {
   const shown = State.mode === "expanded" && State.focusTask?.id === GITHUB;
   if (shown && !gitHubShown) void Bridge.githubRefresh("pulse");
   gitHubShown = shown;
+}
+
+let gitLabShown = false;
+
+/** The GitLab card just came on screen: refresh it if stale. */
+function refreshGitLabWhenShown() {
+  const shown = State.mode === "expanded" && State.focusTask?.id === GITLAB;
+  if (shown && !gitLabShown) void Bridge.gitlabRefresh("pulse");
+  gitLabShown = shown;
 }
 
 /**

@@ -360,6 +360,11 @@ final class AppState: ObservableObject {
                 githubPulse = nil
                 githubActivity = nil
             }
+            if !activeIntegrations.contains("integration_gitlab") && oldValue.contains("integration_gitlab") {
+                gitlabPulse = nil
+                gitlabActivity = nil
+                GitLabPanelService.shared.pillOff()
+            }
         }
     }
 
@@ -377,6 +382,11 @@ final class AppState: ObservableObject {
     @Published var githubStats: GitHubStats? = nil
     @Published var githubPulse: GitHubPulse? = nil
     @Published var githubActivity: GitHubActivity? = nil
+
+    // GitLab stats + pulse + activity (populated by GitLabPoller, same types as GitHub's)
+    @Published var gitlabStats: GitHubStats? = nil
+    @Published var gitlabPulse: GitHubPulse? = nil
+    @Published var gitlabActivity: GitHubActivity? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -631,8 +641,9 @@ final class AppState: ObservableObject {
         tasks[idx].pillBadge = badge
     }
 
-    /// Called on main thread after each GitHub pulse poll. Fires badge + sound based on events.
-    func handleGitHubEvents(_ events: [GitHubEvent]) {
+    /// Called on main thread after each GitHub or GitLab pulse poll (`pillId` says which).
+    /// Fires badge + sound based on events.
+    func handleGitHubEvents(_ events: [GitHubEvent], pillId: String = "integration_github") {
         guard !events.isEmpty else { return }
         // Priority: error > question (reviewRequested) > finish (ciPassed)
         var level = 0          // 0 = none, 1 = finish, 2 = question, 3 = error
@@ -642,14 +653,14 @@ final class AppState: ObservableObject {
             switch event {
             case .ciFailed, .mainFailed:
                 if level < 3 { level = 3; badge = .error;    sound = "error"    }
-            case .reviewRequested:
+            case .reviewRequested, .commentPending:
                 if level < 2 { level = 2; badge = .finished; sound = "question" }
             case .ciPassed:
                 if level < 1 { level = 1; badge = .finished; sound = "finish"   }
             }
         }
-        // Only set badge when the GitHub pill is not currently in focus
-        if let b = badge, focusId != "integration_github" { setPillBadge(b, for: "integration_github") }
+        // Only set badge when the pill is not currently in focus
+        if let b = badge, focusId != pillId { setPillBadge(b, for: pillId) }
         if let s = sound { SoundEngine.shared.play(s) }
     }
 

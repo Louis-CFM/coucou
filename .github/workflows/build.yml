@@ -107,6 +107,12 @@ jobs:
       - name: GitHub activity tests
         run: bash scripts/test-github-activity.sh
 
+      - name: GitLab pulse tests
+        run: bash scripts/test-gitlab-pulse.sh
+
+      - name: GitLab panel tests
+        run: bash scripts/test-gitlab-dash.sh
+
       - name: Wardrobe tests
         run: bash scripts/test-wardrobe.sh
 
