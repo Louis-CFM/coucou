@@ -10,7 +10,7 @@ import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
-import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
+import { DEFAULT_OUTFIT, mochiKey, type MochiLook, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
 
@@ -135,6 +135,16 @@ export interface Settings {
    * Same raw values as the Mac's "mochiOutfit"; read it through parseOutfit.
    */
   mochiOutfit: string;
+  /** Mochi's body shape, picked in the wardrobe too ("" = the classic Mochi; see shapes.ts SHAPES). */
+  mochiShape: string;
+  /**
+   * "perMochi" (each Mochi wears its own look from `mochiLooks`) or "all"
+   * (every Mochi wears `mochiOutfit` and `mochiShape`). Read it through
+   * wardrobe.ts lookOf.
+   */
+  wardrobeMode: string;
+  /** Each Mochi's own look, by wardrobe.ts mochiKey. Rust keeps it in wardrobe-looks.json. */
+  mochiLooks?: Record<string, MochiLook>;
   /**
    * A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB").
    * Empty means the catalog's colours; read it through core/pill-colors.ts.
@@ -188,6 +198,9 @@ export const DEFAULT_SETTINGS: Settings = {
   customUrl: "",
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
+  mochiShape: "",
+  wardrobeMode: "perMochi",
+  mochiLooks: {},
   pillColors: {},
   language: "",
 };
@@ -269,6 +282,11 @@ class AppState {
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Whose look the island's Mochi wears, and the wardrobe dresses: the focused pill's Mochi. */
+  get focusMochi(): string {
+    return mochiKey(this.focusTask, this.mainPillId);
   }
 
   /** Marks the UI dirty; the island re-renders on the next frame. */
