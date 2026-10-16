@@ -229,7 +229,109 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
+fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(c) = custom.filter(|s| !s.trim().is_empty()) {
+        candidates.push(c.trim().to_string());
+    }
+    if let Some(vis) = std::env::var("VISUAL").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(vis.trim().to_string());
+    }
+    if let Some(ed) = std::env::var("EDITOR").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(ed.trim().to_string());
+    }
+    candidates.push("code".to_string());
+
+    for name in candidates {
+        let p = std::path::Path::new(&name);
+        if p.is_file() {
+            return Some(p.to_path_buf());
+        }
+        if let Some(found) = platform::find_on_path(&name) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn is_terminal_editor(editor: &std::path::Path) -> bool {
+    let name = editor
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let stem = editor
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    // On Unix, a path with backslashes like "C:\tools\nvim.exe" is a single filename segment;
+    // strip the Windows extension if present so test paths work cross-platform.
+    let base = stem
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(&stem)
+        .strip_suffix(".exe")
+        .or_else(|| stem.rsplit(['/', '\\']).next())
+        .unwrap_or(&stem);
+    matches!(
+        base,
+        "vi" | "vim" | "nvim" | "nano" | "emacs" | "micro" | "helix" | "hx" | "kak" | "pico"
+    ) || matches!(
+        name.strip_suffix(".exe").unwrap_or(&name),
+        "vi" | "vim" | "nvim" | "nano" | "emacs" | "micro" | "helix" | "hx" | "kak" | "pico"
+    )
+}
+
+fn spawn_editor(editor: &std::path::Path, target: &std::ffi::OsStr) -> bool {
+    #[cfg(windows)]
+    {
+        if is_terminal_editor(editor) {
+            // Terminal editor: launch in Windows Terminal or cmd console
+            if let Some(wt) = platform::find_on_path("wt") {
+                if Command::new(wt)
+                    .args(["--", editor.to_str().unwrap_or("")])
+                    .arg(target)
+                    .spawn()
+                    .is_ok()
+                {
+                    return true;
+                }
+            }
+            let mut cmd = Command::new("cmd.exe");
+            cmd.args(["/c", "start", ""])
+                .arg(editor)
+                .arg(target);
+            return cmd.spawn().is_ok();
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if is_terminal_editor(editor) {
+            for term in &["x-terminal-emulator", "gnome-terminal", "alacritty", "kitty", "konsole", "xterm"] {
+                if let Some(term_bin) = platform::find_on_path(term) {
+                    let mut cmd = Command::new(term_bin);
+                    if *term == "gnome-terminal" {
+                        cmd.arg("--");
+                    } else {
+                        cmd.arg("-e");
+                    }
+                    cmd.arg(editor).arg(target);
+                    if cmd.spawn().is_ok() {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut cmd = Command::new(editor);
+    cmd.arg(target);
+    platform::no_console(&mut cmd).spawn().is_ok()
+}
+
+/// "Open terminal" opens the working folder in the configured editor (or VS Code / $EDITOR),
 /// and falls back to the file manager otherwise.
 #[tauri::command]
 fn open_in_vscode(path: Option<String>) -> bool {
@@ -247,13 +349,17 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = settings::load().editor;
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
         if let Some(p) = path.as_deref() {
-            cmd.arg(p);
-        }
-        if platform::no_console(&mut cmd).spawn().is_ok() {
-            return true;
+            if spawn_editor(&editor, std::ffi::OsStr::new(p)) {
+                return true;
+            }
+        } else {
+            let mut cmd = Command::new(&editor);
+            if platform::no_console(&mut cmd).spawn().is_ok() {
+                return true;
+            }
         }
     }
     if let Some(p) = path.as_deref() {
@@ -307,16 +413,15 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
+/// The diff card's ↗: opens the edited file in the configured editor (or VS Code) when found,
 /// otherwise shows its folder. The file itself is never opened by its type —
 /// xdg-open or Explorer would run a script that Claude just wrote.
 #[tauri::command]
 fn open_file_in_vscode(path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
-        cmd.arg(file);
-        if platform::no_console(&mut cmd).spawn().is_ok() {
+    let custom = settings::load().editor;
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        if spawn_editor(&editor, file.as_os_str()) {
             return true;
         }
     }
@@ -929,6 +1034,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+    use super::*;
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
@@ -946,5 +1052,35 @@ mod tests {
         assert!(diff_file("").is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_editor_finds_configured_executable() {
+        #[cfg(windows)]
+        let target = "cmd";
+        #[cfg(not(windows))]
+        let target = "sh";
+
+        let found = resolve_editor(Some(target));
+        assert!(found.is_some());
+        assert!(found.unwrap().to_string_lossy().to_lowercase().contains(target));
+    }
+
+    #[test]
+    fn resolve_editor_ignores_empty_custom_value() {
+        let none = resolve_editor(Some(""));
+        let spaces = resolve_editor(Some("   "));
+        assert_eq!(none, spaces);
+    }
+
+    #[test]
+    fn terminal_editor_detection() {
+        assert!(is_terminal_editor(std::path::Path::new("vim")));
+        assert!(is_terminal_editor(std::path::Path::new("C:\\tools\\nvim.exe")));
+        assert!(is_terminal_editor(std::path::Path::new("/usr/bin/nano")));
+        assert!(is_terminal_editor(std::path::Path::new("hx")));
+        assert!(!is_terminal_editor(std::path::Path::new("code")));
+        assert!(!is_terminal_editor(std::path::Path::new("cursor.cmd")));
+        assert!(!is_terminal_editor(std::path::Path::new("notepad.exe")));
     }
 }

@@ -97,6 +97,10 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// Custom editor command to open project folders (e.g. "cursor", "zed", "code").
+    /// Falls back to $VISUAL, $EDITOR, then "code".
+    #[serde(default)]
+    pub editor: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -162,6 +166,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            editor: None,
         }
     }
 }
@@ -448,7 +453,8 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "editor": "cursor"
 }"##;
 
     fn custom() -> Value {
@@ -956,6 +962,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "editor",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
