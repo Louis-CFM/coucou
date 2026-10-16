@@ -39,6 +39,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .capture:
+            #if !APPSTORE
+            CaptureCardView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }

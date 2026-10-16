@@ -29,6 +29,25 @@ hub = hub_source[hub_source.index('enum HubPage:'):hub_source.index('\n/// The c
 hub += hub_source[hub_source.index('extension HubPage {'):hub_source.index('\n@MainActor\nfinal class HubRouter')]
 assert 'HubPage.notchSubtitle(router.page, chatProvider: state.chatProvider)' in hub_source
 assert '@ObservedObject private var state = AppState.shared' in hub_source
+capture_source = Path('NotchBuddy/Sources/App/CaptureCardView.swift').read_text()
+assert '@ObservedObject private var state = AppState.shared' in capture_source
+assert 'SecondaryButton(verbatim: askLabel) { capture.askClaude() }' in capture_source
+capture = 'final class CaptureCardView {\n    let state: AppState\n    let flow = CaptureFlow()\n    init(state: AppState) { self.state = state }\n'
+capture += capture_source[capture_source.index('    private var askLabel:'):capture_source.rindex('\n}')].replace('private ', '') + '\n}\n'
+capture_source = Path('NotchBuddy/Sources/App/ScreenCapture.swift').read_text()
+start = capture_source.index('    func askClaude() {')
+end = capture_source.index('\n    // MARK: - With Flow', start)
+capture += 'final class ScreenCaptureFixture {\n    var url: URL?\n' + capture_source[start:end] + '\n}\n'
+shortcut_logic = Path('NotchBuddy/Sources/App/ShortcutLogic.swift').read_text()
+assert 'AppState' not in shortcut_logic, 'ShortcutLogic gained an application-state dependency'
+shortcuts = shortcut_logic[shortcut_logic.index('enum ShortcutAction:'):shortcut_logic.index('// MARK: - Shortcut Spec')]
+shortcut_source = Path('NotchBuddy/Sources/App/ShortcutsSettingsView.swift').read_text()
+assert '@ObservedObject private var state = AppState.shared' in shortcut_source
+assert 'Text(actionLabel(action))' in shortcut_source
+start = shortcut_source.index('    private var globalActions:')
+end = shortcut_source.index('\n    @ViewBuilder', start)
+shortcuts += 'final class ShortcutsSettingsView {\n    let state: AppState\n    init(state: AppState) { self.state = state }\n'
+shortcuts += shortcut_source[start:end].replace('private ', '') + '\n}\n'
 Path(sys.argv[1]).write_text('''import Foundation
 enum AgentSource { case claudeCode, n8n, agent }
 struct AgentTask {
@@ -44,6 +63,7 @@ enum PillCatalog {
     }
 }
 final class AppState {
+    static let shared = AppState()
     var tasks: [AgentTask] = []
     var focusTask: AgentTask?
     var chatProvider: ChatProvider = .anthropic
@@ -51,7 +71,21 @@ final class AppState {
     var lmstudioServerURL = ""
     var stateOverride: String?
     var codexChatBusy = false
+    var droppedFile: DroppedFile?
+    var promptContext: PromptContext?
+    var view = IslandView.home
 }
+struct DroppedFile { let url: URL; let name: String }
+enum PromptContext { case file(name: String, fileURL: URL?) }
+enum IslandView { case home, prompt }
+final class CaptureFlow {
+    var isEnabled = false
+    var key = (label: "fn", code: 0)
+}
+struct Animation {
+    static func spring(response: Double, dampingFraction: Double) -> Animation { Animation() }
+}
+func withAnimation(_ animation: Animation, _ body: () -> Void) { body() }
 final class UserDefaults {
     static let standard = UserDefaults()
     var installed = true
@@ -85,7 +119,7 @@ final class CodexChatService {
     var displayMessage: UUID?
 ''' + streaming_property + '''
 }
-''' + provider + authentication + settings + streaming + hub + '''
+''' + provider + authentication + settings + streaming + hub + capture + shortcuts + '''
 @main struct Check {
     static func main() async {
         let state = AppState()
@@ -95,6 +129,37 @@ final class CodexChatService {
         }
         assert(HubPage.notchSubtitle(.agents, chatProvider: .codex) == "hub.notch.agents")
         assert(HubPage.notchSubtitle(.dictation, chatProvider: .codex) == nil)
+        let capture = CaptureCardView(state: state)
+        let shortcuts = ShortcutsSettingsView(state: state)
+        for provider in ChatProvider.allCases {
+            state.chatProvider = provider
+            for action in ShortcutAction.allCases {
+                let expected = action == .captureScreen && provider == .codex ? "shortcut.capture-codex" : action.displayName
+                assert(shortcuts.actionLabel(action) == expected)
+            }
+            assert(capture.askLabel == (provider == .codex ? "capture.ask-codex" : "capture.ask"))
+            assert(capture.hint == (provider == .codex ? "capture.hint-codex" : "capture.hint"))
+            capture.flow.isEnabled = true
+            assert(capture.hint == "capture.flow-hint fn", "Flow capture hint changed with the Chat provider")
+            capture.flow.isEnabled = false
+        }
+        #if APPSTORE
+        assert(!shortcuts.globalActions.contains(.captureScreen), "App Store exposed the unsupported capture shortcut")
+        #else
+        assert(shortcuts.globalActions.contains(.captureScreen))
+        #endif
+        let screen = ScreenCaptureFixture()
+        let image = URL(fileURLWithPath: "/tmp/coucou-capture-fixture.png")
+        screen.url = image
+        AppState.shared.chatProvider = .codex
+        screen.askClaude()
+        assert(AppState.shared.chatProvider == .codex, "Capture switched away from the selected Chat provider")
+        assert(AppState.shared.droppedFile?.url == image)
+        if case .file(let name, let url) = AppState.shared.promptContext {
+            assert(name == "capture.name" && url == image)
+        } else { assertionFailure("Capture lost its shared image attachment") }
+        assert(AppState.shared.view == .prompt)
+        state.chatProvider = .anthropic
         state.focusTask = AgentTask(id: "integration_claude", name: "VS Code", source: .claudeCode)
         let view = SettingsIslandView(state: state)
         assert(view.agentStatus.label == "Agent · Claude Code" && view.agentStatus.ok == true)
@@ -164,7 +229,7 @@ final class CodexChatService {
         state.focusTask = nil
         state.tasks = []
         assert(view.agentStatus.ok == nil)
-        print("PASS independent agent/Chat status; no Codex API-key read; unknown state and provider streaming retained")
+        print("PASS independent agent/Chat status, capture labels and image route; no Codex API-key read; unknown state and provider streaming retained")
     }
 }
 ''')

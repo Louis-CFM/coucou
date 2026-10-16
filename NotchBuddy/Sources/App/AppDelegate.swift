@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         setupMenuBarItem()
         setupIsland()
+        MachineVitals.shared.start()
         #if !APPSTORE
         // Opened by hand (Finder, Dock, Spotlight): the Coucou window shows. Not at login.
         if FlowHubController.openAtLaunch && !FlowHubController.launchedAtLogin() {

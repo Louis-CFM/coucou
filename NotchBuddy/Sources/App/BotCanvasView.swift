@@ -28,6 +28,8 @@ struct BotCanvasView: View {
                 engine.lookX = look.x
                 engine.lookY = look.y
                 engine.particleOverhang = particleOverhang
+                // How the Mac feels (MochiMood.swift).
+                engine.moodTarget = MachineVitals.shared.mood
                 // Widen slot when file is hovering over the mailbox (morph > 0.5)
                 // Open mouth (hover=0.20R) when file dragged over box; close when not
                 if engine.morph > 0.3 {
