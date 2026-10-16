@@ -5,10 +5,15 @@
 
 import { N_, labels, t } from "../i18n/i18n";
 
-/** Every outfit, plus "auto" (dress for the season) and "none". Order of the wardrobe. */
+/**
+ * Every outfit, plus "auto" (dress for the season) and "none". Order of the
+ * wardrobe: the Mac's, with the full skins after the pumpkin (outfits.ts).
+ * Only Windows and Linux have those.
+ */
 export const OUTFIT_SELECTIONS = [
   "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
-  "bow", "scarf", "witchHat", "pumpkin", "santaHat", "bunnyEars",
+  "bow", "scarf", "witchHat", "pumpkin", "frog", "bee", "strawberry", "robot", "ladybug", "panda", "ghost",
+  "santaHat", "bunnyEars",
 ] as const;
 
 /** What can be stored in the preferences. The raw values are the Mac's, keep them stable. */
@@ -34,6 +39,13 @@ export const OUTFIT_KEYS: Record<OutfitSelection, string> = {
   scarf: N_("Scarf"),
   witchHat: N_("Witch hat"),
   pumpkin: N_("Pumpkin"),
+  frog: N_("Frog"),
+  bee: N_("Bee"),
+  strawberry: N_("Strawberry"),
+  robot: N_("Robot"),
+  ladybug: N_("Ladybug"),
+  panda: N_("Panda"),
+  ghost: N_("Ghost"),
   santaHat: N_("Santa hat"),
   bunnyEars: N_("Bunny ears"),
 };
