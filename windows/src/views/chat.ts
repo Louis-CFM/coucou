@@ -254,13 +254,15 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   });
 
   void onEvent<string>("chat-delta", (text) => {
-    if (!sending || !text) return; // nothing visible yet: the dots stay
+    // The mood line comes last: never shown while it streams in.
+    const visible = text.replace(/\n?\s*(?:```(?:json)?\s*)?\{\s*"mood[\s\S]*$/, "").trimEnd();
+    if (!sending || !visible) return; // nothing visible yet: the dots stay
     if (!live) {
       live = h("div", { class: "reply" });
       log.querySelector(".typing")?.parentElement?.remove();
       log.append(h("div", { class: "chat-row" }, live));
     }
-    renderMarkdown(live, text);
+    renderMarkdown(live, visible);
     log.scrollTop = log.scrollHeight;
   });
 
@@ -285,6 +287,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     try {
       const reply = await Bridge.chatSend(query, context);
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      // The model ends with how it feels about its answer; the island acts it out.
+      if (reply.mood) window.dispatchEvent(new CustomEvent("mochi-mood", { detail: reply.mood }));
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
