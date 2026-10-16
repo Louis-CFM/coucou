@@ -7,9 +7,10 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { emit, sent } from "./tauri.mjs";
 import { installFakeDom } from "./fakedom.mjs";
+import { Bridge } from "../src/core/bridge.ts";
 import {
   IDLE_SPOTIFY, SPOTIFY_ID, Spotify, currentArtwork, desktopDances, formatTime, isAd, islandDances,
-  musicPlaying, spotifyPosition, volumeLevel, withPlaying,
+  musicPlaying, spotifyPosition, volumeLevel, withPlaying, nextRepeatValue,
 } from "../src/core/spotify.ts";
 import { BotEngine, danceTransform, stepDanceLevel } from "../src/mochi/engine.ts";
 import { registerSpotifyHandlers } from "../src/island/spotify.ts";
@@ -216,6 +217,24 @@ test("the cover arrives on its own event", () => {
   assert.equal(currentArtwork(), "data:image/png;base64,AA");
 });
 
+test("a delayed SMTC cover replaces the previous image under the same track key", () => {
+  const card = buildSpotifyCard();
+  const imageA = "data:image/png;base64,AA";
+  const imageB = "data:image/png;base64,BB";
+  emit("spotify", playing({ track: track({ id: "A", artUrl: "smtc:A" }) }));
+  emit("spotify-artwork", { artUrl: "smtc:A", dataUrl: imageA });
+  card.sync();
+  emit("spotify", playing({ track: track({ id: "B", artUrl: "smtc:B" }) }));
+  assert.equal(currentArtwork(), null);
+  // Windows can expose B's title while its thumbnail still contains A.
+  emit("spotify-artwork", { artUrl: "smtc:B", dataUrl: imageA });
+  card.sync();
+  emit("spotify-artwork", { artUrl: "smtc:B", dataUrl: imageB });
+  card.sync();
+  assert.equal(currentArtwork(), imageB);
+  assert.equal(card.el.find("IMG")[0].getAttribute("src"), imageB);
+});
+
 test("the card reads the player again each time it comes on screen", () => {
   const before = sent("spotify_refresh").length;
   State.mode = "expanded";
@@ -269,20 +288,127 @@ test("the playing card: title, artist · album, times, and the controls", () => 
   next.fire("click");
   play.fire("click");
   assert.deepEqual(sent("spotify_control").slice(before), [
-    { action: "shuffle", value: 0 },
-    { action: "repeat", value: 1 },
-    { action: "previous", value: null },
-    { action: "next", value: null },
-    { action: "playPause", value: null },
+    { action: "shuffle", value: 0, source: null },
+    { action: "repeat", value: 1, source: null },
+    { action: "previous", value: null, source: null },
+    { action: "next", value: null, source: null },
+    { action: "playPause", value: null, source: null },
   ]);
-  // The page shows the clicks at once.
-  assert.equal(Spotify.state.shuffle, false);
-  assert.equal(Spotify.state.repeat, true);
+  // Flags wait for confirmation; play/pause still responds optimistically.
+  assert.equal(Spotify.state.shuffle, true);
+  assert.equal(Spotify.state.repeat, false);
   assert.equal(Spotify.state.playing, true);
 
   Spotify.state = playing({ track: track({ id: "spotify:ad:9", title: "x", artist: "", album: "" }) });
   card.sync();
   assert.ok(card.el.textContent.includes("Advertisement"));
+});
+
+test("repeat cycles off, context and track without collapsing repeat-one", () => {
+  assert.equal(nextRepeatValue(playing({ repeatMode: "off" })), 1);
+  assert.equal(nextRepeatValue(playing({ repeatMode: "context" })), 2);
+  assert.equal(nextRepeatValue(playing({ repeatMode: "track" })), 0);
+  assert.equal(nextRepeatValue(playing({ repeat: true })), 0);
+  const card = buildSpotifyCard();
+  Spotify.state = playing({ source: "spotifast.exe", repeatMode: "context", repeat: true });
+  card.sync();
+  card.el.querySelector("np-buttons").children[4].fire("click");
+  assert.deepEqual(sent("spotify_control").at(-1), { action: "repeat", value: 2, source: "spotifast.exe" });
+  Spotify.state = playing({ repeatMode: "track", repeat: true });
+  card.sync();
+  assert.equal(card.el.querySelector("np-buttons").children[4].title, "Repeat one track");
+});
+
+test("unavailable controls do not send commands and mixer volume is labelled", () => {
+  const card = buildSpotifyCard();
+  Spotify.state = playing({ controls: { shuffle: false, repeat: false, volume: true, volumeIsMixer: true } });
+  card.sync();
+  const buttons = card.el.querySelector("np-buttons").children;
+  const before = sent("spotify_control").length;
+  for (const button of [buttons[0], buttons[4]]) {
+    assert.equal(button.disabled, true);
+    button.fire("click");
+  }
+  assert.equal(sent("spotify_control").length, before);
+  assert.equal(card.el.querySelector("np-volume").title, "Windows mixer volume 70%");
+  Spotify.state.controls = { shuffle: true, repeat: true, volume: true, volumeIsMixer: false };
+  card.sync();
+  assert.equal(card.el.querySelector("np-volume").title, "Volume 70%");
+});
+
+test("a rejected flag command reconciles with the real player instead of lying", async () => {
+  const originalControl = Bridge.spotifyControl;
+  const originalRefresh = Bridge.spotifyRefresh;
+  try {
+    Bridge.spotifyControl = async () => false;
+    Bridge.spotifyRefresh = async () => playing({ source: "spotifast.exe", shuffle: true, volume: 34 });
+    Spotify.state = playing({ source: "spotifast.exe", shuffle: true });
+    const card = buildSpotifyCard();
+    card.sync();
+    card.el.querySelector("np-buttons").children[0].fire("click");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(Spotify.state.shuffle, true);
+    assert.equal(Spotify.state.volume, 34);
+  } finally {
+    Bridge.spotifyControl = originalControl;
+    Bridge.spotifyRefresh = originalRefresh;
+  }
+});
+
+test("queued volume changes cannot spill into a newly selected player", async () => {
+  const originalControl = Bridge.spotifyControl;
+  const originalRefresh = Bridge.spotifyRefresh;
+  let release;
+  const requests = [];
+  try {
+    Bridge.spotifyControl = (action, value, source) => {
+      requests.push({ action, value, source });
+      return new Promise((resolve) => { release = resolve; });
+    };
+    Bridge.spotifyRefresh = async () => null;
+    Spotify.state = playing({ source: "spotifast.exe" });
+    const card = buildSpotifyCard();
+    card.sync();
+    const bar = card.el.querySelector("np-volume").children[1];
+    bar.getBoundingClientRect = () => ({ left: 0, width: 100 });
+    const event = (clientX) => ({ button: 0, clientX, pointerId: 1, stopPropagation() {} });
+    for (const callback of bar.listeners.get("pointerdown")) callback(event(30));
+    for (const callback of bar.listeners.get("pointermove")) callback(event(60));
+    assert.equal(requests.length, 1, "volume commands are serialized");
+    Spotify.state = playing({ source: "Spotify.exe", volume: 10 });
+    release(true);
+    await new Promise((resolve) => setTimeout(resolve, 170));
+    assert.deepEqual(requests, [{ action: "volume", value: 30, source: "spotifast.exe" }]);
+    assert.equal(Spotify.state.volume, 10);
+  } finally {
+    release?.(true);
+    Bridge.spotifyControl = originalControl;
+    Bridge.spotifyRefresh = originalRefresh;
+  }
+});
+
+test("a late command refresh does not overwrite a newer player event", async () => {
+  const originalControl = Bridge.spotifyControl;
+  const originalRefresh = Bridge.spotifyRefresh;
+  let release;
+  try {
+    Bridge.spotifyControl = async () => true;
+    Bridge.spotifyRefresh = () => new Promise((resolve) => { release = resolve; });
+    Spotify.state = playing({ source: "spotifast.exe" });
+    const card = buildSpotifyCard();
+    card.sync();
+    card.el.querySelector("np-buttons").children[0].fire("click");
+    await new Promise((resolve) => setImmediate(resolve));
+    Spotify.state = playing({ source: "Spotify.exe", volume: 12 });
+    release(playing({ source: "spotifast.exe", volume: 90 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(Spotify.state.source, "Spotify.exe");
+    assert.equal(Spotify.state.volume, 12);
+  } finally {
+    release?.(null);
+    Bridge.spotifyControl = originalControl;
+    Bridge.spotifyRefresh = originalRefresh;
+  }
 });
 
 test("the pill shows play/pause and next on hover, only with a track", () => {
@@ -297,7 +423,7 @@ test("the pill shows play/pause and next on hover, only with a track", () => {
   assert.equal(playBtn.title, "Pause");
   const before = sent("spotify_control").length;
   playBtn.fire("click");
-  assert.deepEqual(sent("spotify_control").slice(before), [{ action: "playPause", value: null }]);
+  assert.deepEqual(sent("spotify_control").slice(before), [{ action: "playPause", value: null, source: null }]);
   assert.equal(Spotify.state.playing, false);
   pill.el.fire("mouseleave");
   assert.ok(!pill.el.classList.contains("controls"));

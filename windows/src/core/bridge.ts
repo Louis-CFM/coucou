@@ -402,9 +402,9 @@ export const Bridge = {
   // ── Spotify (src-tauri/src/spotify.rs) ────────────────────────────────────
   /** Reads the player again (the card came on screen) and reports it. */
   spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
-  /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
-  spotifyControl: (action: SpotifyAction, value?: number) =>
-    call<boolean>("spotify_control", { action, value: value ?? null }),
+  /** True when accepted. Repeat: 0 off, 1 list, 2 track on Windows. Source pins the target player. */
+  spotifyControl: (action: SpotifyAction, value?: number, source?: string | null) =>
+    call<boolean>("spotify_control", { action, value: value ?? null, source: source ?? null }),
   /** Brings Spotify forward or starts it; without it, its download page. */
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a Spotify to launch (Settings). */

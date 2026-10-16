@@ -425,7 +425,7 @@ fn music(app: &AppHandle, input: &Value) -> (String, bool) {
         _ => return ("unknown action".into(), false),
     };
     let app2 = app.clone();
-    let done = tauri::async_runtime::block_on(crate::spotify::spotify_control(app2, control.into(), value));
+    let done = tauri::async_runtime::block_on(crate::spotify::spotify_control(app2, control.into(), value, None));
     if done {
         ("done".into(), true)
     } else {

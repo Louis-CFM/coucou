@@ -21,6 +21,9 @@ export interface SpotifyTrack {
 }
 
 export interface SpotifyState {
+  source?: string | null;
+  controls?: { shuffle: boolean; repeat: boolean; volume: boolean; volumeIsMixer: boolean } | null;
+  repeatMode?: "off" | "context" | "track" | null;
   /** Spotify is running. */
   running: boolean;
   /** There is a Spotify to launch. */
@@ -34,6 +37,12 @@ export interface SpotifyState {
   repeat: boolean;
   /** 0…100. */
   volume: number;
+}
+
+/** Windows supports all three modes; older/Linux reports keep the on/off toggle. */
+export function nextRepeatValue(s: SpotifyState): number {
+  if (s.repeatMode == null) return s.repeat ? 0 : 1;
+  return s.repeatMode === "off" ? 1 : s.repeatMode === "context" ? 2 : 0;
 }
 
 export const IDLE_SPOTIFY: SpotifyState = {
