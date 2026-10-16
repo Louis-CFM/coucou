@@ -349,6 +349,37 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
+/// Tells WebView2 how much memory a window may keep. A hidden window (the
+/// Coucou window, the screen overlay) is set to Low: it drops caches and decoded
+/// images and hands its heap slack back, and gets it all back when it is shown again.
+/// It is also made invisible to WebView2, which stops its painting and
+/// animation frames: with occlusion tracking off (BROWSER_ARGS) a hidden
+/// window otherwise kept rendering, the settings window ~60% of a core.
+/// Back to Normal, the window is shown first: made visible to WebView2 while
+/// its window was still hidden, the click-through overlay never painted nor
+/// ran a frame again (the screenshot roam hung, with nothing on screen).
+pub fn set_memory_low(win: &WebviewWindow, low: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
+        COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+    };
+    use wv2_core::Interface;
+    if !low {
+        let _ = win.show();
+    }
+    let _ = win.with_webview(move |wv| unsafe {
+        let _ = wv.controller().SetIsVisible(!low);
+        let Ok(core) = wv.controller().CoreWebView2() else { return };
+        let Ok(core) = core.cast::<ICoreWebView2_19>() else { return };
+        let level = if low {
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW
+        } else {
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL
+        };
+        let _ = core.SetMemoryUsageTargetLevel(level);
+    });
+}
+
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
 
