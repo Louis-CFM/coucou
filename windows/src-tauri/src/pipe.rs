@@ -14,9 +14,10 @@
 //   * whatever happens we drop the connection after the decision timeout, and
 //     the terminal takes over.
 //
-// What we write back is the bare word `allow` or `deny` — or, when the request
-// was Claude Code asking a question, `{"answers":{…}}` with what was picked on
-// the island. Turning either into the documented hookSpecificOutput JSON is
+// What we write back is the bare word `allow`, `always` or `deny`, or, when
+// the request was Claude Code asking a question, `{"answers":{…}}` with what
+// was picked on the island. `always` carries no rule: the relay applies the
+// permission_suggestions Claude Code itself sent with the request. Turning either into the documented hookSpecificOutput JSON is
 // coucou-hook's job, so the wire format Claude Code expects lives in exactly
 // one place.
 
@@ -339,15 +340,22 @@ pub fn decline(app: &AppHandle, request_id: &str) {
     send(app, request_id, Reply::Decline, false);
 }
 
-/// Called by the island's Allow / Deny buttons. Only ever a bare word: turning
-/// it into Claude Code's JSON is coucou-hook's job.
+/// Called by the island's Allow / Always allow / Deny buttons. Only ever a bare
+/// word: turning it into Claude Code's JSON is coucou-hook's job, and the rule
+/// an "always" saves is the one Claude Code offered, never one from here.
 pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
-    let word = match decision {
-        "allow" | "always" => "allow",
-        _ => "deny",
-    };
+    let word = decision_word(decision);
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// The only words that go down the pipe for a permission; anything else denies.
+fn decision_word(decision: &str) -> &'static str {
+    match decision {
+        "allow" => "allow",
+        "always" => "always",
+        _ => "deny",
+    }
 }
 
 /// Called when an option is picked for a question Claude Code asked. `answers`
@@ -358,4 +366,18 @@ pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<Stri
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn always_reaches_the_relay_as_its_own_word_and_nothing_else_allows() {
+        assert_eq!(decision_word("always"), "always");
+        assert_eq!(decision_word("allow"), "allow");
+        // A rule from the page is never relayed: only Claude Code's own are applied.
+        assert_eq!(decision_word("{\"updatedPermissions\":[]}"), "deny");
+        assert_eq!(decision_word(""), "deny");
+    }
 }

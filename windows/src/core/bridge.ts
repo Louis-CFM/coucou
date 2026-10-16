@@ -274,7 +274,8 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  /** "always" carries no rule: the relay applies the ones Claude Code offered. */
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
