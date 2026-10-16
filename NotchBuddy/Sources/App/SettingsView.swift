@@ -456,6 +456,7 @@ struct SettingsView: View {
                     Text(String(localized: "System")).tag("")
                     Text("English").tag("en")
                     Text("简体中文").tag("zh-Hans")
+                    Text("繁體中文").tag("zh-Hant")
                     Text("हिन्दी").tag("hi")
                     Text("Español").tag("es")
                     Text("العربية").tag("ar")
@@ -1109,7 +1110,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("deepseek-api-key", value: deepseekKey)
-                    statusMessage = "DeepSeek key saved."
+                    statusMessage = String(localized: "status.deepseek-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -1123,7 +1124,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("qwen-api-key", value: qwenKey)
-                    statusMessage = "Qwen key saved."
+                    statusMessage = String(localized: "status.qwen-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -1137,7 +1138,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
-                    statusMessage = "Moonshot key saved."
+                    statusMessage = String(localized: "status.moonshot-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
             }
