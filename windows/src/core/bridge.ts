@@ -365,6 +365,9 @@ export const Bridge = {
   },
   /** Copies a generated file into Downloads; returns where it went. */
   mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
+  /** Full-screen preview, on the screen overlay window. */
+  mediaPreview: (file: MediaFile) => call<void>("media_preview", { name: file.name, kind: file.kind }),
+  mediaPreviewClose: () => call<void>("media_preview_close"),
   /** "image", "video", "audio", "3d" or "text", guessed from a model id. */
   guessOutput: (model: string) => call<string>("guess_model_output", { model }),
   /** Credential name of an endpoint's key (one per provider host). */

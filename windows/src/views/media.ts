@@ -1,5 +1,6 @@
 // Generated media in the chat: the "making it" card while a model works, and
-// the result (image, video, speech or a 3D file) with Download.
+// the result (image, video, speech or a 3D file) with Download, and images
+// and video full screen.
 
 import { h, svg } from "./dom";
 import { ICONS } from "./icons";
@@ -103,12 +104,12 @@ const SPARKLE = "M12 1.5c.5 4.6 2.2 6.9 5.2 8.2 1.3.6 2.8.9 4.3 1.3v2c-1.5.4-3 .
 
 // ── The result ────────────────────────────────────────────────────────────────
 
-/** One generated file, inline, with Download. */
+/** One generated file, inline, with Download and (image, video) Full screen. */
 export function mediaCard(file: MediaFile): HTMLElement {
   if (file.kind === "3d") return modelCard(file);
   const el =
     file.kind === "image"
-      ? (h("img", { class: "media-view", alt: "Generated image" }) as HTMLImageElement)
+      ? (h("img", { class: "media-view", alt: "Generated image", title: "Click for full screen" }) as HTMLImageElement)
       : file.kind === "video"
         ? (h("video", { class: "media-view", controls: true, preload: "metadata", playsinline: true }) as HTMLVideoElement)
         : (h("audio", { class: "media-audio", controls: true, preload: "auto" }) as HTMLAudioElement);
@@ -117,7 +118,18 @@ export function mediaCard(file: MediaFile): HTMLElement {
     else el.replaceWith(h("div", { class: "reply-note", text: "This file is gone from the media folder." }));
   });
 
-  const actions = h("div", { class: "media-actions" }, downloadButton(file, t("Download")));
+  const actions = h("div", { class: "media-actions" });
+  if (file.kind !== "audio") {
+    const full = h("button", { class: "code-copy", title: "Full screen (Esc to close)" }, svg(ICONS.expand, 11), "Full screen");
+    full.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (el instanceof HTMLVideoElement) el.pause();
+      void Bridge.mediaPreview(file);
+    });
+    actions.append(full);
+    if (file.kind === "image") el.addEventListener("click", () => void Bridge.mediaPreview(file));
+  }
+  actions.append(downloadButton(file, t("Download")));
   return h("div", { class: `media-card ${file.kind}` }, el, actions);
 }
 

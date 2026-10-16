@@ -897,6 +897,8 @@ pub fn run() {
             media::guess_model_output,
             media::media_bytes,
             media::media_download,
+            media::media_preview,
+            media::media_preview_close,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

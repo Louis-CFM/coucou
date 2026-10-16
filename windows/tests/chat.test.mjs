@@ -123,7 +123,7 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.ok(!$(".model-btn").disabled);
 });
 
-test("a media model's answer is a card per file: the picture with Download, a 3D model as a file", async () => {
+test("a media model's answer is a card per file: the picture with Full screen and Download, a 3D model as a file", async () => {
   State.settings = {
     ...State.settings,
     chatProvider: "media",
@@ -148,5 +148,5 @@ test("a media model's answer is a card per file: the picture with Download, a 3D
   view.sync();
   assert.equal($(".gen-card"), null);
   assert.equal(view.el.find(".reply").length, 0, "no empty text bubble");
-  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Download"], ["Download .glb"]]);
+  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Full screen", "Download"], ["Download .glb"]]);
 });

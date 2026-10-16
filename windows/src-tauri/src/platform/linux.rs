@@ -769,7 +769,7 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
 /// WebKitGTK has no memory target to set.
 pub fn set_memory_low(_win: &WebviewWindow, _low: bool) {}
 
-// ── Screen overlay (screenshot roam) ──────────────────────────────────────────
+// ── Screen overlay (screenshot roam, media preview) ───────────────────────────
 
 /// True once the island is a layer-shell surface (centred on the top edge).
 pub fn island_is_layer_surface() -> bool {
@@ -779,10 +779,24 @@ pub fn island_is_layer_surface() -> bool {
 /// True once the overlay is a layer-shell surface.
 static ROAM_LAYER: AtomicBool = AtomicBool::new(false);
 
-/// The overlay never takes the mouse (a roaming Mochi never takes a click);
-/// GTK resets the input region on every map.
+/// True while a media preview is on the overlay: it then takes the mouse over
+/// its whole surface instead of none of it (a roaming Mochi never takes a click).
+static ROAM_INPUT: AtomicBool = AtomicBool::new(false);
+
+/// The overlay's input region as currently wanted; GTK resets it on every map.
 fn roam_input(gw: &impl IsA<gtk::Widget>) {
-    apply_input_region(gw, Some((0.0, 0.0, 0.0, 0.0)));
+    if ROAM_INPUT.load(Ordering::Relaxed) {
+        apply_input_region(gw, None);
+    } else {
+        apply_input_region(gw, Some((0.0, 0.0, 0.0, 0.0)));
+    }
+}
+
+pub fn set_roam_input(win: &WebviewWindow, take: bool) {
+    ROAM_INPUT.store(take, Ordering::Relaxed);
+    if let Ok(gw) = win.gtk_window() {
+        roam_input(&gw);
+    }
 }
 
 /// Turns the overlay window into a transparent layer-shell surface over the
