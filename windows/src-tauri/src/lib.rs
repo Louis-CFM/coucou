@@ -995,6 +995,8 @@ pub fn run() {
             desktop::desktop_mochi_set_asleep,
             sounds::custom_sounds,
             sounds::custom_sound,
+            sounds::set_custom_sound,
+            sounds::remove_custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
             spotify::spotify_refresh,
