@@ -17,7 +17,7 @@ import type { Island } from "./island";
 
 /**
  * The outfits the phone draws (hub.rs OUTFIT_CHOICES). The Windows and Linux
- * skins (frog, bee...) are not among them: the phone gets "auto" for those.
+ * skins and SVG hats (frog, topHat...) are not among them: the phone gets "auto" for those. (feat(windows): seven hats drawn from SVG in the wardrobe)
  */
 const PHONE_OUTFITS: readonly string[] = [
   "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
