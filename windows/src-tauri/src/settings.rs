@@ -114,6 +114,11 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// The main Mochi's name: the chat's persona. Empty = "Mochi".
+    pub mochi_name: String,
+    /// Names of the coloured Mochis, by pill id. Missing or empty = the
+    /// default pun name (src/core/state.ts DEFAULT_MOCHI_NAMES).
+    pub mochi_names: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -186,6 +191,8 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            mochi_name: String::new(),
+            mochi_names: BTreeMap::new(),
         }
     }
 }
@@ -534,7 +541,9 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "mochiName": "Momo",
+  "mochiNames": { "integration_github": "Gus" }
 }"##;
 
     fn custom() -> Value {
@@ -1049,6 +1058,8 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "mochiName",
+                "mochiNames",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

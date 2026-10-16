@@ -26,12 +26,13 @@ fn cli_path() -> Option<std::path::PathBuf> {
 /// (the "session" the shared Chat stores is only this marker).
 pub async fn send(
     model: String,
+    system_prompt: &str,
     started: bool,
     query: String,
     context: Option<ChatContext>,
 ) -> Result<(String, Option<String>), String> {
     let cli = cli_path().ok_or("Kiro CLI not found. Install it, then run `kiro-cli login`.")?;
-    let prompt = cli_chat::build_prompt(!started, context.as_ref(), &query, "Kiro", false)?;
+    let prompt = cli_chat::build_prompt(&system_prompt, !started, context.as_ref(), &query, "Kiro")?;
 
     let mut cmd = cli_chat::command(&cli);
     cmd.current_dir(cli_chat::workdir("kiro-chat")?).args([

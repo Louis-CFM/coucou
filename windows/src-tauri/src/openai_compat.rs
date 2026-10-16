@@ -165,7 +165,7 @@ pub async fn send(
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
-    let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
+    let body = request_body(p, model, &chat.system_prompt(false), &turn.history, &user);
 
     let endpoint = url(p, "chat/completions")?;
     let response = net::client(&endpoint, Duration::from_secs(90))?

@@ -38,6 +38,7 @@ fn cli_path() -> Option<std::path::PathBuf> {
 /// gave one.
 pub async fn send(
     model: String,
+    system_prompt: &str,
     first: bool,
     session: Option<String>,
     query: String,
@@ -45,7 +46,7 @@ pub async fn send(
 ) -> Result<(String, Option<String>), String> {
     let cli = cli_path().ok_or("Cursor CLI not found. Install it, then run `agent login`.")?;
     let prompt =
-        cli_chat::build_prompt(first && session.is_none(), context.as_ref(), &query, "Cursor", true)?;
+        cli_chat::build_prompt(&system_prompt, first && session.is_none(), context.as_ref(), &query, "Cursor")?;
 
     let mut cmd = cli_chat::command(&cli);
     cmd.current_dir(cli_chat::workdir("cursor-chat")?)

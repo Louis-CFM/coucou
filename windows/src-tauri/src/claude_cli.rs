@@ -35,6 +35,7 @@ fn cli_path() -> Option<std::path::PathBuf> {
 //  conversation does not carry it in a turn a user could read back.
 pub async fn send(
     model: String,
+    system_prompt: &str,
     first: bool,
     session: Option<String>,
     query: String,
@@ -69,7 +70,7 @@ pub async fn send(
     cmd.current_dir(cli_chat::workdir("claude-chat")?)
         .args(["-p", "--output-format", "json", "--setting-sources", "project"])
         .args(["--allowedTools", "Read", "WebSearch", "WebFetch"])
-        .args(["--append-system-prompt", &chat::system_prompt(true)]);
+        .args(["--append-system-prompt", system_prompt]);
     if !model.is_empty() {
         cmd.args(["--model", &model]);
     }

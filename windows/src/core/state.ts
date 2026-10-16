@@ -82,6 +82,19 @@ export interface ChatMessage {
   content: string;
 }
 
+/** Default names of the coloured Mochis: a pun on what each one watches.
+ *  Settings can rename them; the main Mochi is just "Mochi". */
+export const DEFAULT_MOCHI_NAMES: Record<string, string> = {
+  integration_calcom: "Calvin", // Cal.com
+  integration_stripe: "Penny", // money
+  integration_github: "Gitta", // git
+  integration_vercel: "Vera", // Vercel
+  integration_n8n: "Nate", // "n-eight-n"
+  integration_resend: "Mel", // mail
+  integration_notion: "Ida", // ideas
+  integration_music: "Melody", // music
+};
+
 export type PromptContext =
   | { kind: "window"; appName: string; title: string; url?: string }
   | { kind: "file"; name: string; path?: string };
@@ -189,6 +202,10 @@ export interface Settings {
   phonePcId?: string;
   phonePaired?: boolean;
   phoneDevice?: string;
+  /** The main Mochi's name (the chat persona). Empty = "Mochi". */
+  mochiName: string;
+  /** Coloured Mochis' names, by pill id; missing = DEFAULT_MOCHI_NAMES. */
+  mochiNames: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -219,6 +236,8 @@ export const DEFAULT_SETTINGS: Settings = {
   language: "",
   editor: null,
   showClock: false,
+  mochiName: "",
+  mochiNames: {},
 };
 
 type Listener = () => void;
@@ -309,6 +328,24 @@ class AppState {
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** The main Mochi's name, the one the chat speaks for. */
+  get mochiName(): string {
+    return this.settings.mochiName?.trim() || "Mochi";
+  }
+
+  /**
+   * What a pill is called on screen: the usual label, unless the user named
+   * this Mochi in Settings (the main one only at rest, when no session runs).
+   */
+  pillLabel(task: AgentTask): string {
+    const usual = task.id === "integration_claude" ? (pillDefinition(task.id)?.name ?? task.name) : task.name;
+    if (task.steps.length > 0 && task.state !== "idle") return usual;
+    const own = task.id === this.mainPillId
+      ? (task.steps.length === 0 ? this.settings.mochiName : "")
+      : this.settings.mochiNames?.[task.id];
+    return own?.trim() || usual;
   }
 
   /** Marks the UI dirty; the island re-renders on the next frame. */

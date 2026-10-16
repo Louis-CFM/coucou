@@ -30,6 +30,7 @@ fn cli_path() -> Option<std::path::PathBuf> {
 /// never runs into the ~32k argv cap a file context can hit.
 pub async fn send(
     model: String,
+    system_prompt: &str,
     _first: bool,
     session: Option<String>,
     query: String,
@@ -37,7 +38,7 @@ pub async fn send(
 ) -> Result<(String, Option<String>), String> {
     let cli =
         cli_path().ok_or("Codex CLI not found. Install it, then run `codex login`.")?;
-    let prompt = cli_chat::build_prompt(session.is_none(), context.as_ref(), &query, "Codex", true)?;
+    let prompt = cli_chat::build_prompt(&system_prompt, session.is_none(), context.as_ref(), &query, "Codex")?;
 
     let dir = cli_chat::workdir("codex-chat")?;
     let last_file = dir.join("last.txt");

@@ -42,6 +42,7 @@ fn private_config(dir: &Path) -> Result<std::path::PathBuf, String> {
 /// the shared Chat stores is only this marker).
 pub async fn send(
     model: String,
+    system_prompt: &str,
     first: bool,
     session: Option<String>,
     query: String,
@@ -49,7 +50,7 @@ pub async fn send(
 ) -> Result<(String, Option<String>), String> {
     let cli =
         cli_path().ok_or("Devin CLI not found. Install it, then run `devin auth login`.")?;
-    let prompt = cli_chat::build_prompt(first, context.as_ref(), &query, "Devin", true)?;
+    let prompt = cli_chat::build_prompt(&system_prompt, first, context.as_ref(), &query, "Devin")?;
 
     let dir = cli_chat::workdir("devin-chat")?;
     let prompt_file = dir.join("prompt.txt");

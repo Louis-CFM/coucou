@@ -480,9 +480,14 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
+      const named = State.settings.mochiName?.trim();
       input.placeholder = listening
         ? t(STRINGS.listening)
-        : t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+        : State.chatHistory.length > 0
+          ? t(STRINGS.placeholderNext)
+          : named
+            ? `Ask ${named} anything…`
+            : t(STRINGS.placeholderFirst); (feat(windows): name Mochi and each coloured Mochi)
       input.disabled = sending;
       mic.disabled = sending;
     },

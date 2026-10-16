@@ -62,15 +62,15 @@ pub async fn run(mut cmd: Command, who: &str) -> Result<std::process::Output, St
 /// and the context go in the first turn only; after that `--resume` carries it.
 /// `who` is the provider name the error mentions.
 pub fn build_prompt(
+    system_prompt: &str,
     first: bool,
     context: Option<&ChatContext>,
     query: &str,
     who: &str,
-    web_search: bool,
 ) -> Result<String, String> {
     let mut prompt = String::new();
     if first {
-        prompt.push_str(&chat::system_prompt(web_search));
+        prompt.push_str(system_prompt);
         prompt.push_str("\n\n");
         match context {
             Some(ChatContext::File { name, path }) => {
@@ -147,24 +147,24 @@ mod tests {
 
     #[test]
     fn the_first_turn_carries_the_system_prompt_and_the_context() {
-        let first = build_prompt(true, None, "hi", "Test", true).unwrap();
+        let first = build_prompt("SYS", true, None, "hi", "Test").unwrap();
         assert!(first.starts_with("You are Mochi"), "system prompt first: {first}");
         assert!(first.ends_with("hi"));
 
         // A resumed turn is only the question: --resume carries the rest.
-        assert_eq!(build_prompt(false, None, "hi again", "Test", true).unwrap(), "hi again");
+        assert_eq!(build_prompt("SYS", false, None, "hi again", "Test").unwrap(), "hi again");
 
         let window = ChatContext::Window {
             app_name: "Code".into(),
             title: "main.rs".into(),
             url: None,
         };
-        let with_ctx = build_prompt(true, Some(&window), "what is this?", "Test", false).unwrap();
+        let with_ctx = build_prompt("SYS", true, Some(&window), "what is this?", "Test").unwrap();
         assert!(with_ctx.contains("Context — App: Code, Window: main.rs"));
         assert!(with_ctx.ends_with("what is this?"));
         // Context never rides a resumed turn.
         assert_eq!(
-            build_prompt(false, Some(&window), "and now?", "Test", false).unwrap(),
+            build_prompt("SYS", false, Some(&window), "and now?", "Test").unwrap(),
             "and now?"
         );
     }
@@ -179,7 +179,7 @@ mod tests {
             name: "notes.txt".into(),
             path: text_file.to_string_lossy().to_string(),
         };
-        let prompt = build_prompt(true, Some(&file), "summarize", "Test", false).unwrap();
+        let prompt = build_prompt("SYS", true, Some(&file), "summarize", "Test").unwrap();
         assert!(prompt.contains("File: notes.txt\nFile contents:\nsome notes"));
 
         let big = dir.join("big.txt");
@@ -188,7 +188,7 @@ mod tests {
             name: "big.txt".into(),
             path: big.to_string_lossy().to_string(),
         };
-        assert!(build_prompt(true, Some(&file), "summarize", "Test", false).is_err());
+        assert!(build_prompt("SYS", true, Some(&file), "summarize", "Test").is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
