@@ -15,6 +15,15 @@ import { dropPendingCard } from "./hooks";
 import { serviceCards } from "./phone-services";
 import type { Island } from "./island";
 
+/**
+ * The outfits the phone draws (hub.rs OUTFIT_CHOICES). The Windows and Linux
+ * SVG hats (topHat, catEars...) are not among them: the phone gets "auto" for those.
+ */
+const PHONE_OUTFITS: readonly string[] = [
+  "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
+  "bow", "scarf", "witchHat", "pumpkin", "santaHat", "bunnyEars",
+];
+
 /** Changes arrive in bursts (a tool call is several events); one picture per burst. */
 const DEBOUNCE_MS = 250;
 
@@ -168,7 +177,8 @@ export function registerPhoneLink(island: Island): () => void {
   };
 
   const publishOutfit = () => {
-    const outfit = parseOutfit(State.settings.mochiOutfit);
+    const worn = parseOutfit(State.settings.mochiOutfit);
+    const outfit = PHONE_OUTFITS.includes(worn) ? worn : "auto";
     if (outfit === lastOutfit) return;
     lastOutfit = outfit;
     void Bridge.phoneLinkPublishPrefs(outfit);

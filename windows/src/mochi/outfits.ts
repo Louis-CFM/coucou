@@ -938,6 +938,312 @@ function bunnyEars(ctx: Ctx, H: Head) {
   }
 }
 
+// ── Hats drawn from SVG (Windows and Linux only) ───────────────────────────────
+//
+// One file per outfit in ./outfits/<id>.svg, on a 200×200 artboard around a
+// reference Mochi (R = 50 at 100,100, body 114 × 88; a `<g id="guide">` is
+// ignored). They become Path2D parts, with their gradients and clips, drawn on
+// Mochi's own canvas: no raster images. On the root, `data-seat="x y half"` is
+// where the hat meets the head and the head's half-width there, `data-seat-yn`
+// how far down the head that is (-1 = top), `data-shadow="0"` for something too
+// thin to shade the head. A group with `data-swing="px py"` (a tassel) hangs
+// from that pivot and swings with the soft-part spring (physDx), `data-amp`
+// times as far. Allowed: g, path, circle, ellipse, rect, defs, stop, clipPath,
+// linear/radialGradient (userSpaceOnUse).
+
+export const SVG_OUTFITS: ReadonlySet<Outfit> = new Set([
+  "catEars", "chefHat", "cowboyHat", "gradCap", "sprout", "strawHat", "topHat",
+]);
+
+/** A gradient from the SVG (userSpaceOnUse coordinates of the part using it). */
+interface SvgGradient {
+  kind: "linear" | "radial";
+  /** linear: x1 y1 x2 y2; radial: cx cy r fx fy. */
+  c: number[];
+  stops: [number, string][];
+  /** Canvas gradients live in user space at fill time, so one per context. */
+  cache: WeakMap<Ctx, CanvasGradient>;
+}
+
+interface SvgPart {
+  path: Path2D;
+  /** Maps the part's own user space onto the artboard. */
+  m: DOMMatrix | null;
+  fill: string | SvgGradient;
+  opacity: number;
+  rule: CanvasFillRule;
+  /** Clip paths, already on the artboard. */
+  clip: Path2D[];
+}
+
+type SvgPiece =
+  | { swing: false; part: SvgPart }
+  | { swing: true; pivot: Pt; amp: number; parts: SvgPart[] };
+
+interface SvgHat {
+  pieces: SvgPiece[];
+  seat: { x: number; y: number; half: number; yn: number };
+  shadow: number;
+}
+
+let svgHats: Map<string, SvgHat> | null = null;
+
+/**
+ * The SVG files, inlined by Vite and parsed on first use. Outside Vite (the
+ * Node tests) there is no import.meta.glob and no DOMParser: no SVG hats,
+ * rather than a module that fails to load.
+ */
+function svgHat(id: Outfit): SvgHat | null {
+  if (!svgHats) {
+    svgHats = new Map();
+    let files: Record<string, string> = {};
+    try {
+      files = import.meta.glob("./outfits/*.svg", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    } catch {
+      // Not bundled.
+    }
+    for (const [file, text] of Object.entries(files)) {
+      const m = /\/([\w-]+)\.svg$/.exec(file);
+      if (!m) continue;
+      try {
+        svgHats.set(m[1], parseSvgHat(text));
+      } catch (err) {
+        console.error(`[coucou] outfit ${file} is invalid`, err);
+      }
+    }
+  }
+  return svgHats.get(id) ?? null;
+}
+
+function svgFill(ctx: Ctx, fill: string | SvgGradient): string | CanvasGradient {
+  if (typeof fill === "string") return fill;
+  let g = fill.cache.get(ctx);
+  if (!g) {
+    const c = fill.c;
+    g = fill.kind === "linear"
+      ? ctx.createLinearGradient(c[0], c[1], c[2], c[3])
+      : ctx.createRadialGradient(c[3], c[4], 0, c[0], c[1], c[2]);
+    for (const [o, col] of fill.stops) g.addColorStop(o, col);
+    fill.cache.set(ctx, g);
+  }
+  return g;
+}
+
+function fillSvgParts(ctx: Ctx, parts: SvgPart[]) {
+  const base = ctx.globalAlpha;
+  for (const p of parts) {
+    const plain = !p.m && p.clip.length === 0;
+    if (!plain) {
+      ctx.save();
+      for (const c of p.clip) ctx.clip(c);
+      if (p.m) ctx.transform(p.m.a, p.m.b, p.m.c, p.m.d, p.m.e, p.m.f);
+    }
+    ctx.globalAlpha = base * p.opacity;
+    ctx.fillStyle = svgFill(ctx, p.fill);
+    ctx.fill(p.path, p.rule);
+    if (!plain) ctx.restore();
+  }
+  ctx.globalAlpha = base;
+}
+
+/** A soft shadow cast onto the body (clipped to it), under a worn hat. */
+function contactShadow(ctx: Ctx, body: Path2D, cx: number, cy: number, hw: number, hh: number, alpha: number) {
+  if (alpha <= 0.01 || hw <= 0) return;
+  ctx.save();
+  ctx.clip(body);
+  ctx.translate(cx, cy);
+  ctx.scale(1, hh / hw);
+  ctx.fillStyle = rad(ctx, 0, 0, 0, hw, [[0, `rgba(0,0,0,${alpha})`], [0.7, `rgba(0,0,0,${alpha * 0.55})`], [1, "rgba(0,0,0,0)"]]);
+  ctx.beginPath();
+  ctx.arc(0, 0, hw, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Half-width of the body (bodyOutline's superellipse) at height `yn` (-1 top, 1 bottom), in px. */
+function halfWidthAt(H: Head, yn: number): number {
+  const y = Math.min(1, Math.abs(yn));
+  return H.rx * Math.pow(1 - Math.pow(y, EXP), 1 / EXP);
+}
+
+/**
+ * An SVG hat on the head's seat, at the head's real width there, shifted with
+ * the head's turn like the drawn hats.
+ */
+function svgOutfit(ctx: Ctx, id: Outfit, H: Head, body: Path2D) {
+  const hat = svgHat(id);
+  if (!hat) return;
+  const { seat } = hat;
+  const half = halfWidthAt(H, seat.yn);
+  const sc = half / seat.half;
+  const x = Math.sin(H.yaw) * H.rx * 0.12;
+  const y = seat.yn * H.ry;
+  if (hat.shadow > 0) contactShadow(ctx, body, x, y + H.R * 0.04, Math.min(half * 1.05, H.rx), H.R * 0.11, 0.2 * hat.shadow);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(sc, sc);
+  ctx.translate(-seat.x, -seat.y);
+  for (const piece of hat.pieces) {
+    if (!piece.swing) {
+      fillSvgParts(ctx, [piece.part]);
+      continue;
+    }
+    // Hangs from its pivot and trails the soft-part spring, like a pompom.
+    ctx.save();
+    ctx.translate(piece.pivot.x, piece.pivot.y);
+    ctx.rotate(-H.physDx * 0.6 * piece.amp);
+    ctx.translate(-piece.pivot.x, -piece.pivot.y);
+    fillSvgParts(ctx, piece.parts);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/** Hex colour with alpha (gradient stops with stop-opacity). */
+function hexA(hex: string, a: number): string {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(full, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+function nums(s: string | null): number[] {
+  return (s ?? "").split(/[\s,]+/).filter(Boolean).map(Number);
+}
+
+function svgShape(el: Element): Path2D | null {
+  const n = (name: string) => Number(el.getAttribute(name) ?? 0);
+  const p = new Path2D();
+  switch (el.nodeName) {
+    case "path":
+      return new Path2D(el.getAttribute("d") ?? "");
+    case "circle":
+      p.arc(n("cx"), n("cy"), n("r"), 0, Math.PI * 2);
+      return p;
+    case "ellipse":
+      p.ellipse(n("cx"), n("cy"), n("rx"), n("ry"), 0, 0, Math.PI * 2);
+      return p;
+    case "rect":
+      p.roundRect(n("x"), n("y"), n("width"), n("height"), n("rx") || n("ry"));
+      return p;
+    default:
+      return null;
+  }
+}
+
+/** SVG transform lists: translate, rotate (with centre), scale, matrix. */
+function svgTransform(src: string): DOMMatrix {
+  let m = new DOMMatrix();
+  for (const [, fn, args] of src.matchAll(/(\w+)\s*\(([^)]*)\)/g)) {
+    const v = nums(args);
+    if (fn === "translate") m = m.translate(v[0], v[1] ?? 0);
+    else if (fn === "rotate") m = v.length >= 3 ? m.translate(v[1], v[2]).rotate(v[0]).translate(-v[1], -v[2]) : m.rotate(v[0]);
+    else if (fn === "scale") m = m.scale(v[0], v[1] ?? v[0]);
+    else if (fn === "matrix") m = m.multiply(new DOMMatrix(v));
+  }
+  return m;
+}
+
+interface SvgStyle {
+  fill: string;
+  opacity: number;
+  rule: CanvasFillRule;
+  clip: Path2D[];
+}
+
+function parseSvgHat(text: string): SvgHat {
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+  const root = doc.documentElement;
+  if (root.nodeName !== "svg") throw new Error("not an svg");
+  const byRef = (ref: string | null) => {
+    const m = /url\(#([^)]+)\)/.exec(ref ?? "") ?? /^#(.+)$/.exec(ref ?? "");
+    return m ? doc.getElementById(m[1]) : null;
+  };
+  const gradients = new Map<Element, SvgGradient>();
+  const gradient = (el: Element): SvgGradient => {
+    let g = gradients.get(el);
+    if (g) return g;
+    if (el.getAttribute("gradientUnits") !== "userSpaceOnUse") throw new Error("gradients must use userSpaceOnUse");
+    const a = (n: string, d = 0) => Number(el.getAttribute(n) ?? d);
+    // Stops can come from another gradient (href), like a shared template.
+    let stopsFrom: Element = el;
+    while (stopsFrom.querySelector("stop") === null) {
+      const next = byRef(stopsFrom.getAttribute("href") ?? stopsFrom.getAttribute("xlink:href"));
+      if (!next || next === stopsFrom) break;
+      stopsFrom = next;
+    }
+    const stops = Array.from(stopsFrom.querySelectorAll("stop")).map((st): [number, string] => {
+      const off = st.getAttribute("offset") ?? "0";
+      const color = st.getAttribute("stop-color") ?? "#000";
+      const op = Number(st.getAttribute("stop-opacity") ?? 1);
+      return [off.endsWith("%") ? parseFloat(off) / 100 : Number(off), op < 1 ? hexA(color, op) : color];
+    });
+    g = el.nodeName === "linearGradient"
+      ? { kind: "linear", c: [a("x1"), a("y1"), a("x2"), a("y2")], stops, cache: new WeakMap() }
+      : { kind: "radial", c: [a("cx"), a("cy"), a("r"), a("fx", a("cx")), a("fy", a("cy"))], stops, cache: new WeakMap() };
+    gradients.set(el, g);
+    return g;
+  };
+  const clipPath = (el: Element, m: DOMMatrix): Path2D => {
+    const p = new Path2D();
+    for (const c of Array.from(el.children)) {
+      const sh = svgShape(c);
+      if (sh) p.addPath(sh, c.hasAttribute("transform") ? m.multiply(svgTransform(c.getAttribute("transform")!)) : m);
+    }
+    return p;
+  };
+
+  const pieces: SvgPiece[] = [];
+  const SKIP = new Set(["defs", "clipPath", "linearGradient", "radialGradient", "title", "desc"]);
+  const walk = (el: Element, m: DOMMatrix, inh: SvgStyle, swing: SvgPart[] | null) => {
+    for (const child of Array.from(el.children)) {
+      if (child.getAttribute("id") === "guide" || SKIP.has(child.nodeName)) continue;
+      const cm = child.hasAttribute("transform") ? m.multiply(svgTransform(child.getAttribute("transform")!)) : m;
+      const clipEl = byRef(child.getAttribute("clip-path"));
+      const style: SvgStyle = {
+        fill: child.getAttribute("fill") ?? inh.fill,
+        opacity: inh.opacity * Number(child.getAttribute("opacity") ?? 1) * Number(child.getAttribute("fill-opacity") ?? 1),
+        rule: (child.getAttribute("fill-rule") as CanvasFillRule | null) ?? inh.rule,
+        clip: clipEl ? [...inh.clip, clipPath(clipEl, cm)] : inh.clip,
+      };
+      if (child.nodeName === "g") {
+        if (child.hasAttribute("data-swing") && !swing) {
+          const [px, py] = nums(child.getAttribute("data-swing"));
+          const parts: SvgPart[] = [];
+          walk(child, cm, style, parts);
+          pieces.push({ swing: true, pivot: { x: px, y: py }, amp: Number(child.getAttribute("data-amp") ?? 1), parts });
+        } else {
+          walk(child, cm, style, swing);
+        }
+        continue;
+      }
+      const path = svgShape(child);
+      if (!path || style.fill === "none") continue;
+      const gEl = style.fill.startsWith("url(") ? byRef(style.fill) : null;
+      const part: SvgPart = {
+        path,
+        m: cm.isIdentity ? null : cm,
+        fill: gEl ? gradient(gEl) : style.fill,
+        opacity: style.opacity,
+        rule: style.rule,
+        clip: style.clip,
+      };
+      if (swing) swing.push(part);
+      else pieces.push({ swing: false, part });
+    }
+  };
+  walk(root, new DOMMatrix(), { fill: "#000", opacity: 1, rule: "nonzero", clip: [] }, null);
+
+  const seat = nums(root.getAttribute("data-seat"));
+  return {
+    pieces,
+    seat: seat.length >= 3
+      ? { x: seat[0], y: seat[1], half: seat[2], yn: Number(root.getAttribute("data-seat-yn") ?? -0.8) }
+      : { x: 100, y: 56, half: 28, yn: -1 },
+    shadow: Number(root.getAttribute("data-shadow") ?? 1),
+  };
+}
+
 // ── Layers and transitions ────────────────────────────────────────────────────
 
 let scratch: HTMLCanvasElement | null = null;
@@ -977,7 +1283,7 @@ function withLayer(ctx: Ctx, alpha: number, fn: (c: Ctx) => void) {
 
 /** Glasses, bow, scarf and pumpkin are on the face: behind the head once it has turned away. */
 const ON_FACE: ReadonlySet<Outfit> = new Set(["sunglasses", "roundGlasses", "bow", "scarf", "pumpkin"]);
-const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat"]);
+const HATS: ReadonlySet<Outfit> = new Set(["beanie", "santaHat", "partyHat", "crown", "witchHat", ...SVG_OUTFITS]);
 
 export interface OutfitState {
   /** 0 = gone, 1 = fully on. Animated by the engine. */
@@ -1011,7 +1317,8 @@ function layerAlpha(st: OutfitState): number {
  * centre, tilted and squashed exactly like the body).
  */
 export function drawOutfitBehind(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitState) {
-  if (outfit === "none") return;
+  // The SVG hats are all in front.
+  if (outfit === "none" || SVG_OUTFITS.has(outfit)) return;
   const alpha = layerAlpha(st);
   if (alpha <= 0.005) return;
   const simple = H.R < SIMPLIFY_BELOW_R;
@@ -1065,7 +1372,9 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
       case "partyHat": partyHat(l, H, simple); break;
       case "crown": crownFront(l, H, body, simple); break;
       case "witchHat": witchHatFront(l, H, body); break;
-      default: drawFace(l, outfit, H, body, simple);
+      default:
+        if (SVG_OUTFITS.has(outfit)) svgOutfit(l, outfit, H, body);
+        else drawFace(l, outfit, H, body, simple);
     }
   });
   ctx.restore();
