@@ -670,3 +670,29 @@ What changes on Linux:
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
 - No **Claude Desktop** pill: the Claude app has no Linux build.
+
+### Troubleshooting on Linux
+
+A few reports share the same three workarounds, so they are gathered here.
+
+- **Crashes at launch on Wayland with
+  `Gdk-Message: Error 71 (Protocol error) dispatching to Wayland display`**,
+  usually on NVIDIA or on hybrid NVIDIA + Intel machines (#419, #431, #527):
+  WebKitGTK's DMABUF renderer can't drive the GPU. Start Coucou with
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1`. If that stops the crash but leaves
+  glitches in the island, `__NV_DISABLE_EXPLICIT_SYNC=1` avoids both. You can
+  bake this into the desktop entry:
+  `Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 coucou`.
+- **Black rectangles appear inside the window on GNOME with Nouveau** (#464):
+  same DMABUF issue — run with `WEBKIT_DISABLE_DMABUF_RENDERER=1`.
+- **The AppImage misbehaves on a rolling distro** (freezes, a black area,
+  `gtk-layer-shell … may not work` on startup) while a build from source is
+  fine (#95): the AppImage bundles its own GTK and WebKitGTK, and the bundled
+  pair can be older than your system's. Prefer the distro package where there
+  is one (`linux/arch/` on Arch), the `.deb`/`.rpm`, or build from source
+  (`npm run tauri build -- --no-bundle` against the system libraries).
+- **The island is cut off on a desktop whose text is scaled above 1.0**
+  (GNOME/Cinnamon `text-scaling-factor`, `GDK_DPI_SCALE`; #122): the scale
+  zooms the page inside a window that keeps its size. Setting the text scale
+  back to 1.0 (or the display to 100 %) is the workaround; a proper fix is in
+  the works.
