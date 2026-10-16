@@ -348,7 +348,15 @@ final class FlowDictation: ObservableObject {
             let store = FlowStore.shared
             let prepared = store.prepare(heard)
             var body = prepared.text
-            if store.cleanupEnabled, !body.isEmpty {
+            // Prompt mode or translation: one call to Claude does the clean-up too.
+            let language = FlowLanguages.language(store.translateTo)
+            if (store.promptMode || language != nil), !body.isEmpty {
+                let shaped = await FlowCleanup.transform(body, prompt: store.promptMode, language: language,
+                                                         style: store.style(for: listen.app?.bundleIdentifier),
+                                                         app: listen.app?.localizedName, words: store.words)
+                guard !listen.cancelled else { return }
+                if FlowText.keepsMarks(shaped, prepared.snippets) { body = shaped }
+            } else if store.cleanupEnabled, !body.isEmpty {
                 let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
                                                       app: listen.app?.localizedName, words: store.words)
                 guard !listen.cancelled else { return }
