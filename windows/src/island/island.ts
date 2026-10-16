@@ -471,6 +471,13 @@ export class Island {
     this.alert("wardrobe");
   }
 
+  /** Hold the island open while something runs (a push), without the
+   *  approval pin; `false` lets it auto-close again as usual. */
+  hold(on: boolean) {
+    this.fsm.pinned = on || State.isPinned;
+    if (!on && !this.wasInIsland) this.fsm.mouseLeft();
+  }
+
   /** An alert stopped waiting for an answer: let the island auto-close again. */
   dropPin() {
     this.fsm.pinned = false;
