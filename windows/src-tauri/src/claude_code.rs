@@ -27,6 +27,9 @@ const TIMEOUT: Duration = Duration::from_secs(180);
 /// All we are willing to read of its answer.
 const MAX_OUTPUT: u64 = 4 * 1024 * 1024;
 const TOOLS: &str = "WebSearch,WebFetch";
+/// Fork: the longest a one-shot run for Flow may live (clean-up, a call's
+/// summary, « OK Coucou »): the CLI is ended after this, whatever it was doing.
+pub const ONE_SHOT_MAX: Duration = Duration::from_secs(30);
 
 /// The run in progress, so a new chat ends it.
 static RUNNING: Mutex<Option<u32>> = Mutex::new(None);
@@ -49,11 +52,16 @@ pub fn stop() {
 /// The command line after `claude`. The system prompt is read from a file:
 /// a .cmd install would otherwise pass it through cmd.exe's quoting.
 pub fn args(model: &str, system_file: &Path) -> Vec<String> {
+    args_with(model, system_file, TOOLS)
+}
+
+/// The same with a choice of tools ("" for none at all).
+fn args_with(model: &str, system_file: &Path, tools: &str) -> Vec<String> {
     let mut out: Vec<String> = [
         // stream-json + partial messages: the reply streams in as it is written.
         "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
         "--no-session-persistence", "--safe-mode",
-        "--tools", TOOLS, "--allowedTools", TOOLS, "--system-prompt-file",
+        "--tools", tools, "--allowedTools", tools, "--system-prompt-file",
     ]
     .map(String::from)
     .to_vec();
@@ -128,7 +136,7 @@ pub async fn send(app: &AppHandle, chat: &Chat, model: &str, query: String, cont
     let shown = move |so_far: &str| {
         let _ = app.emit_to(WINDOW_LABEL, "chat-delta", so_far);
     };
-    let text = tauri::async_runtime::spawn_blocking(move || run(&exe, &args, &system, &input, shown))
+    let text = tauri::async_runtime::spawn_blocking(move || run(&exe, &args, &base_dir().join("system.txt"), &system, &input, shown, TIMEOUT, true))
         .await
         .map_err(|e| e.to_string())??;
     // The history keeps what the CLI was sent, file contents included: each
@@ -155,14 +163,49 @@ fn base_dir() -> PathBuf {
     std::env::temp_dir().join("coucou-claude-code")
 }
 
-fn run(exe: &Path, args: &[String], system: &str, input: &str, shown: impl Fn(&str) + Send + 'static) -> Result<String, String> {
+/// Fork: one question without a chat, for Flow when there is no Claude API key:
+/// the user's Claude Code subscription answers, with the cheapest, fastest
+/// Haiku, no tools unless `web` (web search and fetch only), nothing saved, and
+/// the run ended after `timeout` (at most ONE_SHOT_MAX).
+pub async fn complete(system: &str, user: &str, timeout: Duration, web: bool) -> Result<String, String> {
+    let exe = find().ok_or_else(not_installed)?;
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    // A system file of its own: a chat turn may be writing system.txt meanwhile.
+    let file = base_dir().join(format!("one-shot-{}-{n}.txt", std::process::id()));
+    let args = args_with(DEFAULT_MODEL, &file, if web { TOOLS } else { "" });
+    let (system, user) = (system.to_string(), user.to_string());
+    let timeout = timeout.min(ONE_SHOT_MAX);
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let out = run(&exe, &args, &file, &system, &user, |_: &str| {}, timeout, false);
+        let _ = std::fs::remove_file(&file);
+        out
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    result
+}
+
+fn run(
+    exe: &Path,
+    args: &[String],
+    system_file: &Path,
+    system: &str,
+    input: &str,
+    shown: impl Fn(&str) + Send + 'static,
+    timeout: Duration,
+    chat_turn: bool,
+) -> Result<String, String> {
     let work = base_dir().join("work");
     std::fs::create_dir_all(&work).map_err(|e| e.to_string())?;
-    std::fs::write(base_dir().join("system.txt"), system).map_err(|e| e.to_string())?;
+    std::fs::write(system_file, system).map_err(|e| e.to_string())?;
     let mut cmd = platform::cli_command(exe);
     cmd.args(args).current_dir(&work).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
     let mut child = cmd.spawn().map_err(|_| not_installed())?;
-    *RUNNING.lock().unwrap() = Some(child.id());
+    // Only a chat turn is the one a new chat ends (stop).
+    if chat_turn {
+        *RUNNING.lock().unwrap() = Some(child.id());
+    }
     let (mut stdin, stdout) = (child.stdin.take().unwrap(), child.stdout.take().unwrap());
     let input = input.to_string();
     let (tx, rx) = mpsc::channel();
@@ -180,8 +223,8 @@ fn run(exe: &Path, args: &[String], system: &str, input: &str, shown: impl Fn(&s
         }
         let _ = tx.send(out);
     });
-    let out = rx.recv_timeout(TIMEOUT);
-    let ours = RUNNING.lock().unwrap().take_if(|pid| *pid == child.id()).is_some();
+    let out = rx.recv_timeout(timeout);
+    let ours = !chat_turn || RUNNING.lock().unwrap().take_if(|pid| *pid == child.id()).is_some();
     if out.is_err() && ours {
         platform::kill_tree(child.id());
     }

@@ -163,6 +163,10 @@ pub async fn send(
 /// One question, one answer, no history: the dictation clean-up and the notes
 /// of a call. The text of the answer, or why there is none.
 pub async fn complete(model: &str, system: &str, user: &str, max_tokens: u32, timeout: Duration) -> Result<String, String> {
+    // Fork: no API key, the user's Claude Code answers instead (Haiku, 30 s at most).
+    if !secrets::present(KEY) {
+        return crate::claude_code::complete(system, user, timeout, false).await;
+    }
     let key = secrets::get(KEY).ok_or_else(|| t("API key missing. Open settings."))?;
     let endpoint = endpoint()?;
     let body = json!({
@@ -185,6 +189,12 @@ pub async fn complete(model: &str, system: &str, user: &str, max_tokens: u32, ti
 /// One turn of « OK Coucou »'s conversation with tools: the API's whole answer
 /// (content blocks and stop_reason).
 pub async fn voice_turn(model: &str, system: &str, messages: &[Value], tools: &[Value]) -> Result<Value, String> {
+    // Fork: no API key, Claude Code answers in words (with web search). It
+    // can't run Coucou's own tools, so the turn ends with its answer.
+    if !secrets::present(KEY) {
+        let reply = crate::claude_code::complete(system, &voice_transcript(messages), crate::claude_code::ONE_SHOT_MAX, true).await?;
+        return Ok(json!({ "content": [{ "type": "text", "text": reply }], "stop_reason": "end_turn" }));
+    }
     let key = secrets::get(KEY).ok_or_else(|| t("API key missing. Open settings."))?;
     let endpoint = endpoint()?;
     let body = json!({
@@ -413,4 +423,23 @@ mod tests {
             ]
         );
     }
+}
+
+/// Fork: « OK Coucou »'s conversation as plain text for Claude Code: the words
+/// of each turn (tool calls and results left out), the last one the question.
+fn voice_transcript(messages: &[Value]) -> String {
+    let words = |m: &Value| -> String {
+        match &m["content"] {
+            Value::String(s) => s.clone(),
+            Value::Array(blocks) => blocks.iter().filter_map(|b| b["text"].as_str()).collect::<Vec<_>>().join(" "),
+            _ => String::new(),
+        }
+    };
+    let turns: Vec<String> = messages
+        .iter()
+        .map(|m| (m["role"].as_str().unwrap_or(""), words(m)))
+        .filter(|(_, w)| !w.trim().is_empty())
+        .map(|(role, w)| format!("{}: {}", if role == "user" { "User" } else { "Assistant" }, w.trim()))
+        .collect();
+    turns.join("\n\n")
 }
