@@ -1,4 +1,4 @@
-// Full-screen preview of a generated image or video, on the roam overlay (see
+// Full-screen preview of a generated image, video or 3D model, on the roam overlay (see
 // media_preview in src-tauri/src/media.rs for why this window). Esc, a click
 // outside the picture or the close button ends it.
 
@@ -12,10 +12,14 @@ import { h, svg } from "../views/dom";
 const root = h("div", { class: "preview", hidden: true });
 document.body.append(root);
 let url: string | null = null;
+/** Stops a 3D turntable and frees its GPU context. */
+let stopViewer: (() => void) | null = null;
 
 function close() {
   if (root.hidden) return;
   root.hidden = true;
+  stopViewer?.();
+  stopViewer = null;
   root.replaceChildren(); // stops a video
   if (url) URL.revokeObjectURL(url);
   url = null;
@@ -29,6 +33,22 @@ void listen<MediaFile>("preview-open", async (e) => {
   shut.addEventListener("click", close);
   root.replaceChildren(shut);
   root.hidden = false;
+  if (file.kind === "3d") {
+    // Drag to turn, scroll to zoom; a click outside the stage closes.
+    const stagebox = h("div", { class: "preview-3d" });
+    root.append(stagebox, h("div", { class: "preview-hint", text: "Drag to turn \u00b7 scroll to zoom \u00b7 Esc to close" }));
+    const bytes = await Bridge.mediaBytes(file.name);
+    if (!bytes || root.hidden) return close();
+    const { mountViewer } = await import("../views/model3d");
+    stopViewer?.();
+    stopViewer = await mountViewer(stagebox, bytes).catch(() => null);
+    if (!stopViewer) return close();
+    if (root.hidden) {
+      stopViewer();
+      stopViewer = null;
+    }
+    return;
+  }
   url = await Bridge.mediaUrl(file.name);
   if (!url || root.hidden) return close();
   root.append(

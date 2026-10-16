@@ -1,6 +1,6 @@
 // Generated media in the chat: the "making it" card while a model works, and
-// the result (image, video, speech or a 3D file) with Download, and images
-// and video full screen.
+// the result (image, video, speech or a 3D model) with Download, and a
+// full-screen preview (a turntable for 3D).
 
 import { h, svg } from "./dom";
 import { ICONS } from "./icons";
@@ -20,10 +20,25 @@ function urlFor(name: string): Promise<string | null> {
   return url;
 }
 
+/** Stills of generated 3D models, rendered once per file. */
+const stills = new Map<string, Promise<string | null>>();
+
+function stillFor(name: string): Promise<string | null> {
+  let still = stills.get(name);
+  if (!still) {
+    still = Bridge.mediaBytes(name).then((bytes) =>
+      bytes ? import("./model3d").then((m) => m.snapshot(bytes)).catch(() => null) : null,
+    );
+    stills.set(name, still);
+  }
+  return still;
+}
+
 /** A new chat: hand the files' memory back. */
 export function releaseMedia() {
   for (const url of urls.values()) void url.then((u) => u && URL.revokeObjectURL(u));
   urls.clear();
+  stills.clear();
 }
 
 // ── While it's being made ─────────────────────────────────────────────────────
@@ -151,12 +166,25 @@ function downloadButton(file: MediaFile, label: string): HTMLElement {
   return save;
 }
 
-/** A generated 3D model: a file to open in a 3D viewer, and Download. */
+/** A generated 3D model: a rendered still (click to turn it around full
+ *  screen) and Download. Gaussian splats (.ply) can't be shown here. */
 function modelCard(file: MediaFile): HTMLElement {
-  const splat = file.name.endsWith(".ply");
-  const text = splat
-    ? "A Gaussian splat (.ply): download it to open in a splat viewer."
-    : "A 3D model (.glb): download it to open in a 3D viewer.";
-  const actions = h("div", { class: "media-actions" }, downloadButton(file, splat ? "Download .ply" : "Download .glb"));
-  return h("div", { class: "media-card model3d" }, h("div", { class: "reply-note", text }), actions);
+  if (file.name.endsWith(".ply")) {
+    const text = "A Gaussian splat (.ply): download it to open in a splat viewer.";
+    const actions = h("div", { class: "media-actions" }, downloadButton(file, "Download .ply"));
+    return h("div", { class: "media-card model3d" }, h("div", { class: "reply-note", text }), actions);
+  }
+  const view = h("img", { class: "media-view model3d", alt: "Generated 3D model", title: "Click to turn it around" }) as HTMLImageElement;
+  void stillFor(file.name).then((still) => {
+    if (still) view.src = still;
+    else view.replaceWith(h("div", { class: "reply-note", text: "Couldn't show this 3D model; it can still be downloaded." }));
+  });
+  view.addEventListener("click", () => void Bridge.mediaPreview(file));
+  const turn = h("button", { class: "code-copy", title: "Turn it around, full screen (Esc to close)" }, svg(ICONS.expand, 11), "View in 3D");
+  turn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    void Bridge.mediaPreview(file);
+  });
+  const actions = h("div", { class: "media-actions" }, turn, downloadButton(file, "Download .glb"));
+  return h("div", { class: "media-card model3d" }, view, actions);
 }
