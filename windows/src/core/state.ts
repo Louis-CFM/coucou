@@ -304,6 +304,8 @@ class AppState {
   droppedFile: { name: string; path: string } | null = null;
   /** What the Windows media controls say is playing (music.rs); null = nothing. */
   nowPlaying: NowPlaying | null = null;
+  /** A `git push` Claude Code is running right now, for the GitHub card. */
+  githubPush: { repo: string; state: "pushing" | "done" | "failed"; startedAt: number } | null = null;
   noteMessage: string | null = null;
   /**
    * The view the note's OK button goes back to. A note that has one also

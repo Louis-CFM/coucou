@@ -2948,6 +2948,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
 
 /* ── Music ─────────────────────────────────────────────────────────────────── */
 
@@ -3019,4 +3020,52 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   font: 400 11px var(--font);
   color: #8e939c;
   margin-top: 4px;
+
+/* Claude Code's git push, on top of the GitHub card. */
+.gh-push {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 6px;
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font: 500 11.5px var(--font);
+  color: #e6e7ea;
+}
+
+.gh-push-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-push-bar {
+  flex: 0 0 64px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+/* Its size isn't known, so the bar sweeps. */
+.gh-push-bar i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: gh-push-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes gh-push-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+
 }

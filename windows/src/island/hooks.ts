@@ -15,6 +15,7 @@ import { enqueueApproval, releaseApproval, resetApprovals, resolveApprovals } fr
 import { approvalInputKey } from "./queue";
 import { SessionRegistry } from "./sessions";
 import type { Island } from "./island";
+import { gitPushCommand, pushEnded, pushStarted } from "./integrations";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
@@ -484,22 +485,31 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-      surface("overview", false);
+      // A `git push` brings the GitHub card up with the push on it.
+      const push = isExternalAgent ? null : gitPushCommand(tool, payload.tool_input ?? {});
+      if (push) pushStarted(island, push, payload.cwd);
+      else surface("overview", false);
       break;
     }
 
     case "PostToolUse":
+      supersedeStop();
+      // The session is mid-turn — and if a card asked about this very tool
+      // call, resolveApprovals above already took it down.
+      sessions.note(agentId, display, true);
+      State.updateTask(agentId, "working");
+      recordDiff(agentId, payload);
+      endPush(payload, true);
+      break;
+
     case "PostToolUseFailure":
       supersedeStop();
       // The session is mid-turn — and if a card asked about this very tool
       // call, resolveApprovals above already took it down.
       sessions.note(agentId, display, true);
       State.updateTask(agentId, "working");
-      if (name === "PostToolUse") {
-        recordDiff(agentId, payload);
-        break;
-      }
       State.appendStep(agentId, t("⚠ failed"));
+      endPush(payload, false);
       break;
 
     case "Notification": {
@@ -648,4 +658,10 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
   }
   State.notify();
+}
+
+/** A `git push` tool call ended: the GitHub card says how it went. */
+function endPush(payload: HookPayload, ok: boolean) {
+  const push = gitPushCommand(payload.tool_name ?? "", payload.tool_input ?? {});
+  if (push) pushEnded(push, ok);
 }
