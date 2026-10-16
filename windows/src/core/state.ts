@@ -50,6 +50,12 @@ export interface ApprovalInfo {
   command: string;
   /** Set when Claude Code is asking a question rather than for a permission. */
   questions?: AskedQuestion[];
+  /**
+   * Claude Code offered to remember this permission (permission_suggestions):
+   * the "Always allow" button's words. The rules themselves stay with the
+   * relay, which applies exactly what Claude Code offered.
+   */
+  always?: { label: string; detail: string } | null;
 }
 
 /** One question of an AskUserQuestion call. */
