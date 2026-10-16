@@ -14,7 +14,9 @@ import type { Outfit } from "./wardrobe";
 
 export type EyeShape =
   | "pill" | "wide" | "dot" | "line" | "flat" | "happy" | "closed"
-  | "spiral" | "heart" | "star" | "tired" | "wink" | "cup";
+  | "spiral" | "heart" | "star" | "tired" | "wink" | "cup"
+  // Chat moods: brimming with tears, furrowed, charged up.
+  | "teary" | "angry" | "glow";
 
 export type BadgeKind = "dots" | "bang" | "question" | "dot";
 
@@ -39,7 +41,7 @@ interface Tween {
 type PropKey =
   | "yaw" | "pitch" | "roll" | "tilt" | "open" | "sx" | "sy"
   | "oy" | "ox" | "tint" | "morph" | "hands" | "blush" | "es" | "badgeS"
-  | "outfitPresence";
+  | "outfitPresence" | "moodTint";
 
 interface BotStateCfg {
   color: RGB;
@@ -55,10 +57,23 @@ interface BotStateCfg {
   tilt: number;
 }
 
+/** One visible eye: side (-1 left, 1 right), centre and foreshortening. */
+interface EyeSpot {
+  sd: number;
+  ex: number;
+  ey: number;
+  fx: number;
+  fy: number;
+  /** How much the eye faces the viewer (<= 0: rolled out of sight). */
+  vis: number;
+}
+
 interface Particle {
-  type: "heart" | "star" | "spark" | "sweat" | "z";
+  type: "heart" | "star" | "spark" | "sweat" | "z" | "steam" | "bolt" | "confetti" | "mark";
   x: number; y: number; vx: number; vy: number;
   age: number; life: number; rot: number; size: number;
+  /** A confetti's colour, or the character a mark shows ("!", "?"). */
+  c?: string;
 }
 
 // ── Constants (MochiConst / PISTES.mochi) ─────────────────────────────────────
@@ -115,11 +130,69 @@ export const STATE_SOUND: Partial<Record<BotStateName, string>> = {
 const EMOTE_EYE: Record<BotEmoteName, EyeShape> = {
   love: "heart", surprised: "dot", proud: "star", wink: "wink",
   yawn: "tired", happy: "happy", annoyed: "line",
+  sad: "teary", shy: "happy", scared: "wide",
+  angry: "angry", hype: "glow", confused: "spiral", sleepy: "tired",
 };
+
+/** The colour an emote washes over the body. */
+const EMOTE_TINT: Partial<Record<BotEmoteName, RGB>> = {
+  sad: [0.3, 0.55, 1], angry: [1, 0.18, 0.12], scared: [0.72, 0.84, 1], hype: [0.72, 0.3, 1],
+};
+
+/** What an emote keeps giving off while it lasts: particle, every n seconds, where. */
+const EMOTE_EMIT: Partial<Record<BotEmoteName, [Particle["type"], number, (() => Partial<Particle>)?]>> = {
+  angry: ["steam", 0.18, () => {
+    const sd = Math.random() < 0.5 ? -1 : 1;
+    return { x: sd * 0.42, y: -0.62, vx: sd * 0.2, vy: -0.6 };
+  }],
+  hype: ["bolt", 0.14, () => ({ x: (Math.random() - 0.5) * 1.7, y: -0.1 })],
+  confused: ["mark", 0.65, () => ({ c: "?", size: 0.12 })],
+  sleepy: ["z", 0.75],
+};
+
+/** A chat reply's mood (chat.rs MOODS), acted out. */
+export const MOOD_ACTS: Record<string, (e: BotEngine) => void> = {
+  happy: (e) => e.triggerEmote("happy", 2),
+  sad: (e) => e.triggerEmote("sad", 2.4),
+  shy: (e) => e.triggerEmote("shy", 2.2),
+  angry: (e) => e.triggerEmote("angry", 2.2),
+  thankful: (e) => e.triggerEmote("love", 2.2),
+  welcome: (e) => e.triggerEmote("wink", 2),
+  scared: (e) => e.triggerEmote("scared", 2),
+  surprised: (e) => e.triggerEmote("surprised", 2),
+  proud: (e) => e.triggerEmote("proud", 2.2),
+  hype: (e) => e.triggerEmote("hype", 2.4),
+  confused: (e) => e.triggerEmote("confused", 2.4),
+  sleepy: (e) => e.triggerEmote("sleepy", 2.8),
+  celebration: (e) => e.celebrate(),
+};
+
+const MAX_PARTICLES = 48;
+const CONFETTI = ["#FF4D6D", "#F7B32B", "#3DDC97", "#4CC9F0", "#B388FF", "#FF8CC6"];
+/** How fast a particle falls instead of floating (fraction of R per s²). */
+const FALL: Partial<Record<Particle["type"], number>> = { confetti: 1.5 };
+const MARK_COLOR: Record<string, string> = { "!": "#FFD23F", "?": "#8FD3FF" };
+/** The hype's fire, back to front: size, colour at the body, colour at the tips. */
+const FIRE: [number, string, string][] = [
+  [1, "rgba(150,60,255,0.9)", "rgba(110,40,220,0)"],
+  [0.72, "rgba(236,72,200,0.95)", "rgba(236,72,200,0)"],
+  [0.45, "rgba(255,215,250,1)", "rgba(255,170,240,0)"],
+];
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
 const now = () => performance.now() / 1000;
+
+/** Eases to `peak`, holds it for the rest of `dur` seconds, then back to `rest`. */
+const hold = (peak: number, dur: number, rest = 0, inMs = 250, outMs = 400): TweenKey[] => [
+  [peak, inMs, Ease.out], [peak, Math.max(1, dur * 1000 - inMs - outMs), Ease.lin], [rest, outMs, Ease.inOut],
+];
+
+/** `n` side-to-side swings of `ms` each, dying down. */
+const shake = (amp: number, n: number, ms: number): TweenKey[] => [
+  ...Array.from({ length: n }, (_, i): TweenKey => [amp * (i % 2 ? -1 : 1) * (1 - i / n), ms, Ease.inOut]),
+  [0, ms, Ease.out],
+];
 
 export function hexToRGB(hex: string): RGB {
   const h = hex.replace("#", "");
@@ -203,6 +276,14 @@ export class BotEngine {
   yaw = 0; pitch = 0; roll = 0; tilt = 0; open = 1;
   sx = 1; sy = 1; oy = 0; ox = 0;
   tint = 0; morph = 0; hands = 0; blush = 0; es = 1; badgeS = 0;
+  /** An emote's colour wash over the body (EMOTE_TINT), 0 to 1. */
+  moodTint = 0;
+  private moodCol: RGB = [1, 1, 1];
+  /** The emote playing, for the effects drawn every frame (fire, tears, steam...). */
+  private fx: { name: BotEmoteName; t0: number; t1: number } | null = null;
+  private fxNext = 0;
+  /** The body radius last drawn at; small ones get the simple effects. */
+  private r = 30;
 
   // Outfit (the main Mochi only — minis never wear one). `outfit` is what is
   // drawn; it changes only once the previous one has left.
@@ -308,6 +389,18 @@ export class BotEngine {
       default:
         if (prev !== "idle" || next !== "idle") this.blink();
     }
+  }
+
+  /** The chat's celebration mood: a happy party with sparks and confetti, a
+   *  proud double bounce, and a kick for the outfit's soft parts. */
+  celebrate() {
+    this.physVx += Math.random() < 0.5 ? -3 : 3;
+    this.squash();
+    this.triggerEmote("happy", 2.2);
+    this.emit("spark", 6);
+    this.burst("confetti", 28, 1.8);
+    this.burst("star", 3, 1);
+    this.anim("oy", [[-0.34, 170, Ease.out], [0, 240, Ease.inOut], [-0.16, 150, Ease.out], [0, 260, Ease.back]]);
   }
 
   setBadge(b: Badge | null) {
@@ -433,8 +526,23 @@ export class BotEngine {
 
   triggerEmote(emote: BotEmoteName, duration = 1.8) {
     const t = now();
+    const fx = this.fx = { name: emote, t0: t, t1: t + duration };
+    const later = (ms: number, f: () => void) => setTimeout(() => { if (this.fx === fx) f(); }, ms);
+    this.fxNext = t;
     this.eyeOverride = EMOTE_EYE[emote];
     this.eyeOverrideUntil = t + duration;
+    const tint = EMOTE_TINT[emote];
+    if (tint) {
+      this.moodCol = tint;
+      this.anim("moodTint", hold(1, duration));
+    } else if (this.moodTint > 0) {
+      this.anim("moodTint", [[0, 250, Ease.inOut]]);
+    }
+    // The hype's crouch, spring up and charged hold, as [crouch, peak, held] per prop.
+    const charge = (keys: number[]): TweenKey[] => [
+      [keys[0], 220, Ease.out], [keys[1], 160, Ease.out],
+      [keys[2], Math.max(1, duration * 1000 - 730), Ease.lin], [keys[3], 350, Ease.back],
+    ];
 
     switch (emote) {
       case "love":
@@ -468,18 +576,86 @@ export class BotEngine {
         setTimeout(() => { this.eyeOverride = "closed"; this.emit("z", 2); }, 700);
         break;
       case "happy":
+        // Two bouncy hops and a sparkle.
         this.anim("blush", [[0.6, 200, Ease.out], [0, 600, Ease.inOut]]);
+        this.anim("oy", [[-0.26, 140, Ease.out], [0, 180, Ease.easeIn], [-0.13, 120, Ease.out], [0, 200, Ease.back]]);
+        this.anim("sy", [[1.12, 140, Ease.out], [0.88, 180, Ease.easeIn], [1.06, 120, Ease.out], [1, 200, Ease.back]]);
+        this.anim("sx", [[0.92, 140, Ease.out], [1.1, 180, Ease.easeIn], [0.96, 120, Ease.out], [1, 200, Ease.back]]);
+        this.emit("spark", 4);
         break;
       case "annoyed":
         this.eyeOverride = "line";
         this.eyeOverrideUntil = t + 0.8;
         setTimeout(() => Sound.play("annoyed"), 60);
         break;
+      case "angry":
+        // Red, puffed up, shaking, steaming (EMOTE_EMIT).
+        this.anim("ox", shake(0.07, 14, 45));
+        this.anim("sy", hold(0.92, duration, 1, 150));
+        this.anim("sx", hold(1.07, duration, 1, 150));
+        setTimeout(() => Sound.play("annoyed"), 60);
+        break;
+      case "hype":
+        // Crouches, springs up tall and stays charged: fire, bolts, a buzz (draw).
+        this.anim("sy", charge([0.72, 1.22, 1.12, 1]));
+        this.anim("sx", charge([1.2, 0.88, 0.94, 1]));
+        this.anim("oy", charge([0.08, -0.12, -0.08, 0]));
+        break;
+      case "sad":
+        // Slowly droops, head down, crying (drawTears).
+        this.anim("sy", hold(0.9, duration, 1, 600));
+        this.anim("sx", hold(1.04, duration, 1, 600));
+        this.anim("pitch", hold(-0.24, duration, 0, 600));
+        this.anim("tilt", hold(0.06, duration, 0, 600));
+        break;
+      case "shy":
+        // Blushes and turns its face away.
+        this.anim("blush", hold(1, duration, 0, 250, 350));
+        this.anim("yaw", hold(-0.5, duration, 0, 300));
+        this.anim("tilt", hold(-0.1, duration, 0, 300));
+        break;
+      case "scared":
+        // A jump, then shivering, pale, with a bead of sweat.
+        this.anim("oy", [[-0.22, 110, Ease.out], [0, 300, Ease.back]]);
+        this.anim("ox", shake(0.05, Math.max(4, Math.round((duration * 1000) / 55) - 2), 55));
+        this.anim("sy", hold(0.92, duration, 1, 150));
+        this.emit("sweat", 2);
+        break;
+      case "confused":
+        // Spiral eyes, the head rocking side to side, question marks.
+        this.anim("tilt", [
+          [0.18, 250, Ease.inOut], [-0.18, 450, Ease.inOut], [0.15, 450, Ease.inOut],
+          [-0.1, 400, Ease.inOut], [0, 350, Ease.inOut],
+        ]);
+        this.emit("mark", 1, { c: "?", x: 0.62, y: -0.95, vx: 0, vy: -0.06, life: 1.6, size: 0.3 });
+        break;
+      case "sleepy":
+        // Eyes droop shut, nods off, jerks awake once, drowsy again.
+        this.anim("sy", hold(0.94, duration, 1, 500));
+        this.anim("pitch", [
+          [-0.3, 1300, Ease.inOut], [0.08, 110, Ease.out], [0.08, 300, Ease.lin],
+          [-0.12, Math.max(1, duration * 1000 - 2110), Ease.inOut], [0, 400, Ease.inOut],
+        ]);
+        later(450, () => { this.eyeOverride = "closed"; });
+        later(1300, () => { this.eyeOverride = "wide"; });
+        later(1650, () => { this.eyeOverride = "tired"; });
+        break;
     }
   }
 
-  emit(type: Particle["type"], count: number) {
+  /** Flung out all at once in an upward fan, instead of one after another. */
+  burst(type: Particle["type"], count: number, speed: number) {
+    const n = this.isMini || this.r < 16 ? Math.ceil(count / 2) : count;
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+      const v = speed * (0.6 + Math.random() * 0.6);
+      this.emit(type, 1, { x: 0, y: -0.55, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, c: CONFETTI[i % CONFETTI.length] });
+    }
+  }
+
+  emit(type: Particle["type"], count: number, o: Partial<Particle> = {}) {
     for (let i = 0; i < count; i++) {
+      if (this.particles.length >= MAX_PARTICLES) return;
       const isZ = type === "z";
       this.particles.push({
         type,
@@ -491,6 +667,7 @@ export class BotEngine {
         life: 1.3 + Math.random() * 0.5,
         rot: Math.random() * Math.PI * 2,
         size: 0.15 + Math.random() * 0.08,
+        ...o,
       });
     }
   }
@@ -542,6 +719,7 @@ export class BotEngine {
     return (
       this.tweens.size > 0 ||
       this.particles.length > 0 ||
+      this.fx !== null ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
       this.isMini ||
       this.isDancing || this.dancingLevel > 0.001 ||
@@ -668,6 +846,15 @@ export class BotEngine {
       if (this.permanentEye) this.eyeOverrideUntil = Number.POSITIVE_INFINITY;
     }
 
+    if (this.fx) {
+      const [type, every, at] = EMOTE_EMIT[this.fx.name] ?? [];
+      if (type && every && n > this.fxNext && n < this.fx.t1 - 0.5) {
+        this.emit(type, 1, at?.());
+        this.fxNext = n + every * (this.isMini || this.r < 16 ? 2 : 1);
+      }
+      if (n > this.fx.t1) this.fx = null;
+    }
+
     if (n - this.lastAmbient > 1.3) {
       this.lastAmbient = n;
       if (this.cfg.zz) this.emit("z", 1);
@@ -774,8 +961,11 @@ export class BotEngine {
     const R = W * 0.3;
     const rx = R * 1.14;
     const ry = R * 0.88;
-    const cx = W / 2 + this.ox * R;
-    const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06;
+    this.r = R;
+    // Charged up (hype), the whole body buzzes.
+    const buzz = this.fxLevel("hype") * R * 0.025;
+    const cx = W / 2 + this.ox * R + Math.sin(now() * 97) * buzz;
+    const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06 + Math.sin(now() * 71) * buzz * 0.5;
 
     // With an outfit on, a roll turns the whole character — hat included — as
     // one piece instead of rolling the eyes over the body (BotCanvasView, macOS).
@@ -796,6 +986,7 @@ export class BotEngine {
     const dressed = !this.isMini && this.outfit !== "none";
     const head = dressed ? makeHead(R, this.yaw, this.pitch, this.physDx, this.physDy) : null;
     const outfitState = { presence: this.outfitPresence, morph: this.morph };
+    this.drawFire(x, R, rx, ry);
     if (head) drawOutfitBehind(x, this.outfit, head, outfitState);
 
     const body = this.bodyPath(rx, ry, R);
@@ -815,7 +1006,9 @@ export class BotEngine {
       x.restore();
     }
 
-    this.drawEyes(x, body, R, rx, ry);
+    const eyes = this.eyePoses(rx, ry).filter((e) => e.vis > 0.04);
+    this.drawEyes(x, body, R, eyes);
+    this.drawTears(x, body, R, ry, eyes);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
     if (head) drawOutfitFront(x, this.outfit, head, outfitState);
@@ -827,6 +1020,87 @@ export class BotEngine {
       this.drawBadge(x, this.badge, R, cx, cy);
     }
     this.drawParticles(x, R, cx, cy);
+  }
+
+  /** How strongly `name`'s per-frame effects show: 0 when it isn't playing,
+   *  fading in over 0.3 s and out over its last 0.5 s. */
+  private fxLevel(name: BotEmoteName): number {
+    if (this.fx?.name !== name) return 0;
+    const n = now();
+    return Math.max(0, Math.min(1, (n - this.fx.t0) / 0.3, (this.fx.t1 - n) / 0.5));
+  }
+
+  /** The hype's purple fire, licking up from behind the body (and a glow). */
+  private drawFire(x: CanvasRenderingContext2D, R: number, rx: number, ry: number) {
+    const lv = this.fxLevel("hype");
+    if (lv <= 0) return;
+    const t = now();
+    const simple = this.isMini || R < 16;
+    if (!simple) {
+      const g = x.createRadialGradient(0, 0, R * 0.7, 0, 0, R * 1.5);
+      g.addColorStop(0, `rgba(230,90,255,${0.5 * lv * (0.8 + 0.2 * Math.sin(t * 29))})`);
+      g.addColorStop(1, "rgba(150,60,255,0)");
+      x.fillStyle = g;
+      x.beginPath();
+      x.arc(0, 0, R * 1.5, 0, Math.PI * 2);
+      x.fill();
+    }
+    const n = simple ? 3 : 7;
+    for (const [k, hot, tip] of FIRE) {
+      const top = -ry * 0.7 - R * 1.3 * k;
+      const g = x.createLinearGradient(0, -ry * 0.5, 0, top);
+      g.addColorStop(0, hot);
+      g.addColorStop(1, tip);
+      x.fillStyle = g;
+      x.beginPath();
+      for (let i = 0; i < n; i++) {
+        const u = (i / (n - 1)) * 2 - 1; // -1 to 1 across the back
+        // Two out-of-step waves per tongue: a cheap flicker that never repeats exactly.
+        const flick = 0.75 + 0.25 * Math.sin(t * (9 + i * 1.7) + i * 2.1) * Math.sin(t * (5.3 + i) + i);
+        const h = R * (1.25 - 0.45 * u * u) * flick * k * lv;
+        const bx = u * rx * 0.85;
+        const by = -ry * 0.2 + Math.abs(u) * ry * 0.3;
+        const tx = bx * 1.3 + Math.sin(t * 6 + i * 1.3) * R * 0.12;
+        const ty = by - ry * 0.7 - h;
+        const w = R * 0.32 * k * (1 - 0.3 * Math.abs(u));
+        const d = by - ty;
+        x.moveTo(bx - w, by);
+        x.bezierCurveTo(bx - w * 1.1, by - d * 0.55, tx - w * 0.3, ty + d * 0.25, tx, ty);
+        x.bezierCurveTo(tx + w * 0.3, ty + d * 0.25, bx + w * 1.1, by - d * 0.55, bx + w, by);
+        x.closePath();
+      }
+      x.fill();
+    }
+  }
+
+  /** The sad emote's tears, streaming down from under both eyes. */
+  private drawTears(x: CanvasRenderingContext2D, body: Path2D, R: number, ry: number, eyes: EyeSpot[]) {
+    const lv = this.fxLevel("sad");
+    if (lv <= 0 || !this.fx) return;
+    const t = now();
+    const grow = Math.min(1, (t - this.fx.t0) / 0.7) * lv;
+    const w = R * EYE_W * this.eyeSize;
+    x.save();
+    x.clip(body);
+    x.lineCap = "round";
+    for (const { ex, ey, fx } of eyes) {
+      const y0 = ey + w * 0.6;
+      const len = ry * 1.3 * grow;
+      x.beginPath();
+      for (let k = 0; k <= 8; k++) {
+        const y = y0 + (len * k) / 8;
+        x.lineTo(ex + Math.sin(y * 0.2 - t * 8) * w * 0.08, y);
+      }
+      x.strokeStyle = `rgba(110,190,255,${0.9 * lv})`;
+      x.lineWidth = w * 0.45 * fx;
+      x.stroke();
+      if (R >= 16) {
+        x.strokeStyle = `rgba(235,248,255,${0.7 * lv})`;
+        x.lineWidth = w * 0.08 * fx;
+        x.stroke();
+      }
+    }
+    x.restore();
   }
 
   private bodyPath(rx: number, ry: number, R: number): Path2D {
@@ -897,6 +1171,16 @@ export class BotEngine {
       x.fillStyle = tg;
       x.fill(body);
     }
+    // An emote's colour (EMOTE_TINT); anger pulses.
+    const pulse = this.fx?.name === "angry" ? 0.7 + 0.3 * Math.sin(now() * 14) : 1;
+    const mood = this.moodTint * (1 - this.morph) * pulse;
+    if (mood > 0.01) {
+      const mg = x.createLinearGradient(0, ry, 0, -ry);
+      mg.addColorStop(0, rgba(this.moodCol, 0.8 * mood));
+      mg.addColorStop(1, rgba(this.moodCol, 0.3 * mood));
+      x.fillStyle = mg;
+      x.fill(body);
+    }
 
     const sh = x.createRadialGradient(0, 0, R * 0.15, 0, 0, R * 1.25);
     sh.addColorStop(0, "rgba(0,0,0,0)");
@@ -913,7 +1197,33 @@ export class BotEngine {
     x.restore();
   }
 
-  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
+  /**
+   * Where both eyes sit on the body (sphere projection), local coords, with how
+   * much each faces the viewer.
+   */
+  private eyePoses(rx: number, ry: number): EyeSpot[] {
+    const spots: EyeSpot[] = [];
+    for (const sd of [-1, 1]) {
+      const eyeYaw = sd * EYE_SP + this.yaw;
+      // Rolling with an outfit on, the whole body turns: the eyes must not roll again.
+      let eyePitch = EYE_P + this.pitch + (this.rigidRoll ? 0 : this.roll);
+      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+      const cp = Math.cos(eyePitch);
+      const ex = Math.sin(eyeYaw) * cp * rx;
+      const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
+      const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
+      const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
+      spots.push({ sd, ex, ey, fx, fy, vis: Math.cos(eyeYaw) * cp });
+    }
+    return spots;
+  }
+
+  /** How big the eyes are drawn (a mini's are bigger). */
+  private get eyeSize(): number {
+    return (this.isMini ? 1.9 : 1.0) * this.es;
+  }
+
+  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, spots: EyeSpot[]) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
     // Dancing: happy eyes in the calm states.
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
@@ -930,22 +1240,9 @@ export class BotEngine {
     x.fillStyle = ink;
     x.strokeStyle = ink;
 
-    for (const sd of [-1, 1]) {
-      const eyeYaw = sd * EYE_SP + this.yaw;
-      // Rolling with an outfit on, the whole body turns: the eyes must not roll again.
-      let eyePitch = EYE_P + this.pitch + (this.rigidRoll ? 0 : this.roll);
-      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-      const cp = Math.cos(eyePitch);
-      if (Math.cos(eyeYaw) * cp <= 0.04) continue;
-
-      const ex = Math.sin(eyeYaw) * cp * rx;
-      const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
-      const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
-      const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
-      const eyeMult = this.isMini ? 1.9 : 1.0;
-      const ew = R * EYE_W * this.es * eyeMult;
-      const eh = R * EYE_H * this.es * eyeMult;
-
+    const ew = R * EYE_W * this.eyeSize;
+    const eh = R * EYE_H * this.eyeSize;
+    for (const { sd, ex, ey, fx, fy } of spots) {
       x.save();
       x.translate(ex, ey);
       x.scale(fx, fy);
@@ -1045,6 +1342,60 @@ export class BotEngine {
           x.stroke();
         }
         break;
+      case "teary": {
+        // Big glossy eyes brimming with tears; the waterline wobbles.
+        const r = w * 0.78;
+        x.beginPath();
+        for (let i = 0; i <= 24; i++) {
+          const a = (i / 24) * Math.PI * 2;
+          const rr = r * (1 + Math.max(0, Math.sin(a)) * Math.sin(a * 5 + t * 9) * 0.06);
+          x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr * 1.08);
+        }
+        x.fill();
+        x.fillStyle = "rgba(120,195,255,0.6)";
+        x.beginPath();
+        x.arc(0, 0, r, Math.PI * 0.12, Math.PI * 0.88);
+        x.fill();
+        x.fillStyle = "#fff";
+        for (const [dx, dy, dr] of [[0.3, -0.35, 0.3], [-0.3, 0.22, 0.14]]) {
+          x.beginPath();
+          x.arc(dx * r, dy * r, dr * r, 0, Math.PI * 2);
+          x.fill();
+        }
+        x.fillStyle = ink;
+        break;
+      }
+      case "angry":
+      case "glow": {
+        // Cut by a line slanting down to the nose: furrowed (angry) or fired up (glow).
+        const k = shape === "angry" ? 0.75 : 0.4;
+        const yA = -h * 0.2 + sd * w * k;
+        const yB = -h * 0.2 - sd * w * k;
+        x.save();
+        x.beginPath();
+        x.moveTo(-w, yA);
+        x.lineTo(w, yB);
+        x.lineTo(w, h);
+        x.lineTo(-w, h);
+        x.clip();
+        if (shape === "glow") {
+          x.fillStyle = "#F6E6FF";
+          x.shadowColor = "#E040FB";
+          x.shadowBlur = this.isMini ? 0 : w * 1.2;
+        }
+        roundRectPath(x, -w / 2, -h / 2, w, h, w / 2);
+        x.fill();
+        x.restore();
+        if (shape === "angry") {
+          x.lineWidth = w * 0.26;
+          x.lineCap = "round";
+          x.beginPath();
+          x.moveTo(-w * 0.6, (yA * 0.8 + yB * 0.2) - w * 0.3);
+          x.lineTo(w * 0.6, (yA * 0.2 + yB * 0.8) - w * 0.3);
+          x.stroke();
+        }
+        break;
+      }
       case "cup": {
         // Flat top, rounded bottom corners (U shape) — used while the box is open
         const hh = Math.max(h * this.open, w * 0.3);
@@ -1246,7 +1597,9 @@ export class BotEngine {
       const k = p.age / p.life;
       const a = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8;
       const px = cx + (p.x + p.vx * p.age) * R * 1.3;
-      const py = cy + (p.y + p.vy * p.age) * R * 1.3;
+      // Confetti falls: it speeds up as it goes down.
+      const fall = (FALL[p.type] ?? 0) * p.age * p.age;
+      const py = cy + (p.y + p.vy * p.age + fall) * R * 1.3;
       const sz = R * p.size * (1 + k * 0.4);
 
       x.save();
@@ -1286,6 +1639,46 @@ export class BotEngine {
           x.textBaseline = "middle";
           x.fillText("z", 0, 0);
           break;
+        case "steam":
+          x.fillStyle = "rgba(240,240,245,0.9)";
+          x.beginPath();
+          for (const [dx, dy, dr] of [[0, 0, 0.7], [0.5, -0.2, 0.5], [-0.5, -0.1, 0.55]]) {
+            const r = dr * sz * (1 + k);
+            x.moveTo(dx * sz + r, dy * sz);
+            x.arc(dx * sz, dy * sz, r, 0, Math.PI * 2);
+          }
+          x.fill();
+          break;
+        case "bolt":
+          x.rotate((p.rot - Math.PI) * 0.15);
+          x.fillStyle = k < 0.5 ? "#FFE45C" : "#FF8CE6";
+          x.beginPath();
+          for (const [bx, by] of [[0.1, -1], [-0.45, 0.1], [-0.05, 0.1], [-0.2, 1], [0.45, -0.15], [0.05, -0.15]]) {
+            x.lineTo(bx * sz, by * sz);
+          }
+          x.fill();
+          break;
+        case "confetti":
+          x.rotate(p.rot + p.age * 7);
+          x.scale(1, Math.cos(p.age * 11 + p.rot));
+          x.fillStyle = p.c ?? CONFETTI[0];
+          x.fillRect(-sz * 0.5, -sz * 0.25, sz, sz * 0.5);
+          break;
+        case "mark": {
+          // Pops in with an overshoot, outlined so it reads on any background.
+          const pop = Ease.back(Math.min(1, p.age / 0.2));
+          x.scale(pop, pop);
+          x.font = `900 ${sz * 2.2}px ${FONT}`;
+          x.textAlign = "center";
+          x.textBaseline = "middle";
+          x.lineJoin = "round";
+          x.lineWidth = sz * 0.35;
+          x.strokeStyle = INK;
+          x.strokeText(p.c ?? "!", 0, 0);
+          x.fillStyle = MARK_COLOR[p.c ?? "!"] ?? "#fff";
+          x.fillText(p.c ?? "!", 0, 0);
+          break;
+        }
       }
       x.restore();
     }
