@@ -404,6 +404,9 @@ export const Bridge = {
   gitlabPanelToggle: () => call<void>("gitlab_panel_toggle"),
   gitlabPanelClose: () => call<void>("gitlab_panel_close"),
   gitlabPanelIsOpen: () => call<boolean>("gitlab_panel_is_open"),
+  gitlabPanelIsExpanded: () => call<boolean>("gitlab_panel_is_expanded"),
+  /** Unfolds the panel into its card (true) or folds it into the slim bar (false). */
+  gitlabPanelMode: (expanded: boolean) => call<void>("gitlab_panel_mode", { expanded }),
   gitlabPanelResize: (height: number) => call<void>("gitlab_panel_resize", { height }),
   gitlabPanelDrag: () => call<void>("gitlab_panel_drag"),
   gitlabDashboard: () => call<Dashboard>("gitlab_dashboard"),

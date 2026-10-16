@@ -968,6 +968,8 @@ pub fn run() {
             gitlab_panel::gitlab_panel_toggle,
             gitlab_panel::gitlab_panel_close,
             gitlab_panel::gitlab_panel_is_open,
+            gitlab_panel::gitlab_panel_is_expanded,
+            gitlab_panel::gitlab_panel_mode,
             gitlab_panel::gitlab_panel_resize,
             gitlab_panel::gitlab_panel_drag,
             gitlab_panel::gitlab_dashboard,

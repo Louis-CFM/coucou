@@ -4735,6 +4735,17 @@
    "pt-BR": "O GitLab recusou. Seu texto foi mantido.",
    "ru": "GitLab отклонил это. Ваш текст сохранён.",
    "id": "GitLab menolaknya. Teks Anda disimpan."
+  },
+  "Fold the panel": {
+   "zh-Hans": "收起面板",
+   "hi": "पैनल समेटें",
+   "es": "Plegar el panel",
+   "ar": "طيّ اللوحة",
+   "fr": "Replier le panneau",
+   "bn": "প্যানেল গুটিয়ে নিন",
+   "pt-BR": "Recolher o painel",
+   "ru": "Свернуть панель",
+   "id": "Lipat panel"
   }
  }
 }

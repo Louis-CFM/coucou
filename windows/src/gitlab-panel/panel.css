@@ -46,10 +46,36 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
+  border-radius: var(--r, 16px);
   background: var(--bg);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* Against an edge of the screen the card lies flat on it, its other corners round;
+   while it is dragged, or away from any edge, all four are round. */
+#gp.dock-left {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-color: transparent;
+}
+
+#gp.dock-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+
+#gp.dock-top {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top-color: transparent;
+}
+
+#gp.dock-bottom {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
 }
 
 /* No min-height here: the window is sized from this element, and a floor at the
@@ -695,4 +721,84 @@ html[dir="rtl"] .gp-note-main {
 .gp-hint {
   color: var(--dim);
   font-size: 11px;
+}
+
+/* ── Folded: a slim bar of icons ──────────────────────────────────────────── */
+
+#gp.slim {
+  --r: 26px;
+  overflow: hidden;
+}
+
+.gp-slim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 0 14px;
+  cursor: grab;
+}
+
+.gp-slim:active {
+  cursor: grabbing;
+}
+
+.gp-pill {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  transition: background 0.12s, transform 0.1s;
+}
+
+.gp-pill:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  transform: scale(1.06);
+}
+
+/* Something waits for you in this section. */
+.gp-pill.waiting {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+/* New since you last looked. */
+.gp-pill.pulse {
+  animation: gp-pulse 0.9s ease-in-out 3;
+}
+
+@keyframes gp-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent),
+      0 0 20px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+}
+
+.gp-pbadge {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -8px;
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b0b0d;
+  font-size: 9.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--bg);
+  animation: gp-pop 0.25s ease-out;
 }
