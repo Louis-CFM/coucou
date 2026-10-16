@@ -105,6 +105,13 @@ class FakeElement {
   remove() {
     this.parentNode?.removeChild(this);
   }
+  replaceWith(node) {
+    const parent = this.parentNode;
+    if (!parent) return;
+    node.parentNode = parent;
+    parent.childNodes[parent.childNodes.indexOf(this)] = node;
+    this.parentNode = null;
+  }
   /** `.a.b` class selectors only: the first descendant carrying every class. */
   querySelector(selector) {
     const wanted = selector.split(".").filter(Boolean);

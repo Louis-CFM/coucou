@@ -437,6 +437,8 @@ export const Bridge = {
     const ext = name.split(".").pop() ?? "";
     return URL.createObjectURL(new Blob([bytes], { type: MEDIA_TYPES[ext] ?? "" }));
   },
+  /** A generated file's raw bytes (3D models are parsed, not shown by URL). */
+  mediaBytes: (name: string) => call<ArrayBuffer>("media_bytes", { name }),
   /** Copies a generated file into Downloads; returns where it went. */
   mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
   /** Full-screen preview, on the screen overlay window. */

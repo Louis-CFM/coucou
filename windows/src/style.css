@@ -3485,6 +3485,14 @@ img.media-view {
   }
 }
 
+/* A generated 3D model's still, on a soft stage. */
+.media-view.model3d {
+  width: 233px;
+  height: 140px;
+  object-fit: contain;
+  background: radial-gradient(ellipse at 50% 38%, rgba(120, 128, 255, 0.18), rgba(0, 0, 0, 0.35) 72%);
+}
+
 /* A chat answer: an optional note, the reply, and any generated files. */
 .answer {
   min-width: 0;
