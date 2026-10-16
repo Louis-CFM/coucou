@@ -353,6 +353,8 @@ export const Bridge = {
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
   /** The GitHub card is on screen: refetch that part if it is stale. */
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
+  /** The GitLab card is on screen: refetch that part if it is stale. */
+  gitlabRefresh: (section: "pulse" | "activity") => call<void>("gitlab_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
