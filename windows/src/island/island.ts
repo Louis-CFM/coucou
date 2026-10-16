@@ -28,6 +28,7 @@ import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { restoreAlertFocus } from "./hooks";
 import { DesktopLink } from "./desktop";
+import { Pods } from "./pods";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 import { Updates } from "./update";
@@ -83,6 +84,8 @@ export class Island {
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
+  /** AirPods in Mochi's head and the music notes (pods.ts). */
+  private pods = new Pods(() => this.ensureRunning());
   private greeting = new Greeting();
   private greetingShown = false;
   private seasons = new SeasonCache();
@@ -366,7 +369,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.pods.el);
     this.applyGeometry();
   }
 
@@ -1143,6 +1146,15 @@ export class Island {
       // is already in the right place the moment the canvas fades out.
       this.drawBot(dt);
     }
+    this.pods.step(dt, {
+      music: State.spotifyPlaying,
+      dancing: this.engine.isDancing && !greetingActive,
+      visible: State.mode !== "hidden" && !State.roaming && !State.mochiOnDesktop,
+      islandW: this.width.value,
+      botX: this.botCx.value,
+      botY: this.botCy.value,
+      botSize: this.botSize.value,
+    }, this.engine);
 
     const uploadActive = this.uploadActive;
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
@@ -1167,7 +1179,7 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+        greetingActive || this.engine.busy || this.pods.busy || UploadSeq.isActive || viewAnimating;
 
     if (busy) {
       requestAnimationFrame(this.frame);
