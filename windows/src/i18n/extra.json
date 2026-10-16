@@ -1189,6 +1189,50 @@
    "ru": "Основной инструмент",
    "id": "Alat utama"
   },
+  "Code editor": {
+   "zh-Hans": "代码编辑器",
+   "hi": "कोड एडिटर",
+   "es": "Editor de código",
+   "ar": "محرر الأكواد",
+   "fr": "Éditeur de code",
+   "bn": "কোড এডিটর",
+   "pt-BR": "Editor de código",
+   "ru": "Редактор кода",
+   "id": "Editor kode"
+  },
+  "Opens the folder for Open terminal and the file for the ↗ of a diff. PhpStorm opens the file on its first changed line.": {
+   "zh-Hans": "“打开终端”用它打开文件夹,差异的 ↗ 用它打开文件。PhpStorm 会定位到第一处改动的行。",
+   "hi": "“टर्मिनल खोलें” फ़ोल्डर और डिफ़ का ↗ फ़ाइल इसी में खोलता है। PhpStorm फ़ाइल को पहली बदली हुई पंक्ति पर खोलता है।",
+   "es": "Abre la carpeta con «Abrir terminal» y el archivo con el ↗ de un diff. PhpStorm abre el archivo en su primera línea modificada.",
+   "ar": "يفتح المجلد عند «فتح الطرفية» والملف عند ↗ في الفروقات. يفتح PhpStorm الملف عند أول سطر معدَّل.",
+   "fr": "Ouvre le dossier avec « Ouvrir le terminal » et le fichier avec le ↗ d'un diff. PhpStorm ouvre le fichier à sa première ligne modifiée.",
+   "bn": "“টার্মিনাল খুলুন” ফোল্ডার এবং ডিফের ↗ ফাইল এতে খোলে। PhpStorm ফাইলটি প্রথম পরিবর্তিত লাইনে খোলে।",
+   "pt-BR": "Abre a pasta com «Abrir terminal» e o arquivo com o ↗ de um diff. O PhpStorm abre o arquivo na primeira linha alterada.",
+   "ru": "Открывает папку по «Открыть терминал» и файл по ↗ в диффе. PhpStorm открывает файл на первой изменённой строке.",
+   "id": "Membuka folder lewat «Buka terminal» dan file lewat ↗ pada diff. PhpStorm membuka file di baris pertama yang berubah."
+  },
+  "Found on this computer": {
+   "zh-Hans": "已在此电脑上找到",
+   "hi": "इस कंप्यूटर पर मिला",
+   "es": "Encontrado en este equipo",
+   "ar": "موجود على هذا الكمبيوتر",
+   "fr": "Trouvé sur cet ordinateur",
+   "bn": "এই কম্পিউটারে পাওয়া গেছে",
+   "pt-BR": "Encontrado neste computador",
+   "ru": "Найден на этом компьютере",
+   "id": "Ditemukan di komputer ini"
+  },
+  "Not found on this computer": {
+   "zh-Hans": "在此电脑上未找到",
+   "hi": "इस कंप्यूटर पर नहीं मिला",
+   "es": "No encontrado en este equipo",
+   "ar": "غير موجود على هذا الكمبيوتر",
+   "fr": "Introuvable sur cet ordinateur",
+   "bn": "এই কম্পিউটারে পাওয়া যায়নি",
+   "pt-BR": "Não encontrado neste computador",
+   "ru": "Не найден на этом компьютере",
+   "id": "Tidak ditemukan di komputer ini"
+  },
   "Meeting": {
    "zh-Hans": "会议",
    "hi": "मीटिंग",
@@ -1485,6 +1529,17 @@
    "pt-BR": "Abrir no VS Code",
    "ru": "Открыть в VS Code",
    "id": "Buka di VS Code"
+  },
+  "Open in PhpStorm": {
+   "zh-Hans": "在 PhpStorm 中打开",
+   "hi": "PhpStorm में खोलें",
+   "es": "Abrir en PhpStorm",
+   "ar": "فتح في PhpStorm",
+   "fr": "Ouvrir dans PhpStorm",
+   "bn": "PhpStorm-এ খুলুন",
+   "pt-BR": "Abrir no PhpStorm",
+   "ru": "Открыть в PhpStorm",
+   "id": "Buka di PhpStorm"
   },
   "Open or close the island": {
    "zh-Hans": "打开或关闭岛",
@@ -3834,6 +3889,105 @@
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru."
   },
+  "Claude Code in WSL": {
+   "zh-Hans": "WSL 中的 Claude Code",
+   "hi": "WSL में Claude Code",
+   "es": "Claude Code en WSL",
+   "ar": "Claude Code في WSL",
+   "fr": "Claude Code dans WSL",
+   "bn": "WSL-এ Claude Code",
+   "pt-BR": "Claude Code no WSL",
+   "ru": "Claude Code в WSL",
+   "id": "Claude Code di WSL"
+  },
+  "Claude Code sessions that run in WSL show up in the island too, and you can approve them there. Coucou adds its hooks to the distro's own ~/.claude/settings.json; they start the Windows relay through WSL.": {
+   "zh-Hans": "在 WSL 中运行的 Claude Code 会话也会显示在灵动岛中，你可以在那里批准。Coucou 会把它的钩子添加到该发行版自己的 ~/.claude/settings.json 中；它们通过 WSL 启动 Windows 中继。",
+   "hi": "WSL में चलने वाले Claude Code सत्र भी आइलैंड में दिखते हैं और आप उन्हें वहीं से मंज़ूर कर सकते हैं। Coucou अपने हुक डिस्ट्रो की अपनी ~/.claude/settings.json में जोड़ता है; वे WSL के ज़रिए Windows रिले चलाते हैं।",
+   "es": "Las sesiones de Claude Code que se ejecutan en WSL también aparecen en la isla, y puedes aprobarlas desde ahí. Coucou añade sus hooks al ~/.claude/settings.json propio de la distribución; estos inician el relé de Windows a través de WSL.",
+   "ar": "تظهر جلسات Claude Code التي تعمل في WSL في الجزيرة أيضًا، ويمكنك الموافقة عليها من هناك. يضيف Coucou خطافاته إلى ملف ~/.claude/settings.json الخاص بالتوزيعة؛ وهي تشغّل مرحّل Windows عبر WSL.",
+   "fr": "Les sessions Claude Code qui tournent dans WSL apparaissent aussi dans l'île, et vous pouvez les approuver depuis là. Coucou ajoute ses hooks au ~/.claude/settings.json propre à la distribution ; ils lancent le relais Windows via WSL.",
+   "bn": "WSL-এ চলা Claude Code সেশনও আইল্যান্ডে দেখা যায় এবং আপনি সেখান থেকেই অনুমোদন দিতে পারেন। Coucou ডিস্ট্রোর নিজস্ব ~/.claude/settings.json-এ তার হুক যোগ করে; সেগুলো WSL-এর মাধ্যমে Windows রিলে চালু করে।",
+   "pt-BR": "As sessões do Claude Code que rodam no WSL também aparecem na ilha, e você pode aprová-las por lá. O Coucou adiciona seus hooks ao ~/.claude/settings.json da própria distribuição; eles iniciam o relay do Windows pelo WSL.",
+   "ru": "Сеансы Claude Code, запущенные в WSL, тоже появляются в острове, и вы можете одобрять их прямо там. Coucou добавляет свои хуки в собственный ~/.claude/settings.json дистрибутива; они запускают реле Windows через WSL.",
+   "id": "Sesi Claude Code yang berjalan di WSL juga muncul di pulau, dan Anda dapat menyetujuinya dari sana. Coucou menambahkan hook-nya ke ~/.claude/settings.json milik distro itu sendiri; hook tersebut menjalankan relay Windows lewat WSL."
+  },
+  "{distro} is not running — start it to set its hooks up.": {
+   "zh-Hans": "{distro} 未运行——请先启动它再设置钩子。",
+   "hi": "{distro} चल नहीं रहा है — इसके हुक सेट करने के लिए पहले इसे शुरू करें।",
+   "es": "{distro} no está en ejecución: inicia la distribución para configurar sus hooks.",
+   "ar": "{distro} لا يعمل — شغّله لإعداد خطافاته.",
+   "fr": "{distro} ne tourne pas — démarrez-la pour configurer ses hooks.",
+   "bn": "{distro} চলছে না — এর হুক সেট করতে আগে এটি চালু করুন।",
+   "pt-BR": "{distro} não está em execução — inicie-a para configurar seus hooks.",
+   "ru": "{distro} не запущен — запустите его, чтобы настроить хуки.",
+   "id": "{distro} tidak berjalan — jalankan dulu untuk mengatur hook-nya."
+  },
+  "Done. Previous settings saved as {backup}. Open a new Claude Code session in WSL to pick the hooks up.": {
+   "zh-Hans": "完成。之前的设置已保存为 {backup}。请在 WSL 中打开新的 Claude Code 会话以启用钩子。",
+   "hi": "हो गया। पिछली सेटिंग {backup} के रूप में सहेजी गई। हुक लागू करने के लिए WSL में नया Claude Code सत्र खोलें।",
+   "es": "Hecho. La configuración anterior se guardó como {backup}. Abre una nueva sesión de Claude Code en WSL para que los hooks surtan efecto.",
+   "ar": "تم. حُفظت الإعدادات السابقة باسم {backup}. افتح جلسة Claude Code جديدة في WSL لتفعيل الخطافات.",
+   "fr": "Terminé. Les réglages précédents sont sauvegardés dans {backup}. Ouvrez une nouvelle session Claude Code dans WSL pour prendre en compte les hooks.",
+   "bn": "সম্পন্ন। আগের সেটিংস {backup} নামে সংরক্ষিত হয়েছে। হুক চালু করতে WSL-এ নতুন Claude Code সেশন খুলুন।",
+   "pt-BR": "Pronto. As configurações anteriores foram salvas como {backup}. Abra uma nova sessão do Claude Code no WSL para ativar os hooks.",
+   "ru": "Готово. Прежние настройки сохранены как {backup}. Откройте новый сеанс Claude Code в WSL, чтобы хуки заработали.",
+   "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Buka sesi Claude Code baru di WSL agar hook aktif."
+  },
+  "Done. Open a new Claude Code session in WSL to pick the hooks up.": {
+   "zh-Hans": "完成。请在 WSL 中打开新的 Claude Code 会话以启用钩子。",
+   "hi": "हो गया। हुक लागू करने के लिए WSL में नया Claude Code सत्र खोलें।",
+   "es": "Hecho. Abre una nueva sesión de Claude Code en WSL para que los hooks surtan efecto.",
+   "ar": "تم. افتح جلسة Claude Code جديدة في WSL لتفعيل الخطافات.",
+   "fr": "Terminé. Ouvrez une nouvelle session Claude Code dans WSL pour prendre en compte les hooks.",
+   "bn": "সম্পন্ন। হুক চালু করতে WSL-এ নতুন Claude Code সেশন খুলুন।",
+   "pt-BR": "Pronto. Abra uma nova sessão do Claude Code no WSL para ativar os hooks.",
+   "ru": "Готово. Откройте новый сеанс Claude Code в WSL, чтобы хуки заработали.",
+   "id": "Selesai. Buka sesi Claude Code baru di WSL agar hook aktif."
+  },
+  "That WSL distro or user is not valid.": {
+   "zh-Hans": "该 WSL 发行版或用户无效。",
+   "hi": "यह WSL डिस्ट्रो या उपयोगकर्ता मान्य नहीं है।",
+   "es": "Esa distribución o usuario de WSL no es válido.",
+   "ar": "توزيعة WSL أو المستخدم هذا غير صالح.",
+   "fr": "Cette distribution WSL ou cet utilisateur n'est pas valide.",
+   "bn": "এই WSL ডিস্ট্রো বা ব্যবহারকারী বৈধ নয়।",
+   "pt-BR": "Essa distribuição ou usuário do WSL não é válido.",
+   "ru": "Этот дистрибутив WSL или пользователь недопустим.",
+   "id": "Distro atau pengguna WSL itu tidak valid."
+  },
+  "{user} has no ~/.claude in {distro}, or {distro} is not running.": {
+   "zh-Hans": "{user} 在 {distro} 中没有 ~/.claude，或 {distro} 未运行。",
+   "hi": "{distro} में {user} के पास ~/.claude नहीं है, या {distro} चल नहीं रहा है।",
+   "es": "{user} no tiene ~/.claude en {distro}, o {distro} no está en ejecución.",
+   "ar": "ليس لدى {user} مجلد ‎~/.claude‎ في {distro}، أو أن {distro} لا يعمل.",
+   "fr": "{user} n'a pas de ~/.claude dans {distro}, ou {distro} ne tourne pas.",
+   "bn": "{distro}-এ {user}-এর ~/.claude নেই, অথবা {distro} চলছে না।",
+   "pt-BR": "{user} não tem ~/.claude em {distro}, ou {distro} não está em execução.",
+   "ru": "У {user} нет ~/.claude в {distro}, либо {distro} не запущен.",
+   "id": "{user} tidak punya ~/.claude di {distro}, atau {distro} tidak berjalan."
+  },
+  "The relay is not on a local drive, so WSL cannot run it.": {
+   "zh-Hans": "中继不在本地驱动器上，因此 WSL 无法运行它。",
+   "hi": "रिले स्थानीय ड्राइव पर नहीं है, इसलिए WSL इसे चला नहीं सकता।",
+   "es": "El relé no está en una unidad local, así que WSL no puede ejecutarlo.",
+   "ar": "المرحّل ليس على قرص محلي، لذا لا يستطيع WSL تشغيله.",
+   "fr": "Le relais n'est pas sur un lecteur local, WSL ne peut donc pas l'exécuter.",
+   "bn": "রিলেটি স্থানীয় ড্রাইভে নেই, তাই WSL এটি চালাতে পারে না।",
+   "pt-BR": "O relay não está em uma unidade local, então o WSL não consegue executá-lo.",
+   "ru": "Реле находится не на локальном диске, поэтому WSL не может его запустить.",
+   "id": "Relay tidak berada di drive lokal, sehingga WSL tidak dapat menjalankannya."
+  },
+  "Coucou in {name} starts a relay that is not the current one (it moved or was reinstalled), so it does nothing. Reinstall it.": {
+   "zh-Hans": "{name} 中的 Coucou 启动的中继不是当前的（它被移动或重新安装过），因此不起作用。请重新安装。",
+   "hi": "{name} में Coucou एक ऐसा रिले शुरू करता है जो मौजूदा नहीं है (वह हटाया गया या दोबारा इंस्टॉल हुआ), इसलिए वह कुछ नहीं करता। इसे फिर से इंस्टॉल करें।",
+   "es": "Coucou en {name} inicia un relé que no es el actual (se movió o se reinstaló), así que no hace nada. Reinstálalo.",
+   "ar": "يشغّل Coucou في {name} مرحّلًا ليس الحالي (نُقل أو أُعيد تثبيته)، لذلك لا يفعل شيئًا. أعد تثبيته.",
+   "fr": "Coucou dans {name} lance un relais qui n'est pas l'actuel (il a été déplacé ou réinstallé), donc il ne fait rien. Réinstallez-le.",
+   "bn": "{name}-এ Coucou এমন একটি রিলে চালু করে যা বর্তমানটি নয় (এটি সরানো বা আবার ইনস্টল করা হয়েছে), তাই কিছুই করে না। আবার ইনস্টল করুন।",
+   "pt-BR": "O Coucou em {name} inicia um relay que não é o atual (ele foi movido ou reinstalado), então não faz nada. Reinstale-o.",
+   "ru": "Coucou в {name} запускает реле, которое не является текущим (его переместили или переустановили), поэтому ничего не делает. Переустановите его.",
+   "id": "Coucou di {name} menjalankan relay yang bukan yang sekarang (dipindahkan atau diinstal ulang), sehingga tidak berfungsi. Instal ulang."
+  },
   "Dictate anywhere on your computer": {
    "zh-Hans": "在电脑上的任何地方听写",
    "hi": "अपने कंप्यूटर पर कहीं भी बोलकर लिखें",
@@ -4361,6 +4515,17 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "This file can't be used as a sound": {
+   "zh-Hans": "此文件无法用作声音",
+   "hi": "इस फ़ाइल को साउंड के रूप में इस्तेमाल नहीं किया जा सकता",
+   "es": "Este archivo no se puede usar como sonido",
+   "ar": "لا يمكن استخدام هذا الملف كصوت",
+   "fr": "Ce fichier ne peut pas servir de son",
+   "bn": "এই ফাইলটি সাউন্ড হিসেবে ব্যবহার করা যাবে না",
+   "pt-BR": "Este arquivo não pode ser usado como som",
+   "ru": "Этот файл нельзя использовать как звук",
+   "id": "File ini tidak dapat dipakai sebagai suara"
   }
  }
 }

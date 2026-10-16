@@ -206,7 +206,7 @@ pub fn setup(app: &AppHandle) {
             }
         }
     }
-    notes.sort_by(|a, b| b.start.cmp(&a.start));
+    notes.sort_by_key(|n| std::cmp::Reverse(n.start));
     // A call left recording or being written when Coucou last quit: written now.
     let unfinished: Vec<String> = notes
         .iter()
