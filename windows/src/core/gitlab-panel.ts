@@ -275,3 +275,21 @@ export function noteUrl(thread: PendingThread): string {
   const last = thread.notes[thread.notes.length - 1];
   return last ? `${thread.mrUrl}#note_${last.id}` : thread.mrUrl;
 }
+
+// ── Avatars ───────────────────────────────────────────────────────────────────
+
+/** "Jane Doe" → "JD", "bob" → "B": what a little round avatar carries. */
+export function initials(name: string): string {
+  const words = name.trim().split(/[\s._-]+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  const first = Array.from(words[0])[0] ?? "?";
+  const second = words.length > 1 ? (Array.from(words[words.length - 1])[0] ?? "") : "";
+  return (first + second).toUpperCase();
+}
+
+/** A colour for a person, the same every time: a hue from 0 to 359. */
+export function avatarHue(username: string): number {
+  let hash = 0;
+  for (const ch of username) hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) >>> 0;
+  return hash % 360;
+}

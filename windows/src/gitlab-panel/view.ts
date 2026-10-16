@@ -8,10 +8,10 @@ import { clear, dot, h, svg } from "../views/dom";
 import { ICONS } from "../views/icons";
 import { renderMarkdown } from "../views/markdown";
 import { Bridge } from "../core/bridge";
-import { CI_COLORS } from "../core/github";
+import { CI_COLORS, type CIState } from "../core/github";
 import {
-  SECTION_ORDER, ageLabel, approvalsLabel, count, emptyState, loadState, newCount, noteUrl, preview, receive,
-  safeInstanceUrl, saveState, sectionTitle, sendError, shortProject, toggle, waiting,
+  SECTION_ORDER, ageLabel, approvalsLabel, avatarHue, count, emptyState, initials, loadState, newCount, noteUrl,
+  preview, receive, safeInstanceUrl, saveState, sectionTitle, sendError, shortProject, toggle, waiting,
   type Dashboard, type DashMr, type PanelState, type PendingThread, type SectionId, type SnippetLine,
 } from "../core/gitlab-panel";
 import { t } from "../i18n/i18n";
@@ -20,9 +20,40 @@ const GITLAB_ORANGE = "#FC6D26";
 const ACCENT: Record<SectionId, string> = {
   comments: GITLAB_ORANGE,
   toReview: "#8AB4F8",
-  mine: "#9398A1",
+  mine: "#B79CFF",
   approved: "#22C55E",
 };
+
+/** The little icon in each section's tile: [path, stroked]. */
+const SECTION_ICON: Record<SectionId, [string, boolean]> = {
+  comments: [ICONS.bubble, false],
+  toReview: [ICONS.eye, true],
+  mine: [ICONS.pull, true],
+  approved: [ICONS.check, true],
+};
+
+/** A round icon for a pipeline: ✓ passed, ✕ failed, a clock while it runs, a plain dot when unknown. */
+function ciBadge(ci: CIState): HTMLElement {
+  const color = CI_COLORS[ci];
+  const badge = h("i", { class: `gp-ci ${ci}`, style: `--c:${color}` });
+  switch (ci) {
+    case "success": badge.append(svg(ICONS.check, 9, { stroke: 3 })); break;
+    case "failure": badge.append(svg(ICONS.xmark, 8)); break;
+    case "pending": badge.append(svg(ICONS.timer, 9)); break;
+    default: break;
+  }
+  return badge;
+}
+
+/** A round avatar: the initials of a person, in a colour that is theirs. */
+function avatar(name: string, username: string, size = 22): HTMLElement {
+  const hue = avatarHue(username || name);
+  return h("i", {
+    class: "gp-avatar",
+    style: `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px;--h:${hue}`,
+    text: initials(name),
+  });
+}
 
 function storage(): Storage | undefined {
   try {
@@ -87,8 +118,10 @@ export class PanelView {
 
   /** Tells Rust how tall the content is: the window follows it. */
   private fit() {
-    const height = Math.ceil(this.inner.offsetHeight);
-    if (height > 0 && height !== this.measured) {
+    const content = Math.ceil(this.inner.offsetHeight);
+    // The card's 1 px border is outside the content.
+    const height = content + 2;
+    if (content > 0 && height !== this.measured) {
       this.measured = height;
       void Bridge.gitlabPanelResize(height);
     }
@@ -100,7 +133,7 @@ export class PanelView {
     const bar = h(
       "div",
       { class: "gp-head" },
-      dot(GITLAB_ORANGE, 8),
+      h("i", { class: "gp-logo" }, dot("#0b0b0d", 6)),
       h("b", { text: "GitLab" }),
       h("span", { class: "gp-grow" }),
       h("button", {
@@ -132,12 +165,13 @@ export class PanelView {
     const head = h(
       "button",
       { class: "gp-sec-head", "aria-expanded": open ? "true" : "false", onclick: () => this.toggleSection(id) },
-      h("i", { class: open ? "gp-chev open" : "gp-chev" }, svg(ICONS.chevronRight, 9, { stroke: 2.6 })),
+      h("i", { class: "gp-tile" }, svg(SECTION_ICON[id][0], 12, SECTION_ICON[id][1] ? { stroke: 2.2 } : {})),
       h("span", { class: "gp-sec-title", text: sectionTitle(id) }),
       h("span", { class: "gp-grow" }),
       // "+N": new since this section was last opened.
       fresh > 0 ? h("span", { class: "gp-new", style: `background:${accent}`, text: `+${fresh}` }) : null,
       h("span", { class: "gp-count", text: String(total) }),
+      h("i", { class: open ? "gp-chev open" : "gp-chev" }, svg(ICONS.chevronRight, 9, { stroke: 2.6 })),
     );
     const cls = waiting(dash, id) ? "gp-sec waiting" : "gp-sec";
     const sec = h("section", { class: cls, style: `--accent:${accent}` }, head);
@@ -155,14 +189,18 @@ export class PanelView {
     const list = h("div", { class: "gp-list" });
     if (id === "comments") {
       const rows = [...this.resolved.values(), ...dash.comments.filter((c) => !this.resolved.has(c.id))];
-      if (rows.length === 0) list.append(h("div", { class: "gp-empty", text: t("Nothing here") }));
+      if (rows.length === 0) list.append(this.empty());
       for (const th of rows) list.append(this.threadRow(dash, th));
       return list;
     }
     const mrs = id === "toReview" ? dash.toReview : id === "mine" ? dash.mine : dash.approved;
-    if (mrs.length === 0) list.append(h("div", { class: "gp-empty", text: t("Nothing here") }));
+    if (mrs.length === 0) list.append(this.empty());
     for (const mr of mrs) list.append(this.mrRow(dash, mr, id === "mine"));
     return list;
+  }
+
+  private empty(): HTMLElement {
+    return h("div", { class: "gp-empty" }, h("i", {}, svg(ICONS.check, 10, { stroke: 2.6 })), h("span", { text: t("Nothing here") }));
   }
 
   private open(dash: Dashboard, url: string) {
@@ -171,28 +209,29 @@ export class PanelView {
   }
 
   private mrRow(dash: Dashboard, mr: DashMr, mine: boolean): HTMLElement {
-    const ci = h("i", { class: "gp-ci", style: `background:${CI_COLORS[mr.ci]}` });
-    if (mr.ci === "unknown") ci.style.opacity = "0";
-    const meta: (HTMLElement | null)[] = [
-      h("span", { class: "gp-proj", title: mr.project, text: shortProject(mr.project) }),
-      h("span", { text: `!${mr.iid}` }),
-      mr.updatedAt ? h("span", { text: ageLabel(mr.updatedAt) }) : null,
+    const chips: (HTMLElement | null)[] = [
+      h("span", { class: "gp-chip proj", title: mr.project, text: shortProject(mr.project) }),
+      h("span", { class: "gp-iid", text: `!${mr.iid}` }),
+      mr.isDraft ? h("span", { class: "gp-chip draft", text: t("Draft") }) : null,
     ];
     const approvals = approvalsLabel(mr.approvals);
-    if (mine && approvals) meta.push(h("span", { class: "gp-badge", title: t("Approvals"), text: approvals }));
+    if (mine && approvals) {
+      chips.push(h("span", { class: "gp-chip ok", title: t("Approvals") }, svg(ICONS.check, 8, { stroke: 3 }), approvals));
+    }
     if (mine && mr.unresolved) {
-      meta.push(h("span", { class: "gp-badge warn", title: t("Unresolved threads"), text: `💬 ${mr.unresolved}` }));
+      chips.push(h("span", { class: "gp-chip warn", title: t("Unresolved threads") }, svg(ICONS.bubble, 8), String(mr.unresolved)));
     }
     return h(
       "button",
       { class: "gp-row", onclick: () => this.open(dash, mr.url) },
-      ci,
+      ciBadge(mr.ci),
       h(
         "span",
         { class: "gp-row-main" },
-        h("span", { class: "gp-row-title" }, mr.title, mr.isDraft ? h("em", { class: "gp-draft", text: t("Draft") }) : null),
-        h("span", { class: "gp-meta" }, ...meta),
+        h("span", { class: "gp-row-title", text: mr.title }),
+        h("span", { class: "gp-meta" }, ...chips),
       ),
+      mr.updatedAt ? h("span", { class: "gp-age", text: ageLabel(mr.updatedAt) }) : null,
     );
   }
 
@@ -206,7 +245,7 @@ export class PanelView {
       h(
         "button",
         { class: "gp-row", onclick: () => this.toggleThread(th) },
-        h("i", { class: "gp-ci", style: `background:${ACCENT.comments}` }),
+        last ? avatar(last.author, last.username) : null,
         h(
           "span",
           { class: "gp-row-main" },
@@ -214,13 +253,12 @@ export class PanelView {
           h(
             "span",
             { class: "gp-meta" },
-            h("span", { class: "gp-proj", title: th.project, text: shortProject(th.project) }),
-            h("span", { text: `!${th.mrIid}` }),
-            last ? h("span", { text: last.author }) : null,
-            last ? h("span", { text: ageLabel(last.createdAt) }) : null,
-            done ? h("span", { class: "gp-badge", text: t("Resolved") }) : null,
+            h("span", { class: "gp-chip proj", title: th.project, text: shortProject(th.project) }),
+            h("span", { class: "gp-iid", text: `!${th.mrIid}` }),
+            done ? h("span", { class: "gp-chip ok" }, svg(ICONS.check, 8, { stroke: 3 }), t("Resolved")) : null,
           ),
         ),
+        last ? h("span", { class: "gp-age", text: ageLabel(last.createdAt) }) : null,
       ),
     );
     if (open) row.append(this.threadDetail(dash, th, done));
@@ -280,8 +318,13 @@ export class PanelView {
         h(
           "div",
           { class: n.isMe ? "gp-note me" : "gp-note" },
-          h("div", { class: "gp-note-head" }, h("b", { text: n.isMe ? t("You") : n.author }), h("span", { text: ageLabel(n.createdAt) })),
-          body,
+          avatar(n.author, n.username, 20),
+          h(
+            "div",
+            { class: "gp-note-main" },
+            h("div", { class: "gp-note-head" }, h("b", { text: n.isMe ? t("You") : n.author }), h("span", { text: ageLabel(n.createdAt) })),
+            body,
+          ),
         ),
       );
     }
