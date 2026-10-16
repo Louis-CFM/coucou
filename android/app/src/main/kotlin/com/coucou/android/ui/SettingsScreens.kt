@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.alpha
 import com.coucou.android.core.IconKind
@@ -46,6 +48,7 @@ import com.coucou.android.app.Mode
 import com.coucou.android.core.HistoryDays
 import com.coucou.android.core.HomeText
 import com.coucou.android.core.QuietHours
+import com.coucou.android.core.VibrationChoice
 import com.coucou.android.core.RelayLineKind
 import com.coucou.android.core.RelayStatus
 import com.coucou.android.link.LinkState
@@ -122,6 +125,24 @@ private fun TimeRow(label: String, minutes: Int, enabled: Boolean, onChange: (In
     }
 }
 
+/** A title over a row of choices, one of them selected (read as radio buttons by TalkBack). */
+@Composable
+private fun <T> ChoiceRow(title: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
+    val t = tokens()
+    Column(Modifier.padding(horizontal = Spacing.INSIDE.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = TypeScale.BODY.style(t.text.c()))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((value, label) in options) {
+                PillButton(
+                    label, { onSelect(value) },
+                    Modifier.weight(1f).semantics { this.selected = value == selected; role = Role.RadioButton },
+                    if (value == selected) PillKind.PRIMARY else PillKind.SECONDARY,
+                )
+            }
+        }
+    }
+}
+
 /** Room under a list so its last row can scroll above the floating bar (64 + 16 gap + 16 margin). */
 val BarClearance = 96.dp
 
@@ -166,7 +187,7 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
             }
         }
 
-        if (model.mode == Mode.PAIRED) {
+        if (RelayStatus.sectionVisible(model.mode == Mode.PAIRED, model.hasRelay)) {
             item { SectionHeading(stringResource(R.string.settings_section_away)) }
             item { RelayCard(model) }
         }
@@ -191,6 +212,30 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
                         valueRange = 0f..SoundVolume.MAX, enabled = s.soundOn, label = stringResource(R.string.settings_volume),
                     )
                 }
+            }
+        }
+
+        item { SectionHeading(stringResource(R.string.settings_section_requests)) }
+        item {
+            Panel {
+                SettingSwitch(stringResource(R.string.settings_no_wake), stringResource(R.string.settings_no_wake_hint), s.keepScreenOff) {
+                    model.updateSettings(s.copy(keepScreenOff = it))
+                }
+                RowDivider()
+                ChoiceRow(
+                    stringResource(R.string.settings_vibration),
+                    listOf(
+                        VibrationChoice.STANDARD to stringResource(R.string.vibration_standard),
+                        VibrationChoice.SHORT to stringResource(R.string.vibration_short),
+                        VibrationChoice.OFF to stringResource(R.string.vibration_off),
+                    ),
+                    s.vibration,
+                ) { model.updateSettings(s.copy(vibration = it)) }
+                Text(
+                    stringResource(R.string.settings_requests_note),
+                    Modifier.padding(horizontal = Spacing.INSIDE.dp).padding(bottom = 12.dp),
+                    style = TypeScale.SECONDARY.style(t.textDim.c()),
+                )
             }
         }
 
@@ -230,7 +275,7 @@ fun SettingsScreen(model: AppModel, onHistory: () -> Unit, onGallery: () -> Unit
         item {
             Panel {
                 Column(Modifier.padding(Spacing.INSIDE.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.about_unofficial), style = TypeScale.BODY.style(t.text.c()))
+                    Text(stringResource(R.string.about_credit), style = TypeScale.BODY.style(t.text.c()))
                     Text(
                         stringResource(R.string.about_repo),
                         Modifier.clickable(role = Role.Button) { runCatching { uri.openUri(Attribution.REPO_URL) } },

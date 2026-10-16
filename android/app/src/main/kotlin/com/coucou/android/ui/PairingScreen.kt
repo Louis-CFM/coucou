@@ -81,7 +81,7 @@ fun PairingScreen(model: AppModel, onScan: () -> Unit, onAbout: () -> Unit) {
             PillButton(stringResource(R.string.demo_try), { model.startDemo() }, Modifier.weight(1f))
         }
         Spacer(Modifier.size(32.dp))
-        Text(stringResource(R.string.pairing_footer), style = TypeScale.SECONDARY.style(t.textFaint.c()).copy(textAlign = TextAlign.Center))
+        Text(stringResource(R.string.pairing_credit), style = TypeScale.SECONDARY.style(t.textFaint.c()).copy(textAlign = TextAlign.Center))
         Text(
             stringResource(R.string.pairing_about),
             Modifier.heightIn(min = Spacing.MIN_TOUCH.dp).clickable(role = Role.Button, onClick = onAbout).padding(horizontal = 16.dp, vertical = 14.dp),

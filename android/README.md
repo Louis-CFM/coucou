@@ -45,6 +45,8 @@ The desktop side is in `windows/src-tauri/src/phone_link`; the protocol is `docs
 - **Home**: the focused agent as a black hero panel (Mochi in the agent's colour, a plain sentence), the other agents below, plan
   usage and service cards when the computer offers them, and *Recent* (your own Allow/Deny decisions, kept only on the phone).
   Raw tool names become plain words (`core/ToolLabels.kt`); a command or path is never shown without a deliberate tap (`core/SafeText.kt`).
+- **Request alerts** (Settings > Permission requests): *Don't wake the screen for a request* (off by default, the screen wakes as before) and the vibration (Standard is the old pattern, Short, or Off). A request is never muted or hidden by either: it still arrives with Mochi's sound and its notification. The vibration is a notification channel setting that Android cannot change later, so each choice has its own channel id and the old one is deleted (`core/ApprovalAlerts.kt`).
+- **Home says why the link was lost** (not on Wi-Fi, the computer closed the connection, or it cannot be reached: Coucou closed there, phone link off, another network), and the ongoing notification is posted again only when its text changes (`core/OngoingGate.kt`). Predictive back is on (`enableOnBackInvokedCallback`).
 - **Requests**: a sheet rises over any screen. Allow needs the fingerprint or screen lock, Deny does not, taps in the first 600 ms
   are ignored, and each request expires after 120 s. Questions from Claude Code can be answered the same way (the computer must allow it).
 - **Island over other apps** (optional, off by default): a black island from the camera cut-out drops while an agent works, shows

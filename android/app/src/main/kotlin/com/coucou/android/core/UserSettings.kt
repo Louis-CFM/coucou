@@ -38,6 +38,10 @@ data class UserSettings(
     val outfit: String = com.coucou.android.mochi.outfit.Wardrobe.FOLLOW,
     /** Use the relay when the computer is not reachable on this network (only matters when the pairing includes one). */
     val useRelay: Boolean = true,
+    /** Do not light the screen when a request arrives on a sleeping phone (the notification is still posted). Off = today's behaviour. */
+    val keepScreenOff: Boolean = false,
+    /** How a request buzzes the phone; the standard pattern is today's. */
+    val vibration: VibrationChoice = VibrationChoice.STANDARD,
 ) {
     companion object {
         private const val SOUND = "sound_on"
@@ -48,6 +52,8 @@ data class UserSettings(
         private const val Q_TO = "quiet_to"
         private const val OUTFIT = "outfit_choice"
         private const val RELAY = "use_relay"
+        private const val NO_WAKE = "no_wake_screen"
+        private const val VIBRATION = "vibration_choice"
 
         fun load(store: KeyValueStore): UserSettings {
             val d = UserSettings()
@@ -62,6 +68,8 @@ data class UserSettings(
                 ),
                 outfit = com.coucou.android.mochi.outfit.Wardrobe.parseLocal(store.getString(OUTFIT, d.outfit)),
                 useRelay = store.getBoolean(RELAY, d.useRelay),
+                keepScreenOff = store.getBoolean(NO_WAKE, d.keepScreenOff),
+                vibration = VibrationChoice.parse(store.getString(VIBRATION, d.vibration.key)),
             )
         }
 
@@ -74,6 +82,8 @@ data class UserSettings(
             store.put(Q_TO, QuietHours.wrap(s.quiet.toMin))
             store.put(OUTFIT, com.coucou.android.mochi.outfit.Wardrobe.parseLocal(s.outfit))
             store.put(RELAY, s.useRelay)
+            store.put(NO_WAKE, s.keepScreenOff)
+            store.put(VIBRATION, s.vibration.key)
         }
     }
 }

@@ -74,11 +74,25 @@ object ToolLabels {
         val head = if (at > 0) text.substring(0, at).trim() else text
         val rest = if (at > 0) text.substring(at + SEP.length).trim() else ""
         if (!looksLikeAName(head)) return ""
+        // A file name where a tool's name should be ("SessionScreen.kt"): never cleaned into words, only "A file".
+        if (looksLikeAFile(head)) return "A file"
         // An unknown word shows only if it can be a tool's name: a key or a token pasted in its place never does.
         if (KNOWN[key(head)] == null && !plausibleToolName(head)) return ""
         val tool = KNOWN[key(head)] ?: clean(head)
         val program = if (rest.isNotEmpty()) SafeText.requestLabel(head, rest).substringAfter(SEP, "") else ""
         return if (program.isNotEmpty()) "$tool$SEP$program" else tool
+    }
+
+    private val FILE_EXTENSIONS = setOf(
+        "kt", "kts", "java", "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "rs", "swift", "go", "rb", "php", "c", "h", "cpp", "hpp", "cs",
+        "md", "txt", "json", "xml", "html", "css", "scss", "yml", "yaml", "toml", "lock", "gradle", "sh", "bat", "ps1", "sql", "svg", "png", "jpg", "jpeg", "pdf",
+    )
+
+    /** "SessionScreen.kt": a name, one dot, then a known file extension (a tool name such as "mcp.server" is not one). */
+    private fun looksLikeAFile(s: String): Boolean {
+        val dot = s.lastIndexOf('.')
+        if (dot <= 0 || dot == s.length - 1) return false
+        return s.substring(dot + 1).lowercase() in FILE_EXTENSIONS
     }
 
     private val DIGIT_RUN = Regex("[0-9]{3,}")

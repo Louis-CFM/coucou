@@ -34,19 +34,25 @@ object LinkHealthText {
         }
     }
 
-    private fun why(reason: LostReason?) = when (reason) {
+    /**
+     * The most likely cause in plain words, from what the link layer knows: why the link ended and whether the phone is on Wi-Fi. The
+     * phone cannot see the computer's side, so a cause it cannot know is a short list of what to look at, never a guess stated as fact.
+     */
+    fun why(reason: LostReason?, wifiUp: Boolean = true) = when (reason) {
         LostReason.SILENT -> "The computer stopped answering. This is usual after the phone slept."
-        LostReason.CLOSED -> "The computer closed the connection."
-        LostReason.NETWORK -> "The network dropped."
+        LostReason.CLOSED -> "The computer closed the connection. Coucou may have been closed or restarted there."
+        LostReason.NETWORK ->
+            if (!wifiUp) "The phone is not on Wi-Fi. Join the network your computer is on, or use the internet link."
+            else "The phone cannot reach the computer. Coucou may be closed there, its phone link may be off, or it is on another network."
         null -> ""
     }
 
     /** The two lines for Home while the link is down after having worked; null when there is nothing to say. */
-    fun lines(connected: Boolean, health: LinkHealth, nowMs: Long): Pair<String, String>? {
+    fun lines(connected: Boolean, health: LinkHealth, nowMs: Long, wifiUp: Boolean = true): Pair<String, String>? {
         val at = health.lostAtMs ?: return null
         if (connected) return null
         val head = "Connection lost ${ago(nowMs - at)} ago, reconnecting" + if (health.attempts >= 3) " (${health.attempts} tries)" else ""
-        return head to why(health.reason)
+        return head to why(health.reason, wifiUp)
     }
 }
 

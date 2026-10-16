@@ -141,6 +141,7 @@ class AppModel(private val context: Context) : LinkListener {
         settings = next
         UserSettings.save(kv, next)
         applySound()
+        notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
         // Switching the relay on or off rebuilds the connection with the right routes.
         if (relayChanged) currentPairing?.let { restartLink(it) }
     }
@@ -150,7 +151,10 @@ class AppModel(private val context: Context) : LinkListener {
         sounds.volume = settings.volume
     }
 
-    init { applySound() }
+    init {
+        applySound()
+        notifier.applyApprovalSettings(settings.vibration, settings.keepScreenOff)
+    }
 
     /** What the computer says Mochi wears ("auto" or an outfit); the last one it told, kept for when it is away. */
     var computerOutfit by mutableStateOf(com.coucou.android.mochi.outfit.Wardrobe.parse(kv.getString("computer_outfit", "")))
@@ -462,6 +466,9 @@ class AppModel(private val context: Context) : LinkListener {
     // ── Keeping the link alive while the phone sleeps (docs/ANDROID_LINK.md, "Keeping the link alive") ──
 
     /** What happened to the link: when it was lost and why, and how often the screen had been off when it was. */
+    /** Whether the phone is on Wi-Fi now, for the sentence that names why the link was lost. */
+    val wifiUp: Boolean get() = netWatch.wifiUp
+
     var health by mutableStateOf(LinkHealth(dropsWhileScreenOff = kv.getInt("link_drops_off", 0))); private set
     /** The screen was off at some point since the link last came up. */
     @Volatile private var screenWasOff = false
