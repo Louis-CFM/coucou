@@ -534,10 +534,15 @@ export class Island {
         if (State.fileDragOver) return;
         State.fileDragOver = true;
         this.engine.animateMorph(1);
-        // enterZone must run before the island expands, so the sequence is
-        // already active by the time the view becomes `upload`.
+        // What alert("upload") does, with the sequence started in between. On an
+        // island that is not open yet, going home navigates to the overview and
+        // that ends any running sequence: started before it, ours died there and
+        // the drop then waited at 0 % for ever. It must still run before the
+        // island expands, so it is active by the time the view becomes `upload`.
+        this.fsm.pinned = State.isPinned;
+        this.fsm.forceHome();
         UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
-        this.alert("upload");
+        this.expand("upload");
         break;
       }
       case "leave": {
@@ -575,6 +580,8 @@ export class Island {
     State.chatHistory = [];
     void Bridge.chatReset();
 
+    // Nothing drives the progress without the sequence: never drop into a dead one.
+    if (!UploadSeq.isActive) UploadSeq.enterZone(State.mouseInIsland.x, State.mouseInIsland.y);
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
     this.uploadDone = false;
