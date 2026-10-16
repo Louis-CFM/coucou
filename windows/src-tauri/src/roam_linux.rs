@@ -24,8 +24,17 @@ use crate::{island, log, platform};
 
 pub const LABEL: &str = "roam";
 
-/// One roam at a time.
 static ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// The overlay is one thing at a time: a roam, or a media preview (media.rs).
+/// False when it's already busy.
+pub fn claim_overlay() -> bool {
+    !ACTIVE.swap(true, Ordering::SeqCst)
+}
+
+pub fn release_overlay() {
+    ACTIVE.store(false, Ordering::SeqCst);
+}
 
 #[derive(Clone, Serialize)]
 struct Point {
@@ -77,7 +86,9 @@ fn island_origin(app: &AppHandle) -> (f64, f64) {
 /// island's monitor and hand it Mochi. The island then feeds the pointer.
 #[tauri::command]
 pub fn roam_start(app: AppHandle, look: Option<serde_json::Value>) {
-    if ACTIVE.swap(true, Ordering::SeqCst) {
+    // Busy (a preview is up): Mochi stays home.
+    if !claim_overlay() {
+        let _ = app.emit_to(island::WINDOW_LABEL, "roam-end", None::<String>);
         return;
     }
     let (Some(win), Some(isl)) = (app.get_webview_window(LABEL), island::window(&app)) else {

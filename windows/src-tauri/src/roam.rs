@@ -39,8 +39,17 @@ pub const LABEL: &str = "roam";
 /// anything bigger anyway, so larger images only cost upload time.
 const MAX_EDGE: u32 = 1568;
 
-/// One roam at a time.
 static ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// The overlay is one thing at a time: a roam, or a media preview (media.rs).
+/// False when it's already busy.
+pub fn claim_overlay() -> bool {
+    !ACTIVE.swap(true, Ordering::SeqCst)
+}
+
+pub fn release_overlay() {
+    ACTIVE.store(false, Ordering::SeqCst);
+}
 
 #[derive(Clone, Serialize)]
 struct Point {
@@ -79,7 +88,9 @@ pub fn create_window(app: &AppHandle, url: tauri::WebviewUrl, browser_args: &str
 /// and stream the cursor to the overlay until the button is released.
 #[tauri::command]
 pub fn roam_start(app: AppHandle, look: Option<serde_json::Value>) {
-    if ACTIVE.swap(true, Ordering::SeqCst) {
+    // Busy (a preview is up): Mochi stays home.
+    if !claim_overlay() {
+        let _ = app.emit_to(island::WINDOW_LABEL, "roam-end", None::<String>);
         return;
     }
     let Some(win) = app.get_webview_window(LABEL) else {
