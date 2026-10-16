@@ -1,4 +1,33 @@
 import Foundation
+import CryptoKit
+
+/// An opaque target captured when the user sends an instruction. Root session
+/// IDs and resumable Codex thread IDs are deliberately separate.
+enum SessionInstructionIdentity {
+    static let version = 1
+
+    static func make(pillId: String, sessionId: String, threadId: String?, cwd: String, turnId: String? = nil) -> String? {
+        guard !pillId.isEmpty, !sessionId.isEmpty, sessionId != "unknown", cwd.hasPrefix("/") else { return nil }
+        guard pillId != "agent_codex" || !(threadId ?? "").isEmpty else { return nil }
+        guard let data = try? JSONEncoder().encode([String(version), pillId, sessionId, threadId ?? "", cwd, turnId ?? ""]) else { return nil }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func accepts(_ identity: String, current: String?, createdAt: Date, text: String,
+                        busy: Bool, now: Date = Date()) -> Bool {
+        let age = now.timeIntervalSince(createdAt)
+        return !identity.isEmpty && identity == current && age >= -60 && age < 600
+            && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && text.count <= 8000 && !busy
+    }
+
+    static func notificationKey(state: String, targetIdentity: String, questionFingerprint: String) -> String {
+        if state == "finished" || state == "error" {
+            return targetIdentity.isEmpty ? state : "\(state)-\(targetIdentity)"
+        }
+        return questionFingerprint.isEmpty ? state : "q-\(questionFingerprint)"
+    }
+}
 
 // The last turn of an agent session, for the iPhone: the prompt you sent, what
 // the agent did (commands, reads, searches, edits with their diffs) and its
@@ -44,6 +73,8 @@ struct TurnSnapshot: Codable, Equatable, Sendable {
     var finalMessage: String
     var startedAt: Date
     var endedAt: Date?
+    var threadId: String? = nil
+    var turnId: String? = nil
 
     static let recordType = "Turn"
 

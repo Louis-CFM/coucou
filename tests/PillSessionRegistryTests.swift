@@ -195,6 +195,54 @@ enum PillSessionRegistryTests {
             check("B's folder once A ends", reg.displayOwner(of: claude)?.cwd == "/tmp/lokil")
         }
 
+        print("\nCodex display identity follows the live session")
+        do {
+            var reg = PillSessionRegistry()
+            let native = PillSessionRegistry.Display(session: "child", projectName: "native", cwd: "/native",
+                bundleId: "fr.louisraille.Coucou", hookSessionId: "root", codexThreadId: "child",
+                codexTurnId: "turn-1", codexRolloutPath: "/native/rollout.jsonl", codexManaged: true)
+            let desktop = PillSessionRegistry.Display(session: "external", projectName: "desktop", cwd: "/desktop",
+                bundleId: "com.openai.codex", hookSessionId: "external")
+            reg.note(pill: "agent_codex", display: native, working: true)
+            reg.note(pill: "agent_codex", display: desktop, working: true)
+            check("native root and thread stay distinct", reg.displayOwner(of: "agent_codex")?.hookSessionId == "root"
+                && reg.displayOwner(of: "agent_codex")?.codexThreadId == "child")
+            check("native and external Codex both tracked", reg.liveCount(pill: "agent_codex") == 2)
+            var next = native
+            next.codexTurnId = "turn-2"
+            reg.note(pill: "agent_codex", display: next, working: true)
+            check("next native turn updates its own identity", reg.display(pill: "agent_codex", session: "child")?.codexTurnId == "turn-2")
+            next.codexTurnId = ""
+            next.codexRolloutPath = nil
+            reg.note(pill: "agent_codex", display: next, working: false)
+            check("partial native event preserves active turn and rollout", reg.display(pill: "agent_codex", session: "child")?.codexTurnId == "turn-2"
+                && reg.display(pill: "agent_codex", session: "child")?.codexRolloutPath == "/native/rollout.jsonl")
+            check("native end spares working Desktop sibling", reg.endSession(pill: "agent_codex", session: "child") == .sessionOnly)
+            let owner = reg.displayOwner(of: "agent_codex")
+            check("Desktop inherits all action identity", owner?.session == "external" && owner?.bundleId == "com.openai.codex"
+                && owner?.codexManaged == false && owner?.codexThreadId == nil && owner?.codexTurnId == nil)
+            check("ended native request identity disappears", reg.display(pill: "agent_codex", session: "child") == nil)
+            var explicit = desktop
+            explicit.codexThreadId = "external-child"
+            reg.note(pill: "agent_codex", display: explicit, working: true)
+            check("external hook keeps an explicit child candidate", reg.displayOwner(of: "agent_codex")?.codexThreadId == "external-child")
+            reg.note(pill: "agent_codex", display: desktop, working: true)
+            check("external event without child identity clears the old candidate", reg.displayOwner(of: "agent_codex")?.codexThreadId == nil
+                && reg.displayOwner(of: "agent_codex")?.session == "external")
+        }
+
+        print("\nA session moves from terminal to IDE")
+        do {
+            var reg = PillSessionRegistry()
+            reg.note(pill: claude, display: PillSessionRegistry.Display(session: "moving", projectName: "project", cwd: "/project",
+                hostApp: "com.apple.Terminal", bundleId: "com.apple.Terminal"), working: true)
+            reg.note(pill: claude, display: PillSessionRegistry.Display(session: "moving", projectName: "project", cwd: "",
+                bundleId: "com.microsoft.VSCode"), working: true)
+            check("old terminal does not override confirmed IDE", reg.displayOwner(of: claude)?.hostApp == nil
+                && reg.displayOwner(of: claude)?.bundleId == "com.microsoft.VSCode")
+            check("project remains known", reg.displayOwner(of: claude)?.cwd == "/project")
+        }
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")

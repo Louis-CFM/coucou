@@ -644,15 +644,19 @@ struct TabButton: View {
 struct ClaudePlanHeaderPill: View {
     @ObservedObject var state: AppState
     var codex: Bool = false
+    @ObservedObject private var codexInfo = CodexAgentsInfo.shared
     @State private var isHovered = false
+    @State private var now = Date()
 
     private var effectiveColor: String {
-        if codex { return CodexPlanGauge.color(state.codexPlanUsage) }
+        if codex { return codexInfo.isStale(at: now) ? "#6B7079" : CodexPlanGauge.color(codexInfo.currentPlanUsage) }
         return ClaudePlanGauge.color(for: (state.demoPlanUsageOverride ?? state.claudePlanUsage).flatMap { ClaudePlanGauge.dominantPct($0) })
     }
 
     private var label: String {
-        if codex { return CodexPlanGauge.pillLabel(state.codexPlanUsage) }
+        if codex {
+            return codexInfo.dominantPercent.map { "Codex \(codexInfo.isStale(at: now) ? "~" : "")\(Int(min(100, max(0, $0)).rounded()))%" } ?? "Codex —"
+        }
         guard let usage = state.demoPlanUsageOverride ?? state.claudePlanUsage,
               let pct = ClaudePlanGauge.dominantPct(usage) else { return "Claude —" }
         return "Claude \(Int(pct.rounded()))%"
@@ -668,7 +672,6 @@ struct ClaudePlanHeaderPill: View {
                 state.planDetailIsCodex = codex
                 state.showingPlanDetail = !open
             }
-            if codex { state.refreshCodexPlanUsage() }
         }) {
             HStack(spacing: 4) {
                 Circle()
@@ -700,6 +703,9 @@ struct ClaudePlanHeaderPill: View {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) { isHovered = h }
         }
         .onAppear { if codex { state.refreshCodexPlanUsage() } }
+        .background(TimelineView(.periodic(from: .now, by: 30)) { tick in
+            Color.clear.onChange(of: tick.date) { _, date in now = date }
+        })
     }
 }
 #endif

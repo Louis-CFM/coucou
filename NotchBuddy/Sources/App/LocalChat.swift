@@ -12,8 +12,10 @@ enum LocalChatError: Error {
 
     var localizedDescription: String {
         switch self {
-        case .serverUnreachable(let url): return "Cannot reach \(url). Is the server running?"
-        case .modelNotFound(let model):   return "Model '\(model)' is not installed."
+        case .serverUnreachable(let url):
+            return String(format: String(localized: "error.local.server-unreachable %@"), url)
+        case .modelNotFound(let model):
+            return String(format: String(localized: "error.local.model-not-found %@"), model)
         case .serverError(let msg):       return msg
         }
     }

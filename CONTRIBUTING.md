@@ -18,6 +18,33 @@ bash scripts/test-screen-geometry.sh
 bash scripts/test-display-choice.sh
 ```
 
+Check hook setup status:
+
+```bash
+bash scripts/test-hook-status.sh
+```
+
+Check local Codex IDE diagnostics and exact external-thread usage mapping:
+
+```bash
+bash scripts/test-codex-ide.sh
+bash scripts/test-codex-thread-usage.sh
+```
+
+These checks use temporary fixtures; they do not sign in or run a model.
+
+Check the desktop plugin, exported resources and the actual Mac question dispatch:
+
+```bash
+python3 scripts/test-codex-plugin.py
+bash scripts/test-codex-plugin-export.sh
+bash scripts/test-codex-plugin-mac.sh
+```
+
+These use subprocess/socketpair fixtures. Desktop plugin installation, live model
+requests and UI acceptance remain separate manual checks.
+
+
 Check auto-close timing and live setting changes:
 
 ```bash

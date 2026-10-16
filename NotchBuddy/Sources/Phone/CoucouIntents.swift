@@ -40,14 +40,40 @@ struct AskClaudeIntent: AppIntent {
         guard !text.isEmpty else { return .result(dialog: "Nothing to send.") }
         // The Claude Code session that last moved and takes instructions.
         guard let session = link.sessions
-            .filter({ $0.acceptsInstructions })
+            .filter({ $0.acceptsInstructions && ($0.id == "integration_claude" || $0.id == "agent_cursor") })
             .max(by: { $0.updatedAt < $1.updatedAt }) else {
             return .result(dialog: "No Claude Code session takes instructions. Turn it on in Coucou's Settings on your Mac.")
         }
-        guard await link.sendInstruction(text, pillId: session.id) else {
+        guard await link.sendInstruction(text, pillId: session.id, targetIdentity: session.instructionTargetIdentity) else {
             return .result(dialog: "Couldn't reach iCloud. Nothing was sent.")
         }
         return .result(dialog: "Sent to Claude in \(session.title). Your Mac picks it up within 15 seconds.")
+    }
+}
+
+struct AskCodexIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ask Codex"
+    static var description: IntentDescription {
+        IntentDescription("Sends an instruction to an idle Codex conversation managed by Coucou on your Mac.")
+    }
+    static var authenticationPolicy: IntentAuthenticationPolicy { .requiresAuthentication }
+
+    @Parameter(title: "Instruction", requestValueDialog: "What should Codex do?")
+    var instruction: String
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let link = PhoneLink.shared
+        await link.refresh()
+        let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return .result(dialog: "Nothing to send.") }
+        guard let session = link.sessions.first(where: { $0.id == "agent_codex" && $0.acceptsInstructions }) else {
+            return .result(dialog: "No idle Codex conversation takes instructions. Open Codex Chat in Coucou and enable iPhone instructions on your Mac.")
+        }
+        guard await link.sendInstruction(text, pillId: session.id, targetIdentity: session.instructionTargetIdentity) else {
+            return .result(dialog: "The session changed or iCloud couldn't be reached. Nothing was sent.")
+        }
+        return .result(dialog: "Sent to Codex in \(session.title). Your Mac picks it up within 15 seconds.")
     }
 }
 
@@ -58,6 +84,10 @@ struct CoucouShortcuts: AppShortcutsProvider {
                               "Tell Claude with \(.applicationName)",
                               "Send an instruction with \(.applicationName)"],
                     shortTitle: "Ask Claude",
+                    systemImageName: "text.bubble")
+        AppShortcut(intent: AskCodexIntent(),
+                    phrases: ["Ask Codex in \(.applicationName)", "Tell Codex with \(.applicationName)"],
+                    shortTitle: "Ask Codex",
                     systemImageName: "text.bubble")
         AppShortcut(intent: AgentsStatusIntent(),
                     phrases: ["What are my agents doing in \(.applicationName)",

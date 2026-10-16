@@ -29,6 +29,12 @@ final class SessionPublisher {
     private var publishing = false
     private var pending: [String: SessionSnapshot]?
 
+    func refresh() {
+        guard cancellable != nil else { return }
+        let state = AppState.shared
+        publish(SessionSnapshot.all(tasks: state.tasks, approval: state.pendingApproval, question: state.pendingQuestion))
+    }
+
     /// Stops publishing and deletes this Mac's sessions from iCloud.
     func stop() {
         cancellable = nil
@@ -56,8 +62,9 @@ final class SessionPublisher {
         let state = AppState.shared
         cancellable = state.$tasks
             .combineLatest(state.$pendingApproval, state.$pendingQuestion)
-            .map { tasks, approval, question in
-                SessionSnapshot.all(tasks: tasks, approval: approval, question: question)
+            .combineLatest(state.$codexChatBusy)
+            .map { values, _ in
+                SessionSnapshot.all(tasks: values.0, approval: values.1, question: values.2)
             }
             .removeDuplicates()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
@@ -174,17 +181,30 @@ struct SessionSnapshot: Equatable {
     /// The question's choices (QuestionPayload JSON) and its fingerprint, for answering from the iPhone.
     var questionPayload: String = ""
     var questionFingerprint: String = ""
+    var instructionTargetIdentity: String = ""
+    var acceptsInstructions: Bool = false
 
+    @MainActor
     static func all(tasks: [AgentTask], approval: ApprovalInfo?,
                     question: AskQuestion?) -> [String: SessionSnapshot] {
         var result: [String: SessionSnapshot] = [:]
         // Services (Stripe, GitHub…) go through ServicePublisher, with their data.
         for task in tasks where task.source != .n8n && PillCatalog.isSession(task.id) {
             let hasApproval = approval?.pillId == task.id
+            let ownedQuestion = question?.pillId == task.id && !(question?.questions.contains(where: \.isSecret) ?? false) ? question : nil
             let questionText = task.state == .question
-                ? (question?.questions.map(\.question).joined(separator: "\n") ?? "")
+                ? (ownedQuestion?.questions.map(\.question).joined(separator: "\n") ?? "")
                 : ""
-            let payload = task.state == .question ? question.map(QuestionPayload.init(ask:)) : nil
+            let payload = task.state == .question ? ownedQuestion.map(QuestionPayload.init(ask:)) : nil
+            // The captured identity survives busy/idle transitions. Capability
+            // is verified independently before exposing Reply or accepting it.
+            let target = SessionInstructionIdentity.make(pillId: task.id, sessionId: task.sessionId ?? "",
+                threadId: task.codexThreadId, cwd: task.sessionCwd ?? "", turnId: task.codexTurnId)
+            #if APPSTORE
+            let instructions = false
+            #else
+            let instructions = InstructionRunner.isEnabled && target != nil && InstructionRunner.targetIdentity(for: task) == target
+            #endif
             result[task.id] = SessionSnapshot(
                 pillId: task.id,
                 name: task.name,
@@ -199,7 +219,9 @@ struct SessionSnapshot: Equatable {
                 approvalFingerprint: hasApproval ? (approval.map(ApprovalRelay.fingerprint) ?? "") : "",
                 question: questionText,
                 questionPayload: payload?.json ?? "",
-                questionFingerprint: payload?.fingerprint ?? "")
+                questionFingerprint: payload?.fingerprint ?? "",
+                instructionTargetIdentity: target ?? "",
+                acceptsInstructions: instructions)
         }
         return result
     }
@@ -238,12 +260,10 @@ struct SessionSnapshot: Equatable {
         record["questionFingerprint"] = questionFingerprint
         record["updatedAt"] = Date()
         record["macName"] = Host.current().localizedName ?? ""
+        record["instructionTargetIdentity"] = instructionTargetIdentity
+        record["instructionIdentityVersion"] = SessionInstructionIdentity.version
         // Whether this Mac runs instructions sent from the iPhone (GitHub build, switch on).
-        #if APPSTORE
-        record["acceptsInstructions"] = false
-        #else
-        record["acceptsInstructions"] = InstructionRunner.isEnabled && (pillId == "integration_claude" || pillId == "agent_cursor")
-        #endif
+        record["acceptsInstructions"] = acceptsInstructions
         record.encryptedValues["name"] = name
         record.encryptedValues["steps"] = steps
         record.encryptedValues["cwd"] = cwd
