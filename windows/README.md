@@ -336,7 +336,8 @@ to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
 otherwise needs a real drag from Explorer to see — and `dev/recap-preview.html`,
 the weekly recap card and its shared image on a sample week. None of these pages
-ships in the app.
+ships in the app. `dev/dictation-check.html` is a self-check for the mic's
+voice detection: its title turns to PASS or FAIL.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:

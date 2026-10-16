@@ -138,8 +138,12 @@ pub struct Settings {
     /// "provider/model" of chat models that refused an image: next time the
     /// island asks before sending one.
     pub text_only_models: Vec<String>,
-    /// The media and voice models under Settings → Media and voice models:
-    /// which endpoint makes what (image, video, speech, 3D) — media.rs.
+    /// Hands-free chat: after a spoken question, the mic listens again once
+    /// the reply is in.
+    pub keep_mic_on: bool,
+    /// Models that make something other than chat text: images, video,
+    /// speech, 3D, or speech-to-text for the chat's mic (media.rs). Each has
+    /// its endpoint; its key is per host (secrets::endpoint_key).
     pub models: Vec<ModelEntry>,
 }
 
@@ -176,8 +180,8 @@ pub struct ModelEntry {
     pub endpoint: String,
     /// Whether it reads images (unused by media models, kept as it comes).
     pub vision: Option<bool>,
-    /// What it makes: "image", "video", "audio" or "3d". Empty or "text"
-    /// makes nothing media.rs can use (see `is_text`).
+    /// What it makes: "image", "video", "audio", "3d" or "stt". Empty or
+    /// "text" makes nothing media.rs can use (see `is_text`).
     pub output: String,
     /// Text-to-speech voice, for "audio" models. Empty = the model's default.
     pub voice: String,
@@ -269,6 +273,7 @@ impl Default for Settings {
             mochi_names: BTreeMap::new(),
             quick_scan: false,
             text_only_models: Vec::new(),
+            keep_mic_on: false,
             models: Vec::new(),
         }
     }
@@ -696,6 +701,7 @@ mod tests {
   "mochiNames": { "integration_github": "Gus" },
   "quickScan": true,
   "textOnlyModels": ["custom/llama-3.3"],
+  "keepMicOn": true,
   "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
     "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }]
 }"##;
@@ -1218,6 +1224,7 @@ mod tests {
                 "mochiNames",
                 "quickScan",
                 "textOnlyModels",
+                "keepMicOn",
                 "models",
             ]
         );

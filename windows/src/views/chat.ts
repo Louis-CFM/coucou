@@ -7,10 +7,14 @@
 // models of the chosen provider, asked for only once it is picked.
 // The "Create" chip lists the media models saved in Settings (images, video,
 // speech, 3D): their answer is a file, shown as a media card.
+//
+// One button sends: it is the mic while the field is empty and a
+// speech-to-text model is saved (dictation.ts), Send once it holds text.
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { copyButton, renderMarkdown } from "./markdown";
+import { startDictation, type Dictation, type DictationPhase } from "./dictation";
 import { generatingCard, mediaCard, resetProgress } from "./media";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
@@ -470,6 +474,98 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     log.scrollTop = log.scrollHeight;
   });
 
+  // ── The mic ─────────────────────────────────────────────────────────────────
+
+  let dictation: Dictation | null = null;
+  let micPhase: DictationPhase | null = null;
+  /** The prompt in flight was spoken: with "Keep the mic on", listen again after the reply. */
+  let spoken = false;
+  let opening = false;
+  // A hidden page never keeps listening (besides the on-screen check below).
+  document.addEventListener?.("visibilitychange", () => {
+    if (document.hidden) dictation?.cancel();
+  });
+  const sttModel = () => (State.settings.models ?? []).find((m) => m.output === "stt") ?? null;
+  const chatOnScreen = () => State.mode === "expanded" && State.view === "prompt";
+  const micFailed = (message: string) => {
+    State.noteMessage = message;
+    State.view = "note";
+    Sound.play("error");
+    State.notify();
+  };
+
+  async function startMic(rearmed = false) {
+    if (dictation || opening || sending) return;
+    input.value = "";
+    opening = true;
+    try {
+      dictation = await startDictation({
+        // Hands-free waits longer for the next question, but never forever.
+        idleMs: rearmed ? 30_000 : 8_000,
+        onText(text) {
+          input.value = text;
+          input.scrollLeft = input.scrollWidth;
+        },
+        onLevel(level) {
+          send.style.setProperty("--level", level.toFixed(2));
+          // The island closed or moved on: stop listening.
+          if (!chatOnScreen()) dictation?.cancel();
+        },
+        onPhase(phase) {
+          micPhase = phase;
+          drawButton();
+        },
+      });
+    } catch {
+      micFailed("Coucou can't use the microphone: it's blocked, or there isn't one.");
+      return;
+    } finally {
+      opening = false;
+    }
+    Sound.play("peek");
+    drawButton();
+    let text = "";
+    try {
+      text = await dictation.done;
+    } catch (err) {
+      micFailed(String(err).replace(/^Error:\s*/, ""));
+    }
+    dictation = null;
+    micPhase = null;
+    send.style.removeProperty("--level");
+    if (text && chatOnScreen()) {
+      input.value = text;
+      spoken = true;
+      void submit();
+    } else {
+      input.value = "";
+      if (chatOnScreen()) Sound.play("blip");
+    }
+    State.notify();
+  }
+
+  /** The one button's face: mic, listening (with the level), transcribing, or Send. */
+  function drawButton() {
+    const mic = !!dictation || (!input.value?.trim() && !!sttModel() && making() !== "3d");
+    const face = !mic ? "send" : micPhase ?? "mic";
+    input.readOnly = !!dictation;
+    if (send.dataset.face === face) return;
+    send.dataset.face = face;
+    send.classList.toggle("mic", mic);
+    send.classList.toggle("rec", face === "listening");
+    send.classList.toggle("busy", face === "transcribing");
+    send.replaceChildren(svg(mic ? ICONS.mic : ICONS.arrowUp, mic ? 13 : 11));
+    const stt = sttModel();
+    send.title = {
+      send: t(STRINGS.send),
+      mic: `Speak instead of typing (${stt?.label || stt?.model || "speech to text"})`,
+      listening: "Listening: click to send now, Esc to cancel",
+      transcribing: "Writing down what you said… Esc to cancel",
+    }[face];
+  }
+
+  // ── Sending ─────────────────────────────────────────────────────────────────
+
   async function submit(textOnly = false) {
     // A picture-to-3D model needs no words: the picture is the prompt.
     const query = input.value.trim() || (making() === "3d" ? "3D model" : "");
@@ -485,6 +581,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       onHeightChange();
       return;
     }
+    const wasSpoken = spoken;
+    spoken = false;
     input.value = "";
     sending = true;
     askImage = false;
@@ -555,12 +653,26 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.notify();
       onHeightChange();
       input.focus();
+      // Hands-free: the reply is in, listen for the next question.
+      if (wasSpoken && State.settings.keepMicOn && chatOnScreen() && sttModel()) void startMic(true);
     }
   }
 
-  send.addEventListener("click", () => void submit());
+  send.addEventListener("click", () => {
+    if (dictation) dictation.finish();
+    else if (send.dataset.face === "mic") void startMic();
+    else void submit();
+  });
+  input.addEventListener("input", drawButton);
   input.addEventListener("keydown", (e) => {
     const key = (e as KeyboardEvent).key;
+    if (dictation && (key === "Enter" || key === "Escape")) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (key === "Enter") dictation.finish();
+      else dictation.cancel();
+      return;
+    }
     if (key === "Enter") {
       e.preventDefault();
       void submit();
@@ -675,8 +787,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
               : named
                 ? `Ask ${named} anything…`
                 : t(STRINGS.placeholderFirst);
+      if (micPhase === "listening") input.placeholder = t("Listening…");
       input.disabled = sending;
       mic.disabled = sending;
+      drawButton();
 
       ask.classList.toggle("open", askImage);
       askText.textContent = `${activeModel(State.settings) || t(STRINGS.noModel)} can't see images.`;

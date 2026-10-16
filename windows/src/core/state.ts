@@ -95,8 +95,8 @@ export interface MediaFile {
   kind: "image" | "video" | "audio" | "3d";
 }
 
-/** What a saved media model makes. */
-export type ModelOutput = "image" | "video" | "audio" | "3d";
+/** What a saved media model makes; "stt" transcribes speech for the mic. */
+export type ModelOutput = "image" | "video" | "audio" | "3d" | "stt";
 
 /** A model on an OpenAI-compatible endpoint that makes something (media.rs). */
 export interface ModelEntry {
@@ -269,7 +269,9 @@ export interface Settings {
   quickScan: boolean;
   /** "provider/model" of chat models that refused an image. */
   textOnlyModels: string[];
-  /** Media models (image, video, speech, 3D). */
+  /** After a spoken question, the mic listens again once the reply is in. */
+  keepMicOn: boolean;
+  /** Media and voice models (image, video, speech, 3D, speech-to-text). */
   models: ModelEntry[];
 }
 
@@ -308,6 +310,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiNames: {},
   quickScan: false,
   textOnlyModels: [],
+  keepMicOn: false,
   models: [],
 };
 

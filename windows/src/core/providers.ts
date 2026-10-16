@@ -46,9 +46,9 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "media", name: "Create", accent: "#E879F9", key: null, urlField: null, cli: false, defaultModel: "", prefer: null },
 ];
 
-/** The saved models the "Create" chip offers. */
+/** The saved models the "Create" chip offers (speech-to-text only serves the mic). */
 export function creators(settings: Settings) {
-  return settings.models ?? [];
+  return (settings.models ?? []).filter((m) => m.output !== "stt");
 }
 
 /** Credential store entry of the custom server's optional key. */

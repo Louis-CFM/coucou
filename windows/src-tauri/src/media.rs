@@ -1,7 +1,8 @@
 // Images, video, speech and 3D models for models whose output isn't text,
-// from any OpenAI-compatible provider (3D: Pollinations' native route). They
-// are saved in Settings -> Media and voice models (settings.models) and picked
-// from the chat's "Create" chip, the provider PROVIDER of chat.rs.
+// from any OpenAI-compatible provider (3D: Pollinations' native route), and the
+// chat mic's speech-to-text. They are saved in Settings -> Media and voice
+// models (settings.models) and picked from the chat's "Create" chip, the
+// provider PROVIDER of chat.rs.
 //
 // Same rules as the chat: the API key stays on this side and only ever goes to
 // the provider's own host (result links on a CDN are fetched without it). The
@@ -43,7 +44,7 @@ pub async fn chat_turn(
     let entry = settings
         .models
         .iter()
-        .find(|m| m.id == id && !m.is_text())
+        .find(|m| m.id == id && !m.is_text() && m.output != "stt")
         .cloned()
         .ok_or_else(|| "Pick a model to create with above the chat box.".to_string())?;
     let key = key_for(&entry)?;
@@ -67,6 +68,16 @@ pub async fn chat_turn(
         context.is_some().then(|| "Made from your words only: the attachment wasn't sent.".to_string())
     };
     Ok(ChatReply { text, mood: None, notice, media })
+}
+
+/// The chat's mic: a recording in, its words out, through the saved model
+/// that transcribes speech.
+pub async fn transcribe_with(settings: &Settings, audio: Vec<u8>, mime: &str) -> Result<String, String> {
+    let entry = settings.models.iter().find(|m| m.output == "stt").cloned().ok_or_else(|| {
+        "No speech-to-text model yet. Add one in Settings \u{2192} Media and voice models (Groq's whisper-large-v3-turbo, for one).".to_string()
+    })?;
+    let key = key_for(&entry)?;
+    transcribe(&entry, &key, audio, mime).await
 }
 
 /// The provider's own error message out of an error body. OpenRouter:
@@ -126,7 +137,9 @@ pub struct MediaFile {
 pub fn guess_output(model: &str) -> &'static str {
     let m = model.to_lowercase();
     let has = |words: &[&str]| words.iter().any(|w| m.contains(w));
-    if has(&["trellis", "rodin", "asset-harvester", "hunyuan3d", "tripo", "triposr", "sf3d", "3d"]) {
+    if has(&["whisper", "transcri", "speech-to-text", "scribe", "-stt"]) {
+        "stt"
+    } else if has(&["trellis", "rodin", "asset-harvester", "hunyuan3d", "tripo", "triposr", "sf3d", "3d"]) {
         "3d"
     } else if has(&["sora", "veo", "kling", "seedance", "hailuo", "runway", "wan2", "ltx-video", "video"]) {
         "video"
@@ -367,17 +380,27 @@ fn job_status(v: &Value) -> Job {
     }
 }
 
-/// A multipart/form-data body of text fields; reqwest's multipart feature
-/// isn't worth pulling in for that. Returns the content type and the body; the
-/// boundary never appears in a value.
-fn multipart(fields: &[(&str, &str)], seed: u128) -> (String, Vec<u8>) {
+/// A multipart/form-data body: text fields, then optionally one file as
+/// (field, file name, type, bytes); reqwest's multipart feature isn't worth
+/// pulling in for that. Returns the content type and the body; the boundary
+/// never appears in a value or in the file.
+fn multipart(fields: &[(&str, &str)], file: Option<(&str, &str, &str, &[u8])>, seed: u128) -> (String, Vec<u8>) {
     let mut boundary = format!("----coucou{seed:x}");
-    while fields.iter().any(|(k, v)| k.contains(&boundary) || v.contains(&boundary)) {
+    while fields.iter().any(|(k, v)| k.contains(&boundary) || v.contains(&boundary))
+        || file.is_some_and(|f| f.3.windows(boundary.len()).any(|w| w == boundary.as_bytes()))
+    {
         boundary.push('x');
     }
     let mut body = Vec::new();
     for (name, value) in fields {
         body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n").as_bytes());
+    }
+    if let Some((field, name, mime, bytes)) = file {
+        body.extend_from_slice(
+            format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{field}\"; filename=\"{name}\"\r\nContent-Type: {mime}\r\n\r\n").as_bytes(),
+        );
+        body.extend_from_slice(bytes);
+        body.extend_from_slice(b"\r\n");
     }
     body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     (format!("multipart/form-data; boundary={boundary}"), body)
@@ -386,7 +409,7 @@ fn multipart(fields: &[(&str, &str)], seed: u128) -> (String, Vec<u8>) {
 /// OpenAI's Videos API: create the job, poll it, download the file.
 async fn video(base: &str, model: &str, key: &str, prompt: &str, progress: impl Fn(Option<f64>)) -> Result<Vec<u8>, String> {
     let client = http(120)?;
-    let (content_type, body) = multipart(&[("model", model), ("prompt", prompt)], now_nanos());
+    let (content_type, body) = multipart(&[("model", model), ("prompt", prompt)], None, now_nanos());
     let req = client.post(format!("{base}/videos")).bearer_auth(key).header("content-type", content_type).body(body);
     let mut job = json_of(send(req, model).await?).await?;
     let id = job.get("id").and_then(Value::as_str).unwrap_or("").to_string();
@@ -459,6 +482,33 @@ async fn speech(base: &str, model: &str, key: &str, text: &str, voice: &str) -> 
     let body = json!({ "model": model, "input": text, "voice": voice_for(model, voice), "response_format": "wav" });
     let response = send(http(120)?.post(format!("{base}/audio/speech")).bearer_auth(key).json(&body), model).await?;
     Ok(response.bytes().await.map_err(|e| format!("Network error: {e}"))?.to_vec())
+}
+
+// ── Speech to text ────────────────────────────────────────────────────────────
+
+/// `POST /audio/transcriptions` (Groq, OpenAI): the recording in, its text out.
+pub async fn transcribe(entry: &ModelEntry, key: &str, audio: Vec<u8>, mime: &str) -> Result<String, String> {
+    let model = entry.model.trim();
+    if audio.is_empty() {
+        return Err("Nothing was recorded.".into());
+    }
+    let base = entry.endpoint.trim().trim_end_matches('/');
+    let base = base.strip_suffix("/chat/completions").unwrap_or(base);
+    // The extension is how providers tell the format apart.
+    let mime = mime.split(';').next().unwrap_or("audio/webm").trim();
+    let ext = match mime {
+        "audio/ogg" => "ogg",
+        "audio/wav" | "audio/x-wav" => "wav",
+        "audio/mp4" | "audio/m4a" => "m4a",
+        "audio/mpeg" => "mp3",
+        _ => "webm",
+    };
+    let file = format!("speech.{ext}");
+    let (content_type, body) =
+        multipart(&[("model", model), ("response_format", "json")], Some(("file", &file, mime, audio.as_slice())), now_nanos());
+    let req = http(120)?.post(format!("{base}/audio/transcriptions")).bearer_auth(key).header("content-type", content_type).body(body);
+    let v = json_of(send(req, model).await?).await?;
+    Ok(v.get("text").and_then(Value::as_str).unwrap_or("").trim().to_string())
 }
 
 // ── 3D ────────────────────────────────────────────────────────────────────────
@@ -714,6 +764,7 @@ mod tests {
             ("llama-3.3-70b-versatile", "text"),
             ("meta-llama/llama-4-scout-17b-16e-instruct", "text"),
             ("claude-opus-5", "text"),
+            ("whisper-large-v3", "stt"),
         ] {
             assert_eq!(guess_output(id), kind, "{id}");
         }
@@ -727,6 +778,24 @@ mod tests {
             vec![Src::Bytes(b"\x89PNG\r\n\x1a\n".to_vec()), Src::Url("https://cdn.example/a.png?sig=1".into())]
         );
         assert!(generation_images(&json!({ "error": "x" })).is_empty());
+    }
+
+    #[test]
+    fn transcription_models_and_body() {
+        for id in ["whisper-large-v3-turbo", "distil-whisper-large-v3-en", "gpt-4o-transcribe"] {
+            assert_eq!(guess_output(id), "stt", "{id}");
+        }
+        // Speech out stays speech out.
+        assert_eq!(guess_output("canopylabs/orpheus-v1-english"), "audio");
+        let (ct, body) = multipart(&[("model", "whisper")], Some(("file", "speech.webm", "audio/webm", b"\x1aE\xdf\xa3abc".as_slice())), 7);
+        let boundary = ct.split("boundary=").nth(1).unwrap();
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("name=\"model\"\r\n\r\nwhisper\r\n"));
+        assert!(text.contains("filename=\"speech.webm\"\r\nContent-Type: audio/webm\r\n\r\n"));
+        assert!(text.ends_with(&format!("--{boundary}--\r\n")));
+        // A body containing the boundary gets a longer one.
+        let (ct2, _) = multipart(&[], Some(("file", "a", "audio/webm", b"------coucou7".as_slice())), 7);
+        assert!(ct2.ends_with("boundary=----coucou7x"));
     }
 
     #[test]
@@ -792,7 +861,7 @@ mod tests {
 
     #[test]
     fn multipart_body_is_well_formed() {
-        let (ct, body) = multipart(&[("model", "sora-2"), ("prompt", "a cat\non a mat")], 0xab);
+        let (ct, body) = multipart(&[("model", "sora-2"), ("prompt", "a cat\non a mat")], None, 0xab);
         assert_eq!(ct, "multipart/form-data; boundary=----coucouab");
         assert_eq!(
             String::from_utf8(body).unwrap(),
@@ -801,7 +870,7 @@ mod tests {
              ------coucouab--\r\n"
         );
         // A prompt that happens to hold the boundary gets a longer one.
-        let (ct, _) = multipart(&[("prompt", "x ----coucouab y")], 0xab);
+        let (ct, _) = multipart(&[("prompt", "x ----coucouab y")], None, 0xab);
         assert_eq!(ct, "multipart/form-data; boundary=----coucouabx");
     }
 

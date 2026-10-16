@@ -259,3 +259,17 @@ test("a media model's answer is a card per file: the picture with Download, a 3D
   assert.equal(view.el.find(".reply").length, 0, "no empty text bubble");
   assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Download"], ["Download .glb"]]);
 });
+
+test("with a speech-to-text model saved, Send is the mic while the field is empty", () => {
+  assert.ok(!$(".send-btn").classList.contains("mic"), "no model: plain Send");
+  State.settings = {
+    ...State.settings,
+    models: [{ id: "m-1", label: "Whisper", kind: "openai", model: "whisper-large-v3-turbo", endpoint: "https://x.dev/v1", vision: null, output: "stt", voice: "", detail: "" }],
+  };
+  view.sync();
+  assert.ok($(".send-btn").classList.contains("mic"));
+  assert.match($(".send-btn").title, /Whisper/);
+  $(".chat-input").value = "hello";
+  $(".chat-input").fire("input");
+  assert.ok(!$(".send-btn").classList.contains("mic"), "text in the field: Send");
+});
