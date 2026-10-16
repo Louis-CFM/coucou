@@ -40,16 +40,17 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_n8n", "n8n", "#F29B38", "service", "Integration"],
     ["integration_vercel", "Vercel", "#7C5CFF", "service", "Integration"],
     ["integration_github", "GitHub", "#F4505E", "service", "Integration"],
+    ["integration_gitlab", "GitLab", "#FC6D26", "service", "Integration"],
     ["integration_notion", "Notion", "#8C8C8C", "service", "Integration"],
     ["integration_calcom", "Cal.com", "#C9956A", "service", "Integration"],
     ["integration_stripe", "Stripe", "#0570DE", "service", "Integration"],
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
-  // PhpStorm and GitLab are Windows and Linux's own for now (the Mac has no
-  // such pill yet): they are checked apart below.
+  // PhpStorm is Windows and Linux's own (the Mac has no such pill): it is
+  // checked apart below.
   assert.deepEqual(
-    PILL_CATALOG.filter((p) => p.id !== "agent_phpstorm" && p.id !== "integration_gitlab").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
+    PILL_CATALOG.filter((p) => p.id !== "agent_phpstorm").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
