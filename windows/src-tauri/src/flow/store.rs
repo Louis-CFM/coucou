@@ -103,6 +103,8 @@ pub struct Prefs {
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
     pub voice: bool,
+    /// A service is contacted only after the user explicitly selects it.
+    pub voice_search: crate::voice::search::SearchProvider,
     /// How Coucou answers out loud: "system", "elevenlabs", "voicestudio" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
@@ -126,6 +128,7 @@ impl Default for Prefs {
             summary_engine: SummaryEngine::Claude,
             open_at_launch: true,
             voice: false,
+            voice_search: crate::voice::search::SearchProvider::Anthropic,
             voice_output: "system".into(),
             voice_gender: "female".into(),
             voicestudio_url: "http://127.0.0.1:3900".into(),
@@ -391,6 +394,7 @@ mod tests {
     fn prefs_read_from_an_older_file_keep_their_defaults() {
         let p: Prefs = serde_json::from_str(r#"{"enabled":true,"key":"right_alt"}"#).unwrap();
         assert!(p.enabled);
+        assert_eq!(p.voice_search, crate::voice::search::SearchProvider::Anthropic);
         assert_eq!(p.key, FlowKey::RightAlt);
         assert_eq!(p.keep_days, 30);
         assert!(p.open_at_launch);

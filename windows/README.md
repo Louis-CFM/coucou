@@ -735,3 +735,24 @@ What changes on Linux:
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
 - No **Claude Desktop** pill: the Claude app has no Linux build.
+
+### Voice web search
+
+In **OK Coucou → Web search**, choose **Parallel** to use
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp) for
+current questions. Search uses Fast mode and needs no Parallel account or API key.
+The anonymous service is intended for light use and has rate limits; an error
+is returned to the assistant without switching search providers. The voice
+assistant still uses your Anthropic key for Claude.
+
+Anthropic remains the default for existing and new installations. Parallel
+receives search objectives and keyword queries only after you select it. Voice
+transcripts and conversation history still go to your configured Claude service;
+they are not sent wholesale to Parallel. **Off** disables voice web search.
+Changing the provider starts a new voice conversation so previous search-tool
+formats cannot carry over. This setting applies to voice on Windows and Linux,
+not the island chat or the Mac app.
+
+For a network proxy with a private certificate authority, `SSL_CERT_FILE` can
+point to its PEM CA bundle (at most 1 MiB). Invalid bundles stop the search;
+certificate verification is always enabled.

@@ -89,6 +89,17 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
   }
   page.append(answers);
 
+  page.append(label(t("Web search")));
+  page.append(card(
+    row(t("Search provider"), null, segmented<"anthropic" | "parallel" | "off">(
+      [["anthropic", "Anthropic"], ["parallel", "Parallel"], ["off", t("Off")]],
+      prefs.voiceSearch ?? "anthropic",
+      (v) => void ctx.setPrefs((p) => (p.voiceSearch = v)).then(() => ctx.navigate("voice")),
+    )),
+    divider(),
+    h("div", { class: "hub-note", text: t("Choose Parallel to send web search queries to Parallel Search MCP. Free Fast search for light use, with no Parallel account or key; anonymous rate limits apply. Claude still needs your Anthropic key. Off disables web search for voice.") }),
+  ));
+
   page.append(label(t("Privacy")));
   page.append(card(
     h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers. VoiceStudio runs on this computer.") }),

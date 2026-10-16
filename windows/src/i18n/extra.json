@@ -5170,18 +5170,6 @@
       "id": "Suaramu tidak pernah meninggalkan komputer ini: Parakeet mengubahnya menjadi teks di sini, dan rekamannya dibuang begitu ditempel.",
       "cs": "Váš hlas nikdy neopouští tento počítač: Parakeet ho převádí na text přímo tady a nahrávka se zahodí, jakmile je vložena."
     },
-    "Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.": {
-      "zh-Hans": "你的声音永远不会离开这台电脑：Parakeet 在本机把它转成文字。只有「OK Coucou」之后的文字会用你的 Claude 密钥发送给 Anthropic；如果你选了 ElevenLabs 来朗读回答，也会发送给 ElevenLabs。",
-      "hi": "आपकी आवाज़ कभी इस कंप्यूटर से बाहर नहीं जाती: Parakeet उसे यहीं टेक्स्ट में बदलता है। केवल « OK Coucou » के बाद के शब्द आपकी Claude कुंजी के साथ Anthropic को जाते हैं, और अगर आपने जवाबों के लिए ElevenLabs चुना है तो ElevenLabs को भी।",
-      "es": "Tu voz nunca sale de este ordenador: Parakeet la convierte en texto aquí. Solo las palabras después de « OK Coucou » van a Anthropic con tu clave de Claude, y a ElevenLabs si lo elegiste para las respuestas.",
-      "ar": "لا يغادر صوتك هذا الحاسوب أبدًا: يحوّله Parakeet إلى نص هنا. لا تذهب إلا الكلمات التي تلي « OK Coucou » إلى Anthropic بمفتاح Claude الخاص بك، وإلى ElevenLabs إن اخترته للإجابات.",
-      "fr": "Ta voix ne quitte jamais cet ordinateur : Parakeet la transforme en texte ici. Seuls les mots qui suivent « OK Coucou » partent chez Anthropic avec ta clé Claude, et chez ElevenLabs si tu l'as choisi pour les réponses.",
-      "bn": "আপনার কণ্ঠ কখনো এই কম্পিউটার ছেড়ে যায় না: Parakeet এখানেই একে টেক্সটে রূপান্তর করে। কেবল « OK Coucou »-এর পরের শব্দগুলো আপনার Claude কী দিয়ে Anthropic-এ যায়, আর উত্তরের জন্য ElevenLabs বেছে নিলে ElevenLabs-এও।",
-      "pt-BR": "Sua voz nunca sai deste computador: o Parakeet a transforma em texto aqui. Só as palavras depois de « OK Coucou » vão para a Anthropic com sua chave do Claude, e para a ElevenLabs se você a escolheu para as respostas.",
-      "ru": "Ваш голос никогда не покидает этот компьютер: Parakeet превращает его в текст здесь. Только слова после « OK Coucou » уходят в Anthropic с вашим ключом Claude и в ElevenLabs, если вы выбрали его для ответов.",
-      "id": "Suaramu tidak pernah keluar dari komputer ini: Parakeet mengubahnya menjadi teks di sini. Hanya kata-kata setelah « OK Coucou » yang dikirim ke Anthropic dengan kunci Claude-mu, dan ke ElevenLabs jika kamu memilihnya untuk jawaban.",
-      "cs": "Váš hlas nikdy neopouští tento počítač: Parakeet ho převádí na text přímo tady. Jen slova po « OK Coucou » jdou do Anthropic s vaším Claude klíčem a do ElevenLabs, pokud jste je vybrali pro odpovědi."
-    },
     "Your words are copied: click where you want them and press Ctrl+V.": {
       "zh-Hans": "你的文字已复制：点击想放的位置，然后按 Ctrl+V。",
       "hi": "आपके शब्द कॉपी हो गए: जहाँ चाहिए वहाँ क्लिक करें और Ctrl+V दबाएँ।",
@@ -5713,6 +5701,78 @@
       "ru": "Остров скрывается и молчит, пока что-то из этого используется.",
       "id": "Pulau bersembunyi dan diam selama salah satunya digunakan.",
       "cs": "Ostrůvek se skryje a ztlumí, dokud je některá z těchto věcí v provozu."
+    },
+    "Choose Parallel to send web search queries to Parallel Search MCP. Free Fast search for light use, with no Parallel account or key; anonymous rate limits apply. Claude still needs your Anthropic key. Off disables web search for voice.": {
+      "zh-Hans": "选择 Parallel，将网页搜索查询发送到 Parallel Search MCP。Fast 搜索可免费轻度使用，无需 Parallel 账户或密钥；匿名使用有速率限制。Claude 仍需要你的 Anthropic 密钥。选择关闭可禁用语音网页搜索。",
+      "hi": "वेब खोज क्वेरी Parallel Search MCP को भेजने के लिए Parallel चुनें। हल्के उपयोग के लिए Fast खोज मुफ़्त है; Parallel खाते या कुंजी की ज़रूरत नहीं है, लेकिन अनाम उपयोग पर दर सीमाएँ लागू हैं। Claude को अब भी आपकी Anthropic कुंजी चाहिए। बंद चुनने पर आवाज़ से वेब खोज बंद हो जाती है।",
+      "es": "Elige Parallel para enviar las consultas web a Parallel Search MCP. Búsqueda Fast gratuita para uso ligero, sin cuenta ni clave de Parallel; se aplican límites al uso anónimo. Claude sigue necesitando tu clave de Anthropic. Desactivado deshabilita la búsqueda web por voz.",
+      "ar": "اختر Parallel لإرسال استعلامات البحث إلى Parallel Search MCP. بحث Fast مجاني للاستخدام الخفيف دون حساب أو مفتاح Parallel؛ تنطبق حدود على معدل الاستخدام المجهول. لا يزال Claude يحتاج إلى مفتاح Anthropic الخاص بك. إيقاف يعطل بحث الويب الصوتي.",
+      "fr": "Choisis Parallel pour envoyer les recherches web à Parallel Search MCP. Recherche Fast gratuite pour un usage léger, sans compte ni clé Parallel ; des limites de débit anonymes s’appliquent. Claude a toujours besoin de ta clé Anthropic. Désactivé coupe la recherche web vocale.",
+      "bn": "ওয়েব অনুসন্ধান Parallel Search MCP-তে পাঠাতে Parallel বেছে নিন। হালকা ব্যবহারের জন্য Fast অনুসন্ধান বিনামূল্যে, Parallel অ্যাকাউন্ট বা কী লাগে না; বেনামী ব্যবহারে হারের সীমা আছে। Claude-এর জন্য এখনও আপনার Anthropic কী দরকার। বন্ধ নির্বাচন করলে ভয়েস ওয়েব অনুসন্ধান বন্ধ হয়।",
+      "pt-BR": "Escolha Parallel para enviar as buscas à Parallel Search MCP. Pesquisa Fast grátis para uso leve, sem conta ou chave da Parallel; há limites de taxa para uso anônimo. Claude ainda precisa da sua chave Anthropic. Desativado desliga a pesquisa web por voz.",
+      "ru": "Выберите Parallel, чтобы отправлять поисковые запросы в Parallel Search MCP. Поиск Fast бесплатен при умеренном использовании, без аккаунта или ключа Parallel; для анонимных запросов действуют ограничения частоты. Claude по-прежнему нужен ваш ключ Anthropic. Выкл. отключает голосовой поиск в интернете.",
+      "id": "Pilih Parallel untuk mengirim kueri web ke Parallel Search MCP. Pencarian Fast gratis untuk penggunaan ringan, tanpa akun atau kunci Parallel; batas laju anonim berlaku. Claude tetap memerlukan kunci Anthropic Anda. Nonaktif mematikan pencarian web suara.",
+      "cs": "Zvolte Parallel pro odesílání webových dotazů do Parallel Search MCP. Zdarma Fast hledání pro lehké použití, bez účtu či klíče Parallel; platí anonymní limity. Claude stále potřebuje váš Anthropic klíč. Vypnuto zakáže webové hledání pro hlas."
+    },
+    "Search provider": {
+      "zh-Hans": "搜索服务",
+      "hi": "खोज प्रदाता",
+      "es": "Proveedor de búsqueda",
+      "ar": "مزود البحث",
+      "fr": "Service de recherche",
+      "bn": "অনুসন্ধান প্রদানকারী",
+      "pt-BR": "Provedor de pesquisa",
+      "ru": "Сервис поиска",
+      "id": "Penyedia pencarian",
+      "cs": "Poskytovatel hledání"
+    },
+    "Web search": {
+      "zh-Hans": "网页搜索",
+      "hi": "वेब खोज",
+      "es": "Búsqueda web",
+      "ar": "البحث على الويب",
+      "fr": "Recherche web",
+      "bn": "ওয়েব অনুসন্ধান",
+      "pt-BR": "Pesquisa na web",
+      "ru": "Поиск в интернете",
+      "id": "Pencarian web",
+      "cs": "Hledání na webu"
+    },
+    "VoiceStudio address": {
+      "zh-Hans": "VoiceStudio 地址",
+      "hi": "VoiceStudio पता",
+      "es": "Dirección de VoiceStudio",
+      "ar": "عنوان VoiceStudio",
+      "fr": "Adresse VoiceStudio",
+      "bn": "VoiceStudio ঠিকানা",
+      "pt-BR": "Endereço do VoiceStudio",
+      "ru": "Адрес VoiceStudio",
+      "id": "Alamat VoiceStudio",
+      "cs": "Adresa VoiceStudio"
+    },
+    "VoiceStudio voice id": {
+      "zh-Hans": "VoiceStudio 语音 ID",
+      "hi": "VoiceStudio वॉइस ID",
+      "es": "ID de voz de VoiceStudio",
+      "ar": "معرّف صوت VoiceStudio",
+      "fr": "ID de voix VoiceStudio",
+      "bn": "VoiceStudio ভয়েস আইডি",
+      "pt-BR": "ID de voz do VoiceStudio",
+      "ru": "ID голоса VoiceStudio",
+      "id": "ID suara VoiceStudio",
+      "cs": "ID hlasu VoiceStudio"
+    },
+    "Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers. VoiceStudio runs on this computer.": {
+      "zh-Hans": "你的声音永远不会离开这台电脑：Parakeet 在本机把它转成文字。只有「OK Coucou」之后的文字会用你的 Claude 密钥发送给 Anthropic；如果你选了 ElevenLabs 来朗读回答，也会发送给 ElevenLabs。",
+      "hi": "आपकी आवाज़ कभी इस कंप्यूटर से बाहर नहीं जाती: Parakeet उसे यहीं टेक्स्ट में बदलता है। केवल « OK Coucou » के बाद के शब्द आपकी Claude कुंजी के साथ Anthropic को जाते हैं, और अगर आपने जवाबों के लिए ElevenLabs चुना है तो ElevenLabs को भी।",
+      "es": "Tu voz nunca sale de este ordenador: Parakeet la convierte en texto aquí. Solo las palabras después de « OK Coucou » van a Anthropic con tu clave de Claude, y a ElevenLabs si lo elegiste para las respuestas.",
+      "ar": "لا يغادر صوتك هذا الحاسوب أبدًا: يحوّله Parakeet إلى نص هنا. لا تذهب إلا الكلمات التي تلي « OK Coucou » إلى Anthropic بمفتاح Claude الخاص بك، وإلى ElevenLabs إن اخترته للإجابات.",
+      "fr": "Ta voix ne quitte jamais cet ordinateur : Parakeet la transforme en texte ici. Seuls les mots qui suivent « OK Coucou » partent chez Anthropic avec ta clé Claude, et chez ElevenLabs si tu l'as choisi pour les réponses.",
+      "bn": "আপনার কণ্ঠ কখনো এই কম্পিউটার ছেড়ে যায় না: Parakeet এখানেই একে টেক্সটে রূপান্তর করে। কেবল « OK Coucou »-এর পরের শব্দগুলো আপনার Claude কী দিয়ে Anthropic-এ যায়, আর উত্তরের জন্য ElevenLabs বেছে নিলে ElevenLabs-এও।",
+      "pt-BR": "Sua voz nunca sai deste computador: o Parakeet a transforma em texto aqui. Só as palavras depois de « OK Coucou » vão para a Anthropic com sua chave do Claude, e para a ElevenLabs se você a escolheu para as respostas.",
+      "ru": "Ваш голос никогда не покидает этот компьютер: Parakeet превращает его в текст здесь. Только слова после « OK Coucou » уходят в Anthropic с вашим ключом Claude и в ElevenLabs, если вы выбрали его для ответов.",
+      "id": "Suaramu tidak pernah keluar dari komputer ini: Parakeet mengubahnya menjadi teks di sini. Hanya kata-kata setelah « OK Coucou » yang dikirim ke Anthropic dengan kunci Claude-mu, dan ke ElevenLabs jika kamu memilihnya untuk jawaban.",
+      "cs": "Váš hlas nikdy neopustí tento počítač: Parakeet ho převádí na text přímo zde. Jen slova po « OK Coucou » putují do Anthropic s vaším klíčem Claude, a do ElevenLabs, pokud jste je zvolili pro odpovědi. VoiceStudio běží na tomto počítači."
     }
   }
 }

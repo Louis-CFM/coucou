@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
+use super::search::{self, SearchProvider};
 
 const FAST_MODEL: &str = "claude-haiku-4-5";
 const FORGET_AFTER: Duration = Duration::from_secs(90);
@@ -15,11 +16,13 @@ const FORGET_AFTER: Duration = Duration::from_secs(90);
 pub struct Brain {
     messages: Vec<Value>,
     last: Instant,
+    search_provider: SearchProvider,
+    search_session: String,
 }
 
 impl Default for Brain {
     fn default() -> Self {
-        Self { messages: Vec::new(), last: Instant::now() }
+        Self { messages: Vec::new(), last: Instant::now(), search_provider: SearchProvider::default(), search_session: search_session() }
     }
 }
 
@@ -28,8 +31,8 @@ pub struct Reply {
     pub acted: bool,
 }
 
-fn tools() -> Vec<Value> {
-    vec![
+fn tools(provider: SearchProvider) -> Vec<Value> {
+    let mut tools = vec![
         json!({
             "name": "pills",
             "description": "Add, remove, set as main or list the pills shown in the island at the top of the screen. At most 4 pills besides the main one: remove one first if needed.",
@@ -78,8 +81,9 @@ fn tools() -> Vec<Value> {
                 "required": ["recipient", "subject", "body"]
             }
         }),
-        json!({ "type": "web_search_20250305", "name": "web_search", "max_uses": 3 }),
-    ]
+    ];
+    if let Some(tool) = search::tool(provider) { tools.push(tool); }
+    tools
 }
 
 fn system_prompt(pills: &str) -> String {
@@ -104,22 +108,32 @@ Pills: {pills}",
 
 impl Brain {
     pub fn respond(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
-        if self.last.elapsed() > FORGET_AFTER {
+        let (enabled, provider) = search_config(app);
+        if !enabled { return None; }
+        if self.last.elapsed() > FORGET_AFTER || provider != self.search_provider {
             self.messages.clear();
+            self.search_session = search_session();
         }
+        self.search_provider = provider;
         self.last = Instant::now();
         self.messages.push(json!({ "role": "user", "content": transcript }));
         self.trim();
         let pills = super::ask_island(app, "pills", json!({ "action": "list" })).unwrap_or_default();
-        let system = system_prompt(&pills);
-        let tools = tools();
+        let mut system = system_prompt(&pills);
+        if provider == SearchProvider::Off {
+            system.push_str("\nWeb search is disabled. Do not claim web access or invent current information.");
+        }
+        let tools = tools(provider);
         let chat_model = app
             .try_state::<crate::Shared>()
             .map(|s| s.settings.lock().unwrap().model.clone())
             .unwrap_or_default();
         let mut acted = false;
         let mut spoken = String::new();
+        let mut searches = 0;
+        let mut search_failed = false;
         for _ in 0..5 {
+            if search_config(app) != (true, provider) { self.messages.clear(); return None; }
             let turn = tauri::async_runtime::block_on(async {
                 match crate::claude::voice_turn(FAST_MODEL, &system, &self.messages, &tools).await {
                     Ok(v) => Ok(v),
@@ -156,7 +170,32 @@ impl Brain {
             }
             let mut results = Vec::new();
             for u in uses {
-                let (result, did) = super::run_tool(app, u["name"].as_str().unwrap_or(""), &u["input"]);
+                let name = u["name"].as_str().unwrap_or("");
+                let (result, did) = if name == "web_search" {
+                    searches += 1;
+                    if provider != SearchProvider::Parallel || searches > 3 || search_failed || search_config(app) != (true, provider) {
+                        ("Web search is unavailable or its per-turn limit was reached. Do not retry.".into(), false)
+                    } else {
+                        let result = tauri::async_runtime::block_on(async {
+                            let request = tokio::time::timeout(Duration::from_secs(20), search::parallel(&u["input"], &self.search_session));
+                            tokio::pin!(request);
+                            loop {
+                                tokio::select! {
+                                    result = &mut request => break result.unwrap_or_else(|_| Err("Parallel search timed out.".into())),
+                                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                                        if search_config(app) != (true, provider) {
+                                            break Err("Voice search was disabled or its provider changed.".into());
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        search_failed = result.is_err();
+                        (result.unwrap_or_else(|e| format!("Search error: {e}")), false)
+                    }
+                } else {
+                    super::run_tool(app, name, &u["input"])
+                };
                 acted |= did;
                 results.push(json!({ "type": "tool_result", "tool_use_id": u["id"], "content": result }));
             }
@@ -192,6 +231,22 @@ impl Brain {
     }
 }
 
+fn search_session() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    // RandomState seeds each hasher from the OS. No user/device identifier, and
+    // no extra dependency for this anonymous conversation correlation value.
+    let a = std::collections::hash_map::RandomState::new().build_hasher().finish();
+    let b = std::collections::hash_map::RandomState::new().build_hasher().finish();
+    format!("{a:016x}{b:016x}")
+}
+
+fn search_config(app: &AppHandle) -> (bool, SearchProvider) {
+    crate::flow::get(app).map(|f| {
+        let store = f.store.lock().unwrap();
+        (store.prefs.voice, store.prefs.voice_search)
+    }).unwrap_or((false, SearchProvider::Off))
+}
+
 /// What Claude wrote, ready to be said: citations and markdown left out.
 pub fn spoken_text(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -220,9 +275,19 @@ mod tests {
 
     #[test]
     fn every_tool_has_a_schema() {
-        for tool in tools() {
+        for tool in tools(SearchProvider::Anthropic) {
             assert!(tool["name"].is_string());
             assert!(tool.get("input_schema").is_some() || tool["type"] == "web_search_20250305");
         }
+    }
+
+    #[test]
+    fn one_search_tool_for_each_provider_and_none_when_off() {
+        let parallel = tools(SearchProvider::Parallel);
+        let search: Vec<_> = parallel.iter().filter(|t| t["name"] == "web_search").collect();
+        assert_eq!(search.len(), 1);
+        assert!(search[0]["input_schema"].is_object());
+        assert!(!tools(SearchProvider::Off).iter().any(|t| t["name"] == "web_search"));
+        assert_eq!(SearchProvider::default(), SearchProvider::Anthropic);
     }
 }
