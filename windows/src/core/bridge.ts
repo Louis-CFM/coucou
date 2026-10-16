@@ -212,6 +212,19 @@ export const Bridge = {
   customSounds: (names: readonly string[]) => call<string[]>("custom_sounds", { names }),
   /** The user's file for one sound, as raw bytes. */
   customSound: (name: string) => call<ArrayBuffer>("custom_sound", { name }),
+  /** Stores a file the user picked as the custom sound `name`; false if it was refused. */
+  setCustomSound: async (name: string, ext: string, bytes: ArrayBuffer): Promise<boolean> => {
+    if (!IS_TAURI) return false;
+    try {
+      await invoke("set_custom_sound", bytes, { headers: { name, ext } });
+      return true;
+    } catch (err) {
+      console.error("[coucou] set_custom_sound failed", err);
+      return false;
+    }
+  },
+  /** Back to the built-in sound. */
+  removeCustomSound: (name: string) => call<void>("remove_custom_sound", { name }),
   revealSoundsFolder: () => call<void>("reveal_sounds_folder"),
   /** Tells the island to read the sounds folder again ("sounds-changed"). */
   reloadSounds: () => call<void>("reload_sounds"),

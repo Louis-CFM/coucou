@@ -48,6 +48,47 @@ pub fn custom_sound(name: String) -> Result<tauri::ipc::Response, String> {
     std::fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
 }
 
+/// Settings → Choose file…: stores the bytes of a file the user picked as the custom
+/// sound `name` (headers "name" and "ext"; the body is the file as it is). Any earlier
+/// custom file for that sound is replaced.
+#[tauri::command]
+pub fn set_custom_sound(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+    let (name, ext) = (header("name"), header("ext").to_ascii_lowercase());
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    store(&folder(), &name, &ext, bytes)
+}
+
+/// Settings → Reset: back to the built-in sound.
+#[tauri::command]
+pub fn remove_custom_sound(name: String) -> Result<(), String> {
+    if !valid_name(&name) {
+        return Err("invalid sound name".into());
+    }
+    remove_files(&folder(), &name);
+    Ok(())
+}
+
+fn remove_files(dir: &Path, name: &str) {
+    for ext in EXTENSIONS {
+        let _ = std::fs::remove_file(dir.join(format!("{name}.{ext}")));
+    }
+}
+
+fn store(dir: &Path, name: &str, ext: &str, bytes: &[u8]) -> Result<(), String> {
+    if !valid_name(name) || !EXTENSIONS.contains(&ext) {
+        return Err("invalid sound name or format".into());
+    }
+    if bytes.is_empty() || bytes.len() as u64 > MAX_BYTES {
+        return Err("the file is empty or bigger than 8 MB".into());
+    }
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    remove_files(dir, name);
+    std::fs::write(dir.join(format!("{name}.{ext}")), bytes).map_err(|e| e.to_string())
+}
+
 /// Settings → Open sounds folder: creates it if needed and shows it.
 #[tauri::command]
 pub fn reveal_sounds_folder() {
@@ -82,6 +123,20 @@ mod tests {
         std::fs::write(dir.join("greet.m4a"), b"m4a").unwrap();
         assert_eq!(custom_file(&dir, "greet"), Some(dir.join("greet.m4a")));
         assert_eq!(custom_file(&dir, "approval"), None);
+    }
+
+    #[test]
+    fn a_stored_sound_replaces_the_earlier_one_and_bad_input_is_refused() {
+        let dir = scratch("store");
+        store(&dir, "finish", "mp3", b"mp3").unwrap();
+        store(&dir, "finish", "wav", b"wav").unwrap();
+        assert_eq!(custom_file(&dir, "finish"), Some(dir.join("finish.wav")));
+        assert!(!dir.join("finish.mp3").exists());
+        assert!(store(&dir, "../x", "wav", b"x").is_err());
+        assert!(store(&dir, "finish", "exe", b"x").is_err());
+        assert!(store(&dir, "finish", "wav", b"").is_err());
+        remove_files(&dir, "finish");
+        assert_eq!(custom_file(&dir, "finish"), None);
     }
 
     #[test]

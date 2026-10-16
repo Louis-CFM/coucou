@@ -1027,7 +1027,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 function generalSection(): HTMLElement {
   const volume = h("input", {
-    type: "range", min: "0", max: "0.2", step: "0.005",
+    type: "range", min: "0", max: "0.7", step: "0.005",
     value: String(settings.soundVolume),
   }) as HTMLInputElement;
   volume.addEventListener("input", () => {
@@ -1047,6 +1047,27 @@ function generalSection(): HTMLElement {
   const reloadSounds = h("button", {
     text: t("Reload sounds"),
     onclick: () => void Bridge.reloadSounds().then(() => window.setTimeout(countCustom, 300)),
+  });
+
+  // Pick a file of your own for one sound: stored in the sounds folder, then reloaded.
+  const pickedSound = h("select", {}) as HTMLSelectElement;
+  for (const n of SOUND_NAMES) pickedSound.append(h("option", { value: n, text: n }));
+  pickedSound.value = "approval";
+  const filePicker = h("input", { type: "file", accept: "audio/*,.wav,.mp3,.ogg,.m4a,.aac,.flac,.aiff,.caf", style: "display:none" }) as HTMLInputElement;
+  filePicker.addEventListener("change", async () => {
+    const file = filePicker.files?.[0];
+    filePicker.value = "";
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    const ok = await Bridge.setCustomSound(pickedSound.value, ext, await file.arrayBuffer());
+    if (!ok) { customCount.textContent = t("This file can't be used as a sound"); return; }
+    await Bridge.reloadSounds();
+    window.setTimeout(countCustom, 300);
+  });
+  const chooseSound = h("button", { text: t("Choose file…"), onclick: () => filePicker.click() });
+  const resetSound = h("button", {
+    text: t("Reset"),
+    onclick: () => void Bridge.removeCustomSound(pickedSound.value).then(() => Bridge.reloadSounds()).then(() => window.setTimeout(countCustom, 300)),
   });
 
   const autoClose = h("input", {
@@ -1096,6 +1117,7 @@ function generalSection(): HTMLElement {
       volume,
     ),
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
+    h("div", { class: "row" }, pickedSound, chooseSound, resetSound, filePicker),
     h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),

@@ -684,6 +684,17 @@
    "ru": "Чат — другие провайдеры",
    "id": "Chat — penyedia lain"
   },
+  "Choose file…": {
+   "zh-Hans": "选择文件…",
+   "hi": "फ़ाइल चुनें…",
+   "es": "Elegir archivo…",
+   "ar": "اختيار ملف…",
+   "fr": "Choisir un fichier…",
+   "bn": "ফাইল বেছে নিন…",
+   "pt-BR": "Escolher arquivo…",
+   "ru": "Выбрать файл…",
+   "id": "Pilih file…"
+  },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
    "hi": "वे टूल चुनें जो आप उपयोग करते हैं। Coucou केवल वही दिखाता है जो आप यहाँ घोषित करते हैं।",
@@ -4280,6 +4291,17 @@
    "pt-BR": "Reenviar",
    "ru": "Повторить",
    "id": "Kirim ulang"
+  },
+  "Reset": {
+   "zh-Hans": "重置",
+   "hi": "रीसेट करें",
+   "es": "Restablecer",
+   "ar": "إعادة تعيين",
+   "fr": "Réinitialiser",
+   "bn": "রিসেট করুন",
+   "pt-BR": "Redefinir",
+   "ru": "Сбросить",
+   "id": "Atur ulang"
   },
   "Reset all to defaults": {
    "zh-Hans": "全部重置为默认值",
