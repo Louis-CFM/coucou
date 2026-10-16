@@ -9,7 +9,7 @@
 
 use std::cmp::Ordering;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::mpsc;
 use std::time::Duration;
@@ -56,21 +56,9 @@ pub fn read() -> Option<Value> {
     }
     let _busy = NotBusy;
 
-    let exe = platform::codex_candidates().into_iter().next()?;
-    let mut cmd = Command::new(&exe);
+    let exe = platform::cli_candidates("codex").into_iter().next()?;
+    let mut cmd = platform::cli_command(&exe);
     cmd.arg("app-server").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
-    // An npm install is a `#!/usr/bin/env node` script (or a .cmd calling node):
-    // its own folder first on PATH, as the Mac does, so it finds its Node.
-    if let Some(dir) = exe.parent() {
-        let mut dirs = vec![dir.to_path_buf()];
-        if let Some(path) = std::env::var_os("PATH") {
-            dirs.extend(std::env::split_paths(&path));
-        }
-        if let Ok(joined) = std::env::join_paths(dirs) {
-            cmd.env("PATH", joined);
-        }
-    }
-    platform::no_console(&mut cmd);
     let mut child = cmd.spawn().ok()?;
 
     let answer = (|| {
@@ -87,15 +75,7 @@ pub fn read() -> Option<Value> {
         drop(stdin);
         answer
     })();
-    // An npm install runs `codex.cmd`: killing cmd.exe alone would leave the
-    // node app-server under it running. End the whole tree there.
-    #[cfg(windows)]
-    {
-        let mut kill = Command::new("taskkill");
-        kill.args(["/T", "/F", "/PID", &child.id().to_string()]);
-        platform::no_console(&mut kill);
-        let _ = kill.status();
-    }
+    platform::kill_tree(child.id());
     let _ = child.kill();
     let _ = child.wait();
     answer.map(|result| limits_only(&result))

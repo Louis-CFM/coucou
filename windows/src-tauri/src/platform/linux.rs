@@ -268,23 +268,24 @@ pub fn open_claude_desktop() -> bool {
     false
 }
 
-/// Where the Codex CLI may be, best first: $PATH, then the usual per-user
-/// install folders, which a desktop launch often leaves out of $PATH (npm's
+/// Where a CLI installed per user (`codex`, `claude`) may be, best first:
+/// $PATH, then the usual per-user install folders, which a desktop launch
+/// often leaves out of $PATH (npm's
 /// global prefix, Volta, Bun, pnpm, and nvm with its newest Node first).
-pub fn codex_candidates() -> Vec<PathBuf> {
+pub fn cli_candidates(name: &str) -> Vec<PathBuf> {
     let home = home_dir();
-    let mut out: Vec<PathBuf> = find_on_path("codex").into_iter().collect();
+    let mut out: Vec<PathBuf> = find_on_path(name).into_iter().collect();
     for dir in [".local/bin", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"] {
-        out.push(home.join(dir).join("codex"));
+        out.push(home.join(dir).join(name));
     }
-    out.push(PathBuf::from("/usr/local/bin/codex"));
-    out.push(PathBuf::from("/usr/bin/codex"));
+    out.push(PathBuf::from("/usr/local/bin").join(name));
+    out.push(PathBuf::from("/usr/bin").join(name));
     let nvm = home.join(".nvm/versions/node");
     if let Ok(entries) = std::fs::read_dir(&nvm) {
         let mut versions: Vec<String> =
             entries.filter_map(|e| e.ok()?.file_name().into_string().ok()).collect();
         versions.sort_by(|a, b| crate::codex_plan::compare_versions(b, a));
-        out.extend(versions.iter().map(|v| nvm.join(v).join("bin/codex")));
+        out.extend(versions.iter().map(|v| nvm.join(v).join("bin").join(name)));
     }
     out.retain(|p| {
         std::fs::metadata(p)
