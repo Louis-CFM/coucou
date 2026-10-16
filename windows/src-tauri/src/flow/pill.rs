@@ -120,6 +120,8 @@ pub fn setup(app: &AppHandle) {
                 if !platform::prepare_pill_window(&win, mode) {
                     let _ = win.destroy();
                     mode = DesktopMode::Off;
+                } else if park {
+                    let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
                 }
             }
             Err(err) => {
@@ -138,6 +140,7 @@ pub fn setup(app: &AppHandle) {
         announce_seq: std::sync::atomic::AtomicU64::new(1),
     });
     app.manage(pill.clone());
+    show(app, &pill, false);
     if mode == DesktopMode::Poll {
         spawn_poll(app.clone(), pill);
     }

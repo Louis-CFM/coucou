@@ -240,6 +240,13 @@ let capsule: HTMLElement | null = null;
 let lastKey = "";
 
 function render() {
+  if (!visible) {
+    root.style.display = "none";
+    root.replaceChildren();
+    void FlowBridge.pillHot([]);
+    return;
+  }
+  root.style.display = "flex";
   const l = look();
   const open = l !== "resting";
   const length = open ? openLength(l) : RESTING_LENGTH;
@@ -277,6 +284,10 @@ function render() {
 }
 
 function reportHot() {
+  if (!visible) {
+    void FlowBridge.pillHot([]);
+    return;
+  }
   const rects: [number, number, number, number][] = [];
   const W = window.innerWidth;
   const H = window.innerHeight;
@@ -493,10 +504,11 @@ async function main() {
   const status = await FlowBridge.status();
   if (status) platform = status.platform;
   state = (await FlowBridge.pillState()) ?? state;
-  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null;
+  visible = state.enabled || state.noteStartedAt !== null || state.announcement !== null || state.voice !== null || state.phase !== "idle";
   render();
   void onEvent<PillState>("pill-state", (s) => {
     state = s;
+    visible = s.enabled || s.noteStartedAt !== null || s.announcement !== null || s.voice !== null || s.phase !== "idle";
     if (s.phase === "listening") target.fill(0);
     render();
   });
