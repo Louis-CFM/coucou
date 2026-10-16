@@ -494,7 +494,7 @@ pub async fn send(
     };
     let turn = chat.begin(&format!("subscription:{provider}"));
     let reads_file = turn.first && matches!(context, Some(ChatContext::File { .. }));
-    let system = chat::system_prompt(!reads_file);
+    let system = chat.system_prompt(!reads_file);
     let text = if cli == Cli::Claude {
         // Reading a dropped file, Claude Code reads it itself and gets no web at all.
         let inbox = crate::files::inbox_dir();
