@@ -105,32 +105,45 @@ function handle(island: Island, update: IntegrationUpdate) {
   if (event) {
     const task = State.tasks.find((t) => t.id === update.id);
     if (task) {
-      task.state = event.success ? "finished" : "error";
-      task.steps = event.detail ? [event.label, event.detail] : [event.label];
-      task.stepIndex = task.steps.length - 1;
-      if (State.focusId !== update.id) {
-        task.pillBadge = event.success ? "finished" : "error";
-      }
-      Sound.play(event.success ? "finish" : "error");
-      // Same as the Swift pollers: show the compact island so the badge is seen,
-      // but never steal the screen for a successful deploy.
-      island.reveal();
+      // Cursor Cloud: detail "ACTIVE" keeps the pill in working until agents go idle.
+      if (event.detail === "ACTIVE") {
+        const existing = clearTimers.get(update.id);
+        if (existing != null) window.clearTimeout(existing);
+        clearTimers.delete(update.id);
+        task.state = "working";
+        task.steps = [event.label];
+        task.stepIndex = 0;
+        task.pillBadge = null;
+        Sound.play("work");
+        island.reveal();
+      } else {
+        task.state = event.success ? "finished" : "error";
+        task.steps = event.detail ? [event.label, event.detail] : [event.label];
+        task.stepIndex = task.steps.length - 1;
+        if (State.focusId !== update.id) {
+          task.pillBadge = event.success ? "finished" : "error";
+        }
+        Sound.play(event.success ? "finish" : "error");
+        // Same as the Swift pollers: show the compact island so the badge is seen,
+        // but never steal the screen for a successful deploy.
+        island.reveal();
 
-      const existing = clearTimers.get(update.id);
-      if (existing != null) window.clearTimeout(existing);
-      clearTimers.set(
-        update.id,
-        window.setTimeout(() => {
-          clearTimers.delete(update.id);
-          const t = State.tasks.find((x) => x.id === update.id);
-          if (!t || (t.state !== "finished" && t.state !== "error")) return;
-          t.state = "idle";
-          t.steps = [];
-          t.stepIndex = 0;
-          t.pillBadge = null;
-          State.notify();
-        }, 60_000),
-      );
+        const existing = clearTimers.get(update.id);
+        if (existing != null) window.clearTimeout(existing);
+        clearTimers.set(
+          update.id,
+          window.setTimeout(() => {
+            clearTimers.delete(update.id);
+            const t = State.tasks.find((x) => x.id === update.id);
+            if (!t || (t.state !== "finished" && t.state !== "error")) return;
+            t.state = "idle";
+            t.steps = [];
+            t.stepIndex = 0;
+            t.pillBadge = null;
+            State.notify();
+          }, 60_000),
+        );
+      }
     }
   }
 

@@ -54,6 +54,7 @@ const OPEN_URLS: Record<string, string> = {
   integration_vercel: "https://vercel.com/dashboard",
   integration_github: "https://github.com",
   integration_stripe: "https://dashboard.stripe.com/payments",
+  integration_cursor_cloud: "https://cursor.com/agents",
   integration_notion: "https://notion.so",
   integration_calcom: "https://app.cal.com/bookings",
 };
@@ -271,6 +272,63 @@ function githubCard(): HTMLElement {
   );
 }
 
+// ── Cursor Cloud ──────────────────────────────────────────────────────────────
+
+function cursorCloudStatusLabel(a: Record<string, unknown>): string {
+  if (typeof a.detail === "string" && a.detail) return a.detail;
+  const run = typeof a.runStatus === "string" ? a.runStatus.toUpperCase() : "";
+  switch (run) {
+    case "CREATING":
+      return t("Starting");
+    case "RUNNING":
+      return t("Running");
+    case "FINISHED":
+      return t("Done");
+    case "ERROR":
+      return t("Error");
+    case "CANCELLED":
+    case "CANCELED":
+      return t("Cancelled");
+    case "EXPIRED":
+      return t("Expired");
+    default:
+      break;
+  }
+  if (a.status === "ACTIVE") return t("Active");
+  if (a.status === "IDLE") return t("Idle");
+  return String(a.status ?? "");
+}
+
+function cursorCloudCard(): HTMLElement {
+  const agents = arr("integration_cursor_cloud", "agents");
+  const rows = h("div", { class: "int-rows" });
+  if (agents.length === 0) {
+    rows.append(h("div", { class: "int-empty", text: t("No cloud agents") }));
+  }
+  agents.slice(0, 3).forEach((a, i) => {
+    const active = a.status === "ACTIVE";
+    const accent = active ? "#22C55E" : "#6B7079";
+    const status = cursorCloudStatusLabel(a);
+    const name = h("span", { class: "int-name", text: String(a.name ?? "") });
+    const label = h("span", { class: "int-ago", style: `color:${accent}`, text: status });
+    const ago = h("span", { class: "int-ago", text: timeAgo(a.updatedAt) });
+    const row = listRow(accent, i === 0, name, label, ago);
+    // Prefer Cursor Desktop deeplink; fall back to the web agent page.
+    const target =
+      typeof a.appUrl === "string" && a.appUrl
+        ? String(a.appUrl)
+        : typeof a.url === "string"
+          ? String(a.url)
+          : "";
+    if (target) {
+      row.style.cursor = "pointer";
+      row.onclick = () => void Bridge.openUrl(target);
+    }
+    rows.append(row);
+  });
+  return h("div", { class: "int-card" }, header("#C0C4CC", "Cursor Cloud", t("Agents")), rows);
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -436,6 +494,8 @@ export function hasIntegrationData(id: string): boolean {
       return get(id).totalRepos != null || readPulse(get(id)) != null;
     case "integration_stripe":
       return info.loaded;
+    case "integration_cursor_cloud":
+      return info.loaded;
     case "integration_notion":
       return arr(id, "pages").length > 0;
     case "integration_calcom":
@@ -475,6 +535,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
       return githubCard();
     case "integration_stripe":
       return stripeCard();
+    case "integration_cursor_cloud":
+      return cursorCloudCard();
     case "integration_notion":
       return notionCard();
     case "integration_calcom":

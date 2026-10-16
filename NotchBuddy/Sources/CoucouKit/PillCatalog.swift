@@ -120,6 +120,8 @@ enum PillCatalog {
               category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_stripe",  name: "Stripe",      color: "#0570DE",
               category: .service,   subtitle: "Integration",  source: .n8n),
+        .init(id: "integration_cursor_cloud", name: "Cursor Cloud", color: "#C0C4CC",
+              category: .service,   subtitle: "Integration",  source: .n8n),
         .init(id: "integration_music",   name: "Apple Music", color: "#FA2D48",
               category: .service,   subtitle: "Integration",  source: .n8n, githubOnly: true),
         .init(id: "integration_spotify", name: "Spotify",     color: "#1DB954",

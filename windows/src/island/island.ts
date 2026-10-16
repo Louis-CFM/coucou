@@ -184,6 +184,7 @@ export class Island {
           integration_vercel: "https://vercel.com/dashboard",
           integration_github: "https://github.com/pulls",
           integration_stripe: "https://dashboard.stripe.com/payments",
+          integration_cursor_cloud: "https://cursor.com/agents",
           integration_notion: "https://notion.so",
           integration_calcom: "https://app.cal.com/bookings",
         };

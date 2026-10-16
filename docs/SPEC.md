@@ -110,7 +110,7 @@ Toutes les pastilles déclarées sont définies dans `PillCatalog.all` (source d
 | `workspace` | Where you code | VS Code, Cursor, Antigravity *(GitHub only)*, Codex *(GitHub only)* | Integration | Claude Code / Cursor / Codex / Agent |
 | `agent` | Agents | Gemini CLI *(GitHub only)*, Copilot CLI *(GitHub only)*, Muse Code *(GitHub only)*, OpenCode *(GitHub only)*, Amp *(GitHub only)*, Hermes *(GitHub only)* | Agent | Agent |
 | `ai` | AI for the chat | Anthropic, Google AI, OpenAI, Ollama, LM Studio | Chat | — |
-| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Apple Music *(GitHub only)*, Spotify *(GitHub only)* | Integration | — |
+| `service` | Services | Resend, n8n, Vercel, GitHub, Notion, Cal.com, Stripe, Cursor Cloud, Apple Music *(GitHub only)*, Spotify *(GitHub only)* | Integration | — |
 
 Couleurs : Cursor `#C0C4CC`, Codex `#2DD4BF`, Gemini CLI `#8AB4F8`, Antigravity `#E879F9`, Copilot CLI `#818CF8`, Muse Code `#38BDF8`, OpenCode `#4ADE80`, Amp `#F59E0B`, Hermes `#C084FC`, pastilles IA = `ChatProvider.accentHex` (Ollama `#FACC15`, LM Studio `#A3E635`).
 
@@ -238,7 +238,7 @@ Fenêtre Réglages (SwiftUI, simple), sections dans l'ordre d'affichage :
 - **Plan usage** : toggle **Show in the notch** + bouton **Install relay** / **Uninstall relay**. Voir INTEGRATIONS §1bis. **Jauge de forfait Claude** *(GitHub only)* : petit pill dans l'en-tête de l'île (vue home uniquement). Activé via `showPlanInNotch` (UserDefaults) + `HookServer.statusLineInstalled()`. Couleur = `ClaudePlanGauge.color(for: dominantPct)`. Clic → `showingPlanDetail` bascule et `ClaudePlanCardView` s'affiche à la place de la carte en cours. `showingPlanDetail` se remet à false au changement de focusId, de vue ou de mode. Grand Mochi prend la couleur de l'usage quand `showingPlanDetail == true`.
 - **Gemini CLI Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.
 - **Antigravity Hooks** *(build GitHub)* : état des hooks, bouton Installer / Désinstaller.
-- **Integrations** : clé ou token (Trousseau) pour chaque service (n8n, Stripe, GitHub, Vercel, Resend, Notion, Cal.com).
+- **Integrations** : clé ou token (Trousseau) pour chaque service (n8n, Stripe, GitHub, Vercel, Resend, Notion, Cal.com, Cursor Cloud).
 - **Sound** : son on/off, volume.
 - **Behavior** : fermeture après N s d'inactivité ; masquage après N min sans mouvement.
 - **Display** : écran de l'island — Screen with the notch (défaut), Main screen (menu bar), Follow the mouse, ou un écran précis par son nom (`NSScreen.localizedName`). Un écran mémorisé mais débranché s'affiche « Saved screen (not connected) ». Voir §1.
