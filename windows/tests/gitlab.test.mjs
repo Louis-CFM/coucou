@@ -116,3 +116,29 @@ test("Ctrl+O on a GitLab row opens it only on the configured instance", async ()
   openRow(rows[1]);
   assert.equal(sent("open_url").length, 1, "another host does not open");
 });
+
+test("a thread waiting for you rings like a review request", async () => {
+  const { gitHubAlert } = await import("../src/core/github.ts");
+  assert.deepEqual(gitHubAlert([{ kind: "commentPending", threadId: "a" }]), { badge: "finished", sound: "question" });
+  assert.deepEqual(
+    gitHubAlert([{ kind: "commentPending", threadId: "a" }, { kind: "ciFailed", prId: "g/p!1" }]),
+    { badge: "error", sound: "error" },
+    "a red pipeline is still louder",
+  );
+  State.setFocus("integration_claude");
+  emit("gitlab-alerts", [{ kind: "commentPending", threadId: "a" }]);
+  assert.equal(gitlab().pillBadge, "finished");
+});
+
+test("the card's button opens the merge request panel", async () => {
+  const { installFakeDom } = await import("./fakedom.mjs");
+  installFakeDom();
+  const { gitlabPulseCard } = await import("../src/views/gitlab.ts");
+  const pulse = { login: "me", fetchedAt: 1, toReview: [], mainCI: [], myPRs: [] };
+  const card = gitlabPulseCard(pulse, null, null, () => {});
+  const button = card.find(".gl-expand")[0];
+  assert.ok(button, "the card has the button");
+  calls.length = 0;
+  button.fire("click");
+  assert.equal(sent("gitlab_panel_toggle").length, 1);
+});

@@ -68,6 +68,7 @@ export default defineConfig({
         settings: resolve(__dirname, "settings.html"),
         mochi: resolve(__dirname, "mochi.html"),
         pill: resolve(__dirname, "pill.html"),
+        gitlabPanel: resolve(__dirname, "gitlab-panel.html"),
       },
     },
   },

@@ -73,7 +73,7 @@ fn str_at<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
 
 /// "group/project" out of a MR item: `references.full` ("group/project!12"),
 /// else the path of its web URL before "/-/merge_requests".
-fn project_path(item: &Value) -> Option<String> {
+pub(crate) fn project_path(item: &Value) -> Option<String> {
     if let Some(full) = item.get("references").and_then(|r| str_at(r, "full")) {
         if let Some((repo, _)) = full.rsplit_once('!') {
             if !repo.is_empty() {
@@ -240,7 +240,7 @@ fn format_date(days: i64) -> String {
 }
 
 /// "YYYY-MM-DD" → days since the epoch; also takes a full ISO timestamp.
-fn parse_date(raw: &str) -> Option<i64> {
+pub(crate) fn parse_date(raw: &str) -> Option<i64> {
     let date = raw.get(..10)?;
     let mut parts = date.split('-');
     let y: i64 = parts.next()?.parse().ok()?;
@@ -252,6 +252,11 @@ fn parse_date(raw: &str) -> Option<i64> {
 /// The date a poll starts from (`after` is exclusive): a year back.
 pub fn events_after(now_ms: u64) -> String {
     format_date((now_ms / 86_400_000) as i64 - 366)
+}
+
+/// The date `days` days before now, "YYYY-MM-DD" (the `after` of an events poll).
+pub fn date_days_ago(now_ms: u64, days: i64) -> String {
+    format_date((now_ms / 86_400_000) as i64 - days)
 }
 
 /// Counts events per day over the last 53 weeks (Sunday first, the last week
