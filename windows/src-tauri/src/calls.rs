@@ -46,14 +46,17 @@ fn apply(objects: &mut HashMap<u64, Value>, batch: &Value) {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn props(node: &Value) -> &Value {
     &node["info"]["props"]
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn class(node: &Value) -> &str {
     props(node)["media.class"].as_str().unwrap_or("")
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_camera(node: &Value) -> bool {
     let p = props(node);
     matches!(p["device.api"].as_str(), Some("v4l2" | "libcamera"))

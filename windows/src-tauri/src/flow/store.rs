@@ -105,7 +105,8 @@ pub struct Prefs {
     pub voice: bool,
     /// A service is contacted only after the user explicitly selects it.
     pub voice_search: crate::voice::search::SearchProvider,
-    /// How Coucou answers out loud: "system", "elevenlabs", "voicestudio" or "off".
+    /// How Coucou answers out loud: "system", "elevenlabs", "voicestudio",
+    /// "fishaudio" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
@@ -113,6 +114,8 @@ pub struct Prefs {
     pub voicestudio_url: String,
     /// The VoiceStudio voice profile id.
     pub voicestudio_voice: String,
+    /// The Fish Audio voice (a model ID from fish.audio); empty is Fish Audio's default voice.
+    pub fish_voice_id: String,
 }
 
 impl Default for Prefs {
@@ -133,6 +136,7 @@ impl Default for Prefs {
             voice_gender: "female".into(),
             voicestudio_url: "http://127.0.0.1:3900".into(),
             voicestudio_voice: String::new(),
+            fish_voice_id: String::new(),
         }
     }
 }

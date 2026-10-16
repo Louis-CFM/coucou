@@ -29,6 +29,8 @@ pub const KNOWN_KEYS: &[&str] = &[
     "phone-secret",
     // « OK Coucou »'s answers in an ElevenLabs voice.
     "elevenlabs-api-key",
+    // ... or in a Fish Audio voice.
+    "fish-audio-api-key",
 ];
 
 /// The credential name for an OpenAI-compatible endpoint's key (the media and
