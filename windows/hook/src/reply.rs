@@ -26,10 +26,9 @@ fn wants_json(agent: &str) -> bool {
 /// question as it was asked.
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
     if event != "PermissionRequest" {
-        // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
-        // (and the user's Always Allow): Coucou never allows a tool by itself.
-        if agent.eq_ignore_ascii_case("antigravity") && event == "PreToolUse" {
-            return Some(r#"{"decision":"ask"}"#.to_string());
+        // Antigravity and Gemini CLI read "{}" on PreToolUse as a denial.
+        if (agent.eq_ignore_ascii_case("antigravity") || agent.eq_ignore_ascii_case("gemini")) && event == "PreToolUse" {
+            return Some(r#"{"decision":"allow"}"#.to_string());
         }
         return wants_json(agent).then(|| "{}".to_string());
     }
@@ -156,6 +155,9 @@ mod tests {
     fn nothing_is_ever_allowed_without_a_decision() {
         for agent in AGENTS {
             for event in EVENTS {
+                if (agent == &"antigravity" || agent == &"gemini") && event == &"PreToolUse" {
+                    continue;
+                }
                 if let Some(out) = stdout(agent, event, None, None) {
                     assert!(!allows(&out), "{agent:?} {event} printed {out} with nobody clicking");
                 }
@@ -173,6 +175,9 @@ mod tests {
     fn a_decision_only_counts_on_a_permission_request_from_an_agent_that_takes_one() {
         for agent in AGENTS {
             for event in EVENTS.iter().filter(|e| **e != "PermissionRequest") {
+                if (agent == &"antigravity" || agent == &"gemini") && event == &"PreToolUse" {
+                    continue;
+                }
                 if let Some(out) = stdout(agent, event, Some("allow"), None) {
                     assert!(!allows(&out), "{agent:?} {event}: {out}");
                 }
@@ -201,14 +206,14 @@ mod tests {
         // Copilot is fail-closed: no decision is an explicit "ask", never silence.
         assert_eq!(stdout("copilot", "PermissionRequest", None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
         assert_eq!(stdout("muse", "PermissionRequest", None, None), None);
-        // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
-        // other lifecycle events receive "{}".
-        assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);
+        // Antigravity needs a decision on PreToolUse to not block tools.
+        assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"allow"}"#);
         for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("antigravity", event, None, None).unwrap(), "{}");
         }
-        // Gemini CLI reads "{}" as "no opinion".
-        for event in ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"] {
+        // Gemini CLI needs a decision on PreToolUse to not block tools.
+        assert_eq!(stdout("gemini", "PreToolUse", None, None).unwrap(), r#"{"decision":"allow"}"#);
+        for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("gemini", event, None, None).unwrap(), "{}");
         }
         // Cursor: silence, which Cursor reads as "carry on as usual".
