@@ -9,10 +9,18 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and Kiro CLI. Any decision for
+/// another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "kiro")
+}
+
+/// What goes to stderr, and the exit code, when the answer is not on stdout.
+/// Kiro CLI blocks a tool when its PreToolUse hook exits with 2, and tells the
+/// model what stderr says. Anything else, including no decision, exits 0.
+pub fn exit_status(agent: &str, event: &str, decision: Option<&str>) -> Option<(&'static str, i32)> {
+    let denied = decision.map(str::trim) == Some("deny");
+    (agent == "kiro" && event == "PermissionRequest" && denied).then_some(("Denied from Coucou", 2))
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -49,6 +57,8 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
                 None => None,
             }
         }
+        // Kiro reads its answer from the exit code (`exit_status`).
+        "kiro" => None,
         // Claude Code and Codex share the documented hookSpecificOutput. Only
         // Claude Code asks questions.
         "" => decision.and_then(|d| decision_json(d, question)),
@@ -134,7 +144,7 @@ mod tests {
 
     const AGENTS: &[&str] = &[
         "", "gemini", "antigravity", "cursor", "codex", "copilot", "muse", "opencode", "amp",
-        "hermes", "claude-desktop", "my-tool",
+        "hermes", "claude-desktop", "kiro", "my-tool",
     ];
     const EVENTS: &[&str] = &[
         "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure",
@@ -178,7 +188,21 @@ mod tests {
                 }
             }
             let out = stdout(agent, "PermissionRequest", Some("allow"), None);
-            assert_eq!(out.as_deref().is_some_and(allows), takes_decisions(agent), "{agent:?}: {out:?}");
+            // Kiro answers through its exit code, never on stdout.
+            let on_stdout = takes_decisions(agent) && *agent != "kiro";
+            assert_eq!(out.as_deref().is_some_and(allows), on_stdout, "{agent:?}: {out:?}");
+        }
+    }
+
+    #[test]
+    fn kiro_is_only_ever_blocked_by_a_deny() {
+        assert_eq!(exit_status("kiro", "PermissionRequest", Some("deny")), Some(("Denied from Coucou", 2)));
+        for decision in [None, Some("allow"), Some("always"), Some(""), Some("maybe")] {
+            assert_eq!(exit_status("kiro", "PermissionRequest", decision), None, "{decision:?}");
+        }
+        assert_eq!(exit_status("kiro", "PreToolUse", Some("deny")), None);
+        for agent in AGENTS.iter().filter(|a| **a != "kiro") {
+            assert_eq!(exit_status(agent, "PermissionRequest", Some("deny")), None, "{agent:?}");
         }
     }
 

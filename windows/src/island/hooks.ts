@@ -113,12 +113,23 @@ const TOOL_LABELS: Record<string, string> = {
   replace_file_content: N_("Edits"),
   read_url_content: N_("Fetches"),
   search_web: N_("Searches the web"),
+  // Kiro CLI's tools.
+  execute_bash: N_("Runs"),
+  shell: N_("Runs"),
+  fs_read: N_("Reads"),
+  read: N_("Reads"),
+  fs_write: N_("Edits"),
+  write: N_("Edits"),
 };
+
+/** Kiro's file tools, whose `command` is not a shell line. */
+const FILE_TOOLS = new Set(["fs_read", "read", "fs_write", "write"]);
 
 function stepLabel(tool: string, input: Record<string, unknown>): string {
   const label = TOOL_LABELS[tool] ? t(TOOL_LABELS[tool]) : tool;
   const str = (k: string) => (typeof input[k] === "string" ? (input[k] as string) : null);
-  const cmd = str("command");
+  // Kiro's file tools name the operation ("str_replace") in `command`.
+  const cmd = FILE_TOOLS.has(tool) ? null : str("command");
   if (cmd) return `${label} · ${cmd.slice(0, 40)}`;
   const path = str("path");
   if (path) return `${label} · ${lastPathComponent(path)}`;
@@ -475,6 +486,8 @@ function handleHook(island: Island, payload: HookPayload) {
       if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
+      // Kiro's shell command arrives only as this request: it is the turn's step too.
+      if (validAgent === "kiro") State.appendStep(agentId, stepLabel(tool, input));
       // Claude Code asking a question is not a permission to grant: the island
       // shows the options and sends back the one that was picked. Only Claude
       // Code asks questions this way.

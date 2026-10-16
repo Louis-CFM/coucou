@@ -50,9 +50,9 @@ mod statusline;
 
 /// The live diff needs the whole text of a file edit, once it has happened:
 /// PostToolUse of these tools keeps its edit strings far longer than the rest.
-const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write"];
+const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write", "fs_write", "write"];
 /// The `tool_input` keys holding the text being replaced or written.
-const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content"];
+const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content", "old_str", "new_str", "file_text"];
 /// Per edit string. The island stops diffing at 200 KB anyway (DiffEngine).
 const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the
@@ -134,6 +134,10 @@ fn main() {
 
     let decision = rx.recv_timeout(budget).ok().flatten();
     print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    if let Some((message, code)) = reply::exit_status(&args.agent, &event.name, decision.as_deref()) {
+        eprintln!("{message}");
+        std::process::exit(code);
+    }
     std::process::exit(0);
 }
 
@@ -174,7 +178,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         .map(str::to_string)
         .unwrap_or_else(|| args.event.clone());
     normalize::fields(map, env);
-    let name = normalize::refine(normalize::event(&raw_event), map);
+    let name = normalize::for_agent(&args.agent, normalize::refine(normalize::event(&raw_event), map), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
     for field in DROPPED_FIELDS {
