@@ -53,6 +53,8 @@ export interface ViewActions {
   chooseOutfit(selection: OutfitSelection): void;
   /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
   previewOutfit(outfit: Outfit | null): void;
+  /** Right-click on a pill: focuses its Mochi and opens the wardrobe for it. */
+  wardrobeFor(id: string): void;
 }
 
 export interface ViewHost {
@@ -433,6 +435,11 @@ function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
     canvas,
     h("span", { class: "lbl", text: label }),
   );
+  // Right-click: this pill's Mochi in its wardrobe (each Mochi has its own look).
+  pill.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    actions.wardrobeFor(task.id);
+  });
   pill.style.borderColor = `${task.color}24`;
   pill.addEventListener("mouseenter", () => {
     pill.style.background = `${task.color}2e`;

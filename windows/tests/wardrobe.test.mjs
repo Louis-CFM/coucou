@@ -4,8 +4,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, parseOutfit, resolveOutfit,
-  seasonalOutfit, wardrobeHeader,
+  MAIN_MOCHI, OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, lookOf, mochiKey,
+  parseOutfit, parseWardrobeMode, resolveOutfit, seasonalOutfit, setLook, wardrobeHeader,
 } from "../src/mochi/wardrobe.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 
@@ -128,4 +128,63 @@ test("the per-frame season lookup follows the calendar day", () => {
   assert.equal(cache.get("auto", new Date(2026, 9, 1, 0, 0, 1)), "witchHat");
   assert.equal(cache.get("bow", day(2026, 10, 1)), "bow");
   assert.equal(cache.get("auto", day(2026, 12, 2)), "santaHat");
+});
+
+// ── Each Mochi's own look ─────────────────────────────────────────────────────
+
+const looks = (mode) => ({
+  ...DEFAULT_SETTINGS,
+  wardrobeMode: mode,
+  mochiOutfit: "crown",
+  mochiLooks: {
+    [MAIN_MOCHI]: { outfit: "beanie" },
+    integration_github: { outfit: "witchHat" },
+  },
+});
+
+test("each Mochi wears its own outfit, or all wear the shared one", () => {
+  assert.equal(DEFAULT_SETTINGS.wardrobeMode, "perMochi");
+  for (const raw of [undefined, "", "perMochi", "nope"]) assert.equal(parseWardrobeMode(raw), "perMochi");
+  assert.equal(parseWardrobeMode("all"), "all");
+
+  const own = looks("perMochi");
+  assert.deepEqual(lookOf(own, MAIN_MOCHI), { outfit: "beanie" });
+  assert.deepEqual(lookOf(own, "integration_github"), { outfit: "witchHat" });
+  // A Mochi never dressed dresses for the seasons.
+  assert.deepEqual(lookOf(own, "integration_n8n"), { outfit: "auto" });
+  assert.deepEqual(lookOf({ ...own, mochiLooks: undefined }, MAIN_MOCHI), { outfit: "auto" });
+
+  const shared = looks("all");
+  for (const key of [MAIN_MOCHI, "integration_github", "integration_n8n"]) {
+    assert.deepEqual(lookOf(shared, key), { outfit: "crown" });
+  }
+});
+
+test("a pill shows its own coloured Mochi; the main pill and sessions show the main one", () => {
+  const main = "integration_claude";
+  assert.equal(mochiKey({ id: "integration_github", isIntegration: true }, main), "integration_github");
+  assert.equal(mochiKey({ id: main, isIntegration: true }, main), MAIN_MOCHI);
+  assert.equal(mochiKey({ id: "gemini-session-1", isIntegration: false }, main), MAIN_MOCHI);
+  assert.equal(mochiKey(null, main), MAIN_MOCHI);
+});
+
+test("switching modes back and forth keeps both sets of looks", () => {
+  const s = looks("perMochi");
+  setLook(s, "integration_github", { outfit: "bow" });
+  setLook(s, "integration_n8n", { outfit: "scarf" });
+  const own = structuredClone(s.mochiLooks);
+  assert.deepEqual(own.integration_github, { outfit: "bow" });
+  assert.deepEqual(own.integration_n8n, { outfit: "scarf" });
+  assert.equal(s.mochiOutfit, "crown"); // the shared outfit is not touched
+
+  s.wardrobeMode = "all";
+  setLook(s, "integration_github", { outfit: "pumpkin" });
+  assert.deepEqual(lookOf(s, MAIN_MOCHI), { outfit: "pumpkin" });
+  assert.deepEqual(s.mochiLooks, own); // each Mochi's own look waits
+
+  s.wardrobeMode = "perMochi";
+  assert.deepEqual(lookOf(s, "integration_github"), { outfit: "bow" });
+  assert.deepEqual(lookOf(s, MAIN_MOCHI), { outfit: "beanie" });
+  s.wardrobeMode = "all";
+  assert.deepEqual(lookOf(s, "integration_n8n"), { outfit: "pumpkin" });
 });

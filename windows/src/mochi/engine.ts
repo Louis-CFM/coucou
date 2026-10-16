@@ -7,7 +7,7 @@
 import { Ease, lerp, type EaseFn } from "../core/anim";
 import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
-import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
+import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead, outfitFit, outfitReach } from "./outfits";
 import type { Outfit } from "./wardrobe";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -204,12 +204,16 @@ export class BotEngine {
   sx = 1; sy = 1; oy = 0; ox = 0;
   tint = 0; morph = 0; hands = 0; blush = 0; es = 1; badgeS = 0;
 
-  // Outfit (the main Mochi only — minis never wear one). `outfit` is what is
+  // Outfit (upstream: the main Mochi only; here, the pills' minis wear their
+  // own Mochi's look too, wardrobe.ts lookOf). `outfit` is what is
   // drawn; it changes only once the previous one has left.
   outfit: Outfit = "none";
   /** 0 = gone, 1 = fully on. */
   outfitPresence = 0;
   private outfitTarget: Outfit = "none";
+  /** How far above the body centre (in R, at rest) the outfit may reach; a
+   *  taller one shrinks to fit. Only the minis set it (minibots.ts). */
+  outfitRoom = Number.POSITIVE_INFINITY;
 
   // Spring lag of the soft parts (pompoms, hat tips, scarf end), −1…1.
   physDx = 0;
@@ -532,9 +536,14 @@ export class BotEngine {
     }
   }
 
+  /** The outfit is drawn: any Mochi, dressed (the minis too). */
+  private get wearsOutfit(): boolean {
+    return this.outfit !== "none";
+  }
+
   /** Wearing something visible: the body then turns as one piece when it rolls. */
   private get rigidRoll(): boolean {
-    return !this.isMini && this.outfit !== "none" && this.outfitPresence > 0.05;
+    return this.wearsOutfit && this.outfitPresence > 0.05;
   }
 
   /** True while anything is still moving — lets the island stop its RAF loop. */
@@ -793,10 +802,25 @@ export class BotEngine {
     if (this.tilt !== 0) x.rotate(this.tilt);
     x.scale(this.sx, this.sy);
 
-    const dressed = !this.isMini && this.outfit !== "none";
-    const head = dressed ? makeHead(R, this.yaw, this.pitch, this.physDx, this.physDy) : null;
+    // A mini with too little room above it (the compact grid's top row, under
+    // the screen's edge) wears a smaller hat, scaled about the top of its head.
+    const fit = this.wearsOutfit && Number.isFinite(this.outfitRoom)
+      ? outfitFit(outfitReach(this.outfit), ry / R, this.outfitRoom)
+      : 1;
+    const head = this.wearsOutfit && fit > 0.05 ? makeHead(R, this.yaw, this.pitch, this.physDx, this.physDy) : null;
     const outfitState = { presence: this.outfitPresence, morph: this.morph };
-    if (head) drawOutfitBehind(x, this.outfit, head, outfitState);
+    const dress = (part: typeof drawOutfitFront) => {
+      if (!head) return;
+      x.save();
+      if (fit < 1) {
+        x.translate(0, -ry);
+        x.scale(fit, fit);
+        x.translate(0, ry);
+      }
+      part(x, this.outfit, head, outfitState);
+      x.restore();
+    };
+    dress(drawOutfitBehind);
 
     const body = this.bodyPath(rx, ry, R);
     this.drawBody(x, body, R, rx, ry);
@@ -818,7 +842,7 @@ export class BotEngine {
     this.drawEyes(x, body, R, rx, ry);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
-    if (head) drawOutfitFront(x, this.outfit, head, outfitState);
+    dress(drawOutfitFront);
 
     x.restore();
     x.restore();
@@ -859,7 +883,7 @@ export class BotEngine {
 
   /** How much of the pumpkin's orange shows on the body (it comes and goes with the outfit). */
   private get pumpkinAlpha(): number {
-    if (this.isMini || this.outfit !== "pumpkin") return 0;
+    if (this.outfit !== "pumpkin") return 0;
     return Math.min(1, this.outfitPresence * 2.5) * (1 - this.morph);
   }
 
