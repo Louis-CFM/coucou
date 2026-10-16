@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Plan usage, stale-hook check and connected pill for Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL can also put the relay in as the distro's status line (your own status line keeps running there), says when Coucou's commands in a distro start a relay that is no longer the current one, and the Claude Code pill is connected through WSL hooks
+- **Diffs and folders of sessions in WSL** *(Windows)* — the diff's ↗ and "Open terminal"'s fallback now work for sessions in WSL: their Linux paths are turned into the distro's `\\wsl.localhost\…` share, and opened in VS Code's Remote - WSL window when that extension is installed
+- **"Open terminal" finds the right tab** *(Windows)* — the relay now sends its own parent processes with a session's first events, so the session's window is found even for events that don't wait for an answer, and for sessions in WSL; in Windows Terminal Coucou remembers the tab a prompt was sent from and brings it forward selected. With several sessions, the pill follows the one that spoke last (a Stop used to leave the previous one on it), and a session ending no longer resets the pill of another
+- **Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL installs the hooks in a distro's own `~/.claude/settings.json`; they run `coucou-hook.exe` through WSL, so sessions in WSL show up in the island and their permissions are answered there. Same diff and dated backup as on Windows, your own hooks stay untouched
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
@@ -33,9 +40,6 @@ Coucou becomes a real app: a window in the Dock, dictation everywhere on the Mac
 ## Android 0.1.0 — October 11, 2026
 
 - **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; a signed APK on the [release page](https://github.com/Louis-CFM/coucou/releases/tag/android-v0.1.0) (#501 by @Rhytam23)
-- **Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL installs the hooks in a distro's own `~/.claude/settings.json`; they run `coucou-hook.exe` through WSL, so sessions in WSL show up in the island and their permissions are answered there. Same diff and dated backup as on Windows, your own hooks stay untouched
-- **Spotify pill on Windows** — the track, the cover, play/pause, previous, next, seek, shuffle, repeat, the volume (Spotify's slider in the Windows volume mixer), and Mochi dances to it, read from Windows' media session (SMTC)
-- **Coucou for Android**, by @Rhytam23 — your agents, Allow and Deny with your fingerprint or screen lock (even on a locked phone), answers to Claude's questions, chat through the computer's own keys, plan usage and services, an optional island over other apps, a widget, a quick-settings tile and an ongoing notification. It pairs with Coucou 0.4.0 or later on Windows or Linux. Android 11 or later, English only; the first signed APK is on its way. Build it today from [`android/`](android/README.md) (#501 by @Rhytam23)
 
 ## Windows and Linux 0.4.0 — October 11, 2026
 
