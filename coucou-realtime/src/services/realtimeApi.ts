@@ -178,7 +178,7 @@ export class RealtimeClient {
 
     const setupMessage = {
       setup: {
-        model: 'models/gemini-2.0-flash-exp',
+        model: 'models/gemini-flash-latest',
         generationConfig: {
           responseModalities: ['AUDIO'],
           speechConfig: {

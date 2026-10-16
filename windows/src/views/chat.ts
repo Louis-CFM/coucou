@@ -159,8 +159,25 @@ function buildPicker(onChange: () => void): Picker {
     if (ticket !== request) return;
     status(t(STRINGS.loading));
     try {
-      const models = await Bridge.chatModels(p.id);
+      let models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
+      if (p.id === "google") {
+        const brokenKeywords = ["2.0", "2.5", "embed", "imagen", "veo", "audio", "tts", "banana", "robotics", "lyria", "aqa", "customtools", "image"];
+        models = models.filter((m) => {
+          const lower = m.id.toLowerCase();
+          return !brokenKeywords.some((b) => lower.includes(b));
+        });
+        if (models.length === 0) {
+          models = [
+            { id: "gemini-flash-latest", label: "Gemini Flash (Mais Recente)" },
+            { id: "gemini-flash-lite-latest", label: "Gemini Flash-Lite (Ultra Rápido)" },
+            { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+            { id: "gemini-3.7-flash", label: "Gemini 3.7 Flash" },
+            { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+            { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite" },
+          ];
+        }
+      }
       if (!p.urlField) cache.set(p.id, models);
       const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
       if (keep && keep !== activeModel(State.settings)) {
@@ -221,21 +238,31 @@ const PERSONAS = [
   { id: "mentor", name: "Mentor", color: "#f472b6", instruction: "[PERSONA: Mentor Estratégico - Seja reflexivo, didático e ajude a estruturar o raciocínio.]\n\n" },
 ];
 
-  let activePersonaIndex = Number(localStorage.getItem("coucou_active_persona_idx") || 0);
+  let activePersonaIndex = 0;
+  try {
+    if (typeof localStorage !== "undefined" && typeof localStorage.getItem === "function") {
+      activePersonaIndex = Number(localStorage.getItem("coucou_active_persona_idx") || 0);
+    }
+  } catch {}
   if (isNaN(activePersonaIndex) || activePersonaIndex < 0 || activePersonaIndex >= PERSONAS.length) {
     activePersonaIndex = 0;
   }
 
-  const personaDot = h("i", { class: "model-dot", style: `background:${PERSONAS[activePersonaIndex].color}` });
-  const personaName = h("span", { class: "model-name", text: PERSONAS[activePersonaIndex].name });
+  const personaDot = h("i", { class: "persona-dot", style: `display:inline-block; width:6px; height:6px; border-radius:50%; background:${PERSONAS[activePersonaIndex].color}; margin-right:4px;` });
+  const personaName = h("span", { class: "persona-name", text: PERSONAS[activePersonaIndex].name });
   const personaBtn = h(
     "button",
     {
-      class: "model-btn",
+      class: "persona-btn",
+      style: "display:inline-flex; align-items:center; gap:3px; background:none; border:none; cursor:pointer; font-size:11px; color:#a1a1aa; padding:2px 6px; border-radius:4px;",
       title: "Alternar Agente / Persona (1 clique)",
       onclick: () => {
         activePersonaIndex = (activePersonaIndex + 1) % PERSONAS.length;
-        localStorage.setItem("coucou_active_persona_idx", String(activePersonaIndex));
+        try {
+          if (typeof localStorage !== "undefined" && typeof localStorage.setItem === "function") {
+            localStorage.setItem("coucou_active_persona_idx", String(activePersonaIndex));
+          }
+        } catch {}
         personaDot.style.background = PERSONAS[activePersonaIndex].color;
         personaName.textContent = PERSONAS[activePersonaIndex].name;
         Sound.play("tick");

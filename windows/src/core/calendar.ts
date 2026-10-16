@@ -208,37 +208,43 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Opens Google's OAuth2 authorization page or simplified helper
+   * Opens Google's OAuth2 authorization page directly with Google account picker
    */
   static openGoogleLogin() {
-    const clientId = this.getClientId();
-    if (clientId) {
-      const scope = encodeURIComponent(
-        "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email"
-      );
-      const redirectUri = encodeURIComponent("https://developers.google.com/oauthplayground");
-      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-        clientId
-      )}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=consent`;
-      void Bridge.openUrl(url);
-    } else {
-      // Direct instructions link
-      const url = "https://calendar.google.com/calendar/u/0/r/settings";
-      void Bridge.openUrl(url);
-    }
+    const defaultClientId = "407408718192.apps.googleusercontent.com";
+    const clientId = this.getClientId() || defaultClientId;
+    const scope = encodeURIComponent(
+      "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email"
+    );
+    const redirectUri = encodeURIComponent("https://developers.google.com/oauthplayground");
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      clientId
+    )}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account%20consent`;
+    void Bridge.openUrl(url);
   }
 
   /**
-   * Verifies either an iCal Link (zero-friction) or an OAuth2 Bearer token
+   * Verifies either an iCal Link, a raw OAuth2 Bearer token, or a full redirect URL
    */
   static async verifyAndSaveToken(rawInput: string): Promise<GoogleAuthResult> {
-    const input = rawInput.trim();
+    let input = rawInput.trim();
     if (!input) {
       return { ok: false, error: "Nenhum link ou token fornecido." };
     }
 
-    // 1. Check if user pasted an iCal Secret Address link from Google Calendar
-    if (input.startsWith("http://") || input.startsWith("https://") || input.includes("calendar.google.com") || input.endsWith(".ics")) {
+    // Auto-extract access_token if user pasted the browser URL bar or a text block containing access_token=
+    const urlTokenMatch = input.match(/access_token=([a-zA-Z0-9_\-\.]+)/);
+    if (urlTokenMatch) {
+      input = decodeURIComponent(urlTokenMatch[1]);
+    } else {
+      const ya29Match = input.match(/(ya29\.[a-zA-Z0-9_\-\.]+)/);
+      if (ya29Match) {
+        input = ya29Match[1];
+      }
+    }
+
+    // 1. Check if user pasted an iCal Secret Address link (only if not a ya29 token)
+    if (!input.startsWith("ya29.") && (input.includes(".ics") || input.includes("calendar.google.com") || input.startsWith("http://") || input.startsWith("https://"))) {
       try {
         const res = await fetch(input);
         if (res.ok) {

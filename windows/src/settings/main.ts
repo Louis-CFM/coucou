@@ -1698,15 +1698,20 @@ function realtimeCopilotSection(): HTMLElement {
     text: "Conectar Agenda",
   });
 
-  tokenRow.append(tokenInput, verifyBtn);
+  const pasteAndVerifyBtn = h("button", {
+    style: "font-size:11.5px; white-space:nowrap; padding:7px 12px; background:rgba(255,255,255,0.06); color:#f4f4f5; border:1px solid rgba(255,255,255,0.12); border-radius:6px; cursor:pointer;",
+    text: "Colar e Conectar",
+  });
+
+  tokenRow.append(tokenInput, verifyBtn, pasteAndVerifyBtn);
 
   const guideBox = h("div", {
     style: "background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:8px; padding:10px 12px; font-size:11px; color:#c7d2fe; line-height:1.5;",
   },
-    h("strong", { style: "color:#fff; display:block; margin-bottom:4px;", text: "Como pegar seu link em 10 segundos (sem burocracia):" }),
-    h("div", { text: "1. No Google Agenda (calendar.google.com), clique nos 3 pontinhos ao lado da sua agenda no canto esquerdo e vá em 'Configurações e compart.'." }),
-    h("div", { text: "2. Role a página até encontrar o campo 'Endereço secreto em formato iCal' e clique em Copiar." }),
-    h("div", { text: "3. Cole o link no campo acima e clique em 'Conectar Agenda'. Pronto!" }),
+    h("strong", { style: "color:#fff; display:block; margin-bottom:4px;", text: "Como sincronizar em 2 cliques:" }),
+    h("div", { text: "1. Clique em 'Logar com o Google ↗' e confirme sua conta no navegador." }),
+    h("div", { text: "2. Na página que abrir, copie o endereço do navegador (ou token) e clique em 'Colar e Conectar' acima." }),
+    h("div", { style: "margin-top:4px; color:#94a3b8;", text: "💡 Alternativa permanente: Copie o 'Endereço secreto em formato iCal' da sua agenda e cole no campo." }),
   );
 
   const feedbackMsg = h("div", { style: "font-size:11px; display:none;" });
@@ -1746,7 +1751,25 @@ function realtimeCopilotSection(): HTMLElement {
     GoogleCalendarService.openGoogleLogin();
     feedbackMsg.style.display = "block";
     feedbackMsg.style.color = "#93c5fd";
-    feedbackMsg.textContent = "Abrindo o Google no navegador! Copie o 'Endereço secreto em formato iCal' da sua agenda e cole abaixo, ou informe seu Client ID para popup de 1 clique.";
+    feedbackMsg.textContent = "Abrindo autorização do Google no navegador! Após escolher sua conta, copie o link da página e clique em 'Colar e Conectar'.";
+  });
+
+  pasteAndVerifyBtn.addEventListener("click", async () => {
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip && clip.trim()) {
+        tokenInput.value = clip.trim();
+        verifyBtn.click();
+      } else {
+        feedbackMsg.style.display = "block";
+        feedbackMsg.style.color = "#fb7185";
+        feedbackMsg.textContent = "A área de transferência está vazia. Copie o link do navegador primeiro.";
+      }
+    } catch {
+      feedbackMsg.style.display = "block";
+      feedbackMsg.style.color = "#fb7185";
+      feedbackMsg.textContent = "Não foi possível ler a área de transferência automaticamente. Cole o link no campo com Ctrl+V e clique em Conectar Agenda.";
+    }
   });
 
   const clientIdInput = h("input", {

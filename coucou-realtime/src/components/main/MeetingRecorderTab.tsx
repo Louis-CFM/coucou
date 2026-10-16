@@ -74,8 +74,9 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
     setFeedbackMsg("Janela do Google aberta! Conclua o login na sua conta, autorize o Calendar e cole o Access Token gerado abaixo.");
   };
 
-  const handleSaveToken = async () => {
-    if (!tokenValue.trim()) {
+  const handleSaveToken = async (explicitVal?: string) => {
+    const val = (typeof explicitVal === 'string' ? explicitVal : tokenValue).trim();
+    if (!val) {
       GoogleCalendarService.disconnect();
       setConnectedEmail(null);
       setFeedbackMsg("Desconectado da conta Google. O app voltou ao modo de demonstração.");
@@ -85,7 +86,7 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
 
     setIsValidating(true);
     setFeedbackMsg("Validando com as APIs do Google...");
-    const res = await GoogleCalendarService.verifyAndSaveToken(tokenValue);
+    const res = await GoogleCalendarService.verifyAndSaveToken(val);
     setIsValidating(false);
 
     if (res.ok) {
@@ -95,6 +96,20 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
       void loadCalendarEvents();
     } else {
       setFeedbackMsg(`Falha ao conectar: ${res.error}`);
+    }
+  };
+
+  const handlePasteAndSave = async () => {
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip && clip.trim()) {
+        setTokenValue(clip.trim());
+        await handleSaveToken(clip.trim());
+      } else {
+        setFeedbackMsg("A área de transferência está vazia. Copie a URL do navegador primeiro.");
+      }
+    } catch {
+      setFeedbackMsg("Não foi possível acessar a área de transferência. Cole com Ctrl+V.");
     }
   };
 
@@ -264,10 +279,10 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
         <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex flex-col gap-3 animate-in fade-in duration-150">
           <div className="flex flex-col md:flex-row items-center gap-3">
             <input
-              type="password"
+              type="text"
               value={tokenValue}
               onChange={(e) => setTokenValue(e.target.value)}
-              placeholder="Cole o Bearer / OAuth2 Access Token da Google Calendar API (ya29...)"
+              placeholder="Cole a URL do navegador ou Token (ya29...)"
               className="flex-1 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono"
             />
             <div className="flex items-center gap-2 shrink-0">
@@ -278,11 +293,18 @@ export const MeetingRecorderTab: React.FC<MeetingRecorderTabProps> = ({
                 Abrir Login Google ↗
               </button>
               <button
-                onClick={handleSaveToken}
+                onClick={handlePasteAndSave}
+                disabled={isValidating}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors cursor-pointer"
+              >
+                {isValidating ? 'Validando...' : 'Colar e Conectar'}
+              </button>
+              <button
+                onClick={() => handleSaveToken()}
                 disabled={isValidating}
                 className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
               >
-                {isValidating ? 'Validando...' : 'Validar e Conectar'}
+                Salvar
               </button>
               <button
                 onClick={() => setShowTokenInput(false)}

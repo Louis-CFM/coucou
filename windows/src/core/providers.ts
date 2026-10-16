@@ -25,7 +25,7 @@ export interface ProviderDef {
 
 export const PROVIDERS: readonly ProviderDef[] = [
   { id: "anthropic", name: "Anthropic", accent: "#E07950", key: "anthropic-api-key", urlField: null, defaultModel: "claude-opus-5", prefer: "opus" },
-  { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-2.0-flash", prefer: "flash" },
+  { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-flash-latest", prefer: "flash" },
   { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, defaultModel: "gpt-4o", prefer: "mini" },
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
@@ -44,7 +44,11 @@ export function providerDef(id: string): ProviderDef {
 export function activeModel(settings: Settings): string {
   const p = providerDef(settings.chatProvider);
   if (p.id === "anthropic") return settings.model || p.defaultModel;
-  return settings.chatModels[p.id] || p.defaultModel;
+  const current = settings.chatModels[p.id];
+  if (p.id === "google" && current && (current.includes("2.0") || current.includes("2.5"))) {
+    return p.defaultModel;
+  }
+  return current || p.defaultModel;
 }
 
 /** `settings` with `model` picked for `provider`. */

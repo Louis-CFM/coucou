@@ -112,28 +112,36 @@ export class GoogleCalendarService {
   }
 
   static openGoogleLogin() {
-    const clientId = this.getClientId();
-    if (clientId) {
-      const scope = encodeURIComponent(
-        "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
-      );
-      const redirectUri = encodeURIComponent("https://developers.google.com/oauthplayground");
-      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-        clientId
-      )}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=consent`;
-      window.open(url, "_blank");
-    } else {
-      const url =
-        "https://developers.google.com/oauthplayground/#scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email";
-      window.open(url, "_blank");
-    }
+    const defaultClientId = "407408718192.apps.googleusercontent.com";
+    const clientId = this.getClientId() || defaultClientId;
+    const scope = encodeURIComponent(
+      "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+    );
+    const redirectUri = encodeURIComponent("https://developers.google.com/oauthplayground");
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      clientId
+    )}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account%20consent`;
+    window.open(url, "_blank");
   }
 
-  static async verifyAndSaveToken(rawToken: string): Promise<GoogleAuthResult> {
-    const token = rawToken.trim().replace(/^Bearer\s+/i, "");
-    if (!token) {
+  static async verifyAndSaveToken(rawInput: string): Promise<GoogleAuthResult> {
+    let input = rawInput.trim();
+    if (!input) {
       return { ok: false, error: "Nenhum token fornecido." };
     }
+
+    // Auto-extract access_token if user pasted the browser URL bar or text containing access_token=
+    const urlTokenMatch = input.match(/access_token=([a-zA-Z0-9_\-\.]+)/);
+    if (urlTokenMatch) {
+      input = decodeURIComponent(urlTokenMatch[1]);
+    } else {
+      const ya29Match = input.match(/(ya29\.[a-zA-Z0-9_\-\.]+)/);
+      if (ya29Match) {
+        input = ya29Match[1];
+      }
+    }
+
+    const token = input.replace(/^Bearer\s+/i, "");
 
     try {
       const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {

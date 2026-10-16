@@ -43,7 +43,7 @@ test("the model button shows the active provider's model", () => {
   assert.equal($(".model-name").textContent, "claude-opus-5");
   State.settings = { ...State.settings, chatProvider: "google" };
   view.sync();
-  assert.equal($(".model-name").textContent, "gemini-2.0-flash");
+  assert.equal($(".model-name").textContent, "gemini-flash-latest");
   State.settings = { ...State.settings, chatProvider: "ollama" };
   view.sync();
   assert.equal($(".model-name").textContent, "Choose a model");
@@ -79,7 +79,7 @@ test("with a key, the models are listed and picking one saves it", async () => {
 
 test("switching provider saves it and asks the new provider only", async () => {
   answers.secret_present = (args) => args.key === "google-api-key";
-  answers.chat_models = (args) => (args.provider === "google" ? [{ id: "gemini-2.5-flash", label: "gemini-2.5-flash" }] : []);
+  answers.chat_models = (args) => (args.provider === "google" ? [{ id: "gemini-3.8-flash", label: "gemini-3.8-flash" }] : []);
   $(".model-btn").fire("click");
   await flush();
   assert.deepEqual(sent("chat_models"), []);
@@ -88,9 +88,9 @@ test("switching provider saves it and asks the new provider only", async () => {
   assert.equal(State.settings.chatProvider, "google");
   assert.deepEqual(sent("chat_models"), [{ provider: "google" }]);
   // The saved model was not offered: the flash one is kept instead, and saved.
-  assert.equal(State.settings.chatModels.google, "gemini-2.5-flash");
-  assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-2.5-flash");
-  assert.deepEqual(models(), ["gemini-2.5-flash"]);
+  assert.equal(State.settings.chatModels.google, "gemini-3.8-flash");
+  assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-3.8-flash");
+  assert.deepEqual(models(), ["gemini-3.8-flash"]);
 });
 
 test("a local answer streams into one reply, then the finished text replaces it", async () => {
