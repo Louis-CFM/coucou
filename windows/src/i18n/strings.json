@@ -299,6 +299,17 @@
    "ru": "Разрешить",
    "id": "Izinkan"
   },
+  "Allow Coucou in System Settings → Privacy & Security → Screen Recording, then capture again.": {
+   "zh-Hans": "请在“系统设置 → 隐私与安全性 → 录屏”中允许 Coucou，然后再截一次。",
+   "hi": "System Settings → Privacy & Security → Screen Recording में Coucou को अनुमति दें, फिर दोबारा कैप्चर करें।",
+   "es": "Permite Coucou en Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla y vuelve a capturar.",
+   "ar": "اسمح لـ Coucou في إعدادات النظام ← الخصوصية والأمن ← تسجيل الشاشة، ثم التقط مرة أخرى.",
+   "fr": "Autorise Coucou dans Réglages Système → Confidentialité et sécurité → Enregistrement de l'écran, puis capture à nouveau.",
+   "bn": "System Settings → Privacy & Security → Screen Recording-এ Coucou-কে অনুমতি দিন, তারপর আবার ক্যাপচার করুন।",
+   "pt-BR": "Permita o Coucou em Ajustes do Sistema → Privacidade e Segurança → Gravação da Tela e capture de novo.",
+   "ru": "Разрешите Coucou в Системных настройках → Конфиденциальность и безопасность → Запись экрана и сделайте снимок снова.",
+   "id": "Izinkan Coucou di Pengaturan Sistem → Privasi & Keamanan → Rekaman Layar, lalu tangkap lagi."
+  },
   "Allow Coucou to control Music": {
    "zh-Hans": "允许 Coucou 控制音乐",
    "hi": "Coucou को Music नियंत्रित करने दें",
@@ -364,6 +375,17 @@
    "pt-BR": "Uma instrução enviada pelo iPhone usa o modelo aberto no momento no chat. O prompt de sistema e o histórico de conversa se aplicam. Instruções enviadas enquanto o Coucou não está em execução ficam na fila e são executadas no próximo início.",
    "ru": "Инструкция, отправленная с iPhone, использует модель, открытую в чате. Системный промпт и история разговора применяются. Инструкции, отправленные пока Coucou не запущен, ставятся в очередь и выполняются при следующем запуске.",
    "id": "Instruksi yang dikirim dari iPhone menggunakan model yang sedang terbuka di chat. Prompt sistem dan riwayat percakapan berlaku. Instruksi yang dikirim saat Coucou tidak berjalan dimasukkan ke antrean dan dijalankan saat peluncuran berikutnya."
+  },
+  "Annotate": {
+   "zh-Hans": "标注",
+   "hi": "एनोटेट",
+   "es": "Anotar",
+   "ar": "تعليق",
+   "fr": "Annoter",
+   "bn": "টীকা",
+   "pt-BR": "Anotar",
+   "ru": "Пометить",
+   "id": "Anotasi"
   },
   "Anthropic API": {
    "zh-Hans": "Anthropic API",
@@ -563,6 +585,17 @@
    "ru": "Автоматизация не разрешена",
    "id": "Otomatisasi tidak diizinkan"
   },
+  "Battery {0} %": {
+   "zh-Hans": "电量 {0}%",
+   "hi": "बैटरी {0} %",
+   "es": "Batería {0} %",
+   "ar": "البطارية {0} %",
+   "fr": "Batterie {0} %",
+   "bn": "ব্যাটারি {0} %",
+   "pt-BR": "Bateria {0} %",
+   "ru": "Батарея {0} %",
+   "id": "Baterai {0} %"
+  },
   "Behavior": {
    "zh-Hans": "行为",
    "hi": "व्यवहार",
@@ -650,6 +683,28 @@
    "pt-BR": "Cancelar um ditado",
    "ru": "Отменить диктовку",
    "id": "Batalkan dikte"
+  },
+  "Capture the screen for Claude": {
+   "zh-Hans": "为 Claude 截取屏幕",
+   "hi": "Claude के लिए स्क्रीन कैप्चर करें",
+   "es": "Capturar la pantalla para Claude",
+   "ar": "التقاط الشاشة لـ Claude",
+   "fr": "Capturer l'écran pour Claude",
+   "bn": "Claude-এর জন্য স্ক্রিন ক্যাপচার",
+   "pt-BR": "Capturar a tela para o Claude",
+   "ru": "Снимок экрана для Claude",
+   "id": "Tangkap layar untuk Claude"
+  },
+  "Captured. Mochi has it.": {
+   "zh-Hans": "截好了，Mochi 吞下了它。",
+   "hi": "कैप्चर हो गया। मोची के पास है।",
+   "es": "Capturado. Mochi lo tiene.",
+   "ar": "تم الالتقاط. موتشي ابتلعه.",
+   "fr": "Capturé. Mochi l'a avalé.",
+   "bn": "ক্যাপচার হয়েছে। মোচির কাছে আছে।",
+   "pt-BR": "Capturado. O Mochi pegou.",
+   "ru": "Готово. Мочи проглотил снимок.",
+   "id": "Tertangkap. Mochi menyimpannya."
   },
   "Chat": {
    "zh-Hans": "聊天",
@@ -1432,6 +1487,17 @@
    "ru": "Не хранить",
    "id": "Jangan simpan"
   },
+  "Done": {
+   "zh-Hans": "完成",
+   "hi": "हो गया",
+   "es": "Listo",
+   "ar": "تم",
+   "fr": "OK",
+   "bn": "হয়েছে",
+   "pt-BR": "OK",
+   "ru": "Готово",
+   "id": "Selesai"
+  },
   "Download": {
    "zh-Hans": "下载",
    "hi": "डाउनलोड करें",
@@ -1927,6 +1993,17 @@
    "ru": "Без рук",
    "id": "Tanpa tangan"
   },
+  "He sweats when the processor is at full load, flushes when the Mac is hot, puffs up when memory is short and gets sleepy when the battery is low. Point at Mochi to see why. Read only while Mochi is on screen; nothing leaves your Mac.": {
+   "zh-Hans": "处理器满载时他会流汗，Mac 发热时他会脸红，内存不足时他会鼓起来，电量低时他会犯困。把指针放到 Mochi 上就能看到原因。仅在 Mochi 显示时读取，所有数据都留在你的 Mac 上。",
+   "hi": "प्रोसेसर पूरी तरह व्यस्त हो तो उसे पसीना आता है, Mac गर्म हो तो वह लाल हो जाता है, मेमोरी कम हो तो फूल जाता है और बैटरी कम हो तो उसे नींद आती है। वजह देखने के लिए मोची पर पॉइंटर रखें। सिर्फ़ तब पढ़ा जाता है जब मोची स्क्रीन पर हो; कुछ भी आपके Mac से बाहर नहीं जाता।",
+   "es": "Suda cuando el procesador va al máximo, se pone rojo cuando el Mac se calienta, se hincha cuando falta memoria y le entra sueño cuando la batería está baja. Señala a Mochi para ver por qué. Solo se lee mientras Mochi está en pantalla; nada sale de tu Mac.",
+   "ar": "يتعرّق عندما يعمل المعالج بأقصى طاقته، ويحمرّ عندما يسخن جهاز Mac، وينتفخ عندما تنقص الذاكرة، ويغفو عندما تضعف البطارية. ضع المؤشر على موتشي لترى السبب. لا تتم القراءة إلا عندما يكون موتشي على الشاشة، ولا يغادر شيء جهازك.",
+   "fr": "Il transpire quand le processeur est à fond, rougit quand le Mac chauffe, gonfle quand la mémoire manque et s'endort quand la batterie est faible. Pointe Mochi pour voir pourquoi. Lu seulement quand Mochi est à l'écran ; rien ne quitte ton Mac.",
+   "bn": "প্রসেসর পুরো চাপে থাকলে সে ঘামে, Mac গরম হলে লাল হয়ে যায়, মেমরি কম পড়লে ফুলে ওঠে আর ব্যাটারি কম হলে ঘুম পায়। কারণ দেখতে মোচির ওপর পয়েন্টার রাখুন। মোচি স্ক্রিনে থাকলেই শুধু পড়া হয়; কিছুই আপনার Mac ছেড়ে যায় না।",
+   "pt-BR": "Ele sua quando o processador está no máximo, fica vermelho quando o Mac esquenta, incha quando falta memória e fica com sono quando a bateria está fraca. Aponte para o Mochi para ver por quê. Só é lido enquanto o Mochi está na tela; nada sai do seu Mac.",
+   "ru": "Он потеет, когда процессор загружен полностью, краснеет, когда Mac нагревается, раздувается, когда не хватает памяти, и засыпает, когда батарея садится. Наведите на Мочи, чтобы узнать причину. Читается, только пока Мочи на экране; ничего не покидает ваш Mac.",
+   "id": "Dia berkeringat saat prosesor bekerja penuh, memerah saat Mac panas, menggembung saat memori kurang, dan mengantuk saat baterai lemah. Arahkan penunjuk ke Mochi untuk melihat alasannya. Hanya dibaca saat Mochi ada di layar; tidak ada yang keluar dari Mac-mu."
+  },
   "Heard, e.g. cloud code": {
    "zh-Hans": "听到的，例如 cloud code",
    "hi": "सुना गया, जैसे cloud code",
@@ -2036,6 +2113,17 @@
    "pt-BR": "Segurar para ditar",
    "ru": "Удерживать для диктовки",
    "id": "Tahan untuk dikte"
+  },
+  "Hold {0} and talk: the image and your words go in together.": {
+   "zh-Hans": "按住 {0} 说话：图片和你的话会一起发出。",
+   "hi": "{0} दबाकर बोलें: तस्वीर और आपके शब्द साथ जाएँगे।",
+   "es": "Mantén {0} y habla: la imagen y tus palabras van juntas.",
+   "ar": "اضغط مطولًا على {0} وتحدث: تذهب الصورة وكلماتك معًا.",
+   "fr": "Maintiens {0} et parle : l'image et tes mots partent ensemble.",
+   "bn": "{0} চেপে ধরে বলুন: ছবি আর আপনার কথা একসাথে যাবে।",
+   "pt-BR": "Segure {0} e fale: a imagem e suas palavras vão juntas.",
+   "ru": "Удерживайте {0} и говорите: снимок и слова уйдут вместе.",
+   "id": "Tahan {0} dan bicara: gambar dan kata-katamu masuk bersama."
   },
   "Hold {0} anywhere, speak, let go: it's pasted.": {
    "zh-Hans": "在任何地方按住 {0}，说话，松开：文字就粘贴好了。",
@@ -2642,6 +2730,28 @@
    "ru": "Я",
    "id": "Saya"
   },
+  "Memory is full": {
+   "zh-Hans": "内存已满",
+   "hi": "मेमोरी भर गई है",
+   "es": "Memoria llena",
+   "ar": "الذاكرة ممتلئة",
+   "fr": "Mémoire pleine",
+   "bn": "মেমরি ভর্তি",
+   "pt-BR": "Memória cheia",
+   "ru": "Память заполнена",
+   "id": "Memori penuh"
+  },
+  "Memory is short": {
+   "zh-Hans": "内存紧张",
+   "hi": "मेमोरी कम है",
+   "es": "Poca memoria",
+   "ar": "الذاكرة قليلة",
+   "fr": "Mémoire juste",
+   "bn": "মেমরি কম",
+   "pt-BR": "Pouca memória",
+   "ru": "Мало памяти",
+   "id": "Memori menipis"
+  },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
    "hi": "माइक्रोफ़ोन अनुपलब्ध",
@@ -2674,6 +2784,28 @@
    "pt-BR": "Destinatário ausente.",
    "ru": "Получатель не указан.",
    "id": "Penerima tidak ada."
+  },
+  "Mochi and your Mac": {
+   "zh-Hans": "Mochi 和你的 Mac",
+   "hi": "मोची और आपका Mac",
+   "es": "Mochi y tu Mac",
+   "ar": "موتشي وجهاز Mac",
+   "fr": "Mochi et ton Mac",
+   "bn": "মোচি আর আপনার Mac",
+   "pt-BR": "Mochi e seu Mac",
+   "ru": "Мочи и ваш Mac",
+   "id": "Mochi dan Mac-mu"
+  },
+  "Mochi reacts to your Mac": {
+   "zh-Hans": "Mochi 会对你的 Mac 做出反应",
+   "hi": "मोची आपके Mac पर प्रतिक्रिया देता है",
+   "es": "Mochi reacciona a tu Mac",
+   "ar": "يتفاعل موتشي مع جهاز Mac",
+   "fr": "Mochi réagit à ton Mac",
+   "bn": "মোচি আপনার Mac-এ সাড়া দেয়",
+   "pt-BR": "Mochi reage ao seu Mac",
+   "ru": "Мочи реагирует на ваш Mac",
+   "id": "Mochi bereaksi pada Mac-mu"
   },
   "Mochi to desktop on/off": {
    "zh-Hans": "Mochi 桌面开/关",
@@ -3753,6 +3885,28 @@
    "ru": "Parakeet на вашем Mac",
    "id": "Parakeet, di Mac-mu"
   },
+  "Paste": {
+   "zh-Hans": "粘贴",
+   "hi": "पेस्ट",
+   "es": "Pegar",
+   "ar": "لصق",
+   "fr": "Coller",
+   "bn": "পেস্ট",
+   "pt-BR": "Colar",
+   "ru": "Вставить",
+   "id": "Tempel"
+  },
+  "Paste it into your prompt, annotate it, or ask Claude.": {
+   "zh-Hans": "粘贴到提示词中、标注它，或问 Claude。",
+   "hi": "इसे अपने प्रॉम्प्ट में पेस्ट करें, एनोटेट करें या Claude से पूछें।",
+   "es": "Pégala en tu prompt, anótala o pregunta a Claude.",
+   "ar": "الصقه في طلبك أو علّق عليه أو اسأل Claude.",
+   "fr": "Colle-la dans ton prompt, annote-la ou demande à Claude.",
+   "bn": "প্রম্পটে পেস্ট করুন, টীকা দিন বা Claude-কে জিজ্ঞেস করুন।",
+   "pt-BR": "Cole no seu prompt, anote ou pergunte ao Claude.",
+   "ru": "Вставьте в промпт, пометьте или спросите Claude.",
+   "id": "Tempel ke prompt-mu, beri anotasi, atau tanya Claude."
+  },
   "Paste the last dictation again": {
    "zh-Hans": "再次粘贴上一次听写",
    "hi": "पिछला डिक्टेशन फिर से चिपकाएँ",
@@ -4457,6 +4611,17 @@
    "ru": "Расписание",
    "id": "Jadwal"
   },
+  "Screenshot": {
+   "zh-Hans": "截图",
+   "hi": "स्क्रीनशॉट",
+   "es": "Captura de pantalla",
+   "ar": "لقطة شاشة",
+   "fr": "Capture d'écran",
+   "bn": "স্ক্রিনশট",
+   "pt-BR": "Captura de tela",
+   "ru": "Снимок экрана",
+   "id": "Tangkapan layar"
+  },
   "Search dictations": {
    "zh-Hans": "搜索听写",
    "hi": "डिक्टेशन खोजें",
@@ -5050,6 +5215,17 @@
    "pt-BR": "O Notetaker",
    "ru": "Notetaker",
    "id": "Notetaker"
+  },
+  "The capture is on the clipboard: press ⌘V where you want it.": {
+   "zh-Hans": "截图已在剪贴板上：在需要的地方按 ⌘V。",
+   "hi": "कैप्चर क्लिपबोर्ड पर है: जहाँ चाहिए वहाँ ⌘V दबाएँ।",
+   "es": "La captura está en el portapapeles: pulsa ⌘V donde la quieras.",
+   "ar": "الالتقاط في الحافظة: اضغط ⌘V حيث تريده.",
+   "fr": "La capture est dans le presse-papiers : fais ⌘V où tu la veux.",
+   "bn": "ক্যাপচার ক্লিপবোর্ডে আছে: যেখানে চান সেখানে ⌘V চাপুন।",
+   "pt-BR": "A captura está na área de transferência: pressione ⌘V onde quiser.",
+   "ru": "Снимок в буфере обмена: нажмите ⌘V там, где он нужен.",
+   "id": "Tangkapan ada di papan klip: tekan ⌘V di tempat yang kamu mau."
   },
   "The clean-up uses your Claude key. Add it in Settings → Chat.": {
    "zh-Hans": "整理会使用你的 Claude 密钥。请在“设置”→“聊天”中添加。",
@@ -5875,6 +6051,28 @@
    "pt-BR": "Você fala",
    "ru": "Ты говоришь",
    "id": "Kamu berbicara"
+  },
+  "Your Mac is hot": {
+   "zh-Hans": "你的 Mac 很热",
+   "hi": "आपका Mac गर्म है",
+   "es": "Tu Mac está caliente",
+   "ar": "جهاز Mac ساخن",
+   "fr": "Ton Mac chauffe",
+   "bn": "আপনার Mac গরম",
+   "pt-BR": "Seu Mac está quente",
+   "ru": "Ваш Mac горячий",
+   "id": "Mac-mu panas"
+  },
+  "Your Mac is warm": {
+   "zh-Hans": "你的 Mac 有点热",
+   "hi": "आपका Mac गुनगुना है",
+   "es": "Tu Mac está templado",
+   "ar": "جهاز Mac دافئ",
+   "fr": "Ton Mac est tiède",
+   "bn": "আপনার Mac একটু গরম",
+   "pt-BR": "Seu Mac está morno",
+   "ru": "Ваш Mac тёплый",
+   "id": "Mac-mu hangat"
   },
   "Your Mac's speech recognition": {
    "zh-Hans": "Mac 的语音识别",
