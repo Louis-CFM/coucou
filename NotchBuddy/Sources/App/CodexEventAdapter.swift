@@ -128,10 +128,12 @@ final class CodexEventAdapter {
                 showError(["message": String(localized: "codex.turn-status-unknown", defaultValue: "Codex returned an unknown turn status. Update Codex and try again.")], threadId: threadId)
                 return
             }
-            let error = turn["error"] as? [String: Any]
+            let error = turn["error"] as? [String: Any] ?? (status == "failed" ? [:] : nil)
             let final = (turn["items"] as? [[String: Any]] ?? []).last(where: { $0["type"] as? String == "agentMessage" && $0["phase"] as? String != "commentary" })?["text"] as? String ?? finalMessage
+            var extra: [String: Any] = ["last_assistant_message": final]
+            if let error { extra["error"] = error }
             emit(status == "interrupted" ? "Interrupt" : status == "failed" || error != nil ? "StopFailure" : "Stop", threadId: threadId, params: params, turnId: turnId,
-                 extra: ["last_assistant_message": final])
+                 extra: extra)
             if let error { showError(error, threadId: threadId) }
         case "error":
             if let error = params["error"] as? [String: Any] { showError(error, threadId: threadId) }
@@ -148,8 +150,15 @@ final class CodexEventAdapter {
         let data = (try? JSONSerialization.data(withJSONObject: error)) ?? Data()
         let limited = String(data: data, encoding: .utf8)?.lowercased().contains("usagelimitexceeded") == true
         let state = AppState.shared
+        guard let index = state.tasks.firstIndex(where: {
+            $0.id == "agent_codex" && $0.codexManaged && $0.codexThreadId == threadId
+        }) else { return }
         state.updateTask(id: "agent_codex", state: limited ? .ratelimit : .error)
-        state.noteMessage = error["message"] as? String ?? String(localized: "codex.turn-failed", defaultValue: "Codex could not complete this turn.")
+        let message = (error["message"] as? String).flatMap {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0
+        } ?? String(localized: "codex.turn-failed", defaultValue: "Codex could not complete this turn.")
+        state.noteMessage = message
+        state.tasks[index].finalLine = DiffEngine.toOneLine(message)
     }
 
     private func emit(_ name: String, threadId: String, params: [String: Any], turnId: String = "", extra: [String: Any] = [:]) {

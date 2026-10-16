@@ -716,17 +716,6 @@
    "ru": "Документы",
    "id": "Dokumen"
   },
-  "Done": {
-   "zh-Hans": "完成",
-   "hi": "हो गया",
-   "es": "Listo",
-   "ar": "تم",
-   "fr": "Valider",
-   "bn": "হয়েছে",
-   "pt-BR": "Concluir",
-   "ru": "Готово",
-   "id": "Selesai"
-  },
   "Done.": {
    "zh-Hans": "完成。",
    "hi": "हो गया।",
@@ -1320,17 +1309,6 @@
    "pt-BR": "Sem conexão: {error}",
    "ru": "Нет соединения: {error}",
    "id": "Tidak ada koneksi: {error}"
-  },
-  "No detail available.": {
-   "zh-Hans": "没有可用的详情。",
-   "hi": "कोई विवरण उपलब्ध नहीं।",
-   "es": "No hay detalles disponibles.",
-   "ar": "لا توجد تفاصيل.",
-   "fr": "Aucun détail disponible.",
-   "bn": "কোনো বিস্তারিত নেই।",
-   "pt-BR": "Nenhum detalhe disponível.",
-   "ru": "Подробностей нет.",
-   "id": "Tidak ada detail."
   },
   "No display server was found, so global shortcuts are off.": {
    "zh-Hans": "未找到显示服务器，因此全局快捷键已关闭。",
@@ -1980,17 +1958,6 @@
    "pt-BR": "Serviços",
    "ru": "Сервисы",
    "id": "Layanan"
-  },
-  "Session stopped on an error.": {
-   "zh-Hans": "会话因错误而停止。",
-   "hi": "सत्र एक त्रुटि पर रुक गया।",
-   "es": "La sesión se detuvo por un error.",
-   "ar": "توقفت الجلسة بسبب خطأ.",
-   "fr": "La session s'est arrêtée sur une erreur.",
-   "bn": "একটি ত্রুটিতে সেশন থেমে গেছে।",
-   "pt-BR": "A sessão parou por um erro.",
-   "ru": "Сессия остановилась из-за ошибки.",
-   "id": "Sesi berhenti karena galat."
   },
   "Sessions — approvals stay in the agent": {
    "zh-Hans": "会话 — 审批仍在代理中进行",

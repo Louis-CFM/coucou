@@ -104,8 +104,10 @@ source = Path('NotchBuddy/Sources/App/HookServer.swift').read_text()
 start = source.index('    private static func codexApprovalRules(')
 end = source.index('\n    @MainActor', start)
 helpers = source[start:end].replace('private static func', 'static func')
+errors = source.split('extension HookServer {\n    /// What stopped a Claude Code turn', 1)[1].split('// MARK: - nb-hook shell wrapper', 1)[0]
+errors = 'extension HookServer {\n    /// What stopped a Claude Code turn' + errors
 with Path(sys.argv[1]).open('a') as out:
-    out.write('\nenum HookServer {\n' + helpers + '\n}\n' + '''
+    out.write('\nenum HookServer {\n' + helpers + '\n}\n' + errors + '''
 let commandRule: [String: Any] = ["acceptWithExecpolicyAmendment": ["execpolicy_amendment": ["git", "status"]]]
 let networkRule: [String: Any] = ["applyNetworkPolicyAmendment": ["network_policy_amendment": ["host": "example.com", "action": "allow"]]]
 assert(HookServer.codexApprovalRules(["accept", commandRule, ["unknown": true], networkRule]).count == 2)
@@ -116,7 +118,11 @@ assert(HookServer.codexPermissionsMayWrite(["fileSystem": ["write": ["/chosen"]]
 assert(HookServer.codexPermissionsMayWrite(["fileSystem": ["entries": [["access": "future-write"]]]]))
 assert(HookServer.codexPermissionsMayWrite(["futurePermission": true]))
 assert(HookServer.codexPermissionsMayWrite(["fileSystem": ["entries": true]]))
-print("PASS actual native approval rules and read-only permission escalation guards")
+assert(HookServer.stopFailureDetail(["error_type": "rate_limit"])?.contains("Claude") == true)
+assert(HookServer.stopFailureDetail(["coucou_agent": "codex", "error_type": "rate_limit"]) == "Codex could not complete this turn.")
+assert(HookServer.stopFailureDetail(["coucou_agent": "codex", "error": ["message": "Actual Codex error\\nwith detail"]]) == "Actual Codex error with detail")
+assert(HookServer.stopFailureDetail(["error": "500"]) == nil)
+print("PASS actual native approval rules, read-only permission escalation guards and provider-specific failure details")
 ''')
 PY
 swiftc NotchBuddy/Sources/CoucouKit/DiffEngine.swift NotchBuddy/Sources/App/AskQuestion.swift "$task_tmp/main.swift" -o "$task_tmp/check"
@@ -136,6 +142,7 @@ struct AgentTask {
     var sessionId: String?
     var sessionCwd: String?
     var state: BotState = .idle
+    var finalLine: String?
 }
 @MainActor final class AppState {
     static let shared = AppState()
@@ -251,6 +258,26 @@ struct AgentTask {
         assert(server.events.count == before && server.resolutions == resolutions)
         connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t2", "status": "future_status"]])
         assert(server.events.count == before && AppState.shared.tasks[0].state == .error)
+        assert(AppState.shared.tasks[0].finalLine?.contains("unknown turn status") == true)
+        let actualError: [String: Any] = ["message": "Codex account disconnected.\nReconnect to continue."]
+        connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t2", "status": "failed", "error": actualError]])
+        assert(server.events.last?.name == "StopFailure")
+        assert((server.events.last?.payload["error"] as? [String: Any])?["message"] as? String == actualError["message"] as? String)
+        assert(AppState.shared.tasks[0].finalLine == "Codex account disconnected. Reconnect to continue.")
+        connection.emit("error", ["threadId": "child", "turnId": "t2", "error": ["message": "Usage limit exceeded", "code": "UsageLimitExceeded"]])
+        assert(AppState.shared.tasks[0].state == .ratelimit && AppState.shared.tasks[0].finalLine == "Usage limit exceeded")
+        connection.emit("turn/completed", ["threadId": "child", "turn": ["id": "t2", "status": "failed"]])
+        assert(AppState.shared.tasks[0].finalLine == "Codex could not complete this turn.")
+        AppState.shared.tasks[0].codexManaged = false
+        AppState.shared.tasks[0].finalLine = "External owner error"
+        let ownerState = AppState.shared.tasks[0].state
+        connection.emit("error", ["threadId": "child", "turnId": "t2", "error": ["message": "Delayed native error"]])
+        assert(AppState.shared.tasks[0].finalLine == "External owner error" && AppState.shared.tasks[0].state == ownerState)
+        AppState.shared.tasks[0].codexManaged = true
+        AppState.shared.tasks[0].codexThreadId = "different"
+        connection.emit("error", ["threadId": "child", "turnId": "t2", "error": ["message": "Other thread error"]])
+        assert(AppState.shared.tasks[0].finalLine == "External owner error")
+        AppState.shared.tasks[0].codexThreadId = "child"
         connection.emit("serverRequest/resolved", ["requestId": 42])
         assert(server.resolutions > resolutions)
         CodexChatService.shared.isBusy = false
@@ -279,7 +306,7 @@ struct AgentTask {
         AppState.shared.tasks[0].codexManaged = false
         AppState.shared.tasks[0].state = .idle
         assert(!AppState.shared.tasks[0].codexManaged && AppState.shared.tasks[0].state == .idle)
-        print("PASS actual Codex adapter: owner/root/thread/turn identity, Phone ordering, item dedup, subagents, final fallback, unknown status and disconnect")
+        print("PASS actual Codex adapter: owner/root/thread/turn identity, Phone ordering, item dedup, subagents, final fallback, owned error details, unknown status and disconnect")
     }
 }
 SWIFT

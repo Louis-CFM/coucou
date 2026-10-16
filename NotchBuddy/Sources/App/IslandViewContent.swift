@@ -667,19 +667,69 @@ struct QuestionView: View {
 struct ErrorView: View {
     @ObservedObject var state: AppState
 
+    private var task: AgentTask? { state.focusTask }
+
+    /// The kind next to the name ("Claude Code", "n8n", "Agent"): agentWho already shows the name.
+    private var kind: String {
+        if task?.id == "agent_codex" { return "Codex" }
+        switch task?.source {
+        case .some(.n8n):   return "n8n"
+        case .some(.agent): return "Agent"
+        default:            return "Claude Code"
+        }
+    }
+
+    /// What went wrong: Claude Code's error (StopFailure) or n8n's, else the last step.
+    private var detail: String {
+        if let line = task?.finalLine, !line.isEmpty { return line }
+        if task?.source == .n8n, let steps = task?.steps, steps.count > 1, let last = steps.last { return last }
+        if task?.source != .n8n, let step = task?.steps.last(where: { !$0.isDiffStep }) { return step }
+        return String(localized: "No detail available.")
+    }
+
+    private var n8nURL: URL? {
+        guard task?.source == .n8n, let s = KeychainStore.shared.get("n8n-url") else { return nil }
+        return URL(string: s)
+    }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .red)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "n8n")
-                Text("Workflow stopped.")
+                AgentWho(task: task, label: kind)
+                Text(task?.source == .n8n ? LocalizedStringKey("Workflow stopped.") : LocalizedStringKey("Session stopped on an error."))
                     .font(.system(size: 15, weight: .semibold))
-                Text("Gmail node timed out after 30s. Retry or open n8n.")
+                Text(detail)
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#FF8D97"))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    PrimaryButton("Retry") { /* retry */ }
-                    SecondaryButton("Open in n8n") { /* open */ }
+                    if task?.source == .n8n {
+                        if let url = n8nURL {
+                            PrimaryButton("Open in n8n") {
+                                NSWorkspace.shared.open(url)
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                    } else if task?.id == "agent_claude-desktop" {
+                        PrimaryButton("Open Claude") {
+                            openClaudeDesktopApp()
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                    } else {
+                        #if !APPSTORE
+                        PrimaryButton(SessionTarget.actionLabel(for: task)) {
+                            SessionTarget.open(task)
+                            if state.view == .error {
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                        #endif
+                    }
+                    SecondaryButton("OK") {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }
                 }
             }
             .padding(.leading, 116)

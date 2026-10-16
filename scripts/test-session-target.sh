@@ -6,6 +6,7 @@ trap 'rm -rf "$task_tmp"' EXIT
 cat > "$task_tmp/Check.swift" <<'SWIFT'
 import Foundation
 
+enum AgentSource { case claudeCode, n8n, agent }
 struct AgentTask {
     var id = ""
     var name = "Project"
@@ -13,9 +14,10 @@ struct AgentTask {
     var sessionBundleId: String?
     var sessionCwd: String?
     var hostApp: String?
+    var source = AgentSource.agent
 }
 enum ChatProvider { case codex }
-enum IslandView { case prompt, note, finished }
+enum IslandView { case prompt, note, finished, error }
 struct AskQuestion {
     var pillId: String?
     var isCodexPlugin = false
@@ -128,6 +130,23 @@ enum FixtureNotificationName { case islandCollapse }
         state.view = .finished; state.focusTask = AgentTask(sessionBundleId: "com.microsoft.VSCode")
         finishAction(state: state)
         assert(workspace.opened == workspace.apps["com.microsoft.VSCode"] && NotificationCenter.default.collapseCount == 1)
+        workspace.apps["com.openai.chat"] = URL(fileURLWithPath: "/Applications/Renamed ChatGPT.app")
+        let errors = ErrorSourceFixture(state: state)
+        state.focusTask = AgentTask(id: "agent_codex", sessionBundleId: "com.openai.chat")
+        assert(errors.kind == "Codex")
+        state.view = .error
+        errors.openAction()
+        assert(workspace.opened == workspace.apps["com.openai.chat"] && NotificationCenter.default.collapseCount == 2)
+        state.view = .error; state.focusTask = AgentTask(codexManaged: true)
+        errors.openAction()
+        assert(state.view == .prompt && NotificationCenter.default.collapseCount == 2)
+        state.view = .error; state.focusTask = AgentTask(sessionBundleId: "unknown.source")
+        errors.openAction()
+        assert(state.view == .note && NotificationCenter.default.collapseCount == 2)
+        for (source, expected) in [(AgentSource.claudeCode, "Claude Code"), (.n8n, "n8n"), (.agent, "Agent")] {
+            state.focusTask = AgentTask(source: source)
+            assert(errors.kind == expected)
+        }
         let pluginQuestion = AskQuestion(pillId: "agent_codex", isCodexPlugin: true, projectName: "Plugin project", requestId: "plugin-request")
         let nativeOwner = AgentTask(id: "agent_codex", name: "Native project", codexManaged: true)
         let ideOwner = AgentTask(id: "agent_codex", name: "IDE project", sessionBundleId: "com.microsoft.VSCode")
@@ -152,7 +171,7 @@ enum FixtureNotificationName { case islandCollapse }
             && workspace.opened == workspace.apps["com.openai.chat"])
         HookServer.shared.onAsk = nil
         print("PASS actual session target: source labels, old/renamed Codex, ChatGPT host fallback, IDE project, upstream Claude Desktop, managed Chat and unknown host")
-        print("PASS actual completion action: continue chat and unknown-source note stay open, external source collapses")
+        print("PASS actual completion/error actions: continue chat and unknown-source note stay open, external source collapses; errors identify Codex")
         print("PASS actual question source/reply action: plugin returns to captured Desktop with native/IDE pill owners, original tasks unchanged")
     }
 }
@@ -171,6 +190,10 @@ Path(sys.argv[1]).with_name("OriginLabel.swift").write_text("extension AgentTask
 view = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct FinishedView: View {", 1)[1]
 action = view.split("PrimaryButton(SessionTarget.actionLabel(for: state.focusTask)) {", 1)[1].split("\n                        }\n                        #endif", 1)[0]
 Path(sys.argv[1]).with_name("FinishAction.swift").write_text("@MainActor func finishAction(state: AppState) {" + action + "\n}\n")
+errors = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct ErrorView: View {", 1)[1].split("/// Brings the Claude desktop app forward", 1)[0]
+kind = errors.split("    private var kind: String {", 1)[1].split("\n    /// What went wrong", 1)[0]
+action = errors.split("PrimaryButton(SessionTarget.actionLabel(for: task)) {", 1)[1].split("\n                        }\n                        #endif", 1)[0]
+Path(sys.argv[1]).with_name("ErrorSource.swift").write_text("@MainActor struct ErrorSourceFixture {\nlet state: AppState\nvar task: AgentTask? { state.focusTask }\nvar kind: String {" + kind + "\nfunc openAction() {" + action + "\n}\n}\n")
 question = Path("NotchBuddy/Sources/App/IslandViewContent.swift").read_text().split("struct QuestionView: View {", 1)[1].split("// MARK: - Confused", 1)[0]
 helper = question.split("    private func questionSource(", 1)[1].split("    private func resetQuestionState()", 1)[0]
 reply = re.split(r"\n\s*}\n\s*\.buttonStyle", question.split('String(localized: "Reply in terminal")) {', 1)[1], maxsplit=1)[0]
@@ -184,7 +207,7 @@ scroll = question.split("                ScrollView {\n", 1)[1].split("\n       
 assert scroll.splitlines()[-1] == "                    .frame(maxWidth: .infinity, alignment: .leading)"
 print("PASS actual question layouts: description choices honor isOther before offering typed input")
 HOSTPY
-swiftc -parse-as-library NotchBuddy/Sources/App/SessionTarget.swift "$task_tmp/ClaudeHost.swift" "$task_tmp/OriginLabel.swift" "$task_tmp/FinishAction.swift" "$task_tmp/QuestionSource.swift" "$task_tmp/Check.swift" -o "$task_tmp/check"
+swiftc -parse-as-library NotchBuddy/Sources/App/SessionTarget.swift "$task_tmp/ClaudeHost.swift" "$task_tmp/OriginLabel.swift" "$task_tmp/FinishAction.swift" "$task_tmp/ErrorSource.swift" "$task_tmp/QuestionSource.swift" "$task_tmp/Check.swift" -o "$task_tmp/check"
 "$task_tmp/check"
 
 # Compile the real Swift string literals, then exercise both relays without a socket or user configuration.

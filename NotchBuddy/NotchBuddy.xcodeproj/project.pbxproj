@@ -168,6 +168,7 @@
 		6D71A1FA10C766E465F326D4 /* BotEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E6F5FC81429871B6F766A8 /* BotEngine.swift */; };
 		6DDBB5EDE6BEFD4225238C28 /* approval.wav in Resources */ = {isa = PBXBuildFile; fileRef = 11FCBBE20532B1F0A184EA06 /* approval.wav */; };
 		6FC65C190ED614C664C9BC17 /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
+		713F32381B1A47C5042063BB /* FlowLanguages.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB761EA15EABCD584DD012B /* FlowLanguages.swift */; };
 		714B5BB7FFB0C8491AF67AD1 /* VoiceTranscriptHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE925A6844FE3E3C09131CE0 /* VoiceTranscriptHistory.swift */; };
 		718410ED630AE3AC5DF59A95 /* VoiceSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD11C7925B0A7831BFC2199C /* VoiceSpeaker.swift */; };
 		71CBD1D39A6668BF454CA1C5 /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0365DDE3C554F5E8570055F4 /* IslandTypes.swift */; };
@@ -176,6 +177,7 @@
 		72B1AEDB2152BF73659EB598 /* MochiStill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045E7300878138F0AC385920 /* MochiStill.swift */; };
 		733FCC6A45DE963EF2024B4E /* ChatMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE88A53AEAA637F866D479D /* ChatMarkdownView.swift */; };
 		73BD92A06DA7C72FFF26DD0F /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9466FDE02C9B3FB4EF01DFF8 /* IslandScreenGeometry.swift */; };
+		74B4C23EEEADCD73D66CBA2E /* FlowLanguages.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB761EA15EABCD584DD012B /* FlowLanguages.swift */; };
 		74E97082F2241C36E5DD22EE /* MochiActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE18399D1CD69468CCF57966 /* MochiActivityState.swift */; };
 		760E362FDF46869A0525D8C3 /* MochiMood.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE096F3D7C3CD989EEBA55C4 /* MochiMood.swift */; };
 		770F21C6A4D840AD3B0A9CB9 /* MochiLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265262A422C270C1798F4A80 /* MochiLive.swift */; };
@@ -259,6 +261,7 @@
 		A7733EE60694EA3E2A86C37A /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0365DDE3C554F5E8570055F4 /* IslandTypes.swift */; };
 		A7B04680036A2443AC6162CD /* NoteTaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A666A5E3F809301028F0DF8 /* NoteTaker.swift */; };
 		A7EEF05A08F6B95370712089 /* error.wav in Resources */ = {isa = PBXBuildFile; fileRef = 871CA2BADC67D97C97C7009D /* error.wav */; };
+		A83A59ADF9760FCC86086CD1 /* NoteEcho.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA29FF3215B8371EEB91D0E2 /* NoteEcho.swift */; };
 		A885B7E6DC43231BECE36E3D /* MochiWardrobe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */; };
 		A94F75489794D9C95E584B56 /* EnergyVAD.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E2C3ACD815230A0ECAB014 /* EnergyVAD.swift */; };
 		A9EA458EBA699F51AB7A7DAD /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 309025C92C81E04B357F560C /* FluidAudio */; };
@@ -409,6 +412,7 @@
 		FD4B5673A5427128DE1910F3 /* DictationTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A2317343D062ACCAF4E5BD /* DictationTranscript.swift */; };
 		FDF87CF7C5F703EDD9A7CC14 /* CloudProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28323DC20034A281F6829884 /* CloudProbe.swift */; };
 		FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
+		FF8CEDBF43600E4AF5089A98 /* NoteEcho.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA29FF3215B8371EEB91D0E2 /* NoteEcho.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -621,6 +625,7 @@
 		E6AAC67875F84A862BC2A9AF /* ServiceDetailRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceDetailRunner.swift; sourceTree = "<group>"; };
 		E84E5D91129352E8A1D32AA4 /* MochiOutfitDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiOutfitDrawing.swift; sourceTree = "<group>"; };
 		E91B733ADC638E14E9BB6EFA /* WindowContextCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContextCapture.swift; sourceTree = "<group>"; };
+		EBB761EA15EABCD584DD012B /* FlowLanguages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLanguages.swift; sourceTree = "<group>"; };
 		EBB84A66045EB20CAC93A8A6 /* AskQuestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskQuestion.swift; sourceTree = "<group>"; };
 		ECD4A635006365A493A57B18 /* FlowDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowDictation.swift; sourceTree = "<group>"; };
 		EDC1DEBFCAEBE6F0EEB865F3 /* EntityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityResolver.swift; sourceTree = "<group>"; };
@@ -640,6 +645,7 @@
 		F86B99CF65C5E4BC887888C6 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubPulse.swift; sourceTree = "<group>"; };
 		FA02B08886939FF6FE0475DD /* IslandViewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandViewContent.swift; sourceTree = "<group>"; };
+		FA29FF3215B8371EEB91D0E2 /* NoteEcho.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEcho.swift; sourceTree = "<group>"; };
 		FA51E5B140C20812641168EA /* ShortcutLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutLogic.swift; sourceTree = "<group>"; };
 		FADC1FE5696B1075932D0B7C /* InstructionRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionRunner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -712,6 +718,7 @@
 				B249C39EA29E941BC52A6126 /* FlowHubSettings.swift */,
 				1A1A34DE2886E394C879CF64 /* FlowHubWords.swift */,
 				4983B1317913482E61EB344D /* FlowKeyLogic.swift */,
+				EBB761EA15EABCD584DD012B /* FlowLanguages.swift */,
 				AD88FB0222D3F8893AF1D33D /* FlowPill.swift */,
 				8436291D94C826F1D9DA3130 /* FlowSettingsBox.swift */,
 				F7124E98A85D75D3378F0AC8 /* FlowStore.swift */,
@@ -736,6 +743,7 @@
 				B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */,
 				F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */,
 				D0E5A3ADB1304C23C4AEDD48 /* NoteAudio.swift */,
+				FA29FF3215B8371EEB91D0E2 /* NoteEcho.swift */,
 				74146BD3F4B9884F6A43936F /* NoteModels.swift */,
 				7A666A5E3F809301028F0DF8 /* NoteTaker.swift */,
 				BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */,
@@ -1213,6 +1221,7 @@
 				4804DA9B3008C5C477E2818C /* FlowHubSettings.swift in Sources */,
 				7B7CBFAADFF687004012609D /* FlowHubWords.swift in Sources */,
 				EF584BA65AA62FCABD6FB6B2 /* FlowKeyLogic.swift in Sources */,
+				74B4C23EEEADCD73D66CBA2E /* FlowLanguages.swift in Sources */,
 				26D933FDB84F83D33BE6B91B /* FlowPill.swift in Sources */,
 				D4E60449D7E33D93016192EC /* FlowSettingsBox.swift in Sources */,
 				D00A95A24714141AB82621BE /* FlowStore.swift in Sources */,
@@ -1248,6 +1257,7 @@
 				0A267EE2955C7AD8E02A296C /* N8nPoller.swift in Sources */,
 				06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */,
 				F032CA1CBF8253D9E3981A90 /* NoteAudio.swift in Sources */,
+				A83A59ADF9760FCC86086CD1 /* NoteEcho.swift in Sources */,
 				A5AC7A40E65A47174367DBC9 /* NoteModels.swift in Sources */,
 				A7B04680036A2443AC6162CD /* NoteTaker.swift in Sources */,
 				2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */,
@@ -1448,6 +1458,7 @@
 				0EB57943A58F60AF72906BB1 /* FlowHubSettings.swift in Sources */,
 				66069F348A37AE19806376A7 /* FlowHubWords.swift in Sources */,
 				ACBC410CF50E4B96706DA074 /* FlowKeyLogic.swift in Sources */,
+				713F32381B1A47C5042063BB /* FlowLanguages.swift in Sources */,
 				410F0237661DBC02AD886663 /* FlowPill.swift in Sources */,
 				5A3DA40DB6C8161E6CB504C7 /* FlowSettingsBox.swift in Sources */,
 				EAEC8E117E130E5902295F73 /* FlowStore.swift in Sources */,
@@ -1483,6 +1494,7 @@
 				160EDB9D06275E2607DA5151 /* N8nPoller.swift in Sources */,
 				DE05D09A32117582AC93A24A /* NotchBuddyApp.swift in Sources */,
 				C8F0DA5F0EF2503581EFE5A1 /* NoteAudio.swift in Sources */,
+				FF8CEDBF43600E4AF5089A98 /* NoteEcho.swift in Sources */,
 				4D3F75B2546ACB133C604638 /* NoteModels.swift in Sources */,
 				DCD9F5ECAFDBC52F388976C2 /* NoteTaker.swift in Sources */,
 				78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */,
