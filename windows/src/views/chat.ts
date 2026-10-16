@@ -341,7 +341,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      const named = State.settings.mochiName?.trim();
+      input.placeholder =
+        State.chatHistory.length > 0
+          ? t(STRINGS.placeholderNext)
+          : named
+            ? `Ask ${named} anything…`
+            : t(STRINGS.placeholderFirst);
       input.disabled = sending;
     },
     focus() {

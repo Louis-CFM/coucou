@@ -48,6 +48,8 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// The main Mochi's name from Settings, for the system prompt.
+    persona: Mutex<String>,
 }
 
 #[derive(Default)]
@@ -72,6 +74,12 @@ pub struct Turn {
 }
 
 impl Chat {
+    /// Mochi's instructions, with the name the user gave him.
+    pub fn system_prompt(&self, web_search: bool) -> String {
+        let name = self.persona.lock().unwrap().clone();
+        system_prompt_for(crate::identity::first_name(), web_search, &name)
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -112,16 +120,14 @@ impl Chat {
 // ── System prompt ─────────────────────────────────────────────────────────────
 
 /// Mochi's instructions. Greets the user by their first name when the account
-/// has one worth using (identity.rs), and only claims web search where the
-/// provider runs it (Claude).
-pub fn system_prompt(web_search: bool) -> String {
-    system_prompt_for(crate::identity::first_name(), web_search)
-}
-
-fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
+/// has one worth using (identity.rs), goes by the name given in Settings, and
+/// only claims web search where the provider runs it (Claude).
+fn system_prompt_for(first_name: Option<&str>, web_search: bool, mochi: &str) -> String {
+    let mochi: String = mochi.trim().chars().take(32).collect();
+    let mochi = if mochi.is_empty() { "Mochi".to_string() } else { mochi };
     let opening = match first_name {
-        Some(name) => format!("You are Mochi, {name}'s personal AI assistant living at the top of their screen."),
-        None => "You are Mochi, a personal AI assistant living at the top of the user's screen.".to_string(),
+        Some(name) => format!("You are {mochi}, {name}'s personal AI assistant living at the top of their screen."),
+        None => format!("You are {mochi}, a personal AI assistant living at the top of the user's screen."),
     };
     let abilities = if web_search {
         "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
@@ -206,6 +212,7 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
+    *chat.persona.lock().unwrap() = settings.mochi_name.clone();
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
@@ -332,11 +339,11 @@ mod tests {
 
     #[test]
     fn the_prompt_greets_by_first_name_and_claims_web_search_only_for_claude() {
-        let p = system_prompt_for(Some("Louis"), true);
+        let p = system_prompt_for(Some("Louis"), true, "");
         assert!(p.starts_with("You are Mochi, Louis's personal AI assistant living at the top of their screen."));
         assert!(p.contains("web search access"));
         assert!(p.contains("light Markdown"));
-        let p = system_prompt_for(None, false);
+        let p = system_prompt_for(None, false, "  ");
         assert!(p.starts_with("You are Mochi, a personal AI assistant living at the top of the user's screen."));
         assert!(!p.contains("web search"));
         assert!(p.contains("no web access"));
@@ -386,5 +393,14 @@ mod tests {
             assert!(!is_inside(&inbox, &inbox.join("link.txt")));
         }
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn mochi_goes_by_the_name_given_in_settings() {
+        let p = system_prompt_for(Some("Louis"), false, "Pebble");
+        assert!(p.starts_with("You are Pebble, Louis's personal AI assistant"));
+        // An absurdly long name is cut, never sent whole.
+        let p = system_prompt_for(None, false, &"x".repeat(100));
+        assert!(p.starts_with(&format!("You are {}, a", "x".repeat(32))));
     }
 }
