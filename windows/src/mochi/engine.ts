@@ -539,6 +539,23 @@ export class BotEngine {
 
   /** True while anything is still moving — lets the island stop its RAF loop. */
   get busy(): boolean {
+    return this.moving || this.pulsing;
+  }
+
+  /**
+   * Nothing moves but the working dots: the island still needs frames, though
+   * far fewer than the display hands out.
+   */
+  get onlyPulsing(): boolean {
+    return this.pulsing && !this.moving;
+  }
+
+  /** The dots pulse on the clock in drawBadge(), with no tween behind them. */
+  private get pulsing(): boolean {
+    return this.badge?.kind === "dots" && this.badgeS > 0.001;
+  }
+
+  private get moving(): boolean {
     return (
       this.tweens.size > 0 ||
       this.particles.length > 0 ||
@@ -557,6 +574,17 @@ export class BotEngine {
       Math.abs(this.col[2] - this.colT[2]) > 0.003 ||
       (this.outfit !== "none" && (Math.abs(this.physVx) > 0.01 || Math.abs(this.physVy) > 0.01))
     );
+  }
+
+  /**
+   * How long until the next blink is due, 0 once it is, null in the states that
+   * never blink. Blinks are started by `update()`, so a stopped loop has to come
+   * back for them: the Mac draws every frame while the island is on screen, and
+   * without this Mochi would stare until the next hook event.
+   */
+  msUntilBlink(): number | null {
+    if (this.state === "sleeping" || this.state === "dizzy") return null;
+    return Math.max(0, (this.nextBlink - now()) * 1000);
   }
 
   // ── Tweens ──────────────────────────────────────────────────────────────────
