@@ -237,7 +237,18 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     log::line(format!("hook PermissionRequest id={id}"));
     let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
 
-    let decision = wait_for_decision(&id, &mut rx).await;
+    // Answered in the terminal (or the app) instead: Claude Code ends the relay,
+    // its end of the connection closes, and the island must drop the card at
+    // once rather than keep offering a question that is already settled.
+    let decision = tokio::select! {
+        d = wait_for_decision(&id, &mut rx) => d,
+        () = client_gone(&mut pipe) => {
+            log::line(format!("hook id={id} answered elsewhere"));
+            crate::recap::forget_request(&app, &id);
+            let _ = app.emit_to(WINDOW_LABEL, "hook-resolved", id.clone());
+            None
+        }
+    };
     app.state::<Pending>().0.lock().unwrap().remove(&id);
 
     // No decision: say nothing at all. coucou-hook then writes nothing to stdout
@@ -247,6 +258,18 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         let _ = pipe.flush().await;
     }
     pipe.finish();
+}
+
+/// Resolves once the relay has gone (end of stream or a broken pipe). It sends
+/// nothing after its one line, so any read result means it is done.
+async fn client_gone(pipe: &mut impl Relay) {
+    let mut probe = [0u8; 64];
+    loop {
+        match pipe.read(&mut probe).await {
+            Ok(0) | Err(_) => return,
+            Ok(_) => {}
+        }
+    }
 }
 
 /// Finds, once per session, the window it runs in — see session_window.rs.
@@ -358,4 +381,30 @@ pub fn answer_question(app: &AppHandle, request_id: &str, answers: &HashMap<Stri
     // One line: the relay reads up to the first newline.
     let line = json!({ "answers": answers }).to_string();
     send(app, request_id, Reply::Decision(line), false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    impl Relay for tokio::io::DuplexStream {}
+
+    fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    /// The card's fast exit: the relay hanging up (Claude Code ended it because
+    /// the prompt was answered in the terminal) is seen at once, and a relay
+    /// that is still waiting is not mistaken for one that left.
+    #[test]
+    fn a_relay_that_hangs_up_is_seen_at_once() {
+        block_on(async {
+            let (mut ours, theirs) = tokio::io::duplex(64);
+            let waiting = tokio::time::timeout(Duration::from_millis(50), client_gone(&mut ours)).await;
+            assert!(waiting.is_err(), "a live relay must not count as gone");
+            drop(theirs);
+            let gone = tokio::time::timeout(Duration::from_millis(50), client_gone(&mut ours)).await;
+            assert!(gone.is_ok(), "a closed relay must be seen within the poll");
+        });
+    }
 }
