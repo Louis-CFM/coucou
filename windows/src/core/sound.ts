@@ -43,6 +43,9 @@ class SoundEngine {
       master.connect(ctx.destination);
       this.master = master;
       await this.loadAll(ctx);
+      // A context starts out running. A page that plays nothing — the desktop
+      // Mochi's window, hidden until he is sent out — would keep it for good.
+      this.idle();
     })();
     return this.loading;
   }
