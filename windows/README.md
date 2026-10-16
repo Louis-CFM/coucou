@@ -57,6 +57,8 @@ You can also [build it yourself](#build-it-yourself).
 | Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…). The row below picks his body shape. Each Mochi has its own look: right-click a pill to dress its Mochi. The same wardrobe is in **Settings → General → Mochi**, which can also give every Mochi the same look |
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
+| `Ctrl`+drag Mochi out of the island and drop him | He scans the screen and brings a screenshot back to the chat (**Settings → General → Quick screenshot** skips the scan) |
+| Hold `Shift` while `Ctrl`+dragging him | Pick an area instead: only that part is scanned and captured. `Esc` or a right-click cancels |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |

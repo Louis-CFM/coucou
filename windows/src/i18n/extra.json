@@ -1607,7 +1607,7 @@
       "pt-BR": "No Coucou for Android, escaneie este código com a câmera ou cole o link.",
       "ru": "В Coucou for Android отсканируйте этот код камерой или вставьте ссылку.",
       "id": "Di Coucou for Android, pindai kode ini dengan kamera atau tempel tautannya.",
-      "cs": "V Coucou pro Android naskenujte tento kód fotoaparátem nebo vložte odkaz."
+      "cs": "In Coucou for Android, scan this code with the camera or paste the link."
     },
     "In the open island": {
       "ar": "في الشريط المفتوح",
@@ -5505,6 +5505,34 @@
       "ru": "Ответил Claude Code: ключа Claude API нет или на нём закончились средства.",
       "id": "Dijawab oleh Claude Code: kunci API Claude tidak ada atau kreditnya habis.",
       "cs": "Odpověděl Claude Code: chybí API klíč Claude nebo došel kredit."
+    },
+    "Quick screenshot": {
+      "fr": "Capture rapide",
+      "es": "Captura rápida",
+      "pt-BR": "Captura rápida",
+      "de": "Schneller Screenshot",
+      "ja": "クイックスクリーンショット",
+      "cs": "Rychlý snímek",
+      "ar": "لقطة سريعة",
+      "bn": "দ্রুত স্ক্রিনশট",
+      "hi": "तुरंत स्क्रीनशॉट",
+      "id": "Tangkapan cepat",
+      "ru": "Быстрый снимок",
+      "zh-Hans": "快速截图"
+    },
+    "Ctrl+drag Mochi out of the island and drop him for a screenshot; this skips his scan and captures right after the drop.": {
+      "fr": "Ctrl+glisse Mochi hors de l'île et lâche-le pour une capture ; cela saute son scan et capture juste après le lâcher.",
+      "es": "Ctrl+arrastra a Mochi fuera de la isla y suéltalo para una captura; omite su escaneo y captura justo después de soltarlo.",
+      "pt-BR": "Ctrl+arraste o Mochi para fora da ilha e solte-o para uma captura; isso pula a varredura e captura logo após soltar.",
+      "de": "Ctrl+ziehe Mochi aus der Insel und lass ihn für einen Screenshot fallen; das überspringt seinen Scan und nimmt direkt nach dem Loslassen auf.",
+      "ja": "Ctrl+ドラッグで Mochi を島から出してドロップするとスクリーンショットを撮ります。スキャンをスキップしてドロップ直後に撮影します。",
+      "cs": "Ctrl+táhni Mochiho ven z ostrova a pusť ho pro snímek obrazovky; přeskočí se jeho sken a zachytí hned po puštění.",
+      "ar": "اسحب Mochi بالـ Ctrl خارج الجزيرة وأفلته لالتقاط لقطة؛ يتخطى ذلك مسحه ويلتقط فور الإفلات.",
+      "bn": "Ctrl+টেনে Mochi-কে দ্বীপের বাইরে নিয়ে ছাড়লে স্ক্রিনশট হয়; এতে স্ক্যান বাদ পড়ে ছাড়ার পরপরই ক্যাপচার হয়।",
+      "hi": "Ctrl+खींचकर Mochi को आइलैंड से बाहर लाएँ और स्क्रीनशॉट के लिए छोड़ें; इससे स्कैन छूट जाता है और छोड़ते ही कैप्चर होता है।",
+      "id": "Ctrl+seret Mochi keluar dari island dan lepaskan untuk mengambil tangkapan; pemindaian dilewati dan langsung mengambil setelah dilepas.",
+      "ru": "Перетащите Mochi с Ctrl за пределы острова и отпустите для снимка экрана; сканирование пропускается, захват — сразу после отпускания.",
+      "zh-Hans": "按住 Ctrl 把 Mochi 拖出小岛，松手即可截图；这会跳过扫描并在松手后立即截屏。"
     }
   }
 }

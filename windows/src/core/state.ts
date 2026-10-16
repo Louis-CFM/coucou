@@ -235,6 +235,8 @@ export interface Settings {
   mochiName: string;
   /** Coloured Mochis' names, by pill id; missing = DEFAULT_MOCHI_NAMES. */
   mochiNames: Record<string, string>;
+  /** Screenshot roam without the scan cutscene. */
+  quickScan: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -270,6 +272,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showClock: false,
   mochiName: "",
   mochiNames: {},
+  quickScan: false,
 };
 
 type Listener = () => void;
@@ -301,7 +304,11 @@ class AppState {
   fileDragOver = false;
 
   promptContext: PromptContext | null = null;
-  droppedFile: { name: string; path: string } | null = null;
+  /** The file the next question is about. `ephemeral` = a roam screenshot,
+   *  thrown away if the island closes before it was asked about. */
+  droppedFile: { name: string; path: string; ephemeral?: boolean } | null = null;
+  /** Mochi is out on the screen (screenshot roam); the island hides its own. */
+  roaming = false;
   /** What the Windows media controls say is playing (music.rs); null = nothing. */
   nowPlaying: NowPlaying | null = null;
   /** A `git push` Claude Code is running right now, for the GitHub card. */

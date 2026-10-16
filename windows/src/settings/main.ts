@@ -49,6 +49,7 @@ async function save() {
 const extras: ExtrasContext = {
   settings: () => settings,
   save: () => void save(),
+  toggle: (on, onChange) => toggle(on, onChange),
 };
 
 /** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */

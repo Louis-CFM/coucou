@@ -133,6 +133,8 @@ pub struct Settings {
     /// Names of the coloured Mochis, by pill id. Missing or empty = the
     /// default pun name (src/core/state.ts DEFAULT_MOCHI_NAMES).
     pub mochi_names: BTreeMap<String, String>,
+    /// Screenshot roam without the scan cutscene: a quick sweep, then capture.
+    pub quick_scan: bool,
 }
 
 /// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
@@ -231,6 +233,7 @@ impl Default for Settings {
             phone_relay_url: String::new(),
             mochi_name: String::new(),
             mochi_names: BTreeMap::new(),
+            quick_scan: false,
         }
     }
 }
@@ -654,7 +657,8 @@ mod tests {
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "mochiName": "Momo",
-  "mochiNames": { "integration_github": "Gus" }
+  "mochiNames": { "integration_github": "Gus" },
+  "quickScan": true
 }"##;
 
     fn custom() -> Value {
@@ -1173,6 +1177,7 @@ mod tests {
                 "phoneRelayUrl",
                 "mochiName",
                 "mochiNames",
+                "quickScan",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

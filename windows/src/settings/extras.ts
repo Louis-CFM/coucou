@@ -19,6 +19,8 @@ import { emit } from "@tauri-apps/api/event";
 export interface ExtrasContext {
   settings(): Settings;
   save(): void;
+  /** The window's on/off switch. */
+  toggle(on: boolean, onChange: (v: boolean) => void): HTMLElement;
 }
 
 /** A name box: saves on change; empty falls back to `fallback`. */
@@ -133,5 +135,13 @@ export function mochiSection(ctx: ExtrasContext): HTMLElement {
       button.addEventListener("click", () => void emit("mochi-mood", mood));
       return button;
     })),
+    h("div", { class: "row" },
+      h("label", { text: t("Quick screenshot") }),
+      ctx.toggle(ctx.settings().quickScan ?? false, (v) => {
+        ctx.settings().quickScan = v;
+        ctx.save();
+      }),
+    ),
+    h("div", { class: "hint", text: t("Ctrl+drag Mochi out of the island and drop him for a screenshot; this skips his scan and captures right after the drop.") }),
   );
 }

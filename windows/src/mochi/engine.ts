@@ -315,6 +315,9 @@ export class BotEngine {
 
   /** Body shape id from the wardrobe (shapes.ts SHAPES); "" = the classic Mochi. */
   shape = "";
+  /** Velocity the whole canvas is being moved at (px/s), e.g. carried on the
+   *  screenshot roam: the body doesn't move then, but the soft parts trail. */
+  dragVel = { x: 0, y: 0 };
 
   // Mouth spring (fraction of R)
   slotH = 0; slotHTarget = 0; slotHVel = 0; isChewing = false;
@@ -974,7 +977,8 @@ export class BotEngine {
       const dRoll = this.roll - this.prevRoll;
       const rollVel = Math.abs(dRoll) > Math.PI ? 0 : dRoll / dt;
       const centrifugal = this.rigidRoll ? rollVel * 0.18 : 0;
-      const tDx = Math.max(-1, Math.min(1, -yawVel * 0.35 - this.tilt * 2 + centrifugal));
+      // Carried across the screen (the roam), they trail behind too.
+      const tDx = Math.max(-1, Math.min(1, -yawVel * 0.35 - this.tilt * 2 + centrifugal - this.dragVel.x / 700));
       const tDy = Math.max(-1, Math.min(1, oyVel * 0.5));
       this.physVx += (60 * (tDx - this.physDx) - 9 * this.physVx) * dt;
       this.physVy += (60 * (tDy - this.physDy) - 9 * this.physVy) * dt;
