@@ -131,6 +131,8 @@ targets:
         type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
+      - path: Resources/attention_bridge.py
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:
@@ -214,6 +216,8 @@ targets:
         type: folder
       - path: Resources/Localizable.xcstrings
         buildPhase: resources
+      # attention_bridge.py ships only with the GitHub (non-App Store) build:
+      # the native attention feature is compiled out of the App Store target.
     info:
       path: Resources/InfoAppStore.plist
       properties:

@@ -641,6 +641,23 @@ struct SettingsView: View {
         }
 
         #if !APPSTORE
+        GroupBox(String(localized: "attention.settings.title", defaultValue: "Native attention reminders")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "attention.settings.enabled", defaultValue: "Remind me when a native chat needs attention"),
+                       isOn: $state.nativeAttentionEnabled)
+                Toggle(String(localized: "attention.settings.main-only", defaultValue: "Only main sessions"),
+                       isOn: $state.mainSessionAttentionOnly)
+                    .disabled(!state.nativeAttentionEnabled)
+                Text(String(localized: "attention.settings.description", defaultValue: "Experimental: show the reason and open Codex or OpenCode to respond. Coucou does not answer or approve. Existing progress and completion cards remain enabled."))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(String(localized: "attention.settings.compatibility", defaultValue: "Tested formats: Codex Desktop 0.162 and OpenCode 2.0.30. Reads local session metadata and pending requests; updates to these apps can affect detection."))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
+        }
+
         GroupBox(String(localized: "hooks.gemini.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(geminiHooksInstalled

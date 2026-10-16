@@ -12,6 +12,7 @@ struct IslandViewContent: View {
         case .empty:     EmptyStateView(state: state)
         case .approval:  ApprovalView(state: state)
         case .question:  QuestionView(state: state)
+        case .attention: MainSessionAttentionView(state: state)
         case .error:     ErrorView(state: state)
         case .finished:  FinishedView(state: state)
         case .confused:  ConfusedView()

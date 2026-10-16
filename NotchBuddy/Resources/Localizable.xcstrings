@@ -22170,6 +22170,182 @@
         }
       }
     },
+    "attention.settings.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native attention reminders"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原生待办提醒"
+          }
+        }
+      }
+    },
+    "attention.settings.enabled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remind me when a native chat needs attention"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原生聊天需要操作时提醒我"
+          }
+        }
+      }
+    },
+    "attention.settings.main-only" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only main sessions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅主要会话"
+          }
+        }
+      }
+    },
+    "attention.settings.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimental: show the reason and open Codex or OpenCode to respond. Coucou does not answer or approve. Existing progress and completion cards remain enabled."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实验功能：显示原因，打开 Codex 或 OpenCode 回应。Coucou 不会代为回答或核准。原有进度与完成卡片继续显示。"
+          }
+        }
+      }
+    },
+    "attention.settings.compatibility" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tested formats: Codex Desktop 0.162 and OpenCode 2.0.30. Reads local session metadata and pending requests; updates to these apps can affect detection."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "格式适用范围：Codex Desktop 0.162 与 OpenCode 2.0.30。读取本机会话资料及待处理请求；应用更新可能影响检测。"
+          }
+        }
+      }
+    },
+    "attention.waiting-approval" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for approval"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待核准"
+          }
+        }
+      }
+    },
+    "attention.waiting-answer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for an answer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待回答"
+          }
+        }
+      }
+    },
+    "attention.pending-count" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld pending"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 项待处理"
+          }
+        }
+      }
+    },
+    "attention.back-to-chat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to chat"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回原聊天"
+          }
+        }
+      }
+    },
+    "attention.open-app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open OpenCode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 OpenCode"
+          }
+        }
+      }
+    },
+    "attention.later" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "稍后处理"
+          }
+        }
+      }
+    },
     "hooks.gemini.title" : {
       "localizations" : {
         "ar" : {

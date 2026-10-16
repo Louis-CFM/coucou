@@ -128,6 +128,9 @@ jobs:
       - name: Conversation context tests
         run: bash scripts/test-conversation-context.sh
 
+      - name: Test main-session attention (readers, watcher, queue)
+        run: bash scripts/test-main-session-attention.sh
+
       - name: Build
         run: |
           set -o pipefail

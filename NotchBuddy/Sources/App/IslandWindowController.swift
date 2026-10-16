@@ -325,7 +325,7 @@ final class IslandWindowController: NSWindowController {
         }
 
         // An approval, or an email prepared by voice, stays open until I click.
-        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
+        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || !AppState.shared.pendingAttention.isEmpty || AppState.shared.voiceMailDraft != nil }
 
         // Voice: wake phrase detected → open listening island
         #if !APPSTORE
@@ -668,6 +668,9 @@ final class IslandWindowController: NSWindowController {
             } else if state.pendingQuestion != nil {
                 islandPanel.makeKey()
                 expand(to: .question)
+            } else if !state.pendingAttention.isEmpty {
+                islandPanel.makeKey()
+                expand(to: .attention)
             } else {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
                 SoundEngine.shared.play("error")
@@ -1263,6 +1266,7 @@ final class IslandWindowController: NSWindowController {
 
     func defaultView() -> IslandView {
         if state.pendingApproval != nil { return .approval }
+        if !state.pendingAttention.isEmpty { return .attention }
         return state.tasks.isEmpty ? .empty : .overview
     }
 

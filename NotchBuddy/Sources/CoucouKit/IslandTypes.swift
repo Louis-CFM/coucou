@@ -9,7 +9,7 @@ enum IslandMode: String, CaseIterable {
 // MARK: - Island View
 
 enum IslandView: String, CaseIterable {
-    case overview, empty, approval, question, error, finished
+    case overview, empty, approval, question, attention, error, finished
     case confused, upload, uploading, choose, mail, prompt
     case searching, result, note, settings, greeting, wardrobe, recap
     case listening    // voice wake detected — "À l'écoute…" with live transcript
@@ -218,6 +218,7 @@ enum IslandConst {
         .empty:     ViewLayout(height: 160, botX: 70,  botY: nil, botDiameter: 62, agentMode: .none),
         .approval:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 56, agentMode: .column),
         .question:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 56, agentMode: .column),
+        .attention: ViewLayout(height: 212, botX: 62,  botY: nil, botDiameter: 56, agentMode: .none),
         .error:     ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
         .finished:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
         .confused:  ViewLayout(height: 160, botX: 76,  botY: nil, botDiameter: 66, agentMode: .column),

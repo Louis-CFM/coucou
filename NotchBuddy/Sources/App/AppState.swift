@@ -405,6 +405,30 @@ final class AppState: ObservableObject {
     // Pending approval request from Claude Code hook
     @Published var pendingApproval: ApprovalInfo? = nil
 
+    // Main desktop sessions awaiting action in their original application.
+    @Published var pendingAttention: [MainSessionAttention] = []
+
+    #if !APPSTORE
+    // Native main-session attention — opt-in, experimental, GitHub build only.
+    // Off by default: no reader process, no timer and no hook interception until
+    // the user turns it on. Reminders never approve, deny or answer anything.
+    @Published var nativeAttentionEnabled: Bool = false {
+        didSet {
+            guard oldValue != nativeAttentionEnabled else { return }
+            UserDefaults.standard.set(nativeAttentionEnabled, forKey: "nativeAttentionEnabled")
+            MainSessionAttentionController.shared.setEnabled(nativeAttentionEnabled)
+        }
+    }
+    // Follow main (root) sessions only, or verified child/subagent sessions too.
+    @Published var mainSessionAttentionOnly: Bool = (UserDefaults.standard.object(forKey: "mainSessionAttentionOnly") as? Bool) ?? true {
+        didSet {
+            guard oldValue != mainSessionAttentionOnly else { return }
+            UserDefaults.standard.set(mainSessionAttentionOnly, forKey: "mainSessionAttentionOnly")
+            MainSessionAttentionController.shared.setMainSessionsOnly(mainSessionAttentionOnly)
+        }
+    }
+    #endif
+
     // Pending AskUserQuestion from Claude Code hook
     @Published var pendingQuestion: AskQuestion? = nil {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
@@ -562,6 +586,10 @@ final class AppState: ObservableObject {
         #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
+        // Native attention defaults: disabled, main sessions only. didSet is not
+        // fired from init — AppDelegate starts the controller after launch.
+        if let v = ud.object(forKey: "nativeAttentionEnabled") as? Bool { nativeAttentionEnabled = v }
+        if let v = ud.object(forKey: "mainSessionAttentionOnly") as? Bool { mainSessionAttentionOnly = v }
         planRelayInstalled = HookServer.statusLineInstalled()
         #endif
 
@@ -579,7 +607,7 @@ final class AppState: ObservableObject {
     }
 
     var effectiveState: BotState {
-        stateOverride ?? focusTask?.state ?? .idle
+        stateOverride ?? (view == .attention && !pendingAttention.isEmpty ? .question : focusTask?.state) ?? .idle
     }
 
     // MARK: - Task management

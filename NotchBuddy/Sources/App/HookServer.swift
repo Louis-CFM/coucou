@@ -13,9 +13,22 @@ final class HookServer: @unchecked Sendable {
 
     // Support directory paths
     static var supportDir: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        #if DEBUG && !APPSTORE
+        if let directory = attentionSmokeDirectory { return directory }
+        #endif
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("NotchBuddy")
     }
+    #if DEBUG && !APPSTORE
+    static var attentionSmokeDirectory: URL? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "--attention-smoke-test"), index + 1 < args.count else { return nil }
+        let directory = URL(fileURLWithPath: args[index + 1]).standardizedFileURL.resolvingSymlinksInPath()
+        guard ["/private/tmp", "/tmp"].contains(directory.deletingLastPathComponent().path),
+              directory.lastPathComponent.hasPrefix("coucou-attention-smoke-") else { return nil }
+        return directory
+    }
+    #endif
     static var socketPath: String {
         #if APPSTORE
         // Container home root keeps path ≤ 103 bytes (sun_path limit on macOS is 104 incl. NUL)
@@ -367,6 +380,47 @@ final class HookServer: @unchecked Sendable {
         }
 
         let coucouKind = payload["coucou_kind"] as? String ?? ""
+
+        // Read-only reminders acknowledge immediately. No approval socket is held.
+        if coucouKind == "attention" {
+            // The protocol is always acknowledged (a stale reader must exit), but the
+            // snapshot is applied only while the feature — or the isolated DEBUG smoke
+            // test — accepts it. Disabled means ignored.
+            Task { @MainActor in
+                guard MainSessionAttentionController.shared.acceptsSnapshots else { return }
+                MainSessionAttentionController.shared.receive(payload)
+            }
+            sendLine(fd: fd, text: #"{"ok":true,"attention_protocol":1}"#)
+            close(fd)
+            return
+        }
+
+        #if !APPSTORE
+        // Native main-session attention (opt-in). Codex hook payloads are mirrored to
+        // the reader as hints — the reader re-verifies everything against the transcript
+        // before showing anything, and Coucou never decides: a permission request is
+        // answered "ask" immediately so Codex's own reviewer UI proceeds. Every other
+        // Codex event also continues through the normal lifecycle processing below.
+        // With the feature off, Codex and OpenCode events take their original pipeline
+        // unchanged; OpenCode keeps its external-agent routing either way.
+        if (payload["coucou_agent"] as? String ?? "") == "codex", coucouKind != "statusline",
+           MainSessionAttentionRoute.isEnabled {
+            // Transfer serialized bytes across isolation; the original untyped payload
+            // remains owned by this connection for normal lifecycle processing.
+            if let hintData = try? JSONSerialization.data(withJSONObject: payload) {
+                Task { @MainActor in
+                    guard let hint = try? JSONSerialization.jsonObject(with: hintData) as? [String: Any] else { return }
+                    MainSessionAttentionController.shared.receiveHook(hint)
+                }
+            }
+            if (payload["hook_event_name"] as? String ?? "") == "PermissionRequest" {
+                // "ask" produces no Codex hook decision: its native reviewer/UI proceeds immediately.
+                sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
+                close(fd)
+                return
+            }
+        }
+        #endif
 
         // statusline payloads are handled separately — no session, no reveal, no sound
         if coucouKind == "statusline" {

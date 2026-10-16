@@ -1,13 +1,21 @@
 import AppKit
 import SwiftUI
+import Combine
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
     private var demoMenuItem: NSMenuItem?
+    #if DEBUG && !APPSTORE
+    private var attentionSmokeSubscription: AnyCancellable?
+    #endif
 
     func applicationWillTerminate(_ notification: Notification) {
+        MainSessionAttentionController.shared.stop()
+        #if DEBUG && !APPSTORE
+        if ProcessInfo.processInfo.arguments.contains("--attention-smoke-test") { return }
+        #endif
         #if !APPSTORE
         NoteTaker.shared.shutdown()
         #endif
@@ -16,6 +24,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG && !APPSTORE
+        if ProcessInfo.processInfo.arguments.contains("--show-native-attention"),
+           !ProcessInfo.processInfo.arguments.contains("--attention-smoke-test") { exit(EXIT_FAILURE) }
+        if ProcessInfo.processInfo.arguments.contains("--attention-smoke-test") {
+            guard let directory = HookServer.attentionSmokeDirectory else { exit(EXIT_FAILURE) }
+            // Optional native UI acceptance uses the same isolated socket, real
+            // read-only reader and actual island, without starting normal services.
+            if ProcessInfo.processInfo.arguments.contains("--show-native-attention") {
+                NSApp.setActivationPolicy(.accessory)
+                signal(SIGPIPE, SIG_IGN)
+                SoundEngine.shared.enabled = false
+                islandController = IslandWindowController()
+                islandController?.showWindow(nil)
+                islandController?.fsm.launch()
+                attentionSmokeSubscription = AppState.shared.$pendingAttention.sink { requests in
+                    let receipt: [String: Any] = ["pending_ids": requests.map(\.id)]
+                    if let data = try? JSONSerialization.data(withJSONObject: receipt) {
+                        try? data.write(to: directory.appendingPathComponent("receipt.json"), options: .atomic)
+                    }
+                }
+                HookServer.shared.start()
+                MainSessionAttentionController.shared.start()
+                return
+            }
+            NSApp.setActivationPolicy(.prohibited)
+            var transitions: [[String]] = []
+            SoundEngine.shared.enabled = false
+            // Synthetic snapshots only: the feature stays off, no reader process,
+            // no timer — the socket path is exercised in isolation.
+            MainSessionAttentionController.shared.enableSmokeSnapshots()
+            attentionSmokeSubscription = AppState.shared.$pendingAttention.sink { requests in
+                transitions.append(requests.map(\.id))
+            }
+            HookServer.shared.start()
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(6))
+                let data = try? JSONSerialization.data(withJSONObject: ["transitions": transitions])
+                try? data?.write(to: directory.appendingPathComponent("receipt.json"))
+                NSApp.terminate(nil)
+            }
+            return
+        }
+        #endif
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
         // Warm up Keychain cache on main thread BEFORE any poller or view touches it
@@ -262,6 +313,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
+        #if !APPSTORE
+        // Opt-in only: with the feature off nothing launches — no reader, no timer —
+        // and every hook keeps its shipped lifecycle.
+        if AppState.shared.nativeAttentionEnabled {
+            MainSessionAttentionController.shared.start()
+        }
+        #endif
         #if !APPSTORE
         _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
         FlowDictation.shared.start()  // watches the dictation key only if Flow dictation is on
