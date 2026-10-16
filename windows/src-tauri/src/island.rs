@@ -493,7 +493,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 let accept = on_island || dragging;
                 if gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
-                    let _ = win.set_ignore_cursor_events(!accept);
+                    platform::set_click_through(&win, !accept);
                 }
 
                 let _ = win.emit("cursor", CursorPayload { x, y });
@@ -537,6 +537,6 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
-        let _ = win.set_ignore_cursor_events(ignore);
+        platform::set_click_through(&win, ignore);
     }
 }

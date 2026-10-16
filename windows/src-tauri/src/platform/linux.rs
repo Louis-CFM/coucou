@@ -765,6 +765,11 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     Some((g.width() as f64, g.height() as f64))
 }
 
+/// Click-through on or off (Windows needs more; see platform/windows.rs).
+pub fn set_click_through(win: &WebviewWindow, ignore: bool) {
+    let _ = win.set_ignore_cursor_events(ignore);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
