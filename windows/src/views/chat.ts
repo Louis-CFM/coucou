@@ -41,7 +41,16 @@ function bubble(message: ChatMessage): HTMLElement {
   }
   const reply = h("div", { class: "reply" });
   renderMarkdown(reply, message.content);
-  return h("div", { class: "chat-row" }, reply);
+  return h(
+    "div",
+    { class: "chat-row" },
+    h(
+      "div",
+      { class: "answer" },
+      message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
+      reply,
+    ),
+  );
 }
 
 function typingDots(): HTMLElement {
@@ -284,7 +293,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
     try {
       const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text, notice: reply.notice ?? null });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {

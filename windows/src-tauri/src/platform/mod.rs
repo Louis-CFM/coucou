@@ -37,6 +37,40 @@ pub fn home_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
+/// A command for a CLI found by cli_candidates, with no console window. An npm
+/// install is a `#!/usr/bin/env node` script (or a .cmd calling node): its own
+/// folder goes first on PATH, as the Mac does, so it finds its Node.
+pub fn cli_command(exe: &std::path::Path) -> std::process::Command {
+    let mut cmd = std::process::Command::new(exe);
+    if let Some(dir) = exe.parent() {
+        let mut dirs = vec![dir.to_path_buf()];
+        if let Some(path) = std::env::var_os("PATH") {
+            dirs.extend(std::env::split_paths(&path));
+        }
+        if let Ok(joined) = std::env::join_paths(dirs) {
+            cmd.env("PATH", joined);
+        }
+    }
+    no_console(&mut cmd);
+    cmd
+}
+
+/// Ends `pid` and everything it started. An npm install runs `name.cmd`:
+/// killing cmd.exe alone would leave the node under it running.
+pub fn kill_tree(pid: u32) {
+    #[cfg(windows)]
+    {
+        let mut kill = std::process::Command::new("taskkill");
+        kill.args(["/T", "/F", "/PID", &pid.to_string()]);
+        no_console(&mut kill);
+        let _ = kill.status();
+    }
+    #[cfg(target_os = "linux")]
+    unsafe {
+        libc::kill(pid as libc::pid_t, libc::SIGKILL);
+    }
+}
+
 /// How the desktop Mochi's window can be placed and clicked on this system.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DesktopMode {
