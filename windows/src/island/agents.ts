@@ -18,7 +18,6 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
   amp: { name: "Amp", color: "#F59E0B" },
   hermes: { name: "Hermes", color: "#C084FC" },
   "claude-desktop": { name: "Claude Desktop", color: "#D97757" },
-  // This fork only: not in PillCatalog.swift.
   kiro: { name: "Kiro", color: "#9046FF" },
 };
 

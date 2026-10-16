@@ -30,7 +30,6 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["agent_opencode", "OpenCode", "#4ADE80", "agent", "Agent"],
     ["agent_amp", "Amp", "#F59E0B", "agent", "Agent"],
     ["agent_hermes", "Hermes", "#C084FC", "agent", "Agent"],
-    // This fork only.
     ["agent_kiro", "Kiro", "#9046FF", "agent", "Agent"],
     ["agent_claude-desktop", "Claude Desktop", "#D97757", "agent", "Agent"],
     ["ai_anthropic", "Anthropic", "#E07950", "ai", "Chat"],

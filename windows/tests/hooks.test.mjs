@@ -251,8 +251,8 @@ test("an agent's permission request is declined, never shown as Claude Code's", 
   }
 });
 
-test("Codex, Copilot CLI and Muse Code get the card on their own pill", () => {
-  for (const agent of ["codex", "copilot", "muse"]) {
+test("Codex, Copilot CLI, Muse Code and Kiro get the card on their own pill", () => {
+  for (const agent of ["codex", "copilot", "muse", "kiro"]) {
     State.pendingApproval = null;
     State.focusId = CLAUDE;
     calls.length = 0;
