@@ -12,6 +12,15 @@ CATALOG = ROOT / "NotchBuddy/Resources/Localizable.xcstrings"
 FORMAT = re.compile(r"%(?:\d+\$)?[-+#0]*(?:\d+|\*)?(?:\.(?:\d+|\*))?(?:hh|ll|[hljztL])?[@diuoxXfFeEgGaAcCsSp]")
 
 
+def unique_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate catalog key: {key!r}")
+        result[key] = value
+    return result
+
+
 def units(node, path=()):
     if isinstance(node, dict):
         if "stringUnit" in node:
@@ -27,7 +36,7 @@ def arguments(value):
 
 
 def main():
-    catalog = json.loads(CATALOG.read_text())
+    catalog = json.loads(CATALOG.read_text(), object_pairs_hook=unique_keys)
     errors = []
     if catalog["sourceLanguage"] != "en":
         errors.append("Expected English source language")
