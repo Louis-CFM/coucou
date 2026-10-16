@@ -3082,6 +3082,17 @@
    "ru": "Нужен Mac с Apple silicon",
    "id": "Perlu Apple silicon"
   },
+  "Needs input": {
+   "zh-Hans": "需要输入",
+   "hi": "इनपुट चाहिए",
+   "es": "Necesita una respuesta",
+   "ar": "يحتاج إلى إدخال",
+   "fr": "Réponse attendue",
+   "bn": "ইনপুট প্রয়োজন",
+   "pt-BR": "Aguardando resposta",
+   "ru": "Нужен ответ",
+   "id": "Perlu masukan"
+  },
   "New conversation": {
    "zh-Hans": "新建对话",
    "hi": "नई बातचीत",
