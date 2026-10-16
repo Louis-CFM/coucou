@@ -17,7 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
-import { lastTextStep } from "../core/diff";
+import { lastTextStep, lineHint } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
@@ -331,7 +331,7 @@ function buildOverview(actions: ViewActions): ViewHost {
               actions.blip();
               closeDiff();
             },
-            open: (path) => void Bridge.openFileInVSCode(path),
+            open: (path) => void Bridge.openFileInEditor(path, lineHint(diff), task.sessionId ?? null),
           }));
         }
       } else if (task && sessionActive) {
@@ -778,7 +778,8 @@ function buildSettings(actions: ViewActions): ViewHost {
       segButtons.forEach((b, i) => b.classList.toggle("on", s.autoCloseInterval === [10, 15, 30][i]));
       clear(claudeBadge);
       claudeBadge.append(
-        dot(s.hooksInstalled ? "#22C55E" : "#F4505E", 6),
+        // The pill's own state, which also counts Claude Code in WSL.
+        dot((State.integrations["integration_claude"]?.configured ?? s.hooksInstalled) ? "#22C55E" : "#F4505E", 6),
         h("span", { text: "Claude Code" }),
       );
       clear(apiBadge);

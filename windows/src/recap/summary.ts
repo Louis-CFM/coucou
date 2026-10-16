@@ -101,6 +101,7 @@ const DAY_NAMES = [N_("Sunday"), N_("Monday"), N_("Tuesday"), N_("Wednesday"), N
 const AGENT_NAMES: Record<string, string> = {
   integration_claude: "Claude Code",
   agent_cursor: "Cursor",
+  agent_phpstorm: "PhpStorm",
   agent_antigravity: "Antigravity",
   agent_codex: "Codex",
   agent_gemini: "Gemini CLI",

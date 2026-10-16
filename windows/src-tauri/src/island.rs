@@ -259,7 +259,7 @@ mod display_tests {
         let rescaled = [lap.clone(), d("DELL U2720Q", 1920, 0, 1920, 1080)];
         assert_eq!(pick_display(&key, &rescaled), Some(1));
         // Unplugged: nothing, so the caller falls back to the primary display.
-        assert_eq!(pick_display(&key, &[lap.clone()]), None);
+        assert_eq!(pick_display(&key, std::slice::from_ref(&lap)), None);
     }
 
     #[test]
@@ -431,13 +431,13 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // nobody can reach. Checked about twice a second — the cursor poll
                 // is already running, so this costs one monitor query.
                 ticks = ticks.wrapping_add(1);
-                if ticks % screen_every == 0 {
+                if ticks.is_multiple_of(screen_every) {
                     let now = current_screen_key(&app);
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
                         last_screen = now;
                         if !first {
-                            crate::log::line("display layout changed — repositioning".to_string());
+                            crate::log::line("display layout changed — repositioning");
                             let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
                         }
                     }

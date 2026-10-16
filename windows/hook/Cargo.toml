@@ -20,6 +20,9 @@ windows = { version = "0.61", features = [
   "Win32_Security_Authorization",
   "Win32_System_Pipes",
   "Win32_System_Threading",
+  # procs.rs: its own parents, and the window in front, while it is alive.
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 # The socket syscalls and peer credentials the Linux transport needs.

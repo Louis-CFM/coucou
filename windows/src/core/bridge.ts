@@ -5,6 +5,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import type { LineHint } from "./diff";
+import type { EditorId } from "./editors";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
@@ -214,12 +216,20 @@ export const Bridge = {
   /** Tells the island to read the sounds folder again ("sounds-changed"). */
   reloadSounds: () => call<void>("reload_sounds"),
 
-  /** "Open terminal" → opens the folder in VS Code when `code` is on PATH. */
-  openInVSCode: (path: string | null) => call<boolean>("open_in_vscode", { path }),
+  /**
+   * Opens the folder in the editor picked in Settings when its launcher is found
+   * (else the file manager). `editor` names one for a button that is about that
+   * editor in particular.
+   */
+  openInEditor: (path: string | null, editor: EditorId | null = null) =>
+    call<boolean>("open_in_editor", { path, editor }),
+
+  /** Editor id → whether its launcher is found on this computer. */
+  editorsStatus: () => call<Record<string, boolean>>("editors_status"),
 
   /**
    * "Open terminal": the window the session runs in when Rust found it
-   * (Windows; Linux on X11 and KDE Plasma), else the folder in VS Code.
+   * (Windows; Linux on X11 and KDE Plasma), else the folder in the editor picked in Settings.
    */
   openSession: (sessionId: string | null, path: string | null) =>
     call<boolean>("open_session", { sessionId, path }),
@@ -227,8 +237,13 @@ export const Bridge = {
   /** The Claude desktop app, for the Claude Desktop pill (Windows only). */
   openClaudeDesktop: () => call<boolean>("open_claude_desktop"),
 
-  /** The diff card's ↗: an existing file, in VS Code; never launched by its type. */
-  openFileInVSCode: (path: string) => call<boolean>("open_file_in_vscode", { path }),
+  /**
+   * The diff card's ↗: an existing file, in the editor picked in Settings (on
+   * its first changed line in PhpStorm, in the window of the project that holds
+   * it); never launched by its type.
+   */
+  openFileInEditor: (path: string, hint: LineHint | null, sessionId: string | null) =>
+    call<boolean>("open_file_in_editor", { path, hint, sessionId }),
 
   quit: () => call<void>("quit_app"),
 
@@ -249,6 +264,22 @@ export const Bridge = {
    */
   hooksApply: (install: boolean, fingerprint: string) =>
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
+
+  // ── Claude Code in WSL (src-tauri/src/wsl.rs) ─────────────────────────────
+  /** The WSL distros, and for each running one the users who have a ~/.claude. */
+  wslHooksList: () => call<WslDistro[]>("wsl_hooks_list"),
+  /** Diff to show before anything is written to a distro's settings.json. */
+  wslHooksPreview: (distro: string, user: string, install: boolean) =>
+    callOrThrow<HookPreview>("wsl_hooks_preview", { distro, user, install }),
+  /** Same rules as hooksApply: an explicit click, and only for the diff that was shown. */
+  wslHooksApply: (distro: string, user: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("wsl_hooks_apply", { distro, user, install, fingerprint }),
+
+  /** The plan usage gauge's status line in a distro, same rules as the hooks. */
+  wslStatusLinePreview: (distro: string, user: string, install: boolean) =>
+    callOrThrow<HookPreview>("wsl_status_line_preview", { distro, user, install }),
+  wslStatusLineApply: (distro: string, user: string, install: boolean, fingerprint: string) =>
+    callOrThrow<string>("wsl_status_line_apply", { distro, user, install, fingerprint }),
 
   // ── Other agents (Gemini CLI, Codex, Cursor…) ─────────────────────────────
   agentHooksList: () => call<AgentHookStatus[]>("agent_hooks_list"),
@@ -486,6 +517,22 @@ export interface HookStatus {
   settingsPath: string;
   hookPath: string;
   hookReady: boolean;
+}
+
+/** A WSL distro (wsl.rs). Its users are only known while it runs. */
+export interface WslDistro {
+  name: string;
+  running: boolean;
+  users: {
+    name: string;
+    settingsPath: string;
+    /** Coucou's hooks are in that settings.json. */
+    installed: boolean;
+    /** The relay is the status line there (the plan usage gauge). */
+    planInstalled: boolean;
+    /** Coucou's commands there start a relay that is not the current one. */
+    stale: boolean;
+  }[];
 }
 
 /** One agent other than Claude Code, as agents.rs reports it. */

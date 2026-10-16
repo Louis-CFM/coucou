@@ -52,6 +52,9 @@ export default defineConfig({
     // Cargo writes and locks files under target/ while Vite starts; watching them
     // crashes Vite on Windows with EBUSY. Tauri watches src-tauri/ itself.
     watch: { ignored: ["**/target/**", "**/src-tauri/**"] },
+    // Transform the three windows' code at startup, so the first load of each is not
+    // the one that pays for it.
+    warmup: { clientFiles: ["./src/main.ts", "./src/settings/main.ts", "./src/desktop/main.ts"] },
   },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {
