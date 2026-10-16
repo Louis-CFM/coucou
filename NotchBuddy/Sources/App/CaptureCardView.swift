@@ -2,7 +2,8 @@
 import SwiftUI
 
 /// The island after ⌘⇧S: Mochi on the left (he just swallowed the capture), the image, and what
-/// to do with it. With Flow on, holding its key sends the image and your words together.
+/// to do with it. With Flow on, holding its key sends the image and your words together. A click on
+/// the image saves it as a file; it can also be dragged to a folder or an app.
 struct CaptureCardView: View {
     @ObservedObject private var capture = ScreenCapture.shared
     @ObservedObject private var flow = FlowDictation.shared
@@ -35,12 +36,17 @@ struct CaptureCardView: View {
 
     @ViewBuilder private var thumbnail: some View {
         if let image = capture.image {
+            let file = capture.url
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: 104, height: 72)
                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(Color.white.opacity(0.14), lineWidth: 1))
+                .contentShape(Rectangle())
+                .onTapGesture { capture.save() }
+                .onDrag { file.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
+                .help(String(localized: "capture.save-hint"))
         }
     }
 
