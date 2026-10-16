@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI, Muse Code and Kiro CLI. Any decision for
-/// another agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code, Kiro CLI and Cursor Agent.
+/// Any decision for another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse" | "kiro")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "kiro" | "cursor")
 }
 
 /// What goes to stderr, and the exit code, when the answer is not on stdout.
@@ -59,6 +59,19 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
         }
         // Kiro reads its answer from the exit code (`exit_status`).
         "kiro" => None,
+        // Cursor reads a flat `permission` on stdout (hooks docs).
+        "cursor" => match decision.map(str::trim) {
+            Some("allow" | "always") => Some(r#"{"permission":"allow"}"#.to_string()),
+            Some("deny") => Some(
+                json!({
+                    "permission": "deny",
+                    "user_message": "Denied from Coucou",
+                    "agent_message": "The user denied this command from Coucou.",
+                })
+                .to_string(),
+            ),
+            _ => None,
+        },
         // Claude Code and Codex share the documented hookSpecificOutput. Only
         // Claude Code asks questions.
         "" => decision.and_then(|d| decision_json(d, question)),
@@ -235,10 +248,13 @@ mod tests {
         for event in ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("gemini", event, None, None).unwrap(), "{}");
         }
-        // Cursor: silence, which Cursor reads as "carry on as usual".
+        // Cursor: silence on ordinary events; PermissionRequest uses `permission`.
         for event in ["PreToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("cursor", event, None, None), None);
         }
+        assert_eq!(stdout("cursor", "PermissionRequest", Some("allow"), None).unwrap(), r#"{"permission":"allow"}"#);
+        assert!(stdout("cursor", "PermissionRequest", Some("deny"), None).unwrap().contains(r#""permission":"deny""#));
+        assert_eq!(stdout("cursor", "PermissionRequest", None, None), None);
         // Hermes approvals are not supported: its decisions are never relayed.
         assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None), None);
     }

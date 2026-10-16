@@ -27,7 +27,7 @@ export const KNOWN_AGENTS: Record<string, KnownAgent> = {
  * Must match `takes_decisions` in the relay (hook/src/reply.rs): any other
  * agent's request is handed straight back to its terminal.
  */
-export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "kiro"]);
+export const APPROVAL_AGENTS = new Set(["codex", "copilot", "muse", "kiro", "cursor"]);
 
 /** Same rule as HookServer.validateAgent on macOS. "claude" is reserved. */
 export function validateAgent(raw: string | undefined): string | null {

@@ -277,7 +277,7 @@ impl Agent {
     /// Whether the island can answer this agent's permission requests. Must
     /// match `takes_decisions` in the relay (hook/src/reply.rs).
     fn approvals(self) -> bool {
-        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse | Agent::Kiro)
+        matches!(self, Agent::Codex | Agent::Copilot | Agent::Muse | Agent::Kiro | Agent::Cursor)
     }
 }
 
@@ -581,22 +581,31 @@ fn antigravity_uninstall(root: &Value) -> Result<Value, String> {
 //
 // `{"version": 1, "hooks": {"<event>": [{"command": …}]}}`, camelCase events
 // (from #231, BeyondBirthday07). The relay maps them, turns a stop with
-// `status: "error"` into StopFailure, and prints nothing back: no permission is
-// ever given on Cursor's behalf. Every session lands on the one `agent_cursor`
-// pill.
+// `status: "error"` into StopFailure, turns `beforeShellExecution` into a
+// PermissionRequest the island can Allow/Deny, and `afterFileEdit` into a
+// live-diff PostToolUse. Every session lands on the one `agent_cursor` pill.
 
-const CURSOR_EVENTS: &[&str] = &[
-    "sessionStart",
-    "sessionEnd",
-    "beforeSubmitPrompt",
-    "preToolUse",
-    "postToolUse",
-    "postToolUseFailure",
-    "stop",
+/// Event name and optional timeout in seconds (Cursor's hooks.json field).
+const CURSOR_EVENTS: &[(&str, Option<u64>)] = &[
+    ("sessionStart", None),
+    ("sessionEnd", None),
+    ("beforeSubmitPrompt", None),
+    ("preToolUse", None),
+    ("postToolUse", None),
+    ("postToolUseFailure", None),
+    ("beforeShellExecution", Some(120)),
+    ("afterFileEdit", None),
+    ("stop", None),
 ];
 
 fn cursor_install(root: &Value, command: &str) -> Result<Value, String> {
-    let events = CURSOR_EVENTS.iter().map(|e| (e.to_string(), json!({ "command": command })));
+    let events = CURSOR_EVENTS.iter().map(|(e, timeout)| {
+        let mut entry = json!({ "command": command });
+        if let Some(t) = timeout {
+            entry.as_object_mut().unwrap().insert("timeout".into(), json!(t));
+        }
+        (e.to_string(), entry)
+    });
     let mut root = groups_install(root, "cursor", events)?;
     root.entry("version").or_insert(json!(1));
     Ok(Value::Object(root))
@@ -1202,12 +1211,18 @@ mod tests {
         let existing = r#"{"version":1,"hooks":{"afterFileEdit":[{"command":"./format.sh"}],"stop":[{"command":"./notify.sh"}]}}"#;
         let (home, installed, removed) = round_trip(Agent::Cursor, Some(existing));
         assert_eq!(installed["version"], 1);
-        for event in CURSOR_EVENTS {
+        for (event, timeout) in CURSOR_EVENTS {
             let last = installed["hooks"][event].as_array().unwrap().last().unwrap().clone();
             assert!(last["command"].as_str().unwrap().ends_with("--agent cursor"), "{event}");
+            if let Some(t) = timeout {
+                assert_eq!(last["timeout"], *t, "{event}");
+            }
         }
+        // User's afterFileEdit stays first; Coucou's is appended.
         assert_eq!(installed["hooks"]["stop"][0]["command"], "./notify.sh");
         assert_eq!(installed["hooks"]["afterFileEdit"][0]["command"], "./format.sh");
+        assert!(installed["hooks"]["afterFileEdit"][1]["command"].as_str().unwrap().contains("--agent cursor"));
+        assert!(installed["hooks"]["beforeShellExecution"][0]["command"].as_str().unwrap().contains("--agent cursor"));
         assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
         let _ = std::fs::remove_dir_all(home);
     }
@@ -1297,9 +1312,9 @@ mod tests {
     }
 
     #[test]
-    fn only_codex_copilot_muse_and_kiro_take_approvals() {
+    fn only_codex_copilot_muse_kiro_and_cursor_take_approvals() {
         let with: Vec<&str> = Agent::ALL.iter().filter(|a| a.approvals()).map(|a| a.id()).collect();
-        assert_eq!(with, ["codex", "copilot", "muse", "kiro"]);
+        assert_eq!(with, ["codex", "copilot", "muse", "cursor", "kiro"]);
     }
 
     #[test]

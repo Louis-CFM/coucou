@@ -3,7 +3,7 @@
 //! `normalize_tool_fields` in the Mac relay (HookServer.swift), plus Cursor's
 //! events.
 
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 
 /// The canonical name of an agent's event. Unknown names pass through.
 pub fn event(name: &str) -> &str {
@@ -39,6 +39,7 @@ pub fn event(name: &str) -> &str {
         "postToolUseFailure" => "PostToolUseFailure",
         "subagentStart" => "SubagentStart",
         "subagentStop" => "SubagentStop",
+        // Kept as-is for for_agent: beforeShellExecution, afterFileEdit.
         other => other,
     }
 }
@@ -133,23 +134,44 @@ pub fn refine(event: &str, map: &Map<String, Value>) -> String {
 /// Kiro CLI's shell tools.
 const KIRO_SHELL_TOOLS: &[&str] = &["execute_bash", "shell"];
 
-/// What `agent`'s event means to the island. Kiro asks nothing of its own: its
-/// PreToolUse of a shell command is the one that can wait for a click, so it
-/// becomes a PermissionRequest. Kiro's final answer is `assistant_response`.
+/// What `agent`'s event means to the island.
+///
+/// Kiro: PreToolUse of a shell command waits for a click; `assistant_response`
+/// is the final answer.
+/// Cursor: `beforeShellExecution` waits for Allow/Deny; `afterFileEdit` becomes
+/// a PostToolUse MultiEdit so the live diff can show it.
 pub fn for_agent(agent: &str, event: String, map: &mut Map<String, Value>) -> String {
-    if agent != "kiro" {
-        return event;
-    }
-    if !map.contains_key("last_assistant_message") {
-        if let Some(text) = map.get("assistant_response").cloned() {
-            map.insert("last_assistant_message".into(), text);
+    match agent {
+        "kiro" => {
+            if !map.contains_key("last_assistant_message") {
+                if let Some(text) = map.get("assistant_response").cloned() {
+                    map.insert("last_assistant_message".into(), text);
+                }
+            }
+            let tool = map.get("tool_name").and_then(Value::as_str).unwrap_or("");
+            if event == "PreToolUse" && KIRO_SHELL_TOOLS.contains(&tool) {
+                return "PermissionRequest".into();
+            }
+            event
         }
+        "cursor" => match event.as_str() {
+            "beforeShellExecution" => {
+                let command = map.get("command").cloned().unwrap_or(Value::Null);
+                map.insert("tool_name".into(), json!("Shell"));
+                map.insert("tool_input".into(), json!({ "command": command }));
+                "PermissionRequest".into()
+            }
+            "afterFileEdit" => {
+                let path = map.get("file_path").cloned().unwrap_or(Value::Null);
+                let edits = map.get("edits").cloned().unwrap_or(json!([]));
+                map.insert("tool_name".into(), json!("MultiEdit"));
+                map.insert("tool_input".into(), json!({ "file_path": path, "edits": edits }));
+                "PostToolUse".into()
+            }
+            _ => event,
+        },
+        _ => event,
     }
-    let tool = map.get("tool_name").and_then(Value::as_str).unwrap_or("");
-    if event == "PreToolUse" && KIRO_SHELL_TOOLS.contains(&tool) {
-        return "PermissionRequest".into();
-    }
-    event
 }
 
 #[cfg(test)]
@@ -287,6 +309,22 @@ mod tests {
         let mut m = obj(json!({ "tool_name": "execute_bash" }));
         assert_eq!(for_agent("cursor", "PreToolUse".into(), &mut m), "PreToolUse");
         assert_eq!(for_agent("", "PreToolUse".into(), &mut m), "PreToolUse");
+    }
+
+    #[test]
+    fn cursors_shell_and_edits_become_permission_and_diff() {
+        let mut m = obj(json!({ "command": "npm test" }));
+        assert_eq!(for_agent("cursor", "beforeShellExecution".into(), &mut m), "PermissionRequest");
+        assert_eq!(m["tool_name"], "Shell");
+        assert_eq!(m["tool_input"]["command"], "npm test");
+        let mut edit = obj(json!({
+            "file_path": "/tmp/a.ts",
+            "edits": [{ "old_string": "a", "new_string": "b" }]
+        }));
+        assert_eq!(for_agent("cursor", "afterFileEdit".into(), &mut edit), "PostToolUse");
+        assert_eq!(edit["tool_name"], "MultiEdit");
+        assert_eq!(edit["tool_input"]["file_path"], "/tmp/a.ts");
+        assert_eq!(edit["tool_input"]["edits"][0]["new_string"], "b");
     }
 
     #[test]

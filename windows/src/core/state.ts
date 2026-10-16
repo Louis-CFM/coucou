@@ -6,6 +6,7 @@ import {
   DEFAULT_MAIN_PILL, HOST_OS, availablePills, orderPills, pillDefinition, sanitizeDeclared,
   toggleDeclared, type HostOs, type PillDefinition,
 } from "./pills";
+import type { CursorPlanUsage, KiroPlanUsage } from "./bridge";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
@@ -120,6 +121,10 @@ export interface Settings {
   planRelayInstalled: boolean;
   /** Show the Codex plan pill in the island's header. */
   showCodexPlanInNotch: boolean;
+  /** Show the Cursor plan pill in the island's header. */
+  showCursorPlanInNotch: boolean;
+  /** Show the Kiro plan pill in the island's header. */
+  showKiroPlanInNotch: boolean;
   /** Who the chat talks to (see core/providers.ts); picked in the chat view. */
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
@@ -183,6 +188,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showPlanInNotch: false,
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
+  showCursorPlanInNotch: false,
+  showKiroPlanInNotch: false,
   chatProvider: "anthropic",
   chatModels: {},
   planChats: [],
@@ -238,10 +245,15 @@ class AppState {
   planUsage: PlanUsage | null = null;
   /** Codex's limits, from `codex app-server` (null until it has answered). */
   codexPlanUsage: CodexPlanUsage | null = null;
+  /** Cursor / Kiro `/usage` for the header pills. */
+  cursorPlanUsage: CursorPlanUsage | null = null;
+  kiroPlanUsage: KiroPlanUsage | null = null;
+  /** When Cursor/Kiro numbers were last fetched (epoch ms). */
+  cliPlanFetchedAt = 0;
   /** A plan card is open in place of the overview's left card. */
   showingPlanDetail = false;
-  /** Which one: the Codex card rather than Claude's. */
-  planDetailIsCodex = false;
+  /** Which plan card: Claude, Codex, Cursor or Kiro. */
+  planDetailKind: "claude" | "codex" | "cursor" | "kiro" | null = null;
   /** Per-pill file diffs, in order of reception. Steps carry their ids. */
   sessionDiffs = new Map<string, FileDiff[]>();
   private sessionDiffTimers = new Map<string, number>();
@@ -301,6 +313,7 @@ class AppState {
     if (!t) return;
     this.focusId = id;
     this.showingPlanDetail = false;
+    this.planDetailKind = null;
     t.pillBadge = null;
     this.notify();
   }

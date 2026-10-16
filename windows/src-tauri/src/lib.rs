@@ -445,6 +445,26 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+#[derive(serde::Serialize)]
+struct PlansUsage {
+    cursor: Option<plan_chat::CursorPlan>,
+    kiro: Option<plan_chat::KiroPlan>,
+}
+
+/// Cursor and Kiro plan usage for the header pills (plans turned on in Chat).
+#[tauri::command]
+async fn plan_usage(shared: State<'_, Shared>) -> Result<PlansUsage, String> {
+    let on = shared.settings.lock().unwrap().plan_chats.clone();
+    let wants = |p: &str| on.iter().any(|q| q == p);
+    let kiro = wants(plan_chat::KIRO).then(|| tauri::async_runtime::spawn(plan_chat::kiro_usage()));
+    let cursor = if wants(plan_chat::CURSOR) { plan_chat::cursor_usage().await.ok() } else { None };
+    let kiro = match kiro {
+        Some(h) => h.await.ok().and_then(Result::ok),
+        None => None,
+    };
+    Ok(PlansUsage { cursor, kiro })
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     recap::record_decision(&app, &request_id, &decision);
@@ -774,6 +794,7 @@ pub fn run() {
             status_line_preview,
             status_line_apply,
             codex_plan_usage,
+            plan_usage,
             approval_decision,
             approval_answer,
             approval_ack,

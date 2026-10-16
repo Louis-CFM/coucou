@@ -50,9 +50,9 @@ mod statusline;
 
 /// The live diff needs the whole text of a file edit, once it has happened:
 /// PostToolUse of these tools keeps its edit strings far longer than the rest.
-const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write"];
+const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write", "fs_write", "write"];
 /// The `tool_input` keys holding the text being replaced or written.
-const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content"];
+const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content", "old_str", "new_str", "file_text"];
 /// Per edit string. The island stops diffing at 200 KB anyway (DiffEngine).
 const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the

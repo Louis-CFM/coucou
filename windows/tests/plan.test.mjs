@@ -199,7 +199,9 @@ beforeEach(() => {
   State.planUsage = null;
   State.codexPlanUsage = null;
   State.showingPlanDetail = false;
-  State.planDetailIsCodex = false;
+  State.planDetailKind = null;
+  State.cursorPlanUsage = null;
+  State.kiroPlanUsage = null;
 });
 
 test("both pills are off by default, so the header is as it shipped", () => {
@@ -227,10 +229,11 @@ test("an open card follows its pill, and Mochi wears that plan's colour", () => 
   State.settings.showPlanInNotch = true;
   State.settings.planRelayInstalled = true;
   State.showingPlanDetail = true;
+  State.planDetailKind = "claude";
   assert.equal(planCardOpen(), true);
   assert.equal(openPlanColor(), "#6B7079");
   // The Codex card cannot be open without its pill.
-  State.planDetailIsCodex = true;
+  State.planDetailKind = "codex";
   assert.equal(planCardOpen(), false);
   State.settings.showCodexPlanInNotch = true;
   assert.equal(planCardOpen(), true);

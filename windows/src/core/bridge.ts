@@ -274,6 +274,9 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
+  /** Cursor and Kiro `/usage` for the header pills (plans turned on in Chat). */
+  planUsage: () => call<{ cursor: CursorPlanUsage | null; kiro: KiroPlanUsage | null }>("plan_usage"),
+
   approvalDecision: (requestId: string, decision: "allow" | "deny") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
@@ -467,6 +470,23 @@ export type ChatContext =
 export interface ModelInfo {
   id: string;
   label: string;
+}
+
+/** Cursor CLI `/usage` for the header pill. */
+export interface CursorPlanUsage {
+  plan: string;
+  percent: number;
+  auto: number | null;
+  api: number | null;
+  resets: string;
+}
+
+/** Kiro CLI `/usage` for the header pill. */
+export interface KiroPlanUsage {
+  plan: string;
+  used: number;
+  limit: number;
+  resets: string;
 }
 
 export interface PlanStatus {
