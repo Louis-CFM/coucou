@@ -115,8 +115,9 @@ runs in to the front.
 
 When Mochi lives on the desktop, he flies back to the island with a permission
 request or a question and returns to his spot once you have answered; he does a
-little jump when a task finishes, and dozes off when nothing has happened for
-two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
+little jump when a task finishes, and dozes off with the island's Mochis (after
+30 s plus the auto-close delay without a chat message or a session
+starting; the pointer doesn't wake them). Asleep, he costs nothing: no cursor
 polling, a few frames a second. He remembers his spot between launches; if it
 was on a display that is no longer connected, he stays in the island.
 
@@ -533,11 +534,11 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop dances to Spotify. While he dances he stays awake (the
-  Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
-  to the chat. While he
-  sleeps, the transparent square around him (120 px) takes the first mouse
-  move, which wakes him and gives the rest back to the desktop.
+- Mochi on the desktop dances to Spotify.
+  Dropping him on a window doesn't attach it to the chat. While he sleeps, the
+  transparent square around him (120 px) takes the first mouse move, which
+  turns the cursor poll back on (without waking him) and gives the rest back
+  to the desktop.
 
 ## Linux
 
@@ -579,8 +580,7 @@ What changes on Linux:
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
   gives no app the cursor position anywhere else. On the desktop, likewise,
-  they follow it only while it is over him, and "the cursor is far away" (so
-  he may fall asleep) means it hasn't been over him for a few seconds.
+  they follow it only while it is over him.
 - **Mochi on the desktop** is a layer-shell surface on the island's display
   (KDE Plasma, COSMIC, Hyprland, Sway…), placed with margins and dragged within
   that display; on X11 it is an ordinary always-on-top window that goes
