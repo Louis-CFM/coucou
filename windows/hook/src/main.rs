@@ -30,6 +30,7 @@ use std::time::Duration;
 use serde_json::{Map, Value};
 
 mod normalize;
+mod procs;
 mod reply;
 
 /// Budget for getting a pipe connection. Beyond this the agent wins, always.
@@ -109,7 +110,7 @@ fn main() {
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    let Some(event) = prepare(&raw, &args, &env, &cwd) else {
+    let Some(event) = prepare_with(&raw, &args, &env, &cwd, &procs::context) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -147,7 +148,19 @@ fn print(line: Option<String>) {
 
 /// The payload to forward, from the raw stdin bytes. `env` reads an environment
 /// variable and `cwd` is the working directory, so tests stay pure.
+#[cfg(test)]
 fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str) -> Option<Event> {
+    prepare_with(raw, args, env, cwd, &|_| Vec::new())
+}
+
+/// `prepare`, plus whatever `extra` has to add for the event once it is named.
+fn prepare_with(
+    raw: &[u8],
+    args: &Args,
+    env: &dyn Fn(&str) -> Option<String>,
+    cwd: &str,
+    extra: &dyn Fn(&str) -> Vec<(&'static str, Value)>,
+) -> Option<Event> {
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
@@ -165,6 +178,12 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         if let Some(editor) = term_editor(env) {
             map.insert("term_editor".into(), Value::String(editor.into()));
         }
+    }
+
+    // The port of the JetBrains IDE this Claude Code is connected to: the name of
+    // its lock file in ~/.claude/ide, which tells the app which window it is in.
+    if let Some(port) = ide_port(env) {
+        map.insert("ide_port".into(), Value::from(port));
     }
 
     let raw_event = map
@@ -186,6 +205,9 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     }
 
     add_terminal_context(map, env);
+    for (key, value) in extra(&name) {
+        map.insert(key.into(), value);
+    }
 
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
@@ -230,16 +252,27 @@ fn agent_tag(arg: &str, env: &dyn Fn(&str) -> Option<String>) -> Option<String> 
         .then(|| "claude-desktop".to_string())
 }
 
-/// `cursor` when the session runs in Cursor's integrated terminal. Cursor sets
+/// `cursor` when the session runs in Cursor's integrated terminal, `phpstorm`
+/// in a JetBrains one (every JetBrains IDE sets the same variable, so a
+/// WebStorm or IntelliJ terminal reads as PhpStorm). Cursor sets
 /// TERM_PROGRAM=vscode like VS Code does, so it is told apart by its own trace
 /// variable, or by its executable behind VS Code's git helper.
 fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
     if env("CURSOR_TRACE_ID").is_some_and(|v| !v.is_empty()) {
         return Some("cursor");
     }
+    if env("TERMINAL_EMULATOR").as_deref() == Some("JetBrains-JediTerm") {
+        return Some("phpstorm");
+    }
     let helper = env("VSCODE_GIT_ASKPASS_NODE").unwrap_or_default();
     let exe = helper.rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
     exe.starts_with("cursor").then_some("cursor")
+}
+
+/// `CLAUDE_CODE_SSE_PORT`, set by Claude Code when it runs in a terminal of an IDE
+/// with its plugin: a port number, nothing else is forwarded.
+fn ide_port(env: &dyn Fn(&str) -> Option<String>) -> Option<u16> {
+    env("CLAUDE_CODE_SSE_PORT")?.trim().parse::<u16>().ok().filter(|p| *p > 0)
 }
 
 /// Caps the strings of a payload: every field to MAX_FIELD_LEN, except the edit
@@ -407,12 +440,49 @@ mod tests {
     }
 
     #[test]
+    fn the_ide_port_is_a_port_number_or_nothing() {
+        assert_eq!(ide_port(&env_of(&[("CLAUDE_CODE_SSE_PORT", "46143")])), Some(46143));
+        assert_eq!(ide_port(&env_of(&[("CLAUDE_CODE_SSE_PORT", " 80 ")])), Some(80));
+        for bad in ["", "0", "65536", "-1", "46143; rm -rf /", "abc", "../x"] {
+            let env = move |k: &str| (k == "CLAUDE_CODE_SSE_PORT").then(|| bad.to_string());
+            assert_eq!(ide_port(&env), None, "{bad}");
+        }
+        assert_eq!(ide_port(&env_of(&[])), None);
+    }
+
+    #[test]
+    fn a_jetbrains_terminal_reads_as_phpstorm() {
+        assert_eq!(term_editor(&env_of(&[("TERMINAL_EMULATOR", "JetBrains-JediTerm")])), Some("phpstorm"));
+        assert_eq!(term_editor(&env_of(&[("TERMINAL_EMULATOR", "other")])), None);
+        // Cursor's own variable still wins.
+        assert_eq!(
+            term_editor(&env_of(&[("CURSOR_TRACE_ID", "abc"), ("TERMINAL_EMULATOR", "JetBrains-JediTerm")])),
+            Some("cursor")
+        );
+    }
+
+    #[test]
     fn long_strings_are_cut_on_a_char_boundary() {
         let mut v = serde_json::json!({ "tool_input": { "content": "é".repeat(4000) } });
         truncate_strings(&mut v);
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn the_extra_context_is_added_once_the_event_is_named() {
+        let raw = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1"}"#;
+        let args = Args { agent: String::new(), event: String::new() };
+        let extra = |event: &str| vec![("coucou_seen", Value::String(event.to_string()))];
+        let ev = prepare_with(raw.as_bytes(), &args, &|_| None, "/", &extra).expect("forwarded");
+        let v: Value = serde_json::from_str(&ev.line).unwrap();
+        assert_eq!(v["coucou_seen"], "UserPromptSubmit");
+        // Without it, the payload is what it always was.
+        let plain: Value =
+            serde_json::from_str(&prepare(raw.as_bytes(), &args, &|_| None, "/").unwrap().line).unwrap();
+        assert!(plain.get("coucou_seen").is_none());
+        assert!(plain.get("coucou_procs").is_none());
     }
 
     #[test]
