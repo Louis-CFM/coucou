@@ -131,6 +131,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     if screen_changed {
         let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
         island::apply_geometry(&app, &settings.screen, collapsed);
+        gitlab_panel::screen_changed(&app);
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
@@ -199,6 +200,7 @@ fn reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+    gitlab_panel::screen_changed(&app);
 }
 
 /// The panel is laid out in CSS px against the window's own scale. If the webview
@@ -971,7 +973,6 @@ pub fn run() {
             gitlab_panel::gitlab_panel_is_expanded,
             gitlab_panel::gitlab_panel_mode,
             gitlab_panel::gitlab_panel_resize,
-            gitlab_panel::gitlab_panel_drag,
             gitlab_panel::gitlab_dashboard,
             gitlab_panel::gitlab_reply,
             gitlab_panel::gitlab_resolve,

@@ -46,36 +46,12 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: var(--r, 16px);
+  /* It lies flat on the right edge of the screen: only its left corners are round. */
+  border-radius: var(--r, 16px) 0 0 var(--r, 16px);
+  border-right-color: transparent;
   background: var(--bg);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
-}
-
-/* Against an edge of the screen the card lies flat on it, its other corners round;
-   while it is dragged, or away from any edge, all four are round. */
-#gp.dock-left {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-left-color: transparent;
-}
-
-#gp.dock-right {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-right-color: transparent;
-}
-
-#gp.dock-top {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  border-top-color: transparent;
-}
-
-#gp.dock-bottom {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-bottom-color: transparent;
 }
 
 /* No min-height here: the window is sized from this element, and a floor at the
@@ -111,11 +87,6 @@ button:disabled {
   height: 42px;
   padding: 0 10px 0 14px;
   flex: none;
-  cursor: grab;
-}
-
-.gp-head:active {
-  cursor: grabbing;
 }
 
 .gp-logo {
@@ -736,11 +707,6 @@ html[dir="rtl"] .gp-note-main {
   align-items: center;
   gap: 9px;
   padding: 12px 0 14px;
-  cursor: grab;
-}
-
-.gp-slim:active {
-  cursor: grabbing;
 }
 
 .gp-pill {

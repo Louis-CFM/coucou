@@ -326,7 +326,7 @@ test("the window follows the content's height", () => {
   assert.equal(sent("gitlab_panel_resize").length, 1, "only when it changes");
 });
 
-test("the close button closes, the header drags", () => {
+test("the header folds the panel or closes it", () => {
   view.setDashboard(dash());
   const [fold, close] = root.find(".gp-x");
   fold.fire("click");
@@ -336,12 +336,6 @@ test("the close button closes, the header drags", () => {
   root.find(".gp-x")[1].fire("click");
   assert.equal(close === undefined, false);
   assert.equal(sent("gitlab_panel_close").length, 1);
-  const head = root.find(".gp-head")[0];
-  const down = { target: { closest: () => null } };
-  for (const fn of head.listeners.get("mousedown")) fn(down);
-  assert.equal(sent("gitlab_panel_drag").length, 1);
-  for (const fn of head.listeners.get("mousedown")) fn({ target: { closest: () => ({}) } });
-  assert.equal(sent("gitlab_panel_drag").length, 1, "a button keeps its click");
 });
 
 test("an avatar carries the initials of a person and a colour that is theirs", async () => {
@@ -453,22 +447,15 @@ test("a new comment makes the folded bar pulse, and never unfolds it", () => {
   assert.ok(root.classList.contains("slim"));
 });
 
-test("against an edge the card lies flat on it; dragged, all its corners are round", () => {
+test("it is only ever the card or the slim bar: nothing to drag", () => {
   view.setDashboard(dash());
-  view.setDock({ left: false, right: true, top: false, bottom: false });
-  assert.ok(root.classList.contains("dock-right"));
-  assert.ok(!root.classList.contains("dock-left"));
-  view.setDock({ left: false, right: true, top: true, bottom: false });
-  assert.ok(root.classList.contains("dock-right") && root.classList.contains("dock-top"), "in a corner, both sides");
-  // Grabbing the bar frees it at once…
-  const head = root.find(".gp-head")[0];
-  for (const fn of head.listeners.get("mousedown")) fn({ target: { closest: () => null } });
-  assert.ok(!root.classList.contains("dock-right") && !root.classList.contains("dock-top"));
-  // …and Rust's word, once it is let go, shapes it again.
-  view.setDock({ left: true, right: false, top: false, bottom: false });
-  assert.ok(root.classList.contains("dock-left"));
-  view.setDock({ left: false, right: false, top: false, bottom: false });
   assert.equal(root.className, "");
+  view.setMode(false);
+  assert.equal(root.className, "slim");
+  assert.equal(root.find(".gp-head").length, 0);
+  assert.equal(root.find(".gp-slim")[0].listeners.get("mousedown"), undefined, "no drag on the bar");
+  view.setMode(true);
+  assert.equal(root.find(".gp-head")[0].listeners.get("mousedown"), undefined, "nor on the header");
 });
 
 test.after(() => view?.closed());
