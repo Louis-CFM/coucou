@@ -341,6 +341,7 @@ fn editor_target(path: &str, folder: bool) -> Option<EditorTarget> {
 #[tauri::command]
 fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
     let owners = session_id.as_deref().and_then(session_window::lookup);
+    #[cfg(target_os = "linux")]
     let cwd = path.clone();
     // PhpStorm has the project open, not the sub-folder a `cd` left the session
     // in: it is the project that is looked for, and opened if it is not open.
