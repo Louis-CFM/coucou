@@ -23,7 +23,7 @@ beforeEach(() => {
 test("a coloured Mochi dragged out of the island wears its own look on the desktop", () => {
   const pill = State.tasks.find((t) => t.isIntegration && t.id !== State.mainPillId);
   assert.ok(pill, "a declared coloured pill");
-  State.settings.mochiLooks = { [MAIN_MOCHI]: { outfit: "pumpkin" }, [pill.id]: { outfit: "crown" } };
+  State.settings.mochiLooks = { [MAIN_MOCHI]: { outfit: "pumpkin", shape: "" }, [pill.id]: { outfit: "crown", shape: "bean" } };
   const link = new DesktopLink({ reveal() {}, wardrobeFromDesktop() {}, dizzyFromDesktop() {} });
   const snapshot = () => sent("plugin:event|emit_to").map((a) => a.payload).at(-1);
 
@@ -32,5 +32,5 @@ test("a coloured Mochi dragged out of the island wears its own look on the deskt
   State.focusId = pill.id;
   link.pickUp(0, 0);
   link.push();
-  assert.equal(snapshot().outfit, "crown");
+  assert.deepEqual([snapshot().outfit, snapshot().shape], ["crown", "bean"]);
 });

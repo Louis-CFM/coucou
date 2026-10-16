@@ -63,6 +63,8 @@ export interface ViewActions {
   keyboard(on: boolean): void;
   /** Something is being typed in a card: the island stays open until it is sent or cleared. */
   holdOpen(on: boolean): void;
+  /** Wardrobe click on a body shape: keeps it ("" = the classic Mochi). */
+  chooseShape(id: string): void;
   /** Right-click on a pill: focuses its Mochi and opens the wardrobe for it. */
   wardrobeFor(id: string): void;
 }

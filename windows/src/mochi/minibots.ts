@@ -99,14 +99,16 @@ export function pruneMiniBots() {
   }
 }
 
-/** Each mini's state and colour, and the outfit its Mochi wears. */
-export function syncMiniBotStates(tasks: AgentTask[], lookOf: (task: AgentTask) => { outfit: Outfit }) {
+/** Each mini's state and colour, and the look its Mochi wears. */
+export function syncMiniBotStates(tasks: AgentTask[], lookOf: (task: AgentTask) => { outfit: Outfit; shape: string }) {
   for (const mb of live.values()) {
     const task = tasks.find((t) => t.id === mb.taskId);
     if (!task) continue;
     mb.engine.setState(task.state);
     mb.engine.bodyColor = hexToRGB(task.color);
-    mb.engine.setOutfit(lookOf(task).outfit, false);
+    const look = lookOf(task);
+    mb.engine.setOutfit(look.outfit, false);
+    mb.engine.shape = look.shape;
   }
 }
 
