@@ -1027,7 +1027,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
 
 function generalSection(): HTMLElement {
   const volume = h("input", {
-    type: "range", min: "0", max: "0.7", step: "0.005",
+    type: "range", min: "0", max: "0.2", step: "0.005",
     value: String(settings.soundVolume),
   }) as HTMLInputElement;
   volume.addEventListener("input", () => {
