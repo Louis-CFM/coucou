@@ -363,6 +363,8 @@ final class FlowDictation: ObservableObject {
             let latest = self.current === listen
             if latest { self.current = nil }
             guard !text.isEmpty else { if latest { self.pill.rest() }; return }
+            // A capture waiting on the island (⌘⇧S): the image goes in first, then the words.
+            _ = await ScreenCapture.shared.pasteForDictation()
             let result = FlowPaste.insert(text)
             if latest { self.pill.rest() }
             switch result {
@@ -460,27 +462,46 @@ enum FlowPaste {
         return .pasted
     }
 
-    /// Whether the focused element takes text: true for a text field, false when the focus is on
-    /// something else (the desktop, a list…) or nowhere, nil when the app does not say (then the
-    /// paste is trusted).
+    /// Whether the focused element takes text: true for a text field, false only when the focus is
+    /// clearly somewhere that never takes text (the desktop, a list, a button…), nil when it can't
+    /// be told (then the paste is trusted).
+    ///
+    /// Chromium and Electron apps (Claude, Slack, VS Code, Chrome…) build their accessibility
+    /// lazily: while their text box has the focus they often report no focused element, or a plain
+    /// group or window. Those used to count as "no text field" and the pill said the words were
+    /// only copied when they had in fact been pasted.
     @MainActor static func focusTakesText() -> Bool? {
+        let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
         let system = AXUIElementCreateSystemWide()
         var value: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &value)
-        if status == .noValue { return false }
+        if status == .noValue {
+            // Nothing focused: only the desktop says so reliably.
+            return front == "com.apple.finder" ? false : nil
+        }
         guard status == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
         let element = value as! AXUIElement
-        var role: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        var roleValue: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+        let role = roleValue as? String
         let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea"]
-        if let role = role as? String, textRoles.contains(role) { return true }
+        if let role, textRoles.contains(role) { return true }
         var settable: DarwinBoolean = false
         if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success, settable.boolValue {
             return true
         }
         var range: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &range) == .success { return true }
-        return role == nil ? nil : false
+        // Only roles that never take text say "no field"; any other one (AXGroup, AXWindow,
+        // AXUnknown… what web views often report) is trusted.
+        let notText: Set<String> = ["AXList", "AXOutline", "AXTable", "AXRow", "AXCell", "AXBrowser", "AXImage",
+                                    "AXButton", "AXCheckBox", "AXRadioButton", "AXSlider", "AXPopUpButton",
+                                    "AXMenu", "AXMenuItem", "AXMenuBar", "AXMenuBarItem", "AXDockItem"]
+        if let role, notText.contains(role) {
+            appendAppLog("nb.log", "[Flow] no text field in \(front) (\(role)): the words stay on the clipboard")
+            return false
+        }
+        return nil
     }
 
     /// The key that types "v" with ⌘ held in the current keyboard layout: the same key on QWERTY
