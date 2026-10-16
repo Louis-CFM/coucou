@@ -489,9 +489,29 @@ async fn chat_send(
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    text_only: Option<bool>,
 ) -> Result<ChatReply, String> {
     let settings = shared.settings.lock().unwrap().clone();
-    chat::send(&app, &chat, &settings, query, context).await
+    let result = chat::send(&app, &chat, &settings, query, context, text_only.unwrap_or(false)).await;
+    // A model that refused a picture reads text only: remembered, so the island
+    // asks first next time instead of spending a request.
+    if matches!(&result, Err(e) if e == chat::IMAGES_UNSUPPORTED) {
+        let who = format!("{}/{}", settings.chat_provider, chat::model_for(&settings, &settings.chat_provider));
+        let updated = {
+            let mut s = shared.settings.lock().unwrap();
+            (!s.text_only_models.contains(&who)).then(|| {
+                s.text_only_models.push(who);
+                s.clone()
+            })
+        };
+        if let Some(s) = updated {
+            if let Err(err) = settings::save(&s) {
+                log::line(format!("could not save settings: {err}"));
+            }
+            let _ = app.emit("settings-changed", s);
+        }
+    }
+    result
 }
 
 /// The models a provider offers, for the picker in the chat view. Only asked

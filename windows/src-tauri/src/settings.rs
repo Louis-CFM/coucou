@@ -97,6 +97,9 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// "provider/model" of chat models that refused an image: next time the
+    /// island asks before sending one.
+    pub text_only_models: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -162,6 +165,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            text_only_models: Vec::new(),
         }
     }
 }
@@ -448,7 +452,8 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "textOnlyModels": ["custom/llama-3.3"]
 }"##;
 
     fn custom() -> Value {
@@ -956,6 +961,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "textOnlyModels",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
