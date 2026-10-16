@@ -283,7 +283,7 @@ pub async fn send_with(
     }
     let turn = chat.begin(server.id);
     let user = json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
-    let body = request_body(model, &chat::system_prompt(false), &turn.history, &user);
+    let body = request_body(model, &chat.system_prompt(false), &turn.history, &user);
 
     let answer = stream(&base, server.key.as_deref(), model, &body, on_delta).await?;
     if answer.is_empty() {
