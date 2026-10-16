@@ -213,8 +213,28 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
-    // Counts for the weekly recap — never the command, path or prompt itself.
-    crate::recap::observe(&app, &payload);
+    // Clarification is not an approval or recap activity.
+    if event != "HermesClarify" {
+        // Counts for the weekly recap — never the command, path or prompt itself.
+        crate::recap::observe(&app, &payload);
+    }
+
+    if event == "HermesClarify" {
+        let id = format!("clarify-{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+        let (tx, mut rx) = mpsc::channel::<Reply>(4);
+        app.state::<Pending>().0.lock().unwrap().insert(id.clone(), tx);
+        payload["request_id"] = json!(id);
+        log::line(format!("hook HermesClarify id={id}"));
+        let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+        let answer = wait_for_clarification(&id, &mut rx, ACK_TIMEOUT, DECISION_TIMEOUT).await;
+        app.state::<Pending>().0.lock().unwrap().remove(&id);
+        if let Some(answer) = answer {
+            let _ = pipe.write_all(clarify_frame(&answer).as_bytes()).await;
+            let _ = pipe.flush().await;
+        }
+        pipe.finish();
+        return;
+    }
 
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
@@ -309,9 +329,87 @@ async fn wait_for_decision(id: &str, rx: &mut mpsc::Receiver<Reply>) -> Option<S
     }
 }
 
+/// Two waits: the card must be visible before the longer answer wait.
+async fn wait_for_clarification(
+    id: &str,
+    rx: &mut mpsc::Receiver<Reply>,
+    ack_timeout: Duration,
+    answer_timeout: Duration,
+) -> Option<String> {
+    match tokio::time::timeout(ack_timeout, rx.recv()).await {
+        Ok(Some(Reply::Ack)) => {}
+        _ => return None,
+    }
+    match tokio::time::timeout(answer_timeout, rx.recv()).await {
+        Ok(Some(Reply::Decision(answer))) => Some(answer),
+        Ok(Some(Reply::Decline)) | Ok(None) | Err(_) => {
+            log::line(format!("hook HermesClarify id={id} released without an answer"));
+            None
+        }
+        Ok(Some(Reply::Ack)) => None,
+    }
+}
+
+fn clarify_output(answer: &str) -> String {
+    let answers: serde_json::Value = serde_json::from_str(answer).unwrap_or_else(|_| json!({}));
+    json!({ "answer": answers }).to_string()
+}
+
+fn clarify_frame(answer: &str) -> String {
+    format!("{answer}\n")
+}
+
 /// The log says a question was answered, never with what.
 fn loggable(decision: &str) -> &str {
     if decision.starts_with('{') { "a question" } else { decision }
+}
+
+/// Called only for a Hermes clarification; never records an approval decision.
+pub fn answer_clarification(app: &AppHandle, request_id: &str, answer: &str) {
+    send(app, request_id, Reply::Decision(clarify_output(answer)), false);
+}
+
+/// The island has rendered a clarification card and will await an answer.
+pub fn acknowledge_clarification(app: &AppHandle, request_id: &str) {
+    send(app, request_id, Reply::Ack, true);
+}
+
+/// A clarification card could not be shown, so let Hermes continue without output.
+pub fn decline_clarification(app: &AppHandle, request_id: &str) {
+    send(app, request_id, Reply::Decline, false);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clarify_answer_is_json_object() {
+        assert_eq!(clarify_output(r#"{"q0":"Use the existing CLI?","q1":["A","B"]}"#), r#"{"answer":{"q0":"Use the existing CLI?","q1":["A","B"]}}"#);
+    }
+
+    #[test]
+    fn clarify_pipe_frame_ends_with_real_newline() {
+        assert_eq!(clarify_frame(r#"{"answer":{"q0":"yes"}}"#), "{\"answer\":{\"q0\":\"yes\"}}\n");
+    }
+
+    #[tokio::test]
+    async fn clarify_requires_ack_before_waiting_for_answer() {
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.send(Reply::Ack).await.unwrap();
+        tx.send(Reply::Decision(clarify_output(r#"{"q0":"yes"}"#))).await.unwrap();
+        assert_eq!(wait_for_clarification("clarify-1", &mut rx, Duration::from_millis(20), Duration::from_millis(20)).await.as_deref(), Some(r#"{"answer":{"q0":"yes"}}"#));
+    }
+
+    #[tokio::test]
+    async fn clarify_decline_and_missing_ack_return_no_answer() {
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.send(Reply::Decline).await.unwrap();
+        assert_eq!(wait_for_clarification("clarify-2", &mut rx, Duration::from_millis(20), Duration::from_millis(20)).await, None);
+
+        let (_tx, mut rx) = mpsc::channel(4);
+        assert_eq!(wait_for_clarification("clarify-3", &mut rx, Duration::from_millis(1), Duration::from_millis(20)).await, None);
+    }
 }
 
 fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {

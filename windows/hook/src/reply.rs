@@ -12,7 +12,7 @@ use serde_json::{json, Map, Value};
 /// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
 /// agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "hermes")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -25,6 +25,9 @@ fn wants_json(agent: &str) -> bool {
 /// (`None`: nobody clicked) and, for Claude Code's AskUserQuestion, the
 /// question as it was asked.
 pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
+    if event == "HermesClarify" && agent == "hermes" {
+        return decision.map(str::to_string);
+    }
     if event != "PermissionRequest" {
         // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
         // (and the user's Always Allow): Coucou never allows a tool by itself.
@@ -52,6 +55,11 @@ pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option
         // Claude Code and Codex share the documented hookSpecificOutput. Only
         // Claude Code asks questions.
         "" => decision.and_then(|d| decision_json(d, question)),
+        "hermes" => decision.and_then(|d| match d.trim() {
+            "allow" => Some("allow".to_string()),
+            "deny" => Some("deny".to_string()),
+            _ => None,
+        }),
         _ => decision.and_then(|d| decision_json(d, None)),
     }
 }
@@ -144,12 +152,21 @@ mod tests {
 
     /// Whatever a reply says, does it let anything through?
     fn allows(out: &str) -> bool {
-        let v: Value = serde_json::from_str(out).expect("every reply is JSON");
+        if out == "allow" { return true; }
+        if out == "deny" { return false; }
+        let v: Value = serde_json::from_str(out).expect("every other reply is JSON");
         let text = v.to_string();
         // Any decision counts as one, except "ask" (Antigravity's PreToolUse): that hands the
         // choice back to the agent's own prompt.
         let decided = v.get("decision").map_or(false, |d| d.as_str() != Some("ask"));
         text.contains("allow") || decided || v.get("permission").is_some() || v.get("continue").is_some()
+    }
+
+    #[test]
+    fn hermes_clarification_answer_is_returned_as_json() {
+        let answer = r#"{"answer":{"q0":"Silver"}}"#;
+        assert_eq!(stdout("hermes", "HermesClarify", Some(answer), None).as_deref(), Some(answer));
+        assert_eq!(stdout("hermes", "HermesClarify", None, None), None);
     }
 
     #[test]
@@ -215,8 +232,13 @@ mod tests {
         for event in ["PreToolUse", "UserPromptSubmit", "Stop"] {
             assert_eq!(stdout("cursor", event, None, None), None);
         }
-        // Hermes approvals are not supported: its decisions are never relayed.
-        assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None), None);
+        // Hermes returns only an explicit one-time choice.
+        assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None).as_deref(), Some("allow"));
+        assert_eq!(stdout("hermes", "PermissionRequest", Some("deny"), None).as_deref(), Some("deny"));
+        for invalid in ["session", "always", "", "{}", "allow\ndeny"] {
+            assert_eq!(stdout("hermes", "PermissionRequest", Some(invalid), None), None);
+        }
+        assert_eq!(stdout("hermes", "PermissionRequest", None, None), None);
     }
 
     #[test]

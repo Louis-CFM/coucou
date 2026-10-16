@@ -119,7 +119,8 @@ fn main() {
 
     // Only an agent whose decisions the island can give waits for one; any other
     // would be held for nothing, its decision being thrown away (reply.rs).
-    let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
+    let waits_for_answer = (event.name == "PermissionRequest" && reply::takes_decisions(&args.agent))
+        || (event.name == "HermesClarify" && args.agent == "hermes");
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
@@ -196,6 +197,10 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
     truncate_payload(&mut payload, &name);
+    if args.agent == "hermes" && matches!(name.as_str(), "HermesClarify" | "PermissionRequest") &&
+        payload.to_string().len() > 256_000 {
+        return None;
+    }
 
     let mut line = payload.to_string();
     line.push('\n');
@@ -247,6 +252,11 @@ fn term_editor(env: &dyn Fn(&str) -> Option<String>) -> Option<&'static str> {
 /// whole. If even those had to be cut, `coucou_diff_truncated` tells the island
 /// not to show counts it cannot trust.
 fn truncate_payload(payload: &mut serde_json::Value, event: &str) {
+    if payload.get("coucou_agent").and_then(Value::as_str) == Some("hermes") &&
+        matches!(event, "HermesClarify" | "PermissionRequest") {
+        // Exact prompt text is the decision contract. Oversized prompts fall back, never shorten.
+        return;
+    }
     let keeps_diff = event == "PostToolUse"
         && payload
             .get("tool_name")
@@ -364,6 +374,26 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hermes_prompt_text_is_never_shortened() {
+        let label = "界".repeat(8000);
+        let mut payload = serde_json::json!({"coucou_agent":"hermes", "questions":[{"question":"Q", "choices":[label]}]});
+        truncate_payload(&mut payload, "HermesClarify");
+        assert_eq!(payload["questions"][0]["choices"][0], label);
+        let mut approval = serde_json::json!({"coucou_agent":"hermes", "tool_input":{"command":label}});
+        truncate_payload(&mut approval, "PermissionRequest");
+        assert_eq!(approval["tool_input"]["command"], label);
+    }
+
+    #[test]
+    fn oversized_hermes_prompts_fall_back_without_forwarding() {
+        let args = Args { agent: "hermes".into(), event: "".into() };
+        for event in ["PermissionRequest", "HermesClarify"] {
+            let raw = serde_json::json!({"hook_event_name": event, "tool_input": {"command": "x".repeat(256_000)}}).to_string();
+            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/home/me").is_none());
+        }
+    }
 
     fn run(raw: &str, agent: &str, event: &str) -> (Value, Event) {
         let args = Args { agent: agent.into(), event: event.into() };
