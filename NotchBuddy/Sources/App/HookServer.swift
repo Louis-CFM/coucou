@@ -100,7 +100,8 @@ final class HookServer: @unchecked Sendable {
         }
         state.updateTask(id: head.pillId, state: .approval)
         state.pendingApproval = ApprovalInfo(sessionId: head.sessionId, tool: head.tool,
-                                              command: head.command, inputKey: head.inputKey,
+                                              command: head.command, description: head.description,
+                                              inputKey: head.inputKey,
                                               pillId: head.pillId, id: head.id,
                                               queueCount: approvals.count,
                                               projectName: head.projectName)
@@ -827,6 +828,9 @@ final class HookServer: @unchecked Sendable {
         let tool = payload["tool_name"] as? String ?? "Tool"
         let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
         let inputKey = Self.approvalInputKey(toolInput)
+        let rawDescription = (toolInput["description"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = rawDescription?.isEmpty == false ? rawDescription : nil
         nbLog("PermissionRequest \(tool) [\(pillId)]")
 
         // AskUserQuestion is now handled via the dedicated --ask PreToolUse hook.
@@ -846,7 +850,7 @@ final class HookServer: @unchecked Sendable {
         // card shows the oldest. Past the cap, the newest goes back to its own terminal.
         let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
                                    projectName: projectName, cwd: cwd, tool: tool,
-                                   command: command, inputKey: inputKey,
+                                   command: command, description: description, inputKey: inputKey,
                                    hostApp: terminalHost?.bundleId, bundleId: bundleId)
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
