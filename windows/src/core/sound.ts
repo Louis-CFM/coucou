@@ -1,11 +1,13 @@
 // SoundEngine — port of SoundEngine.swift.
 // The 29 WAVs are the macOS app's own files (see SOUNDS_DIR in vite.config.ts);
-// they are served at /sounds/<name>.wav. Default volume 0.12, slider range 0–0.2,
-// exactly like the Mac player, and several sounds may overlap.
+// they are served at /sounds/<name>.wav. Default volume 0.12, slider range
+// 0–SOUND_VOLUME_MAX, exactly like the Mac player, and several sounds may overlap.
 // A file of the user's own in the sounds folder (src-tauri/src/sounds.rs)
 // replaces a sound; one that doesn't decode falls back to the built-in one.
 
 import { Bridge } from "./bridge";
+
+export const SOUND_VOLUME_MAX = 1;
 
 export const SOUND_NAMES = [
   "peek", "open", "close", "hover", "blip", "slap", "annoyed", "dizzy", "greet",
@@ -109,7 +111,7 @@ class SoundEngine {
   }
 
   setVolume(v: number) {
-    this.volume = Math.max(0, Math.min(0.2, v));
+    this.volume = Math.max(0, Math.min(SOUND_VOLUME_MAX, v));
     if (this.master) this.master.gain.value = this.volume;
   }
 
