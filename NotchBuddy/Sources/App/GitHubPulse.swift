@@ -67,6 +67,8 @@ enum GitHubEvent: Equatable {
     case ciPassed(prId: String)
     case mainFailed(repo: String)
     case reviewRequested(prId: String)
+    /// GitLab only: a discussion thread waits for my answer (GitLabDash.swift).
+    case commentPending(threadId: String)
 }
 
 // MARK: - GitHubPulse

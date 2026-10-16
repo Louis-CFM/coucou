@@ -363,6 +363,7 @@ final class AppState: ObservableObject {
             if !activeIntegrations.contains("integration_gitlab") && oldValue.contains("integration_gitlab") {
                 gitlabPulse = nil
                 gitlabActivity = nil
+                GitLabPanelService.shared.pillOff()
             }
         }
     }
@@ -652,7 +653,7 @@ final class AppState: ObservableObject {
             switch event {
             case .ciFailed, .mainFailed:
                 if level < 3 { level = 3; badge = .error;    sound = "error"    }
-            case .reviewRequested:
+            case .reviewRequested, .commentPending:
                 if level < 2 { level = 2; badge = .finished; sound = "question" }
             case .ciPassed:
                 if level < 1 { level = 1; badge = .finished; sound = "finish"   }

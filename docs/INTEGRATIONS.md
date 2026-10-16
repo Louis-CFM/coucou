@@ -226,6 +226,17 @@ Les réponses sont converties dans les types de GitHub (`GitHubPulse`, `GitHubPR
 | `failed` | `.failure` |
 | `canceled`, `skipped`, `manual`, autre ou absent | `.unknown` |
 
+### Panneau des merge requests
+
+Un bouton dans l'en-tête de la carte GitLab (`GitLabPanelController.toggle()`) ouvre un petit panneau, version épurée du dashboard de merge requests interprojet de GitLab (tous les projets visibles par le token). Même comportement que sur Windows et Linux ; données et règles dans `GitLabDash.swift` (pur, testé par `tests/GitLabDashTests.swift`), lecture dans `GitLabPanelService.swift`, fenêtre et vues dans `GitLabPanel.swift`.
+
+- **Fenêtre** : `NSPanel` sans cadre, transparent, au niveau `.statusBar`, collé contre le bord droit de l'écran de l'île (`IslandWindowController.islandScreen()`), 80 pt sous le haut de la zone visible ; coins gauches arrondis, côté droit plat. Elle n'est pas déplaçable. Elle s'ouvre repliée : une fine barre de 52 pt (logo + 4 pastilles). Le survol (150 ms, par une zone de suivi `NSTrackingArea` car `onHover` reste muet quand l'app n'est pas active) ou un clic sur une pastille la déplie en carte de 340 pt, vers la gauche ; elle se replie quand le curseur est parti depuis `AppState.autoCloseInterval` (le délai de l'île), jamais pendant la rédaction d'une réponse. Fermée avec ✕ ou le bouton de la carte, et quand la pill est désactivée ou le token retiré.
+- **Quatre sections repliables** : Commentaires en attente, À relire, Mes MR (approbations, fils ouverts), Approuvées. Compte, badge « +N » pour le nouveau depuis la dernière ouverture (mémorisé dans `UserDefaults`, `gitlabPanelState`), couleur d'attente pour les deux premières, pulsation de la pastille « Commentaires » quand un commentaire arrive pendant que la barre est repliée (la barre ne se déplie jamais seule).
+- **Commentaires en attente** : fil résoluble non résolu dont le dernier message n'est pas le mien, sur une MR dont je suis l'auteur ou où j'ai écrit dans le fil ; commentaire simple (non résoluble) dont le dernier message n'est pas le mien et plus récent que tout ce que j'ai écrit sur la MR. Les notes système, celles des comptes automatiques (bots, jetons de projet) et le rapport « Quality Gate » de SonarQube (reconnu par son texte, car il vient souvent d'un compte ordinaire) sont écartés ; un fil qui n'en contient que de telles notes n'est ni affiché ni compté.
+- **Un fil ouvert** : messages (Markdown via `ChatMarkdownView`), extrait de code (3 lignes autour, lu dans le fichier au commit du commentaire), bouton « Ouvrir dans GitLab ». On peut **répondre** (⌘↩), **résoudre** et **rouvrir** ; l'approbation reste dans GitLab. Après une réponse le fil quitte la liste ; en cas d'échec, le brouillon est gardé avec un message.
+- **Token** : `read_api` suffit pour tout lire ; répondre et résoudre demandent le scope `api` (le même token, droits augmentés), détecté par `GET /personal_access_tokens/self`.
+- **Périmètre lu** : mes MR ouvertes, celles où je suis relecteur ou assigné, celles que j'ai approuvées (événements `approved` des 60 derniers jours) et celles où j'ai commenté (14 jours), 30 MR au plus ; pour chacune le détail (pipeline), les approbations quand elles comptent et les discussions. Seul ce qui a bougé est relu (`updated_at`, ou pipeline en cours). Cadence : 5 min, 60 s panneau ouvert, tout de suite après une action. Un nouveau commentaire en attente met un badge sur la pill et joue le son « question » (`GitHubEvent.commentPending`).
+
 **Pas encore** : synchro iPhone, widgets, voix.
 
 ---
