@@ -67,6 +67,19 @@ jobs:
           if ($tag -ne $cargo) { $bad += "Cargo.toml says $cargo" }
           if ($bad) { throw "tag says $tag but $($bad -join '; ')" }
 
+      # A tag build must pass what a pull request has to pass — the installer
+      # that ships is the one being tested. The app bundles
+      # target/release/coucou-hook.exe as a resource, and its build script
+      # refuses to run until that file exists.
+      - name: Island tests
+        run: npm test
+
+      - name: Build the relay
+        run: cargo build --release -p coucou-hook
+
+      - name: Rust tests
+        run: cargo test --workspace --locked
+
       # `npm run build` (run by tauri as beforeBuildCommand) builds coucou-hook
       # first, which tauri.conf.json then bundles as a resource. `pack` then
       # copies the installer out of target/ under its shipping name.

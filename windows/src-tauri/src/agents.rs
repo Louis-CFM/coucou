@@ -25,6 +25,7 @@ const MARKER: &str = "coucou-hook";
 /// The shell an agent runs its hook commands through on Windows. On Linux every
 /// agent uses `sh` (or bash), so there is only one way to quote.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[allow(clippy::enum_variant_names)] // "PowerShell" really is the shell's name.
 pub enum Shell {
     /// Git Bash on Windows (Claude Code), `sh` on Linux.
     Sh,

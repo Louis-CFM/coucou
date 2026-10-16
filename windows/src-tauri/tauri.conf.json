@@ -54,6 +54,7 @@
     "shortDescription": "Mochi lives at the top of your screen",
     "longDescription": "Coucou puts Mochi at the top of your screen: it shows your Claude Code sessions and a few integrations, and lets you approve, answer, chat and drop files without leaving what you are doing.",
     "windows": {
+      "webviewInstallMode": { "type": "embedBootstrapper" },
       "nsis": {
         "installMode": "currentUser",
         "languages": ["English", "French"],
