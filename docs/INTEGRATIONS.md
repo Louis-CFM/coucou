@@ -334,4 +334,42 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 
 Aucune permission Accessibilité nécessaire.
 
+---
 
+## 8. Codex — filtre « revue automatique » (relais GitHub uniquement)
+
+Le hook Coucou s'exécute **avant** le routage natif des approbations Codex : pour un tour dont le reviewer d'approbations est automatique (`auto_review`/`strict_auto_review` dans le `turn_context` du rollout), Codex traite la demande lui-même et une carte dans le notch n'aurait aucun sens. Le relais `nb-hook.py` (version GitHub seulement) appelle donc `codex_uses_automatic_review(payload)` **avant toute connexion au socket** pour les `PermissionRequest` de l'agent `codex` et sort immédiatement (stdout vide, code 0) quand la revue automatique est prouvée. Le filtre n'émet jamais de décision et ne touche aucune politique d'approbation côté app.
+
+Règles appliquées :
+- seul `payload.transcript_path` est lu, uniquement sous `$CODEX_HOME/sessions` ou `$CODEX_HOME/archived_sessions` (chemin résolu + appartenance vérifiées, fichier régulier ouvert avec `O_NOFOLLOW`/`O_NONBLOCK`) ; lectures bornées : 1 Mio d'en-tête + 8 Mio de queue au maximum, enregistrements JSON complets seulement ;
+- `session_meta` doit être le tout premier enregistrement complet du rollout : un premier enregistrement mauvais ou malformé, ou un `session_meta` apparaissant plus tard, est rejeté ;
+- identité de session exacte : le `session_id` du hook doit correspondre à `meta.id` ou `meta.session_id` — jamais d'identité déduite d'un nom de dossier ;
+- `tool_name` manquant, vide ou non-chaîne → inconnu → relais conservé ;
+- suppression seulement si le `turn_id` exact correspond et que ce tour porte exactement un reviewer connu, sans contexte contradictoire ou inconnu ;
+- outils `mcp__*` : toujours relayés (un serveur MCP peut imposer son reviewer appel par appel) ;
+- session Guardian interne de Codex prouvée (`thread_source == guardian_review` et `source == {'subagent': {'other': 'guardian'}}`, `session_id` hérité correspondant) : supprimée sans contexte de tour ;
+- tout cas inconnu, malformé, illisible ou manquant → comportement historique (relais vers le notch).
+
+Limites :
+- build GitHub uniquement ; l'intégration App Store de Codex n'existe pas, le relais App Store est inchangé ;
+- `turn_context` du tour au-delà des 8 Mio de queue : non analysé → la carte s'affiche (échec fermé) ;
+- pas de réglage : le filtre est purement heuristique et échoue toujours dans le sens « montrer la carte ».
+
+
+Tests : `tests/test_codex_auto_review.py` (classifieur pur + intégration sous-processus du vrai relais extrait, socket Unix temporaire isolé — jamais le socket de production), lancés par `scripts/test-codex-auto-review.sh` dans la CI.
+
+### Codex native approval acceptance
+
+Validated on macOS with Codex CLI `0.162.0-alpha.17.2` in an isolated
+`CODEX_HOME`, using the generated relay and a separate Unix socket whose
+listener always returned `ask`:
+
+- `approvals_reviewer = "user"`, `on-request`, read-only sandbox: the relay
+  received one `PermissionRequest`; Codex displayed its native confirmation.
+  A one-time approval ran a harmless `printf` marker successfully.
+- `approvals_reviewer = "auto_review"` with the same approval policy/sandbox:
+  the native Guardian review completed the marker command and the listener
+  count stayed at one. The persisted turn context recorded `auto_review`.
+
+These are native CLI checks; they do not claim Desktop question-card coverage.
+The production profile, hook trust and Coucou installation were unchanged.
