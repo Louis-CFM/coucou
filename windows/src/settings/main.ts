@@ -784,6 +784,9 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter either: the Windows media controls (Windows only, music.rs).
+  { id: "integration_music", name: "Music", color: "#FA2D48", fields: [],
+    hint: "Shows what plays in Spotify, Apple Music, YouTube Music or any other player in the Windows media controls, with play, pause and skip. Mochi dances to music, not to videos." },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
