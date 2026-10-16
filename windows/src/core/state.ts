@@ -162,6 +162,8 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** The island stays compact on screen instead of hiding. */
+  keepVisible: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -190,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
   language: "",
+  keepVisible: false,
 };
 
 type Listener = () => void;
