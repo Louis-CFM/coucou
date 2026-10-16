@@ -122,3 +122,45 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
 });
+
+test("a media model's answer is a card per file: the picture with Download, a 3D model as a file", async () => {
+  State.settings = {
+    ...State.settings,
+    chatProvider: "media",
+    chatModels: { media: "m-1" },
+    models: [{ id: "m-1", label: "FLUX", kind: "openai", model: "flux", endpoint: "https://x.dev/v1", vision: null, output: "image", voice: "", detail: "" }],
+  };
+  view.sync();
+  assert.equal($(".model-name").textContent, "FLUX · image");
+  assert.equal($(".chat-input").placeholder, "Describe an image…");
+  let finish;
+  answers.chat_send = () => new Promise((resolve) => (finish = resolve));
+  answers.media_bytes = () => new Uint8Array([0x89, 0x50]).buffer;
+  $(".chat-input").value = "a cat";
+  $(".send-btn").fire("click");
+  await flush();
+  view.sync();
+  assert.ok($(".gen-card"), "the making-it card, not the dots");
+  assert.equal($(".typing"), null);
+
+  finish({ text: "", notice: null, media: [{ name: "image-1-0.png", kind: "image" }, { name: "3d-1-0.glb", kind: "3d" }] });
+  await flush();
+  view.sync();
+  assert.equal($(".gen-card"), null);
+  assert.equal(view.el.find(".reply").length, 0, "no empty text bubble");
+  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Download"], ["Download .glb"]]);
+});
+
+test("with a speech-to-text model saved, Send is the mic while the field is empty", () => {
+  assert.ok(!$(".send-btn").classList.contains("mic"), "no model: plain Send");
+  State.settings = {
+    ...State.settings,
+    models: [{ id: "m-1", label: "Whisper", kind: "openai", model: "whisper-large-v3-turbo", endpoint: "https://x.dev/v1", vision: null, output: "stt", voice: "", detail: "" }],
+  };
+  view.sync();
+  assert.ok($(".send-btn").classList.contains("mic"));
+  assert.match($(".send-btn").title, /Whisper/);
+  $(".chat-input").value = "hello";
+  $(".chat-input").fire("input");
+  assert.ok(!$(".send-btn").classList.contains("mic"), "text in the field: Send");
+});

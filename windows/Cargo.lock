@@ -722,8 +722,10 @@ name = "coucou"
 version = "0.5.0"
 dependencies = [
  "arboard",
+ "base64 0.22.1",
  "cpal",
  "dbus",
+ "dirs 7.0.0",
  "futures-util",
  "gtk",
  "keyring",
