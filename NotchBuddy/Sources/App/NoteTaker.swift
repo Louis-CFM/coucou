@@ -9,7 +9,7 @@ import FoundationModels
 
 /// Who writes the summary of a call.
 enum NoteSummaryEngine: String, CaseIterable, Identifiable {
-    /// The Claude key of Settings → Chat (the transcript goes to Anthropic).
+    /// The Claude key of Settings → Chat (the transcript goes to Anthropic, or to its gateway).
     case claude
     /// Apple Intelligence, on the Mac (macOS 26).
     case apple
@@ -370,13 +370,9 @@ final class NoteTaker: ObservableObject {
     """
 
     nonisolated private static func claudeSummary(_ transcript: String, key: String, model: String) async -> String? {
+        guard let endpoint = try? ClaudeEndpoint.current() else { return nil }
         func call(_ model: String) async -> String? {
-            var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-            request.httpMethod = "POST"
-            request.timeoutInterval = 120
-            request.setValue(key, forHTTPHeaderField: "x-api-key")
-            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-            request.setValue("application/json", forHTTPHeaderField: "content-type")
+            var request = endpoint.request(key: key, timeout: 120)
             let body: [String: Any] = [
                 "model": model,
                 "max_tokens": 2048,
@@ -385,7 +381,7 @@ final class NoteTaker: ObservableObject {
             ]
             guard let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
             request.httpBody = data
-            guard let result = try? await URLSession.shared.data(for: request),
+            guard let result = try? await endpoint.session.data(for: request),
                   (result.1 as? HTTPURLResponse)?.statusCode == 200,
                   let json = try? JSONSerialization.jsonObject(with: result.0) as? [String: Any],
                   let content = json["content"] as? [[String: Any]] else { return nil }
@@ -393,7 +389,8 @@ final class NoteTaker: ObservableObject {
             return text.isEmpty ? nil : text
         }
         if let text = await call(model) { return text }
-        return await call(FlowCleanup.model)
+        // The fast model as a second try, on Anthropic only: a gateway rarely has it.
+        return endpoint.isGateway ? nil : await call(FlowCleanup.model)
     }
 
     /// Apple's on-device model has a small context: a long call is first noted in parts, then the
