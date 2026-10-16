@@ -108,9 +108,12 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// Hands-free chat: after a spoken question, the mic listens again once
+    /// the reply is in.
+    pub keep_mic_on: bool,
     /// Models that make something other than chat text: images, video,
-    /// speech or 3D (media.rs). Each has its endpoint; its key is per host
-    /// (secrets::endpoint_key).
+    /// speech, 3D, or speech-to-text for the chat's mic (media.rs). Each has
+    /// its endpoint; its key is per host (secrets::endpoint_key).
     pub models: Vec<ModelEntry>,
 }
 
@@ -126,8 +129,8 @@ pub struct ModelEntry {
     pub endpoint: String,
     /// Whether it reads images (unused by media models, kept as it comes).
     pub vision: Option<bool>,
-    /// What it makes: "image", "video", "audio" or "3d". Empty or "text"
-    /// makes nothing media.rs can use (see `is_text`).
+    /// What it makes: "image", "video", "audio", "3d" or "stt". Empty or
+    /// "text" makes nothing media.rs can use (see `is_text`).
     pub output: String,
     /// Text-to-speech voice, for "audio" models. Empty = the model's default.
     pub voice: String,
@@ -210,6 +213,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            keep_mic_on: false,
             models: Vec::new(),
         }
     }
@@ -512,6 +516,7 @@ mod tests {
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "showClock": true,
+  "keepMicOn": true,
   "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
     "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }]
 }"##;
@@ -1035,6 +1040,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "keepMicOn",
                 "models",
             ]
         );

@@ -60,6 +60,7 @@ function pickColor(next: Record<string, string>) {
 const extras: ExtrasContext = {
   settings: () => settings,
   save: () => void save(),
+  toggle: (on, onChange) => toggle(on, onChange),
 };
 
 // ── Reusable bits ─────────────────────────────────────────────────────────────

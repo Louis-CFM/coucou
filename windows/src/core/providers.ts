@@ -44,9 +44,9 @@ export const PROVIDERS: readonly ProviderDef[] = [
 
 /** Answered only through the user's subscription, switched on in Settings → Chat. */
 export const SUBSCRIPTION_ONLY: readonly ProviderId[] = ["cursor", "copilot"];
-/** The saved models the "Create" chip offers. */
+/** The saved models the "Create" chip offers (speech-to-text only serves the mic). */
 export function creators(settings: Settings) {
-  return settings.models ?? [];
+  return (settings.models ?? []).filter((m) => m.output !== "stt");
 }
 
 /** Credential store entry of the custom server's optional key. */
