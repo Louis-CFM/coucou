@@ -163,6 +163,16 @@ body {
   width: 0;
 }
 
+/* The collapse countdown: island.ts sets its duration and delay, it runs without frames. */
+@keyframes countdown-shrink {
+  from {
+    width: 160px;
+  }
+  to {
+    width: 0;
+  }
+}
+
 /* Compact 2×2 mini grid, to the right of the notch. */
 #mini-grid {
   position: absolute;
