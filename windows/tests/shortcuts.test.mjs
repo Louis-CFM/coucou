@@ -281,6 +281,7 @@ const host = {
   emote: (e) => did.push(`emote:${e}`),
   setPinned: (on) => did.push(`pin:${on}`),
   takeKeyboard: () => did.push("keyboard"),
+  focusChat: () => did.push("focus-chat"),
   wardrobeAnywhere: () => did.push("wardrobe"),
   canLeaveIsland: () => desktopSupported,
   flyOutOrHome: () => did.push("desktop"),
@@ -317,9 +318,15 @@ test("the wardrobe shortcut's own event opens the wardrobe", () => {
   assert.deepEqual(did, ["resume", "wardrobe"]);
 });
 
-test("a global shortcut arrives as an event and opens the chat", () => {
+test("a global shortcut arrives as an event and opens the chat, ready to type in", () => {
   emit("shortcut", "openChat");
-  assert.deepEqual(did, ["resume", "alert:prompt"]);
+  assert.deepEqual(did, ["resume", "alert:prompt", "keyboard", "focus-chat"]);
+  // Already on the chat: the field is focused again all the same.
+  did = [];
+  State.mode = "expanded";
+  State.view = "prompt";
+  emit("shortcut", "openChat");
+  assert.deepEqual(did, ["resume", "alert:prompt", "keyboard", "focus-chat"]);
 });
 
 test("island keys are read before the chat field sees them, and only while open", () => {
