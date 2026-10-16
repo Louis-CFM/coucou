@@ -126,6 +126,9 @@ struct Event {
     /// `permissionDecision` (docs/AGENTS.md). Off by default, so agents that
     /// do not expect a blocking answer keep re-asking in their own terminal.
     opted_in: bool,
+    /// Claude Code's PermissionRequest `permission_suggestions`, as sent: the
+    /// rules an island "Always allow" applies (never one the app makes up).
+    suggestions: Option<Value>, (feat(windows): Always allow on Claude Code's permission card)
 }
 
 fn main() {
@@ -171,8 +174,14 @@ fn main() {
     if opt_in {
         print(reply::opt_in(decision.as_deref()));
     } else {
-        print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
-    } (feat(windows): drop a permission card answered in the terminal)
+        print(reply::stdout_with(
+            &args.agent,
+            &event.name,
+            decision.as_deref(),
+            event.question.as_ref(),
+            event.suggestions.as_ref(),
+        ));
+    }
     std::process::exit(0);
 }
 
@@ -255,6 +264,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
         .then(|| map.get("tool_input").cloned())
         .flatten();
+    let suggestions = (name == "PermissionRequest").then(|| map.get("permission_suggestions").cloned()).flatten();
 
     // The opt-in is read here and left in the payload: the island needs it too.
     let opted_in = map.get("coucou_approval").and_then(Value::as_bool).unwrap_or(false);
@@ -265,7 +275,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question, opted_in })
+    Some(Event { line, name, question, opted_in, suggestions })
 }
 
 /// `claude -p`, the SDK and scheduled jobs: no one watches them, so they stay

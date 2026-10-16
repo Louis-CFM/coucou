@@ -84,6 +84,58 @@ export function promptStep(raw: string): string | null {
     .replace(/\s+/g, " ")
     .trim();
   return text ? text.slice(0, 60) : null;
+
+/** How Claude Code's permission modes read on the Always button. */
+const MODE_WORDS: Record<string, string> = {
+  acceptEdits: "edits",
+  bypassPermissions: "everything",
+};
+
+/** Where Claude Code saves an Always rule, in words. */
+const DESTINATIONS: Record<string, string> = {
+  session: "for this session only",
+  localSettings: "in .claude/settings.local.json",
+  projectSettings: "in .claude/settings.json",
+  userSettings: "in ~/.claude/settings.json",
+};
+
+/**
+ * Claude Code's `permission_suggestions` (the terminal's "Yes, and don't ask
+ * again…") → the Always button's words, or null when it offered nothing. The
+ * rules stay with the relay, which hands back exactly these; this only says
+ * what they are: "Always allow Bash(npm test:*)".
+ */
+export function alwaysOffer(raw: unknown): { label: string; detail: string } | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const what: string[] = [];
+  const where = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const s = item as Record<string, unknown>;
+    if (typeof s.destination === "string") where.add(s.destination);
+    if ((s.type === "addRules" || s.type === "replaceRules") && Array.isArray(s.rules) && s.behavior !== "deny") {
+      for (const r of s.rules as Record<string, unknown>[]) {
+        if (typeof r?.toolName !== "string" || !r.toolName) continue;
+        const content = typeof r.ruleContent === "string" ? r.ruleContent.trim() : "";
+        what.push(content ? `${r.toolName}(${content})` : r.toolName);
+      }
+    } else if (s.type === "setMode" && typeof s.mode === "string" && MODE_WORDS[s.mode]) {
+      what.push(MODE_WORDS[s.mode]);
+    } else if (s.type === "addDirectories" && Array.isArray(s.directories)) {
+      for (const d of s.directories) {
+        if (typeof d === "string" && d.trim()) what.push(`files in ${lastPathComponent(d.trim()) || d.trim()}`);
+      }
+    }
+  }
+  let rules = what.join(", ");
+  if (rules.length > 48) rules = `${rules.slice(0, 47)}…`;
+  const sessionOnly = where.size > 0 && [...where].every((d) => DESTINATIONS[d] === DESTINATIONS.session);
+  const label = sessionOnly
+    ? (rules ? `Allow ${rules} this session` : "Allow for this session")
+    : rules ? `Always allow ${rules}` : "Always allow";
+  const saved = [...where].map((d) => DESTINATIONS[d] ?? d).join(", ");
+  const detail = `Allow, and let Claude Code remember ${what.length ? what.join(", ") : "this permission"}${saved ? ` ${saved}` : ""}.`;
+  return { label, detail };
 }
 
 interface HookPayload {
@@ -112,6 +164,8 @@ interface HookPayload {
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
+  /** PermissionRequest: what "Yes, and don't ask again" would save (Claude Code). */
+  permission_suggestions?: unknown;
 }
 
 const PROJECT_ALIASES: Record<string, string> = {
@@ -566,6 +620,9 @@ function handleHook(island: Island, payload: HookPayload) {
       // Desktop asks through the same hook payload; other agents don't.
       const questions =
         isExternalAgent && validAgent !== "claude-desktop" ? null : askedQuestions(tool, input);
+      // Claude Code may offer to remember the permission: then the card also
+      // has "Always allow". No other agent's relay can save a rule.
+      const always = isExternalAgent || questions ? null : alwaysOffer(payload.permission_suggestions);
       // Requests line up FIFO instead of replacing each other — a second one
       // used to be declined outright while a card was up. A full queue hands
       // the newest back to its terminal: never an implicit allow.
@@ -580,6 +637,7 @@ function handleHook(island: Island, payload: HookPayload) {
           : {}),
         ...(questions ? { questions } : {}),
         inputKey: approvalInputKey(input),
+        ...(always ? { always } : {}),
       });
       if (outcome === "full" && requestId) void Bridge.approvalDecline(requestId);
       break;

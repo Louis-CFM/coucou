@@ -280,7 +280,8 @@ export const Bridge = {
   /** The provider's own sign-in, when a button can start it (Cursor's opens the browser). */
   cliLogin: (provider: string) => callOrThrow<void>("cli_login", { provider }),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  /** "always" carries no rule: the relay applies the ones Claude Code offered. */
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always") => (feat(windows): Always allow on Claude Code's permission card)
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),

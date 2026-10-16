@@ -61,6 +61,12 @@ export interface ApprovalInfo {
   total?: number;
   /** Agent name, set only when queued requests come from different sessions or agents. */
   sourceLabel?: string;
+  /**
+   * Claude Code offered to remember this permission (permission_suggestions):
+   * the "Always allow" button's words. The rules themselves stay with the
+   * relay, which applies exactly what Claude Code offered.
+   */
+  always?: { label: string; detail: string } | null; (feat(windows): Always allow on Claude Code's permission card)
 }
 
 /** One question of an AskUserQuestion call. */
