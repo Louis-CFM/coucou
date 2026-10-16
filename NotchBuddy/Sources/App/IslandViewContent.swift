@@ -1523,7 +1523,11 @@ struct PromptView: View {
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
         Task {
-            await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
+            if AgentChat.handles(query) {
+                await AgentChat.handle(query, state: state)
+            } else {
+                await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
+            }
             await MainActor.run { focused = true }
         }
     }

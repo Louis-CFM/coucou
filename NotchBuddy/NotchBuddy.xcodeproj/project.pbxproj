@@ -51,6 +51,7 @@
 		189811F4DB3C4F6030043643 /* VoiceTranscriptHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE925A6844FE3E3C09131CE0 /* VoiceTranscriptHistory.swift */; };
 		18D47AE663EB96BE5638D5F7 /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
 		1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */; };
+		1B576C919EB3B1649E60F28B /* AgentChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8015F9EDE795265F753B21B4 /* AgentChat.swift */; };
 		1C2BB61FA83015C42B321E0E /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		1D23613B270FE8B11C5E27A7 /* IslandDisplayChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A09E73F1E58019EF6EA2A62 /* IslandDisplayChoice.swift */; };
 		1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
@@ -356,6 +357,7 @@
 		E2414533EDC7565286141198 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9E6EB7C8468A8339CF6A5C /* SpotifyController.swift */; };
 		E4B93DC2345688488FEAE078 /* ScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CBF0D968BFB1AB0E36B18F /* ScreenCapture.swift */; };
 		E4B9986674F4D425826F15A8 /* StripePoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */; };
+		E4F32160E1C09A1D960EBDF7 /* AgentChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8015F9EDE795265F753B21B4 /* AgentChat.swift */; };
 		E5D08513CFEA5D5E6760ECA4 /* ConversationContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A67DA3B8EEF063C44E07F7E /* ConversationContext.swift */; };
 		E701BC8996229D08362CA732 /* ServiceStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF705275522F99CAE7E1429 /* ServiceStatus.swift */; };
 		E776C7D1DE5C62EA8D4BA3E3 /* FileDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3232F258523DD8D09B670363 /* FileDropView.swift */; };
@@ -528,6 +530,7 @@
 		7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7C432FE1286945E42D3E11D7 /* VoiceResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceResultView.swift; sourceTree = "<group>"; };
 		7C8178EB447DDE9C03427B36 /* ParakeetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetEngine.swift; sourceTree = "<group>"; };
+		8015F9EDE795265F753B21B4 /* AgentChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChat.swift; sourceTree = "<group>"; };
 		824E56D2255CA86DAC350DBF /* SessionPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPublisher.swift; sourceTree = "<group>"; };
 		8296E14A0C15515E6C3C1DBB /* QuestionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionCard.swift; sourceTree = "<group>"; };
 		8436291D94C826F1D9DA3130 /* FlowSettingsBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSettingsBox.swift; sourceTree = "<group>"; };
@@ -656,6 +659,7 @@
 		2D4550630644796DA0649B81 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				8015F9EDE795265F753B21B4 /* AgentChat.swift */,
 				E269A474928E8BCD88627C9D /* AgentLauncher.swift */,
 				192844E7299DEED5C2372067 /* AppDelegate.swift */,
 				9F6D7015D6A77AA59323C0E7 /* AppLog.swift */,
@@ -1141,6 +1145,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1B576C919EB3B1649E60F28B /* AgentChat.swift in Sources */,
 				6054EBAB2CD8D14B853DBCBE /* AgentLauncher.swift in Sources */,
 				C940B651C6CA952D99388E04 /* AppDelegate.swift in Sources */,
 				4B6AC00F22EC75E90E0157D5 /* AppLog.swift in Sources */,
@@ -1372,6 +1377,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E4F32160E1C09A1D960EBDF7 /* AgentChat.swift in Sources */,
 				91995DE7256293632901DD2D /* AgentLauncher.swift in Sources */,
 				878924960FC0F2B3524D48AC /* AppDelegate.swift in Sources */,
 				61CB7049490F61CFA1B36B64 /* AppLog.swift in Sources */,
