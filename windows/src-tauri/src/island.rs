@@ -219,7 +219,7 @@ fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
 
 /// The display the island lives on: a chosen one, the primary one, or the one
 /// under the cursor.
-fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
+pub(crate) fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
     let ids: Vec<DisplayId> = monitors.iter().map(describe).collect();
     if let Some(i) = pick_display(pref, &ids) {
@@ -259,7 +259,7 @@ mod display_tests {
         let rescaled = [lap.clone(), d("DELL U2720Q", 1920, 0, 1920, 1080)];
         assert_eq!(pick_display(&key, &rescaled), Some(1));
         // Unplugged: nothing, so the caller falls back to the primary display.
-        assert_eq!(pick_display(&key, &[lap.clone()]), None);
+        assert_eq!(pick_display(&key, std::slice::from_ref(&lap)), None);
     }
 
     #[test]
@@ -363,7 +363,9 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    // A shell panel at the top of the display (GNOME's bar) hides a window at its edge.
+    let (lx, ly) = logical_origin(&m);
+    let y = mp.y + (platform::top_inset(&win, lx, ly) as f64 * scale).round() as i32;
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -374,7 +376,6 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
-    let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
@@ -431,13 +432,13 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // nobody can reach. Checked about twice a second — the cursor poll
                 // is already running, so this costs one monitor query.
                 ticks = ticks.wrapping_add(1);
-                if ticks % screen_every == 0 {
+                if ticks.is_multiple_of(screen_every) {
                     let now = current_screen_key(&app);
                     if now.is_some() && now != last_screen {
                         let first = last_screen.is_none();
                         last_screen = now;
                         if !first {
-                            crate::log::line("display layout changed — repositioning".to_string());
+                            crate::log::line("display layout changed — repositioning");
                             let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
                         }
                     }

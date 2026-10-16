@@ -1,6 +1,7 @@
 import SwiftUI
 import ServiceManagement
 import AppKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
@@ -150,6 +151,21 @@ struct SettingsView: View {
     #endif
     @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
     @State private var customSoundCount = SoundEngine.shared.customized.count
+    @State private var pickedSound = "approval"
+
+    private func chooseSoundFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.audio]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if SoundEngine.shared.setCustom(pickedSound, from: url) {
+            customSoundCount = SoundEngine.shared.customized.count
+            SoundEngine.shared.play(pickedSound)
+        } else {
+            NSSound.beep()
+        }
+    }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -328,6 +344,19 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
+                }
+                .disabled(!state.soundEnabled)
+                HStack(spacing: 8) {
+                    Picker("Sound", selection: $pickedSound) {
+                        ForEach(SoundEngine.soundNames, id: \.self) { Text($0).tag($0) }
+                    }
+                    .frame(maxWidth: 200)
+                    Button("Choose file…") { chooseSoundFile() }
+                    Button("Reset") {
+                        SoundEngine.shared.removeCustom(pickedSound)
+                        customSoundCount = SoundEngine.shared.customized.count
+                    }
+                    .disabled(!SoundEngine.shared.customized.contains(pickedSound))
                 }
                 .disabled(!state.soundEnabled)
                 Text("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.")
