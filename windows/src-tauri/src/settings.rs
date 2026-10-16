@@ -108,6 +108,8 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// Screenshot roam without the scan cutscene: a quick sweep, then capture.
+    pub quick_scan: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -178,6 +180,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            quick_scan: false,
         }
     }
 }
@@ -478,7 +481,8 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "quickScan": true
 }"##;
 
     fn custom() -> Value {
@@ -1000,6 +1004,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "quickScan",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
