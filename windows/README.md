@@ -378,9 +378,10 @@ an answer to a comment you wrote, or a comment on your merge request), **To
 review**, **My MRs** (with approvals and open threads) and **Approved** (open
 merge requests you approved). A badge such as `+2` tells what is new since you
 last opened a section, and *Comments* and *To review* take a colour while
-something waits for you. Messages from automated accounts (SonarQube, dependabot, project bots…) are
-left out: the panel is for what people wrote, and a thread that only holds such
-messages is not shown. Open a thread to read it with the code it is about,
+something waits for you. Messages from automated accounts (dependabot, project bots…) are left out, and
+so is SonarQube's "Quality Gate" report, recognised by its text since it often
+comes under an ordinary account: the panel is for what people wrote, and a
+thread that only holds such messages is not shown. Open a thread to read it with the code it is about,
 **answer it**, **resolve it** or open it again; a button opens the merge request
 in GitLab, where you approve. Replying needs the `api` scope: raise your token's
 rights (the same token) — with `read_api` alone everything is shown and only the
