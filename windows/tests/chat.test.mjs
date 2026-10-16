@@ -123,7 +123,7 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.ok(!$(".model-btn").disabled);
 });
 
-test("a media model's answer is a card per file: the picture with Full screen and Download, a 3D model as a file", async () => {
+test("a media model's answer is a card per file: the picture with Full screen and Download, a 3D model to view in 3D", async () => {
   State.settings = {
     ...State.settings,
     chatProvider: "media",
@@ -135,7 +135,8 @@ test("a media model's answer is a card per file: the picture with Full screen an
   assert.equal($(".chat-input").placeholder, "Describe an image…");
   let finish;
   answers.chat_send = () => new Promise((resolve) => (finish = resolve));
-  answers.media_bytes = () => new Uint8Array([0x89, 0x50]).buffer;
+  // The picture loads; the 3D model's file is gone, so its still can't be made.
+  answers.media_bytes = ({ name }) => (name.endsWith(".glb") ? null : new Uint8Array([0x89, 0x50]).buffer);
   $(".chat-input").value = "a cat";
   $(".send-btn").fire("click");
   await flush();
@@ -148,5 +149,8 @@ test("a media model's answer is a card per file: the picture with Full screen an
   view.sync();
   assert.equal($(".gen-card"), null);
   assert.equal(view.el.find(".reply").length, 0, "no empty text bubble");
-  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Full screen", "Download"], ["Download .glb"]]);
+  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Full screen", "Download"], ["View in 3D", "Download .glb"]]);
+  await flush();
+  const model = view.el.find(".media-card")[1];
+  assert.equal(model.find(".reply-note")[0]?.textContent, "Couldn't show this 3D model; it can still be downloaded.");
 });
