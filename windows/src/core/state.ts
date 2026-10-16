@@ -63,6 +63,8 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** A dropped text or code file sent with this message, shown as a code card. */
+  attachment?: { name: string; lang: string; text: string } | null;
 }
 
 export type PromptContext =
