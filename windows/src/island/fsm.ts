@@ -23,12 +23,36 @@ export class IslandStateMachine {
   }
   /** petit → hidden delay, seconds. */
   petitToHiddenDelay = 60;
+  /** Whether ordinary resting and activity states may use the compact island. */
+  get showCompactIsland(): boolean {
+    return this.compactVisible;
+  }
+  set showCompactIsland(show: boolean) {
+    if (show === this.compactVisible) return;
+    this.compactVisible = show;
+    if (!show && this.state === "petit" && !this.pinned) {
+      this.cancelTimers();
+      this.transition("hidden");
+    }
+  }
   /** coucou → petit once the greeting animation ends (no hover). */
   greetAutoCollapseDelay = 0.6;
   /** coucou → petit while the mouse hovers the greeting. */
   greetHoverCollapseDelay = 10;
   /** An alert waiting for an answer stays open, even when the mouse leaves. */
-  pinned = false;
+  get pinned(): boolean {
+    return this.heldOpen;
+  }
+  set pinned(held: boolean) {
+    this.heldOpen = held;
+    // A folded card is the only compact-state exception while compact resting
+    // is disabled. Once answered elsewhere, that exception ends immediately,
+    // whether or not the pointer is currently over the wake strip.
+    if (!held && !this.showCompactIsland && this.state === "petit") {
+      this.cancelTimers();
+      this.transition("hidden");
+    }
+  }
   /**
    * Hovering opens the island all the way instead of peeking (Settings →
    * General → Open on hover, off by default), as IslandStateMachine.openOnHover.
@@ -49,6 +73,8 @@ export class IslandStateMachine {
   homeCollapseDueAt: number | null = null;
 
   private homeDelay = 15;
+  private compactVisible = true;
+  private heldOpen = false;
   private byHover = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
@@ -62,7 +88,8 @@ export class IslandStateMachine {
   }
 
   mouseEntered() {
-    if (this.openOnHover && (this.state === "hidden" || this.state === "petit") && !this.pinned) {
+    if ((this.openOnHover || !this.showCompactIsland) &&
+        (this.state === "hidden" || this.state === "petit") && !this.pinned) {
       this.cancelTimers();
       this.byHover = true;
       this.transition("home");
@@ -97,7 +124,7 @@ export class IslandStateMachine {
         break;
       case "coucou":
         this.clear("greetCollapse");
-        this.transition("petit");
+        this.transition(this.showCompactIsland ? "petit" : "hidden");
         break;
     }
   }
@@ -117,7 +144,7 @@ export class IslandStateMachine {
 
   /** Non-alert work event: show compact from hidden. */
   reveal() {
-    if (this.state !== "hidden") return;
+    if (!this.showCompactIsland || this.state !== "hidden") return;
     this.cancelTimers();
     this.transition("petit");
     this.schedulePetitHide();
@@ -145,7 +172,7 @@ export class IslandStateMachine {
   forcePetit() {
     this.byHover = false;
     this.cancelTimers();
-    this.transition("petit");
+    this.transition(this.showCompactIsland || this.pinned ? "petit" : "hidden");
   }
 
   forceHidden() {
@@ -178,7 +205,7 @@ export class IslandStateMachine {
       // An alert pinned while the countdown ran keeps the island open.
       if (this.state === "home" && !this.pinned) {
         this.byHover = false;
-        this.transition("petit");
+        this.transition(this.showCompactIsland ? "petit" : "hidden");
       }
     }, ms);
   }
@@ -187,7 +214,7 @@ export class IslandStateMachine {
     this.clear("greetCollapse");
     this.greetCollapse = window.setTimeout(() => {
       this.greetCollapse = null;
-      if (this.state === "coucou") this.transition("petit");
+      if (this.state === "coucou") this.transition(this.showCompactIsland ? "petit" : "hidden");
     }, delay * 1000);
   }
 
