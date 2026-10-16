@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { MediaFile, Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 
@@ -178,6 +178,22 @@ export interface PhoneAnswersStatus {
   enabled: boolean;
 }
 
+/** A chat answer: the text, and what came with it. */
+export interface ChatAnswer {
+  text: string;
+  /** How the answer was made (the attachment was left out...), shown above it. */
+  notice: string | null;
+  /** Images, video, speech or 3D a media model made. */
+  media: MediaFile[];
+}
+
+/** Extensions media.rs saves pictures, video and sound with (it sniffs the bytes), and their types. */
+const MEDIA_TYPES: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
+  mp4: "video/mp4", webm: "video/webm",
+  wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4",
+};
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -329,7 +345,21 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+    callOrThrow<ChatAnswer>("chat_send", { query, context }),
+  /** A generated file as a blob: URL (revoke it when done), or null. Only
+   *  files in the app's media folder can be read, by bare name. */
+  mediaUrl: async (name: string): Promise<string | null> => {
+    const bytes = await call<ArrayBuffer>("media_bytes", { name });
+    if (!bytes) return null;
+    const ext = name.split(".").pop() ?? "";
+    return URL.createObjectURL(new Blob([bytes], { type: MEDIA_TYPES[ext] ?? "" }));
+  },
+  /** Copies a generated file into Downloads; returns where it went. */
+  mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
+  /** "image", "video", "audio", "3d" or "text", guessed from a model id. */
+  guessOutput: (model: string) => call<string>("guess_model_output", { model }),
+  /** Credential name of an endpoint's key (one per provider host). */
+  endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
