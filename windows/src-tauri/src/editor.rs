@@ -69,6 +69,7 @@ impl Editor {
     /// What the window manager calls this editor's windows, for the editors whose
     /// windows are looked for (PhpStorm: one process, a window per project).
     /// VS Code is left to its own launcher, which reuses the window of a folder.
+    #[cfg_attr(windows, allow(dead_code))]
     pub fn window_class(self) -> Option<&'static str> {
         match self {
             Editor::VsCode => None,
@@ -191,7 +192,7 @@ mod tests {
         assert_eq!(first_file(&[missing]), None);
         assert_eq!(first_file(&[]), None);
         // A folder is not a launcher.
-        assert_eq!(first_file(&[dir.clone()]), None);
+        assert_eq!(first_file(std::slice::from_ref(&dir)), None);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
