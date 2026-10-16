@@ -14,22 +14,24 @@ use super::text;
 pub const MODEL: &str = "claude-haiku-4-5";
 /// Past this, the words are pasted as heard rather than keeping you waiting.
 const TIMEOUT: Duration = Duration::from_secs(4);
-/// The same through Claude Code (fork), which needs a few seconds to start.
-const CLAUDE_CODE_TIMEOUT: Duration = Duration::from_secs(12);
 
-/// Claude can answer: with the API key, or (fork) through Claude Code.
+/// Claude can answer: with the API key, or through Claude Code. A call's
+/// summary uses either.
 pub fn has_key() -> bool {
-    crate::secrets::present(crate::claude::KEY) || crate::claude_code::find().is_some()
+    has_api_key() || crate::claude_code::find().is_some()
+}
+
+/// The API key itself: the clean-up of each dictation needs it.
+pub fn has_api_key() -> bool {
+    crate::secrets::present(crate::claude::KEY)
 }
 
 pub async fn clean(raw: &str, style: Style, app: Option<&str>, words: &[String]) -> String {
-    if style == Style::Verbatim || text::word_count(raw) < 3 || !has_key() {
+    if style == Style::Verbatim || text::word_count(raw) < 3 || !has_api_key() {
         return raw.to_string();
     }
     let user = format!("<dictation>\n{raw}\n</dictation>");
-    // Fork: Claude Code starts a fresh CLI each time, slower than the API.
-    let timeout = if crate::secrets::present(crate::claude::KEY) { TIMEOUT } else { CLAUDE_CODE_TIMEOUT };
-    match crate::claude::complete(MODEL, &system(style, app, words), &user, 2048, timeout).await {
+    match crate::claude::complete(MODEL, &system(style, app, words), &user, 2048, TIMEOUT).await {
         Ok(reply) => {
             let cleaned = reply.replace("<dictation>", "").replace("</dictation>", "").trim().to_string();
             if plausible(&cleaned, raw) {
