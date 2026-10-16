@@ -6,7 +6,7 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { State, type AgentTask } from "../core/state";
+import { MUSIC_ID, State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
@@ -610,6 +610,7 @@ export function hasIntegrationData(id: string): boolean {
 }
 
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  if (task.id === MUSIC_ID) return musicCard(task);
   if (task.id === "integration_n8n") {
     const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
     return hooks.detailOpen && hasActivity
@@ -649,3 +650,61 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
 }
 
 export { clear };
+
+// ── Music (Windows: the system media controls, src-tauri/src/music.rs) ────────
+
+/** A player control; the action goes to whichever player is on show. */
+function musicButton(icon: string, title: string, action: "toggle" | "next" | "previous", main = false): HTMLElement {
+  const b = h("button", { class: main ? "music-btn main" : "music-btn", title }, svg(icon, main ? 12 : 10, { fill: "currentColor" }));
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    void Bridge.musicControl(action);
+  });
+  return b;
+}
+
+/** The Music pill's card: the track and its player, with previous / play / next. */
+function musicCard(task: AgentTask): HTMLElement {
+  const np = State.nowPlaying;
+  if (!np) {
+    // No key: it shows whatever a player reports to Windows.
+    return h(
+      "div",
+      { class: "int-card" },
+      header(task.color, task.name, t("Integration")),
+      h("div", { class: "int-status" }, dot("#6B7079", 5), h("span", { text: "Nothing playing" })),
+      h("div", { class: "int-hint", text: "Play something in Spotify, Apple Music or another player." }),
+    );
+  }
+  return h(
+    "div",
+    { class: "int-card music-card" },
+    header(task.color, task.name, np.app),
+    h("div", { class: "music-title", text: np.title }),
+    np.artist ? h("div", { class: "music-artist", text: np.artist }) : null,
+    h(
+      "div",
+      { class: "music-controls" },
+      musicButton(ICONS.backward, t("Previous"), "previous"),
+      musicButton(np.playing ? ICONS.pause : ICONS.play, np.playing ? t("Pause") : t("Play"), "toggle", true),
+      musicButton(ICONS.forward, t("Next"), "next"),
+    ),
+  );
+}
+
+/** Play/pause and skip on the Music pill, shown on hover while a track is loaded. */
+export function musicPillControls(): HTMLElement {
+  const toggle = musicButton(ICONS.play, "Play/pause", "toggle", true);
+  const box = h("span", { class: "pill-music" }, toggle, musicButton(ICONS.forward, t("Next"), "next"));
+  const sync = () => {
+    const np = State.nowPlaying;
+    box.classList.toggle("has-track", !!np);
+    toggle.replaceChildren(svg(np?.playing ? ICONS.pause : ICONS.play, 12, { fill: "currentColor" }));
+  };
+  sync();
+  // Pills are rebuilt wholesale (every new cover recolours them): one no longer
+  // on screen stops listening.
+  const listen = () => (box.isConnected ? sync() : window.removeEventListener("now-playing", listen));
+  window.addEventListener("now-playing", listen);
+  return box;
+}

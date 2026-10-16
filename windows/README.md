@@ -471,8 +471,10 @@ own window.
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
-- Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out.
+- **Music** (Settings → Integrations, Windows only) takes the Mac's Apple Music
+  pill and shows whatever plays in the system media controls: Spotify, Apple
+  Music, YouTube Music or any other player, with play/pause and skip. Mochi
+  dances to music, not to videos or browser tabs.
 - **Spotify** (Settings → Integrations) is read from the system media
   controls, the session Spotify publishes for the media keys: the same pill
   and card as on Linux (cover, progress bar, play/pause, previous, next,
@@ -560,7 +562,7 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop dances to Spotify. While he dances he stays awake (the
+- Mochi on the desktop dances to Spotify, and on Windows to the Music pill too. While he dances he stays awake (the
   Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
   to the chat. While he
   sleeps, the transparent square around him (120 px) takes the first mouse

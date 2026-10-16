@@ -5,12 +5,12 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { MUSIC_ID, State, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildMail, buildUpload, buildUploading } from "./upload";
-import { renderIntegrationCard, type IntegrationCardHooks } from "./integrations";
+import { musicPillControls, renderIntegrationCard, type IntegrationCardHooks } from "./integrations"; (feat(windows): a Music pill for whatever plays in the media controls)
 import { highlightRow, listRows, openRow } from "./github";
 import { pillDefinition, sessionSubtitle } from "../core/pills";
 import { providerDef } from "../core/providers";
@@ -389,6 +389,7 @@ function buildOverview(actions: ViewActions): ViewHost {
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
           State.pillLabel(task),
+          task.id === MUSIC_ID ? JSON.stringify(State.nowPlaying) : "", (feat(windows): a Music pill for whatever plays in the media controls)
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
@@ -446,13 +447,18 @@ export function hasSessionTicker(task: AgentTask): boolean {
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
   const label = State.pillLabel(task);
-  const canvas = createMiniBot(task, 24);
+  // The Music pill's Mochi dances on its pill while the music plays.
+  const canvas = createMiniBot(task, 24, task.id === MUSIC_ID ? () => State.windowsMusicPlaying : undefined);
   const pill = h(
     "div",
     { class: "pill", onclick: () => actions.setFocus(task.id) },
     canvas,
     h("span", { class: "lbl", text: label }),
   );
+  if (task.id === MUSIC_ID) {
+    pill.classList.add("music");
+    pill.append(musicPillControls());
+  }
   pill.style.borderColor = `${task.color}24`;
   pill.addEventListener("mouseenter", () => {
     pill.style.background = `${task.color}2e`;

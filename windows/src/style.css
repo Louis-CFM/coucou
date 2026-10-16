@@ -2927,4 +2927,75 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+/* ── Music ─────────────────────────────────────────────────────────────────── */
+
+.music-title {
+  font: 600 12.5px var(--font);
+  color: #f5f6f8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+.music-artist {
+  font: 400 11px var(--font);
+  color: #8e939c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.music-btn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #8e939c;
+  cursor: default;
+}
+
+.music-btn:hover {
+  color: #f5f6f8;
+}
+
+.music-btn.main {
+  background: var(--music-color, #fa2d48);
+  color: #0b0c0e;
+}
+
+/* On the pill: shown on hover while a track is loaded. */
+.pill-music {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+  padding-right: 2px;
+}
+
+.pill:hover .pill-music.has-track {
+  display: flex;
+}
+
+.pill-music .music-btn {
+  width: 16px;
+  height: 16px;
+  background: var(--music-color, #fa2d48);
+  color: #0b0c0e;
+}
+
+.int-hint {
+  font: 400 11px var(--font);
+  color: #8e939c;
+  margin-top: 4px;
 }

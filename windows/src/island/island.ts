@@ -1271,7 +1271,7 @@ export class Island {
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
     this.engine.setDancing(islandDances({
-      music: State.spotifyPlaying,
+      music: State.musicPlaying,
       state: State.effectiveState,
       mode: State.mode,
       view: State.view,

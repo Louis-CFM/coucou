@@ -6,7 +6,7 @@ import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
 import { gitHubAlert, type GitHubEvent } from "../core/github";
 import { availablePills } from "../core/pills";
 import { Sound } from "../core/sound";
-import { State } from "../core/state";
+import { MUSIC_ID, State, type NowPlaying } from "../core/state";
 import type { Island } from "./island";
 
 const GITHUB = "integration_github";
@@ -16,8 +16,23 @@ const clearTimers = new Map<string, number>();
 export function registerIntegrationHandlers(island: Island) {
   void onEvent<IntegrationUpdate>("integration", (update) => handle(island, update));
   void onEvent<GitHubEvent[]>("github-alerts", handleGitHubAlerts);
+  void onEvent<NowPlaying | null>("now-playing", nowPlaying);
+  void Bridge.musicNow().then((np) => nowPlaying(np ?? null));
   void refreshConfigured();
   State.subscribe(refreshGitHubWhenShown);
+}
+
+/** What the Windows media controls say is playing (music.rs), as it changes. */
+function nowPlaying(np: NowPlaying | null) {
+  if (np == null && State.nowPlaying == null) return;
+  State.nowPlaying = np;
+  // The Music pill's Mochi takes the colour of the cover: pill, card, Mochi and
+  // the CSS buttons (unless the user picked a colour of their own for it).
+  const music = State.tasks.find((t) => t.id === MUSIC_ID);
+  if (music && !State.settings.pillColors?.[MUSIC_ID]) music.color = State.musicColor;
+  document.documentElement.style.setProperty("--music-color", music?.color ?? State.musicColor);
+  window.dispatchEvent(new Event("now-playing"));
+  State.notify();
 }
 
 /**

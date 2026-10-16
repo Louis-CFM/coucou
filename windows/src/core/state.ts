@@ -95,6 +95,23 @@ export const DEFAULT_MOCHI_NAMES: Record<string, string> = {
   integration_music: "Melody", // music
 };
 
+/** A player's track, from the Windows media controls (music.rs). */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  app: string;
+  playing: boolean;
+  /** Music, not a video or a browser tab: what Mochi dances to. */
+  music: boolean;
+  /** The cover's colour, "#RRGGBB"; null without a cover. */
+  color: string | null;
+}
+
+/** The Windows Music pill (music.rs), the Mac's Apple Music id. */
+export const MUSIC_ID = "integration_music";
+/** The Music pill's colour when the track has no cover to take one from. */
+export const MUSIC_RED = "#FA2D48";
+
 export type PromptContext =
   | { kind: "window"; appName: string; title: string; url?: string }
   | { kind: "file"; name: string; path?: string };
@@ -270,6 +287,8 @@ class AppState {
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
+  /** What the Windows media controls say is playing (music.rs); null = nothing. */
+  nowPlaying: NowPlaying | null = null;
   noteMessage: string | null = null;
   /**
    * The view the note's OK button goes back to. A note that has one also
@@ -346,6 +365,21 @@ class AppState {
       ? (task.steps.length === 0 ? this.settings.mochiName : "")
       : this.settings.mochiNames?.[task.id];
     return own?.trim() || usual;
+
+  /** The Music pill's Mochi wears the current cover's colour (music.rs), red without one. */
+  get musicColor(): string {
+    return this.nowPlaying?.color ?? MUSIC_RED;
+  }
+
+  /** Music on the Windows Music pill (not a video, not a browser tab). */
+  get windowsMusicPlaying(): boolean {
+    const np = this.nowPlaying;
+    return !!np?.playing && np.music && sanitizeDeclared(this.settings, this.os).activeIntegrations.includes(MUSIC_ID);
+  }
+
+  /** Mochi dances: Spotify (Linux) or the Windows Music pill is playing. */
+  get musicPlaying(): boolean {
+    return this.spotifyPlaying || this.windowsMusicPlaying;
   }
 
   /** Marks the UI dirty; the island re-renders on the next frame. */
@@ -501,6 +535,8 @@ class AppState {
     for (const t of this.tasks) {
       const def = pillDefinition(t.id);
       if (def) t.color = pillColor(def.id, def.color, this.settings.pillColors);
+      // The Music pill's Mochi wears the cover unless a colour of the user's own was picked.
+      if (t.id === MUSIC_ID && !this.settings.pillColors?.[MUSIC_ID]) t.color = this.musicColor;
     }
     this.tasks = orderPills(this.tasks, d.mainPill);
     if (!this.focusId || !this.tasks.some((t) => t.id === this.focusId)) this.focusId = d.mainPill;
