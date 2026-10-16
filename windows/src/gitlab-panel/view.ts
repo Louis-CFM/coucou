@@ -63,23 +63,10 @@ function storage(): Storage | undefined {
   }
 }
 
-/** The edges of the screen the window lies against (Rust tells after a drag). */
-export interface Dock {
-  left: boolean;
-  right: boolean;
-  top: boolean;
-  bottom: boolean;
-}
-
-const FREE: Dock = { left: false, right: false, top: false, bottom: false };
-
 export class PanelView {
   /** How long the pointer rests on the slim bar before it unfolds. */
   hoverDelay = 150;
   private expanded = true;
-  private dock: Dock = FREE;
-  /** While the window is dragged it lies against nothing: all its corners round. */
-  private dragging = false;
   private autoCloseMs = 15_000;
   private pointerInside = false;
   private hoverTimer: number | undefined;
@@ -147,18 +134,11 @@ export class PanelView {
     this.render();
   }
 
-  /** Rust says which edges the window lies against: the corners follow. */
-  setDock(dock: Dock) {
-    this.dock = dock;
-    this.dragging = false;
-    this.applyShape();
-  }
-
   /** The pointer is on the panel: it unfolds if it is the slim bar, and does not fold meanwhile. */
   pointerEnter() {
     this.pointerInside = true;
     window.clearTimeout(this.collapseTimer);
-    if (!this.expanded && !this.dragging) {
+    if (!this.expanded) {
       this.hoverTimer = window.setTimeout(() => this.expand(), this.hoverDelay);
     }
   }
@@ -211,24 +191,9 @@ export class PanelView {
     }, 3000);
   }
 
-  /** The window is being dragged: it lies against nothing, so all its corners are round. */
-  private startDrag() {
-    this.dragging = true;
-    this.clearTimers();
-    this.applyShape();
-    void Bridge.gitlabPanelDrag();
-  }
-
-  /** Slim or card, and flat on the edge it lies against. */
+  /** The card or the slim bar (the card always lies flat on the screen's right edge). */
   private applyShape() {
-    const d = this.dragging ? FREE : this.dock;
-    this.root.className = [
-      this.expanded ? "" : "slim",
-      d.left ? "dock-left" : "",
-      d.right ? "dock-right" : "",
-      d.top ? "dock-top" : "",
-      d.bottom ? "dock-bottom" : "",
-    ].filter(Boolean).join(" ");
+    this.root.className = this.expanded ? "" : "slim";
   }
 
   /** Redraws everything, keeping the focus and the text of the reply box in use. */
@@ -285,11 +250,6 @@ export class PanelView {
         onclick: () => void Bridge.gitlabPanelClose(),
       }, svg(ICONS.xmark, 10)),
     );
-    // Dragging the bar moves the window; the buttons keep their clicks.
-    bar.addEventListener("mousedown", (e) => {
-      if ((e.target as Element).closest("button")) return;
-      this.startDrag();
-    });
     return bar;
   }
 
@@ -319,11 +279,6 @@ export class PanelView {
         ),
       );
     }
-    // Dragging the bar moves the window; the tiles keep their clicks.
-    bar.addEventListener("mousedown", (e) => {
-      if ((e.target as Element).closest("button")) return;
-      this.startDrag();
-    });
     return bar;
   }
 

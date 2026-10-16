@@ -219,7 +219,7 @@ fn pick_display(pref: &str, displays: &[DisplayId]) -> Option<usize> {
 
 /// The display the island lives on: a chosen one, the primary one, or the one
 /// under the cursor.
-fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
+pub(crate) fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
     let monitors = app.available_monitors().ok()?;
     let ids: Vec<DisplayId> = monitors.iter().map(describe).collect();
     if let Some(i) = pick_display(pref, &ids) {

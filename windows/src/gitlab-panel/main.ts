@@ -6,7 +6,7 @@ import { Bridge, onEvent } from "../core/bridge";
 import type { Dashboard } from "../core/gitlab-panel";
 import type { Settings } from "../core/state";
 import { resolveLanguage, setLanguage, systemLanguages } from "../i18n/i18n";
-import { PanelView, type Dock } from "./view";
+import { PanelView } from "./view";
 
 async function main() {
   const boot = await Bridge.boot();
@@ -25,7 +25,6 @@ async function main() {
     else view.closed();
   });
   void onEvent<boolean>("gitlab-panel-mode", (expanded) => view.setMode(expanded));
-  void onEvent<Dock>("gitlab-panel-dock", (dock) => view.setDock(dock));
   void onEvent<Settings>("settings-changed", (s) => {
     view.setAutoClose(s.autoCloseInterval);
     setLanguage(resolveLanguage(s.language, systemLanguages()));

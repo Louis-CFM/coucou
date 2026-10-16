@@ -408,7 +408,6 @@ export const Bridge = {
   /** Unfolds the panel into its card (true) or folds it into the slim bar (false). */
   gitlabPanelMode: (expanded: boolean) => call<void>("gitlab_panel_mode", { expanded }),
   gitlabPanelResize: (height: number) => call<void>("gitlab_panel_resize", { height }),
-  gitlabPanelDrag: () => call<void>("gitlab_panel_drag"),
   gitlabDashboard: () => call<Dashboard>("gitlab_dashboard"),
   gitlabReply: (projectId: number, mrIid: number, discussion: string, body: string) =>
     call<Sent>("gitlab_reply", { projectId, mrIid, discussion, body }),

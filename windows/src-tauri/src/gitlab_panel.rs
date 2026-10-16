@@ -12,16 +12,16 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tokio::sync::Notify;
 
 use crate::gitlab;
 use crate::gitlab_dash::{self, Dashboard, MrEntry, Roles, SnippetLine};
 use crate::integrations::{self, GITLAB_ID};
-use crate::island::WINDOW_LABEL as ISLAND_LABEL;
-use crate::{log, secrets, settings};
+use crate::island::{self, WINDOW_LABEL as ISLAND_LABEL};
+use crate::{log, secrets};
 
 pub const LABEL: &str = "gitlab-panel";
 
@@ -32,8 +32,8 @@ const MIN_HEIGHT: f64 = 160.0;
 const SLIM_WIDTH: f64 = 52.0;
 const SLIM_START_HEIGHT: f64 = 230.0;
 const SLIM_MIN_HEIGHT: f64 = 80.0;
-/// The panel snaps to an edge of the screen from this close (physical pixels).
-const SNAP: i32 = 16;
+/// How far below the top of the screen's work area the panel starts (logical pixels).
+const TOP_GAP: f64 = 80.0;
 /// Merge requests read at a time.
 const PERIMETER: usize = 30;
 const EVENT_CANDIDATES: usize = 15;
@@ -49,8 +49,8 @@ struct Panel {
     expanded: AtomicBool,
     /// Bumped when the token or the instance changes: an answer for the old one is dropped.
     generation: AtomicU64,
-    /// When the window was last moved, to save its place once it stops.
-    moved_at: Mutex<Option<std::time::Instant>>,
+    /// The window's height in logical pixels: its content's.
+    height: Mutex<f64>,
     /// Threads the user opened again himself: coming back is no news to alert on.
     reopened: Mutex<std::collections::HashSet<String>>,
 }
@@ -63,11 +63,15 @@ static PANEL: LazyLock<Panel> = LazyLock::new(|| Panel {
     open: AtomicBool::new(false),
     expanded: AtomicBool::new(true),
     generation: AtomicU64::new(0),
-    moved_at: Mutex::new(None),
+    height: Mutex::new(SLIM_START_HEIGHT),
     reopened: Mutex::new(Default::default()),
 });
 
 // ── Window ────────────────────────────────────────────────────────────────────
+//
+// Like the island, the panel is not moved by the user: it lies flat against the
+// right edge of the screen the island lives on (Settings → Island lives on), a
+// little below the top, and unfolds leftwards from that edge.
 
 fn page_url(app: &AppHandle) -> WebviewUrl {
     #[cfg(dev)]
@@ -83,39 +87,15 @@ fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
-struct Place {
-    x: i32,
-    y: i32,
-}
-
-fn place_path() -> std::path::PathBuf {
-    settings::config_dir().join("gitlab-panel.json")
-}
-
-fn load_place() -> Option<Place> {
-    serde_json::from_slice(&std::fs::read(place_path()).ok()?).ok()
-}
-
-fn save_place(place: Place) {
-    let dir = settings::config_dir();
-    if crate::platform::ensure_private_dir(&dir).is_err() {
-        return;
-    }
-    if let Ok(json) = serde_json::to_vec(&place) {
-        let _ = std::fs::write(place_path(), json);
-    }
-}
-
 /// Creates the panel's window, hidden. Before the island, for WebView2's sake
 /// (see create_settings_window in lib.rs).
 pub fn setup(app: &AppHandle) {
     let built = WebviewWindowBuilder::new(app, LABEL, page_url(app))
         .additional_browser_args(crate::BROWSER_ARGS)
         .title("Coucou — GitLab")
-        .inner_size(WIDTH, START_HEIGHT)
+        .inner_size(SLIM_WIDTH, SLIM_START_HEIGHT)
         // GTK won't size a non-resizable window below its natural size (see
-        // island::apply_geometry); the panel is resized by the page's content.
+        // island::apply_geometry); the panel is sized by the page's content.
         .resizable(cfg!(target_os = "linux"))
         .decorations(false)
         // See-through, so the card inside has rounded corners.
@@ -130,132 +110,54 @@ pub fn setup(app: &AppHandle) {
     match built {
         Ok(win) => {
             let handle = app.clone();
-            let this = win.clone();
-            win.on_window_event(move |event| match event {
+            win.on_window_event(move |event| {
                 // Closing it must only hide it, or it could never be reopened.
-                tauri::WindowEvent::CloseRequested { api, .. } => {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     close(&handle);
                 }
-                tauri::WindowEvent::Moved(_) => moved(&this),
-                _ => {}
             });
         }
         Err(err) => log::line(format!("gitlab panel window failed: {err}")),
     }
 }
 
-/// Where the window ends up: kept inside the screen's work area (it cannot be
-/// pushed off an edge) and pulled to an edge it was left within `SNAP` of.
-/// `pos` and `size` are the window's, `area` the screen's (left, top, right,
-/// bottom), all in physical pixels.
-pub fn settle_position(pos: (i32, i32), size: (i32, i32), area: (i32, i32, i32, i32)) -> (i32, i32) {
+/// Where a window of `size` goes against the right edge of `area` (left, top,
+/// right, bottom, physical pixels): flush with it, `TOP_GAP` below the top, and
+/// never lower than the bottom edge.
+pub fn dock_position(area: (i32, i32, i32, i32), size: (i32, i32), scale: f64) -> (i32, i32) {
     let (left, top, right, bottom) = area;
-    let fit = |value: i32, low: i32, high: i32| {
-        // A window larger than the screen sticks to its top left.
-        let high = high.max(low);
-        let value = value.clamp(low, high);
-        if value - low <= SNAP {
-            low
-        } else if high - value <= SNAP {
-            high
-        } else {
-            value
-        }
-    };
-    (fit(pos.0, left, right - size.0), fit(pos.1, top, bottom - size.1))
+    let x = (right - size.0).max(left);
+    let y = (top + (TOP_GAP * scale).round() as i32).min(bottom - size.1).max(top);
+    (x, y)
 }
 
-/// The window moved. A drag sends a stream of moves and the window manager owns
-/// the position meanwhile, so nothing is done until it has stopped for a moment:
-/// then it is pulled back inside the screen, snapped to the edge it is near, and
-/// its place is remembered.
-fn moved(win: &WebviewWindow) {
-    if !PANEL.open.load(Ordering::Relaxed) {
-        return;
-    }
-    let at = std::time::Instant::now();
-    *PANEL.moved_at.lock().unwrap() = Some(at);
-    let win = win.clone();
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(140)).await;
-        if *PANEL.moved_at.lock().unwrap() == Some(at) {
-            settle(&win);
-        }
-    });
-}
-
-/// Which edges of the screen the window lies against.
-#[derive(Serialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Dock {
-    pub left: bool,
-    pub right: bool,
-    pub top: bool,
-    pub bottom: bool,
-}
-
-/// Same arguments as `settle_position`: the edges the window is flush with.
-pub fn dock_of(pos: (i32, i32), size: (i32, i32), area: (i32, i32, i32, i32)) -> Dock {
-    let (left, top, right, bottom) = area;
-    Dock {
-        left: pos.0 <= left,
-        right: pos.0 + size.0 >= right,
-        top: pos.1 <= top,
-        bottom: pos.1 + size.1 >= bottom,
-    }
-}
-
-fn area_of(win: &WebviewWindow) -> Option<(i32, i32, i32, i32)> {
-    let monitor = win.current_monitor().ok()??;
+/// The work area (what the taskbar leaves) and scale of the island's screen.
+fn screen(app: &AppHandle) -> Option<((i32, i32, i32, i32), f64)> {
+    let pref = app.try_state::<crate::Shared>().map(|s| s.settings.lock().unwrap().screen.clone())?;
+    let monitor = island::target_monitor(app, &pref)?;
     let a = monitor.work_area();
-    Some((a.position.x, a.position.y, a.position.x + a.size.width as i32, a.position.y + a.size.height as i32))
+    let area = (a.position.x, a.position.y, a.position.x + a.size.width as i32, a.position.y + a.size.height as i32);
+    Some((area, monitor.scale_factor()))
 }
 
-fn emit_dock(app: &AppHandle, dock: Dock) {
-    let _ = app.emit_to(LABEL, "gitlab-panel-dock", dock);
+/// Sizes the window for the mode and the content's height and puts it against
+/// the edge. Done again whenever either changes, or the island's screen does.
+fn place(app: &AppHandle) {
+    let Some(win) = window(app) else { return };
+    let Some((area, scale)) = screen(app) else { return };
+    let width = if PANEL.expanded.load(Ordering::Relaxed) { WIDTH } else { SLIM_WIDTH };
+    let height = *PANEL.height.lock().unwrap();
+    let size = ((width * scale).round() as i32, (height * scale).round() as i32);
+    let (x, y) = dock_position(area, size, scale);
+    let _ = win.set_size(PhysicalSize::new(size.0 as u32, size.1 as u32));
+    let _ = win.set_position(PhysicalPosition::new(x, y));
 }
 
-/// The drag is over: pull the window back inside the screen, snap it to the edge
-/// it is near, tell the page which edges it lies against (it shapes its corners
-/// by it) and remember the place.
-fn settle(win: &WebviewWindow) {
-    let (Ok(pos), Ok(size), Some(area)) = (win.outer_position(), win.outer_size(), area_of(win)) else {
-        return;
-    };
-    let size = (size.width as i32, size.height as i32);
-    let (x, y) = settle_position((pos.x, pos.y), size, area);
-    emit_dock(win.app_handle(), dock_of((x, y), size, area));
-    if (x, y) != (pos.x, pos.y) {
-        // The move this makes comes back here and, finding nothing to change, saves.
-        let _ = win.set_position(PhysicalPosition::new(x, y));
-    } else {
-        save_place(Place { x, y });
-    }
-}
-
-/// Puts the window where it was left, or at the top right of the screen the
-/// first time (and whenever the remembered place is no longer on a screen).
-fn place(app: &AppHandle, win: &WebviewWindow) {
-    let monitors = app.available_monitors().unwrap_or_default();
-    if let Some(saved) = load_place() {
-        let on_screen = monitors.iter().any(|m| {
-            let a = m.work_area();
-            saved.x >= a.position.x
-                && saved.y >= a.position.y
-                && saved.x < a.position.x + a.size.width as i32 - 40
-                && saved.y < a.position.y + a.size.height as i32 - 40
-        });
-        if on_screen {
-            let _ = win.set_position(PhysicalPosition::new(saved.x, saved.y));
-            return;
-        }
-    }
-    if let Ok(Some(monitor)) = app.primary_monitor() {
-        let a = monitor.work_area();
-        let scale = monitor.scale_factor();
-        let x = a.position.x + a.size.width as i32 - (WIDTH * scale) as i32 - (16.0 * scale) as i32;
-        let y = a.position.y + (80.0 * scale) as i32;
-        let _ = win.set_position(PhysicalPosition::new(x, y));
+/// The island's screen changed: the panel follows it.
+pub fn screen_changed(app: &AppHandle) {
+    if PANEL.open.load(Ordering::Relaxed) {
+        place(app);
     }
 }
 
@@ -272,53 +174,35 @@ pub fn close(app: &AppHandle) {
     set_open(app, false);
 }
 
+/// Opens the panel folded, as a slim bar against the edge, like the island at rest.
 fn open(app: &AppHandle) {
     let Some(win) = window(app) else {
         log::line("gitlab panel window missing");
         return;
     };
-    // Always opened as the full card, as wide as it is when expanded.
-    PANEL.expanded.store(true, Ordering::Relaxed);
-    let _ = win.set_size(LogicalSize::new(WIDTH, START_HEIGHT));
-    let _ = app.emit_to(LABEL, "gitlab-panel-mode", true);
-    place(app, &win);
+    PANEL.expanded.store(false, Ordering::Relaxed);
+    *PANEL.height.lock().unwrap() = SLIM_START_HEIGHT;
+    let _ = app.emit_to(LABEL, "gitlab-panel-mode", false);
+    place(app);
     let _ = win.show();
-    let _ = win.set_focus();
     set_open(app, true);
     PANEL.wake.notify_one();
-    settle_later(&win);
-}
-
-/// Settles once the window has had time to take its new size or place.
-fn settle_later(win: &WebviewWindow) {
-    let win = win.clone();
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(160)).await;
-        settle(&win);
-    });
 }
 
 /// Unfolds the panel into the card, or folds it into the slim bar. The edge it
-/// lies against stays where it is: a bar docked on the right grows leftwards.
+/// lies against stays where it is: it grows leftwards.
 fn set_mode(app: &AppHandle, expanded: bool) {
-    let Some(win) = window(app) else { return };
     if !PANEL.open.load(Ordering::Relaxed) || PANEL.expanded.swap(expanded, Ordering::Relaxed) == expanded {
         return;
     }
-    let scale = win.scale_factor().unwrap_or(1.0);
-    let (Ok(pos), Ok(size), Some(area)) = (win.outer_position(), win.outer_size(), area_of(&win)) else {
-        return;
-    };
-    let dock = dock_of((pos.x, pos.y), (size.width as i32, size.height as i32), area);
-    let (width, height) = if expanded { (WIDTH, START_HEIGHT) } else { (SLIM_WIDTH, SLIM_START_HEIGHT) };
-    let new_w = (width * scale) as i32;
-    let x = if dock.right && !dock.left { area.2 - new_w } else { pos.x };
-    let _ = win.set_size(LogicalSize::new(width, height));
-    if x != pos.x {
-        let _ = win.set_position(PhysicalPosition::new(x, pos.y));
-    }
+    *PANEL.height.lock().unwrap() = if expanded { START_HEIGHT } else { SLIM_START_HEIGHT };
+    place(app);
     let _ = app.emit_to(LABEL, "gitlab-panel-mode", expanded);
-    settle_later(&win);
+    if let Some(win) = window(app) {
+        if expanded {
+            let _ = win.set_focus();
+        }
+    }
 }
 
 /// Hovering or clicking the slim bar unfolds it; the page folds it again once the
@@ -328,7 +212,7 @@ pub fn gitlab_panel_mode(app: AppHandle, expanded: bool) {
     set_mode(&app, expanded);
 }
 
-/// The "⤢" button of the GitLab card.
+/// The "⤢" button of the GitLab card: opens the slim bar, or closes the panel.
 #[tauri::command]
 pub fn gitlab_panel_toggle(app: AppHandle) {
     if PANEL.open.load(Ordering::Relaxed) {
@@ -356,26 +240,14 @@ pub fn gitlab_panel_is_open() -> bool {
 /// The page tells how tall its content is; the window follows, within the screen.
 #[tauri::command]
 pub fn gitlab_panel_resize(app: AppHandle, height: f64) {
-    let Some(win) = window(&app) else { return };
-    if !height.is_finite() {
+    if !height.is_finite() || !PANEL.open.load(Ordering::Relaxed) {
         return;
     }
-    let mut max = 900.0;
-    if let (Ok(pos), Ok(Some(monitor))) = (win.outer_position(), win.current_monitor()) {
-        let a = monitor.work_area();
-        let scale = monitor.scale_factor();
-        let room = f64::from(a.position.y + a.size.height as i32 - pos.y) / scale - 8.0;
-        max = room;
-    }
-    let (width, min) =
-        if PANEL.expanded.load(Ordering::Relaxed) { (WIDTH, MIN_HEIGHT) } else { (SLIM_WIDTH, SLIM_MIN_HEIGHT) };
-    let _ = win.set_size(LogicalSize::new(width, height.clamp(min, max.max(min))));
-}
-
-/// Dragging the header moves the window.
-#[tauri::command]
-pub fn gitlab_panel_drag(window: WebviewWindow) {
-    let _ = window.start_dragging();
+    let Some((area, scale)) = screen(&app) else { return };
+    let (min, below_top) = if PANEL.expanded.load(Ordering::Relaxed) { (MIN_HEIGHT, TOP_GAP) } else { (SLIM_MIN_HEIGHT, TOP_GAP) };
+    let room = f64::from(area.3 - area.1) / scale - below_top - 8.0;
+    *PANEL.height.lock().unwrap() = height.clamp(min, room.max(min));
+    place(&app);
 }
 
 /// What the panel shows when it opens, before the next poll.
@@ -749,47 +621,25 @@ mod tests {
     const AREA: (i32, i32, i32, i32) = (0, 0, 1920, 1080);
 
     #[test]
-    fn a_window_inside_the_screen_stays_where_it_is() {
-        assert_eq!(settle_position((600, 300), (340, 400), AREA), (600, 300));
+    fn it_lies_against_the_right_edge_below_the_top() {
+        assert_eq!(dock_position(AREA, (52, 230), 1.0), (1868, 80));
+        assert_eq!(dock_position(AREA, (340, 500), 1.0), (1580, 80));
     }
 
     #[test]
-    fn it_snaps_to_an_edge_it_is_left_near() {
-        // Right edge: the window ends at 1920.
-        assert_eq!(settle_position((1570, 300), (340, 400), AREA), (1580, 300));
-        assert_eq!(settle_position((10, 300), (340, 400), AREA), (0, 300));
-        assert_eq!(settle_position((600, 8), (340, 400), AREA), (600, 0));
-        assert_eq!(settle_position((600, 670), (340, 400), AREA), (600, 680));
+    fn the_gap_follows_the_screens_scale() {
+        assert_eq!(dock_position((0, 0, 3840, 2160), (104, 460), 2.0), (3736, 160));
     }
 
     #[test]
-    fn it_cannot_be_pushed_off_the_screen() {
-        assert_eq!(settle_position((1900, 300), (340, 400), AREA), (1580, 300));
-        assert_eq!(settle_position((-200, -50), (340, 400), AREA), (0, 0));
-        assert_eq!(settle_position((600, 2000), (340, 400), AREA), (600, 680));
+    fn it_never_goes_below_the_bottom_edge() {
+        assert_eq!(dock_position(AREA, (340, 1040), 1.0), (1580, 40));
+        assert_eq!(dock_position(AREA, (340, 2000), 1.0), (1580, 0), "taller than the screen: the top");
     }
 
     #[test]
-    fn it_works_on_a_second_screen() {
-        let right = (1920, 0, 3840, 1080);
-        assert_eq!(settle_position((3500, 100), (340, 400), right), (3500, 100));
-        assert_eq!(settle_position((1930, 100), (340, 400), right), (1920, 100));
-        assert_eq!(settle_position((3830, 100), (340, 400), right), (3500, 100));
-    }
-
-    #[test]
-    fn the_edges_a_window_lies_against() {
-        let d = |pos, size| dock_of(pos, size, AREA);
-        assert_eq!(d((600, 300), (340, 400)), Dock::default());
-        assert_eq!(d((1580, 300), (340, 400)), Dock { right: true, ..Default::default() });
-        assert_eq!(d((0, 300), (52, 230)), Dock { left: true, ..Default::default() });
-        assert_eq!(d((600, 0), (340, 400)), Dock { top: true, ..Default::default() });
-        assert_eq!(d((1580, 680), (340, 400)), Dock { right: true, bottom: true, ..Default::default() });
-        assert_eq!(d((1579, 300), (340, 400)), Dock::default(), "one pixel short is not docked");
-    }
-
-    #[test]
-    fn a_window_taller_than_the_screen_sticks_to_the_top() {
-        assert_eq!(settle_position((600, 300), (340, 2000), AREA), (600, 0));
+    fn it_follows_a_second_screen_and_a_taskbar() {
+        // A screen to the right, with a taskbar of 40 px at its top.
+        assert_eq!(dock_position((1920, 40, 3840, 1080), (52, 230), 1.0), (3788, 120));
     }
 }
