@@ -18,7 +18,8 @@ struct BotCanvasView: View {
     var body: some View {
         // Display refresh rate — every frame on a 60 Hz screen, every frame on ProMotion.
         // MochiFrameClock.advance accumulates the step debt so Mochi's speed never changes.
-        TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
+        // Also runs over a hidden island while the volume HUD shows.
+        TimelineView(.animation(paused: (state.mode == .hidden && state.volumeHUD == nil) || paused)) { timeline in
             // The Canvas must capture the frame's date: a closure that doesn't change from
             // one tick to the next is not redrawn, and Mochi froze.
             let frame = timeline.date
@@ -155,6 +156,16 @@ struct BotCanvasView: View {
                 engine.locks.remove("morph")
                 engine.morph = 0
             }
+        }
+        // Volume key: hop, with eyes that follow the level.
+        .onChange(of: state.volumeHUD?.bump) { _, bump in
+            guard bump != nil, let hud = state.volumeHUD else { return }
+            let eye: EyeShape? = hud.muted ? .line
+                : hud.level <= 0.001 ? .closed
+                : hud.level >= 0.999 ? .wide
+                : hud.level > 0.66 ? .happy
+                : nil
+            engine.volumeHop(eye: eye)
         }
         .onReceive(NotificationCenter.default.publisher(for: .triggerEmote)) { notif in
             if let emote = notif.object as? BotEmote {
