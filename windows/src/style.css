@@ -2304,7 +2304,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 5px;
 }
 
-/* The picker's outfit grid (views/wardrobe.ts). */
+/* The picker's outfits, then the body shapes (views/wardrobe.ts). */
 .wardrobe-picker {
   display: flex;
   flex-direction: column;

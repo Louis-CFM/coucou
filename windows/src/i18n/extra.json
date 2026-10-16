@@ -4416,6 +4416,61 @@
    "pt-BR": "A mesma roupa para todos os Mochi",
    "ru": "Один наряд для всех Mochi",
    "id": "Pakaian yang sama untuk semua Mochi"
+  },
+  "Bean": {
+   "zh-Hans": "豆子",
+   "hi": "बीन",
+   "es": "Judía",
+   "ar": "حبة فاصولياء",
+   "fr": "Haricot",
+   "bn": "শিম",
+   "pt-BR": "Feijão",
+   "ru": "Фасолинка",
+   "id": "Kacang"
+  },
+  "Daifuku": {
+   "zh-Hans": "大福",
+   "hi": "दाइफ़ुकु",
+   "es": "Daifuku",
+   "ar": "دايفوكو",
+   "fr": "Daifuku",
+   "bn": "দাইফুকু",
+   "pt-BR": "Daifuku",
+   "ru": "Дайфуку",
+   "id": "Daifuku"
+  },
+  "Mochi": {
+   "zh-Hans": "Mochi",
+   "hi": "Mochi",
+   "es": "Mochi",
+   "ar": "Mochi",
+   "fr": "Mochi",
+   "bn": "Mochi",
+   "pt-BR": "Mochi",
+   "ru": "Mochi",
+   "id": "Mochi"
+  },
+  "Onigiri": {
+   "zh-Hans": "饭团",
+   "hi": "ओनिगिरी",
+   "es": "Onigiri",
+   "ar": "أونيغيري",
+   "fr": "Onigiri",
+   "bn": "ওনিগিরি",
+   "pt-BR": "Onigiri",
+   "ru": "Онигири",
+   "id": "Onigiri"
+  },
+  "Tofu": {
+   "zh-Hans": "豆腐",
+   "hi": "टोफ़ू",
+   "es": "Tofu",
+   "ar": "توفو",
+   "fr": "Tofu",
+   "bn": "টোফু",
+   "pt-BR": "Tofu",
+   "ru": "Тофу",
+   "id": "Tahu"
   }
  }
 }

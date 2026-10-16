@@ -53,6 +53,8 @@ export interface ViewActions {
   chooseOutfit(selection: OutfitSelection): void;
   /** Wardrobe hover: shows an outfit on Mochi without keeping it; null ends it. */
   previewOutfit(outfit: Outfit | null): void;
+  /** Wardrobe click on a body shape: keeps it ("" = the classic Mochi). */
+  chooseShape(id: string): void;
   /** Right-click on a pill: focuses its Mochi and opens the wardrobe for it. */
   wardrobeFor(id: string): void;
 }

@@ -135,9 +135,12 @@ export interface Settings {
    * Same raw values as the Mac's "mochiOutfit"; read it through parseOutfit.
    */
   mochiOutfit: string;
+  /** Mochi's body shape, picked in the wardrobe too ("" = the classic Mochi; see shapes.ts SHAPES). */
+  mochiShape: string;
   /**
-   * "perMochi" (each Mochi wears its own outfit from `mochiLooks`) or "all"
-   * (every Mochi wears `mochiOutfit`). Read it through wardrobe.ts lookOf.
+   * "perMochi" (each Mochi wears its own look from `mochiLooks`) or "all"
+   * (every Mochi wears `mochiOutfit` and `mochiShape`). Read it through
+   * wardrobe.ts lookOf.
    */
   wardrobeMode: string;
   /** Each Mochi's own look, by wardrobe.ts mochiKey. Rust keeps it in wardrobe-looks.json. */
@@ -195,6 +198,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customUrl: "",
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
+  mochiShape: "",
   wardrobeMode: "perMochi",
   mochiLooks: {},
   pillColors: {},

@@ -57,9 +57,13 @@ pub struct Settings {
     /// season), "none" or an outfit id — the Mac's raw values. The island reads
     /// anything it doesn't know as "auto", so the value is stored as it comes.
     pub mochi_outfit: String,
-    /// "perMochi": each Mochi wears its own outfit (`mochi_looks`). "all":
-    /// every Mochi wears `mochi_outfit`. Anything else reads as "perMochi"
-    /// (src/mochi/wardrobe.ts parseWardrobeMode).
+    /// Mochi's body shape, picked in the wardrobe too: "" (the classic Mochi)
+    /// or a shape id of src/mochi/shapes.ts. Kept as it comes, like
+    /// `mochi_outfit`: the island reads an id it doesn't know as "".
+    pub mochi_shape: String,
+    /// "perMochi": each Mochi wears its own look (`mochi_looks`). "all": every
+    /// Mochi wears `mochi_outfit` and `mochi_shape`. Anything else reads as
+    /// "perMochi" (src/mochi/wardrobe.ts parseWardrobeMode).
     pub wardrobe_mode: String,
     /// Each Mochi's own look, by Mochi: `MAIN_MOCHI` or a coloured Mochi's pill
     /// id. Sent to the webviews with the rest, but kept in wardrobe-looks.json,
@@ -109,21 +113,23 @@ pub struct Settings {
     pub phone_relay_url: String,
 }
 
-/// One Mochi's own look: an outfit as `mochi_outfit` stores it. Kept as it
-/// comes; the island reads what it doesn't know as "auto".
+/// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
+/// `mochi_shape` does. Kept as they come; the island reads what it doesn't know
+/// as "auto" and the classic body.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MochiLook {
     pub outfit: String,
+    pub shape: String,
 }
 
 /// The main Mochi's key in `mochi_looks` (the coloured ones use their pill id).
 pub const MAIN_MOCHI: &str = "main";
 
-/// Gives the main Mochi the outfit every Mochi shares, unless he has his own.
+/// Gives the main Mochi the look every Mochi shares, unless he has his own.
 /// Returns true: the caller saves, so wardrobe-looks.json exists from then on.
 fn seed_looks(s: &mut Settings) -> bool {
-    let main = MochiLook { outfit: s.mochi_outfit.clone() };
+    let main = MochiLook { outfit: s.mochi_outfit.clone(), shape: s.mochi_shape.clone() };
     s.mochi_looks.entry(MAIN_MOCHI.into()).or_insert(main);
     true
 }
@@ -178,6 +184,7 @@ impl Default for Settings {
             custom_url: String::new(),
             shortcuts: Default::default(),
             mochi_outfit: "auto".into(),
+            mochi_shape: String::new(),
             wardrobe_mode: "perMochi".into(),
             mochi_looks: BTreeMap::new(),
             pill_colors: BTreeMap::new(),
@@ -231,7 +238,7 @@ pub fn save(settings: &Settings) -> std::io::Result<()> {
 /// Returns true when there was none to read: the first launch with it, or a
 /// file that could not be read or used (copied aside first, or else left as
 /// it is: no save writes over it, see `protect`). The main Mochi then starts
-/// in the outfit settings.json gives every Mochi, and the caller saves.
+/// in the look settings.json gives every Mochi, and the caller saves.
 pub fn load_looks(s: &mut Settings) -> bool {
     load_looks_from(&looks_path(), s)
 }
@@ -534,6 +541,7 @@ mod tests {
   "customUrl": "https://llm.example.com",
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
   "mochiOutfit": "witchHat",
+  "mochiShape": "bean",
   "wardrobeMode": "all",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
@@ -1042,6 +1050,7 @@ mod tests {
                 "customUrl",
                 "shortcuts",
                 "mochiOutfit",
+                "mochiShape",
                 "wardrobeMode",
                 "pillColors",
                 "language",
@@ -1096,18 +1105,18 @@ mod tests {
     // ── Each Mochi's own look (wardrobe-looks.json) ───────────────────────────
 
     #[test]
-    fn the_first_launch_gives_the_shared_outfit_to_the_main_mochi_too() {
+    fn the_first_launch_gives_the_shared_look_to_the_main_mochi_too() {
         let (dir, file) = scratch("looks-first");
         let looks = dir.join("wardrobe-looks.json");
-        let mut s = Settings { mochi_outfit: "crown".into(), ..Default::default() };
+        let mut s = Settings { mochi_outfit: "crown".into(), mochi_shape: "bean".into(), ..Default::default() };
         assert!(load_looks_from(&looks, &mut s));
-        let main = MochiLook { outfit: "crown".into() };
+        let main = MochiLook { outfit: "crown".into(), shape: "bean".into() };
         assert_eq!(s.mochi_looks.get(MAIN_MOCHI), Some(&main));
-        // The shared outfit stays what "all" mode wears.
-        assert_eq!(s.mochi_outfit, "crown");
+        // The shared look stays what "all" mode wears.
+        assert_eq!((s.mochi_outfit.as_str(), s.mochi_shape.as_str()), ("crown", "bean"));
 
         // Saved apart: settings.json never holds them, the next launch reads them back.
-        s.mochi_looks.insert("integration_github".into(), MochiLook { outfit: "scarf".into() });
+        s.mochi_looks.insert("integration_github".into(), MochiLook { outfit: "scarf".into(), shape: "tofu".into() });
         save_to(&file, &s).unwrap();
         save_looks_to(&looks, &s.mochi_looks).unwrap();
         let written: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
@@ -1124,7 +1133,7 @@ mod tests {
         let (dir, file) = scratch("looks-modes");
         let looks = dir.join("wardrobe-looks.json");
         let mut s = Settings { mochi_outfit: "crown".into(), ..Default::default() };
-        s.mochi_looks.insert(MAIN_MOCHI.into(), MochiLook { outfit: "beanie".into() });
+        s.mochi_looks.insert(MAIN_MOCHI.into(), MochiLook { outfit: "beanie".into(), shape: String::new() });
         for mode in ["all", "perMochi", "all"] {
             s.wardrobe_mode = mode.into();
             save_to(&file, &s).unwrap();

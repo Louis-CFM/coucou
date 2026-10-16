@@ -253,6 +253,15 @@ export class Island {
         State.wardrobePreview = outfit;
         State.notify();
       },
+      chooseShape: (id) => {
+        const who = State.focusMochi;
+        if (lookOf(State.settings, who).shape === id) return;
+        setLook(State.settings, who, { shape: id });
+        void Bridge.saveSettings(State.settings);
+        Sound.play("pop");
+        this.engine.squash();
+        State.notify();
+      },
       wardrobeFor: (id) => {
         // Right-click on a pill's Mochi: it comes up in the island, in its wardrobe.
         State.setFocus(id);
@@ -994,7 +1003,11 @@ export class Island {
     }
 
     const uploadActive = this.uploadActive;
-    if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    if (uploadActive) {
+      // The focused Mochi eats the file in its own shape.
+      this.uploadCanvas.shape = this.engine.shape;
+      this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
+    }
     this.uploadCanvas.el.classList.toggle("on", uploadActive);
     this.viewsEl.classList.toggle("hidden-by-upload", uploadActive);
 
@@ -1100,6 +1113,7 @@ export class Island {
     const inWardrobe = State.mode === "expanded" && State.view === "wardrobe";
     const look = lookOf(State.settings, State.focusMochi);
     this.engine.setOutfit(State.wardrobePreview ?? this.seasons.get(look.outfit), !inWardrobe);
+    this.engine.shape = look.shape;
     // Dances while music plays: always in the compact island, expanded only on
     // the music pill's card (BotCanvasView, macOS). Asked every frame.
     this.engine.setDancing(islandDances({
@@ -1206,9 +1220,10 @@ export class Island {
     }
 
     // Each pill's Mochi wears its own look.
-    syncMiniBotStates(State.tasks, (task) => ({
-      outfit: this.seasons.get(lookOf(State.settings, mochiKey(task, State.mainPillId)).outfit),
-    }));
+    syncMiniBotStates(State.tasks, (task) => {
+      const look = lookOf(State.settings, mochiKey(task, State.mainPillId));
+      return { outfit: this.seasons.get(look.outfit), shape: look.shape };
+    });
     this.engine.setState(State.effectiveState);
   }
 

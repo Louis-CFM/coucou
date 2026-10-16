@@ -187,6 +187,7 @@ export class DesktopLink {
       soundVolume: State.settings.soundVolume,
       paused: State.paused,
       dancing: desktopDances(State.spotifyPlaying, State.effectiveState),
+      shape: look.shape,
     };
     const key = JSON.stringify(snapshot);
     if (key === this.pushed) return;
