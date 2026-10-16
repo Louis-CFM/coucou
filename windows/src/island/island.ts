@@ -1648,6 +1648,7 @@ export class Island {
     this.fsm.setKeepPetit(State.settings.showClock, this.wasInIsland);
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
+    this.syncClock();
   }
 
   get panelSize() {

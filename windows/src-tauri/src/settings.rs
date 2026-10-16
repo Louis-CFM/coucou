@@ -145,6 +145,8 @@ pub struct Settings {
     /// speech, 3D, or speech-to-text for the chat's mic (media.rs). Each has
     /// its endpoint; its key is per host (secrets::endpoint_key).
     pub models: Vec<ModelEntry>,
+    /// The date and time in the middle of the compact island. Off by default.
+    pub show_clock: bool,
 }
 
 /// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
@@ -275,6 +277,7 @@ impl Default for Settings {
             text_only_models: Vec::new(),
             keep_mic_on: false,
             models: Vec::new(),
+            show_clock: false,
         }
     }
 }
@@ -703,7 +706,8 @@ mod tests {
   "textOnlyModels": ["custom/llama-3.3"],
   "keepMicOn": true,
   "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
-    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }]
+    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }],
+  "showClock": true
 }"##;
 
     fn custom() -> Value {
@@ -1226,6 +1230,7 @@ mod tests {
                 "textOnlyModels",
                 "keepMicOn",
                 "models",
+                "showClock",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
