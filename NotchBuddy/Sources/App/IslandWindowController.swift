@@ -98,6 +98,9 @@ final class IslandWindowController: NSWindowController {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
+        // The island is always black: system-drawn parts (text field placeholders,
+        // popovers, insertion point) must not follow macOS light mode.
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 3)
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         panel.ignoresMouseEvents = true
