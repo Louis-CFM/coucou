@@ -3078,3 +3078,47 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   height: 320px;
   pointer-events: none;
 }
+
+/* A chat answer: an optional note (the image was left out), then the reply. */
+.answer {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.reply-note {
+  font: 400 11px var(--font);
+  color: #f7b32b;
+  background: rgba(247, 179, 43, 0.1);
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin: 0 8px 6px 0;
+}
+
+/* "This model can't see images": send without it, switch model, or cancel. */
+.image-ask {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(247, 179, 43, 0.1);
+  color: #f7b32b;
+  font: 400 11.5px var(--font);
+}
+
+.image-ask.open {
+  display: flex;
+}
+
+.image-ask-btns {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+
+.btn.small {
+  font-size: 11px;
+  padding: 4px 9px;
+}

@@ -135,6 +135,9 @@ pub struct Settings {
     pub mochi_names: BTreeMap<String, String>,
     /// Screenshot roam without the scan cutscene: a quick sweep, then capture.
     pub quick_scan: bool,
+    /// "provider/model" of chat models that refused an image: next time the
+    /// island asks before sending one.
+    pub text_only_models: Vec<String>,
 }
 
 /// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
@@ -234,6 +237,7 @@ impl Default for Settings {
             mochi_name: String::new(),
             mochi_names: BTreeMap::new(),
             quick_scan: false,
+            text_only_models: Vec::new(),
         }
     }
 }
@@ -658,7 +662,8 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "mochiName": "Momo",
   "mochiNames": { "integration_github": "Gus" },
-  "quickScan": true
+  "quickScan": true,
+  "textOnlyModels": ["custom/llama-3.3"]
 }"##;
 
     fn custom() -> Value {
@@ -1178,6 +1183,7 @@ mod tests {
                 "mochiName",
                 "mochiNames",
                 "quickScan",
+                "textOnlyModels",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

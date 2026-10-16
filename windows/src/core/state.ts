@@ -80,7 +80,8 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
-  /** How the answer was made (Claude Code answered for Claude), shown above it. */
+  /** How the answer was made (Claude Code answered for Claude, the image was
+   *  left out...), shown above it. */
   notice?: string | null;
 }
 
@@ -237,6 +238,8 @@ export interface Settings {
   mochiNames: Record<string, string>;
   /** Screenshot roam without the scan cutscene. */
   quickScan: boolean;
+  /** "provider/model" of chat models that refused an image. */
+  textOnlyModels: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -273,6 +276,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiName: "",
   mochiNames: {},
   quickScan: false,
+  textOnlyModels: [],
 };
 
 type Listener = () => void;

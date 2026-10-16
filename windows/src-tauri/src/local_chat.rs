@@ -282,7 +282,17 @@ pub async fn send_with(
         return Err(t("Pick a model above the chat box first."));
     }
     let turn = chat.begin(server.id);
-    let user = json!({ "role": "user", "content": user_text(turn.first, context.as_ref(), &query) });
+    let text = user_text(turn.first, context.as_ref(), &query);
+    // A dropped picture goes along as an image part, as to the cloud providers;
+    // a model that reads text only refuses it, and the island then asks.
+    let image = match context.as_ref().filter(|_| turn.first) {
+        Some(ChatContext::File { path, .. }) => crate::openai_compat::image_part(path),
+        _ => None,
+    };
+    let user = match image {
+        Some(part) => json!({ "role": "user", "content": [part, { "type": "text", "text": text }] }),
+        None => json!({ "role": "user", "content": text }),
+    };
     let body = request_body(model, &chat.system_prompt(false), &turn.history, &user);
 
     let answer = stream(&base, server.key.as_deref(), model, &body, on_delta).await?;
@@ -353,6 +363,10 @@ async fn stream(
         .map_err(|_| unreachable(base))?;
 
     let status = reply.status();
+    let sent_image = body["messages"].as_array().and_then(|m| m.last()).is_some_and(chat::has_image);
+    if chat::refused_image(status.as_u16(), sent_image) {
+        return Err(chat::IMAGES_UNSUPPORTED.into());
+    }
     if status.as_u16() == 404 {
         return Err(tf("{model} isn't installed. Pick another model above the chat box.", &[("model", model)]));
     }
