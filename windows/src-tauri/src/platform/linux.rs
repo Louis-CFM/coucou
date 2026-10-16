@@ -533,6 +533,25 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
     unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
+/// Logical pixels a shell panel (the GNOME top bar) takes off the top of the
+/// display whose logical origin is (`x`, `y`). A regular window at `y = 0` would
+/// sit behind it; a layer surface is placed by the compositor, so 0 for it.
+pub fn top_inset(win: &WebviewWindow, x: i32, y: i32) -> i32 {
+    if LAYER_SURFACE.load(Ordering::Relaxed) {
+        return 0;
+    }
+    let Ok(gw) = win.gtk_window() else { return 0 };
+    let display = gw.display();
+    (0..display.n_monitors())
+        .filter_map(|i| display.monitor(i))
+        .find(|m| {
+            let g = m.geometry();
+            g.x() == x && g.y() == y
+        })
+        .map(|m| (m.workarea().y() - m.geometry().y()).max(0))
+        .unwrap_or(0)
+}
+
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
