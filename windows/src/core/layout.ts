@@ -92,7 +92,8 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // day, longest session, permissions and questions, which the Mac card leaves
   // to the shared image.
   recap: { height: 184, botX: 62, botY: null, botDiameter: 58, agentMode: "column" },
-  wardrobe: { height: 160, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
+  // taller than the Mac's 160, for a second row of outfits.
+  wardrobe: { height: 172, botX: 68, botY: null, botDiameter: 58, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

@@ -293,7 +293,7 @@ test("the outfit is published when the link comes up and whenever the wardrobe c
   tick(250);
   assert.equal(p().length, 2, "unchanged: not sent again");
 
-  State.settings.mochiOutfit = "topHat"; // a value no build knows: the wardrobe reads it as auto
+  State.settings.mochiOutfit = "topHat"; // an SVG hat the phone does not draw: it gets auto
   State.notify();
   tick(250);
   assert.equal(p().at(-1).outfit, "auto");
