@@ -1,11 +1,12 @@
 // Room for the minis' outfits (src/mochi/minibots.ts miniLayout, outfits.ts
-// outfitFit): every outfit fits in a pill Mochi's canvas. The outfits are drawn
-// into a fake 2D context that only records how high they go (control points
-// and clips count, so it errs on the tall side).
+// outfitFit): every outfit, on every body shape, fits in a pill Mochi's canvas.
+// The outfits are drawn into a fake 2D context that only records how high they
+// go (control points and clips count, so it errs on the tall side).
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { OUTFIT_SELECTIONS } from "../src/mochi/wardrobe.ts";
+import { SHAPES } from "../src/mochi/shapes.ts";
 import { SVG_OUTFITS, drawOutfitBehind, drawOutfitFront, makeHead, outfitFit } from "../src/mochi/outfits.ts";
 import { miniLayout } from "../src/mochi/minibots.ts";
 
@@ -63,10 +64,10 @@ function recorder() {
   return ctx;
 }
 
-/** How far above the body centre `outfit` reaches, in R (as outfits.ts draws it at rest). */
-function reach(outfit, R = 12) {
+/** How far above the body centre `outfit` reaches on `shape`, in R (as outfits.ts draws it at rest). */
+function reach(outfit, shape, R = 12) {
   const ctx = recorder();
-  const H = makeHead(R);
+  const H = makeHead(R, 0, 0, 0, 0, shape);
   const st = { presence: 1, morph: 0 };
   drawOutfitBehind(ctx, outfit, H, st);
   drawOutfitFront(ctx, outfit, H, st);
@@ -78,14 +79,16 @@ function reach(outfit, R = 12) {
 // outfitReach covers them.
 const OUTFITS = OUTFIT_SELECTIONS.filter((o) => o !== "auto" && o !== "none" && !SVG_OUTFITS.has(o));
 
-test("every outfit fits a pill Mochi's canvas at full size", () => {
+test("every outfit fits a pill Mochi's canvas, on every body shape, at full size", () => {
   for (const bodySize of [24, 13]) {
     const { room } = miniLayout(bodySize);
     for (const outfit of OUTFITS) {
-      const r = reach(outfit, bodySize / 2);
-      assert.ok(!Number.isNaN(r), `${outfit} was measured`);
-      assert.ok(r <= room, `${outfit} reaches ${r.toFixed(2)} R, the canvas ${room.toFixed(2)} R`);
-      assert.equal(outfitFit(r, 0.88, room), 1);
+      for (const shape of SHAPES) {
+        const r = reach(outfit, shape, bodySize / 2);
+        assert.ok(!Number.isNaN(r), `${outfit} was measured`);
+        assert.ok(r <= room, `${outfit} on ${shape.id} reaches ${r.toFixed(2)} R, the canvas ${room.toFixed(2)} R`);
+        assert.equal(outfitFit(r, shape.ry, room), 1);
+      }
     }
   }
 });
@@ -93,7 +96,7 @@ test("every outfit fits a pill Mochi's canvas at full size", () => {
 test("the tall hats really were taller than the old square canvas", () => {
   const oldRoom = 0.5 / 0.3 + 0.06; // body centre below the top of a bodySize / 0.6 square, in R
   for (const outfit of ["witchHat", "partyHat"]) {
-    assert.ok(reach(outfit) > oldRoom, outfit);
+    assert.ok(reach(outfit, SHAPES[0]) > oldRoom, outfit);
   }
 });
 

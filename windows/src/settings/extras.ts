@@ -1,6 +1,7 @@
 // Settings sections for the Windows and Linux additions, drawn like the
-// rest of the window: Mochi (his name, and the wardrobe, for every Mochi or
-// each its own), and the name box each coloured Mochi gets under Integrations.
+// rest of the window: Mochi (his name, and the wardrobe with outfits and body
+// shapes, for every Mochi or each its own), and the name box each coloured
+// Mochi gets under Integrations.
 //
 // The page's `settings` object is replaced whenever another window saves, so
 // every section reads it through `ctx.settings()`.
@@ -56,11 +57,11 @@ export function yourMochis(s: Settings): { key: string; name: string; color: str
 }
 
 /**
- * Mochi: the island's wardrobe, the same picker as a right-click on Mochi.
- * Either every Mochi wears one outfit, or each its own: then the row of
- * Mochis picks whom the picker dresses. Switching keeps both sets (each
- * Mochi's own looks are in wardrobe-looks.json, settings.rs). The island and
- * the desktop Mochi follow at once.
+ * Mochi: the island's wardrobe, the same picker as a right-click on Mochi,
+ * outfits then body shapes. Either every Mochi wears one look, or each its
+ * own: then the row of Mochis picks whom the picker dresses. Switching keeps
+ * both sets (each Mochi's own looks are in wardrobe-looks.json, settings.rs).
+ * The island and the desktop Mochi follow at once.
  */
 export function mochiSection(ctx: ExtrasContext): HTMLElement {
   let who = MAIN_MOCHI;
@@ -75,13 +76,16 @@ export function mochiSection(ctx: ExtrasContext): HTMLElement {
     sync();
   });
   const mochis = h("div", { class: "row" });
+  const choose = (change: { outfit?: string; shape?: string }) => {
+    setLook(ctx.settings(), who, change);
+    ctx.save();
+    sync();
+  };
   const picker = wardrobePicker({
     outfit: () => lookOf(ctx.settings(), who).outfit,
-    chooseOutfit: (outfit) => {
-      setLook(ctx.settings(), who, { outfit });
-      ctx.save();
-      sync();
-    },
+    shape: () => lookOf(ctx.settings(), who).shape,
+    chooseOutfit: (outfit) => choose({ outfit }),
+    chooseShape: (shape) => choose({ shape }),
   });
 
   function sync() {
