@@ -86,8 +86,20 @@ class FakeElement {
     for (const fn of this.listeners.get(type) ?? []) fn(event);
     return event;
   }
+  appendChild(node) {
+    this.append(node);
+    return node;
+  }
   append(...nodes) {
     for (const n of nodes) {
+      if (n && n.nodeType === 11) {
+        while (n.childNodes.length > 0) {
+          const child = n.childNodes.shift();
+          child.parentNode = this;
+          this.childNodes.push(child);
+        }
+        continue;
+      }
       const node = typeof n === "string" ? new FakeText(n) : n;
       node.parentNode = this;
       this.childNodes.push(node);
@@ -128,13 +140,36 @@ class FakeElement {
   }
 }
 
+class FakeDocumentFragment {
+  constructor() {
+    this.nodeType = 11;
+    this.childNodes = [];
+  }
+  get children() {
+    return this.childNodes.filter((n) => n.nodeType === 1);
+  }
+  append(...nodes) {
+    for (const n of nodes) {
+      const node = typeof n === "string" ? new FakeText(n) : n;
+      node.parentNode = this;
+      this.childNodes.push(node);
+    }
+  }
+  appendChild(node) {
+    this.append(node);
+    return node;
+  }
+}
+
 export function installFakeDom() {
   globalThis.requestAnimationFrame = (fn) => fn();
   globalThis.document = {
     createElement: (tag) => new FakeElement(tag),
     createElementNS: (ns, tag) => new FakeElement(tag, ns),
+    createDocumentFragment: () => new FakeDocumentFragment(),
     createTextNode: (text) => new FakeText(text),
     body: new FakeElement("body"),
+    compatMode: "CSS1Compat",
   };
   return { root: () => new FakeElement("div") };
 }
