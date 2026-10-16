@@ -4175,6 +4175,39 @@
    "ru": "В Wayland клавишей диктовки для Coucou управляет рабочий стол: Ctrl+Alt+V или клавиши, которые вы выбрали, когда он спросил. При первой вставке он один раз спросит, разрешить ли Coucou печатать за вас.",
    "id": "Di Wayland, desktop yang memegang tombol dikte untuk Coucou: Ctrl+Alt+V, atau tombol yang kamu pilih saat ditanya. Saat menempel pertama kali, desktop akan bertanya sekali apakah Coucou boleh mengetik untukmu."
   },
+  "Fish Audio key": {
+   "zh-Hans": "Fish Audio 密钥",
+   "hi": "Fish Audio कुंजी",
+   "es": "Clave de Fish Audio",
+   "ar": "مفتاح Fish Audio",
+   "fr": "Clé Fish Audio",
+   "bn": "Fish Audio কী",
+   "pt-BR": "Chave do Fish Audio",
+   "ru": "Ключ Fish Audio",
+   "id": "Kunci Fish Audio"
+  },
+  "Voice ID (optional)": {
+   "zh-Hans": "语音 ID（可选）",
+   "hi": "वॉइस ID (वैकल्पिक)",
+   "es": "ID de voz (opcional)",
+   "ar": "معرّف الصوت (اختياري)",
+   "fr": "ID de la voix (facultatif)",
+   "bn": "ভয়েস ID (ঐচ্ছিক)",
+   "pt-BR": "ID da voz (opcional)",
+   "ru": "ID голоса (необязательно)",
+   "id": "ID suara (opsional)"
+  },
+  "Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to Fish Audio if you picked it for the answers.": {
+   "zh-Hans": "你的声音永远不会离开这台电脑：Parakeet 在本机把它转成文字。只有「OK Coucou」之后的文字会用你的 Claude 密钥发送给 Anthropic；如果你选了 Fish Audio 来朗读回答，也会发送给 Fish Audio。",
+   "hi": "आपकी आवाज़ कभी इस कंप्यूटर से बाहर नहीं जाती: Parakeet उसे यहीं टेक्स्ट में बदलता है। केवल « OK Coucou » के बाद के शब्द आपकी Claude कुंजी के साथ Anthropic को जाते हैं, और अगर आपने जवाबों के लिए Fish Audio चुना है तो Fish Audio को भी।",
+   "es": "Tu voz nunca sale de este ordenador: Parakeet la convierte en texto aquí. Solo las palabras después de « OK Coucou » van a Anthropic con tu clave de Claude, y a Fish Audio si lo elegiste para las respuestas.",
+   "ar": "لا يغادر صوتك هذا الحاسوب أبدًا: يحوّله Parakeet إلى نص هنا. لا تذهب إلا الكلمات التي تلي « OK Coucou » إلى Anthropic بمفتاح Claude الخاص بك، وإلى Fish Audio إن اخترته للإجابات.",
+   "fr": "Ta voix ne quitte jamais cet ordinateur : Parakeet la transforme en texte ici. Seuls les mots qui suivent « OK Coucou » partent chez Anthropic avec ta clé Claude, et chez Fish Audio si tu l'as choisi pour les réponses.",
+   "bn": "আপনার কণ্ঠ কখনো এই কম্পিউটার ছেড়ে যায় না: Parakeet এখানেই একে টেক্সটে রূপান্তর করে। কেবল « OK Coucou »-এর পরের শব্দগুলো আপনার Claude কী দিয়ে Anthropic-এ যায়, আর উত্তরের জন্য Fish Audio বেছে নিলে Fish Audio-এও।",
+   "pt-BR": "Sua voz nunca sai deste computador: o Parakeet a transforma em texto aqui. Só as palavras depois de « OK Coucou » vão para a Anthropic com sua chave do Claude, e para a Fish Audio se você a escolheu para as respostas.",
+   "ru": "Ваш голос никогда не покидает этот компьютер: Parakeet превращает его в текст здесь. Только слова после « OK Coucou » уходят в Anthropic с вашим ключом Claude и в Fish Audio, если вы выбрали его для ответов.",
+   "id": "Suaramu tidak pernah keluar dari komputer ini: Parakeet mengubahnya menjadi teks di sini. Hanya kata-kata setelah « OK Coucou » yang dikirim ke Anthropic dengan kunci Claude-mu, dan ke Fish Audio jika kamu memilihnya untuk jawaban."
+  },
   "ElevenLabs key": {
    "zh-Hans": "ElevenLabs 密钥",
    "hi": "ElevenLabs कुंजी",

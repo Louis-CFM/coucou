@@ -103,10 +103,12 @@ pub struct Prefs {
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
     pub voice: bool,
-    /// How Coucou answers out loud: "system", "elevenlabs" or "off".
+    /// How Coucou answers out loud: "system", "elevenlabs", "fishaudio" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
+    /// The Fish Audio voice (a model ID from fish.audio); empty is Fish Audio's default voice.
+    pub fish_voice_id: String,
 }
 
 impl Default for Prefs {
@@ -124,6 +126,7 @@ impl Default for Prefs {
             voice: false,
             voice_output: "system".into(),
             voice_gender: "female".into(),
+            fish_voice_id: String::new(),
         }
     }
 }
