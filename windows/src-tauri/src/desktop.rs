@@ -334,7 +334,14 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
     }
     let built = builder.build();
     match built {
-        Ok(win) => Some(win),
+        Ok(win) => {
+            // Windows may cascade a new window to the top left whatever the
+            // builder asked: parked again once it exists.
+            if PARK {
+                let _ = win.set_position(tauri::LogicalPosition::new(PARKED.0, PARKED.1));
+            }
+            Some(win)
+        }
         Err(err) => {
             crate::log::line(format!("desktop Mochi window failed: {err}"));
             None

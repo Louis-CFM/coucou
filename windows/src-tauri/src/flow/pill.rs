@@ -117,6 +117,12 @@ pub fn setup(app: &AppHandle) {
         }
         match builder.build() {
             Ok(win) => {
+                // The builder's position does not always hold: Windows may cascade a
+                // new window to the top left, where it would sit visible, idle, in the
+                // way. Parked again once it exists.
+                if park {
+                    let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
+                }
                 if !platform::prepare_pill_window(&win, mode) {
                     let _ = win.destroy();
                     mode = DesktopMode::Off;
