@@ -20,6 +20,7 @@ object Pills {
     val catalog: List<PillDefinition> = listOf(
         PillDefinition("integration_claude", "Claude Code", "#F5F6F8", PillCategory.WORKSPACE),
         PillDefinition("agent_cursor", "Cursor", "#C0C4CC", PillCategory.WORKSPACE),
+        PillDefinition("agent_phpstorm", "PhpStorm", "#B345F1", PillCategory.WORKSPACE),
         PillDefinition("agent_antigravity", "Antigravity", "#E879F9", PillCategory.WORKSPACE),
         PillDefinition("agent_codex", "Codex", "#2DD4BF", PillCategory.WORKSPACE),
         PillDefinition("agent_gemini", "Gemini CLI", "#8AB4F8", PillCategory.AGENT),
