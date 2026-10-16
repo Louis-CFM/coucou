@@ -63,6 +63,8 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made, shown above it (e.g. Claude Code answered for Claude). */
+  notice?: string | null;
 }
 
 export type PromptContext =
