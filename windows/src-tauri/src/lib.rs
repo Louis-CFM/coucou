@@ -63,9 +63,10 @@ pub struct Shared {
 
 /// Uninstalls Coucou hooks across all supported agents (Claude Code, Antigravity,
 /// Cursor, Codex, Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes).
-pub fn uninstall_all_hooks() {
-    hooks::uninstall_all();
-    agents::uninstall_all();
+pub fn uninstall_all_hooks() -> Result<(), String> {
+    hooks::uninstall_all()?;
+    agents::uninstall_all()?;
+    Ok(())
 }
 
 #[derive(Serialize)]
