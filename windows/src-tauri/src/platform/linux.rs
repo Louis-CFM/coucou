@@ -308,6 +308,60 @@ pub fn left_button_down() -> bool {
     false
 }
 
+/// The pointer anywhere on screen, in global logical coordinates, from the
+/// compositor's own socket: driftwm (its `cursor` command) or Hyprland.
+pub enum PointerSource {
+    Driftwm(PathBuf),
+    Hyprland(PathBuf),
+}
+
+/// The compositor's pointer when one answers; nothing on others (or on a driftwm without `cursor`).
+pub fn pointer_source() -> Option<PointerSource> {
+    let dir = PathBuf::from(std::env::var_os("XDG_RUNTIME_DIR")?);
+    let hypr = std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE")
+        .map(|sig| PointerSource::Hyprland(dir.join("hypr").join(sig).join(".socket.sock")));
+    let drift = std::env::var_os("DRIFTWM_SOCKET").map(PathBuf::from).or_else(|| {
+        let display = std::env::var("WAYLAND_DISPLAY").ok()?;
+        Some(dir.join("driftwm").join(format!("ipc-{display}.sock")))
+    });
+    [hypr, drift.map(PointerSource::Driftwm)].into_iter().flatten().find(|s| s.read().is_some())
+}
+
+impl PointerSource {
+    pub fn read(&self) -> Option<(f64, f64)> {
+        use std::io::{BufRead, BufReader, Read, Write};
+        let (path, request) = match self {
+            Self::Driftwm(p) => (p, "\"Cursor\"\n"),
+            Self::Hyprland(p) => (p, "j/cursorpos"),
+        };
+        let mut stream = std::os::unix::net::UnixStream::connect(path).ok()?;
+        stream.set_read_timeout(Some(std::time::Duration::from_millis(200))).ok()?;
+        stream.write_all(request.as_bytes()).ok()?;
+        let mut reply = String::new();
+        match self {
+            Self::Driftwm(_) => BufReader::new(stream).read_line(&mut reply).ok()?,
+            Self::Hyprland(_) => stream.read_to_string(&mut reply).ok()?,
+        };
+        match self {
+            Self::Driftwm(_) => parse_driftwm_cursor(&reply),
+            Self::Hyprland(_) => parse_hyprland_cursor(&reply),
+        }
+    }
+}
+
+/// `{"Ok":{"Cursor":{"x":…,"y":…,"output":…}}}`; `{"Err":…}` on a driftwm without it.
+fn parse_driftwm_cursor(reply: &str) -> Option<(f64, f64)> {
+    let v: serde_json::Value = serde_json::from_str(reply.trim()).ok()?;
+    let c = v.pointer("/Ok/Cursor")?;
+    Some((c.get("x")?.as_f64()?, c.get("y")?.as_f64()?))
+}
+
+/// `hyprctl -j cursorpos`: `{"x": …, "y": …}`.
+fn parse_hyprland_cursor(reply: &str) -> Option<(f64, f64)> {
+    let v: serde_json::Value = serde_json::from_str(reply.trim()).ok()?;
+    Some((v.get("x")?.as_f64()?, v.get("y")?.as_f64()?))
+}
+
 // ── Island window ─────────────────────────────────────────────────────────────
 
 /// The few gtk-layer-shell calls we need, straight from the C library.
@@ -768,6 +822,14 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compositor_pointer_replies_parse() {
+        assert_eq!(parse_driftwm_cursor(r#"{"Ok":{"Cursor":{"x":1720.5,"y":12.0,"output":"DP-1"}}}"#), Some((1720.5, 12.0)));
+        assert_eq!(parse_driftwm_cursor(r#"{"Err":"invalid request: unknown variant `Cursor`"}"#), None);
+        assert_eq!(parse_hyprland_cursor("{\"x\": 812, \"y\": 40}\n"), Some((812.0, 40.0)));
+        assert_eq!(parse_hyprland_cursor("unknown request"), None);
+    }
 
     #[test]
     fn only_a_private_directory_of_ours_can_hold_the_relay_socket() {

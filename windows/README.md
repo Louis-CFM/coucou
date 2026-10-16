@@ -575,6 +575,8 @@ What changes on Linux:
   `COUCOU_X11=0` keeps the native Wayland window, `COUCOU_DOCK=0` makes it a
   utility window instead of a dock. `COUCOU_LAYER_SHELL=0` forces the regular
   window anywhere.
+- **Mochi's eyes** follow the pointer anywhere on screen on Hyprland and on
+  driftwm (with its `cursor` IPC command); elsewhere only while it is over him.
 - **Click-through** is the window's input region, kept equal to the island
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
