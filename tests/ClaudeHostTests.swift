@@ -20,6 +20,9 @@ enum ClaudeHostTests {
         check("cmux: bundle id wins over TERM_PROGRAM=ghostty",
               ClaudeHost.terminal(termProgram: "ghostty", bundleId: "com.cmuxterm.app")?.name == "cmux")
         check("Orca by bundle id", ClaudeHost.terminal(termProgram: "", bundleId: "com.stablyai.orca")?.name == "Orca")
+        check("IntelliJ IDEA by bundle id", ClaudeHost.terminal(termProgram: "", bundleId: "com.jetbrains.intellij")?.name == "IntelliJ IDEA")
+        check("IntelliJ IDEA host name", ClaudeHost.name(for: "com.jetbrains.intellij") == "IntelliJ IDEA")
+        check("IntelliJ session → Claude Code pill", ClaudeHost.pillName(hostApp: "com.jetbrains.intellij") == "Claude Code")
         check("VS Code → nil", ClaudeHost.terminal(termProgram: "vscode", bundleId: "com.microsoft.VSCode") == nil)
         check("Cursor → nil", ClaudeHost.terminal(termProgram: "vscode", bundleId: "com.todesktop.230313mzl4w4u92") == nil)
         check("unknown → nil", ClaudeHost.terminal(termProgram: "", bundleId: "com.example.app") == nil)
