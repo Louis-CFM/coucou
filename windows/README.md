@@ -147,8 +147,8 @@ against its SHA-256, kept in Coucou's data folder under `Models`).
 
 Your voice never leaves the computer. With Claude's clean-up (Flow → Styles),
 a call's summary or « OK Coucou », the text — never the audio — goes to
-Anthropic with your key; an ElevenLabs voice for the answers sends them to
-ElevenLabs with yours.
+Anthropic with your key; an ElevenLabs or Fish Audio voice for the answers sends
+them to ElevenLabs or Fish Audio with yours.
 
 ## Your pills
 

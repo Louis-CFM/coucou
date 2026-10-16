@@ -7,7 +7,7 @@
 // what you said after it goes to Claude with your own key (brain.rs), never
 // the audio. Mochi shows it all in the pill at the bottom of the screen —
 // listening, thinking, then the answer, said out loud by the system's voice
-// (the pill's speechSynthesis) or ElevenLabs with your key.
+// (the pill's speechSynthesis), ElevenLabs or Fish Audio with your key.
 //
 // It stops listening while you dictate, while a call is recorded and while it
 // speaks itself.
@@ -229,24 +229,28 @@ struct Say {
     id: u64,
     text: String,
     lang: Option<&'static str>,
-    /// ElevenLabs' MP3, base64.
+    /// The cloud voice's MP3 (ElevenLabs or Fish Audio), base64.
     audio: Option<String>,
     gender: String,
 }
 
 /// Says `text` and returns once it is said (or after a sensible time).
 fn speak(app: &AppHandle, text: &str) {
-    let (output, gender) = crate::flow::get(app)
+    let (output, gender, fish_voice) = crate::flow::get(app)
         .map(|f| {
             let p = &f.store.lock().unwrap().prefs;
-            (p.voice_output.clone(), p.voice_gender.clone())
+            (p.voice_output.clone(), p.voice_gender.clone(), p.fish_voice_id.clone())
         })
-        .unwrap_or_else(|| ("system".into(), "female".into()));
+        .unwrap_or_else(|| ("system".into(), "female".into(), String::new()));
     if output == "off" {
         std::thread::sleep(Duration::from_millis(1500));
         return;
     }
-    let audio = if output == "elevenlabs" { elevenlabs(text, &gender).map(|mp3| base64(&mp3)) } else { None };
+    let audio = match output.as_str() {
+        "elevenlabs" => elevenlabs(text, &gender).map(|mp3| base64(&mp3)),
+        "fishaudio" => fishaudio(text, &fish_voice).map(|mp3| base64(&mp3)),
+        _ => None,
+    };
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     pending().lock().unwrap().insert(id, tx);
@@ -321,6 +325,53 @@ fn elevenlabs(text: &str, gender: &str) -> Option<Vec<u8>> {
         }
         Some(response.bytes().await.ok()?.to_vec())
     })
+}
+
+/// Models tried in turn: the free developer tier has its own model, which a
+/// paid key answers 402 to, and the other way round.
+const FISH_MODELS: &[&str] = &["s2.1-pro", "s2.1-pro-free"];
+
+/// Fish Audio's MP3 for `text`, with the user's key and voice (see
+/// [`fish_body`]); None and the system voice speaks.
+fn fishaudio(text: &str, voice_id: &str) -> Option<Vec<u8>> {
+    let key = crate::secrets::get("fish-audio-api-key")?;
+    tauri::async_runtime::block_on(async {
+        let client = reqwest::Client::builder().timeout(Duration::from_secs(15)).build().ok()?;
+        for model in FISH_MODELS {
+            let response = client
+                .post("https://api.fish.audio/v1/tts")
+                .bearer_auth(&key)
+                .header("model", *model)
+                .json(&fish_body(text, voice_id))
+                .send()
+                .await
+                .ok()?;
+            if response.status().is_success() {
+                return Some(response.bytes().await.ok()?.to_vec());
+            }
+            crate::log::line(format!("voice: Fish Audio {} ({model})", response.status()));
+            if response.status().as_u16() != 402 {
+                break;
+            }
+        }
+        None
+    })
+}
+
+/// The JSON body of a Fish Audio text-to-speech request. `voice_id` is a model
+/// ID from fish.audio, or the link to its page (fish.audio/m/<id>); empty
+/// leaves the choice of voice to Fish Audio.
+pub fn fish_body(text: &str, voice_id: &str) -> Value {
+    let mut body = json!({ "text": text, "format": "mp3", "mp3_bitrate": 128 });
+    let raw = voice_id.trim();
+    let id = match raw.find("/m/") {
+        Some(i) => raw[i + 3..].split(['/', '?', '#']).next().unwrap_or(""),
+        None => raw,
+    };
+    if !id.is_empty() {
+        body["reference_id"] = json!(id);
+    }
+    body
 }
 
 /// First English voice of the gender (a young one first for a man); else any
@@ -535,6 +586,17 @@ mod tests {
         assert_eq!(pick_voice(&voices, "male").as_deref(), Some("b"));
         assert_eq!(pick_voice(&voices, "female").as_deref(), Some("c"));
         assert_eq!(pick_voice(&[], "female"), None);
+    }
+
+    #[test]
+    fn fish_audio_request_body() {
+        let body = fish_body("Salut", "");
+        assert_eq!(body["text"], "Salut");
+        assert_eq!(body["format"], "mp3");
+        assert!(body.get("reference_id").is_none());
+        assert_eq!(fish_body("Hi", "  abc123 ")["reference_id"], "abc123");
+        assert_eq!(fish_body("Hi", "https://fish.audio/m/abc123/?ref=x")["reference_id"], "abc123");
+        assert!(fish_body("Hi", "https://fish.audio/m/").get("reference_id").is_none());
     }
 }
 

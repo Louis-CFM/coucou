@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fish Audio voice** *(Windows and Linux)* - « OK Coucou » can now answer out loud in a Fish Audio voice, next to the system voice and ElevenLabs. Pick it in Notch → OK Coucou → Answers, paste your Fish Audio key (kept in the Windows Credential Manager or the Linux Secret Service) and, if you like, the ID of a voice from fish.audio. Only the text of the answers is sent to Fish Audio, never audio. If Fish Audio can't be reached, the system voice speaks
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
