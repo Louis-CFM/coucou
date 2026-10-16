@@ -41,3 +41,11 @@ test("the prompt tells the model when to pick every mood, and insults make Mochi
   for (const mood of moods) assert.ok(guide.includes(`${mood} (`), `${mood} has no description`);
   assert.match(guide, /angry \([^)]*insults you/);
 });
+
+test("ten hits make Mochi angry; nine don't", () => {
+  const e = new BotEngine();
+  for (let i = 0; i < 9; i++) e.slap();
+  assert.notEqual(e.eyeOverride, "angry");
+  e.slap();
+  assert.equal(e.eyeOverride, "angry");
+});
