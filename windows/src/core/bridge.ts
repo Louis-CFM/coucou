@@ -364,6 +364,10 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** The AirPods' trip to or from the monitor's edges on the screen overlay,
+   *  from (x, y) in the island window; false when the overlay is busy. */
+  podsFlight: (out: boolean, x: number, y: number, size: number) =>
+    call<boolean>("pods_flight", { out, x, y, size }),
 
   // ── Screenshot roam (src-tauri/src/roam.rs) ───────────────────────────────
   /** Mochi was Ctrl+dragged out of the island: the screen overlay takes over. */
