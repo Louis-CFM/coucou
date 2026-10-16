@@ -128,6 +128,9 @@ jobs:
       - name: Conversation context tests
         run: bash scripts/test-conversation-context.sh
 
+      - name: Codex automatic-review filter tests
+        run: bash scripts/test-codex-auto-review.sh
+
       - name: Build
         run: |
           set -o pipefail
