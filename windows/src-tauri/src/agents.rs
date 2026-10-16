@@ -579,11 +579,13 @@ fn antigravity_uninstall(root: &Value) -> Result<Value, String> {
 
 // ── Cursor Agent — ~/.cursor/hooks.json ───────────────────────────────────────
 //
-// `{"version": 1, "hooks": {"<event>": [{"command": …}]}}`, camelCase events
-// (from #231, BeyondBirthday07). The relay maps them, turns a stop with
-// `status: "error"` into StopFailure, turns `beforeShellExecution` into a
-// PermissionRequest the island can Allow/Deny, and `afterFileEdit` into a
-// live-diff PostToolUse. Every session lands on the one `agent_cursor` pill.
+// `{"version": 1, "hooks": {"<event>": [{"command": …, "timeout"?}]}}`, camelCase
+// events (from #231, BeyondBirthday07). The relay maps them, turns a stop with
+// `status: "error"` into StopFailure, `beforeShellExecution` into a
+// PermissionRequest the island can Allow/Deny (`{"permission":"allow"|"deny"}`),
+// and `afterFileEdit` into a live-diff PostToolUse. Reinstall hooks after upgrade
+// so `beforeShellExecution` and `afterFileEdit` are present. Every session lands
+// on the one `agent_cursor` pill.
 
 /// Event name and optional timeout in seconds (Cursor's hooks.json field).
 const CURSOR_EVENTS: &[(&str, Option<u64>)] = &[
