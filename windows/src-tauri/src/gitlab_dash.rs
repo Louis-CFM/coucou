@@ -9,7 +9,10 @@
 // - a plain comment (not resolvable) whose last message is not mine, on such a
 //   merge request, and that is newer than anything I wrote there — GitLab has
 //   no "resolved" for it, so my own later message is what clears it.
-// System notes ("added 2 commits", "approved this merge request") are no message.
+// System notes ("added 2 commits", "approved this merge request") are no message,
+// and neither are those of automated accounts (SonarQube, dependabot, project
+// bots…): the panel is for what people wrote. A thread that only holds such
+// notes is not shown, nor counted among the open threads of a merge request.
 
 use std::collections::HashMap;
 
@@ -138,6 +141,40 @@ pub fn parse_iso_ms(raw: &str) -> Option<u64> {
     u64::try_from(total).ok()
 }
 
+/// Names of accounts that post by themselves, matched whole (lower case) against
+/// the words of an account's username and name.
+const AUTOMATED_WORDS: &[&str] = &[
+    "bot", "dependabot", "renovate", "renovatebot", "codecov", "snyk", "danger", "dangerbot", "sonar", "sonarqube",
+    "sonarcloud", "sonarscanner", "coveralls", "semgrep", "mergify", "reviewdog",
+];
+
+/// True for an account that posts automated messages (a CI analysis, a dependency
+/// bot): GitLab's own `bot` flag when it gives one, a project or group access
+/// token's bot user (`project_12_bot_…`), a name with "[bot]", or a username or
+/// name made of the words of a known tool. "sonar" matches wherever it is, since
+/// SonarQube runs under many names (sonarqube, sonar-bot, sonarqube-service…).
+pub fn is_automated(author: Option<&Value>) -> bool {
+    let Some(author) = author else { return false };
+    if author.get("bot").and_then(Value::as_bool) == Some(true) {
+        return true;
+    }
+    let username = str_at(author, "username").unwrap_or("").to_lowercase();
+    let name = str_at(author, "name").unwrap_or("").to_lowercase();
+    if username.contains("sonar") || name.contains("sonar") || name.contains("[bot]") || username.contains("[bot]") {
+        return true;
+    }
+    // project_123_bot / group_45_bot_abcdef: access tokens' users.
+    let words = |text: &str| -> Vec<String> {
+        text.split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .map(str::to_string)
+            .collect()
+    };
+    let token_user = (username.starts_with("project_") || username.starts_with("group_")) && username.contains("_bot");
+    token_user
+        || words(&username).iter().chain(words(&name).iter()).any(|w| AUTOMATED_WORDS.contains(&w.as_str()))
+}
+
 fn str_at<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
     v.get(key).and_then(Value::as_str)
 }
@@ -185,7 +222,10 @@ pub fn pending_threads(discussions: &[Value], me: &str, i_am_author: bool, mr: &
         let Some(id) = str_at(d, "id") else { continue };
         let raw = array(d.get("notes"));
         let mut notes = Vec::new();
-        for n in raw.iter().filter(|n| !n.get("system").and_then(Value::as_bool).unwrap_or(false)) {
+        let from_people = |n: &&Value| {
+            !n.get("system").and_then(Value::as_bool).unwrap_or(false) && !is_automated(n.get("author"))
+        };
+        for n in raw.iter().filter(from_people) {
             let username = n.get("author").and_then(|a| str_at(a, "username")).unwrap_or("").to_string();
             notes.push(ThreadNote {
                 id: n.get("id").and_then(Value::as_i64).unwrap_or(0),
@@ -557,6 +597,84 @@ mod tests {
         assert!(found.is_empty(), "I took no part in it");
         let (found, _) = pending_threads(&[theirs], "me", true, &mr());
         assert_eq!(found.len(), 1, "but it is on my merge request");
+    }
+
+    fn bot_note(id: i64, username: &str, name: &str, at: &str) -> Value {
+        json!({"id": id, "author": {"username": username, "name": name}, "created_at": at, "body": "Quality gate failed", "system": false})
+    }
+
+    #[test]
+    fn automated_accounts_are_told_from_people() {
+        let user = |username: &str, name: &str| Some(json!({"username": username, "name": name}));
+        for (username, name) in [
+            ("sonarqube", "SonarQube"),
+            ("svc-sonar", "Analysis service"),
+            ("jenkins", "SonarCloud"),
+            ("project_123_bot_a1b2c3", "ci-token"),
+            ("group_9_bot", "x"),
+            ("dependabot", "Dependabot"),
+            ("renovate-bot", "Renovate Bot"),
+            ("gitlab-bot", "GitLab Bot"),
+            ("ci", "Release [bot]"),
+            ("codecov", "Codecov"),
+        ] {
+            assert!(is_automated(user(username, name).as_ref()), "{username} / {name}");
+        }
+        for (username, name) in [
+            ("bob", "Bob Martin"),
+            ("jtalbot", "John Talbot"),
+            ("abbot", "Anne Abbot"),
+            ("robotics-team", "Robotics Team"),
+            ("elodie", "Élodie Botrel"),
+            ("projet_x", "Project X"),
+        ] {
+            assert!(!is_automated(user(username, name).as_ref()), "{username} / {name}");
+        }
+        assert!(is_automated(Some(&json!({"username": "ci", "name": "CI", "bot": true}))), "GitLab's own flag");
+        assert!(!is_automated(Some(&json!({"username": "bob", "bot": false}))));
+        assert!(!is_automated(None));
+    }
+
+    #[test]
+    fn a_thread_of_automated_notes_is_not_shown_nor_counted() {
+        let sonar = thread("t1", vec![bot_note(1, "sonarqube", "SonarQube", "2026-01-14T08:00:00Z")], true, false);
+        let (found, unresolved) = pending_threads(&[sonar], "me", true, &mr());
+        assert!(found.is_empty());
+        assert_eq!(unresolved, 0, "an analysis nobody answers is no open thread of mine");
+    }
+
+    #[test]
+    fn a_person_answering_an_automated_note_is_still_heard() {
+        let d = vec![thread(
+            "t1",
+            vec![
+                bot_note(1, "sonarqube", "SonarQube", "2026-01-14T08:00:00Z"),
+                note(2, "bob", "2026-01-14T09:00:00Z", "this one is a false positive?"),
+            ],
+            true,
+            false,
+        )];
+        let (found, unresolved) = pending_threads(&d, "me", true, &mr());
+        assert_eq!(unresolved, 1);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].notes.len(), 1, "only the person's message is left");
+        assert_eq!(found[0].notes[0].username, "bob");
+    }
+
+    #[test]
+    fn an_automated_note_after_my_answer_does_not_bring_the_thread_back() {
+        let d = vec![thread(
+            "t1",
+            vec![
+                note(1, "bob", "2026-01-14T08:00:00Z", "please fix"),
+                note(2, "me", "2026-01-14T09:00:00Z", "done"),
+                bot_note(3, "sonarqube", "SonarQube", "2026-01-14T10:00:00Z"),
+            ],
+            true,
+            false,
+        )];
+        let (found, _) = pending_threads(&d, "me", true, &mr());
+        assert!(found.is_empty(), "my message is the last one a person wrote");
     }
 
     #[test]
