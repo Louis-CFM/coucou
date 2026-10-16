@@ -117,6 +117,8 @@ async function main() {
       e.preventDefault();
     }
   });
+  // The screenshot roam is over: Mochi is back, with the screenshot if it took one.
+  await onEvent<string | null>("roam-end", (path) => island.onRoamEnd(path));
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.
   await onEvent<null>("sounds-changed", () => {

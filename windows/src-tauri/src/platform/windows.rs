@@ -350,13 +350,14 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
 }
 
 /// Tells WebView2 how much memory a window may keep. A hidden window (the
-/// Coucou window) is set to Low: it drops caches and decoded images and hands
-/// its heap slack back, and gets it all back when it is shown again.
+/// Coucou window, the screen overlay) is set to Low: it drops caches and decoded
+/// images and hands its heap slack back, and gets it all back when it is shown again.
 /// It is also made invisible to WebView2, which stops its painting and
 /// animation frames: with occlusion tracking off (BROWSER_ARGS) a hidden
 /// window otherwise kept rendering, the settings window ~60% of a core.
 /// Back to Normal, the window is shown first: made visible to WebView2 while
-/// its window is still hidden, a page may never paint nor run a frame again.
+/// its window was still hidden, the click-through overlay never painted nor
+/// ran a frame again (the screenshot roam hung, with nothing on screen).
 pub fn set_memory_low(win: &WebviewWindow, low: bool) {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
         ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
