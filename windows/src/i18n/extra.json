@@ -4361,6 +4361,28 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Show clock in the island": {
+   "zh-Hans": "在灵动岛中显示时钟",
+   "hi": "आइलैंड में घड़ी दिखाएँ",
+   "es": "Mostrar el reloj en la isla",
+   "ar": "إظهار الساعة في الجزيرة",
+   "fr": "Afficher l'horloge dans l'îlot",
+   "bn": "আইল্যান্ডে ঘড়ি দেখান",
+   "pt-BR": "Mostrar relógio na ilha",
+   "ru": "Показывать часы в острове",
+   "id": "Tampilkan jam di pulau"
+  },
+  "The date and the time in the middle of the island when it is compact.": {
+   "zh-Hans": "岛收起时，在中间显示日期和时间。",
+   "hi": "आइलैंड के छोटे होने पर बीच में तारीख़ और समय दिखता है।",
+   "es": "La fecha y la hora en el centro de la isla cuando está compacta.",
+   "ar": "التاريخ والوقت في وسط الجزيرة عندما تكون مصغّرة.",
+   "fr": "La date et l'heure au milieu de l'îlot quand il est compact.",
+   "bn": "আইল্যান্ড ছোট থাকলে মাঝখানে তারিখ ও সময় দেখায়।",
+   "pt-BR": "A data e a hora no meio da ilha quando ela está compacta.",
+   "ru": "Дата и время в середине острова, когда он свёрнут.",
+   "id": "Tanggal dan jam di tengah pulau saat ringkas."
   }
  }
 }
