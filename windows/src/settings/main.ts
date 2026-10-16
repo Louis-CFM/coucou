@@ -913,6 +913,12 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_github", name: "GitHub", color: "#F4505E",
     fields: [{ key: "github-token", label: N_("Token"), placeholder: "ghp_…", secret: true }],
     hint: N_("Classic token with the repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions.") },
+  { id: "integration_gitlab", name: "GitLab", color: "#FC6D26",
+    fields: [
+      { key: "gitlab-url", label: N_("Instance URL"), placeholder: "https://gitlab.com", secret: false },
+      { key: "gitlab-token", label: N_("Token"), placeholder: "glpat-…", secret: true },
+    ],
+    hint: N_("Personal access token with the read_api scope. Leave the instance URL empty for gitlab.com.") },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF",
     fields: [{ key: "vercel-token", label: N_("Token"), placeholder: "…", secret: true }] },
   { id: "integration_n8n", name: "n8n", color: "#F29B38",
@@ -1488,7 +1494,7 @@ async function render() {
   const shortcutReport = await Bridge.shortcutsStatus();
 
   const keys = [
-    "stripe-api-key", "github-token", "vercel-token",
+    "stripe-api-key", "github-token", "gitlab-token", "gitlab-url", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
   ];
   const present: Record<string, boolean> = {};
