@@ -9,6 +9,9 @@ final class GithubPoller: @unchecked Sendable {
     private var tokenGeneration = 0
     private var activityInFlight = false
     private var nextActivity: DispatchWorkItem?
+    /// Folder of the Claude Code session that spoke last: its branch's CI rides
+    /// along with the pulse (GitHubBranchCI.swift).
+    private var sessionCwd: String?
     private init() {}
 
     func start() {
@@ -39,6 +42,13 @@ final class GithubPoller: @unchecked Sendable {
         #else
         return false
         #endif
+    }
+
+    /// Called for every Claude Code hook that carries a `cwd`: the CI row follows
+    /// the branch of whichever session spoke last.
+    @MainActor func noteCwd(_ cwd: String) {
+        guard !cwd.isEmpty else { return }
+        sessionCwd = cwd
     }
 
     // MARK: - Stats (unchanged logic)
@@ -101,11 +111,14 @@ final class GithubPoller: @unchecked Sendable {
             }
             self.pulseInFlight = true
             let gen = self.tokenGeneration
-            DispatchQueue.global(qos: .background).async { self.fetchPulse(token: token, generation: gen) }
+            let cwd = self.sessionCwd
+            DispatchQueue.global(qos: .background).async { self.fetchPulse(token: token, generation: gen, cwd: cwd) }
         }
     }
 
-    private func fetchPulse(token: String, generation: Int) {
+    private func fetchPulse(token: String, generation: Int, cwd: String?) {
+        // Read straight from the session's .git folder: two small files, no `git`.
+        let target = cwd.flatMap { GitHubBranch.of(cwd: URL(fileURLWithPath: $0)) }
         guard let url = URL(string: "https://api.github.com/graphql") else {
             finishPulse(hasPending: false); return
         }
@@ -113,7 +126,10 @@ final class GithubPoller: @unchecked Sendable {
         req.httpMethod = "POST"
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        guard let body = try? JSONSerialization.data(withJSONObject: ["query": Self.graphQLQuery]) else {
+        guard let body = try? JSONSerialization.data(withJSONObject: [
+            "query": Self.graphQLQuery,
+            "variables": GitHubBranch.queryVariables(for: target),
+        ]) else {
             finishPulse(hasPending: false); return
         }
         req.httpBody = body
@@ -123,6 +139,8 @@ final class GithubPoller: @unchecked Sendable {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
                 self.nbLog("pulse HTTP \(code)")
+                // Offline (no answer at all): say nothing, try again next poll.
+                if code != 0 { self.reportPulseError(Self.httpError(code), generation: generation) }
                 self.finishPulse(hasPending: false)
                 return
             }
@@ -133,10 +151,13 @@ final class GithubPoller: @unchecked Sendable {
                     self.nbLog("pulse GraphQL errors: \(errors.count)")
                 }
                 guard root["data"] is [String: Any] else {
+                    let message = ((root["errors"] as? [[String: Any]])?.first?["message"] as? String)
+                        ?? "Unexpected answer from GitHub"
+                    self.reportPulseError(String(message.prefix(80)), generation: generation)
                     self.finishPulse(hasPending: false); return
                 }
             }
-            guard let pulse = GitHubPulse.parse(data) else {
+            guard let pulse = GitHubPulse.parse(data, target: target) else {
                 self.finishPulse(hasPending: false); return
             }
             DispatchQueue.main.async {
@@ -145,6 +166,7 @@ final class GithubPoller: @unchecked Sendable {
                 let old = AppState.shared.githubPulse
                 let events = GitHubPulse.events(old: old, new: pulse)
                 AppState.shared.githubPulse = pulse
+                AppState.shared.githubError = nil
                 // Badge and sound only for the pill in the notch, not when the
                 // fetch only feeds the iPhone.
                 if AppState.shared.activeIntegrations.contains("integration_github") {
@@ -185,6 +207,22 @@ final class GithubPoller: @unchecked Sendable {
 
     private func nbLog(_ message: String) {
         appendAppLog("github.log", message)
+    }
+
+    /// Shown on the idle GitHub card instead of a pulse that can't be refreshed.
+    private func reportPulseError(_ message: String, generation: Int) {
+        DispatchQueue.main.async {
+            guard self.tokenGeneration == generation else { return }
+            AppState.shared.githubError = message
+        }
+    }
+
+    private static func httpError(_ code: Int) -> String {
+        switch code {
+        case 401: return "Invalid token (401)"
+        case 403: return "Token lacks the needed scope"
+        default:  return "API error \(code)"
+        }
     }
 
     /// Called from any thread; dispatches cleanup to main then schedules next poll.
@@ -294,16 +332,17 @@ final class GithubPoller: @unchecked Sendable {
     // MARK: - GraphQL queries
 
     private static let graphQLQuery = """
-    query {
+    query($owner: String!, $name: String!, $ref: String!, $withBranch: Boolean!) {
       viewer {
         login
         pullRequests(states: OPEN, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
-            number title url isDraft reviewDecision
+            number title url isDraft reviewDecision headRefName updatedAt
             repository { nameWithOwner url }
             commits(last: 1) {
               nodes { commit { oid statusCheckRollup { state } } }
             }
+            latestReviews(first: 10) { nodes { id state author { login } } }
           }
         }
         repositories(first: 10, ownerAffiliations: [OWNER], orderBy: {field: PUSHED_AT, direction: DESC}) {
@@ -323,6 +362,26 @@ final class GithubPoller: @unchecked Sendable {
             number title url isDraft
             author { login }
             repository { nameWithOwner url }
+          }
+        }
+      }
+      sessionBranch: repository(owner: $owner, name: $name) @include(if: $withBranch) {
+        nameWithOwner
+        ref(qualifiedName: $ref) {
+          target {
+            ... on Commit {
+              oid url
+              statusCheckRollup {
+                state
+                contexts(first: 50) {
+                  nodes {
+                    __typename
+                    ... on CheckRun { name conclusion detailsUrl }
+                    ... on StatusContext { context state targetUrl }
+                  }
+                }
+              }
+            }
           }
         }
       }

@@ -139,7 +139,7 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 
 ## 1quater. GitHub (pulse)
 
-**Plateforme** : macOS uniquement (build GitHub)
+**Plateforme** : macOS (CI de la branche de session : build GitHub seulement).
 
 **Token** : token classique avec scope `repo`, ou token fin avec accès en lecture à Pull requests, Commit statuses et Actions. Stocké dans le Trousseau (`github-token`).
 
@@ -148,11 +148,14 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 Deux requêtes GraphQL séparées (POST `https://api.github.com/graphql`, même token, même en-tête) :
 
 **Requête pulse** :
-- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, `oid` du dernier commit, état CI du dernier commit (`statusCheckRollup.state`)
+- **Mes PRs ouvertes** (20 dernières par date de mise à jour) : numéro, titre, URL, isDraft, `reviewDecision`, `headRefName`, `oid` du dernier commit, état CI du dernier commit (`statusCheckRollup.state`), `latestReviews` (dernière review de chaque relecteur). Les PR sans activité depuis 30 jours (`updatedAt`) sont ignorées : les PR de bots ouvertes au nom de l'utilisateur, typiquement Snyk.
 - **PRs à reviewer** (recherche `is:pr is:open review-requested:@me`, 20 max) : numéro, titre, URL, auteur
 - **CI branche par défaut** (10 derniers dépôts propres, non archivés) : `oid` et état CI du commit HEAD sur `defaultBranchRef`
+- **CI de la branche de session** (`sessionBranch`, `@include(if: $withBranch)`) : `oid`, URL du commit, `statusCheckRollup` avec ses `contexts` (CheckRun / StatusContext) pour nommer les checks en échec et pointer vers le premier job en échec. La branche est celle du `cwd` de la dernière session Claude Code affichée par l'île (`GithubPoller.noteCwd`, appelé par HookServer), lue directement dans `.git` : `HEAD`, puis `branch.<b>.remote` / `.merge` dans `config` (le `commondir` pour un worktree). Pas de processus `git` (`GitHubBranchCI.swift`). Version App Store : le bac à sable interdit de lire le `.git` du projet, donc pas de branche de session.
 
-**Cadence pulse** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI en état `PENDING` ou `EXPECTED`). Première requête 10 s après le lancement.
+**Cadence pulse** : 5 min (pas de PRs en attente) ou 60 s (au moins une PR/CI, y compris la branche de session, en état `PENDING` ou `EXPECTED`). Première requête 10 s après le lancement.
+
+**Carte** : la troisième ligne montre le CI de la branche de session quand il y en a une (« CI · <branche> » : passing / failing / running / no checks / not pushed), le CI des branches par défaut sinon. Le détail « CI » liste la branche de session en premier (clic : job en échec, ou page du commit), puis les branches par défaut. Erreur API (401, 403, autre code HTTP, réponse sans `data`) : `AppState.githubError`, affichée sur la carte au repos à la place des données, avec **Refresh**.
 
 **Rafraîchissement pulse à l'ouverture** : `GithubPoller.refreshIfStale(maxAge: 60)` appelé quand `integration_github` prend le focus, quand l'île s'étend avec GitHub en focus, et à l'ouverture d'une vue détail (sauf Activity). Si données < 60 s ou requête en vol, ignoré.
 
@@ -192,11 +195,15 @@ Premier poll après lancement : toujours silencieux. Polls suivants :
 - CI = `failure` → `.ciFailed` / `.mainFailed`
 - CI = `pending` → rien (le poll suivant, même sha, verra la transition)
 
+**Branche de session** : mêmes règles (`.branchCIPassed` / `.branchCIFailed`), mais seulement sur le même dépôt et la même branche qu'au poll précédent : changer de branche ou de dépôt ne dit rien, c'est de l'histoire ancienne.
+
+**Reviews** : une nouvelle review (id absent au poll précédent) sur une de ses PR déjà vue, par quelqu'un d'autre : `.reviewApproved`, `.changesRequested`, `.reviewCommented`.
+
 | Événement             | Badge   | Son        |
 |-----------------------|---------|------------|
-| CI PR failure / main  | `.error` (rouge) | `error` |
-| Nouvelle review demandée | `.finished` (vert) | `question` |
-| CI PR success         | `.finished` (vert) | `finish` |
+| CI PR / main / branche failure, changes requested | `.error` (rouge) | `error` |
+| Nouvelle review demandée, nouveau commentaire de review | `.finished` (vert) | `question` |
+| CI PR / branche success, PR approuvée | `.finished` (vert) | `finish` |
 
 Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
@@ -334,4 +341,16 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 
 Aucune permission Accessibilité nécessaire.
 
+---
 
+## 8. Google Calendar (macOS)
+
+Code : `GoogleCalendar.swift` (règles, PKCE, écoute locale) + `GcalPoller.swift` (connexion, poll), cartes `GcalCardView` / `ReminderView` dans `IslandViewContent.swift`. Tests : `scripts/test-google-calendar.sh`.
+
+### Google Calendar
+- Pas de serveur Coucou, donc pas de client OAuth partagé : l'utilisateur crée un client OAuth « Desktop app » dans son propre projet Google Cloud et colle l'ID + le secret dans les Réglages. Écran de consentement à passer « In production », sinon Google invalide le refresh token au bout de 7 jours.
+- Flux installed-app : PKCE (S256 ; hash et aléa via CryptoKit / `SecRandomCopyBytes`), écoute ponctuelle sur `127.0.0.1:<port libre>`, consentement dans le navigateur, vérification de `state`. Seul le refresh token est gardé (Trousseau) ; le jeton d'accès reste en mémoire. La version App Store déclare `com.apple.security.network.server` pour cette écoute.
+- Scopes `calendar.events.readonly` + `calendar.calendarlist.readonly`. Tous les agendas cochés dans Google Calendar (`selected`, plus le principal), pas seulement le principal — les événements vivent souvent dans un agenda partagé ou importé. Liste rafraîchie toutes les 10 min, événements des 7 jours à venir chaque minute, dédoublonnés et triés ; chaque ligne prend la couleur de son agenda. Un jeton antérieur au scope `calendarlist` (403) retombe sur l’agenda principal jusqu’à la prochaine connexion. Les événements refusés et les « working location » sont ignorés.
+- Rappels aux mêmes moments que Google Calendar : rappels propres de l'événement (`reminders.overrides`, y compris « aucun »), sinon ceux de son agenda (`defaultReminders`), sinon ceux de l'agenda principal (les agendas importés n'en ont pas), sinon 5 min. Seul le dernier rappel échu sonne (après un redémarrage, pas de rafale), un par poll. Les événements « toute la journée » ne sonnent pas.
+- Le rappel ouvre la vue `reminder` (titre, « dans 30 min », horaire, lieu ; **Join** si visio, **Open**, **OK**), son `approval`, seulement si la pill Calendar est active. Si l'île est occupée (chat, approbation, dépôt de fichier), il reste un badge ambre sur la pill Calendar.
+- « Disconnect » révoque le jeton chez Google puis l'efface.

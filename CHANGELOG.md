@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- GitHub: the CI of your Claude Code session's branch, read from its .git folder. It takes the CI row of the GitHub card (macOS, GitHub build) and the CI detail lists it first. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
+- Google Calendar (macOS): a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
+- Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
+- Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
