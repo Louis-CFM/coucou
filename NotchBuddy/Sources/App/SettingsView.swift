@@ -6,6 +6,7 @@ struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
     @ObservedObject private var demoEngine = DemoEngine.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
+    @State private var anthropicBaseURL: String = UserDefaults.standard.string(forKey: ClaudeEndpoint.settingsKey) ?? ""
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
     private static let fallbackModels: [(id: String, label: String)] = [
@@ -1025,6 +1026,32 @@ struct SettingsView: View {
         #endif
     }
 
+    /// Saves the Claude key and the base URL. A base URL that breaks the rules is not
+    /// saved (nor the key with it): the message says why.
+    private func saveAnthropicSettings() {
+        let base = anthropicBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !base.isEmpty {
+            do { _ = try ClaudeEndpoint.messagesURL(from: base) } catch {
+                statusMessage = error.localizedDescription
+                return
+            }
+        }
+        KeychainStore.shared.set("anthropic-api-key", value: apiKey)
+        if base != (UserDefaults.standard.string(forKey: ClaudeEndpoint.settingsKey) ?? "") {
+            if base.isEmpty {
+                UserDefaults.standard.removeObject(forKey: ClaudeEndpoint.settingsKey)
+            } else {
+                UserDefaults.standard.set(base, forKey: ClaudeEndpoint.settingsKey)
+            }
+            anthropicBaseURL = base
+            // Another server: its own model list, and a conversation that starts over.
+            fetchedModels = []
+            state.fetchedProviderModels[.anthropic] = nil
+            ClaudeService.shared.clearConversation()
+        }
+        statusMessage = String(localized: "status.key-saved")
+    }
+
     // MARK: - Chat section
 
     @ViewBuilder private var chatSection: some View {
@@ -1032,11 +1059,15 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 SecureField(String(localized: "chat.api-key.claude"), text: $apiKey)
                     .textFieldStyle(.roundedBorder)
-                Button(String(localized: "Save")) {
-                    KeychainStore.shared.set("anthropic-api-key", value: apiKey)
-                    statusMessage = String(localized: "status.key-saved")
-                }
-                .buttonStyle(.borderedProminent)
+                TextField(String(localized: "chat.anthropic-base-url"), text: $anthropicBaseURL)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { saveAnthropicSettings() }
+                Text(String(localized: "chat.anthropic-base-url.description"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(String(localized: "Save")) { saveAnthropicSettings() }
+                    .buttonStyle(.borderedProminent)
 
                 Divider().padding(.vertical, 2)
 

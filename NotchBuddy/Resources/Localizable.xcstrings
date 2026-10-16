@@ -12626,61 +12626,61 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مع Claude يُرسل النص المكتوب (وليس الصوت أبدًا) إلى Anthropic بمفتاحك من الإعدادات ← الدردشة. أما Apple Intelligence فيكتبه على جهاز Mac (macOS 26)."
+            "value" : "مع Claude أو مزوّد آخر من الإعدادات ← الدردشة، يُرسل النص المكتوب (وليس الصوت أبدًا) إلى ذلك المزوّد بمفتاحك، أو إلى خادمك المحلي. أما Apple Intelligence فيكتبه على جهاز Mac (macOS 26)."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude-এর সঙ্গে ট্রান্সক্রিপ্ট (কখনো অডিও নয়) সেটিংস → চ্যাট-এর কী দিয়ে Anthropic-এ যায়। Apple Intelligence এটি আপনার Mac-এ লেখে (macOS 26)।"
+            "value" : "Claude বা সেটিংস → চ্যাট-এর অন্য কোনো প্রোভাইডারের সঙ্গে ট্রান্সক্রিপ্ট (কখনো অডিও নয়) আপনার কী দিয়ে সেই প্রোভাইডারে, বা আপনার লোকাল সার্ভারে যায়। Apple Intelligence এটি আপনার Mac-এ লেখে (macOS 26)।"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "With Claude, the transcript (never the audio) goes to Anthropic with your key from Settings → Chat. Apple Intelligence writes it on your Mac (macOS 26)."
+            "value" : "With Claude or another provider of Settings → Chat, the transcript (never the audio) goes to that provider with your key, or to your local server. Apple Intelligence writes it on your Mac (macOS 26)."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con Claude, la transcripción (nunca el audio) va a Anthropic con tu clave de Ajustes → Chat. Apple Intelligence lo escribe en tu Mac (macOS 26)."
+            "value" : "Con Claude u otro proveedor de Ajustes → Chat, la transcripción (nunca el audio) va a ese proveedor con tu clave, o a tu servidor local. Apple Intelligence lo escribe en tu Mac (macOS 26)."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avec Claude, la transcription (jamais l'audio) part chez Anthropic avec ta clé de Réglages → Chat. Apple Intelligence l'écrit sur ton Mac (macOS 26)."
+            "value" : "Avec Claude ou un autre fournisseur de Réglages → Chat, la transcription (jamais l'audio) part chez ce fournisseur avec ta clé, ou vers ton serveur local. Apple Intelligence l'écrit sur ton Mac (macOS 26)."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Claude के साथ ट्रांसक्रिप्ट (ऑडियो कभी नहीं) सेटिंग्स → चैट वाली आपकी कुंजी से Anthropic को जाता है। Apple Intelligence इसे आपके Mac पर लिखता है (macOS 26)।"
+            "value" : "Claude या सेटिंग्स → चैट के किसी दूसरे प्रोवाइडर के साथ ट्रांसक्रिप्ट (ऑडियो कभी नहीं) आपकी कुंजी से उसी प्रोवाइडर को, या आपके लोकल सर्वर को जाता है। Apple Intelligence इसे आपके Mac पर लिखता है (macOS 26)।"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dengan Claude, transkrip (bukan audio) dikirim ke Anthropic dengan kuncimu dari Pengaturan → Obrolan. Apple Intelligence menulisnya di Mac-mu (macOS 26)."
+            "value" : "Dengan Claude atau penyedia lain dari Pengaturan → Obrolan, transkrip (bukan audio) dikirim ke penyedia itu dengan kuncimu, atau ke server lokalmu. Apple Intelligence menulisnya di Mac-mu (macOS 26)."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Com o Claude, a transcrição (nunca o áudio) vai para a Anthropic com sua chave de Ajustes → Chat. A Apple Intelligence escreve no seu Mac (macOS 26)."
+            "value" : "Com o Claude ou outro provedor de Ajustes → Chat, a transcrição (nunca o áudio) vai para esse provedor com sua chave, ou para o seu servidor local. A Apple Intelligence escreve no seu Mac (macOS 26)."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "С Claude расшифровка (но не аудио) уходит в Anthropic с вашим ключом из Настройки → Чат. Apple Intelligence пишет итог прямо на Mac (macOS 26)."
+            "value" : "С Claude или другим провайдером из Настройки → Чат расшифровка (но не аудио) уходит этому провайдеру с вашим ключом или на ваш локальный сервер. Apple Intelligence пишет итог прямо на Mac (macOS 26)."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用 Claude 时，转写文字（绝不是音频）会用“设置”→“聊天”中的密钥发送给 Anthropic。Apple 智能则在你的 Mac 上生成（macOS 26）。"
+            "value" : "使用 Claude 或“设置”→“聊天”中的其他提供商时，转写文字（绝不是音频）会用你的密钥发送给该提供商，或发送到你的本地服务器。Apple 智能则在你的 Mac 上生成（macOS 26）。"
           }
         }
       }
@@ -12815,6 +12815,70 @@
         }
       }
     },
+    "notes.engine.local" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (على هذا الـ Mac)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (এই Mac-এ)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (this Mac)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (este Mac)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (ce Mac)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (यह Mac)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Mac ini)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (este Mac)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (этот Mac)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（本机）"
+          }
+        }
+      }
+    },
     "notes.engine.off" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12876,6 +12940,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "不生成摘要"
+          }
+        }
+      }
+    },
+    "notes.engine.provider" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (مفتاحك)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (আপনার কী)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (your key)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (tu clave)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (ta clé)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (आपकी कुंजी)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (kuncimu)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (sua chave)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (ваш ключ)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（你的密钥）"
           }
         }
       }
@@ -16690,6 +16818,134 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anthropic API"
+          }
+        }
+      }
+    },
+    "chat.anthropic-base-url" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عنوان URL الأساسي (اختياري، مثلاً https://api.minimax.io/anthropic)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "বেস URL (ঐচ্ছিক, যেমন https://api.minimax.io/anthropic)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base URL (optional, e.g. https://api.minimax.io/anthropic)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL base (opcional, p. ej. https://api.minimax.io/anthropic)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL de base (facultative, ex. https://api.minimax.io/anthropic)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बेस URL (वैकल्पिक, जैसे https://api.minimax.io/anthropic)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL dasar (opsional, mis. https://api.minimax.io/anthropic)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL base (opcional, ex.: https://api.minimax.io/anthropic)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Базовый URL (необязательно, напр. https://api.minimax.io/anthropic)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "基础 URL（可选，如 https://api.minimax.io/anthropic）"
+          }
+        }
+      }
+    },
+    "chat.anthropic-base-url.description" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اتركه فارغاً لاستخدام Anthropic. لبوابة متوافقة مع Anthropic (MiniMax وLiteLLM…)، الصق مفتاحها أعلاه واختر نموذجها أدناه ضمن «مخصص…». تمر عندها الدردشة وتنقيح الإملاء والملاحظات عبرها. البحث على الويب متاح مع Anthropic فقط."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthropic-এর জন্য খালি রাখুন। Anthropic-সামঞ্জস্যপূর্ণ গেটওয়ের জন্য (MiniMax, LiteLLM…) উপরে তার কী পেস্ট করুন এবং নিচে \"কাস্টম…\"-এ তার মডেল বেছে নিন। তখন চ্যাট, ডিক্টেশন পরিষ্কার করা এবং নোট সেখানে যাবে। ওয়েব সার্চ শুধু Anthropic-এ।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave empty for Anthropic. For an Anthropic-compatible gateway (MiniMax, LiteLLM…), paste its key above and pick its model below, under Custom…. The chat, the dictation clean-up and the notes then go there. Web search is Anthropic only."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déjalo vacío para Anthropic. Para una pasarela compatible con Anthropic (MiniMax, LiteLLM…), pega su clave arriba y elige su modelo abajo, en Personalizado…. El chat, la limpieza del dictado y las notas pasarán por ella. La búsqueda web solo existe con Anthropic."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez vide pour Anthropic. Pour une passerelle compatible Anthropic (MiniMax, LiteLLM…), collez sa clé ci-dessus et choisissez son modèle ci-dessous, dans Personnalisé…. Le chat, le nettoyage des dictées et les notes passent alors par elle. La recherche web n’existe qu’avec Anthropic."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthropic के लिए खाली छोड़ें। Anthropic-संगत गेटवे (MiniMax, LiteLLM…) के लिए ऊपर उसकी कुंजी पेस्ट करें और नीचे \"कस्टम…\" में उसका मॉडल चुनें। तब चैट, डिक्टेशन की सफ़ाई और नोट्स वहीं जाएंगे। वेब खोज केवल Anthropic के साथ है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biarkan kosong untuk Anthropic. Untuk gateway yang kompatibel dengan Anthropic (MiniMax, LiteLLM…), tempel kuncinya di atas dan pilih modelnya di bawah, pada Kustom…. Chat, perapian dikte, dan catatan lalu dikirim ke sana. Pencarian web hanya ada di Anthropic."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deixe vazio para a Anthropic. Para um gateway compatível com a Anthropic (MiniMax, LiteLLM…), cole a chave dele acima e escolha o modelo abaixo, em Personalizado…. O chat, a limpeza do ditado e as notas passam a ir para lá. A busca na web só existe com a Anthropic."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставьте пустым для Anthropic. Для шлюза, совместимого с Anthropic (MiniMax, LiteLLM…), вставьте его ключ выше и выберите модель ниже, в пункте «Свой…». Тогда чат, очистка диктовки и заметки пойдут через него. Веб-поиск есть только у Anthropic."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 Anthropic 时请留空。若使用兼容 Anthropic 的网关（MiniMax、LiteLLM…），请在上方粘贴其密钥，并在下方“自定义…”中填写其模型。聊天、听写整理和笔记都会经由该网关。网页搜索仅限 Anthropic。"
           }
         }
       }

@@ -633,14 +633,14 @@ private struct HubTodos: View {
     }
 }
 
-/// Who writes the summaries: Claude, Apple Intelligence, or nobody.
+/// Who writes the summaries: Claude, another chat provider, Apple Intelligence, or nobody.
 struct HubSummaryEnginePicker: View {
     @ObservedObject private var taker = NoteTaker.shared
 
     var body: some View {
         HubRow(title: String(localized: "notes.engine")) {
             Picker("", selection: $taker.summaryEngine) {
-                ForEach(NoteSummaryEngine.allCases) { engine in
+                ForEach(NoteSummaryEngine.available(keeping: taker.summaryEngine)) { engine in
                     Text(engine.label).tag(engine)
                 }
             }

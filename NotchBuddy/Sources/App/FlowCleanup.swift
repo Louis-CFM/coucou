@@ -4,8 +4,9 @@ import Foundation
 /// The clean-up of Flow dictation: Claude removes the "euh", the repeats and the corrections said
 /// on the way ("at 3, no, at 4" → "at 4"), fixes the punctuation and writes in the app's style.
 /// Only when it is turned on in the Coucou Flow window and a Claude key is set in Settings; the words
-/// then go to Anthropic with that key, and nowhere else. Any problem (no network, slow answer, odd
-/// reply) and the words are pasted as they were heard.
+/// then go to Anthropic with that key (or to the Anthropic-compatible gateway set in
+/// Settings → Chat), and nowhere else. Any problem (no network, slow answer, odd reply)
+/// and the words are pasted as they were heard.
 enum FlowCleanup {
     static let model = "claude-haiku-4-5"
     /// Past this, the words are pasted as heard rather than keeping you waiting.
@@ -18,14 +19,15 @@ enum FlowCleanup {
     static func clean(_ text: String, style: FlowStyle, app: String?, words: [String]) async -> String {
         guard style != .verbatim, let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty,
               FlowText.wordCount(text) >= 3 else { return text }
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        request.httpMethod = "POST"
-        request.timeoutInterval = timeout
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        let endpoint: ClaudeEndpoint
+        do { endpoint = try ClaudeEndpoint.current() } catch {
+            appendAppLog("nb.log", "[Flow] clean-up skipped: \(error.localizedDescription)")
+            return text
+        }
+        let chatModel = await MainActor.run { AppState.shared.claudeModel }
+        var request = endpoint.request(key: key, timeout: timeout)
         let body: [String: Any] = [
-            "model": model,
+            "model": endpoint.model(fast: model, chat: chatModel),
             "max_tokens": 2048,
             "temperature": 0,
             "system": system(style: style, app: app, words: words),
@@ -34,7 +36,7 @@ enum FlowCleanup {
         guard let data = try? JSONSerialization.data(withJSONObject: body) else { return text }
         request.httpBody = data
         do {
-            let (reply, response) = try await URLSession.shared.data(for: request)
+            let (reply, response) = try await endpoint.session.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200,
                   let json = try? JSONSerialization.jsonObject(with: reply) as? [String: Any],
                   let content = json["content"] as? [[String: Any]] else { return text }
