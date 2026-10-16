@@ -150,6 +150,7 @@ pub fn pick_window<'a, W>(windows: &'a [(W, String)], folder: &str) -> Option<&'
 /// Whether a window title names a project folder: JetBrains titles are the
 /// project's name, then " – " and the open file; `folder` is lower case. The
 /// name must be a whole word of the title, so "app" does not match "webapp".
+#[cfg_attr(windows, allow(dead_code))]
 pub fn title_names_folder(title: &str, folder: &str) -> bool {
     if folder.is_empty() {
         return false;

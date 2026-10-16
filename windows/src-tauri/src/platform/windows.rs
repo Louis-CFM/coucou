@@ -579,6 +579,7 @@ fn activate_claude_protocol() -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod claude_launch_tests {
     use super::open_claude_with;
     use std::cell::RefCell;

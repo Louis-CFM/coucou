@@ -1,0 +1,5 @@
+# One compiler for everyone and for the CI, so a clippy lint that appears with a new
+# release never turns a pull request red on its own. Bump it on purpose.
+[toolchain]
+channel = "1.96.0"
+components = ["clippy", "rustfmt"]
