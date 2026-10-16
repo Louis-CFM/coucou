@@ -17,6 +17,7 @@ mod integrations;
 mod island;
 mod local_chat;
 mod log;
+mod music;
 mod net;
 mod notes;
 mod openai_compat;
@@ -862,6 +863,8 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            music::music_now,
+            music::music_control,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -903,6 +906,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            music::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
