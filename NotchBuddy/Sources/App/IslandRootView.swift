@@ -528,10 +528,20 @@ struct IslandHeader: View {
     @State private var gearHovered  = false
     @State private var soundHovered = false
     @State private var closeHovered = false
+    @State private var captureHovered = false
 
     /// Pending approval or mail draft: the island refuses to fold (fsm.isHeldOpen), so the
     /// close cross is not shown.
     private var heldOpen: Bool { state.pendingApproval != nil || state.voiceMailDraft != nil }
+
+    #if !APPSTORE
+    /// "Capture the screen for Claude (⌘⇧S)", without the keys when the shortcut is switched off.
+    private var captureHelp: String {
+        let name = String(localized: "shortcut.capture")
+        guard ShortcutLogic.isEnabled(.captureScreen) else { return name }
+        return "\(name) (\(ShortcutLogic.displayString(for: ShortcutLogic.hotKey(for: .captureScreen))))"
+    }
+    #endif
 
     var body: some View {
         HStack(spacing: 0) {
@@ -563,6 +573,21 @@ struct IslandHeader: View {
                 }
                 #endif
                 HStack(spacing: 14) {
+                    #if !APPSTORE
+                    // The capture, for when its shortcut is forgotten: the tooltip shows it.
+                    Button(action: {
+                        appendAppLog("nb.log", "[Capture] header icon")
+                        ScreenCapture.shared.begin()
+                    }) {
+                        Image(systemName: "camera.viewfinder")
+                            .font(.system(size: 14))
+                            .foregroundColor(captureHovered ? Color(hex: "#F5F6F8") : Color(hex: "#8E939C"))
+                    }
+                    .buttonStyle(.plain)
+                    .help(captureHelp)
+                    .onHover { captureHovered = $0 }
+                    #endif
+
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             state.view = .settings
