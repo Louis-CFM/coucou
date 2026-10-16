@@ -91,6 +91,7 @@ struct SettingsView: View {
     @State private var deepseekKey: String = KeychainStore.shared.get("deepseek-api-key") ?? ""
     @State private var qwenKey: String     = KeychainStore.shared.get("qwen-api-key") ?? ""
     @State private var moonshotKey: String = KeychainStore.shared.get("moonshot-api-key") ?? ""
+    @State private var openrouterKey: String = KeychainStore.shared.get("openrouter-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
@@ -1138,6 +1139,23 @@ struct SettingsView: View {
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
                     statusMessage = "Moonshot key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: ChatProvider.openrouter.accentHex)).frame(width: 8, height: 8)
+                    Text("OpenRouter").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key (sk-or-…, from openrouter.ai/keys)", text: $openrouterKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("openrouter-api-key", value: openrouterKey)
+                    // A new key can unlock a different model list: fetch it again next time.
+                    state.fetchedProviderModels[.openrouter] = nil
+                    state.providerModelFetchError[.openrouter] = nil
+                    statusMessage = "OpenRouter key saved."
                 }
                 .buttonStyle(.borderedProminent)
             }
