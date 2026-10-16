@@ -14,6 +14,7 @@ enum IslandView: String, CaseIterable {
     case searching, result, note, settings, greeting, wardrobe, recap
     case listening    // voice wake detected — "À l'écoute…" with live transcript
     case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
+    case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
 }
 
 // MARK: - Bot State
@@ -31,6 +32,17 @@ enum BotEmote: String, CaseIterable {
     case listening   // attentive: head tilt + wide-open eyes
 }
 
+// MARK: - Voice sub-state
+
+/// What Mochi is doing during a voice exchange (compact island or expanded).
+/// Driven by IslandWindowController; read by BotEngine each frame.
+enum BotVoiceSubState: Equatable {
+    case none       // voice not active
+    case listening  // mic open, waiting for words
+    case thinking   // command received, waiting for AI / TTS queue to drain
+    case speaking   // TTS audio playing
+}
+
 // MARK: - Approval info (pending PermissionRequest from Claude Code)
 
 struct ApprovalInfo: Sendable {
@@ -41,6 +53,12 @@ struct ApprovalInfo: Sendable {
     var inputKey: String
     /// Pill that owns this approval: "integration_claude", "agent_cursor", or "agent_codex".
     var pillId: String
+    /// Queued request this card answers (Mac): a decision is only accepted for this id.
+    var id: UUID = UUID()
+    /// Requests waiting, this one included; the card shows the count when above 1.
+    var queueCount: Int = 1
+    /// Project of the session that asks (several sessions can share one pill).
+    var projectName: String = ""
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
@@ -81,6 +99,9 @@ enum ChatProvider: String, CaseIterable, Codable {
     case openai    = "openai"
     case ollama    = "ollama"
     case lmstudio  = "lmstudio"
+    case deepseek  = "deepseek"
+    case qwen      = "qwen"
+    case moonshot  = "moonshot"
 
     var displayName: String {
         switch self {
@@ -89,6 +110,9 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "OpenAI"
         case .ollama:    "Ollama"
         case .lmstudio:  "LM Studio"
+        case .deepseek:  "DeepSeek"
+        case .qwen:      "Qwen"
+        case .moonshot:  "Moonshot"
         }
     }
 
@@ -99,6 +123,9 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "#10A37F"
         case .ollama:    "#FACC15"
         case .lmstudio:  "#A3E635"
+        case .deepseek:  "#5B8FF9"
+        case .qwen:      "#FF6A00"
+        case .moonshot:  "#7C5CFC"
         }
     }
 
@@ -109,6 +136,9 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "gpt-4o"
         case .ollama:    "llama3.2"
         case .lmstudio:  "local-model"
+        case .deepseek:  "deepseek-chat"
+        case .qwen:      "qwen-max"
+        case .moonshot:  "moonshot-v1-32k"
         }
     }
 
@@ -119,6 +149,9 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "openai-api-key"
         case .ollama:    ""
         case .lmstudio:  ""
+        case .deepseek:  "deepseek-api-key"
+        case .qwen:      "qwen-api-key"
+        case .moonshot:  "moonshot-api-key"
         }
     }
 
@@ -133,6 +166,9 @@ enum ChatProvider: String, CaseIterable, Codable {
         case .openai:    "ai_openai"
         case .ollama:    "ai_ollama"
         case .lmstudio:  "ai_lmstudio"
+        case .deepseek:  "ai_deepseek"
+        case .qwen:      "ai_qwen"
+        case .moonshot:  "ai_moonshot"
         }
     }
 
@@ -143,6 +179,9 @@ enum ChatProvider: String, CaseIterable, Codable {
         case "ai_openai":    self = .openai
         case "ai_ollama":    self = .ollama
         case "ai_lmstudio":  self = .lmstudio
+        case "ai_deepseek":  self = .deepseek
+        case "ai_qwen":      self = .qwen
+        case "ai_moonshot":  self = .moonshot
         default:             return nil
         }
     }
@@ -199,6 +238,8 @@ enum IslandConst {
         .listening:    ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
         // Voice result: same layout as listening — Mochi on left, ✓/✗ on right
         .voiceResult:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Screen capture: Mochi on the left (he just swallowed it), the image and what to do with it
+        .capture:      ViewLayout(height: 160, botX: 58,  botY: nil, botDiameter: 52, agentMode: .none),
     ]
 
     // Project colors — keyed by lowercase display name or slug

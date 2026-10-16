@@ -143,6 +143,7 @@ final class HotKeyCenter {
             gHotKeyTable[idx] = action
         } else {
             conflicts.insert(action)
+            appendAppLog("nb.log", "[Hotkey] \(action.rawValue) not registered (status \(status)): another app holds these keys")
         }
     }
 }

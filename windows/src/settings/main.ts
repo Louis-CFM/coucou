@@ -1,6 +1,7 @@
-// Settings window — the place where anything that writes to disk is confirmed.
-// Stage 2 covers the Claude Code hooks and the general preferences; API keys and
-// integrations land here too in a later stage.
+// The Coucou window (settings.html): Flow dictation, the Notetaker and, under
+// Notch, every setting of the island — the place where anything that writes to
+// disk is confirmed. The window's frame and the Flow pages live in ../hub; the
+// island's settings are drawn here, one Notch page at a time.
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
@@ -16,7 +17,10 @@ import {
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
+import { startHub, type PageId } from "../hub/shell";
+import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
+import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -31,7 +35,10 @@ const KEY_STORE = navigator.userAgent.includes("Windows")
 let settings: Settings = { ...DEFAULT_SETTINGS };
 let version = "";
 
-const root = document.getElementById("settings-root")!;
+const windowRoot = document.getElementById("hub")!;
+/** Where the Notch page being shown draws its sections. */
+let root: HTMLElement = windowRoot;
+let hub: { redraw(): void; current(): PageId } | null = null;
 
 async function save() {
   await Bridge.saveSettings(settings);
@@ -238,6 +245,7 @@ function claudeSection(status: HookStatus): HTMLElement {
  */
 const PLAN_SETTINGS_TEXT = {
   get claude() { return t("Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only."); },
+  get claudeCli() { return t("The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app."); },
   get showClaude() { return t("Show in notch"); },
   get codex() { return t("Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT."); },
   get showCodex() { return t("Show Codex plan in the notch"); },
@@ -283,6 +291,7 @@ function planSection(status: HookStatus): HTMLElement {
         class: "hint",
         text: PLAN_SETTINGS_TEXT.claude,
       }),
+      h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),
@@ -773,7 +782,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
-  // Nothing to enter: Spotify is read over D-Bus (Linux only, see core/pills.ts).
+  // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
 
@@ -1260,30 +1269,7 @@ function applyLanguage() {
 
 function applyDirection() {
   document.documentElement.dir = isRtl() ? "rtl" : "ltr";
-  document.title = t("Settings — Coucou");
-}
-
-let rendering: Promise<void> | null = null;
-let renderAgain = false;
-
-/** Redraws every section from fresh state, keeping the scroll position. */
-async function rerender() {
-  if (rendering) {
-    renderAgain = true;
-    return;
-  }
-  const scroll = document.scrollingElement?.scrollTop ?? 0;
-  rendering = render();
-  try {
-    await rendering;
-  } finally {
-    rendering = null;
-  }
-  if (document.scrollingElement) document.scrollingElement.scrollTop = scroll;
-  if (renderAgain) {
-    renderAgain = false;
-    await rerender();
-  }
+  document.title = "Coucou";
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -1296,11 +1282,19 @@ async function main() {
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
   applyDirection();
+  hub = await startHub(windowRoot, {
+    version,
+    flowPages: FLOW_PAGE_RENDERERS,
+    renderNotch: async (page, container) => {
+      notchPage = page;
+      root = container;
+      await render();
+    },
+  });
   onLanguageChange(() => {
     applyDirection();
-    void rerender();
+    hub?.redraw();
   });
-  await render();
 
   void onEvent<ShortcutsReport>("shortcuts-status", (fresh) => shortcutsListener?.report(fresh));
   void onEvent<Settings>("settings-changed", (s) => {
@@ -1314,7 +1308,10 @@ async function main() {
   });
 }
 
-/** Reads what the sections show and draws them all. */
+/** The Notch page being shown. */
+let notchPage: PageId = "general";
+
+/** Reads what the sections of the Notch page show and draws them. */
 async function render() {
   const status = (await Bridge.hooksStatus()) ?? {
     installed: false, planRelayInstalled: false, settingsPath: "", hookPath: "", hookReady: false,
@@ -1357,23 +1354,22 @@ async function render() {
   localRedraw = null;
   shortcutsListener = null;
   clear(root);
-  root.append(
-    h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
-    claudeSection(status),
-    agentsSection(agents),
-    planSection(status),
-    apiSection(hasKey),
-    chatProvidersSection(chatKeys, keyChanged),
-    localSection(customKey),
-    activePillsSection(connected),
-    integrationsSection(present),
-    generalSection(),
-    shortcutsSection(shortcutReport),
-    h("div", {
+  const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
+    general: () => [generalSection()],
+    pills: () => [activePillsSection(connected)],
+    agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    integrations: () => [integrationsSection(present)],
+    phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
+    shortcuts: () => [shortcutsSection(shortcutReport)],
+  };
+  root.append(...(sections[notchPage]?.() ?? []));
+  if (notchPage === "general") {
+    root.append(h("div", {
       class: "hint",
       text: t("No telemetry. Network requests only go to the services you configure yourself."),
-    }),
-  );
+    }));
+  }
 }
 
 void main();

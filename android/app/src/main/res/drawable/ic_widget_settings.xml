@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings. A 24dp outline icon, 2dp stroke, in the Widgets' text colour (so the light variant follows the system). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,5.6 A6.4,6.4 0 1 1 12,18.4 A6.4,6.4 0 1 1 12,5.6 Z"
+        android:strokeColor="@color/widget_text"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M12,9.5 A2.5,2.5 0 1 1 12,14.5 A2.5,2.5 0 1 1 12,9.5 Z"
+        android:strokeColor="@color/widget_text"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M18.40,12.00 L21.40,12.00 M16.53,16.53 L18.65,18.65 M12.00,18.40 L12.00,21.40 M7.47,16.53 L5.35,18.65 M5.60,12.00 L2.60,12.00 M7.47,7.47 L5.35,5.35 M12.00,5.60 L12.00,2.60 M16.53,7.47 L18.65,5.35"
+        android:strokeColor="@color/widget_text"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
