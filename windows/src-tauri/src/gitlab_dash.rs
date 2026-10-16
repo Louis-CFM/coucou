@@ -11,8 +11,10 @@
 //   no "resolved" for it, so my own later message is what clears it.
 // System notes ("added 2 commits", "approved this merge request") are no message,
 // and neither are those of automated accounts (SonarQube, dependabot, project
-// bots…): the panel is for what people wrote. A thread that only holds such
-// notes is not shown, nor counted among the open threads of a merge request.
+// bots…) nor SonarQube's report, which often comes under an ordinary account
+// (its author is a person's name, only its text gives it away): the panel is for
+// what people wrote. A thread that only holds such notes is not shown, nor
+// counted among the open threads of a merge request.
 
 use std::collections::HashMap;
 
@@ -175,6 +177,22 @@ pub fn is_automated(author: Option<&Value>) -> bool {
         || words(&username).iter().chain(words(&name).iter()).any(|w| AUTOMATED_WORDS.contains(&w.as_str()))
 }
 
+/// True for the text of a code-analysis report posted by a tool, whoever's account
+/// it was posted from: SonarQube's "Quality Gate" comment on a merge request.
+pub fn is_automated_text(body: &str) -> bool {
+    let lower = body.trim_start().to_lowercase();
+    lower.starts_with("sonarqube")
+        || lower.starts_with("sonarcloud")
+        || lower.starts_with("**sonar")
+        || lower.contains("see analysis details on sonar")
+        || (lower.contains("quality gate") && lower.contains("sonar"))
+}
+
+/// A note nobody wrote to be read: from an automated account, or a tool's report.
+fn is_automated_note(note: &Value) -> bool {
+    is_automated(note.get("author")) || is_automated_text(str_at(note, "body").unwrap_or(""))
+}
+
 fn str_at<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
     v.get(key).and_then(Value::as_str)
 }
@@ -223,7 +241,7 @@ pub fn pending_threads(discussions: &[Value], me: &str, i_am_author: bool, mr: &
         let raw = array(d.get("notes"));
         let mut notes = Vec::new();
         let from_people = |n: &&Value| {
-            !n.get("system").and_then(Value::as_bool).unwrap_or(false) && !is_automated(n.get("author"))
+            !n.get("system").and_then(Value::as_bool).unwrap_or(false) && !is_automated_note(n)
         };
         for n in raw.iter().filter(from_people) {
             let username = n.get("author").and_then(|a| str_at(a, "username")).unwrap_or("").to_string();
@@ -633,6 +651,35 @@ mod tests {
         assert!(is_automated(Some(&json!({"username": "ci", "name": "CI", "bot": true}))), "GitLab's own flag");
         assert!(!is_automated(Some(&json!({"username": "bob", "bot": false}))));
         assert!(!is_automated(None));
+    }
+
+    const SONAR_REPORT: &str = "SonarQube Code Analysis\nQuality Gate passed\nIssues  \n[![](https://codequality.example.io/static/passed-16px.png '')](https://codequality.example.io/project/issues?id=X&pullRequest=13355&resolved=false) 0 New issues  \nMeasures  \n22.2% Coverage on New Code  \n16.7% Duplication on New Code  \nSee analysis details on SonarQube";
+
+    #[test]
+    fn sonarqubes_report_is_told_by_its_text_whoever_posts_it() {
+        assert!(is_automated_text(SONAR_REPORT));
+        assert!(is_automated_text("  SonarCloud Quality Gate failed"));
+        assert!(is_automated_text("Quality Gate failed\nsee Sonar for details"));
+        assert!(is_automated_text("**SonarQube** found 3 issues"));
+        assert!(!is_automated_text("Sonar says it is fine, but I disagree with the naming here"));
+        assert!(!is_automated_text("The quality gate of our pipeline is too strict"));
+        assert!(!is_automated_text("why this?"));
+    }
+
+    #[test]
+    fn a_report_from_an_ordinary_account_is_not_shown() {
+        // Posted by a person's account, as in the wild: only the text gives it away.
+        let report = json!({"id": 1, "author": {"username": "adminMeyclub", "name": "adminMeyclub"},
+                            "created_at": "2026-01-14T08:00:00Z", "body": SONAR_REPORT, "system": false});
+        let d = vec![thread("t1", vec![report], false, false)];
+        let (found, unresolved) = pending_threads(&d, "me", true, &mr());
+        assert!(found.is_empty());
+        assert_eq!(unresolved, 0);
+        // …and a real comment from the same account is.
+        let real = json!({"id": 2, "author": {"username": "adminMeyclub", "name": "adminMeyclub"},
+                          "created_at": "2026-01-14T09:00:00Z", "body": "please rename this", "system": false});
+        let (found, _) = pending_threads(&[thread("t2", vec![real], false, false)], "me", true, &mr());
+        assert_eq!(found.len(), 1);
     }
 
     #[test]
