@@ -27,6 +27,10 @@ class FakeElement {
     this.dataset = {};
     this.scrollTop = 0;
     this.scrollHeight = 0;
+    this.offsetHeight = 0;
+    // A text box: its text and caret.
+    this.value = "";
+    this.selectionStart = 0;
     this.style = { setProperty: (k, v) => (this.style[k] = v) };
     const el = this;
     this.classList = {
@@ -111,6 +115,7 @@ class FakeElement {
   }
   scrollIntoView() {}
   focus() {}
+  setSelectionRange() {}
   select() {}
   /** Every descendant element, depth first. */
   *walk() {
@@ -135,6 +140,7 @@ export function installFakeDom() {
     createElementNS: (ns, tag) => new FakeElement(tag, ns),
     createTextNode: (text) => new FakeText(text),
     body: new FakeElement("body"),
+    activeElement: null,
   };
   return { root: () => new FakeElement("div") };
 }

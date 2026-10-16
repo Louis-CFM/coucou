@@ -1,0 +1,530 @@
+/* The GitLab panel: a slim dark card that floats next to the island. */
+
+:root {
+  color-scheme: dark;
+  --bg: #0e0f11;
+  --card: #141518;
+  --ink: #f5f6f8;
+  --ink-2: #c5c8cd;
+  --dim: #9398a1;
+  --dim-3: #6b7079;
+  --line: rgba(255, 255, 255, 0.07);
+  --orange: #fc6d26;
+  --red: #f4505e;
+  --font: system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
+    "Noto Sans Arabic", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 12px var(--font);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* The window follows the content's height; past the screen's, the page scrolls. */
+#gp {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.gp-inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.gp-grow {
+  flex: 1;
+}
+
+/* ── Header (also the handle) ─────────────────────────────────────────────── */
+
+.gp-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  flex: none;
+  cursor: grab;
+}
+
+.gp-head b {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.gp-x {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--dim);
+}
+
+.gp-x:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+
+.gp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px 8px;
+}
+
+.gp-sec {
+  border-radius: 8px;
+}
+
+.gp-sec.waiting {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.gp-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  text-align: start;
+}
+
+.gp-sec-head:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gp-sec-title {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.gp-chev {
+  display: grid;
+  place-items: center;
+  width: 10px;
+  color: var(--dim-3);
+  transition: transform 0.12s;
+}
+
+.gp-chev.open {
+  transform: rotate(90deg);
+}
+
+html[dir="rtl"] .gp-chev {
+  transform: scaleX(-1);
+}
+
+html[dir="rtl"] .gp-chev.open {
+  transform: rotate(90deg);
+}
+
+.gp-count {
+  min-width: 18px;
+  text-align: center;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-sec.waiting .gp-count {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* "+N": new since you last opened the section. */
+.gp-new {
+  padding: 1px 6px;
+  border-radius: 9px;
+  color: #0b0b0d;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 2px 6px;
+}
+
+.gp-empty {
+  padding: 8px 12px;
+  color: var(--dim-3);
+  font-size: 11px;
+}
+
+/* ── Rows ─────────────────────────────────────────────────────────────────── */
+
+.gp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 7px;
+  text-align: start;
+}
+
+.gp-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gp-ci {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.gp-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gp-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.gp-draft {
+  margin-inline-start: 6px;
+  color: var(--dim-3);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.gp-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--dim-3);
+  font-size: 10.5px;
+}
+
+.gp-proj {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+  color: var(--dim);
+}
+
+.gp-badge {
+  padding: 0 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-badge.warn {
+  color: #f5a524;
+}
+
+/* ── A thread, open in place ──────────────────────────────────────────────── */
+
+.gp-thread.open {
+  margin: 2px 0 6px;
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.gp-thread.done .gp-row-title {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.gp-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 10px 10px;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
+}
+
+.gp-mr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.gp-mr-ref {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.gp-mr-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-link {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--dim);
+}
+
+.gp-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.gp-code {
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  font: 11px/1.5 var(--mono);
+  direction: ltr;
+}
+
+.gp-code-file {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+}
+
+.gp-code-line {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px;
+  white-space: pre;
+}
+
+.gp-code-line i {
+  flex: none;
+  min-width: 26px;
+  color: var(--dim-3);
+  font-style: normal;
+  text-align: end;
+}
+
+.gp-code-line code {
+  font: inherit;
+  color: var(--ink-2);
+}
+
+.gp-code-line.target {
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
+}
+
+.gp-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gp-note {
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid var(--line);
+}
+
+.gp-note.me {
+  border-inline-start-color: var(--orange);
+}
+
+.gp-note-head {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 2px;
+  color: var(--dim-3);
+  font-size: 10.5px;
+}
+
+.gp-note-head b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.gp-note-body {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The chat's Markdown, in the panel's size. */
+.gp-note-body .md-p {
+  margin: 2px 0;
+  white-space: pre-wrap;
+}
+
+.gp-note-body .md-h {
+  margin: 4px 0 2px;
+  font-weight: 600;
+}
+
+.gp-note-body .md-code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.09);
+  font: 11px var(--mono);
+}
+
+.gp-note-body .md-link {
+  color: #8ab4f8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gp-note-body .md-pre {
+  position: relative;
+  margin: 4px 0;
+  padding: 6px 8px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  font: 11px/1.45 var(--mono);
+}
+
+.gp-note-body .md-pre pre {
+  font: inherit;
+  white-space: pre;
+}
+
+.gp-note-body .md-copy {
+  display: none;
+}
+
+.gp-note-body .md-item {
+  display: flex;
+  gap: 6px;
+}
+
+.gp-note-body .md-quote {
+  display: flex;
+  gap: 6px;
+  color: var(--dim);
+}
+
+.gp-note-body .md-quote i {
+  flex: none;
+  width: 2px;
+  background: var(--line);
+}
+
+.gp-note-body .md-rule {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 6px 0;
+}
+
+/* ── Answering ────────────────────────────────────────────────────────────── */
+
+.gp-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gp-box {
+  width: 100%;
+  min-height: 56px;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 12px/1.4 var(--font);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.gp-box:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--orange) 70%, transparent);
+}
+
+.gp-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gp-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.gp-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.gp-btn.primary {
+  background: var(--orange);
+  color: #0b0b0d;
+}
+
+.gp-btn.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--orange) 88%, white);
+}
+
+.gp-error {
+  color: var(--red);
+  font-size: 11px;
+}
+
+.gp-hint {
+  color: var(--dim);
+  font-size: 11px;
+}

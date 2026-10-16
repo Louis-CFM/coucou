@@ -67,7 +67,9 @@ export type GitHubEvent =
   | { kind: "ciFailed"; prId: string }
   | { kind: "ciPassed"; prId: string }
   | { kind: "mainFailed"; repo: string }
-  | { kind: "reviewRequested"; prId: string };
+  | { kind: "reviewRequested"; prId: string }
+  /** GitLab only: a discussion thread waits for your answer. */
+  | { kind: "commentPending"; threadId: string };
 
 /** Every word the GitHub card shows, in the current language (src/i18n). */
 export const GH_STRINGS = {
@@ -301,6 +303,7 @@ export function gitHubAlert(events: GitHubEvent[]): GitHubAlert | null {
         if (level < 3) { level = 3; alert = { badge: "error", sound: "error" }; }
         break;
       case "reviewRequested":
+      case "commentPending":
         if (level < 2) { level = 2; alert = { badge: "finished", sound: "question" }; }
         break;
       case "ciPassed":

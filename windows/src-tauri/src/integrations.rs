@@ -48,7 +48,7 @@ fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
-fn client() -> reqwest::Client {
+pub(crate) fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()
@@ -78,7 +78,7 @@ pub fn start(app: AppHandle) {
 }
 
 /// True when the user has this integration switched on in settings.
-fn enabled(app: &AppHandle, id: &str) -> bool {
+pub(crate) fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
             let settings = shared.settings.lock().unwrap();
@@ -377,7 +377,7 @@ static GITHUB: std::sync::LazyLock<GitHubLoops> = std::sync::LazyLock::new(|| Gi
     activity_busy: AtomicBool::new(false),
 });
 
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -558,6 +558,7 @@ pub fn github_token_changed(app: &AppHandle) {
 /// silent instead of alerting on everything that changed in between.
 pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
     if !active_integrations.iter().any(|id| id == GITLAB_ID) {
+        crate::gitlab_panel::pill_off(app);
         let had_data = {
             let mut cache = GITLAB.cache.lock().unwrap();
             let had = cache.pulse.is_some() || cache.activity.is_some();
@@ -594,7 +595,7 @@ pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
 // requested while the pill is off, the token is missing or Coucou is paused.
 // The cache and loop state are GitHub's own types: same shape, one code path.
 
-const GITLAB_ID: &str = "integration_gitlab";
+pub(crate) const GITLAB_ID: &str = "integration_gitlab";
 
 static GITLAB: std::sync::LazyLock<GitHubLoops> = std::sync::LazyLock::new(|| GitHubLoops {
     cache: Mutex::new(GitHubCache::default()),
@@ -606,7 +607,7 @@ static GITLAB: std::sync::LazyLock<GitHubLoops> = std::sync::LazyLock::new(|| Gi
 });
 
 /// The instance to talk to; None when the stored URL is not acceptable.
-fn gitlab_base() -> Option<String> {
+pub(crate) fn gitlab_base() -> Option<String> {
     gitlab::normalize_base(secrets::get("gitlab-url").as_deref())
 }
 
@@ -621,7 +622,7 @@ fn emit_gitlab(app: &AppHandle) {
 
 /// One authenticated GET on the REST API. Err carries the HTTP status, or 0
 /// when nothing came back or the body was not JSON. The token is never logged.
-async fn gitlab_get(
+pub(crate) async fn gitlab_get(
     http: &reqwest::Client,
     base: &str,
     token: &str,
@@ -903,6 +904,7 @@ pub fn gitlab_refresh_if_stale(section: &str) {
 /// one fetched, drop its requests still in flight, and fetch again right away.
 pub fn gitlab_credentials_changed(app: &AppHandle) {
     GITLAB.generation.fetch_add(1, Ordering::SeqCst);
+    crate::gitlab_panel::credentials_changed(app);
     let has_token = secrets::get("gitlab-token").is_some();
     {
         let mut cache = GITLAB.cache.lock().unwrap();

@@ -12,6 +12,8 @@ mod files;
 mod flow;
 mod github;
 mod gitlab;
+mod gitlab_dash;
+mod gitlab_panel;
 mod hooks;
 mod i18n;
 mod identity;
@@ -963,6 +965,15 @@ pub fn run() {
             refresh_integration,
             github_refresh,
             gitlab_refresh,
+            gitlab_panel::gitlab_panel_toggle,
+            gitlab_panel::gitlab_panel_close,
+            gitlab_panel::gitlab_panel_is_open,
+            gitlab_panel::gitlab_panel_resize,
+            gitlab_panel::gitlab_panel_drag,
+            gitlab_panel::gitlab_dashboard,
+            gitlab_panel::gitlab_reply,
+            gitlab_panel::gitlab_resolve,
+            gitlab_panel::gitlab_snippet,
             open_n8n,
             open_settings_window,
             set_paused,
@@ -1066,6 +1077,7 @@ pub fn run() {
             // Same rule for Mochi's desktop window and the dictation pill.
             desktop::setup(&handle);
             flow::setup(&handle);
+            gitlab_panel::setup(&handle);
             notes::setup(&handle);
 
             if let Some(win) = island::window(&handle) {
@@ -1096,6 +1108,7 @@ pub fn run() {
             pipe::start(handle.clone());
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
+            gitlab_panel::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {

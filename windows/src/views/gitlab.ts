@@ -7,6 +7,7 @@
 // Without a pulse the card stays the projects + stars overview in integrations.ts.
 
 import { h, svg, dot } from "./dom";
+import { tl } from "../i18n/i18n";
 import { ICONS } from "./icons";
 import { rowOpens } from "./github";
 import { Bridge } from "../core/bridge";
@@ -71,6 +72,13 @@ export function gitlabPulseCard(
   } else {
     head.append(h("span", { text: GH_STRINGS.overview }));
   }
+  // The panel with every merge request and the threads waiting for you.
+  head.append(h("button", {
+    class: "gl-expand",
+    title: tl("Open the merge request panel"),
+    "aria-label": tl("Open the merge request panel"),
+    onclick: () => void Bridge.gitlabPanelToggle(),
+  }, svg(ICONS.panel, 10, { stroke: 2.2 })));
 
   const mrColor = CI_COLORS[worstCI(pulse.myPRs.map((p) => p.ci))];
   const reviews = pulse.toReview.length;

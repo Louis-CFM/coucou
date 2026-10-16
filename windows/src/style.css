@@ -2002,6 +2002,25 @@ input[type="range"]::-webkit-slider-thumb {
   min-width: 0;
 }
 
+/* The GitLab card's button to the merge request panel (src/gitlab-panel). */
+.gl-expand {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 18px;
+  margin-inline-start: auto;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dim-2);
+  cursor: default;
+}
+
+.gl-expand:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
 .gh-mini {
   display: inline-flex;
   gap: 2px;

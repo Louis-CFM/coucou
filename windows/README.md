@@ -370,6 +370,24 @@ scope in **GitLab**, the pill shows the same card with GitLab's words:
   grid counts your own events (pushes, merge requests, comments…) per day, up to
   the last 1000 of the year: close to GitLab's calendar, not identical to it.
 
+**The merge request panel.** The panel button in the GitLab card (a small window with a side panel) opens a small
+window next to the island: a slim version of GitLab's merge request dashboard,
+across every project your token can see. Four sections that fold, each with its
+count: **Comments waiting** (threads left open whose last message is not yours —
+an answer to a comment you wrote, or a comment on your merge request), **To
+review**, **My MRs** (with approvals and open threads) and **Approved** (open
+merge requests you approved). A badge such as `+2` tells what is new since you
+last opened a section, and *Comments* and *To review* take a colour while
+something waits for you. Open a thread to read it with the code it is about,
+**answer it**, **resolve it** or open it again; a button opens the merge request
+in GitLab, where you approve. Replying needs the `api` scope: raise your token's
+rights (the same token) — with `read_api` alone everything is shown and only the
+reply is off. Drag the window by its bar: it snaps to the edges of the screen
+from 16 px and remembers where you left it; it stays open when the island
+hides. A new comment waiting badges the GitLab pill and plays the question
+sound. The panel reads GitLab every 5 minutes, every minute while it is open and
+right after you answer.
+
 The URL of your instance goes in the same place, for a self-hosted GitLab; leave
 it empty for gitlab.com. It has to be `https://` (`http://` is only accepted for
 `localhost`), and links only open on that host. The badge, the sound and the
