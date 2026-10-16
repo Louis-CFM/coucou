@@ -253,8 +253,9 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 ///
 /// Only while the session is unknown, so the process snapshot is not taken on
 /// every event. The relay must still be running for its parents to be found:
-/// a permission request always is (it waits for us), a quick event may already
-/// have exited, and then a later event of the session tries again.
+/// it stays connected until we hang up (`finish`), so it is. One that exited
+/// anyway (killed, or an older relay) leaves no ancestors, and then a later
+/// event of the session tries again.
 fn note_session_window(pipe: &impl Relay, payload: &Value, event: &str) {
     let Some(session) = payload.get("session_id").and_then(Value::as_str) else { return };
     if event == "SessionEnd" {
