@@ -52,9 +52,15 @@ function typingDots(): HTMLElement {
   );
 }
 
-/** The coloured chip showing what the question is about (a dropped file). */
-function contextChip(label: string): HTMLElement {
-  const chip = h("div", { class: "chip" }, h("i", { class: "chip-dot" }), h("span", { text: label }));
+/** The coloured chip showing what the question is about (a dropped file), with
+ *  an x to drop it. */
+function contextChip(label: string, onRemove: () => void): HTMLElement {
+  const remove = h("button", { class: "chip-x", title: "Remove the attachment" }, svg(ICONS.xmark, 9));
+  remove.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onRemove();
+  });
+  const chip = h("div", { class: "chip" }, h("i", { class: "chip-dot" }), h("span", { text: label }), remove);
   requestAnimationFrame(() => chip.classList.add("settled"));
   return chip;
 }
@@ -231,13 +237,31 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   });
   body.append(chipRow, log, picker.el, modelRow, bar);
 
-  const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
+  // Under Mochi: start the conversation over, dropped file included, so an
+  // unrelated question doesn't carry (and pay for) it again.
+  const clearChat = h("button", { class: "chat-clear", title: "Clear the chat (Ctrl+K)" }, svg(ICONS.trash, 11), h("span", { text: t("Clear") }));
+  clearChat.addEventListener("click", () => {
+    if (sending) return;
+    resetChat();
+    input.focus();
+  });
+
+  const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, clearChat, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
   let renderedCount = -1;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
+
+  function resetChat() {
+    State.chatHistory = [];
+    State.dropAttachment();
+    void Bridge.chatReset();
+    renderedCount = -1;
+    State.notify();
+    onHeightChange();
+  }
 
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
@@ -324,9 +348,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
-        if (wantChip) chipRow.append(contextChip(wantChip));
+        if (wantChip) {
+          chipRow.append(
+            contextChip(wantChip, () => {
+              State.dropAttachment();
+              onHeightChange();
+            }),
+          );
+        }
       }
 
+      clearChat.style.display = State.chatHistory.length || State.droppedFile ? "" : "none";
       const thinking = State.stateOverride === "thinking";
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);
       if (count !== renderedCount && !live) {
