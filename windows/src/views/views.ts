@@ -371,11 +371,14 @@ function buildOverview(actions: ViewActions): ViewHost {
           language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
+          task.id === "integration_github" ? JSON.stringify(State.githubPush) : "",
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
           mode = "card";
           clear(leftBody);
+          const push = task.id === "integration_github" ? githubPushRow() : null;
+          if (push) leftBody.append(push);
           leftBody.append(renderIntegrationCard(task, hooks));
         }
       }
@@ -422,6 +425,25 @@ export function hasSessionTicker(task: AgentTask): boolean {
   const isSession = category === "workspace" || category === "agent" ||
     (category == null && task.id.startsWith("agent_"));
   return isSession && (task.state !== "idle" || task.steps.length > 0);
+}
+
+/**
+ * A `git push` Claude Code is running, above the GitHub card: GitHub can't see
+ * a push in flight, the hook can (island/integrations.ts).
+ */
+function githubPushRow(): HTMLElement | null {
+  const live = State.githubPush;
+  if (!live) return null;
+  const pushing = live.state === "pushing";
+  const accent = pushing ? "#F5A524" : live.state === "done" ? "#22C55E" : "#F4505E";
+  const text = pushing ? `Pushing ${live.repo}` : live.state === "done" ? `Pushed ${live.repo}` : `Push failed: ${live.repo}`;
+  return h(
+    "div",
+    { class: pushing ? "gh-push running" : "gh-push", style: `--accent:${accent}` },
+    dot(accent, 5),
+    h("span", { class: "gh-push-text", text }),
+    pushing ? h("span", { class: "gh-push-bar" }, h("i")) : h("span", { class: "int-ago", text: t("just now") }),
+  );
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {

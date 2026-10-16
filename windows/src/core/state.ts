@@ -222,6 +222,8 @@ class AppState {
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
+  /** A `git push` Claude Code is running right now, for the GitHub card. */
+  githubPush: { repo: string; state: "pushing" | "done" | "failed"; startedAt: number } | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
