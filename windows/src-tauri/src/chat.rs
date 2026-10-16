@@ -41,9 +41,11 @@ pub struct ChatReply {
     /// How the model felt about its answer, for Mochi to act out (take_mood).
     pub mood: Option<String>,
     /// Something to know about how the answer was made (Claude Code answered
-    /// for a Claude key that is missing or out of credit, or the image was
-    /// left out), shown above it.
+    /// for a Claude key that is missing or out of credit, the image was left
+    /// out, a picture was uploaded to make a 3D model...), shown above it.
     pub notice: Option<String>,
+    /// Images, video, speech or 3D a media model made (media.rs).
+    pub media: Vec<crate::media::MediaFile>,
 }
 
 impl ChatReply {
@@ -192,6 +194,7 @@ impl Chat {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
         *c = Conversation { epoch, ..Default::default() };
+        crate::media::forget_last_image();
     }
 
     /// Starts a turn with `provider`, converting the history if another
@@ -448,7 +451,7 @@ where
     if let Some(id) = resumed {
         chat.set_cli_session(&turn, id);
     }
-    Ok(ChatReply { text, mood: None, notice: None })
+    Ok(ChatReply { text, mood: None, notice: None, media: Vec::new() })
 }
 
 /// One chat turn with the provider chosen in the settings. The reply's last
@@ -467,6 +470,9 @@ pub async fn send(
     *chat.persona.lock().unwrap() = settings.mochi_name.clone();
     let mut query = query;
     let mut notice = None;
+    if provider == crate::media::PROVIDER {
+        return crate::media::chat_turn(app, settings, &query, context).await;
+    }
     if let Some(ChatContext::File { name, path }) = context.as_ref().filter(|_| text_only) {
         if is_image(path) {
             query = format!("[An image ({name}) was attached, but the user chose to send text only.]\n\n{query}");
@@ -525,7 +531,7 @@ pub async fn send(
         Err(format!("Unknown chat provider: {provider}"))
     }?;
     let (text, mood) = take_mood(&reply.text);
-    Ok(ChatReply { text, mood, notice: notice.or(reply.notice) })
+    Ok(ChatReply { text, mood, notice: notice.or(reply.notice), media: reply.media })
 }
 
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as

@@ -23,6 +23,7 @@ import { USC, UploadSeq } from "../upload/sequence";
 import { closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { releaseMedia } from "../views/media";
 import { IslandStateMachine, type FsmState } from "./fsm";
 import { settleApproval } from "./approvals";
 import { refreshHookPills } from "./integrations";
@@ -794,6 +795,7 @@ export class Island {
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
+    releaseMedia();
     void Bridge.chatReset();
 
     // Nothing drives the progress without the sequence: never drop into a dead one.

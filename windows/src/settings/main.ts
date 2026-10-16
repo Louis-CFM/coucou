@@ -22,7 +22,7 @@ import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
-import { extrasSettingsChanged, mochiSection, nameInput, type ExtrasContext } from "./extras";
+import { extrasSettingsChanged, mediaModelsSection, mochiSection, nameInput, type ExtrasContext } from "./extras";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -1635,7 +1635,7 @@ async function render() {
     general: () => [generalSection(), mochiSection(extras)],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey), cliSection()],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey), cliSection(), mediaModelsSection(extras)],
     integrations: () => [integrationsSection(present)],
     // Our cloud-relay companion first, then the upstream LAN phone link.
     phone: () => [phoneCompanionSection(), phoneSection(settings.phoneLink ?? false, toggle, settings)],

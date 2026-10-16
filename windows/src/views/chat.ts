@@ -5,16 +5,19 @@
 // answer: Rust sends `chat-delta` events with the text visible so far. The
 // model name above the text field opens the picker: provider chips, then the
 // models of the chosen provider, asked for only once it is picked.
+// The "Create" chip lists the media models saved in Settings (images, video,
+// speech, 3D): their answer is a file, shown as a media card.
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { copyButton, renderMarkdown } from "./markdown";
+import { generatingCard, mediaCard, resetProgress } from "./media";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  PROVIDERS, activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  PROVIDERS, activeModel, creators, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
-import { State, type ChatMessage } from "../core/state";
+import { State, type ChatMessage, type ModelOutput } from "../core/state";
 import type { ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
 
@@ -55,7 +58,7 @@ function bubble(message: ChatMessage): HTMLElement {
     );
   }
   const reply = h("div", { class: "reply" });
-  renderMarkdown(reply, message.content);
+  if (message.content) renderMarkdown(reply, message.content);
   return h(
     "div",
     { class: "chat-row" },
@@ -63,7 +66,9 @@ function bubble(message: ChatMessage): HTMLElement {
       "div",
       { class: "answer" },
       message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
-      reply,
+      // A media model may answer with files only.
+      message.content ? reply : null,
+      ...(message.media ?? []).map(mediaCard),
     ),
   );
 }
@@ -110,6 +115,26 @@ const IMAGES_UNSUPPORTED = "IMAGES_UNSUPPORTED";
 /** "provider/model": how chat.rs remembers a model that refused an image. */
 function modelKey(): string {
   return `${State.settings.chatProvider}/${activeModel(State.settings)}`;
+}
+
+/** The saved media model in use on the "Create" chip, if that is the provider. */
+function creator() {
+  if (State.settings.chatProvider !== "media") return null;
+  return creators(State.settings).find((m) => m.id === activeModel(State.settings)) ?? null;
+}
+
+/** What the next answer will be: text, or a file of this kind. */
+function making(): ModelOutput | "text" {
+  return creator()?.output ?? "text";
+}
+
+/** The model button's words: a media model by its name, any other by its id. */
+function modelLabel(): string {
+  if (State.settings.chatProvider === "media") {
+    const m = creator();
+    return m ? `${m.label || m.model} · ${m.output}` : t(STRINGS.noModel);
+  }
+  return activeModel(State.settings) || t(STRINGS.noModel);
 }
 
 // ── Model picker ──────────────────────────────────────────────────────────────
@@ -235,6 +260,22 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
+    // The media models are the ones saved in Settings: nothing to ask anyone.
+    if (p.id === "media") {
+      const saved = creators(State.settings).map((m) => ({ id: m.id, label: `${m.label || m.model} · ${m.output}` }));
+      if (saved.length === 0) {
+        status("No media model yet: add one in Settings → Media and voice models.", true);
+        return;
+      }
+      const keep = pickModel(p, saved.map((m) => m.id), activeModel(State.settings));
+      if (keep && keep !== activeModel(State.settings)) {
+        State.settings = withModel(State.settings, p.id, keep);
+        saveSettings();
+        onChange();
+      }
+      drawModels(p, saved, new Set());
+      return;
+    }
     const refused = new Set((await Bridge.chatRefused(p.id)) ?? []);
     if (ticket !== request) return;
     const cached = p.urlField ? undefined : cache.get(p.id);
@@ -371,6 +412,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   let renderedCount = -1;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
+  /** What the request in flight makes; anything but text shows the "making it" card. */
+  let inFlight: ModelOutput | "text" = "text";
 
   function resetChat() {
     State.chatHistory = [];
@@ -384,8 +427,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    // A CLI provider on its own default model has "" as the id: name the CLI.
-    modelName.textContent = activeModel(State.settings) || (p.cli ? t(p.name) : t(STRINGS.noModel));
+    modelName.textContent = modelLabel();
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -429,7 +471,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   });
 
   async function submit(textOnly = false) {
-    const query = input.value.trim();
+    // A picture-to-3D model needs no words: the picture is the prompt.
+    const query = input.value.trim() || (making() === "3d" ? "3D model" : "");
     if (!query || sending) return;
     if (picker.isOpen) picker.close();
     const file = State.droppedFile;
@@ -445,6 +488,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     input.value = "";
     sending = true;
     askImage = false;
+    inFlight = making();
+    resetProgress();
     drawModelButton();
     Sound.play("send");
 
@@ -463,8 +508,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     onHeightChange();
 
     const pc = State.promptContext;
+    // A picture-to-3D model works from the dropped picture on every turn.
+    const pictureTo3d = inFlight === "3d" && !!pc && pc.kind === "file" && IMAGE_FILE.test(pc.path ?? "");
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && pc
+      (State.chatHistory.length === 1 || pictureTo3d) && pc
         ? pc.kind === "window"
           ? { kind: "window", appName: pc.appName, title: pc.title, url: pc.url }
           : pc.path
@@ -475,7 +522,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     try {
       const reply = await Bridge.chatSend(query, context, textOnly);
       if (context) State.promptContext = null; // consumed: rides the first turn only
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text, notice: reply.notice ?? null });
+      State.chatHistory.push({
+        id: nextId++, role: "assistant", content: reply.text, notice: reply.notice ?? null, media: reply.media ?? [],
+      });
       // The model ends with how it feels about its answer; the island acts it out.
       if (reply.mood) window.dispatchEvent(new CustomEvent("mochi-mood", { detail: reply.mood }));
       State.stateOverride = null;
@@ -600,7 +649,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         renderedCount = count;
         clear(log);
         for (const m of State.chatHistory) log.append(bubble(m));
-        if (thinking) log.append(typingDots());
+        if (thinking) log.append(inFlight === "text" ? typingDots() : generatingCard(inFlight));
         log.scrollTop = log.scrollHeight;
       }
 
@@ -608,14 +657,24 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
+      const hints: Record<string, string> = {
+        image: "Describe an image…",
+        video: "Describe a video…",
+        audio: "Text to speak…",
+        "3d": State.droppedFile ? "Press Enter to make it 3D…" : "Drop a picture to make it 3D…",
+      };
       const named = State.settings.mochiName?.trim();
-      input.placeholder = listening
-        ? t(STRINGS.listening)
-        : State.chatHistory.length > 0
-          ? t(STRINGS.placeholderNext)
-          : named
-            ? `Ask ${named} anything…`
-            : t(STRINGS.placeholderFirst);
+      const output = making();
+      input.placeholder =
+        output !== "text"
+          ? hints[output] ?? ""
+          : listening
+            ? t(STRINGS.listening)
+            : State.chatHistory.length > 0
+              ? t(STRINGS.placeholderNext)
+              : named
+                ? `Ask ${named} anything…`
+                : t(STRINGS.placeholderFirst);
       input.disabled = sending;
       mic.disabled = sending;
 

@@ -85,6 +85,33 @@ export interface ChatMessage {
   notice?: string | null;
   /** A dropped text or code file sent with this message, shown as a code card. */
   attachment?: { name: string; lang: string; text: string } | null;
+  /** Images, video, speech or 3D a media model made. */
+  media?: MediaFile[];
+}
+
+/** A generated file in the app's media folder, by bare name. */
+export interface MediaFile {
+  name: string;
+  kind: "image" | "video" | "audio" | "3d";
+}
+
+/** What a saved media model makes. */
+export type ModelOutput = "image" | "video" | "audio" | "3d";
+
+/** A model on an OpenAI-compatible endpoint that makes something (media.rs). */
+export interface ModelEntry {
+  id: string;
+  label: string;
+  /** "openai" for any OpenAI-compatible endpoint. */
+  kind: string;
+  model: string;
+  endpoint: string;
+  vision: boolean | null;
+  output: ModelOutput;
+  /** Text-to-speech voice for "audio" models; empty = the model's default. */
+  voice: string;
+  /** Output detail for "3d" models that offer it (TRELLIS 2: low/medium/high). */
+  detail: string;
 }
 
 /** Default names of the coloured Mochis: a pun on what each one watches.
@@ -242,6 +269,8 @@ export interface Settings {
   quickScan: boolean;
   /** "provider/model" of chat models that refused an image. */
   textOnlyModels: string[];
+  /** Media models (image, video, speech, 3D). */
+  models: ModelEntry[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -279,6 +308,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiNames: {},
   quickScan: false,
   textOnlyModels: [],
+  models: [],
 };
 
 type Listener = () => void;

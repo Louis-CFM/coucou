@@ -13,7 +13,7 @@ const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 test("the ids and key names match the Rust side and the Mac", () => {
   assert.deepEqual(
     PROVIDERS.map((p) => p.id),
-    ["anthropic", "google", "openai", "openrouter", "claude-cli", "cursor", "devin", "codex", "kiro", "ollama", "lmstudio", "custom"],
+    ["anthropic", "google", "openai", "openrouter", "claude-cli", "cursor", "devin", "codex", "kiro", "ollama", "lmstudio", "custom", "media"],
   );
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
@@ -74,6 +74,15 @@ test("a CLI provider shows once signed in, and always while in use", () => {
   // A signed-out CLI stays while the chat uses it.
   assert.deepEqual(ids(settings({ chatProvider: "kiro" }), ["cursor"]), ["cursor", "kiro"]);
   assert.deepEqual(ids(settings({ chatProvider: "codex" }), []), ["codex"]);
+});
+
+test("the Create chip shows once a media model is saved", () => {
+  const ids = (s) => visibleProviders(s).map((p) => p.id);
+  const entry = (output) => ({ id: `m-${output}`, label: output, kind: "openai", model: output, endpoint: "https://x.dev/v1", vision: null, output, voice: "", detail: "" });
+  assert.ok(!ids(settings()).includes("media"));
+  assert.deepEqual(ids(settings({ models: [entry("image")] })).at(-1), "media");
+  // In use with nothing left to pick: still shown, so the picker never hides where the chat goes.
+  assert.ok(ids(settings({ chatProvider: "media" })).includes("media"));
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

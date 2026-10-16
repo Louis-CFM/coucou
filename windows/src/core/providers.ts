@@ -8,7 +8,9 @@ import { N_ } from "../i18n/i18n";
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
   | "ollama" | "lmstudio" | "custom"
-  | "cursor" | "kiro" | "claude-cli" | "devin" | "codex";
+  | "cursor" | "kiro" | "claude-cli" | "devin" | "codex"
+  /** The media models saved in Settings (src-tauri/src/media.rs): "Create". */
+  | "media";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -39,7 +41,15 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", cli: false, defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", cli: false, defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", cli: false, defaultModel: "", prefer: null },
+  // Images, video, speech and 3D from the models saved in Settings -> Media
+  // and voice models; its "model" is a saved entry's id.
+  { id: "media", name: "Create", accent: "#E879F9", key: null, urlField: null, cli: false, defaultModel: "", prefer: null },
 ];
+
+/** The saved models the "Create" chip offers. */
+export function creators(settings: Settings) {
+  return settings.models ?? [];
+}
 
 /** Credential store entry of the custom server's optional key. */
 export const CUSTOM_SERVER_KEY = "openai-compatible-key";
@@ -70,11 +80,12 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
  */
 export function visibleProviders(
   settings: Settings,
-  hasKey: (key: string) => boolean,
+  hasKey: (key: string) => boolean = () => false,
   hasCli: (id: ProviderId) => boolean = () => false,
 ): ProviderDef[] {
   return PROVIDERS.filter((p) => {
     if (settings.chatProvider === p.id) return true;
+    if (p.id === "media") return creators(settings).length > 0;
     if (p.cli) return hasCli(p.id);
     if (p.urlField) return settings[p.urlField] !== "";
     return p.key != null && hasKey(p.key);
