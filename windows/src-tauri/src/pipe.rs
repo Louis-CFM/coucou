@@ -256,6 +256,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         Outcome::Declined => {}
         // The card may still be up for a request nobody waits on any more.
         Outcome::TimedOut | Outcome::Gone => {
+            crate::recap::forget_request(&app, &id);
             let _ = app.emit_to(WINDOW_LABEL, "approval-released", json!({ "requestId": id }));
         }
     }
