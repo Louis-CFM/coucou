@@ -382,9 +382,15 @@ something waits for you. Open a thread to read it with the code it is about,
 **answer it**, **resolve it** or open it again; a button opens the merge request
 in GitLab, where you approve. Replying needs the `api` scope: raise your token's
 rights (the same token) — with `read_api` alone everything is shown and only the
-reply is off. Drag the window by its bar: it snaps to the edges of the screen
-from 16 px and remembers where you left it; it stays open when the island
-hides. A new comment waiting badges the GitLab pill and plays the question
+reply is off. Folded, it is a slim bar: the GitLab logo and one tile per section, each with
+its `+N` and a glow while something waits. Hover the bar (or click a tile, which
+opens that section) and it unfolds; once the pointer has been away for the
+island's auto-close delay, it folds again — never while you are writing a reply.
+A new comment makes its tile pulse without unfolding anything. Drag the window
+by its bar: while you drag, all its corners are round; let go near an edge of
+the screen (16 px) and it snaps to it, lying flat on that edge, and it cannot be
+pushed off the screen. It remembers where you left it and stays open when the
+island hides. A new comment waiting badges the GitLab pill and plays the question
 sound. The panel reads GitLab every 5 minutes, every minute while it is open and
 right after you answer.
 

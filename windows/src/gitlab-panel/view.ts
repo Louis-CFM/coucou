@@ -63,7 +63,29 @@ function storage(): Storage | undefined {
   }
 }
 
+/** The edges of the screen the window lies against (Rust tells after a drag). */
+export interface Dock {
+  left: boolean;
+  right: boolean;
+  top: boolean;
+  bottom: boolean;
+}
+
+const FREE: Dock = { left: false, right: false, top: false, bottom: false };
+
 export class PanelView {
+  /** How long the pointer rests on the slim bar before it unfolds. */
+  hoverDelay = 150;
+  private expanded = true;
+  private dock: Dock = FREE;
+  /** While the window is dragged it lies against nothing: all its corners round. */
+  private dragging = false;
+  private autoCloseMs = 15_000;
+  private pointerInside = false;
+  private hoverTimer: number | undefined;
+  private collapseTimer: number | undefined;
+  /** Sections whose tile pulses in the slim bar: something new arrived. */
+  private pulsing = new Set<SectionId>();
   private dash: Dashboard | null = null;
   private state: PanelState = emptyState();
   /** The thread open in place, if any. */
@@ -78,17 +100,23 @@ export class PanelView {
   private measured = 0;
   private readonly inner = h("div", { class: "gp-inner" });
 
+  private readonly root: HTMLElement;
+
   constructor(root: HTMLElement) {
+    this.root = root;
     root.append(this.inner);
     this.state = loadState(storage());
   }
 
   /** New data from Rust. */
   setDashboard(dash: Dashboard | null) {
+    const before = this.dash ? newCount(this.state, this.dash, "comments") : 0;
     this.dash = dash;
     if (dash) {
       this.state = receive(this.state, dash);
       saveState(storage(), this.state);
+      // A new comment while the panel is folded: its tile pulses, nothing unfolds by itself.
+      if (!this.expanded && newCount(this.state, dash, "comments") > before) this.pulse("comments");
     }
     this.render();
   }
@@ -97,7 +125,110 @@ export class PanelView {
   closed() {
     this.resolved.clear();
     this.openThread = null;
+    this.pointerInside = false;
+    this.clearTimers();
     this.render();
+  }
+
+  // ── Folded or unfolded ──────────────────────────────────────────────────────
+
+  /** The island's auto-close delay, in seconds: how long the pointer is away before the panel folds. */
+  setAutoClose(seconds: number) {
+    this.autoCloseMs = Math.max(0, seconds) * 1000;
+    if (this.expanded && !this.pointerInside) this.armCollapse();
+  }
+
+  /** Rust says how the panel is: the card, or the slim bar. */
+  setMode(expanded: boolean) {
+    this.expanded = expanded;
+    this.measured = 0;
+    this.clearTimers();
+    if (expanded && !this.pointerInside) this.armCollapse();
+    this.render();
+  }
+
+  /** Rust says which edges the window lies against: the corners follow. */
+  setDock(dock: Dock) {
+    this.dock = dock;
+    this.dragging = false;
+    this.applyShape();
+  }
+
+  /** The pointer is on the panel: it unfolds if it is the slim bar, and does not fold meanwhile. */
+  pointerEnter() {
+    this.pointerInside = true;
+    window.clearTimeout(this.collapseTimer);
+    if (!this.expanded && !this.dragging) {
+      this.hoverTimer = window.setTimeout(() => this.expand(), this.hoverDelay);
+    }
+  }
+
+  pointerLeave() {
+    this.pointerInside = false;
+    window.clearTimeout(this.hoverTimer);
+    if (this.expanded) this.armCollapse();
+  }
+
+  private clearTimers() {
+    window.clearTimeout(this.hoverTimer);
+    window.clearTimeout(this.collapseTimer);
+  }
+
+  private armCollapse() {
+    window.clearTimeout(this.collapseTimer);
+    if (this.autoCloseMs <= 0) return;
+    this.collapseTimer = window.setTimeout(() => this.tryCollapse(), this.autoCloseMs);
+  }
+
+  /** A reply being written is never lost to a fold: it waits for the next delay. */
+  private tryCollapse() {
+    if (this.pointerInside || !this.expanded) return;
+    if (this.hasDraft()) {
+      this.armCollapse();
+      return;
+    }
+    this.requestMode(false);
+  }
+
+  private hasDraft(): boolean {
+    return [...this.boxes.values()].some((box) => box.value.trim() !== "" || box === document.activeElement);
+  }
+
+  private expand() {
+    if (!this.expanded) this.requestMode(true);
+  }
+
+  private requestMode(expanded: boolean) {
+    this.setMode(expanded);
+    void Bridge.gitlabPanelMode(expanded);
+  }
+
+  private pulse(id: SectionId) {
+    this.pulsing.add(id);
+    window.setTimeout(() => {
+      this.pulsing.delete(id);
+      this.render();
+    }, 3000);
+  }
+
+  /** The window is being dragged: it lies against nothing, so all its corners are round. */
+  private startDrag() {
+    this.dragging = true;
+    this.clearTimers();
+    this.applyShape();
+    void Bridge.gitlabPanelDrag();
+  }
+
+  /** Slim or card, and flat on the edge it lies against. */
+  private applyShape() {
+    const d = this.dragging ? FREE : this.dock;
+    this.root.className = [
+      this.expanded ? "" : "slim",
+      d.left ? "dock-left" : "",
+      d.right ? "dock-right" : "",
+      d.top ? "dock-top" : "",
+      d.bottom ? "dock-bottom" : "",
+    ].filter(Boolean).join(" ");
   }
 
   /** Redraws everything, keeping the focus and the text of the reply box in use. */
@@ -106,8 +237,13 @@ export class PanelView {
     const focusedId = [...this.boxes].find(([, box]) => box === active)?.[0] ?? null;
     const caret = focusedId ? (this.boxes.get(focusedId) as HTMLTextAreaElement).selectionStart : null;
     clear(this.inner);
-    this.inner.append(this.header());
-    this.inner.append(this.dash ? this.body(this.dash) : h("div", { class: "gp-empty", text: t("Loading…") }));
+    this.applyShape();
+    if (this.expanded) {
+      this.inner.append(this.header());
+      this.inner.append(this.dash ? this.body(this.dash) : h("div", { class: "gp-empty", text: t("Loading…") }));
+    } else {
+      this.inner.append(this.slim());
+    }
     if (focusedId) {
       const box = this.boxes.get(focusedId);
       box?.focus();
@@ -138,6 +274,12 @@ export class PanelView {
       h("span", { class: "gp-grow" }),
       h("button", {
         class: "gp-x",
+        title: t("Fold the panel"),
+        "aria-label": t("Fold the panel"),
+        onclick: () => this.requestMode(false),
+      }, svg(ICONS.collapse, 11, { stroke: 2.2 })),
+      h("button", {
+        class: "gp-x",
         title: t("Close"),
         "aria-label": t("Close"),
         onclick: () => void Bridge.gitlabPanelClose(),
@@ -146,9 +288,51 @@ export class PanelView {
     // Dragging the bar moves the window; the buttons keep their clicks.
     bar.addEventListener("mousedown", (e) => {
       if ((e.target as Element).closest("button")) return;
-      void Bridge.gitlabPanelDrag();
+      this.startDrag();
     });
     return bar;
+  }
+
+  /** The slim bar: the logo and one tile per section, with its "+N" and its glow. */
+  private slim(): HTMLElement {
+    const bar = h("div", { class: "gp-slim" }, h("i", { class: "gp-logo" }, dot("#0b0b0d", 6)));
+    const dash = this.dash;
+    for (const id of SECTION_ORDER) {
+      const total = dash ? count(dash, id) : 0;
+      const fresh = dash ? newCount(this.state, dash, id) : 0;
+      const cls = ["gp-pill", dash && waiting(dash, id) ? "waiting" : "", this.pulsing.has(id) ? "pulse" : ""]
+        .filter(Boolean)
+        .join(" ");
+      bar.append(
+        h(
+          "button",
+          {
+            class: cls,
+            style: `--accent:${ACCENT[id]}`,
+            title: `${sectionTitle(id)} · ${total}`,
+            "aria-label": `${sectionTitle(id)} · ${total}`,
+            // A tile unfolds the panel with its section open.
+            onclick: () => this.openSection(id),
+          },
+          svg(SECTION_ICON[id][0], 14, SECTION_ICON[id][1] ? { stroke: 2.2 } : {}),
+          fresh > 0 ? h("span", { class: "gp-pbadge", text: `+${fresh}` }) : null,
+        ),
+      );
+    }
+    // Dragging the bar moves the window; the tiles keep their clicks.
+    bar.addEventListener("mousedown", (e) => {
+      if ((e.target as Element).closest("button")) return;
+      this.startDrag();
+    });
+    return bar;
+  }
+
+  private openSection(id: SectionId) {
+    if (!this.state.open[id]) {
+      this.state = toggle(this.state, this.dash, id);
+      saveState(storage(), this.state);
+    }
+    this.requestMode(true);
   }
 
   private body(dash: Dashboard): HTMLElement {

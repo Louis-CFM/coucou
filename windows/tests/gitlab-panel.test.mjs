@@ -160,6 +160,8 @@ const headOf = (i) => sections()[i].find(".gp-sec-head")[0];
 const badges = () => root.find(".gp-new").map((e) => e.textContent);
 
 beforeEach(() => {
+  // The last test's timers must not keep the run waiting.
+  view?.closed();
   calls.length = 0;
   root = document.createElement("div");
   view = new PanelView(root);
@@ -326,7 +328,13 @@ test("the window follows the content's height", () => {
 
 test("the close button closes, the header drags", () => {
   view.setDashboard(dash());
-  root.find(".gp-x")[0].fire("click");
+  const [fold, close] = root.find(".gp-x");
+  fold.fire("click");
+  assert.deepEqual(sent("gitlab_panel_mode"), [{ expanded: false }]);
+  assert.equal(sent("gitlab_panel_close").length, 0);
+  view.setMode(true);
+  root.find(".gp-x")[1].fire("click");
+  assert.equal(close === undefined, false);
   assert.equal(sent("gitlab_panel_close").length, 1);
   const head = root.find(".gp-head")[0];
   const down = { target: { closest: () => null } };
@@ -347,3 +355,120 @@ test("an avatar carries the initials of a person and a colour that is theirs", a
   assert.notEqual(avatarHue("bob"), avatarHue("alice"));
   assert.ok(avatarHue("anyone") >= 0 && avatarHue("anyone") < 360);
 });
+
+// ── Folded: the slim bar ──────────────────────────────────────────────────────
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const tiles = () => root.find(".gp-pill");
+
+test("folded, the panel is a bar: the logo and a tile per section with its +N and its glow", () => {
+  view.setDashboard(dash({ comments: [thread("a")], toReview: [mr(1)] }));
+  view.setMode(false);
+  assert.ok(root.classList.contains("slim"));
+  assert.equal(root.find(".gp-sec").length, 0, "no card, no lists");
+  assert.equal(root.find(".gp-logo").length, 1);
+  assert.equal(tiles().length, 4);
+  assert.deepEqual(tiles().map((t) => t.classList.contains("waiting")), [true, true, false, false]);
+  assert.deepEqual(root.find(".gp-pbadge").map((b) => b.textContent), [], "nothing new yet");
+  view.setDashboard(dash({ comments: [thread("a")], toReview: [mr(1), mr(2), mr(3)] }));
+  assert.deepEqual(root.find(".gp-pbadge").map((b) => b.textContent), ["+2"]);
+  assert.match(tiles()[1].getAttribute("title"), /To review · 3/);
+});
+
+test("a tile unfolds the panel with its section open", () => {
+  view.setDashboard(dash({ toReview: [mr(1)] }));
+  view.setMode(false);
+  calls.length = 0;
+  tiles()[1].fire("click");
+  assert.deepEqual(sent("gitlab_panel_mode"), [{ expanded: true }]);
+  assert.ok(!root.classList.contains("slim"));
+  assert.equal(root.find(".gp-row").length, 1, "the section is open");
+});
+
+test("hovering the bar unfolds it after a moment, leaving before that does not", async () => {
+  view.hoverDelay = 10;
+  view.setDashboard(dash());
+  view.setMode(false);
+  calls.length = 0;
+  view.pointerEnter();
+  view.pointerLeave();
+  await wait(30);
+  assert.deepEqual(sent("gitlab_panel_mode"), [], "gone before the delay");
+  view.pointerEnter();
+  await wait(30);
+  assert.deepEqual(sent("gitlab_panel_mode"), [{ expanded: true }]);
+  view.pointerLeave();
+  view.setAutoClose(15);
+});
+
+test("the card folds once the pointer has been away for the island's delay", async () => {
+  view.setDashboard(dash());
+  view.setAutoClose(0.03);
+  view.setMode(true);
+  calls.length = 0;
+  view.pointerEnter();
+  await wait(60);
+  assert.deepEqual(sent("gitlab_panel_mode"), [], "not while the pointer is on it");
+  view.pointerLeave();
+  await wait(80);
+  assert.deepEqual(sent("gitlab_panel_mode"), [{ expanded: false }]);
+  assert.ok(root.classList.contains("slim"));
+  view.setAutoClose(15);
+});
+
+test("a reply being written is not lost to a fold", async () => {
+  view.setDashboard(dash({ comments: [thread("a")] }));
+  headOf(0).fire("click");
+  root.find(".gp-row")[0].fire("click");
+  root.find("TEXTAREA")[0].value = "half a sentence";
+  view.setAutoClose(0.03);
+  view.setMode(true);
+  calls.length = 0;
+  await wait(120);
+  assert.deepEqual(sent("gitlab_panel_mode"), [], "the draft keeps it open");
+  root.find("TEXTAREA")[0].value = "";
+  await wait(80);
+  assert.deepEqual(sent("gitlab_panel_mode"), [{ expanded: false }]);
+  view.setAutoClose(15);
+});
+
+test("an auto-close delay of 0 never folds it", async () => {
+  view.setDashboard(dash());
+  view.setAutoClose(0);
+  view.setMode(true);
+  calls.length = 0;
+  await wait(50);
+  assert.deepEqual(sent("gitlab_panel_mode"), []);
+  view.setAutoClose(15);
+});
+
+test("a new comment makes the folded bar pulse, and never unfolds it", () => {
+  view.setDashboard(dash());
+  view.setMode(false);
+  calls.length = 0;
+  view.setDashboard(dash({ comments: [thread("a")] }));
+  assert.ok(tiles()[0].classList.contains("pulse"));
+  assert.ok(!tiles()[1].classList.contains("pulse"));
+  assert.deepEqual(sent("gitlab_panel_mode"), []);
+  assert.ok(root.classList.contains("slim"));
+});
+
+test("against an edge the card lies flat on it; dragged, all its corners are round", () => {
+  view.setDashboard(dash());
+  view.setDock({ left: false, right: true, top: false, bottom: false });
+  assert.ok(root.classList.contains("dock-right"));
+  assert.ok(!root.classList.contains("dock-left"));
+  view.setDock({ left: false, right: true, top: true, bottom: false });
+  assert.ok(root.classList.contains("dock-right") && root.classList.contains("dock-top"), "in a corner, both sides");
+  // Grabbing the bar frees it at once…
+  const head = root.find(".gp-head")[0];
+  for (const fn of head.listeners.get("mousedown")) fn({ target: { closest: () => null } });
+  assert.ok(!root.classList.contains("dock-right") && !root.classList.contains("dock-top"));
+  // …and Rust's word, once it is let go, shapes it again.
+  view.setDock({ left: true, right: false, top: false, bottom: false });
+  assert.ok(root.classList.contains("dock-left"));
+  view.setDock({ left: false, right: false, top: false, bottom: false });
+  assert.equal(root.className, "");
+});
+
+test.after(() => view?.closed());
