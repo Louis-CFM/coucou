@@ -70,6 +70,7 @@ pub fn sync(app: &AppHandle) {
             std::thread::Builder::new().name("coucou-voice".into()).spawn(move || run(app2, stop2)).ok();
             *running = Some(Running { stop });
             speech::preload();
+            warm_up(app);
             crate::log::line("voice: « OK Coucou » listening");
         }
         (false, true) => {
@@ -236,17 +237,22 @@ struct Say {
 
 /// Says `text` and returns once it is said (or after a sensible time).
 fn speak(app: &AppHandle, text: &str) {
-    let (output, gender) = crate::flow::get(app)
+    let (output, gender, studio) = crate::flow::get(app)
         .map(|f| {
             let p = &f.store.lock().unwrap().prefs;
-            (p.voice_output.clone(), p.voice_gender.clone())
+            (p.voice_output.clone(), p.voice_gender.clone(), (p.voicestudio_url.clone(), p.voicestudio_voice.clone()))
         })
-        .unwrap_or_else(|| ("system".into(), "female".into()));
+        .unwrap_or_else(|| ("system".into(), "female".into(), Default::default()));
     if output == "off" {
         std::thread::sleep(Duration::from_millis(1500));
         return;
     }
-    let audio = if output == "elevenlabs" { elevenlabs(text, &gender).map(|mp3| base64(&mp3)) } else { None };
+    let audio = match output.as_str() {
+        "elevenlabs" => elevenlabs(text, &gender),
+        "voicestudio" => voicestudio(text, &studio.0, &studio.1, SPEECH_TIMEOUT),
+        _ => None,
+    }
+    .map(|mp3| base64(&mp3));
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     pending().lock().unwrap().insert(id, tx);
@@ -321,6 +327,58 @@ fn elevenlabs(text: &str, gender: &str) -> Option<Vec<u8>> {
         }
         Some(response.bytes().await.ok()?.to_vec())
     })
+}
+
+const SPEECH_TIMEOUT: Duration = Duration::from_secs(8);
+const WARM_UP_TIMEOUT: Duration = Duration::from_secs(90);
+
+/// The MP3 of a local VoiceStudio server for `text`; None (it is down, still
+/// loading its model and answers 503, or no voice is set) and the system voice speaks.
+fn voicestudio(text: &str, url: &str, voice: &str, timeout: Duration) -> Option<Vec<u8>> {
+    if voice.is_empty() {
+        return None;
+    }
+    tauri::async_runtime::block_on(async {
+        let client = reqwest::Client::builder().timeout(timeout).build().ok()?;
+        let response = client
+            .post(format!("{}/v1/audio/speech", url.trim_end_matches('/')))
+            .json(&json!({ "model": "tts-1", "input": text, "voice": voice, "response_format": "mp3" }))
+            .send()
+            .await
+            .map_err(|e| crate::log::line(format!("voice: VoiceStudio {e}")))
+            .ok()?;
+        if !response.status().is_success() {
+            crate::log::line(format!("voice: VoiceStudio {}", response.status()));
+            return None;
+        }
+        Some(response.bytes().await.ok()?.to_vec())
+    })
+}
+
+/// VoiceStudio's first answer takes ~20 s (it compiles its model): asks for a
+/// short phrase now, retrying while it starts, so the first real answer is fast.
+pub fn warm_up(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("coucou-voicestudio-warm".into())
+        .spawn(move || {
+            for _ in 0..30 {
+                let Some((url, voice)) = studio_prefs(&app) else { return };
+                if voicestudio("Hello.", &url, &voice, WARM_UP_TIMEOUT).is_some() {
+                    crate::log::line("voice: VoiceStudio ready");
+                    return;
+                }
+                std::thread::sleep(Duration::from_secs(2));
+            }
+        })
+        .ok();
+}
+
+/// The VoiceStudio address and voice while « OK Coucou » answers with it.
+fn studio_prefs(app: &AppHandle) -> Option<(String, String)> {
+    let flow = crate::flow::get(app)?;
+    let p = &flow.store.lock().unwrap().prefs;
+    (p.voice && p.voice_output == "voicestudio").then(|| (p.voicestudio_url.clone(), p.voicestudio_voice.clone()))
 }
 
 /// First English voice of the gender (a young one first for a man); else any
@@ -522,6 +580,12 @@ mod tests {
         assert_eq!(base64(b"Ma"), "TWE=");
         assert_eq!(base64(b"M"), "TQ==");
         assert_eq!(base64(b""), "");
+    }
+
+    #[test]
+    fn voicestudio_down_or_without_a_voice_leaves_the_system_voice() {
+        assert_eq!(voicestudio("hola", "http://127.0.0.1:1", "abc", Duration::from_secs(1)), None);
+        assert_eq!(voicestudio("hola", "http://127.0.0.1:1", "", Duration::from_secs(1)), None);
     }
 
     #[test]

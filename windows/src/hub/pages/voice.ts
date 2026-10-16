@@ -40,6 +40,12 @@ function elevenKey(): HTMLElement {
   return box;
 }
 
+function textPref(value: string, placeholder: string, save: (v: string) => void): HTMLElement {
+  const input = h("input", { class: "hub-input", type: "text", value, placeholder, autocomplete: "off", spellcheck: "false", style: "width:220px" }) as HTMLInputElement;
+  input.addEventListener("change", () => save(input.value.trim()));
+  return input;
+}
+
 export async function voicePage(page: HTMLElement, ctx: HubContext) {
   const status = await ctx.refresh();
   const prefs = status.prefs;
@@ -61,7 +67,7 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
   page.append(main);
 
   page.append(label(t("Answers")));
-  const outputs: [VoiceOutput, string][] = [["system", t("System voice")], ["elevenlabs", "ElevenLabs"], ["off", t("Text only")]];
+  const outputs: [VoiceOutput, string][] = [["system", t("System voice")], ["elevenlabs", "ElevenLabs"], ["voicestudio", "VoiceStudio"], ["off", t("Text only")]];
   const answers = card(
     row(t("Coucou answers out loud"), null, segmented(outputs, prefs.voiceOutput, (v) => void ctx.setPrefs((p) => (p.voiceOutput = v)).then(() => ctx.navigate("voice")))),
   );
@@ -73,11 +79,19 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
       row(t("ElevenLabs key"), null, elevenKey()),
     );
   }
+  if (prefs.voiceOutput === "voicestudio") {
+    answers.append(
+      divider(),
+      row(t("VoiceStudio address"), null, textPref(prefs.voicestudioUrl, "http://127.0.0.1:3900", (v) => void ctx.setPrefs((p) => (p.voicestudioUrl = v)))),
+      divider(),
+      row(t("VoiceStudio voice id"), null, textPref(prefs.voicestudioVoice, "alloy", (v) => void ctx.setPrefs((p) => (p.voicestudioVoice = v)))),
+    );
+  }
   page.append(answers);
 
   page.append(label(t("Privacy")));
   page.append(card(
-    h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.") }),
+    h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers. VoiceStudio runs on this computer.") }),
     divider(),
     h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }),
   ));
