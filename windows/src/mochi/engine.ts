@@ -350,6 +350,7 @@ export class BotEngine {
   private greetToken = 0;
   private lastAmbient = 0;
   private slapTimes: number[] = [];
+  private hitTimes: number[] = [];
   private miniLookTarget = { x: 0, y: 0 };
   private miniLookNextTime = 0;
 
@@ -457,8 +458,18 @@ export class BotEngine {
 
   slap() {
     this.interruptGreet();
-    if (this.state === "dizzy") return;
     const t = now();
+    // Ten hits inside 20 s, dizzy ones included: he has had enough.
+    this.hitTimes = this.hitTimes.filter((s) => t - s < 20);
+    this.hitTimes.push(t);
+    if (this.hitTimes.length >= 10) {
+      this.hitTimes = [];
+      this.slapTimes = [];
+      Sound.play("slap");
+      this.triggerEmote("angry", 2.6);
+      return;
+    }
+    if (this.state === "dizzy") return;
     this.slapTimes = this.slapTimes.filter((s) => t - s < 1.7);
     this.slapTimes.push(t);
     Sound.play("slap");
