@@ -5,9 +5,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { MediaFile, Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -178,6 +179,30 @@ export interface PhoneAnswersStatus {
   enabled: boolean;
 }
 
+/** What the island's Mochi looks like when it is carried out for a screenshot. */
+export interface RoamLook {
+  state: string;
+  bodyColor: readonly [number, number, number] | null;
+  /** The wardrobe's outfit (mochi/wardrobe.ts). */
+  outfit?: Outfit;
+}
+
+/** A chat answer: the text, and what came with it. */
+export interface ChatAnswer {
+  text: string;
+  /** How the answer was made (the attachment was left out...), shown above it. */
+  notice: string | null;
+  /** Images, video, speech or 3D a media model made. */
+  media: MediaFile[];
+}
+
+/** Extensions media.rs saves pictures, video and sound with (it sniffs the bytes), and their types. */
+const MEDIA_TYPES: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
+  mp4: "video/mp4", webm: "video/webm",
+  wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4",
+};
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -329,7 +354,26 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+    callOrThrow<ChatAnswer>("chat_send", { query, context }),
+  /** A generated file as a blob: URL (revoke it when done), or null. Only
+   *  files in the app's media folder can be read, by bare name. */
+  mediaUrl: async (name: string): Promise<string | null> => {
+    const bytes = await call<ArrayBuffer>("media_bytes", { name });
+    if (!bytes) return null;
+    const ext = name.split(".").pop() ?? "";
+    return URL.createObjectURL(new Blob([bytes], { type: MEDIA_TYPES[ext] ?? "" }));
+  },
+  /** A generated file's raw bytes (3D models are parsed, not shown by URL). */
+  mediaBytes: (name: string) => call<ArrayBuffer>("media_bytes", { name }),
+  /** Copies a generated file into Downloads; returns where it went. */
+  mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
+  /** Full-screen preview, on the screen overlay window. */
+  mediaPreview: (file: MediaFile) => call<void>("media_preview", { name: file.name, kind: file.kind }),
+  mediaPreviewClose: () => call<void>("media_preview_close"),
+  /** "image", "video", "audio", "3d" or "text", guessed from a model id. */
+  guessOutput: (model: string) => call<string>("guess_model_output", { model }),
+  /** Credential name of an endpoint's key (one per provider host). */
+  endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
@@ -355,6 +399,13 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+
+  // ── Screenshot roam (src-tauri/src/roam.rs) ───────────────────────────────
+  /** Mochi was Ctrl+dragged out of the island: the screen overlay takes over. */
+  roamStart: (look: RoamLook) => call<void>("roam_start", { look }),
+  /** Linux: the carried pointer, in island coordinates ("move", "drop", "cancel"). */
+  roamPointer: (x: number, y: number, phase: "move" | "drop" | "cancel") =>
+    call<void>("roam_pointer", { x, y, phase }),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
