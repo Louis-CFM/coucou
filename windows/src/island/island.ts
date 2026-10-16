@@ -974,6 +974,8 @@ export class Island {
       this.botPress = null;
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
     });
+    // Sound playing, or the mic or camera in use, keeps them up (awake.rs).
+    void onEvent<boolean>("keep-awake", (on) => { this.keptAwake = on; });
 
     // A click in the open island takes the keyboard, so Escape reaches it
     // (on a Wayland layer surface it only gets the keyboard when asked).
@@ -1487,6 +1489,8 @@ export class Island {
   private sleepTimer: number | null = null;
   /** Music was playing at the last frame, to see it start. */
   private musicWas = false;
+  /** Sound, a call or the camera is keeping them up (awake.rs "keep-awake"). */
+  private keptAwake = false;
   /** Each pill's state at the last redraw, to see a session start. */
   private sessions = new Map<string, BotStateName>();
   /** Chat messages sent so far (the chat starts over on a new file). */
@@ -1506,8 +1510,9 @@ export class Island {
     // A finished or failed one is done working: it must not.
     const working = (t: { state: BotStateName }) => agentActive(t.state) && t.state !== "finished" && t.state !== "error";
     if (State.tasks.some(working)) return this.noteActivity();
-    // Nobody nods off while music plays: look again later.
-    if (State.spotifyPlaying) return this.noteActivity();
+    // Nobody nods off while anything plays (music, a video, a game, a call)
+    // or an app holds the mic or camera: look again later.
+    if (State.spotifyPlaying || this.keptAwake) return this.noteActivity();
     this.setAsleep(true);
   };
 

@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod agent_hooks;
+mod awake;
 mod agents;
 mod chat;
 mod claude;
@@ -1180,6 +1181,8 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             music::start(handle.clone());
+            // Sound, a call or the camera keeps the Mochis awake.
+            awake::start(handle.clone()); (feat(windows): sound, the mic or the camera keep the Mochis awake)
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
