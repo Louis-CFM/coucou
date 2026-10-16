@@ -4394,6 +4394,28 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Each Mochi has its own outfit": {
+   "zh-Hans": "每个 Mochi 都有自己的装扮",
+   "hi": "हर Mochi का अपना पहनावा",
+   "es": "Cada Mochi tiene su propio atuendo",
+   "ar": "لكل Mochi زيّه الخاص",
+   "fr": "Chaque Mochi a sa propre tenue",
+   "bn": "প্রতিটি Mochi-র নিজস্ব পোশাক",
+   "pt-BR": "Cada Mochi tem sua própria roupa",
+   "ru": "У каждого Mochi свой наряд",
+   "id": "Setiap Mochi punya pakaiannya sendiri"
+  },
+  "Same outfit for every Mochi": {
+   "zh-Hans": "所有 Mochi 使用同一套装扮",
+   "hi": "हर Mochi के लिए एक ही पहनावा",
+   "es": "El mismo atuendo para todos los Mochi",
+   "ar": "الزي نفسه لكل Mochi",
+   "fr": "La même tenue pour tous les Mochi",
+   "bn": "সব Mochi-র জন্য একই পোশাক",
+   "pt-BR": "A mesma roupa para todos os Mochi",
+   "ru": "Один наряд для всех Mochi",
+   "id": "Pakaian yang sama untuk semua Mochi"
   }
  }
 }

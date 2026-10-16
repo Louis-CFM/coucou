@@ -108,6 +108,10 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay = current.phone_relay;
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
+        // A page that never had the Mochis' own looks must not wipe them.
+        if settings.mochi_looks.is_empty() {
+            settings.mochi_looks = current.mochi_looks.clone();
+        }
         *current = settings;
         (screen_changed, autostart_changed, shortcuts_changed)
     };
@@ -700,7 +704,14 @@ fn open_settings_window(app: AppHandle, page: Option<String>) {
 
 pub fn run() {
     platform::prepare_environment();
-    let loaded = settings::load();
+    let mut loaded = settings::load();
+    // Each Mochi's own look (wardrobe-looks.json); on the first launch with it
+    // the main Mochi's is the outfit every Mochi wore until then.
+    if settings::load_looks(&mut loaded) {
+        if let Err(err) = settings::save(&loaded) {
+            log::line(format!("could not save settings: {err}"));
+        }
+    }
     i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
 
