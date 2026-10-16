@@ -6,7 +6,7 @@ import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
 import { State, type AgentTask } from "../core/state";
-import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
+import { NEWS_VIEWS, washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
 import { buildChoose, buildUpload, buildUploading } from "./upload";
@@ -24,7 +24,7 @@ import { buildWardrobe } from "./wardrobe";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
-import { language, t, tl, type Msg } from "../i18n/i18n";
+import { language, t, tl, tn, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
 
 export interface ViewActions {
@@ -698,6 +698,119 @@ function buildFinished(actions: ViewActions): ViewHost {
   };
 }
 
+// ── GitLab and YouTrack news ──────────────────────────────────────────────────
+
+/**
+ * What just happened on GitLab or YouTrack, in the same card as Claude Code's
+ * "finished": green, or red as soon as one piece of news is bad (a pipeline
+ * failed, an MR can't be merged). The first item is the title; the rest are
+ * listed under it.
+ */
+function buildNews(actions: ViewActions, id: string, name: string): ViewHost {
+  const who = h("div");
+  const title = h("div", { class: "title news-title" });
+  const more = h("div", { class: "news-more" });
+  let url = "";
+  // Only the latest news, when it carries what changed, has details to unfold.
+  const details = btn(tl("Details"), "secondary", () => {
+    detailsFor = id;
+    actions.setView("news-details");
+  });
+  const row = h("div", { class: "actions" },
+    btn(tl("Open"), "primary", () => actions.openUrl(url)),
+    details,
+    btn(tl("OK"), "secondary", () => actions.collapse()),
+  );
+  const box = card("green", stack(116, 16, who, title, more, row));
+  const el = h("div", { class: "view" }, box);
+  return {
+    el,
+    sync() {
+      const fresh = freshNews(id);
+      const bad = fresh.some((n) => n.success === false);
+      box.style.setProperty("--wash", washRGBA(bad ? "red" : "green"));
+      details.style.display = (fresh[0]?.changes?.length ?? 0) > 0 ? "" : "none";
+      const task = State.tasks.find((t) => t.id === id) ?? null;
+      clear(who);
+      who.append(agentWho(task, fresh.length > 1
+        ? tn("{count} update", "{count} updates", fresh.length)
+        : t("{name} update", { name })));
+      title.textContent = fresh[0]?.label ?? t("Nothing new");
+      url = fresh[0]?.url ?? "";
+      clear(more);
+      // A 160 px card holds the title and one more line; "N updates" above
+      // already says how many there are, and the card on the pill lists them.
+      if (fresh[1]) more.append(h("div", { text: fresh[1].label ?? "" }));
+    },
+  };
+}
+
+interface NewsItem {
+  label?: string;
+  url?: string;
+  success?: boolean;
+  /** What changed behind the news, when the integration says. */
+  changes?: { text?: string; by?: string }[];
+}
+
+/** An integration's news from its last poll: what its notification is about. */
+function freshNews(id: string): NewsItem[] {
+  const fresh = State.integrations[id]?.data?.fresh;
+  return Array.isArray(fresh) ? (fresh as NewsItem[]) : [];
+}
+
+/** Whose news the details card shows: the card that opened it. */
+let detailsFor = "";
+
+/** The integration whose unfolded news is on screen, for Mochi's colour. */
+export const newsDetailsFor = () => detailsFor;
+
+/**
+ * The news card unfolded, taller: the latest piece of news — the card's title —
+ * and under it what changed: a field's old and new value on an issue, what
+ * someone said or did on an MR, the jobs a pipeline failed on. The earlier ones
+ * stay on the pill. The title opens its page; Back returns to the card.
+ */
+function buildNewsDetails(actions: ViewActions): ViewHost {
+  const who = h("div");
+  const list = h("div", { class: "news-details" });
+  const row = h("div", { class: "actions" },
+    btn(tl("Back"), "secondary", () => actions.setView(NEWS_VIEWS[detailsFor] ?? "overview")),
+    btn(tl("OK"), "primary", () => actions.collapse()),
+  );
+  const box = card("green", stack(116, 16, who, list, row));
+  let drawn = "";
+  return {
+    el: h("div", { class: "view" }, box),
+    sync() {
+      const fresh = freshNews(detailsFor).slice(0, 1);
+      // Rebuilt only when the news changes, so a scrolled list stays put.
+      const key = detailsFor + JSON.stringify(fresh);
+      if (key === drawn) return;
+      drawn = key;
+      const task = State.tasks.find((t) => t.id === detailsFor) ?? null;
+      clear(who);
+      who.append(agentWho(task, t("Latest update")));
+      clear(list);
+      for (const n of fresh) {
+        list.append(h("div", { class: "news-item" },
+          h("button", {
+            class: "news-item-title",
+            title: t("Open"),
+            text: n.label ?? "",
+            onclick: () => actions.openUrl(n.url ?? ""),
+          }),
+          ...(n.changes ?? []).map((c) => h("div", {
+            class: "news-change",
+            title: c.by ? `${c.text ?? ""} — ${c.by}` : (c.text ?? ""),
+            text: c.text ?? "",
+          })),
+        ));
+      }
+    },
+  };
+}
+
 // ── Confused ──────────────────────────────────────────────────────────────────
 
 function buildConfused(): ViewHost {
@@ -812,6 +925,9 @@ export function buildViews(
   map.set("question", buildQuestion(actions));
   map.set("error", buildError(actions));
   map.set("finished", buildFinished(actions));
+  map.set("gitlab", buildNews(actions, "integration_gitlab", "GitLab"));
+  map.set("youtrack", buildNews(actions, "integration_youtrack", "YouTrack"));
+  map.set("news-details", buildNewsDetails(actions));
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
