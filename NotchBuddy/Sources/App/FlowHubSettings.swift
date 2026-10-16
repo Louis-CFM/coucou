@@ -52,6 +52,49 @@ struct HubSettingsPage: View {
                 }
             }
 
+            HubLabel(String(localized: "flow.ai.title"))
+            HubCard {
+                HubRow(title: String(localized: "flow.prompt-mode"), detail: String(localized: "flow.prompt-mode-detail")) {
+                    Toggle("", isOn: $store.promptMode)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .disabled(!FlowCleanup.hasKey && !store.promptMode)
+                }
+                HubDivider()
+                HubRow(title: String(localized: "flow.translate"),
+                       detail: FlowLanguages.language(store.translateTo).map {
+                           String(format: String(localized: "flow.translate-on %@"), $0.name)
+                       } ?? String(localized: "flow.translate-detail")) {
+                    Picker("", selection: $store.translateTo) {
+                        Text("flow.translate-off").tag("")
+                        Divider()
+                        ForEach(FlowLanguages.sorted) { Text(verbatim: $0.name).tag($0.code) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(!FlowCleanup.hasKey && store.translateTo.isEmpty)
+                }
+                if !FlowCleanup.hasKey {
+                    HStack(spacing: 10) {
+                        Image(systemName: "key")
+                            .foregroundColor(HubTheme.accent)
+                        Text("hub.cleanup-key")
+                            .font(.system(size: 12.5))
+                            .foregroundColor(Color(hex: "#C7CAD0"))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                        Button(String(localized: "hub.open-settings")) {
+                            NotificationCenter.default.post(name: .openFullSettings, object: "chat")
+                        }
+                        .buttonStyle(HubButtonStyle())
+                    }
+                }
+                Text("flow.ai-privacy")
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             HubLabel(String(localized: "hub.settings.permission"))
             HubCard {
                 if flow.trusted {
