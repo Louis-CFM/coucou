@@ -253,6 +253,8 @@ final class BotEngine: ObservableObject {
 
     // Timing
     var lastTime: Double = CACurrentMediaTime()
+    /// Fractional engine steps owed when drawing slower than the display (Mac mini Mochis).
+    var stepDebt: Double = 0
     var t0: Double = CACurrentMediaTime() - Double.random(in: 0...5)
     var nextBlink: Double = CACurrentMediaTime() + 1.5 + Double.random(in: 0...2)
     var waveUntil: Double = 0
@@ -273,6 +275,25 @@ final class BotEngine: ObservableObject {
     // Dancing (Apple Music)
     var isDancing: Bool = false
     var dancingLevel: CGFloat = 0   // 0→1 over 0.3s, 1→0 over 0.5s
+
+    // How the Mac feels (MochiMood.swift): the target is set every frame on the Mac, the
+    // levels ease towards it.
+    var moodTarget = MochiMood.calm
+    var moodBusy: CGFloat = 0
+    var moodHot: CGFloat = 0
+    var moodFull: CGFloat = 0
+    var moodTired: CGFloat = 0
+    var nextMoodDrop: Double = 0
+    var moodDrops: [MoodDrop] = []
+    var hop = MoodHop()
+    var moodShiftApplied: CGFloat = 0
+    // Stressed eyes: where they dart, when next, their tremble, the next nervous blink.
+    var stressLook = CGPoint.zero
+    var nextStressLook: Double = 0
+    var stressTremble = CGPoint.zero
+    var nextNervousBlink: Double = 0
+    var moodLiftApplied: CGFloat = 0
+    var nextMoodYawn: Double = 0
 
     // Mini wandering look (random, ignores mouse)
     var miniLookTarget: CGPoint = .zero
@@ -628,6 +649,66 @@ final class BotEngine: ObservableObject {
         nextBlink = CACurrentMediaTime() + 2.5 + Double.random(in: 0...1.0)
     }
 
+    // MARK: - Voice in the compact island
+
+    private var voicePrevPermanentEmote: BotEmote? = nil
+    private(set) var isInVoiceCompact = false
+
+    /// Current voice sub-state — set per frame by BotCanvasView from IslandWindowController signals.
+    var voiceSubState: BotVoiceSubState = .none
+    private var prevVoiceSubState: BotVoiceSubState = .none
+
+    /// Voice session while the island stays compact (wake → answer spoken).
+    /// One calm attentive pose for the whole exchange: wide eyes eased in, a slight
+    /// tilt, no jump, no hands, no mic-driven motion — in the notch every extra
+    /// movement reads as jitter.
+    func enterVoiceCompact() {
+        guard !isInVoiceCompact else { return }
+        isInVoiceCompact = true
+        voiceSubState = .none
+        prevVoiceSubState = .none
+        voicePrevPermanentEmote = permanentEmote
+        setPermanentEmote(.listening)
+        anim("es",   keys: [TweenKey(target: 1.06, duration: 260, ease: Ease.inOut)])
+        anim("tilt", keys: [TweenKey(target: -0.06, duration: 260, ease: Ease.inOut)])
+    }
+
+    /// End of the voice exchange: back to the previous look, eased.
+    func exitVoiceCompact() {
+        guard isInVoiceCompact else { return }
+        isInVoiceCompact = false
+        voiceSubState = .none
+        prevVoiceSubState = .none
+        setPermanentEmote(voicePrevPermanentEmote)
+        voicePrevPermanentEmote = nil
+        anim("es",   keys: [TweenKey(target: 1, duration: 260, ease: Ease.inOut)])
+        anim("tilt", keys: [TweenKey(target: 0, duration: 260, ease: Ease.inOut)])
+    }
+
+    /// Handle a voice sub-state transition: triggers the matching one-shot animations.
+    /// Called from update() when voiceSubState changes.
+    private func _applyVoiceSubStateTransition(_ sub: BotVoiceSubState) {
+        switch sub {
+        case .listening:
+            // Back to attentive: gentle open eyes, tilt held
+            anim("es",    keys: [TweenKey(target: 1.06, duration: 220, ease: Ease.inOut)])
+            nextBlink = CACurrentMediaTime() + 2.0 + Double.random(in: 0...0.8)
+
+        case .thinking:
+            // Eyes glance up-right, squint slightly — "hmm"
+            anim("es",    keys: [TweenKey(target: 0.86, duration: 280, ease: Ease.inOut)])
+            nextBlink = CACurrentMediaTime() + 3.5 + Double.random(in: 0...1.0)
+
+        case .speaking:
+            // Joy squint, look forward, quick blink to mark the transition
+            anim("es",    keys: [TweenKey(target: 0.72, duration: 200, ease: Ease.inOut)])
+            nextBlink = CACurrentMediaTime() + 0.12  // blink right away (joy marker)
+
+        case .none:
+            break
+        }
+    }
+
     /// Call when the island leaves listening state.
     /// `hadCommand` = commandTranscript was non-empty when the session ended.
     func exitListening(hadCommand: Bool) {
@@ -793,6 +874,8 @@ final class BotEngine: ObservableObject {
     func update(dt: Double) {
         let now = CACurrentMediaTime()
         let dtCG = CGFloat(dt)
+        // The stressed hop of the last frame comes off first (MochiMood.swift).
+        undoMoodOffsets()
 
         // Process tweens
         for key in tweens.keys {
@@ -868,6 +951,38 @@ final class BotEngine: ObservableObject {
             }
         }
 
+        // Voice compact sub-state: per-frame look and body targets
+        if isInVoiceCompact {
+            // Detect sub-state transitions and fire one-shot animations
+            if voiceSubState != prevVoiceSubState {
+                prevVoiceSubState = voiceSubState
+                _applyVoiceSubStateTransition(voiceSubState)
+            }
+
+            switch voiceSubState {
+            case .listening:
+                // Mic-reactive eye pulse
+                if listeningLevel > 0.01 {
+                    let lvl = listeningLevel
+                    tgEs = max(tgEs, 1.06 + lvl * 0.16)
+                    if !locks.contains("sy") { tgSy = max(tgSy, 1.0 + lvl * 0.04) }
+                }
+            case .thinking:
+                // Eyes drift slightly up-right (corner glance = "thinking")
+                tgYaw   = ty + 0.12
+                tgPitch = tp + 0.10
+            case .speaking:
+                // Gentle rhythmic bounce at ~3.5 Hz while speaking
+                if !locks.contains("oy") {
+                    let spkT = CGFloat(now - t0)
+                    let bounce = sin(spkT * CGFloat.pi * 2 * 3.5) * 0.018
+                    oy += (bounce - oy) * 0.25
+                }
+            case .none:
+                break
+            }
+        }
+
         // Body sway during greeting wave
         if now > waveStart && now < waveUntil {
             let wt = CGFloat(now - waveStart)
@@ -894,6 +1009,9 @@ final class BotEngine: ObservableObject {
         if isMini && now > miniNextBehavior {
             doMiniBehaviorLoop()
         }
+
+        // The Mac's mood (sweat, puffed up, tired) adjusts the targets above.
+        updateMood(dt: dt, now: now, t: t)
 
         // Smooth look
         let kLook = CGFloat(1 - pow(0.0025, dt))
@@ -1015,8 +1133,11 @@ final class BotEngine: ObservableObject {
         drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry,
                  pumpkinColors: outfit == .pumpkin && !isMini)
 
+        // A warm Mac flushes him (MochiMood.swift).
+        drawMoodTint(ctx: &ctx, path: bodyPath, rx: rx, ry: ry)
+
         // Blush — always shows a floor proportional to tint (prototype behaviour)
-        let blushVal = max(blush, tint * 0.5) * (1 - morph)
+        let blushVal = max(blush, tint * 0.5, moodHot * 0.85) * (1 - morph)
         if blushVal > 0.01 {
             drawBlush(ctx: &ctx, path: bodyPath, rx: rx, ry: ry, R: R, blush: blushVal)
         }
@@ -1190,6 +1311,9 @@ final class BotEngine: ObservableObject {
         if let badge = badge, badgeS > 0.01, morph < 0.25 {
             drawBadge(context: context, size: size, badge: badge, R: R, rx: rx, ry: ry, cx: cx, cy: cy)
         }
+
+        // Sweat and heat waves (MochiMood.swift)
+        drawMoodExtras(context: context, R: R, rx: rx, ry: ry, cx: cx, cy: cy)
 
         // Particles
         drawParticles(context: context, size: size, R: R, cx: cx, cy: cy)
@@ -1401,11 +1525,14 @@ final class BotEngine: ObservableObject {
             let fy = lerp(f.fy, 1, morph * 0.7)
 
             let eyeMult: CGFloat = isMini ? 1.9 : 1.0
-            let ew = R * MochiConst.eyeW * es * eyeMult
-            let eh = R * MochiConst.eyeH * es * eyeMult
+            // Stressed (MochiMood.swift): a little smaller, like pupils tightening with fear,
+            // and trembling.
+            let fear = isMini ? 0 : min(1, moodBusy * 1.3)
+            let ew = R * MochiConst.eyeW * es * eyeMult * (1 - 0.2 * fear)
+            let eh = R * MochiConst.eyeH * es * eyeMult * (1 - 0.1 * fear)
 
             var eyeCtx = ctx
-            eyeCtx.translateBy(x: f.x, y: ey)
+            eyeCtx.translateBy(x: f.x + stressTremble.x * R, y: ey + stressTremble.y * R)
             eyeCtx.scaleBy(x: fx, y: fy)
             drawEyeShape(ctx: &eyeCtx, shape: shape, w: ew, h: eh, open: open, sd: f.sd, R: R)
         }

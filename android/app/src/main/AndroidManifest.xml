@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Only the paired computer is contacted. No ads, no analytics, no billing. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Finding the computer again after a Wi-Fi change: a multicast lock held only while browsing the local network. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Held for at most 15 seconds, only while the periodic alarm checks that the link to the computer is alive. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Asked only when the user taps "Scan QR code" to read the pairing code; used on that screen only. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- A phone without a camera can still pair by pasting the link. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Optional, asked only when the user turns on the pill that drops from the top of the screen. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <application
+        android:name=".app.CoucouApp"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:theme="@style/Theme.Coucou">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Scanning the pairing QR code with the camera app opens coucou://pair?... here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="coucou" android:host="pair" />
+            </intent-filter>
+        </activity>
+
+        <!-- Not exported: only our own notification actions can start it (MainActivity must not trust intents from other apps). -->
+        <activity
+            android:name=".app.LaunchActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <receiver android:name=".app.KeepAliveReceiver" android:exported="false" />
+
+        <service
+            android:name=".app.LinkService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps a private, user-initiated connection to the user's own computer so agent approval requests arrive as notifications." />
+        </service>
+
+        <receiver android:name=".app.ActionReceiver" android:exported="false" />
+
+        <!-- The home-screen widget: a short summary, updated by the app when something changes (no timer). -->
+        <receiver android:name=".app.GlanceWidget" android:exported="true" android:label="@string/widget_glance_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_widget_info" />
+        </receiver>
+
+        <!-- The Solo and List widgets: Mochi and the agents, pushed by the app when something changes (no timer). -->
+        <receiver android:name=".app.SoloWidget" android:exported="true" android:label="@string/widget_solo_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_solo_widget_info" />
+        </receiver>
+        <receiver android:name=".app.ListWidget" android:exported="true" android:label="@string/widget_list_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_list_widget_info" />
+        </receiver>
+
+        <!-- More Widgets: Mochi Big, Status Pill, Waiting Alert, Usage Ring, Today and Mochi Mood. Pushed by the app when something changes (no timer). -->
+        <receiver android:name=".app.MochiBigWidget" android:exported="true" android:label="@string/widget_big_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_big_widget_info" />
+        </receiver>
+        <receiver android:name=".app.StatusPillWidget" android:exported="true" android:label="@string/widget_pill_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_pill_widget_info" />
+        </receiver>
+        <receiver android:name=".app.WaitingAlertWidget" android:exported="true" android:label="@string/widget_alert_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_alert_widget_info" />
+        </receiver>
+        <receiver android:name=".app.UsageRingWidget" android:exported="true" android:label="@string/widget_ring_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_ring_widget_info" />
+        </receiver>
+        <receiver android:name=".app.TodayWidget" android:exported="true" android:label="@string/widget_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!-- The clock or the time zone changed: the day may be another one. (Midnight itself is our own alarm: the system no longer tells manifest receivers that the date changed.) -->
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_today_widget_info" />
+        </receiver>
+        <receiver android:name=".app.MoodWidget" android:exported="true" android:label="@string/widget_mood_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/coucou_mood_widget_info" />
+        </receiver>
+
+        <!-- The quick-settings tile: on while the computer is connected; a tap opens Coucou. -->
+        <service
+            android:name=".app.GlanceTile"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_mochi"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

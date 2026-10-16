@@ -17,8 +17,12 @@ enum ConversationContextTests {
 
     static func testNoContextReturnsNil() {
         let ctx = ConversationContext()
-        precondition(ctx.resolveRelative("et Vercel aussi", pills: pills) == nil,
-            "no context → nil")
+        // "et X aussi" with no prior action defaults to pillAdd (new: bare pill / relative patterns → add)
+        precondition(ctx.resolveRelative("et Vercel aussi", pills: pills) == .pillAdd(id: "integration_vercel"),
+            "et X aussi without context → pillAdd X")
+        // Truly unknown non-relative phrase → nil
+        precondition(ctx.resolveRelative("xyz blabla blah", pills: pills) == nil,
+            "unknown phrase without context → nil")
     }
 
     static func testSameTarget_aussiFR() {

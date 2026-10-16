@@ -86,8 +86,11 @@ struct SettingsView: View {
     #endif
 
     // Multi-provider chat keys
-    @State private var googleKey: String  = KeychainStore.shared.get("google-api-key") ?? ""
-    @State private var openAIKey: String  = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var googleKey: String   = KeychainStore.shared.get("google-api-key") ?? ""
+    @State private var openAIKey: String   = KeychainStore.shared.get("openai-api-key") ?? ""
+    @State private var deepseekKey: String = KeychainStore.shared.get("deepseek-api-key") ?? ""
+    @State private var qwenKey: String     = KeychainStore.shared.get("qwen-api-key") ?? ""
+    @State private var moonshotKey: String = KeychainStore.shared.get("moonshot-api-key") ?? ""
     @State private var ollamaURL:    String = AppState.shared.ollamaServerURL
     @State private var lmstudioURL:  String = AppState.shared.lmstudioServerURL
     @State private var connectingOllama:    Bool = false
@@ -103,6 +106,11 @@ struct SettingsView: View {
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
+    @AppStorage(CryptoSettings.exchangeKey)     private var cryptoExchange = CryptoExchange.coinbase.rawValue
+    @AppStorage(CryptoSettings.currencyKey)     private var cryptoCurrency = "EUR"
+    @AppStorage(CryptoSettings.coinsKey)        private var cryptoCoins = CryptoSettings.defaultCoins
+    @AppStorage(CryptoSettings.alertKey)        private var cryptoAlert = false
+    @AppStorage(CryptoSettings.alertPercentKey) private var cryptoAlertPercent = 5.0
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -129,6 +137,10 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    /// Shown inside the Coucou Flow window (GitHub build): one section, without this window's
+    /// sidebar, as the window has its own.
+    private var embeddedSection: String? = nil
+    private var section: String { embeddedSection ?? selectedSection }
     // Active pills: the pill whose colour palette is open, if any
     @State private var colorPalettePill: String? = nil
     #if PHONE_LINK
@@ -147,6 +159,7 @@ struct SettingsView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            if embeddedSection == nil {
             // Sidebar — 200 pt, sidebar visual effect background
             ZStack(alignment: .topLeading) {
                 SidebarBackground()
@@ -189,21 +202,26 @@ struct SettingsView: View {
             .frame(width: 200)
 
             Divider()
+            }
 
             // Detail panel
             VStack(alignment: .leading, spacing: 0) {
-                Text(sectionTitle)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
+                if embeddedSection == nil {
+                    Text(sectionTitle)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 12)
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         sectionContent
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, embeddedSection == nil ? 20 : 28)
+                    .padding(.top, embeddedSection == nil ? 0 : 20)
                     .padding(.bottom, 16)
+                    .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
                 }
                 if !statusMessage.isEmpty {
                     Divider()
@@ -242,7 +260,7 @@ struct SettingsView: View {
     // MARK: - Section routing
 
     private var sectionTitle: String {
-        switch selectedSection {
+        switch section {
         case "general":      return String(localized: "General")
         case "activepills":  return String(localized: "Active pills")
         case "agents":       return String(localized: "Agents")
@@ -255,7 +273,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var sectionContent: some View {
-        switch selectedSection {
+        switch section {
         case "activepills":  activePillsSection
         case "agents":       agentsSection
         case "chat":         chatSection
@@ -369,6 +387,19 @@ struct SettingsView: View {
                 for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 refreshConnectedScreens()
             }
+        }
+
+        GroupBox(String(localized: "vitals.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "vitals.toggle"), isOn: Binding(
+                    get: { MachineVitals.shared.enabled },
+                    set: { MachineVitals.shared.enabled = $0 }))
+                Text("vitals.about")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
         }
 
         GroupBox("Hotkey") {
@@ -1067,6 +1098,48 @@ struct SettingsView: View {
                     statusMessage = String(localized: "status.openai-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#5B8FF9")).frame(width: 8, height: 8)
+                    Text("DeepSeek").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $deepseekKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("deepseek-api-key", value: deepseekKey)
+                    statusMessage = "DeepSeek key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#FF6A00")).frame(width: 8, height: 8)
+                    Text("Qwen (Alibaba)").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $qwenKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("qwen-api-key", value: qwenKey)
+                    statusMessage = "Qwen key saved."
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    Circle().fill(Color(hex: "#7C5CFC")).frame(width: 8, height: 8)
+                    Text("Moonshot (Kimi)").font(.system(size: 12, weight: .semibold))
+                }
+                SecureField("API key", text: $moonshotKey)
+                    .textFieldStyle(.roundedBorder)
+                Button(String(localized: "Save")) {
+                    KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
+                    statusMessage = "Moonshot key saved."
+                }
+                .buttonStyle(.borderedProminent)
             }
             .padding(.vertical, 4)
         }
@@ -1246,7 +1319,49 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
-                Button(String(localized: "integrations.save")) { saveIntegrations() }
+                // Crypto: public prices, no key. Changes apply at once.
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#F7931A")).frame(width: 8, height: 8)
+                        Text(verbatim: "Crypto").font(.system(size: 12, weight: .semibold))
+                    }
+                    Picker(String(localized: "crypto.exchange"), selection: $cryptoExchange) {
+                        ForEach(CryptoExchange.allCases, id: \.rawValue) { ex in
+                            Text(verbatim: ex.name).tag(ex.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Picker(String(localized: "crypto.currency"), selection: $cryptoCurrency) {
+                        Text(verbatim: "EUR €").tag("EUR")
+                        Text(verbatim: "USD $").tag("USD")
+                    }
+                    .pickerStyle(.segmented)
+                    TextField(String(localized: "crypto.coins-placeholder"), text: $cryptoCoins)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { CryptoController.shared.settingsChanged() }
+                    HStack(spacing: 8) {
+                        Toggle(String(format: String(localized: "crypto.alert %lld"), Int64(cryptoAlertPercent)),
+                               isOn: $cryptoAlert)
+                        if cryptoAlert {
+                            Stepper("", value: $cryptoAlertPercent, in: 1...50, step: 1)
+                                .labelsHidden()
+                        }
+                    }
+                    Text(String(localized: "crypto.hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+                .onChange(of: cryptoExchange) { _, _ in CryptoController.shared.settingsChanged() }
+                .onChange(of: cryptoCurrency) { _, _ in CryptoController.shared.settingsChanged() }
+
+                // Portfolio: exchange accounts + wallets.
+                PortfolioSettingsSection()
+                    .padding(.top, 4)
+
+                Button(String(localized: "integrations.save")) {
+                    saveIntegrations()
+                    CryptoController.shared.settingsChanged()
+                }
                     .buttonStyle(.borderedProminent)
             }
             .padding(6)
@@ -1258,31 +1373,44 @@ struct SettingsView: View {
     #if !APPSTORE
     @State private var voicePermissionsGranted: Bool = false
     @ObservedObject private var voiceEngine = VoiceEngine.shared
-    @AppStorage("voiceSpeakEnabled") private var speakEnabled: Bool = true
+    @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceListenLanguage") private var listenLanguage: String = "auto"
+    @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
+    @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
+    @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
+    @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
+    @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
+    @State private var elevenKeyDraft: String = ""
+    @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
+
+    private func speakVoiceSample() {
+        let en = voiceLanguage != "fr"
+        VoiceSpeaker.shared.speak(en ? "Hi, I'm Coucou. Say OK Coucou whenever you need me."
+                                     : "Salut, c'est Coucou. Dis OK Coucou quand tu as besoin de moi.",
+                                  locale: Locale(identifier: en ? "en-US" : "fr-FR"))
+    }
 
     @ViewBuilder private var voiceSection: some View {
+        // Flow dictation: hold a key anywhere, speak, the words are pasted where you type.
+        FlowSettingsBox()
+
+        // Claude is Coucou's brain: no model, language or feature switches any more,
+        // only the wake word, the Anthropic key it needs, and Coucou's voice.
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
-                Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
-
-                Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 HStack(alignment: .top, spacing: 6) {
-                    Circle()
-                        .fill(Color(hex: "#F97316"))
-                        .frame(width: 8, height: 8)
-                        .padding(.top, 2)
-                    Text("While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour.")
+                    Image(systemName: webKeySaved ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .foregroundColor(webKeySaved ? .green : .orange)
+                    Text(webKeySaved ? String(localized: "voice.setting-web-desc")
+                                     : String(localized: "voice.setting-web-nokey"))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .onAppear { webKeySaved = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty }
 
                 if voiceEngine.recognizerUnavailable {
                     HStack(spacing: 6) {
@@ -1295,21 +1423,6 @@ struct SettingsView: View {
                     }
                 }
 
-                // Local model status
-                #if canImport(FoundationModels)
-                if #available(macOS 26, *) {
-                    let status = VoiceBrain.shared.modelStatus
-                    HStack(spacing: 6) {
-                        Image(systemName: status == .available ? "cpu.fill" : "cpu")
-                            .foregroundColor(status == .available ? .green : .secondary)
-                        Text(localModelStatusLabel(status))
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                #endif
-
                 if let err = voiceEngine.audioError {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -1320,24 +1433,7 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-            }
-            .padding(6)
-        }
 
-        GroupBox(String(localized: "Permissions")) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Image(systemName: micStatusIcon)
-                        .foregroundColor(micStatusColor)
-                    Text("\(String(localized: "Microphone:")) \(micStatusLabel)")
-                        .font(.system(size: 12))
-                }
-                HStack(spacing: 6) {
-                    Image(systemName: speechStatusIcon)
-                        .foregroundColor(speechStatusColor)
-                    Text("\(String(localized: "Speech recognition:")) \(speechStatusLabel)")
-                        .font(.system(size: 12))
-                }
                 if !voicePermissionsGranted {
                     Button(String(localized: "Request permissions")) {
                         Task {
@@ -1354,6 +1450,107 @@ struct SettingsView: View {
             voicePermissionsGranted = VoiceSettings.micStatus == .granted
                 && VoiceSettings.speechStatus == .granted
         }
+
+        GroupBox(String(localized: "Language")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text(String(localized: "voice.listen-language"))
+                        .frame(width: 130, alignment: .leading)
+                    Picker(String(localized: "voice.listen-language"), selection: $listenLanguage) {
+                        Text(String(localized: "voice.lang-auto")).tag("auto")
+                        Text(verbatim: "Français").tag("fr")
+                        Text(verbatim: "English").tag("en")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 260)
+                }
+                HStack(spacing: 10) {
+                    Text(String(localized: "voice.language"))
+                        .frame(width: 130, alignment: .leading)
+                    Picker(String(localized: "voice.language"), selection: $voiceLanguage) {
+                        Text(verbatim: "Français").tag("fr")
+                        Text(verbatim: "English").tag("en")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 180)
+                    .onChange(of: voiceLanguage) { _, _ in
+                        // Chosen by hand: Coucou no longer offers to switch.
+                        VoiceSettings.languageOfferDone = true
+                        ElevenLabsTTS.shared.reset()
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox(String(localized: "voice.tts-engine")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker(String(localized: "voice.tts-engine"), selection: $ttsEngine) {
+                    Text(String(localized: "voice.tts-system")).tag("system")
+                    Text(verbatim: "ElevenLabs").tag("elevenlabs")
+                }
+                .labelsHidden()   // the box is already titled "Voice"
+                .frame(maxWidth: 260)
+
+                if ttsEngine == "elevenlabs" {
+                    HStack(spacing: 6) {
+                        SecureField(elevenKeySaved ? String(localized: "voice.tts-key-saved")
+                                                   : String(localized: "voice.tts-key"),
+                                    text: $elevenKeyDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 220)
+                        Button(String(localized: "Save")) {
+                            let k = elevenKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if k.isEmpty { KeychainStore.shared.remove(ElevenLabsTTS.keyName) }
+                            else { KeychainStore.shared.set(ElevenLabsTTS.keyName, value: k) }
+                            elevenKeyDraft = ""
+                            elevenKeySaved = !k.isEmpty
+                            ElevenLabsTTS.shared.reset()
+                        }
+                    }
+                }
+
+                Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
+                    Text(String(localized: "voice.tts-female")).tag("female")
+                    Text(String(localized: "voice.tts-male")).tag("male")
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 220)
+                .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+
+                if ttsEngine == "system" {
+                    HStack(spacing: 8) {
+                        Text(String(localized: "voice.tts-pitch"))
+                        Slider(value: elevenGender == "male" ? $pitchMale : $pitchFemale,
+                               in: 0.8...1.6, step: 0.05,
+                               onEditingChanged: { editing in
+                                   // Released: hear the new pitch right away.
+                                   if !editing { speakVoiceSample() }
+                               })
+                        .frame(maxWidth: 180)
+                    }
+                    let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
+                                                            gender: elevenGender)
+                    Text(String(format: String(localized: "voice.mac-voice-current %@"), current))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(String(localized: "voice.mac-voices-help"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(String(localized: "voice.mac-voices-open")) {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+
+                Button(String(localized: "voice.tts-test")) { speakVoiceSample() }
+            }
+            .padding(6)
+        }
     }
 
     #if !APPSTORE
@@ -1365,6 +1562,52 @@ struct SettingsView: View {
         }
     }
     #endif
+
+    // MARK: - Transcript history debug view (in-memory, cleared on close)
+
+    private struct VoiceTranscriptHistoryView: View {
+        @ObservedObject private var history = VoiceTranscriptHistory.shared
+
+        var body: some View {
+            if !history.entries.isEmpty {
+                GroupBox(String(localized: "voice.history-title")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 4) {
+                                ForEach(history.entries) { entry in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(verbatim: entry.transcript)
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundColor(.primary)
+                                        Text(verbatim: "→ \(entry.intent)  [\(entry.origin.rawValue)]")
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 2)
+                                    Divider()
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                        .frame(maxHeight: 200)
+
+                        HStack {
+                            Button(String(localized: "Copy")) {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(history.plainText, forType: .string)
+                            }
+                            Button(String(localized: "Clear")) {
+                                history.clear()
+                            }
+                            .foregroundColor(.red)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(6)
+                }
+            }
+        }
+    }
 
     private var micStatusIcon:  String { VoiceSettings.micStatus    == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
     private var micStatusColor: Color  { VoiceSettings.micStatus    == .granted ? .green : .red }
@@ -2187,5 +2430,13 @@ struct ShortcutRecorderButton: View {
             34:"I", 37:"L", 38:"J", 40:"K", 45:"N", 46:"M", 49:"Space", 50:"`", 27:"-"
         ]
         return map[c] ?? "·"
+    }
+}
+
+extension SettingsView {
+    /// One section of Settings, for the Coucou Flow window.
+    init(embeddedSection: String) {
+        self.init()
+        self.embeddedSection = embeddedSection
     }
 }

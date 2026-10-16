@@ -38,15 +38,25 @@ struct ConversationContext {
 
     // MARK: - Same-action, new target
 
-    // Patterns: "et X aussi", "aussi X", "pareil pour X", "idem pour X", "also X", "same for X"
+    // Patterns: "et X aussi", "aussi X", "et X", "X aussi", "ajoute aussi X",
+    //           "pareil pour X", "idem pour X", "also X", "same for X",
+    //           bare pill name (repeat last action on new pill)
     private func resolveSameTarget(norm: String, words: [String], pills: [PillDefinition]) -> VoiceIntent? {
-        guard let last = lastIntent else { return nil }
         var entityWords: [String]? = nil
 
         if words.first == "et", let aussiIdx = words.firstIndex(of: "aussi"), aussiIdx > 1 {
             entityWords = Array(words[1..<aussiIdx])
         } else if words.first == "aussi", words.count > 1 {
             entityWords = Array(words[1...])
+        } else if words.first == "et", words.count > 1 {
+            // "et Vercel" → same action for Vercel
+            entityWords = Array(words[1...])
+        } else if words.last == "aussi", words.count > 1 {
+            // "Vercel aussi" / "Stripe aussi"
+            entityWords = Array(words.dropLast())
+        } else if words.first == "ajoute", words.count > 2, words[1] == "aussi" {
+            // "ajoute aussi Stripe"
+            entityWords = Array(words[2...])
         } else if words.first == "pareil", words.count > 2,
                   (words[1] == "pour" || words[1] == "avec" || words[1] == "de") {
             entityWords = Array(words[2...])
@@ -63,17 +73,29 @@ struct ConversationContext {
             entityWords = Array(words[2...])
         }
 
-        guard let ew = entityWords, !ew.isEmpty else { return nil }
+        guard let ew = entityWords, !ew.isEmpty else {
+            // Bare pill name: redo last action on a different pill
+            if let pillId = EntityResolver.resolve(norm, from: pills) {
+                return applyLastIntent(to: pillId)
+            }
+            return nil
+        }
         let entity = ew.joined(separator: " ")
         guard let pillId = EntityResolver.resolve(entity, from: pills) else { return nil }
+        return applyLastIntent(to: pillId)
+    }
 
-        switch last {
+    private func applyLastIntent(to pillId: String) -> VoiceIntent? {
+        switch lastIntent {
         case .pillAdd:            return .pillAdd(id: pillId)
         case .pillAddMultiple:    return .pillAdd(id: pillId)
         case .pillRemove:         return .pillRemove(id: pillId)
         case .pillRemoveMultiple: return .pillRemove(id: pillId)
         case .pillSetMain:        return .pillSetMain(id: pillId)
-        default:                  return nil
+        default:
+            // No prior pill action → default to pillAdd
+            if lastIntent == nil { return .pillAdd(id: pillId) }
+            return nil
         }
     }
 

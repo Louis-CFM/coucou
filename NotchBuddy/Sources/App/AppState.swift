@@ -98,18 +98,19 @@ final class AppState: ObservableObject {
     }
     // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
     var wardrobePreviewOutfit: Outfit? = nil
-    // Per-day seasonal cache — avoids recomputing Easter and date math on every frame
-    private var _seasonalCache: (dayOfYear: Int, year: Int, outfit: Outfit)?
+    // Per-day seasonal cache — read on every Mochi frame: valid until the next midnight,
+    // so a frame costs one date comparison instead of calendar math.
+    private var _seasonalCache: (validUntil: Date, outfit: Outfit)?
     var resolvedOutfit: Outfit {
         if let preview = wardrobePreviewOutfit { return preview }
         guard mochiOutfitSelection == .auto else { return mochiOutfitSelection }
-        let cal = Calendar.current
         let now = Date()
-        let day  = cal.ordinality(of: .day, in: .year, for: now) ?? 0
-        let year = cal.component(.year, from: now)
-        if let c = _seasonalCache, c.dayOfYear == day && c.year == year { return c.outfit }
+        if let c = _seasonalCache, now < c.validUntil { return c.outfit }
+        let cal = Calendar.current
         let outfit = Outfit.seasonal(for: now, calendar: cal)
-        _seasonalCache = (dayOfYear: day, year: year, outfit: outfit)
+        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))
+            ?? now.addingTimeInterval(3600)
+        _seasonalCache = (validUntil: midnight, outfit: outfit)
         return outfit
     }
 
@@ -134,6 +135,15 @@ final class AppState: ObservableObject {
     }
     @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
         didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
+    }
+    @Published var deepseekChatModel: String = ChatProvider.deepseek.defaultModel {
+        didSet { UserDefaults.standard.set(deepseekChatModel, forKey: "deepseekChatModel") }
+    }
+    @Published var qwenChatModel: String = ChatProvider.qwen.defaultModel {
+        didSet { UserDefaults.standard.set(qwenChatModel, forKey: "qwenChatModel") }
+    }
+    @Published var moonshotChatModel: String = ChatProvider.moonshot.defaultModel {
+        didSet { UserDefaults.standard.set(moonshotChatModel, forKey: "moonshotChatModel") }
     }
     @Published var ollamaServerURL: String = "" {
         didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
@@ -204,6 +214,9 @@ final class AppState: ObservableObject {
             case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
             case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
             case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
+            case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
+            case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
+            case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
             case .ollama, .lmstudio: models = []  // handled above
             }
             loadingProviderModels.remove(provider)
@@ -224,6 +237,18 @@ final class AppState: ObservableObject {
                     if !models.contains(where: { $0.id == openAIChatModel }) {
                         openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
                     }
+                case .deepseek:
+                    if !models.contains(where: { $0.id == deepseekChatModel }) {
+                        deepseekChatModel = models.first!.id
+                    }
+                case .qwen:
+                    if !models.contains(where: { $0.id == qwenChatModel }) {
+                        qwenChatModel = models.first!.id
+                    }
+                case .moonshot:
+                    if !models.contains(where: { $0.id == moonshotChatModel }) {
+                        moonshotChatModel = models.first!.id
+                    }
                 case .ollama, .lmstudio: break
                 }
             }
@@ -238,6 +263,9 @@ final class AppState: ObservableObject {
         case .openai:    return openAIChatModel
         case .ollama:    return ollamaChatModel
         case .lmstudio:  return lmstudioChatModel
+        case .deepseek:  return deepseekChatModel
+        case .qwen:      return qwenChatModel
+        case .moonshot:  return moonshotChatModel
         }
     }
 
@@ -261,6 +289,9 @@ final class AppState: ObservableObject {
 
     // Dropped file (set during upload flow)
     @Published var droppedFile: DroppedFile? = nil
+    /// A mail prepared by voice: fills the mail card; sent through Apple Mail on the
+    /// user's click. nil for the drop-a-file flow.
+    @Published var voiceMailDraft: VoiceMailDraft? = nil
 
     // Short note message (shown in NoteView)
     @Published var noteMessage: String? = nil
@@ -425,6 +456,12 @@ final class AppState: ObservableObject {
 
     // Voice command result (shown in VoiceResultView for ~2 s, then cleared by IWC)
     @Published var voiceResult: VoiceActionResult? = nil
+    /// True from "OK Coucou" until Coucou has finished answering (island stays compact).
+    /// Drives Mochi's single attentive pose for the whole exchange.
+    @Published var voiceActive = false
+    /// Listening / thinking / speaking — drives per-frame Mochi animations.
+    /// Set by IslandWindowController; read by BotCanvasView each display frame.
+    @Published var voiceSubState: BotVoiceSubState = .none
     #endif
 
     // Claude plan gauge (from statusline hook)
@@ -457,10 +494,19 @@ final class AppState: ObservableObject {
     // Which card showingPlanDetail opens
     @Published var planDetailIsCodex: Bool = false
 
+    /// Rate-limited on the attempt, not only on success: without Codex installed or
+    /// signed in, every appearance of the pill used to spawn `codex app-server` again.
+    private static var lastCodexAttempt: Date = .distantPast
+    private static var codexFetchInFlight = false
+
     func refreshCodexPlanUsage() {
         if let u = codexPlanUsage, Date().timeIntervalSince(u.updatedAt) < 60 { return }
+        guard !Self.codexFetchInFlight, Date().timeIntervalSince(Self.lastCodexAttempt) > 60 else { return }
+        Self.codexFetchInFlight = true
+        Self.lastCodexAttempt = Date()
         Task {
             if let u = await CodexPlanGauge.fetch() { codexPlanUsage = u }
+            Self.codexFetchInFlight = false
         }
     }
 
@@ -485,6 +531,9 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
         if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
+        if let v = ud.string(forKey: "deepseekChatModel"), !v.isEmpty { deepseekChatModel = v }
+        if let v = ud.string(forKey: "qwenChatModel"),     !v.isEmpty { qwenChatModel     = v }
+        if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }
         if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
@@ -713,6 +762,12 @@ enum PromptContext {
     case file(name: String, fileURL: URL?)
 }
 
+struct VoiceMailDraft: Equatable {
+    var to: String
+    var subject: String
+    var body: String
+}
+
 struct DroppedFile {
     var url: URL
     var name: String
@@ -749,6 +804,16 @@ struct VercelDeployment: Identifiable {
         if diff < 3600  { return "\(Int(diff/60))m" }
         if diff < 86400 { return "\(Int(diff/3600))h" }
         return "\(Int(diff/86400))d"
+    }
+}
+
+// MARK: - Publish only on change
+
+extension AppState {
+    /// A @Published set notifies every view that observes AppState, even with the same
+    /// value: pollers use this so an unchanged answer redraws nothing.
+    func setIfChanged<T: Equatable>(_ keyPath: ReferenceWritableKeyPath<AppState, T>, _ value: T) {
+        if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
     }
 }
 
