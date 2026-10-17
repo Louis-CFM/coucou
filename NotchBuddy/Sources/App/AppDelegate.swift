@@ -291,6 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if !APPSTORE
         _ = MusicController.shared
         _ = SpotifyController.shared
+        _ = YouTubeController.shared
         MailController.shared.start()
         #endif
         CryptoController.shared.start()

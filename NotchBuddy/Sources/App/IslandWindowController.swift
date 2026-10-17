@@ -510,6 +510,19 @@ final class IslandWindowController: NSWindowController {
         adjustPollRate(mouse: mouse, panelFrame: pf, islandRect: islandRect)
     }
 
+    private func isCompactYouTubeControlHit(_ point: CGPoint) -> Bool {
+        #if !APPSTORE
+        guard state.mode == .compact, YouTubeController.shared.url != nil,
+              let panel = window as? IslandPanel else { return false }
+        let island = panel.currentIslandFrame(nw: notchW, nh: notchH)
+        let controlHitArea = CGRect(x: island.midX - 33, y: island.midY - 14,
+                                    width: 66, height: 28)
+        return controlHitArea.contains(point)
+        #else
+        return false
+        #endif
+    }
+
     /// Screen asleep or locked: stop polling; back at the idle rate when it wakes.
     private func observeScreenForPolling() {
         let ws = NSWorkspace.shared.notificationCenter
@@ -932,7 +945,10 @@ final class IslandWindowController: NSWindowController {
             MainActor.assumeIsolated {
                 guard self.wasInIsland else { return }
                 self.fsm.userInteracted()
-                self.pendingIslandClick = true
+                // Compact YouTube controls live inside the resting island.
+                // Let those clicks reach SwiftUI instead of treating them as
+                // a request to expand the island.
+                self.pendingIslandClick = !self.isCompactYouTubeControlHit(event.locationInWindow)
                 self.hoverTimer?.cancel()
                 self.botHoverTimer?.cancel()
                 self.botHovering = false

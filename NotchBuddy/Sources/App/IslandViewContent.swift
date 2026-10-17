@@ -292,6 +292,10 @@ struct OverviewView: View {
             #if !APPSTORE
             SpotifyController.shared.openSpotify()
             #endif
+        case "integration_youtube":
+            #if !APPSTORE
+            YouTubeController.shared.openVideo()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -1930,6 +1934,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_youtube":
+            #if !APPSTORE
+            return true
+            #else
+            return false
+            #endif
         case "integration_mail":
             #if !APPSTORE
             return true  // Apple Mail is always installed on macOS: nothing to set up
@@ -2051,6 +2061,14 @@ struct IntegrationCardView: View {
         #endif
     }
 
+    private var isYouTube: Bool {
+        #if !APPSTORE
+        return task.id == "integration_youtube"
+        #else
+        return false
+        #endif
+    }
+
     private var statusDot: Color {
         #if !APPSTORE
         if task.id == "integration_music" {
@@ -2062,6 +2080,10 @@ struct IntegrationCardView: View {
         if task.id == "integration_mail" {
             if mailController.automationDenied { return Color(hex: "#F4505E") }
             return mailController.isMailRunning ? Color(hex: "#22C55E") : Color(hex: "#6B7079")
+        }
+        if task.id == "integration_youtube" {
+            if YouTubeController.shared.automationDenied { return Color(hex: "#F4505E") }
+            return YouTubeController.shared.isPlaying ? Color(hex: YouTubeController.color) : Color(hex: "#6B7079")
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
@@ -2084,6 +2106,15 @@ struct IntegrationCardView: View {
         if task.id == "integration_mail" {
             if mailController.automationDenied { return String(localized: "Automation not allowed") }
             return mailController.isMailRunning ? String(localized: "Loading…") : String(localized: "Mail is closed")
+        }
+        if task.id == "integration_youtube" {
+            if YouTubeController.shared.automationDenied { return String(localized: "Automation not allowed") }
+            if let title = YouTubeController.shared.title {
+                return YouTubeController.shared.isPlaying
+                    ? String(format: String(localized: "Playing · %@"), title)
+                    : String(format: String(localized: "Paused · %@"), title)
+            }
+            return String(localized: "Not playing")
         }
         #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
@@ -2203,6 +2234,11 @@ struct IntegrationCardView: View {
         } else if isSpotify {
             #if !APPSTORE
             SpotifyCardView()
+                .transition(.opacity)
+            #endif
+        } else if isYouTube {
+            #if !APPSTORE
+            YouTubeCardView()
                 .transition(.opacity)
             #endif
         } else if agentSessionActive {
@@ -4081,6 +4117,13 @@ struct AgentPillsView: View {
                         }
                     } else if task.id == "integration_spotify" {
                         SpotifyPill(task: task, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
+                    } else if task.id == "integration_youtube" {
+                        YouTubePill(task: task, swapping: $swapping) {
                             swapping = true
                             state.setFocus(task.id)
                             SoundEngine.shared.play("blip")
