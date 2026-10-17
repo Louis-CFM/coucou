@@ -62,7 +62,7 @@ struct IslandContainer: View {
             // Content
             if state.mode == .expanded {
                 if greetingActive {
-                    // Greeting canvas: fixed 640-wide, centered by offset so x=320 aligns with island center
+                    // Keep the greeting canvas at its designed width, centered in the resized island.
                     GreetingCanvasView(state: state)
                         .frame(width: IslandConst.expandedWidth, height: 150)
                         .offset(x: (islandWidth - IslandConst.expandedWidth) / 2)
@@ -127,7 +127,8 @@ struct IslandContainer: View {
                 if state.mode == .compact {
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
-                        .position(x: islandWidth - 40, y: islandHeight / 2)
+                        .position(x: IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridCenterX,
+                                  y: islandHeight / 2)
                         .transition(.opacity)
                 }
             }
@@ -139,7 +140,9 @@ struct IslandContainer: View {
             let anim = shrinking ? closeEase : openSpring
             let (w, h) = islandSize(mode: newMode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    expandedWidth: CGFloat(state.expandedIslandWidth),
+                                    compactExtraWidth: CGFloat(state.compactIslandExtraWidth))
             let cr  = newMode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
             let tr: CGFloat = 0
             withAnimation(anim) {
@@ -158,7 +161,9 @@ struct IslandContainer: View {
             }
             let (w, h) = islandSize(mode: .expanded, view: newView,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    expandedWidth: CGFloat(state.expandedIslandWidth),
+                                    compactExtraWidth: CGFloat(state.compactIslandExtraWidth))
             withAnimation(openSpring) {
                 islandWidth  = w
                 islandHeight = newView == .prompt ? chatPromptHeight : h
@@ -168,10 +173,29 @@ struct IslandContainer: View {
             guard state.mode == .expanded, state.view == .prompt else { return }
             withAnimation(openSpring) { islandHeight = chatPromptHeight }
         }
+        .onChange(of: state.expandedIslandWidth) { _, _ in
+            let (w, h) = islandSize(mode: state.mode, view: state.view,
+                                    progress: state.uploadProgress,
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    expandedWidth: CGFloat(state.expandedIslandWidth),
+                                    compactExtraWidth: CGFloat(state.compactIslandExtraWidth))
+            withAnimation(.easeInOut(duration: 0.15)) {
+                islandWidth = w
+                islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
+            }
+        }
+        .onChange(of: state.compactIslandExtraWidth) { _, _ in
+            guard state.mode == .compact else { return }
+            withAnimation(.easeInOut(duration: 0.15)) {
+                islandWidth = state.notchWidth + CGFloat(state.compactIslandExtraWidth)
+            }
+        }
         .onAppear {
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    expandedWidth: CGFloat(state.expandedIslandWidth),
+                                    compactExtraWidth: CGFloat(state.compactIslandExtraWidth))
             islandWidth      = w
             islandHeight     = state.view == .prompt ? chatPromptHeight : h
             cornerRadius     = state.mode == .expanded ? IslandConst.expandedCorner : IslandConst.roundedCorner
@@ -184,7 +208,9 @@ struct IslandContainer: View {
             // New screen, new resting size (notch ↔ bar): snap without animation.
             let (w, h) = islandSize(mode: state.mode, view: state.view,
                                     progress: state.uploadProgress,
-                                    nw: state.notchWidth, nh: state.notchHeight)
+                                    nw: state.notchWidth, nh: state.notchHeight,
+                                    expandedWidth: CGFloat(state.expandedIslandWidth),
+                                    compactExtraWidth: CGFloat(state.compactIslandExtraWidth))
             islandWidth  = w
             islandHeight = (state.mode == .expanded && state.view == .prompt) ? chatPromptHeight : h
         }
@@ -377,7 +403,7 @@ func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: 
     case .hidden:
         return hasNotch ? (46, 16, 6, 0)
             : (islandW / 2, resting.botCenterY, resting.botDiameter, 1)
-    case .compact: return (40, resting.botCenterY, resting.botDiameter, 1)
+    case .compact: return (resting.botCenterX, resting.botCenterY, resting.botDiameter, 1)
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         let diameter = layout.botDiameter

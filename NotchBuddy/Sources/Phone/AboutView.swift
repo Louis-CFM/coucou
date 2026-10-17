@@ -12,6 +12,7 @@ struct AboutView: View {
     @AppStorage(PhoneSettings.quietFromKey) private var quietFrom = 22 * 60
     @AppStorage(PhoneSettings.quietToKey) private var quietTo = 8 * 60
     @AppStorage(SpotlightIndex.enabledKey) private var spotlight = true
+    @AppStorage("coucouAppLanguage") private var appLanguage = ""
     @State private var currentIcon = AppIconChoice.current
 
     private var version: String {
@@ -23,6 +24,21 @@ struct AboutView: View {
 
     var body: some View {
         List {
+            Section(String(localized: "Language")) {
+                Picker(String(localized: "Language"), selection: $appLanguage) {
+                    Text(String(localized: "System")).tag("")
+                    Text("English").tag("en")
+                    Text("ไทย").tag("th")
+                }
+                .onChange(of: appLanguage) { _, code in
+                    if code.isEmpty {
+                        UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                    } else {
+                        UserDefaults.standard.set([code], forKey: "AppleLanguages")
+                    }
+                    UserDefaults.standard.synchronize()
+                }
+            }
             Section {
                 HStack(spacing: 14) {
                     MochiLive(state: .idle)

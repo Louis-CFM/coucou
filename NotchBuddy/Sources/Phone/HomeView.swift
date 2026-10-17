@@ -15,13 +15,13 @@ struct HomeView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            Tab("Agents", systemImage: "sparkles", value: CoucouTab.agents) {
+            Tab(String(localized: "Agents"), systemImage: "sparkles", value: CoucouTab.agents) {
                 AgentsTab(link: link, path: $agentsPath)
             }
-            Tab("Services", systemImage: "square.grid.2x2", value: CoucouTab.services) {
+            Tab(String(localized: "Services"), systemImage: "square.grid.2x2", value: CoucouTab.services) {
                 ServicesTab(link: link, path: $servicesPath)
             }
-            Tab("History", systemImage: "clock.arrow.circlepath", value: CoucouTab.history) {
+            Tab(String(localized: "History"), systemImage: "clock.arrow.circlepath", value: CoucouTab.history) {
                 NavigationStack { HistoryView(link: link) }
             }
             Tab(value: CoucouTab.search, role: .search) {

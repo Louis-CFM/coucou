@@ -932,6 +932,9 @@ final class IslandWindowController: NSWindowController {
             MainActor.assumeIsolated {
                 guard self.wasInIsland else { return }
                 self.fsm.userInteracted()
+                // Compact YouTube controls live inside the resting island.
+                // Let those clicks reach SwiftUI instead of treating them as
+                // a request to expand the island.
                 self.pendingIslandClick = true
                 self.hoverTimer?.cancel()
                 self.botHoverTimer?.cancel()
@@ -1251,7 +1254,7 @@ final class IslandWindowController: NSWindowController {
     func windowToIsland(_ loc: CGPoint) -> CGPoint {
         let panelH = window?.frame.height ?? 320
         let panelW = window?.frame.width  ?? 720
-        let islandLeft = (panelW - IslandConst.expandedWidth) / 2
+        let islandLeft = (panelW - CGFloat(state.expandedIslandWidth)) / 2
         // Island is glued to panel top; its bottom in AppKit = panelH - 176
         return CGPoint(
             x: loc.x - islandLeft,
@@ -1319,7 +1322,9 @@ final class IslandWindowController: NSWindowController {
         let panelH = window?.frame.height ?? 320
         let panelW = window?.frame.width  ?? 720
         let (islandW, fixedH) = islandSize(mode: s.mode, view: s.view,
-                                            progress: s.uploadProgress, nw: notchW, nh: notchH)
+                                            progress: s.uploadProgress, nw: notchW, nh: notchH,
+                                            expandedWidth: CGFloat(s.expandedIslandWidth),
+                                            compactExtraWidth: CGFloat(s.compactIslandExtraWidth))
         // Chat view resizes dynamically — must match IslandContainer.chatPromptHeight
         let islandH: CGFloat
         if s.mode == .expanded && s.view == .prompt {
@@ -1426,7 +1431,9 @@ final class IslandPanel: NSPanel {
     func currentIslandFrame(nw: CGFloat, nh: CGFloat) -> CGRect {
         let s = AppState.shared
         let (w, fixedH) = islandSize(mode: s.mode, view: s.view,
-                                      progress: s.uploadProgress, nw: nw, nh: nh)
+                                      progress: s.uploadProgress, nw: nw, nh: nh,
+                                      expandedWidth: CGFloat(s.expandedIslandWidth),
+                                      compactExtraWidth: CGFloat(s.compactIslandExtraWidth))
         let h: CGFloat
         if s.mode == .expanded && s.view == .prompt {
             let base: CGFloat = 240
@@ -2036,15 +2043,17 @@ extension Notification.Name {
 func islandSize(mode: IslandMode, view: IslandView,
                 progress: Double = 0,
                 nw: CGFloat = IslandConst.notchWidth,
-                nh: CGFloat = IslandConst.notchHeight) -> (CGFloat, CGFloat) {
+                nh: CGFloat = IslandConst.notchHeight,
+                expandedWidth: CGFloat = IslandConst.expandedWidth,
+                compactExtraWidth: CGFloat = 160) -> (CGFloat, CGFloat) {
     switch mode {
     case .hidden:   return (nw, nh)
-    case .compact:  return (nw + 160, nh)
+    case .compact:  return (nw + compactExtraWidth, nh)
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
         if view == .question, let h = QuestionLayout.height {
-            return (IslandConst.expandedWidth, h)
+            return (expandedWidth, h)
         }
-        return (IslandConst.expandedWidth, layout.height)
+        return (expandedWidth, layout.height)
     }
 }
