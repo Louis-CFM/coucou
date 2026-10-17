@@ -262,6 +262,7 @@ struct OverviewView: View {
             #endif
         case "agent_codex":
             #if !APPSTORE
+            if ClaudeHost.activate(task.sessionLink) { return }
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.openai.codex") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)

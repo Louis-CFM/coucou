@@ -34,6 +34,7 @@ enum ClaudeHostTests {
 
         print("ClaudeHost.keepsSessionLink")
         check("Claude Code keeps its host", ClaudeHost.keepsSessionLink(pillId: "integration_claude"))
+        check("Codex keeps its host", ClaudeHost.keepsSessionLink(pillId: "agent_codex"))
         check("Cursor doesn't", !ClaudeHost.keepsSessionLink(pillId: "agent_cursor"))
         check("no pill doesn't", !ClaudeHost.keepsSessionLink(pillId: nil))
 

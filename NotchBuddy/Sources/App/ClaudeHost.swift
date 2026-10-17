@@ -67,10 +67,10 @@ struct ClaudeHost: Equatable {
         hostApp == nil ? "VS Code" : "Claude Code"
     }
 
-    /// Pills that keep the app and link of the session they show (Claude Code runs in
-    /// terminals and Conductor), so "Open terminal" goes back to that session.
+    /// Pills that keep the app and link of the session they show (Claude Code and Codex
+    /// both run in terminals and Conductor), so "Open terminal" goes back to that session.
     static func keepsSessionLink(pillId: String?) -> Bool {
-        pillId == "integration_claude"
+        pillId == "integration_claude" || pillId == "agent_codex"
     }
 
     /// Conductor's link to the workspace and chat a session runs in

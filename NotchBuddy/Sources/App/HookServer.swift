@@ -452,6 +452,7 @@ final class HookServer: @unchecked Sendable {
         if isCodexEvent {
             agentId = "agent_codex"
             isExternalAgent = false
+            hostApp = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)?.bundleId
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
