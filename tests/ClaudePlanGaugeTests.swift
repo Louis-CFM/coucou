@@ -121,6 +121,42 @@ enum ClaudePlanGaugeTests {
         check("70 pct → 'Claude 70%'",                 ClaudePlanGauge.pillLabel(both),   "Claude 70%")
         check("55 pct → 'Claude 55%'",                 ClaudePlanGauge.pillLabel(fhOnly), "Claude 55%")
 
+        // ── merge ──────────────────────────────────────────────────────────────
+        // Several Claude Code sessions relay their own, possibly stale, rate_limits.
+        print("ClaudePlanGauge.merge")
+
+        let window = Date(timeIntervalSince1970: futureEpoch)
+        let nextWindow = Date(timeIntervalSince1970: futureEpoch + 18000)
+        let current = PlanUsage(fiveHour: PlanWindow(usedPct: 34, resetsAt: window),
+                                sevenDay: PlanWindow(usedPct: 44, resetsAt: window),
+                                updatedAt: Date())
+
+        let stale = PlanUsage(fiveHour: PlanWindow(usedPct: 33, resetsAt: window),
+                              sevenDay: PlanWindow(usedPct: 38, resetsAt: window),
+                              updatedAt: Date())
+        let afterStale = ClaudePlanGauge.merge(current, with: stale)
+        checkTrue("same window, lower pct → keeps 5h 34",  afterStale.fiveHour?.usedPct == 34)
+        checkTrue("same window, lower pct → keeps 7d 44",  afterStale.sevenDay?.usedPct == 44)
+
+        let higher = PlanUsage(fiveHour: PlanWindow(usedPct: 35, resetsAt: window),
+                               sevenDay: nil, updatedAt: Date())
+        let afterHigher = ClaudePlanGauge.merge(current, with: higher)
+        checkTrue("same window, higher pct → 5h 35",       afterHigher.fiveHour?.usedPct == 35)
+        checkTrue("missing window → keeps 7d 44",          afterHigher.sevenDay?.usedPct == 44)
+
+        let reset = PlanUsage(fiveHour: PlanWindow(usedPct: 2, resetsAt: nextWindow),
+                              sevenDay: nil, updatedAt: Date())
+        let afterReset = ClaudePlanGauge.merge(current, with: reset)
+        checkTrue("newer window → 5h 2 after reset",       afterReset.fiveHour?.usedPct == 2)
+
+        let older = PlanUsage(fiveHour: PlanWindow(usedPct: 90, resetsAt: window),
+                              sevenDay: nil, updatedAt: Date())
+        let afterOlder = ClaudePlanGauge.merge(afterReset, with: older)
+        checkTrue("older window → ignored, 5h stays 2",    afterOlder.fiveHour?.usedPct == 2)
+
+        checkTrue("no current → takes incoming",
+                  ClaudePlanGauge.merge(nil, with: stale).sevenDay?.usedPct == 38)
+
         // ── finish ─────────────────────────────────────────────────────────────
         if failures == 0 {
             print("\nAll tests passed.")
