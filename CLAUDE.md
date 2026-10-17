@@ -15,6 +15,7 @@ Coucou is a native macOS app (`NotchBuddy/`); `windows/` is the Tauri version fo
 ```
 cd NotchBuddy && xcodegen && xcodebuild -scheme NotchBuddy -configuration Debug build
 ```
+To run it day to day on the Mac (signed, iPhone link, permissions kept across builds): `./scripts/dev-install.sh` — it installs the only Coucou in /Applications and removes the copies earlier builds left.
 Windows and Linux: `cd windows && npm install && npm run tauri dev`
 
 ## Rules

@@ -84,8 +84,16 @@ struct ReviewSheet: View {
     let link: PhoneLink
     let fingerprint: String
     @Environment(\.dismiss) private var dismiss
+    /// Set once the Mac's sessions were fetched again: until then, "already answered" may be wrong.
+    @State private var checked = false
 
     private var session: SessionItem? { link.sessions.first { $0.approvalFingerprint == fingerprint } }
+
+    /// The Mac waits 115 s for an answer, then hands the request back to the agent.
+    private var expired: Bool {
+        guard let since = link.reviewSince else { return false }
+        return Date().timeIntervalSince(since) > 115
+    }
 
     var body: some View {
         NavigationStack {
@@ -105,11 +113,23 @@ struct ReviewSheet: View {
                             }
                         }
                         ApprovalCard(link: link, session: session)
-                    } else {
-                        Text("This request was already answered or has expired.")
-                            .foregroundStyle(.secondary)
+                    } else if !checked {
+                        ProgressView("Checking with your Mac…")
                             .frame(maxWidth: .infinity)
                             .padding(40)
+                    } else {
+                        VStack(spacing: 8) {
+                            Text(expired ? "This request expired." : "Already answered on your Mac.")
+                                .font(.headline)
+                            Text(expired
+                                 ? "Your Mac waits 2 minutes for an answer, then the agent asks again in its own window."
+                                 : "It was answered there (in the terminal or VS Code), or the command went ahead.")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(40)
                     }
                 }
                 .padding(16)
@@ -121,6 +141,10 @@ struct ReviewSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .refreshable { await link.refresh() }
+            .task {
+                await link.refresh()
+                checked = true
+            }
         }
     }
 }
