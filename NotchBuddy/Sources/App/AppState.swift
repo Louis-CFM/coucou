@@ -10,6 +10,18 @@ final class AppState: ObservableObject {
     // Island state
     @Published var mode: IslandMode = .hidden
     @Published var view: IslandView = .overview
+    @Published var expandedIslandWidth: Double = {
+        let saved = UserDefaults.standard.double(forKey: "expandedIslandWidth")
+        return saved == 0 ? Double(IslandConst.expandedWidth) : min(max(saved, 480), 720)
+    }() {
+        didSet { UserDefaults.standard.set(expandedIslandWidth, forKey: "expandedIslandWidth") }
+    }
+    @Published var compactIslandExtraWidth: Double = {
+        let saved = UserDefaults.standard.double(forKey: "compactIslandExtraWidth")
+        return saved == 0 ? 160 : min(max(saved, 80), 280)
+    }() {
+        didSet { UserDefaults.standard.set(compactIslandExtraWidth, forKey: "compactIslandExtraWidth") }
+    }
 
     // Tasks
     @Published var tasks: [AgentTask] = []

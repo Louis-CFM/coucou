@@ -37,6 +37,9 @@ struct IslandRestingLayout {
 
     var botDiameter: CGFloat { min(20, max(0, height - 6)) }
     var botCenterY: CGFloat { height / 2 }
-    var miniGridScale: CGFloat { min(1, max(0, height - 4) / 28) }
-    var miniGridCenterX: CGFloat { width - 40 }
+    var miniGridScale: CGFloat { min(1, max(0.35, min(max(0, height - 4) / 28, (miniGridCenterX - botCenterX - 18) / 28))) }
+    // Keep Mochi on the left and the mini grid inside the visible compact extension.
+    private var compactExtension: CGFloat { max(0, width - IslandScreenGeometry.fallbackNotchWidth) }
+    var botCenterX: CGFloat { min(40, max(18, compactExtension * 0.22)) }
+    var miniGridCenterX: CGFloat { max(botCenterX + 38, width - min(40, compactExtension * 0.22)) }
 }

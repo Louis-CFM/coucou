@@ -54,9 +54,6 @@ struct YouTubeCardView: View {
                 Text("YouTube").font(.system(size: 12, weight: .semibold))
                 Text(controller.browserName ?? String(localized: "Safari / Chrome")).font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
-                Button { controller.openVideo() } label: {
-                    Image(systemName: "arrow.up.right.square")
-                }.buttonStyle(.plain)
             }
             if let title = controller.title {
                 Text(title).font(.system(size: 13, weight: .medium)).lineLimit(2)
@@ -85,8 +82,6 @@ struct YouTubeCardView: View {
             } else {
                 Text(String(localized: "Play a YouTube video in Safari or Chrome to show it here."))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
-                Button(String(localized: "Open YouTube")) { controller.openVideo() }
-                    .buttonStyle(.plain).foregroundStyle(red)
             }
         }
         .padding(.leading, 108)

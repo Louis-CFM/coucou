@@ -236,6 +236,12 @@
     "%@ is ready." : {
 
     },
+    "%@ px" : {
+
+    },
+    "%@ px wider" : {
+
+    },
     "%@: %@" : {
       "localizations" : {
         "en" : {
@@ -1149,6 +1155,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "允许 Coucou 控制音乐"
+          }
+        }
+      }
+    },
+    "Allow Coucou to control Safari or Chrome in System Settings → Privacy & Security → Automation." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Coucou to control Safari or Chrome in System Settings → Privacy & Security → Automation."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุญาตให้ Coucou ควบคุม Safari หรือ Chrome ที่ การตั้งค่าระบบ → ความเป็นส่วนตัวและความปลอดภัย → การทำงานอัตโนมัติ"
           }
         }
       }
@@ -4208,6 +4230,9 @@
         }
       }
     },
+    "Choose how wide the notch opens. The value is saved automatically." : {
+
+    },
     "Choose the tools you use. Coucou only shows what you declare here." : {
       "localizations" : {
         "ar" : {
@@ -5131,6 +5156,9 @@
           }
         }
       }
+    },
+    "Collapsed notch width" : {
+
     },
     "Color" : {
       "localizations" : {
@@ -7330,6 +7358,22 @@
         }
       }
     },
+    "Enable JavaScript from Apple Events in Safari or Chrome settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable JavaScript from Apple Events in Safari or Chrome settings."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดใช้ JavaScript จาก Apple Events ในการตั้งค่า Safari หรือ Chrome"
+          }
+        }
+      }
+    },
     "Enable sounds" : {
       "localizations" : {
         "ar" : {
@@ -7489,6 +7533,9 @@
           }
         }
       }
+    },
+    "Expanded notch width" : {
+
     },
     "Failed" : {
       "localizations" : {
@@ -22317,6 +22364,9 @@
         }
       }
     },
+    "Keeps Mochi and the mini icons visible while adjusting the collapsed notch width." : {
+
+    },
     "Key configured · %@" : {
       "localizations" : {
         "ar" : {
@@ -29290,6 +29340,23 @@
         }
       }
     },
+    "Open YouTube" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open YouTube"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิด YouTube"
+          }
+        }
+      }
+    },
     "Other…" : {
       "localizations" : {
         "ar" : {
@@ -29496,6 +29563,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂停"
+          }
+        }
+      }
+    },
+    "Paused · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused · %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุดชั่วคราว · %@"
           }
         }
       }
@@ -30897,6 +30980,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "播放"
+          }
+        }
+      }
+    },
+    "Play a YouTube video in Safari or Chrome to show it here." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play a YouTube video in Safari or Chrome to show it here."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดวิดีโอ YouTube ใน Safari หรือ Chrome เพื่อแสดงที่นี่"
           }
         }
       }
@@ -35792,6 +35891,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "秒无活动"
+          }
+        }
+      }
+    },
+    "Safari / Chrome" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari / Chrome"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari / Chrome"
           }
         }
       }
@@ -48829,6 +48944,22 @@
         }
       }
     },
+    "YouTube" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YouTube"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YouTube"
+          }
+        }
+      }
+    },
     "z" : {
       "localizations" : {
         "th" : {
@@ -48899,118 +49030,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "简体中文"
-          }
-        }
-      }
-    },
-    "YouTube" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "YouTube"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "YouTube"
-          }
-        }
-      }
-    },
-    "Safari / Chrome" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Safari / Chrome"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Safari / Chrome"
-          }
-        }
-      }
-    },
-    "Paused · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paused · %@"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "หยุดชั่วคราว · %@"
-          }
-        }
-      }
-    },
-    "Allow Coucou to control Safari or Chrome in System Settings → Privacy & Security → Automation." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allow Coucou to control Safari or Chrome in System Settings → Privacy & Security → Automation."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "อนุญาตให้ Coucou ควบคุม Safari หรือ Chrome ที่ การตั้งค่าระบบ → ความเป็นส่วนตัวและความปลอดภัย → การทำงานอัตโนมัติ"
-          }
-        }
-      }
-    },
-    "Enable JavaScript from Apple Events in Safari or Chrome settings." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enable JavaScript from Apple Events in Safari or Chrome settings."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เปิดใช้ JavaScript จาก Apple Events ในการตั้งค่า Safari หรือ Chrome"
-          }
-        }
-      }
-    },
-    "Play a YouTube video in Safari or Chrome to show it here." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Play a YouTube video in Safari or Chrome to show it here."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เปิดวิดีโอ YouTube ใน Safari หรือ Chrome เพื่อแสดงที่นี่"
-          }
-        }
-      }
-    },
-    "Open YouTube" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open YouTube"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เปิด YouTube"
           }
         }
       }

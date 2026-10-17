@@ -1,10 +1,11 @@
 #if !APPSTORE
 import AppKit
+import ApplicationServices
 import Combine
 import Foundation
 
-/// Reads and controls YouTube tabs in Safari and Chrome through their AppleScript JavaScript bridges.
-/// Browsers require their respective “Allow JavaScript from Apple Events” setting to be enabled.
+/// Reads YouTube tabs in browsers with AppleScript JavaScript bridges, and uses
+/// macOS media-key events as a playback-control fallback for other browsers.
 @MainActor
 final class YouTubeController: ObservableObject {
     static let shared = YouTubeController()
@@ -62,11 +63,12 @@ final class YouTubeController: ObservableObject {
     private func refresh() {
         guard isPillActive, !pollInFlight else { return }
         pollInFlight = true
-        let running = NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier)
-        let candidates: [(String, String)] = [
-            ("com.google.Chrome", "Google Chrome"),
-            ("com.apple.Safari", "Safari")
-        ].filter { running.contains($0.0) }
+        let runningApps = NSWorkspace.shared.runningApplications
+        let running = runningApps.compactMap(\.bundleIdentifier)
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let frontmostInfo = (frontmost?.bundleIdentifier, frontmost?.processIdentifier ?? 0,
+                             frontmost?.localizedName ?? "Browser")
+        let candidates = Self.browserCandidates.filter { running.contains($0.0) }
         guard !candidates.isEmpty else {
             pollInFlight = false
             clearPlayback()
@@ -94,7 +96,13 @@ final class YouTubeController: ObservableObject {
                 if case .value(let raw) = result, !raw.isEmpty { break }
             }
             if case .value(let raw) = result, raw.isEmpty {
-                if denied { result = .denied }
+                if let bundleID = frontmostInfo.0,
+                   Self.browserCandidates.contains(where: { $0.0 == bundleID }),
+                   let page = Self.accessibilityYouTubePage(pid: frontmostInfo.1, browser: frontmostInfo.2) {
+                    result = .value(page)
+                    failed = false
+                    denied = false
+                } else if denied { result = .denied }
                 else if failed { result = .failed }
             }
             Task { @MainActor [weak self] in
@@ -167,8 +175,15 @@ final class YouTubeController: ObservableObject {
     }
 
     private func control(_ command: String) {
-        guard let url, let browserName else { return }
+        guard let url, let browserName else {
+            Self.sendMediaKey(for: command)
+            return
+        }
         let source = Self.controlScript(browserName: browserName, url: url.absoluteString, command: command)
+        guard !source.isEmpty else {
+            Self.sendMediaKey(for: command)
+            return
+        }
         queue.async { [weak self] in
             let result = Self.execute(source)
             Task { @MainActor [weak self] in
@@ -178,6 +193,7 @@ final class YouTubeController: ObservableObject {
                     self.automationDenied = true
                 case .failed:
                     self.browserScriptingUnavailable = true
+                    Self.sendMediaKey(for: command)
                 case .value(let value):
                     if command == "toggle" {
                         // Show the actual target requested by the page script.
@@ -199,13 +215,29 @@ final class YouTubeController: ObservableObject {
         }
     }
 
-    private struct PageState: Decodable {
+    private struct PageState: Codable {
         let title: String
         let paused: Bool
         let ended: Bool
     }
 
     private enum ScriptResult: Sendable { case value(String), denied, failed }
+
+    nonisolated private static let browserCandidates: [(String, String)] = [
+        ("com.apple.Safari", "Safari"),
+        ("com.google.Chrome", "Google Chrome"),
+        ("company.thebrowser.Browser", "Arc"),
+        ("com.microsoft.edgemac", "Microsoft Edge"),
+        ("org.mozilla.firefox", "Firefox"),
+        ("com.brave.Browser", "Brave Browser"),
+        ("com.operasoftware.Opera", "Opera"),
+        ("com.vivaldi.Vivaldi", "Vivaldi"),
+        ("org.chromium.Chromium", "Chromium"),
+        ("com.google.Chrome.beta", "Google Chrome Beta"),
+        ("com.google.Chrome.canary", "Google Chrome Canary"),
+        ("com.microsoft.edgemac.Canary", "Microsoft Edge Canary"),
+        ("com.kagi.kagimacos", "Orion")
+    ]
 
     nonisolated private static let jsState = #"(()=>{const v=document.querySelector('video');if(!v)return '';return JSON.stringify({title:document.title.replace(/ - YouTube$/,''),paused:v.paused,ended:v.ended})})()"#
     nonisolated private static let jsToggle = #"(()=>{const v=document.querySelector('video');if(!v)return 'no-video';const b=document.querySelector('.ytp-play-button');if(v.paused){if(b)b.click();const p=v.play();if(p&&p.catch)p.catch(()=>{});return 'playing'}if(b)b.click();v.pause();return 'paused'})()"#
@@ -215,7 +247,13 @@ final class YouTubeController: ObservableObject {
     nonisolated private static func readScript(for browsers: [(String, String)]) -> String {
         let results = browsers.map { bundle, name -> String in
             let app = "application id \"\(bundle)\""
-            if bundle == "com.google.Chrome" {
+            if bundle == "org.mozilla.firefox" {
+                return ""
+            }
+            if bundle == "org.chromium.Chromium" || bundle == "com.brave.Browser" ||
+                bundle == "com.operasoftware.Opera" || bundle == "com.vivaldi.Vivaldi" ||
+                bundle == "company.thebrowser.Browser" || bundle == "com.kagi.kagimacos" ||
+                bundle.hasPrefix("com.google.Chrome") || bundle.hasPrefix("com.microsoft.edgemac") {
                 return """
                 tell \(app)
                     repeat with wi from 1 to count of windows
@@ -260,9 +298,11 @@ final class YouTubeController: ObservableObject {
             .replacingOccurrences(of: "\"", with: "\\\"")
         let tabCondition = escapedVideoID.map { "URL of t contains \"\($0)\"" }
             ?? "URL of t contains \"youtube.com\""
-        if browserName == "Google Chrome" {
+        if browserName == "Firefox" { return "" }
+        if let bundleID = browserCandidates.first(where: { $0.1 == browserName })?.0,
+           bundleID != "com.apple.Safari" {
             return """
-            tell application id "com.google.Chrome"
+            tell application id "\(bundleID)"
                 repeat with wi from 1 to count of windows
                     repeat with ti from 1 to count of tabs of window wi
                         set t to tab ti of window wi
@@ -288,12 +328,49 @@ final class YouTubeController: ObservableObject {
     }
 
     nonisolated private static func execute(_ source: String) -> ScriptResult {
+        guard !source.isEmpty else { return .value("") }
         guard let script = NSAppleScript(source: source) else { return .value("") }
         var error: NSDictionary?
         let result = script.executeAndReturnError(&error)
         if let error, (error[NSAppleScript.errorNumber] as? Int) == -1743 { return .denied }
         if error != nil { return .failed }
         return .value(result.stringValue ?? "")
+    }
+
+    nonisolated private static func accessibilityYouTubePage(pid: pid_t, browser: String) -> String? {
+        guard pid > 0 else { return nil }
+        let app = AXUIElementCreateApplication(pid)
+        var windowValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString,
+                                            &windowValue) == .success,
+              let windowValue else { return nil }
+        let window = windowValue as! AXUIElement
+        var titleValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString,
+                                            &titleValue) == .success,
+              let title = titleValue as? String,
+              title.localizedCaseInsensitiveContains("youtube") else { return nil }
+        let cleanTitle = title.replacingOccurrences(of: " - YouTube", with: "")
+        let payload = PageState(title: cleanTitle, paused: false, ended: false)
+        guard let data = try? JSONEncoder().encode(payload),
+              let json = String(data: data, encoding: .utf8) else { return nil }
+        return "\(browser)\nhttps://www.youtube.com\n\(json)"
+    }
+
+    nonisolated private static func sendMediaKey(for command: String) {
+        let keyCode: Int
+        switch command {
+        case "toggle": keyCode = 16 // NX_KEYTYPE_PLAY
+        case "next": keyCode = 17 // NX_KEYTYPE_NEXT
+        default: keyCode = 18 // NX_KEYTYPE_PREVIOUS
+        }
+        for state in [0xA, 0xB] {
+            let data1 = (keyCode << 16) | (state << 8)
+            NSEvent.otherEvent(with: .systemDefined, location: .zero,
+                               modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                               windowNumber: 0, context: nil, subtype: 8,
+                               data1: data1, data2: -1)?.cgEvent?.post(tap: .cghidEventTap)
+        }
     }
 }
 #endif

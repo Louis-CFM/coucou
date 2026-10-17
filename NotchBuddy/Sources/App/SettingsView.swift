@@ -362,6 +362,32 @@ struct SettingsView: View {
 
         GroupBox("Display") {
             VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Expanded notch width")
+                    Spacer()
+                    Text("\(Int(state.expandedIslandWidth)) px")
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
+                }
+                Slider(value: $state.expandedIslandWidth, in: 480...720, step: 20)
+                    .frame(maxWidth: 360)
+                    .accessibilityLabel("Expanded notch width")
+                Text("Choose how wide the notch opens. The value is saved automatically.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                HStack {
+                    Text("Collapsed notch width")
+                    Spacer()
+                    Text("\(Int(state.compactIslandExtraWidth)) px wider")
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
+                }
+                Slider(value: $state.compactIslandExtraWidth, in: 80...280, step: 20)
+                    .frame(maxWidth: 360)
+                    .accessibilityLabel("Collapsed notch width")
+                Text("Keeps Mochi and the mini icons visible while adjusting the collapsed notch width.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
                 Picker("Show Mochi on", selection: $state.islandDisplay) {
                     Text("Screen with the notch").tag(IslandDisplayChoice.notch)
                     Text("Main screen (menu bar)").tag(IslandDisplayChoice.menuBar)
