@@ -59,6 +59,17 @@ struct ApprovalInfo: Sendable {
     var queueCount: Int = 1
     /// Project of the session that asks (several sessions can share one pill).
     var projectName: String = ""
+    /// Where "jump to terminal" goes while this card is up: the session that asked.
+    var link: SessionLink? = nil
+}
+
+// MARK: - Session link (captured by a card when it appears)
+
+/// The app a Claude Code session runs in and the link back to it. Several sessions share the
+/// integration_claude pill, which keeps only one of them: a card keeps the session it belongs to.
+struct SessionLink: Equatable, Sendable {
+    var hostApp: String?
+    var hostURL: URL?
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
@@ -83,6 +94,7 @@ struct AgentTask: Identifiable, Equatable {
     var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
+    var hostURL: URL?        = nil  // link back to the session inside its host (a Conductor workspace)
 }
 
 enum AgentSource: Equatable {

@@ -218,7 +218,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            if ClaudeHost.activate(task.hostApp) { return }
+            if ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -262,6 +262,8 @@ struct OverviewView: View {
             #endif
         case "agent_codex":
             #if !APPSTORE
+            // A session from a terminal or Conductor: back to it, else the Codex app
+            if ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) { return }
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.openai.codex") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
@@ -691,8 +693,9 @@ struct ErrorView: View {
 
 #if !APPSTORE
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
-private func openSessionApp(_ task: AgentTask?) {
-    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+private func openSessionApp(_ task: AgentTask?, link: SessionLink? = nil) {
+    let link = link ?? SessionLink(hostApp: task?.hostApp, hostURL: task?.hostURL)
+    if !(ClaudeHost.recordsHost(pillId: task?.id) && ClaudeHost.activate(link.hostApp, sessionURL: link.hostURL)),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }
@@ -736,7 +739,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            openSessionApp(state.focusTask)
+                            openSessionApp(state.focusTask, link: state.finishedLink)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif
@@ -2272,7 +2275,7 @@ struct IntegrationCardView: View {
 
                 HStack(spacing: 8) {
                     if task.id == "integration_claude", task.hostApp != nil {
-                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp, sessionURL: task.hostURL) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
