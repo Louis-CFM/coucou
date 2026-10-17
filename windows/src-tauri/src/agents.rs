@@ -195,7 +195,14 @@ impl Agent {
                     .collect();
                 Box::new(move |v| gemini_install(v, &commands).map(Some))
             }
-            (Agent::Antigravity, false) => Box::new(|v| antigravity_uninstall(v).map(Some)),
+            (Agent::Antigravity, false) => Box::new(|v| {
+                let after = antigravity_uninstall(v)?;
+                if after.as_object().is_some_and(|m| m.is_empty()) {
+                    Ok(None)
+                } else {
+                    Ok(Some(after))
+                }
+            }),
             (Agent::Antigravity, true) => {
                 let block = antigravity_block(relay);
                 Box::new(move |v| antigravity_install(v, &block).map(Some))
@@ -236,32 +243,40 @@ impl Agent {
         }
     }
 
-    /// True when the agent's config already routes to Coucou. Never fails: a
-    /// file we cannot read just reads as "not installed".
+    /// The settings display treats an unreadable config as not installed.
     fn installed(self, home: &Path) -> bool {
+        self.installed_checked(home).unwrap_or(false)
+    }
+
+    /// Cleanup must distinguish an absent hook from a config we cannot inspect.
+    fn installed_checked(self, home: &Path) -> Result<bool, String> {
         let files = self.files(home);
+        let bytes = config_file::read(&files[0])?;
         if matches!(self, Agent::OpenCode | Agent::Amp | Agent::Hermes) {
-            return std::fs::read_to_string(&files[0]).is_ok_and(|text| is_our_plugin(&text));
+            return match bytes {
+                None => Ok(false),
+                Some(bytes) => {
+                    let text = std::str::from_utf8(&bytes).map_err(|_| {
+                        crate::i18n::tf("{file} isn't UTF-8 text — Coucou won't touch it.",
+                            &[("file", &files[0].display().to_string())])
+                    })?;
+                    Ok(is_our_plugin(text))
+                }
+            };
         }
-        let json = || {
-            config_file::read(&files[0])
-                .ok()
-                .flatten()
-                .and_then(|b| config_file::parse_json(Some(&b), "").ok())
-                .unwrap_or_else(|| json!({}))
-        };
-        match self {
-            Agent::Gemini => groups_have_ours(&json(), "gemini"),
-            Agent::Antigravity => json().get("coucou").is_some_and(antigravity_is_ours),
-            Agent::Cursor => groups_have_ours(&json(), "cursor"),
-            Agent::Codex => groups_have_ours(&json(), "codex"),
-            Agent::Copilot => json()
+        let current = config_file::parse_json(bytes.as_deref(), &files[0].display().to_string())?;
+        Ok(match self {
+            Agent::Gemini => groups_have_ours(&current, "gemini"),
+            Agent::Antigravity => current.get("coucou").is_some_and(antigravity_is_ours),
+            Agent::Cursor => groups_have_ours(&current, "cursor"),
+            Agent::Codex => groups_have_ours(&current, "codex"),
+            Agent::Copilot => current
                 .get("hooks")
                 .and_then(Value::as_object)
                 .is_some_and(|h| h.values().filter_map(Value::as_array).flatten().any(copilot_entry_is_ours)),
-            Agent::Muse => groups_have_ours(&json(), "muse"),
+            Agent::Muse => groups_have_ours(&current, "muse"),
             Agent::OpenCode | Agent::Amp | Agent::Hermes => false,
-        }
+        })
     }
 
     /// Whether the island can answer this agent's permission requests. Must
@@ -364,6 +379,30 @@ fn apply_in(agent: Agent, home: &Path, relay: &Relay, install: bool, fingerprint
         }
     }
     Ok(backups.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n"))
+}
+
+/// Uninstalls all agent hooks that Coucou currently routes to. An unreadable
+/// config or failed edit is an error: the uninstaller must keep the relay.
+pub fn uninstall_all() -> Result<Vec<String>, String> {
+    uninstall_all_in(&platform::home_dir())
+}
+
+pub fn uninstall_all_in(home: &Path) -> Result<Vec<String>, String> {
+    let relay = Relay::current();
+    let mut plans = Vec::new();
+    // Inspect every config before starting to remove hooks.
+    for &agent in Agent::ALL {
+        if agent.installed_checked(home)? {
+            let plan = config_file::preview(&agent.edits(home, &relay, false))?;
+            plans.push((agent, plan.fingerprint));
+        }
+    }
+    let mut cleaned = Vec::new();
+    for (agent, fingerprint) in plans {
+        apply_in(agent, home, &relay, false, &fingerprint)?;
+        cleaned.push(agent.id().to_string());
+    }
+    Ok(cleaned)
 }
 
 // ── Shared JSON helpers ───────────────────────────────────────────────────────
@@ -1116,6 +1155,110 @@ mod tests {
             assert!(ours[event][0]["command"].as_str().unwrap().contains(MARKER));
         }
         assert_eq!(removed.unwrap(), serde_json::from_str::<Value>(existing).unwrap());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn antigravity_file_is_removed_when_nothing_else_was_in_it() {
+        let (home, _installed, removed) = round_trip(Agent::Antigravity, None);
+        assert!(removed.is_none(), "the file should be gone when Coucou was its only content");
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn uninstall_all_removes_every_configured_agent_hooks() {
+        let home = scratch("uninstall-all-agents");
+        let relay = linux();
+        for agent in [Agent::Antigravity, Agent::Cursor] {
+            let plan = config_file::preview(&agent.edits(&home, &relay, true)).unwrap();
+            apply_in(agent, &home, &relay, true, &plan.fingerprint).unwrap();
+            assert!(agent.installed(&home));
+        }
+        let cleaned = uninstall_all_in(&home).unwrap();
+        assert!(cleaned.contains(&"antigravity".to_string()));
+        assert!(cleaned.contains(&"cursor".to_string()));
+        assert!(!Agent::Antigravity.installed(&home));
+        assert!(!Agent::Cursor.installed(&home));
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn uninstall_all_refuses_unreadable_or_malformed_configs_before_removing_hooks() {
+        for directory in [false, true] {
+            let home = scratch(&format!("uninstall-invalid-{directory}"));
+            let relay = linux();
+            let cursor = Agent::Cursor.files(&home)[0].clone();
+            let plan = config_file::preview(&Agent::Cursor.edits(&home, &relay, true)).unwrap();
+            apply_in(Agent::Cursor, &home, &relay, true, &plan.fingerprint).unwrap();
+            let original = std::fs::read(&cursor).unwrap();
+            let invalid = Agent::Antigravity.files(&home)[0].clone();
+            std::fs::create_dir_all(invalid.parent().unwrap()).unwrap();
+            if directory {
+                std::fs::create_dir(&invalid).unwrap();
+            } else {
+                std::fs::write(&invalid, b"{ broken").unwrap();
+            }
+            assert!(uninstall_all_in(&home).is_err());
+            assert_eq!(std::fs::read(&cursor).unwrap(), original);
+            if directory {
+                assert!(invalid.is_dir());
+            } else {
+                assert_eq!(std::fs::read(&invalid).unwrap(), b"{ broken");
+            }
+            let _ = std::fs::remove_dir_all(home);
+        }
+    }
+
+    #[test]
+    fn uninstall_all_keeps_other_tools_and_is_safe_to_repeat() {
+        let home = scratch("uninstall-other-tools");
+        let relay = linux();
+        let cursor = Agent::Cursor.files(&home)[0].clone();
+        std::fs::create_dir_all(cursor.parent().unwrap()).unwrap();
+        let original = br#"{"version":1,"hooks":{"beforeShellExecution":[{"command":"other-tool"}]}}"#;
+        std::fs::write(&cursor, original).unwrap();
+        assert!(uninstall_all_in(&home).unwrap().is_empty());
+        assert_eq!(std::fs::read(&cursor).unwrap(), original);
+        let plan = config_file::preview(&Agent::Cursor.edits(&home, &relay, true)).unwrap();
+        apply_in(Agent::Cursor, &home, &relay, true, &plan.fingerprint).unwrap();
+        assert_eq!(uninstall_all_in(&home).unwrap(), vec!["cursor"]);
+        assert_eq!(read_json(&cursor), serde_json::from_slice::<Value>(original).unwrap());
+        assert!(uninstall_all_in(&home).unwrap().is_empty());
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn uninstall_all_returns_plugin_preview_errors_without_removing_files() {
+        let home = scratch("uninstall-plugin-preview");
+        let relay = linux();
+        let files = Agent::Hermes.files(&home);
+        let plan = config_file::preview(&Agent::Hermes.edits(&home, &relay, true)).unwrap();
+        apply_in(Agent::Hermes, &home, &relay, true, &plan.fingerprint).unwrap();
+        let plugin = std::fs::read(&files[0]).unwrap();
+        std::fs::write(&files[1], b"name: someone-else").unwrap();
+        assert!(uninstall_all_in(&home).is_err());
+        assert_eq!(std::fs::read(&files[0]).unwrap(), plugin);
+        assert_eq!(std::fs::read(&files[1]).unwrap(), b"name: someone-else");
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn uninstall_all_returns_apply_errors_and_keeps_the_config() {
+        use std::os::unix::fs::PermissionsExt;
+        let home = scratch("uninstall-agent-apply");
+        let relay = linux();
+        let file = Agent::Antigravity.files(&home)[0].clone();
+        let plan = config_file::preview(&Agent::Antigravity.edits(&home, &relay, true)).unwrap();
+        apply_in(Agent::Antigravity, &home, &relay, true, &plan.fingerprint).unwrap();
+        let original = std::fs::read(&file).unwrap();
+        let dir = file.parent().unwrap();
+        let permissions = std::fs::metadata(dir).unwrap().permissions();
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+        let result = uninstall_all_in(&home);
+        std::fs::set_permissions(dir, permissions).unwrap();
+        assert!(result.is_err());
+        assert_eq!(std::fs::read(&file).unwrap(), original);
         let _ = std::fs::remove_dir_all(home);
     }
 

@@ -330,6 +330,49 @@ pub fn status_line_write(install: bool, fingerprint: &str) -> Result<String, Str
     Ok(backups.first().map(|p| p.to_string_lossy().to_string()).unwrap_or_default())
 }
 
+/// Uninstalls Claude Code hooks and the plan relay. Inspect settings strictly:
+/// an unreadable file cannot safely be treated as an unconfigured installation.
+pub fn uninstall_all() -> Result<bool, String> {
+    let Some(bytes) = config_file::read(&settings_path())? else { return Ok(false) };
+    let current = config_file::parse_json(Some(&bytes), "settings.json")?;
+    let installed = current.get("hooks")
+        .and_then(Value::as_object)
+        .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(entry_is_ours));
+    let relay_installed = plan_relay_installed(&current);
+    if !installed && !relay_installed {
+        return Ok(false);
+    }
+    // Never discard a user's saved status line just because it cannot be read.
+    let previous_bytes = if relay_installed {
+        config_file::read(&status_line_previous_path())?
+    } else {
+        None
+    };
+    let previous = previous_bytes.as_deref()
+        .map(|bytes| config_file::parse_json(Some(bytes), "statusline-previous.json"))
+        .transpose()?;
+    let mut expected = config_file::fingerprint(&bytes);
+    let mut edits = vec![FileEdit {
+        path: settings_path(),
+        edit: config_file::json_edit("settings.json".into(), move |current| {
+            let cleaned = without_ours(current)?;
+            Ok(Some(status_line_settings(&cleaned, false, previous.as_ref())?))
+        }),
+    }];
+    if relay_installed {
+        // Check and back up both snapshots before changing either file.
+        expected.push(':');
+        expected.push_str(&previous_bytes.as_deref()
+            .map(config_file::fingerprint).unwrap_or_else(|| "none".into()));
+        edits.push(FileEdit {
+            path: status_line_previous_path(),
+            edit: config_file::text_edit("statusline-previous.json".into(), |_| Ok(None)),
+        });
+    }
+    config_file::apply(&edits, &expected)?;
+    Ok(true)
+}
+
 fn save_status_line_previous(status_line: &Value) -> std::io::Result<()> {
     let path = status_line_previous_path();
     if let Some(dir) = path.parent() {
@@ -561,6 +604,17 @@ mod tests {
         assert!(pre.iter().any(|e| serde_json::to_string(e).unwrap().contains("other-tool.exe")));
         assert!(status().installed);
 
+        // Cleanup is repeatable and leaves the other tool's hooks in place.
+        assert!(uninstall_all().unwrap());
+        assert!(!status().installed);
+        assert_eq!(serde_json::from_slice::<Value>(&std::fs::read(&path).unwrap()).unwrap(),
+            serde_json::from_str::<Value>(original).unwrap());
+        assert!(!uninstall_all().unwrap());
+
+        // Reinstall so the stale preview test below has something to uninstall
+        let plan = preview(true).unwrap();
+        write(true, &plan.fingerprint).unwrap();
+
         // A file that moved since the preview is refused, and left alone.
         let stale = preview(false).unwrap();
         std::fs::write(&path, br#"{"model":"someone-else-edited-this"}"#).unwrap();
@@ -574,6 +628,55 @@ mod tests {
         assert!(preview(true).is_err());
         assert!(write(true, "whatever").is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
+
+        // A read failure must not be mistaken for an installation with no hooks.
+        std::fs::remove_file(&path).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        assert!(uninstall_all().is_err());
+        assert!(path.is_dir());
+        std::fs::remove_dir(&path).unwrap();
+
+        // Refuse a corrupt saved status line before removing any hooks.
+        let theirs = json!({ "type": "command", "command": "~/bin/my-line", "padding": 2 });
+        let mut with_line = serde_json::from_str::<Value>(original).unwrap();
+        with_line["statusLine"] = theirs.clone();
+        std::fs::write(&path, config_file::pretty(&with_line)).unwrap();
+        let plan = preview(true).unwrap();
+        write(true, &plan.fingerprint).unwrap();
+        let plan = status_line_preview(true).unwrap();
+        status_line_write(true, &plan.fingerprint).unwrap();
+        let before_cleanup = std::fs::read(&path).unwrap();
+        let saved = status_line_previous_path();
+        let saved_bytes = std::fs::read(&saved).unwrap();
+        std::fs::write(&saved, b"{ broken backup").unwrap();
+        assert!(uninstall_all().is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), before_cleanup);
+        assert_eq!(std::fs::read(&saved).unwrap(), b"{ broken backup");
+        std::fs::write(&saved, saved_bytes).unwrap();
+        assert!(uninstall_all().unwrap());
+        let cleaned: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(cleaned, with_line);
+        assert_eq!(cleaned["statusLine"], theirs);
+        assert!(!saved.exists());
+        assert!(!uninstall_all().unwrap());
+
+        // An apply/backup failure is returned, with settings left untouched.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let plan = preview(true).unwrap();
+            write(true, &plan.fingerprint).unwrap();
+            let original = std::fs::read(&path).unwrap();
+            let dir = path.parent().unwrap();
+            let permissions = std::fs::metadata(dir).unwrap().permissions();
+            std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+            let result = uninstall_all();
+            std::fs::set_permissions(dir, permissions).unwrap();
+            assert!(result.is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), original);
+        }
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
