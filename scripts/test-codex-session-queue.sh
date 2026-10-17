@@ -56,7 +56,8 @@ struct Animation {
     static func spring(response: Double, dampingFraction: Double) -> Animation { Animation() }
 }
 func withAnimation(_ animation: Animation, _ body: () -> Void) { body() }
-func nbLog(_ message: String) {}
+@MainActor var logMessages: [String] = []
+@MainActor func nbLog(_ message: String) { logMessages.append(message) }
 @MainActor final class AppState {
     static let shared = AppState()
     var pendingApproval: ApprovalInfo?
@@ -186,6 +187,7 @@ final class HookServer: @unchecked Sendable {
         let fallback = try! JSONSerialization.jsonObject(with: Data(bytes.prefix(readCount))) as! [String: String]
         assert(fallback["permissionDecision"] == "ask")
         server.removeApproval(id: socket.id)
+        assert(logMessages.last?.hasSuffix(" s: dropped") == true)
         let first = state.pendingApproval!
         assert(first.requestId == "[1]" && first.threadId == "child" && first.turnId == "turn")
         assert(first.allowsSession && first.projectName == "Native project" && first.queueCount == 2)
@@ -200,6 +202,7 @@ final class HookServer: @unchecked Sendable {
         assert(ApprovalRelay.apply("allow", fingerprint: ApprovalRelay.fingerprint(first), pillId: "agent_codex"))
         assert(connection.replies.count == 1 && connection.replies[0].id == 1
             && connection.replies[0].decision == "accept")
+        assert(logMessages.last?.hasSuffix(" s: native request closed") == true)
         assert(state.pendingApproval?.requestId == "[2]" && state.pendingApproval?.queueCount == 1)
         assert(!ApprovalRelay.apply("allow", fingerprint: ApprovalRelay.fingerprint(first), pillId: "agent_codex"))
         server.sendApprovalDecision("allow", for: first.id)
@@ -209,6 +212,7 @@ final class HookServer: @unchecked Sendable {
         server.sendApprovalDecision("allow", for: second.id)
         assert(connection.replies.count == 2 && connection.replies[1].id == 2
             && connection.replies[1].decision == "decline")
+        assert(logMessages.last?.hasSuffix(" s: native request closed") == true)
         assert(server.approvals.isEmpty && server.codexApprovals.isEmpty && state.pendingApproval == nil)
         server.receiveCodexRequest(method: "item/commandExecution/requestApproval", params: params, id: 3)
         assert(connection.rejected == [3])
@@ -280,6 +284,25 @@ final class HookServer: @unchecked Sendable {
         assert(state.tasks[1].sessionId == "external-new" && state.tasks[1].codexThreadId == nil
             && state.tasks[1].codexTurnId == nil && !state.tasks[1].codexManaged)
         assert(state.tasks[1].sessionBundleId == "com.openai.codex" && state.tasks[1].sessionCwd == "/external")
+        var answerPipe: [Int32] = [0, 0]
+        assert(pipe(&answerPipe) == 0)
+        defer { close(answerPipe[0]); close(answerPipe[1]) }
+        assert(fcntl(answerPipe[0], F_SETFL, O_NONBLOCK) == 0)
+        let answered = QueuedApproval(id: UUID(), fd: answerPipe[1], sessionId: "external", pillId: "integration_claude",
+            projectName: "CLI project", cwd: "/cli", tool: "Bash", command: "pwd", inputKey: "")
+        assert(server.approvals.enqueue(answered) == .accepted)
+        server.removeApproval(id: answered.id, answer: #"{"permissionDecision":"allow"}"#)
+        assert(logMessages.last?.hasSuffix(" s: answered from Coucou") == true)
+        var answerBytes = [UInt8](repeating: 0, count: 128)
+        var answerCount = -1
+        for _ in 0..<100 {
+            answerCount = read(answerPipe[0], &answerBytes, answerBytes.count)
+            if answerCount > 0 { break }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        assert(answerCount > 0)
+        assert(String(decoding: answerBytes.prefix(answerCount), as: UTF8.self) == #"{"permissionDecision":"allow"}"#)
+        assert(server.approvals.isEmpty)
         print("PASS actual HookServer: display/identity handoff, mixed socket/native FIFO, bounded multiple native approvals, captured UUID/question ID, socket question fallback, stale turn/read-only denial, exact request cleanup, phone fingerprint")
     }
 }

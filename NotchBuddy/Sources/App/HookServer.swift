@@ -165,6 +165,8 @@ final class HookServer: @unchecked Sendable {
             replyNativeApproval(request, decision: "deny")
         }
         #endif
+        let age = Int(Date().timeIntervalSince(entry.received))
+        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? (entry.fd < 0 ? "native request closed" : "dropped"))")
         let source = approvalSources.removeValue(forKey: id)
         if let json, entry.fd >= 0 {
             let fd = entry.fd
@@ -3559,8 +3561,13 @@ extension HookServer {
         case "max_output_tokens":     return String(localized: "The answer was too long and was cut.")
         case "model_not_found":       return String(localized: "This model is not available.")
         default:
-            // A readable error is shown as it is; a bare status code ("500") says nothing.
-            return kind.count > 3 && Int(kind) == nil ? kind : nil
+            // Claude Code's last message can contain the API error when its kind is unknown.
+            if let last = payload["last_assistant_message"] as? String,
+               last.range(of: "error", options: .caseInsensitive) != nil {
+                return DiffEngine.toOneLine(last)
+            }
+            // "unknown" and bare status codes do not describe the failure.
+            return kind.count > 3 && Int(kind) == nil && kind != "unknown" ? kind : nil
         }
     }
 }

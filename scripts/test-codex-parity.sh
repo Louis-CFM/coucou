@@ -122,6 +122,13 @@ assert(HookServer.stopFailureDetail(["error_type": "rate_limit"])?.contains("Cla
 assert(HookServer.stopFailureDetail(["coucou_agent": "codex", "error_type": "rate_limit"]) == "Codex could not complete this turn.")
 assert(HookServer.stopFailureDetail(["coucou_agent": "codex", "error": ["message": "Actual Codex error\\nwith detail"]]) == "Actual Codex error with detail")
 assert(HookServer.stopFailureDetail(["error": "500"]) == nil)
+assert(HookServer.stopFailureDetail(["error": "unknown"]) == nil)
+assert(HookServer.stopFailureDetail(["error": "unknown", "last_assistant_message": "No useful detail"]) == nil)
+assert(HookServer.stopFailureDetail(["error": "unknown", "last_assistant_message": "API Error: 529\\nOverloaded"]) == "API Error: 529 Overloaded")
+assert(HookServer.stopFailureDetail(["last_assistant_message": "API ERROR: failed"]) == "API ERROR: failed")
+assert(HookServer.stopFailureDetail(["error_message": "Explicit failure", "last_assistant_message": "API Error: fallback"]) == "Explicit failure")
+assert(HookServer.stopFailureDetail(["coucou_agent": "codex", "error": "unknown", "last_assistant_message": "Claude API Error"]) == "Codex could not complete this turn.")
+assert(HookServer.stopFailureDetail(["coucou_agent": "codex", "error_message": "Explicit Codex failure", "last_assistant_message": "Claude API Error"]) == "Explicit Codex failure")
 print("PASS actual native approval rules, read-only permission escalation guards and provider-specific failure details")
 ''')
 PY
