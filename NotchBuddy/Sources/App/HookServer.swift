@@ -471,6 +471,11 @@ final class HookServer: @unchecked Sendable {
         }
 
         let focused = state.focusId == agentId
+        // The user is looking at the session's terminal: a finish or an error is already in
+        // front of them, so the pill only takes a badge (no sound, no reveal). Warp exposes
+        // no active tab, so a sibling session in another tab of the same terminal is quiet too.
+        let terminalInFront = hostApp != nil
+            && NSWorkspace.shared.frontmostApplication?.bundleIdentifier == hostApp
         // Several sessions can share one pill (it is chosen from the client, not from the
         // session). The registry tells a turn-ending event whether it may touch the pill,
         // and which session owns the project name shown on it.
@@ -604,8 +609,8 @@ final class HookServer: @unchecked Sendable {
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
             }
-            SoundEngine.shared.play("finish")
-            if focused {
+            if !terminalInFront { SoundEngine.shared.play("finish") }
+            if focused && !terminalInFront {
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
@@ -630,8 +635,8 @@ final class HookServer: @unchecked Sendable {
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = Self.stopFailureDetail(payload)
             }
-            SoundEngine.shared.play("error")
-            if focused {
+            if !terminalInFront { SoundEngine.shared.play("error") }
+            if focused && !terminalInFront {
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
