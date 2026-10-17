@@ -48902,6 +48902,118 @@
           }
         }
       }
+    },
+    "YouTube" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YouTube"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YouTube"
+          }
+        }
+      }
+    },
+    "Safari / Chrome" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari / Chrome"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari / Chrome"
+          }
+        }
+      }
+    },
+    "Paused · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused · %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุดชั่วคราว · %@"
+          }
+        }
+      }
+    },
+    "Allow Coucou to control Safari or Chrome in System Settings → Privacy & Security → Automation." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Coucou to control Safari or Chrome in System Settings → Privacy & Security → Automation."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อนุญาตให้ Coucou ควบคุม Safari หรือ Chrome ที่ การตั้งค่าระบบ → ความเป็นส่วนตัวและความปลอดภัย → การทำงานอัตโนมัติ"
+          }
+        }
+      }
+    },
+    "Enable JavaScript from Apple Events in Safari or Chrome settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable JavaScript from Apple Events in Safari or Chrome settings."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดใช้ JavaScript จาก Apple Events ในการตั้งค่า Safari หรือ Chrome"
+          }
+        }
+      }
+    },
+    "Play a YouTube video in Safari or Chrome to show it here." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play a YouTube video in Safari or Chrome to show it here."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดวิดีโอ YouTube ใน Safari หรือ Chrome เพื่อแสดงที่นี่"
+          }
+        }
+      }
+    },
+    "Open YouTube" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open YouTube"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิด YouTube"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

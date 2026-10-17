@@ -129,6 +129,11 @@ struct IslandContainer: View {
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                    #if !APPSTORE
+                    YouTubeCompactControls()
+                        .position(x: islandWidth / 2, y: islandHeight / 2)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    #endif
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
