@@ -478,7 +478,8 @@ final class HookServer: @unchecked Sendable {
             session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, bundleId: bundleId)
+            link: SessionLink(hostApp: hostApp, sessionURL: conductorLink(payload, bundleId: bundleId)),
+            bundleId: bundleId)
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -815,6 +816,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let sessionURL = conductorLink(payload, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -847,7 +849,8 @@ final class HookServer: @unchecked Sendable {
         let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
                                    projectName: projectName, cwd: cwd, tool: tool,
                                    command: command, inputKey: inputKey,
-                                   hostApp: terminalHost?.bundleId, bundleId: bundleId)
+                                   link: SessionLink(hostApp: terminalHost?.bundleId, sessionURL: sessionURL),
+                                   bundleId: bundleId)
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
@@ -860,7 +863,9 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
-                                                        cwd: cwd, hostApp: terminalHost?.bundleId,
+                                                        cwd: cwd,
+                                                        link: SessionLink(hostApp: terminalHost?.bundleId,
+                                                                          sessionURL: sessionURL),
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .approval)
@@ -966,6 +971,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let sessionURL = conductorLink(payload, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -994,7 +1000,9 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
-                                                        cwd: cwd, hostApp: terminalHost?.bundleId,
+                                                        cwd: cwd,
+                                                        link: SessionLink(hostApp: terminalHost?.bundleId,
+                                                                          sessionURL: sessionURL),
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
@@ -1034,7 +1042,7 @@ final class HookServer: @unchecked Sendable {
     /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.
     @MainActor
     private var claudeHostName: String {
-        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
+        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.sessionLink.hostApp)
     }
 
     /// Records the session an event came from, then refreshes its card.
@@ -1048,8 +1056,7 @@ final class HookServer: @unchecked Sendable {
             upsertExternalAgent(id: pill, name: externalAgent)
         } else {
             upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
-                                hostApp: display.hostApp, bundleId: display.bundleId,
-                                session: display.session)
+                                link: display.link, bundleId: display.bundleId, session: display.session)
         }
     }
 
@@ -1063,7 +1070,7 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
         if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
+        if ClaudeHost.keepsSessionLink(pillId: pill) { state.tasks[idx].sessionLink = owner.link }
         if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
@@ -1074,13 +1081,13 @@ final class HookServer: @unchecked Sendable {
     /// still running), so a second session under the same client cannot rename the card,
     /// or send "Open terminal" elsewhere, out from under the first.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", link: SessionLink = SessionLink(), bundleId: String = "", session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if ClaudeHost.keepsSessionLink(pillId: id) { state.tasks[idx].sessionLink = link }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1090,7 +1097,7 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if ClaudeHost.keepsSessionLink(pillId: id) { task.sessionLink = link }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
@@ -1260,6 +1267,13 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Logging
+
+    /// The Conductor link of the session that sent `payload`, from the ids the relay adds.
+    private func conductorLink(_ payload: [String: Any], bundleId: String) -> URL? {
+        ClaudeHost.sessionURL(bundleId: bundleId,
+                              workspaceId: payload["conductor_workspace_id"] as? String,
+                              sessionId: payload["conductor_session_id"] as? String)
+    }
 
     private func nbLog(_ message: String) {
         appendAppLog("nb.log", message)
@@ -3248,6 +3262,22 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Terminal and Conductor context, so the app can bring the user back to the session
+def enrich(payload, env):
+    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
+    if 'cwd' not in payload or not payload['cwd']:
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
 def main():
     raw = b''
     payload = {}
@@ -3304,17 +3334,7 @@ def main():
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
+        enrich(payload, os.environ)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3370,18 +3390,7 @@ def main():
     if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
         payload['coucou_agent'] = 'claude-desktop'
 
-    # Enrich with terminal context
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
+    enrich(payload, os.environ)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
@@ -3555,6 +3564,22 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Terminal and Conductor context, so the app can bring the user back to the session
+def enrich(payload, env):
+    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
+    if 'cwd' not in payload or not payload['cwd']:
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
 def main():
     raw = b''
     payload = {}
@@ -3611,17 +3636,7 @@ def main():
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
+        enrich(payload, os.environ)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3677,17 +3692,7 @@ def main():
     if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
         payload['coucou_agent'] = 'claude-desktop'
 
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
+    enrich(payload, os.environ)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:

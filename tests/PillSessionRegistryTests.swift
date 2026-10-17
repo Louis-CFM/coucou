@@ -182,16 +182,16 @@ enum PillSessionRegistryTests {
             reg.note(pill: claude,
                      display: PillSessionRegistry.Display(session: "a", projectName: "coucou",
                                                           cwd: "/tmp/coucou",
-                                                          hostApp: "com.googlecode.iterm2"),
+                                                          link: SessionLink(hostApp: "com.googlecode.iterm2")),
                      working: true)
             reg.note(pill: claude,
                      display: PillSessionRegistry.Display(session: "b", projectName: "lokil",
                                                           cwd: "/tmp/lokil",
-                                                          hostApp: "com.apple.Terminal"),
+                                                          link: SessionLink(hostApp: "com.apple.Terminal")),
                      working: true)
-            check("A's terminal shown", reg.displayOwner(of: claude)?.hostApp == "com.googlecode.iterm2")
+            check("A's terminal shown", reg.displayOwner(of: claude)?.link.hostApp == "com.googlecode.iterm2")
             _ = reg.endSession(pill: claude, session: "a")
-            check("B's terminal once A ends", reg.displayOwner(of: claude)?.hostApp == "com.apple.Terminal")
+            check("B's terminal once A ends", reg.displayOwner(of: claude)?.link.hostApp == "com.apple.Terminal")
             check("B's folder once A ends", reg.displayOwner(of: claude)?.cwd == "/tmp/lokil")
         }
 

@@ -40,8 +40,9 @@ struct PillSessionRegistry {
         var session: String
         var projectName: String
         var cwd: String
-        /// Terminal the session runs in (bundle id), for "Open terminal".
-        var hostApp: String? = nil
+        /// Terminal the session runs in (bundle id) and link back to it inside its host
+        /// (a Conductor workspace and chat), for "Open terminal".
+        var link = SessionLink()
         /// Bundle id of the client (VS Code, Cursor…) that sent the event.
         var bundleId: String = ""
     }
@@ -49,7 +50,7 @@ struct PillSessionRegistry {
     private struct Session {
         var projectName: String
         var cwd: String
-        var hostApp: String?
+        var link: SessionLink
         var bundleId: String
         var isWorking: Bool
         var lastSeen: Date
@@ -76,11 +77,11 @@ struct PillSessionRegistry {
         }
         var session = p.sessions[display.session]
             ?? Session(projectName: display.projectName, cwd: display.cwd,
-                       hostApp: display.hostApp, bundleId: display.bundleId,
-                       isWorking: false, lastSeen: now)
+                       link: display.link, bundleId: display.bundleId, isWorking: false, lastSeen: now)
         session.projectName = display.projectName
         if !display.cwd.isEmpty { session.cwd = display.cwd }
-        if display.hostApp != nil { session.hostApp = display.hostApp }
+        if display.link.hostApp != nil { session.link.hostApp = display.link.hostApp }
+        if display.link.sessionURL != nil { session.link.sessionURL = display.link.sessionURL }
         if !display.bundleId.isEmpty { session.bundleId = display.bundleId }
         if working { session.isWorking = true }
         session.lastSeen = now
@@ -128,7 +129,7 @@ struct PillSessionRegistry {
         guard let p = pills[pill], let id = p.order.first,
               let session = p.sessions[id] else { return nil }
         return Display(session: id, projectName: session.projectName, cwd: session.cwd,
-                       hostApp: session.hostApp, bundleId: session.bundleId)
+                       link: session.link, bundleId: session.bundleId)
     }
 
     /// Whether this session may write the pill's name and cwd. True when the

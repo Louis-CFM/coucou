@@ -15,6 +15,9 @@ struct ClaudeHost: Equatable {
     static let terminalCardsKey = "terminalCardsEnabled"
     static var terminalCardsEnabled: Bool { UserDefaults.standard.bool(forKey: terminalCardsKey) }
 
+    /// Conductor's bundle id: a host like the terminals, with its own link back to a session.
+    static let conductorBundleId = "com.conductor.app"
+
     /// Terminals accepted for Claude Code sessions. Keyed by bundle id; the second
     /// table maps TERM_PROGRAM for hooks that run without __CFBundleIdentifier.
     private static let terminals: [String: String] = [
@@ -30,6 +33,7 @@ struct ClaudeHost: Equatable {
         "dev.zed.Zed":                "Zed",
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
+        conductorBundleId:            "Conductor",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",
@@ -63,15 +67,62 @@ struct ClaudeHost: Equatable {
         hostApp == nil ? "VS Code" : "Claude Code"
     }
 
+    /// Pills that keep the app and link of the session they show (Claude Code runs in
+    /// terminals and Conductor), so "Open terminal" goes back to that session.
+    static func keepsSessionLink(pillId: String?) -> Bool {
+        pillId == "integration_claude"
+    }
+
+    /// Conductor's link to the workspace and chat a session runs in
+    /// (`conductor://workspace?id=…&session=…`), from the ids the relay reads in
+    /// CONDUCTOR_WORKSPACE_ID / CONDUCTOR_SESSION_ID. nil for any other host.
+    static func sessionURL(bundleId: String, workspaceId: String?, sessionId: String?) -> URL? {
+        guard bundleId == conductorBundleId, let workspace = conductorId(workspaceId) else { return nil }
+        var link = URLComponents()
+        link.scheme = "conductor"
+        link.host = "workspace"
+        link.queryItems = [URLQueryItem(name: "id", value: workspace)]
+        if let session = conductorId(sessionId) {
+            link.queryItems?.append(URLQueryItem(name: "session", value: session))
+        }
+        return link.url
+    }
+
+    /// A Conductor id (a UUID: letters, digits and hyphens), or nil.
+    private static func conductorId(_ value: String?) -> String? {
+        guard let id = value, !id.isEmpty, id.count <= 64,
+              id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }) else { return nil }
+        return id
+    }
+
     /// Brings the session's terminal forward (launching it if needed). false when not a terminal host.
+    /// With a `sessionURL` (Conductor), opens that link instead, so the host shows the session itself.
     @discardableResult
-    static func activate(_ hostBundleId: String?) -> Bool {
-        guard let id = hostBundleId, terminals[id] != nil else { return false }
+    static func activate(_ link: SessionLink) -> Bool {
+        guard let id = link.hostApp, terminals[id] != nil else { return false }
+        if let sessionURL = link.sessionURL, let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+            open(sessionURL, with: app, hostBundleId: id)
+            return true
+        }
         if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == id }) {
             running.activate()
         } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
         }
         return true
+    }
+
+    /// Opens a session's link in its host and brings the host forward. The link switches the
+    /// chat, but opened from Coucou (never the active app) it leaves the host behind other
+    /// windows. If the link fails, just brings the host forward.
+    private static func open(_ sessionURL: URL, with app: URL, hostBundleId id: String) {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
+            // The link failed to open (app moved, launch refused): bring the host forward without it.
+            // The completion runs on a background queue.
+            guard running == nil else { return }
+            DispatchQueue.main.async { activate(SessionLink(hostApp: id)) }
+        }
     }
 }
