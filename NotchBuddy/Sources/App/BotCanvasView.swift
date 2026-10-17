@@ -55,6 +55,12 @@ struct BotCanvasView: View {
                     : nil
                 #endif
 
+                // Lock overrides integration and usage colors, without changing pill colors.
+                engine.preserveNaturalBodyColor = state.lockedMochiColor == "#E6E9EE"
+                if let locked = state.lockedMochiColor {
+                    engine.bodyColor = engine.preserveNaturalBodyColor ? nil : cgColorFromHex(locked)
+                }
+
                 // Compute shouldDance per-frame (no observer lag)
                 let dancing: Bool = {
                     #if !APPSTORE

@@ -2,6 +2,7 @@
 import Foundation
 import AppKit
 import Combine
+import Carbon
 
 // MARK: - Music Controller
 
@@ -10,10 +11,80 @@ import Combine
 @MainActor
 final class MusicController: ObservableObject {
     static let shared = MusicController()
+    nonisolated private static let grantedKey = "coucou.musicAutomationGranted"
+    @Published private(set) var automationGranted = UserDefaults.standard.bool(forKey: "coucou.musicAutomationGranted")
+    @Published private(set) var isRequestingAccess = false
+    @Published private(set) var connectionFailed = false
 
     @Published var trackTitle: String?
     @Published var artist: String?
     @Published var album: String?
+
+    @Published private(set) var duration: Double = 0
+    @Published private(set) var volume: Int = 50
+    @Published private(set) var shuffling = false
+    @Published private(set) var repeatMode = "off"
+    @Published private(set) var artwork: NSImage?
+    private var positionAnchor: Double = 0
+    private var positionDate = Date()
+    private var refreshGeneration = 0
+    private var artworkTask: Task<Void, Never>?
+    private var artworkSearchTitle: String?
+    private var artworkLookupKey: String?
+    private var artworkCache: [String: NSImage] = [:]
+    private var artworkAttempts: [String: Date] = [:]
+
+    var isPlaying: Bool { AppState.shared.musicPlaying }
+    var repeating: Bool { repeatMode != "off" }
+
+    func position(at date: Date) -> Double {
+        min(duration, max(0, positionAnchor + (isPlaying ? date.timeIntervalSince(positionDate) : 0)))
+    }
+
+    func refresh() {
+        guard isPillActive, automationGranted, isMusicRunning() else { return }
+        fetchAndApply()
+    }
+
+    /// Only a deliberate user action triggers the first system Automation prompt.
+    func requestAccess() {
+        guard !isRequestingAccess else { return }
+        isRequestingAccess = true
+        connectionFailed = false
+        Task {
+            defer { isRequestingAccess = false }
+            let result = await runAppleScript(#"tell application id "com.apple.Music" to return sound volume"#)
+            if case .error = result { connectionFailed = true }
+            refresh()
+        }
+    }
+
+    func seek(to seconds: Double) {
+        guard duration > 0, seconds.isFinite, isMusicRunning() else { return }
+        let target = min(duration, max(0, seconds))
+        Task {
+            await runAppleScript("tell application id \"com.apple.Music\" to set player position to \(target)")
+            refresh()
+        }
+    }
+
+    func setShuffling(_ enabled: Bool) {
+        guard isMusicRunning() else { return }
+        Task {
+            await runAppleScript("tell application id \"com.apple.Music\" to set shuffle enabled to \(enabled ? "true" : "false")")
+            refresh()
+        }
+    }
+
+    // Music supports off → all → one, unlike Spotify's boolean repeat control.
+    func cycleRepeat() {
+        guard isMusicRunning() else { return }
+        let next = repeatMode == "off" ? "all" : (repeatMode == "all" ? "one" : "off")
+        Task {
+            await runAppleScript("tell application id \"com.apple.Music\" to set song repeat to \(next)")
+            refresh()
+        }
+    }
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
@@ -32,6 +103,7 @@ final class MusicController: ObservableObject {
             queue: .main
         ) { [weak self] notif in
             let info        = notif.userInfo
+
             let playerState = info?["Player State"] as? String
             let name        = info?["Name"]          as? String
             let artist      = info?["Artist"]        as? String
@@ -54,7 +126,7 @@ final class MusicController: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard self.isPillActive,
-                      UserDefaults.standard.bool(forKey: "coucou.musicAutomationGranted") else { return }
+                      self.automationGranted else { return }
                 self.fetchAndApply()
             }
         }
@@ -79,7 +151,7 @@ final class MusicController: ObservableObject {
                 guard let self else { return }
                 if integrations.contains("integration_music") {
                     if self.isMusicRunning(),
-                       UserDefaults.standard.bool(forKey: "coucou.musicAutomationGranted") {
+                       self.automationGranted {
                         self.fetchAndApply()
                     }
                 } else {
@@ -135,6 +207,13 @@ final class MusicController: ObservableObject {
     private func handlePlayerInfo(playerState: String?, name: String?, artist inputArtist: String?, album inputAlbum: String?) {
         guard isPillActive else { return }
 
+        refreshGeneration += 1
+        let changedTrack = trackTitle != name.map { Self.shortTitle($0) }
+            || artist != inputArtist.map { Self.shortArtist($0) }
+            || album != inputAlbum
+        positionAnchor = changedTrack ? 0 : position(at: Date())
+        positionDate = Date()
+        if changedTrack { duration = 0; artwork = nil }
         let playing = playerState == "Playing"
         let wasPlaying = AppState.shared.musicPlaying
 
@@ -144,6 +223,7 @@ final class MusicController: ObservableObject {
 
         AppState.shared.musicPlaying = playing
         syncTaskName()
+        refresh()
 
         // Reveal only on transition from not-playing → playing
         if playing && !wasPlaying {
@@ -152,6 +232,8 @@ final class MusicController: ObservableObject {
     }
 
     private func fetchAndApply() {
+        refreshGeneration += 1
+        let generation = refreshGeneration
         Task {
             let result = await runAppleScript("""
                 tell application id "com.apple.Music"
@@ -171,15 +253,48 @@ final class MusicController: ObservableObject {
                     try
                         set al to album of tr
                     end try
-                    return {ps, n, ar, al}
+                    set d to 0
+                    set pos to 0
+                    set art to ""
+                    try
+                        set d to duration of tr
+                        set pos to player position
+                    end try
+                    try
+                        set art to raw data of artwork 1 of tr
+                    on error
+                        try
+                            set art to data of artwork 1 of tr
+                        end try
+                    end try
+                    return {ps, n, ar, al, d as string, pos as string, sound volume as string, shuffle enabled as string, song repeat as string, art}
                 end tell
             """)
-            guard case .success(let values) = result, values.count >= 4 else { return }
+            guard generation == refreshGeneration, isPillActive, isMusicRunning(),
+                  case .success(let values) = result, values.count >= 4 else { return }
             let playing    = values[0] == "playing"
             let wasPlaying = AppState.shared.musicPlaying
-            trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
-            artist     = values[2].isEmpty ? nil : Self.shortArtist(values[2])
-            album      = values[3].isEmpty ? nil : values[3]
+            let nextTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
+            let nextArtist = values[2].isEmpty ? nil : Self.shortArtist(values[2])
+            let nextAlbum = values[3].isEmpty ? nil : values[3]
+            if trackTitle != nextTitle || artist != nextArtist || album != nextAlbum { artwork = nil }
+            artworkSearchTitle = values[1].isEmpty ? nil : values[1]
+            trackTitle = nextTitle
+            artist = nextArtist
+            album = nextAlbum
+            duration = values.count > 4 ? Double(values[4].replacingOccurrences(of: ",", with: ".")) ?? 0 : 0
+            positionAnchor = values.count > 5 ? Double(values[5].replacingOccurrences(of: ",", with: ".")) ?? 0 : 0
+            positionDate = Date()
+            if values.count > 8 {
+                volume = Int(values[6]) ?? volume
+                shuffling = values[7] == "true"
+                repeatMode = values[8]
+            }
+            if values.count > 9, let data = Data(base64Encoded: values[9]),
+               let image = NSImage(data: data) {
+                artwork = image
+            }
+            loadArtworkIfNeeded()
             AppState.shared.musicPlaying = playing
             syncTaskName()
             if playing && !wasPlaying {
@@ -188,7 +303,142 @@ final class MusicController: ObservableObject {
         }
     }
 
+    // Streaming tracks may expose no artwork through Music's scripting dictionary.
+    // Fall back to Apple's public catalog, only accepting matching artist and title.
+    private struct CatalogResponse: Decodable {
+        struct Track: Decodable {
+            let artistName: String?
+            let trackName: String?
+            let artworkUrl100: String?
+        }
+        let results: [Track]
+    }
+
+    private func loadArtworkIfNeeded() {
+        guard artwork == nil, let title = trackTitle, let artist, !artist.isEmpty else { return }
+        let requestedAlbum = album
+        let searchTitle = artworkSearchTitle ?? title
+        let key = "\(artist)|\(searchTitle)|\(requestedAlbum ?? "")"
+        if let cached = artworkCache[key] { artwork = cached; return }
+        guard artworkLookupKey != key else { return }
+        if let attempt = artworkAttempts[key], Date().timeIntervalSince(attempt) < 30 { return }
+        if artworkAttempts.count >= 32 { artworkAttempts.removeAll() }
+        artworkAttempts[key] = Date()
+        artworkTask?.cancel()
+        artworkLookupKey = key
+        artworkTask = Task {
+            defer { if artworkLookupKey == key { artworkLookupKey = nil } }
+            do {
+                var url = URLComponents(string: "https://itunes.apple.com/search")!
+                url.queryItems = [URLQueryItem(name: "term", value: "\(artist) \(title)"),
+                                  URLQueryItem(name: "entity", value: "song"),
+                                  URLQueryItem(name: "limit", value: "10")]
+                var tracks: [CatalogResponse.Track] = []
+                if let searchURL = url.url {
+                    var request = URLRequest(url: searchURL)
+                    request.timeoutInterval = 8
+                    if let (data, response) = try? await URLSession.shared.data(for: request),
+                       (response as? HTTPURLResponse)?.statusCode == 200,
+                       let decoded = try? JSONDecoder().decode(CatalogResponse.self, from: data) {
+                        tracks = decoded.results
+                    }
+                }
+                try Task.checkCancellation()
+                func normalized(_ value: String) -> String {
+                    value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                let match = tracks.first(where: {
+                    normalized($0.artistName ?? "") == normalized(artist)
+                        && normalized($0.trackName ?? "") == normalized(searchTitle)
+                })
+                let artworkURL: URL?
+                if let direct = match?.artworkUrl100.flatMap(URL.init(string:)) {
+                    artworkURL = direct
+                } else {
+                    artworkURL = try await Self.webCatalogArtwork(title: searchTitle, artist: artist)
+                }
+                guard let artworkURL else { return }
+                let (imageData, imageResponse) = try await URLSession.shared.data(from: artworkURL)
+                try Task.checkCancellation()
+                guard (imageResponse as? HTTPURLResponse)?.statusCode == 200,
+                      trackTitle == title, self.artist == artist, album == requestedAlbum,
+                      artworkSearchTitle == searchTitle,
+                      isPillActive, let image = NSImage(data: imageData) else { return }
+                if artworkCache.count >= 16 { artworkCache.removeAll() }
+                artworkCache[key] = image
+                if artwork == nil { artwork = image }
+            } catch {
+                // Keep the local music-note placeholder when offline or not in the catalog.
+            }
+        }
+    }
+
+    /// Apple Music's catalog includes releases missing from the older iTunes search index.
+    /// Its public page embeds structured data; if that format changes, fail closed.
+    private static func webCatalogArtwork(title: String, artist: String) async throws -> URL? {
+        var components = URLComponents(string: "https://music.apple.com/us/search")
+        components?.queryItems = [URLQueryItem(name: "term", value: "\(artist) \(title)")]
+        guard let url = components?.url else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
+              let html = String(data: data, encoding: .utf8) else { return nil }
+        return catalogArtwork(in: html, title: title, artist: artist)
+    }
+
+    nonisolated static func catalogArtwork(in html: String, title: String, artist: String) -> URL? {
+        guard let expression = try? NSRegularExpression(
+            pattern: #"<script\b[^>]*id=["']serialized-server-data["'][^>]*>([\s\S]*?)</script>"#),
+              let match = expression.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              let range = Range(match.range(at: 1), in: html),
+              let data = String(html[range]).data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        func normalized(_ value: String) -> String {
+            value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+                .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        }
+        func artists(_ value: String) -> Set<String> {
+            Set(value.components(separatedBy: CharacterSet(charactersIn: "&,"))
+                .map { normalized($0) }.filter { !$0.isEmpty })
+        }
+        func find(_ value: Any) -> URL? {
+            if let object = value as? [String: Any] {
+                let descriptor = object["contentDescriptor"] as? [String: Any]
+                if descriptor?["kind"] as? String == "song",
+                   let candidateTitle = object["title"] as? String,
+                   normalized(candidateTitle) == normalized(title) {
+                    let links = object["subtitleLinks"] as? [[String: Any]]
+                    let linkedArtists = links?.compactMap { $0["title"] as? String }.joined(separator: " & ")
+                    let subtitle = object["subtitle"] as? String
+                    let candidateArtist = linkedArtists ?? subtitle?.components(separatedBy: "·").last
+                    if let candidateArtist, artists(candidateArtist) == artists(artist),
+                       let artwork = object["artwork"] as? [String: Any],
+                       let dictionary = artwork["dictionary"] as? [String: Any],
+                       let template = dictionary["url"] as? String {
+                        let resolved = template.replacingOccurrences(of: "{w}", with: "100")
+                            .replacingOccurrences(of: "{h}", with: "100")
+                            .replacingOccurrences(of: "{f}", with: "jpg")
+                        if let url = URL(string: resolved), url.scheme == "https",
+                           let host = url.host, host.hasSuffix(".mzstatic.com") { return url }
+                    }
+                }
+                for child in object.values { if let url = find(child) { return url } }
+            } else if let array = value as? [Any] {
+                for child in array { if let url = find(child) { return url } }
+            }
+            return nil
+        }
+        return find(root)
+    }
+
     private func clearState() {
+        artworkTask?.cancel()
+        artworkTask = nil
+        artworkLookupKey = nil
+        refreshGeneration += 1
+        duration = 0; positionAnchor = 0; artwork = nil
         trackTitle = nil; artist = nil; album = nil
         AppState.shared.musicPlaying = false
         syncTaskName()
@@ -227,7 +477,9 @@ final class MusicController: ObservableObject {
     }
 
     func setVolume(_ pct: Int) {
+        guard isMusicRunning() else { return }
         let clamped = max(0, min(100, pct))
+        volume = clamped
         Task { await runAppleScript(#"tell application id "com.apple.Music" to set sound volume to \#(clamped)"#) }
     }
 
@@ -313,38 +565,35 @@ final class MusicController: ObservableObject {
 
     // MARK: - AppleScript runner
 
-    enum ScriptResult { case success([String]), denied, error }
+    enum ScriptResult: Sendable { case success([String]), denied, error }
 
     @discardableResult
     private func runAppleScript(_ source: String) async -> ScriptResult {
-        await withCheckedContinuation { cont in
+        let result: ScriptResult = await withCheckedContinuation { cont in
             queue.async {
-                let script = NSAppleScript(source: source)!
+                guard let script = NSAppleScript(source: source) else {
+                    cont.resume(returning: .error)
+                    return
+                }
                 var errDict: NSDictionary?
                 let desc = script.executeAndReturnError(&errDict)
                 if let errDict {
                     let code = (errDict[NSAppleScript.errorNumber] as? Int) ?? 0
-                    if code == -1743 {
-                        Task { @MainActor in
-                            AppState.shared.musicAutomationDenied = true
-                            UserDefaults.standard.set(false, forKey: "coucou.musicAutomationGranted")
-                        }
-                        cont.resume(returning: .denied)
-                    } else {
-                        cont.resume(returning: .error)
-                    }
+                    cont.resume(returning: code == -1743 ? .denied : .error)
                     return
-                }
-                Task { @MainActor in
-                    UserDefaults.standard.set(true, forKey: "coucou.musicAutomationGranted")
-                    AppState.shared.musicAutomationDenied = false
                 }
                 // Extract values on this queue before resuming (avoids NSAppleEventDescriptor Sendable issues)
                 var values: [String] = []
                 let count = desc.numberOfItems
                 if count > 0 {
                     for i in 1...count {
-                        values.append(desc.atIndex(i)?.stringValue ?? "")
+                        if i == 10, let item = desc.atIndex(i),
+                           item.descriptorType != typeUnicodeText,
+                           item.descriptorType != typeUTF8Text {
+                            values.append(item.data.base64EncodedString())
+                        } else {
+                            values.append(desc.atIndex(i)?.stringValue ?? "")
+                        }
                     }
                 } else {
                     values = [desc.stringValue ?? ""]
@@ -352,6 +601,19 @@ final class MusicController: ObservableObject {
                 cont.resume(returning: .success(values))
             }
         }
+        switch result {
+        case .success:
+            automationGranted = true
+            AppState.shared.musicAutomationDenied = false
+            UserDefaults.standard.set(true, forKey: Self.grantedKey)
+        case .denied:
+            automationGranted = false
+            AppState.shared.musicAutomationDenied = true
+            UserDefaults.standard.set(false, forKey: Self.grantedKey)
+        case .error:
+            break
+        }
+        return result
     }
 }
 #endif

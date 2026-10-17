@@ -1,4 +1,7 @@
 import SwiftUI
+#if !APPSTORE
+import CoreAudio
+#endif
 
 /// Top-level SwiftUI view rendered inside the 720×320 transparent panel.
 /// The island is drawn at the top-center; everything else is transparent and click-through.
@@ -122,10 +125,15 @@ struct IslandContainer: View {
 
             Group {
                 if state.mode == .compact {
+                    #if !APPSTORE
+                    CompactPlaybackView(state: state, width: islandWidth, height: islandHeight)
+                        .transition(.opacity)
+                    #else
                     CompactMiniGrid(state: state)
                         .scaleEffect(IslandRestingLayout(width: islandWidth, height: islandHeight).miniGridScale)
                         .position(x: islandWidth - 40, y: islandHeight / 2)
                         .transition(.opacity)
+                    #endif
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state.mode == .compact)
@@ -278,9 +286,20 @@ struct BotPlacement: View {
     @ObservedObject var state: AppState
     let islandW: CGFloat
     let islandH: CGFloat
+    #if !APPSTORE
+    @ObservedObject private var spotify = SpotifyController.shared
+    #endif
 
     var body: some View {
-        let (cx, cy, diameter, opacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
+        let (baseCX, cy, diameter, opacity) = botPosition(mode: state.mode, view: state.view, islandW: islandW, islandH: islandH, uploadProgress: state.uploadProgress, hasNotch: state.hasNotch)
+        #if !APPSTORE
+        let playing = (state.musicPlaying && state.activeIntegrations.contains("integration_music"))
+            || (spotify.isPlaying && state.activeIntegrations.contains(SpotifyController.pillId))
+        let cx = state.mode == .compact && playing
+            ? (islandW - state.notchWidth) / 4 - (diameter + 10) / 2 : baseCX
+        #else
+        let cx = baseCX
+        #endif
         let canvasSize = diameter / 0.6
         let overhang: CGFloat = 40
         let isUploading = state.view == .uploading
@@ -542,6 +561,17 @@ struct IslandHeader: View {
                     }
                     #endif
                 })
+                Button { state.toggleMochiColorLock() } label: {
+                    Image(systemName: state.lockedMochiColor == nil ? "lock.open" : "lock.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(state.lockedMochiColor == nil ? Color(hex: "#8E939C") : Color(hex: "#F5F6F8"))
+                        .frame(width: 30, height: 22)
+                        .background(state.lockedMochiColor == nil ? Color.clear : Color(hex: "#1D1F23"))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(state.lockedMochiColor == nil ? "Fijar el color de Coucou" : "Volver al color según la integración")
+                .accessibilityLabel(state.lockedMochiColor == nil ? "Bloquear color" : "Desbloquear color")
                 TabButton(icon: "plus", view: .upload, state: state)
             }
             .padding(.leading, 14)
@@ -722,3 +752,129 @@ struct CompactMiniGrid: View {
         .frame(width: 28, height: 28)
     }
 }
+
+#if !APPSTORE
+// MARK: - Compact now playing
+
+/// Keeps the physical notch clear: artwork stays in the left ear, playback in the right.
+private struct CompactPlaybackView: View {
+    @ObservedObject var state: AppState
+    let width: CGFloat
+    let height: CGFloat
+    @ObservedObject private var music = MusicController.shared
+    @ObservedObject private var spotify = SpotifyController.shared
+    @State private var systemVolume: Double = 0.5
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var musicPlaying: Bool {
+        state.activeIntegrations.contains("integration_music") && state.musicPlaying
+    }
+    private var spotifyPlaying: Bool {
+        state.activeIntegrations.contains(SpotifyController.pillId) && spotify.isPlaying
+    }
+    private var useSpotify: Bool {
+        spotifyPlaying && (!musicPlaying || state.focusId == SpotifyController.pillId)
+    }
+    private var playing: Bool { musicPlaying || spotifyPlaying }
+    private var accent: Color { Color(hex: useSpotify ? SpotifyController.green : "#FA2D48") }
+
+    var body: some View {
+        let layout = IslandRestingLayout(width: width, height: height)
+        ZStack(alignment: .topLeading) {
+            if playing {
+                NowPlayingArtwork(image: useSpotify ? spotify.artwork : music.artwork, accent: accent)
+                    .frame(width: layout.botDiameter, height: layout.botDiameter)
+                    .position(x: (width - state.notchWidth) / 4 + (layout.botDiameter + 10) / 2, y: height / 2)
+                    .accessibilityLabel(Text("Album artwork"))
+
+                TimelineView(.animation(minimumInterval: reduceMotion ? 1 : 1.0 / 12)) { context in
+                    let duration = useSpotify ? (spotify.track?.duration ?? 0) : music.duration
+                    let position = useSpotify ? spotify.position(at: context.date) : music.position(at: context.date)
+                    HStack(spacing: 9) {
+                        CompactMusicWave(time: context.date.timeIntervalSinceReferenceDate,
+                                         volume: systemVolume, color: accent)
+                            .frame(width: 20, height: 14)
+                            .accessibilityHidden(true)
+                        Text(duration > 0 ? "-" + NowPlayingProgress.format(max(0, duration - position)) : "—:—")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(Color(hex: "#C5C8CD"))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .accessibilityLabel(Text("Time remaining"))
+                    }
+                    .frame(width: 70)
+                }
+                .scaleEffect(layout.miniGridScale)
+                .position(x: width - 40, y: height / 2)
+            } else {
+                CompactMiniGrid(state: state)
+                    .scaleEffect(layout.miniGridScale)
+                    .position(x: width - 40, y: height / 2)
+            }
+        }
+        .frame(width: width, height: height)
+        .allowsHitTesting(false)
+        .task(id: playing) {
+            guard playing else { return }
+            while !Task.isCancelled {
+                systemVolume = CompactSystemVolume.read()
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
+        }
+    }
+}
+
+/// Decorative motion: one slow pulse, with a small height increase at higher system volume.
+private struct CompactMusicWave: View {
+    let time: TimeInterval
+    let volume: Double
+    let color: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let pulse = reduceMotion ? 0.5 : (sin(time * 1.35) + 1) / 2
+        let amplitude = 2.0 + 3.0 * volume
+        HStack(alignment: .center, spacing: 2) {
+            ForEach(0..<5) { index in
+                let profile = [0.45, 0.75, 1.0, 0.75, 0.45][index]
+                Capsule()
+                    .fill(color.opacity(0.8))
+                    .frame(width: 2, height: 3 + profile * amplitude * (0.65 + 0.35 * pulse))
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: volume)
+    }
+}
+
+/// Reads only the output device's volume and mute properties; never opens an audio stream.
+private enum CompactSystemVolume {
+    static func read() -> Double {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var device = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device) == noErr,
+              device != kAudioObjectUnknown else { return 0.5 }
+        address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute,
+            mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
+        var mute: UInt32 = 0
+        size = UInt32(MemoryLayout<UInt32>.size)
+        if AudioObjectGetPropertyData(device, &address, 0, nil, &size, &mute) == noErr, mute != 0 { return 0 }
+        var channels: [Double] = []
+        // Prefer a master control; otherwise average available left/right channels.
+        for element in [AudioObjectPropertyElement(0), 1, 2] {
+            address.mSelector = kAudioDevicePropertyVolumeScalar
+            address.mElement = element
+            guard AudioObjectHasProperty(device, &address) else { continue }
+            var value: Float32 = 0
+            size = UInt32(MemoryLayout<Float32>.size)
+            guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr,
+                  value.isFinite else { continue }
+            let level = min(1, max(0, Double(value)))
+            if element == 0 { return level }
+            channels.append(level)
+        }
+        return channels.isEmpty ? 0.5 : channels.reduce(0, +) / Double(channels.count)
+    }
+}
+#endif

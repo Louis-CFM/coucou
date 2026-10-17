@@ -1,6 +1,57 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Connect Apple Music": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar Apple Music"
+          }
+        }
+      }
+    },
+    "Connecting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectando…"
+          }
+        }
+      }
+    },
+    "Connect Apple Music to show artwork and control playback. macOS will ask for permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conecta Apple Music para ver las portadas y controlar la reproducción. macOS te pedirá permiso."
+          }
+        }
+      }
+    },
+    "Could not connect. Open Music and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo conectar. Abre Música e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Check permission": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobar permiso"
+          }
+        }
+      }
+    },
+    "Allow Coucou to control Apple Music": {},
     "  %@" : {
 
     },

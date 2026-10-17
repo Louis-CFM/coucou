@@ -171,6 +171,7 @@ let BotStates: [BotState: BotStateCfg] = [
 @MainActor
 final class BotEngine: ObservableObject {
     var isMini: Bool = false
+    var preserveNaturalBodyColor = false
     var bodyColor: CGColor? = nil    // override for mini bots
 
     // Animation state (mirrors prototype 's' object)
@@ -1419,7 +1420,7 @@ final class BotEngine: ObservableObject {
                 endPoint: CGPoint(x: -rx*0.8, y: ry*0.9)
             ))
             // State tint — fades out as morph increases (mailbox has no tint)
-            let effectiveTint = tint * (1 - morph)
+            let effectiveTint = preserveNaturalBodyColor ? 0 : tint * (1 - morph)
             if effectiveTint > 0.01 {
                 let tc = colorFromTuple(col)
                 ctx.fill(path, with: .linearGradient(

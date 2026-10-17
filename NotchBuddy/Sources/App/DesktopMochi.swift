@@ -37,6 +37,10 @@ struct DesktopBotView: View {
                 engine.lookX = tanh((appState.mousePosition.x - viewState.lookOrigin.x) / 260)
                 engine.lookY = -tanh((appState.mousePosition.y - viewState.lookOrigin.y) / 200)
 
+                engine.preserveNaturalBodyColor = appState.lockedMochiColor == "#E6E9EE"
+                engine.bodyColor = engine.preserveNaturalBodyColor ? nil
+                    : appState.lockedMochiColor.flatMap { cgColorFromHex($0) }
+
                 // Desktop Mochi is always the "main" Mochi — always dressed
                 engine.setOutfit(appState.resolvedOutfit, animated: true)
 
