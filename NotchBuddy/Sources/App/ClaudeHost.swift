@@ -94,6 +94,17 @@ struct ClaudeHost: Equatable {
         return link.url
     }
 
+    /// Brings the host forward the way ⌘-Tab does, so macOS also switches to the desktop its
+    /// window is on: activate() alone leaves that window on another desktop. Needs Accessibility,
+    /// like the prompt context (GitHub build only); without it, activate() is all there is.
+    private static func switchToDesktop(of app: NSRunningApplication) {
+        #if !APPSTORE
+        guard AXIsProcessTrusted() else { return }
+        AXUIElementSetAttributeValue(AXUIElementCreateApplication(app.processIdentifier),
+                                     kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        #endif
+    }
+
     /// A Conductor id (a UUID: letters, digits and hyphens), or nil.
     private static func conductorId(_ value: String?) -> String? {
         guard let id = value, !id.isEmpty, id.count <= 64,
@@ -118,17 +129,20 @@ struct ClaudeHost: Equatable {
         return true
     }
 
-    /// Opens a session's link in its host and brings the host forward. The link switches the
-    /// chat, but opened from Coucou (never the active app) it leaves the host behind other
-    /// windows. If the link fails, just brings the host forward.
+    /// Opens a session's link in its host and brings the host forward, on its desktop. The link
+    /// switches the chat, but opened from Coucou (never the active app) it leaves the host behind
+    /// other windows or on another desktop. If the link fails, just brings the host forward.
     private static func open(_ sessionURL: URL, with app: URL, hostBundleId id: String) {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
+        // `activates` already brings the host forward; the completion runs on a background
+        // queue, so the desktop switch (Accessibility) goes back to the main thread.
         NSWorkspace.shared.open([sessionURL], withApplicationAt: app, configuration: configuration) { running, _ in
-            // The link failed to open (app moved, launch refused): bring the host forward without it.
-            // The completion runs on a background queue.
-            guard running == nil else { return }
-            DispatchQueue.main.async { activate(SessionLink(hostApp: id)) }
+            DispatchQueue.main.async {
+                // The link failed to open (app moved, launch refused): bring the host forward without it.
+                guard let running else { activate(SessionLink(hostApp: id)); return }
+                switchToDesktop(of: running)
+            }
         }
     }
 }

@@ -63,7 +63,7 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 | `TERM_PROGRAM=Apple_Terminal` + tty | AppleScript Terminal : sélectionner l'onglet dont le `tty` correspond, activer |
 | `TERM_PROGRAM=iTerm.app` + `ITERM_SESSION_ID` | AppleScript iTerm : sélectionner la session, activer |
 | `TERM_PROGRAM=vscode` | ouvrir le dossier `cwd` dans VS Code ou Cursor (selon `__CFBundleIdentifier`) |
-| `__CFBundleIdentifier=com.conductor.app` + ids Conductor | ouvrir `conductor://workspace?id=…&session=…` (le bon workspace et le bon chat), activer Conductor |
+| `__CFBundleIdentifier=com.conductor.app` + ids Conductor | ouvrir `conductor://workspace?id=…&session=…` (le bon workspace et le bon chat), activer Conductor ; avec l'autorisation Accessibilité (version GitHub), aller aussi sur son bureau |
 | Ghostty, Warp, autre | activer l'app |
 | rien (app Claude) | activer l'app Claude |
 Demande l'autorisation Automatisation la première fois (normal).
