@@ -22,11 +22,16 @@ final class ChannelRecorder: @unchecked Sendable {
         var level: Float = 0
         /// Seconds with sound in them, to tell an empty side (no call, no headphones) from a real one.
         var voiced = 0.0
+        var started = false
     }
     private let live = OSAllocatedUnfairLock(initialState: Live())
 
-    init(url: URL, label: String) throws {
+    /// When the recording started (`DispatchTime` uptime): both sides count their time from it.
+    private let origin: UInt64
+
+    init(url: URL, label: String, origin: UInt64 = DispatchTime.now().uptimeNanoseconds) throws {
         self.url = url
+        self.origin = origin
         queue = DispatchQueue(label: label, qos: .userInitiated)
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
@@ -42,6 +47,19 @@ final class ChannelRecorder: @unchecked Sendable {
     /// From the audio thread.
     func append(_ samples: [Float]) {
         guard !samples.isEmpty else { return }
+        let incoming = Double(samples.count) / Self.sampleRate
+        let origin = self.origin
+        // The Mac's sound starts a moment after the microphone (its device takes longer to open):
+        // the silence before its first sound is written, so both recordings share one clock and
+        // the echo and the order of the lines line up.
+        let lead = live.withLock { state -> Int in
+            guard !state.started else { return 0 }
+            state.started = true
+            let elapsed = Double(DispatchTime.now().uptimeNanoseconds &- origin) / 1_000_000_000
+            let seconds = min(10, elapsed - incoming)
+            return seconds > 0.01 ? Int(seconds * Self.sampleRate) : 0
+        }
+        let samples = lead > 0 ? [Float](repeating: 0, count: lead) + samples : samples
         let rms = Self.rms(samples[...])
         live.withLock { state in
             state.pending.append(contentsOf: samples)
