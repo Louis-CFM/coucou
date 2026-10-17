@@ -107,6 +107,9 @@ struct IslandContainer: View {
 
             CountdownBar(state: state, islandW: islandWidth)
 
+            // Under the island while the pointer is on Mochi: how the Mac is doing.
+            VitalsHoverLine(islandW: islandWidth, islandH: islandHeight)
+
             if demoEngine.isActive {
                 Text(verbatim: "DEMO")
                     .font(.system(size: 8, weight: .bold, design: .monospaced))

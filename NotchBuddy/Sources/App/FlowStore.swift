@@ -89,6 +89,15 @@ final class FlowStore: ObservableObject {
     @Published var cleanupEnabled: Bool = UserDefaults.standard.bool(forKey: FlowStore.cleanupKey) {
         didSet { UserDefaults.standard.set(cleanupEnabled, forKey: Self.cleanupKey) }
     }
+    /// Prompt mode: what you say becomes a structured prompt (goal, context, steps, constraints,
+    /// done when) before it is pasted. Needs the Claude key, like the clean-up.
+    @Published var promptMode: Bool = UserDefaults.standard.bool(forKey: FlowStore.promptModeKey) {
+        didSet { UserDefaults.standard.set(promptMode, forKey: Self.promptModeKey) }
+    }
+    /// The language the words are pasted in, whatever language you speak ("" = as spoken).
+    @Published var translateTo: String = UserDefaults.standard.string(forKey: FlowStore.translateKey) ?? "" {
+        didSet { UserDefaults.standard.set(translateTo, forKey: Self.translateKey) }
+    }
     /// The style of the apps that have none of their own.
     @Published var defaultStyle: FlowStyle = FlowStyle(rawValue: UserDefaults.standard.string(forKey: FlowStore.defaultStyleKey) ?? "") ?? .natural {
         didSet { UserDefaults.standard.set(defaultStyle.rawValue, forKey: Self.defaultStyleKey) }
@@ -105,6 +114,8 @@ final class FlowStore: ObservableObject {
     static let engineKey = "flowEngine"
     static let keepDaysKey = "flowKeepDays"
     static let cleanupKey = "flowCleanup"
+    static let promptModeKey = "flowPromptMode"
+    static let translateKey = "flowTranslateTo"
     static let defaultStyleKey = "flowDefaultStyle"
 
     private struct WordsFile: Codable {

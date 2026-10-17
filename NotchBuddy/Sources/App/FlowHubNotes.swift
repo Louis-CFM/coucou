@@ -357,6 +357,8 @@ private struct HubNoteDetail: View {
     @State private var renaming: NoteSpeaker?
     @State private var newName = ""
     @State private var confirmDelete = false
+    @State private var editing: NoteLine?
+    @State private var editText = ""
 
     var body: some View {
         ScrollView {
@@ -399,6 +401,16 @@ private struct HubNoteDetail: View {
             }
             Button(String(localized: "hub.cancel"), role: .cancel) { renaming = nil }
         }
+        .alert(String(localized: "notes.edit-line"), isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
+            TextField("", text: $editText)
+            Button(String(localized: "hub.save")) {
+                if let line = editing { taker.edit(note.id, line: line.id, text: editText) }
+                editing = nil
+            }
+            Button(String(localized: "hub.cancel"), role: .cancel) { editing = nil }
+        } message: {
+            Text("notes.edit-line-detail")
+        }
         .alert(String(localized: "notes.delete-confirm"), isPresented: $confirmDelete) {
             Button(String(localized: "hub.delete"), role: .destructive) { taker.delete(note.id) }
             Button(String(localized: "hub.cancel"), role: .cancel) {}
@@ -436,6 +448,8 @@ private struct HubNoteDetail: View {
                     Button(String(localized: "notes.export")) { taker.export(note) }
                     Button(String(localized: "notes.summarize-again")) { Task { await taker.summarize(note.id) } }
                         .disabled(taker.summaryEngine == .off || note.lines.isEmpty)
+                    Button(String(localized: "notes.correct-again")) { Task { await taker.correctAgain(note.id) } }
+                        .disabled(!taker.canCorrect || note.lines.isEmpty || taker.working.contains(note.id))
                     Divider()
                 }
                 Button(String(localized: "hub.delete"), role: .destructive) { confirmDelete = true }
@@ -570,11 +584,64 @@ private struct HubNoteDetail: View {
                     .font(.system(size: 13))
                     .foregroundColor(HubTheme.secondary)
             }
+            if !note.lines.isEmpty {
+                Text("notes.transcript-hint")
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.muted)
+            }
             ForEach(note.lines) { line in
                 let speaker = note.speaker(line.speaker)
-                HubLineView(name: speaker?.name ?? "?", color: HubTheme.speaker(speaker?.color ?? 1), line: line)
+                HubEditableLine(note: note, line: line, name: speaker?.name ?? "?",
+                                color: HubTheme.speaker(speaker?.color ?? 1)) {
+                    editText = line.text
+                    editing = line
+                }
             }
         }
+    }
+}
+
+/// A line of a noted call, with what can be fixed on it: its words, who said it, or the line itself
+/// (an echo left over). From the line's menu (shown on hover) or a right-click.
+private struct HubEditableLine: View {
+    let note: Note
+    let line: NoteLine
+    let name: String
+    let color: Color
+    let onEdit: () -> Void
+    @ObservedObject private var taker = NoteTaker.shared
+    @State private var hovering = false
+
+    var body: some View {
+        HubLineView(name: name, color: color, line: line)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .overlay(alignment: .topTrailing) {
+                Menu { actions } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 12))
+                        .foregroundColor(HubTheme.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .opacity(hovering ? 1 : 0)
+                .help(String(localized: "notes.edit-line"))
+            }
+            .onHover { hovering = $0 }
+            .contextMenu { actions }
+    }
+
+    @ViewBuilder private var actions: some View {
+        Button(String(localized: "notes.edit-line"), action: onEdit)
+        Menu(String(localized: "notes.said-by")) {
+            ForEach(note.speakers) { other in
+                Button(other.name) { taker.assign(note.id, line: line.id, to: other.id) }
+                    .disabled(other.id == line.speaker)
+            }
+        }
+        Divider()
+        Button(String(localized: "notes.delete-line"), role: .destructive) { taker.deleteLine(note.id, line: line.id) }
     }
 }
 
