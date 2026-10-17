@@ -73,6 +73,12 @@ struct ClaudeHost: Equatable {
         pillId == "integration_claude" || pillId == "agent_codex"
     }
 
+    /// Whether a session runs in Conductor, which runs workspaces side by side: each of its
+    /// sessions gets its own finished card and takes the pill when it gets a prompt.
+    static func isConductor(_ hostBundleId: String?) -> Bool {
+        hostBundleId == conductorBundleId
+    }
+
     /// Conductor's link to the workspace and chat a session runs in
     /// (`conductor://workspace?id=…&session=…`), from the ids the relay reads in
     /// CONDUCTOR_WORKSPACE_ID / CONDUCTOR_SESSION_ID. nil for any other host.

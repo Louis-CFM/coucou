@@ -38,6 +38,11 @@ enum ClaudeHostTests {
         check("Cursor doesn't", !ClaudeHost.keepsSessionLink(pillId: "agent_cursor"))
         check("no pill doesn't", !ClaudeHost.keepsSessionLink(pillId: nil))
 
+        print("ClaudeHost.isConductor")
+        check("Conductor is", ClaudeHost.isConductor("com.conductor.app"))
+        check("Warp isn't", !ClaudeHost.isConductor("dev.warp.Warp-Stable"))
+        check("VS Code (nil host) isn't", !ClaudeHost.isConductor(nil))
+
         print("ClaudeHost.sessionURL")
         let conductor = "com.conductor.app"
         let workspace = "a1f5ba4e-8f43-4648-9e05-4a87c51f5168"

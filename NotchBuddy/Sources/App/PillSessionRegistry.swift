@@ -57,9 +57,15 @@ struct PillSessionRegistry {
     }
 
     private struct Pill {
-        /// Live sessions, oldest first. The first one owns name and cwd.
+        /// Live sessions, the owner first: the one that last claimed the pill, else the oldest.
         var order: [String] = []
         var sessions: [String: Session] = [:]
+
+        /// Hands the pill to `session`: first in `order`, it owns name, cwd and link.
+        mutating func makeOwner(_ session: String) {
+            order.removeAll { $0 == session }
+            order.insert(session, at: 0)
+        }
     }
 
     private var pills: [String: Pill] = [:]
@@ -69,10 +75,15 @@ struct PillSessionRegistry {
     /// Records the session that sent an event as live behind `pill`.
     /// `working` says whether the event means the session is mid-turn: a
     /// `PreToolUse` does, a `SessionStart` or a stray notification does not.
-    mutating func note(pill: String, display: Display, working: Bool, now: Date = Date()) {
+    /// `claiming` hands the pill to this session: used when the user starts a turn in it,
+    /// so a session opened next to an older one shows up instead of hiding behind it.
+    mutating func note(pill: String, display: Display, working: Bool, claiming: Bool = false,
+                       now: Date = Date()) {
         var p = pills[pill] ?? Pill()
         sweep(&p, now: now)
-        if p.sessions[display.session] == nil {
+        if claiming {
+            p.makeOwner(display.session)
+        } else if p.sessions[display.session] == nil {
             p.order.append(display.session)
         }
         var session = p.sessions[display.session]
@@ -123,8 +134,9 @@ struct PillSessionRegistry {
     // MARK: - Reading
 
     /// The session whose project name and cwd the pill shows. Ownership goes
-    /// to the oldest live session and only moves on when that one ends, so a
-    /// single name field stops flipping between two parallel sessions.
+    /// to the oldest live session, and moves on when that one ends or when another
+    /// session claims the pill (a new prompt in Conductor). Other events never move
+    /// it, so a single name field stops flipping between two parallel sessions.
     func displayOwner(of pill: String) -> Display? {
         guard let p = pills[pill], let id = p.order.first,
               let session = p.sessions[id] else { return nil }

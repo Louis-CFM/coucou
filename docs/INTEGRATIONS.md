@@ -68,6 +68,8 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 | rien (app Claude) | activer l'app Claude |
 Demande l'autorisation Automatisation la première fois (normal).
 
+Plusieurs sessions sur la pill Claude Code : la pill montre la plus ancienne session encore ouverte, et « terminé » n'apparaît qu'une fois qu'aucune autre session ne travaille. Exception pour Conductor, qui fait tourner des workspaces côte à côte : une session Conductor prend la pill quand elle reçoit un prompt, et chacune a sa carte « terminé » (ou d'erreur) et son son, même si une autre session travaille encore ; la pill revient ensuite au travail et au nom de la session qui la tient.
+
 ### Installation des hooks : procédure obligatoire
 1. Lire `~/.claude/settings.json` (le créer s'il n'existe pas).
 2. Copier en `~/.claude/settings.json.bak-AAAAMMJJ-HHMM`.

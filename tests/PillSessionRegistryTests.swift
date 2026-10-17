@@ -96,6 +96,32 @@ enum PillSessionRegistryTests {
             check("B may write the card now", reg.ownsDisplay(pill: claude, session: "b"))
         }
 
+        // ── a new prompt brings its session onto the pill ───────────────────────
+        print("\nNew prompt claims the pill")
+        do {
+            var reg = PillSessionRegistry()
+            reg.note(pill: claude, display: display("a", "coucou", "/a"), working: true)
+            reg.note(pill: claude, display: display("b", "lokil", "/b"), working: false)
+            check("B's SessionStart leaves A on the pill",
+                  reg.displayOwner(of: claude)?.session == "a")
+
+            reg.note(pill: claude, display: display("b", "lokil", "/b"), working: true, claiming: true)
+            check("B's prompt takes the pill", reg.displayOwner(of: claude)?.session == "b")
+            check("name is B's", reg.displayOwner(of: claude)?.projectName == "lokil")
+            check("A may no longer rename it", !reg.ownsDisplay(pill: claude, session: "a"))
+
+            reg.note(pill: claude, display: display("a", "coucou", "/a"), working: true)
+            check("A's tool calls do not take it back",
+                  reg.displayOwner(of: claude)?.session == "b")
+            check("still two live sessions", reg.liveCount(pill: claude) == 2)
+
+            _ = reg.endSession(pill: claude, session: "b")
+            check("A gets the pill back when B ends", reg.displayOwner(of: claude)?.session == "a")
+
+            reg.note(pill: claude, display: display("a", "coucou", "/a"), working: true, claiming: true)
+            check("the owner claiming again changes nothing", reg.liveCount(pill: claude) == 1)
+        }
+
         // ── empty cwd must not erase a known one ────────────────────────────────
         print("\nPartial payloads")
         do {

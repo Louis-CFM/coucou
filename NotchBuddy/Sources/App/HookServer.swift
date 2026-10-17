@@ -532,7 +532,10 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
+            // A new prompt in a Conductor workspace brings its session onto the pill, even next
+            // to an older one. Other sessions keep the oldest one on it, so its name stays put.
             upsertTask(pill: agentId, display: display, working: true,
+                       claiming: ClaudeHost.isConductor(hostApp),
                        externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
@@ -599,9 +602,10 @@ final class HookServer: @unchecked Sendable {
             RecapStore.shared.stop(sessionId: recapSessionId)
             // Another session is still mid-turn behind this pill: the finished state, the
             // sound and the idle reset below would land on its work. Its own Stop comes later.
-            guard scope == .pill else {
+            // Conductor runs workspaces side by side, so each of its sessions gets its card.
+            if scope == .sessionOnly {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
-                break
+                guard ClaudeHost.isConductor(hostApp) else { break }
             }
             // Coucou started mid-turn: the pill shows up (it stays its owner's otherwise)
             if !isExternalAgent {
@@ -609,7 +613,8 @@ final class HookServer: @unchecked Sendable {
                                     bundleId: bundleId, session: sessionId)
             }
             state.updateTask(id: agentId, state: .finished)
-            if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+            // Another session still works behind the pill: the conclusion is the card's, not the pill's
+            if scope == .pill, !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
             }
             SoundEngine.shared.play("finish")
@@ -626,8 +631,13 @@ final class HookServer: @unchecked Sendable {
                 setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
-                // A session (this one or a sibling) may have started a new turn meanwhile.
-                guard self.sessions.workingCount(pill: agentId) == 0 else { return }
+                // A session (this one or a sibling) is mid-turn: the pill goes back to work.
+                guard self.sessions.workingCount(pill: agentId) == 0 else {
+                    if AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .finished {
+                        AppState.shared.updateTask(id: agentId, state: .working)
+                    }
+                    return
+                }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
@@ -638,16 +648,23 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
+            // Like Stop: while another session is mid-turn behind this pill, only a Conductor
+            // session gets its error card and sound, and the card shows the session that failed.
+            let scope = sessions.endTurn(pill: agentId, session: sessionId)
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
+            if scope == .sessionOnly {
+                nbLog("StopFailure \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
+                guard ClaudeHost.isConductor(hostApp) else { break }
+            }
             if !isExternalAgent {
                 upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, link: display.link,
                                     bundleId: bundleId, session: sessionId)
             }
             state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
+            // Another session still works behind the pill: the error is the card's, not the pill's.
             let detail = Self.stopFailureDetail(payload)
-            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+            if scope == .pill, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = detail
             }
             SoundEngine.shared.play("error")
@@ -660,6 +677,12 @@ final class HookServer: @unchecked Sendable {
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                // A session (this one or a sibling) is mid-turn: the pill goes back to work.
+                guard self.sessions.workingCount(pill: agentId) > 0,
+                      AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .error else { return }
+                AppState.shared.updateTask(id: agentId, state: .working)
             }
 
         case "Interrupt":
@@ -1075,8 +1098,8 @@ final class HookServer: @unchecked Sendable {
     /// nil for a workspace pill.
     @MainActor
     private func upsertTask(pill: String, display: PillSessionRegistry.Display,
-                            working: Bool, externalAgent: String?) {
-        sessions.note(pill: pill, display: display, working: working)
+                            working: Bool, claiming: Bool = false, externalAgent: String?) {
+        sessions.note(pill: pill, display: display, working: working, claiming: claiming)
         if let externalAgent {
             upsertExternalAgent(id: pill, name: externalAgent)
         } else {
@@ -1102,10 +1125,10 @@ final class HookServer: @unchecked Sendable {
     /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
-    /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
-    /// still running), so a second session under the same client cannot rename the card,
-    /// or send "Open terminal" elsewhere, out from under the first. The finished and error
-    /// cards keep their own session (AppState.sessionCard).
+    /// Name, cwd and terminal belong to the session that owns the pill (the one that last
+    /// got a prompt), so another session's tool calls cannot rename the card, or send
+    /// "Open terminal" elsewhere, out from under it. The finished and error cards keep their
+    /// own session (AppState.sessionCard).
     @MainActor
     private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", link: SessionLink = SessionLink(), bundleId: String = "", session: String) {
         let state = AppState.shared
