@@ -103,7 +103,8 @@ final class HookServer: @unchecked Sendable {
                                               command: head.command, inputKey: head.inputKey,
                                               pillId: head.pillId, id: head.id,
                                               queueCount: approvals.count,
-                                              projectName: head.projectName)
+                                              projectName: head.projectName,
+                                              link: head.link)
         state.isPinned = true
         // Approval always forces the island open — the user must be able to respond.
         // Save the focus once, so it comes back when the last request is gone.
@@ -602,12 +603,24 @@ final class HookServer: @unchecked Sendable {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
                 break
             }
+            // Coucou started mid-turn: the pill shows up (it stays its owner's otherwise)
+            if !isExternalAgent {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, link: display.link,
+                                    bundleId: bundleId, session: sessionId)
+            }
             state.updateTask(id: agentId, state: .finished)
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
             }
             SoundEngine.shared.play("finish")
             if focused {
+                // The card shows the session that finished (its name, conclusion and link), whichever
+                // session owns the pill. Only here: a pill in the background gets a badge, not the card.
+                if !isExternalAgent {
+                    state.sessionCard = SessionCard(pillId: agentId, view: .finished, name: projectName,
+                                                    finalLine: finalText.isEmpty ? nil : finalText,
+                                                    link: display.link)
+                }
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
@@ -627,13 +640,23 @@ final class HookServer: @unchecked Sendable {
             RecapStore.shared.stop(sessionId: recapSessionId)
             guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
+            if !isExternalAgent {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, link: display.link,
+                                    bundleId: bundleId, session: sessionId)
+            }
             state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
+            let detail = Self.stopFailureDetail(payload)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                state.tasks[idx].finalLine = Self.stopFailureDetail(payload)
+                state.tasks[idx].finalLine = detail
             }
             SoundEngine.shared.play("error")
             if focused {
+                if !isExternalAgent {
+                    state.sessionCard = SessionCard(pillId: agentId, view: .error, name: projectName,
+                                                    finalLine: detail,
+                                                    link: display.link)
+                }
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
@@ -1008,6 +1031,7 @@ final class HookServer: @unchecked Sendable {
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
+        state.questionLink = SessionLink(hostApp: terminalHost?.bundleId, sessionURL: sessionURL)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -1080,7 +1104,8 @@ final class HookServer: @unchecked Sendable {
     /// If missing (transient), creates it and inserts after the main pill.
     /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
     /// still running), so a second session under the same client cannot rename the card,
-    /// or send "Open terminal" elsewhere, out from under the first.
+    /// or send "Open terminal" elsewhere, out from under the first. The finished and error
+    /// cards keep their own session (AppState.sessionCard).
     @MainActor
     private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", link: SessionLink = SessionLink(), bundleId: String = "", session: String) {
         let state = AppState.shared

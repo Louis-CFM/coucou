@@ -620,7 +620,7 @@ struct QuestionView: View {
 struct ErrorView: View {
     @ObservedObject var state: AppState
 
-    private var task: AgentTask? { state.focusTask }
+    private var task: AgentTask? { state.cardTask(for: .error) }
 
     /// The kind next to the name ("Claude Code", "n8n", "Agent"): agentWho already shows the name.
     private var kind: String {
@@ -714,21 +714,23 @@ private func openClaudeDesktopApp() {
 struct FinishedView: View {
     @ObservedObject var state: AppState
 
+    private var task: AgentTask? { state.cardTask(for: .finished) }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                AgentWho(task: task, label: "Claude Code finished")
                 Text({
-                    if let fl = state.focusTask?.finalLine { return fl }
-                    if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
+                    if let fl = task?.finalLine { return fl }
+                    if let s = task?.steps.last(where: { !$0.isDiffStep }) { return s }
                     return String(localized: "Session finished")
                 }())
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    if state.focusTask?.id == "agent_claude-desktop" {
+                    if task?.id == "agent_claude-desktop" {
                         // Sessions from the Claude desktop app live there, not in a terminal.
                         PrimaryButton("Open Claude") {
                             openClaudeDesktopApp()
@@ -737,7 +739,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            openSessionApp(state.focusTask)
+                            openSessionApp(task)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif

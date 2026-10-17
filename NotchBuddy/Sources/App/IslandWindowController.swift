@@ -825,9 +825,9 @@ final class IslandWindowController: NSWindowController {
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.annoyed)
             return
         }
-        // A Conductor session: straight back to its workspace and chat
+        // A Conductor session: straight back to its workspace and chat (the card's own session when one is up)
         if let task = state.focusTask, ClaudeHost.keepsSessionLink(pillId: task.id) {
-            let link = task.sessionLink
+            let link = state.cardLink ?? task.sessionLink
             if link.sessionURL != nil, ClaudeHost.activate(link) {
                 collapse(allowPendingApproval: true)
                 return
