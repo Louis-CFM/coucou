@@ -140,6 +140,8 @@ struct AgentsTab: View {
                         }
                     }
                 }
+
+                ServiceFeedSection(link: link)
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
@@ -315,12 +317,11 @@ struct SessionPeek: View {
     }
 }
 
-/// The black island at the top: Mochi with the most urgent state and a
-/// summary. When a command waits for your OK, Allow and Deny grow out of it
-/// (Liquid Glass morphing on iOS 26) and fold back once answered.
+/// The top of the Agents tab: the hero card (HomeHero) with the most urgent state and a
+/// summary. When a command waits for your OK, Allow and Deny slide out under it and fold
+/// back once answered.
 struct NotchHeader: View {
     let link: PhoneLink
-    @Namespace private var glass
     @State private var sending = false
     @State private var approved = false
 
@@ -332,31 +333,12 @@ struct NotchHeader: View {
     }
 
     var body: some View {
-        Group {
-            if #available(iOS 26.0, *) {
-                GlassEffectContainer(spacing: 12) {
-                    VStack(spacing: 12) {
-                        summary
-                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 28))
-                            .glassEffectID("island", in: glass)
-                        if let waiting {
-                            panel(waiting)
-                                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26))
-                                .glassEffectID("panel", in: glass)
-                        }
-                    }
-                }
-            } else {
-                VStack(spacing: 12) {
-                    summary
-                        .background(Color(white: 0.09), in: RoundedRectangle(cornerRadius: 28))
-                        .overlay(RoundedRectangle(cornerRadius: 28).strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
-                    if let waiting {
-                        panel(waiting)
-                            .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 26))
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
+        VStack(spacing: 12) {
+            HomeHero(link: link, headline: headline, detail: detail)
+            if let waiting {
+                panel(waiting)
+                    .glassCard(cornerRadius: 26)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .overlay {
@@ -391,30 +373,6 @@ struct NotchHeader: View {
                 sending = false
             }
         }
-    }
-
-    private var summary: some View {
-        HStack(spacing: 14) {
-            MochiLive(state: sessions.leadState)
-                .frame(width: 52, height: 52)
-                .introLanding(.header)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(headline)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .contentTransition(.interpolate)
-                if let detail {
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
-                        .contentTransition(.interpolate)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
     }
 
     private var headline: String {
@@ -529,40 +487,49 @@ struct TodayCard: View {
     var body: some View {
         let tally = link.archive.currentTally
         if !tally.isEmpty || decisionsToday > 0 {
-            HStack(spacing: 0) {
-                stat("\(tally.turns)", tally.turns == 1 ? "turn" : "turns")
-                stat("\(tally.files)", tally.files == 1 ? "file" : "files")
-                VStack(spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text("+\(tally.added)").foregroundStyle(.green)
-                        Text("−\(tally.removed)").foregroundStyle(.red)
-                    }
-                    .font(.headline.monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    Text("lines").font(.caption2).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Today")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 6)
+                HStack(spacing: 8) {
+                    tile(icon: "arrow.triangle.2.circlepath", color: Color(hex: "#3B9EFF"),
+                         value: Text("\(tally.turns)"), label: tally.turns == 1 ? "turn" : "turns")
+                    tile(icon: "doc.text.fill", color: Color(hex: "#A78BFA"),
+                         value: Text("\(tally.files)"), label: tally.files == 1 ? "file" : "files")
+                    tile(icon: "plusminus", color: Color(hex: "#34D399"),
+                         value: Text("\(Text("+\(tally.added)").foregroundStyle(.green)) \(Text("−\(tally.removed)").foregroundStyle(.red))"),
+                         label: "lines")
+                    tile(icon: "checkmark.seal.fill", color: Color(hex: "#F7B32B"),
+                         value: Text("\(decisionsToday)"), label: decisionsToday == 1 ? "OK given" : "OKs given")
                 }
-                .frame(maxWidth: .infinity)
-                stat("\(decisionsToday)", decisionsToday == 1 ? "OK given" : "OKs given")
             }
-            .padding(.vertical, 12)
-            .glassCard()
-            .overlay(alignment: .topLeading) {
-                Text("TODAY")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 10)
-                    .offset(y: -16)
-            }
-            .padding(.top, 10)
+            .padding(.top, 6)
         }
     }
 
-    private func stat(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 2) {
-            Text(value).font(.headline.monospacedDigit())
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+    /// One number of the day: its icon in its colour, the number, what it counts.
+    private func tile(icon: String, color: Color, value: Text, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 28, height: 28)
+                .background(color.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 1) {
+                value
+                    .font(.system(.headline, design: .rounded).monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
-        .frame(maxWidth: .infinity)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(cornerRadius: 18)
     }
 }
