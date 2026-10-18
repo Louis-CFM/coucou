@@ -23,6 +23,15 @@ pub fn inbox_dir() -> PathBuf {
     settings::local_dir().join("inbox")
 }
 
+/// Where Mochi's screenshot is written: inside the inbox, so the chat accepts
+/// it as context (chat::checked_context), and private to the user (on Linux
+/// /tmp is shared by every account).
+pub fn screenshot_path() -> Result<PathBuf, String> {
+    let dir = inbox_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("screenshot.png"))
+}
+
 // ── Paths a real drop delivered ─────────────────────────────────────────────
 //
 // `ingest_file` is callable from the page, so on its own it would copy any file
@@ -182,6 +191,12 @@ mod tests {
 #[cfg(test)]
 mod drop_tests {
     use super::*;
+
+    #[test]
+    fn the_screenshot_lands_in_the_inbox_the_chat_accepts() {
+        let path = screenshot_path().unwrap();
+        assert_eq!(path.parent(), Some(inbox_dir().as_path()));
+    }
 
     // One test: the list is process-wide and tests run in parallel.
     #[test]

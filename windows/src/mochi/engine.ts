@@ -9,6 +9,7 @@ import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
 import type { Outfit } from "./wardrobe";
+import { drawAirPod } from "./airpod";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,11 @@ const EMOTE_EYE: Record<BotEmoteName, EyeShape> = {
 
 const now = () => performance.now() / 1000;
 
+/** The dance's tempo; the AirPods and the music notes bob to it too. */
+export const DANCE_BPM = 112;
+/** Where the head opens like an AirPods case, as a fraction of ry above centre. */
+export const LID_SEAM = 0.5;
+
 export function hexToRGB(hex: string): RGB {
   const h = hex.replace("#", "");
   const v = parseInt(h, 16);
@@ -180,7 +186,7 @@ export function stepDanceLevel(level: number, dancing: boolean, dt: number): num
  * (0…1): a sideways sway, a hop, a tilt, and a squash on landing.
  */
 export function danceTransform(seconds: number, level: number, R: number) {
-  const beat = (seconds * 112) / 60;
+  const beat = (seconds * DANCE_BPM) / 60;
   const hop = Math.abs(Math.sin(Math.PI * beat));
   const land = Math.pow(1 - hop, 6);
   return {
@@ -229,6 +235,15 @@ export class BotEngine {
   /** Dancing to music; `dancingLevel` follows it, 0→1 in 0.3 s, 1→0 in 0.5 s. */
   isDancing = false;
   dancingLevel = 0;
+
+  /** Velocity the whole canvas is being moved at (px/s), e.g. carried on the
+   *  screenshot roam: the body doesn't move then, but the soft parts trail. */
+  dragVel = { x: 0, y: 0 };
+  /** The head's lid: 0 shut, 1 flipped open (the island's AirPods drive it). */
+  lid = 0;
+  /** The buds stand in the open case; `podsRise` 0 sits them deep, 1 lifts them out. */
+  podsShown = false;
+  podsRise = 0;
 
   // Mouth spring (fraction of R)
   slotH = 0; slotHTarget = 0; slotHVel = 0; isChewing = false;
@@ -308,6 +323,12 @@ export class BotEngine {
       default:
         if (prev !== "idle" || next !== "idle") this.blink();
     }
+  }
+
+  /** The AirPods case shutting: a quick squash, like the lid's magnet snapping. */
+  clack() {
+    this.anim("sy", [[0.9, 70, Ease.out], [1, 220, Ease.back]]);
+    this.anim("sx", [[1.07, 70, Ease.out], [1, 220, Ease.back]]);
   }
 
   setBadge(b: Badge | null) {
@@ -694,7 +715,8 @@ export class BotEngine {
       const dRoll = this.roll - this.prevRoll;
       const rollVel = Math.abs(dRoll) > Math.PI ? 0 : dRoll / dt;
       const centrifugal = this.rigidRoll ? rollVel * 0.18 : 0;
-      const tDx = Math.max(-1, Math.min(1, -yawVel * 0.35 - this.tilt * 2 + centrifugal));
+      // Carried across the screen (the roam), they trail behind too.
+      const tDx = Math.max(-1, Math.min(1, -yawVel * 0.35 - this.tilt * 2 + centrifugal - this.dragVel.x / 700));
       const tDy = Math.max(-1, Math.min(1, oyVel * 0.5));
       this.physVx += (60 * (tDx - this.physDx) - 9 * this.physVx) * dt;
       this.physVy += (60 * (tDy - this.physDy) - 9 * this.physVy) * dt;
@@ -793,12 +815,27 @@ export class BotEngine {
     if (this.tilt !== 0) x.rotate(this.tilt);
     x.scale(this.sx, this.sy);
 
+    const body = this.bodyPath(rx, ry, R);
+    const lid = this.isMini ? 0 : Math.min(1.1, Math.max(0, this.lid));
+    if (lid < 0.001) this.paintBody(x, body, R, rx, ry);
+    else this.paintCase(x, body, R, rx, ry, lid);
+
+    x.restore();
+    x.restore();
+
+    if (this.badge && this.badgeS > 0.01 && this.morph < 0.25) {
+      this.drawBadge(x, this.badge, R, cx, cy);
+    }
+    this.drawParticles(x, R, cx, cy);
+  }
+
+  /** Outfit, body, blush, eyes and mouth, in the body's own frame. */
+  private paintBody(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
     const dressed = !this.isMini && this.outfit !== "none";
     const head = dressed ? makeHead(R, this.yaw, this.pitch, this.physDx, this.physDy) : null;
     const outfitState = { presence: this.outfitPresence, morph: this.morph };
     if (head) drawOutfitBehind(x, this.outfit, head, outfitState);
 
-    const body = this.bodyPath(rx, ry, R);
     this.drawBody(x, body, R, rx, ry);
 
     const blushVal = Math.max(this.blush, this.tint * 0.5) * (1 - this.morph);
@@ -819,14 +856,129 @@ export class BotEngine {
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
     if (head) drawOutfitFront(x, this.outfit, head, outfitState);
+  }
 
-    x.restore();
+  /**
+   * Mochi as an AirPods case. The top of the head is the lid, hinged at the
+   * back: it tips up and over, seen a little from above, showing its white
+   * underside and the two buds standing in their wells. The front light glows
+   * while it's open.
+   */
+  private paintCase(
+    x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number, lid: number,
+  ) {
+    const seam = -ry * LID_SEAM;
+    const w = rx * 0.86; // half the opening's width
+    const D = w * 0.6; // half its depth, front to back
+    const e = 0.3; // how far from above we look: depth shows as e × height
+    const big = R * 4;
+    const th = 1.8 * lid;
+    const c = Math.cos(th);
+    const s = Math.sin(th);
+
+    // The base, below the seam.
+    x.save();
+    x.beginPath();
+    x.rect(-big, seam, big * 2, big);
+    x.clip();
+    this.paintBody(x, body, R, rx, ry);
     x.restore();
 
-    if (this.badge && this.badgeS > 0.01 && this.morph < 0.25) {
-      this.drawBadge(x, this.badge, R, cx, cy);
+    // The opening: white inside, two wells, the buds standing in them.
+    const drawInside = () => {
+      const inside = x.createLinearGradient(0, seam - e * D, 0, seam + e * D);
+      inside.addColorStop(0, "#9EA2AA");
+      inside.addColorStop(1, "#E9EAEE");
+      x.fillStyle = inside;
+      x.beginPath();
+      x.ellipse(0, seam, w, e * D, 0, 0, Math.PI * 2);
+      x.fill();
+      x.strokeStyle = "rgba(255,255,255,0.8)";
+      x.lineWidth = Math.max(0.6, R * 0.02);
+      x.stroke();
+      for (const sd of [-1, 1]) {
+        x.fillStyle = "#2B2D33";
+        x.beginPath();
+        x.ellipse(sd * w * 0.42, seam + e * D * 0.1, w * 0.2, e * D * 0.5, 0, 0, Math.PI * 2);
+        x.fill();
+      }
+      if (!this.podsShown) return;
+      const size = R * 0.95;
+      // Sitting deep, only the bulbs show; risen, they stand clear of the case.
+      x.save();
+      x.beginPath();
+      x.rect(-big, seam - big, big * 2, big + e * D * 0.1);
+      x.clip();
+      for (const sd of [-1, 1]) {
+        drawAirPod(x, sd * w * 0.42, seam + size * (0.12 - 0.55 * this.podsRise), size, sd, sd * 0.12);
+      }
+      x.restore();
+    };
+
+    // The lid tips up and back over its hinge at the back of the seam. Seen a
+    // little from above, a point `z` towards us shows `e·z` lower. The dome
+    // squashes as it turns away; its underside, the opening's mirror, faces us
+    // once the lid passes the line of sight, standing behind the opening.
+    const domeScale = c + e * s;
+    const domeLift = -D * s + e * D * (c - 1);
+    const under = s > e * c;
+    const drawDome = () => {
+      // Edge-on behind the open lid it's only a sliver: leave it out.
+      if (Math.abs(domeScale) < 0.01 || (under && domeScale < 0.15)) return;
+      x.save();
+      x.translate(0, seam + domeLift);
+      x.scale(1, domeScale);
+      x.translate(0, -seam);
+      x.beginPath();
+      x.rect(-big, seam - big, big * 2, big);
+      x.clip();
+      this.paintBody(x, body, R, rx, ry);
+      // Tipping away, it catches less light.
+      x.fillStyle = `rgba(40,44,54,${0.3 * (1 - Math.max(0, c))})`;
+      x.fill(body);
+      x.restore();
+    };
+    const drawUnder = () => {
+      const k = e * c - s;
+      const cy = seam - e * D + D * k;
+      const ryU = D * Math.abs(k);
+      const g = x.createLinearGradient(0, cy - ryU, 0, cy + ryU);
+      g.addColorStop(0, "#F6F7F9");
+      g.addColorStop(1, "#C8CBD2");
+      x.fillStyle = g;
+      x.beginPath();
+      x.ellipse(0, cy, w, ryU, 0, 0, Math.PI * 2);
+      x.fill();
+      x.strokeStyle = "rgba(120,125,135,0.55)";
+      x.lineWidth = Math.max(0.6, R * 0.02);
+      x.stroke();
+      // The magnets' little dimples, where the buds touch when it's shut.
+      x.fillStyle = "rgba(150,155,165,0.6)";
+      for (const sd of [-1, 1]) {
+        x.beginPath();
+        x.ellipse(sd * w * 0.42, cy, w * 0.13, ryU * 0.3, 0, 0, Math.PI * 2);
+        x.fill();
+      }
+    };
+    if (under) {
+      drawDome();
+      drawUnder();
+      drawInside();
+    } else {
+      drawInside();
+      drawDome();
     }
-    this.drawParticles(x, R, cx, cy);
+
+    // The status light on the front.
+    const glow = Math.min(1, lid * 2);
+    const ly = ry * 0.66;
+    const halo = x.createRadialGradient(0, ly, 0, 0, ly, R * 0.14);
+    halo.addColorStop(0, `rgba(80,255,140,${0.9 * glow})`);
+    halo.addColorStop(1, "rgba(80,255,140,0)");
+    x.fillStyle = halo;
+    x.beginPath();
+    x.arc(0, ly, R * 0.14, 0, Math.PI * 2);
+    x.fill();
   }
 
   private bodyPath(rx: number, ry: number, R: number): Path2D {

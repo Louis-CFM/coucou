@@ -25,6 +25,7 @@ import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
+import { Pods } from "./pods";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
 
@@ -72,6 +73,8 @@ export class Island {
   private botSize = new Spring(10);
 
   private engine = new BotEngine();
+  /** AirPods in Mochi's head and the music notes (pods.ts). */
+  private pods = new Pods(() => this.ensureRunning());
   private greeting = new Greeting();
   private greetingShown = false;
   private seasons = new SeasonCache();
@@ -103,8 +106,11 @@ export class Island {
   onGreetingDone: (() => void) | null = null;
   onWake: (() => void) | null = null;
 
-  /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out. */
-  private botPress: { x: number; y: number } | null = null;
+  /** Where a press on Mochi started: moving past DRAG_THRESHOLD drags him out,
+   *  to the desktop, or (Ctrl held) for a screenshot of the screen. */
+  private botPress: { x: number; y: number; roam: boolean } | null = null;
+  /** Linux: the screenshot roam's pointer goes through the island (roam_linux.rs). */
+  private roamCarrying = false;
 
   /** The next reveal from hidden makes no peek (music starting, as on macOS). */
   private silentReveal = false;
@@ -301,7 +307,7 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.root.append(this.wakeStrip, this.islandEl, this.pods.el);
     this.applyGeometry();
   }
 
@@ -357,6 +363,11 @@ export class Island {
       // A folded card is still waiting: it keeps the island pinned.
       if (!State.pendingApproval) State.isPinned = false;
       void Bridge.focusWindow(false);
+      // A screenshot nobody asked about must not tag along into a later chat.
+      if (State.droppedFile?.ephemeral && State.chatHistory.length === 0) {
+        State.droppedFile = null;
+        State.promptContext = null;
+      }
     }
     if (mode !== "expanded") {
       closePlanCard();
@@ -469,6 +480,39 @@ export class Island {
     }
     if (State.paused) return;
     this.alert("wardrobe");
+  }
+
+  // ── Screenshot roam (src-tauri/src/roam.rs) ─────────────────────────────────
+
+  /** Ctrl+dragged out of the island: Mochi goes onto the screen to take a screenshot. */
+  private startRoam() {
+    State.roaming = true;
+    this.cancelBotHover();
+    this.roamCarrying = navigator.userAgent.includes("Linux");
+    void Bridge.roamStart({
+      state: this.engine.state,
+      bodyColor: this.engine.bodyColor,
+      outfit: this.engine.outfit,
+    });
+    // Mochi has left: the island goes straight back to its idle size.
+    this.collapse();
+    State.notify();
+  }
+
+  /** Mochi flew back from the screen, with a screenshot when it got one. */
+  onRoamEnd(path: string | null) {
+    State.roaming = false;
+    this.roamCarrying = false;
+    this.engine.squash();
+    Sound.play("open");
+    State.notify();
+    if (!path) return;
+    // Named as it is on disk, like any dropped file.
+    State.droppedFile = { name: "screenshot.png", path, ephemeral: true };
+    State.promptContext = { kind: "file", name: "screenshot.png", path };
+    State.chatHistory = [];
+    void Bridge.chatReset();
+    this.alert("prompt");
   }
 
   /** An alert stopped waiting for an answer: let the island auto-close again. */
@@ -735,9 +779,10 @@ export class Island {
       State.lastActivity = performance.now();
       // A click makes a hover-opened island an ordinary open one.
       this.fsm.userInteracted();
-      // A press on Mochi may become a drag out to the desktop.
+      // A press on Mochi may become a drag out to the desktop, or with Ctrl
+      // held, out onto the screen for a screenshot.
       if (e.button === 0 && this.isBotHit(e.clientX, e.clientY)) {
-        this.botPress = { x: e.clientX, y: e.clientY };
+        this.botPress = { x: e.clientX, y: e.clientY, roam: e.ctrlKey };
       }
       // Right-click on Mochi opens the wardrobe, and closes it again.
       if (e.button === 2 && this.isBotHit(e.clientX, e.clientY)) {
@@ -761,8 +806,13 @@ export class Island {
       if (this.isBotHit(e.clientX, e.clientY)) e.preventDefault();
     });
 
-    // Dragging Mochi out of the island puts him on the desktop.
+    // Dragging Mochi out of the island puts him on the desktop; Ctrl+drag
+    // carries him onto the screen for a screenshot.
     window.addEventListener("mousemove", (e) => {
+      if (this.roamCarrying) {
+        void Bridge.roamPointer(e.clientX, e.clientY, "move");
+        return;
+      }
       if (this.desktop.carrying) {
         this.desktop.carry(e.clientX, e.clientY);
         return;
@@ -775,13 +825,28 @@ export class Island {
       }
       if (Math.hypot(e.clientX - press.x, e.clientY - press.y) <= DRAG_THRESHOLD) return;
       this.botPress = null;
+      if (press.roam) {
+        if (this.canRoam()) this.startRoam();
+        return;
+      }
       if (!this.canDragOut()) return;
       this.cancelBotHover();
       this.desktop.pickUp(e.clientX, e.clientY);
     });
     window.addEventListener("mouseup", (e) => {
       this.botPress = null;
+      if (this.roamCarrying && e.button === 0) {
+        this.roamCarrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "drop");
+      }
       if (this.desktop.carrying) this.desktop.carryEnd(e.clientX, e.clientY);
+    });
+    // Right-click while carrying cancels the screenshot (Linux; Windows polls it).
+    window.addEventListener("mousedown", (e) => {
+      if (this.roamCarrying && e.button === 2) {
+        this.roamCarrying = false;
+        void Bridge.roamPointer(e.clientX, e.clientY, "cancel");
+      }
     });
 
     // Only keys typed into the island itself land here, never Escape typed in
@@ -876,6 +941,12 @@ export class Island {
     this.ensureRunning();
   }
 
+  /** A screenshot roam: not while paused, out on the desktop or already roaming. */
+  private canRoam(): boolean {
+    if (State.paused || State.mode === "hidden" || State.roaming || State.mochiOnDesktop) return false;
+    return !(State.mode === "expanded" && (State.view === "greeting" || this.uploadActive));
+  }
+
   /** The greeting and the drop sequence draw a Mochi of their own: not that one. */
   private canDragOut(): boolean {
     if (State.mode === "hidden" || !this.desktop.canPickUp()) return false;
@@ -883,8 +954,8 @@ export class Island {
   }
 
   private isBotHit(x: number, y: number): boolean {
-    // Out on the desktop, the island's Mochi is invisible: nothing to hit.
-    if (State.mochiOnDesktop) return false;
+    // Out on the desktop or the screen, the island's Mochi is invisible: nothing to hit.
+    if (State.mochiOnDesktop || State.roaming) return false;
     const rect = this.islandRect();
     const cx = rect.x + this.botCx.value;
     const cy = rect.y + this.botCy.value;
@@ -980,6 +1051,15 @@ export class Island {
       // is already in the right place the moment the canvas fades out.
       this.drawBot(dt);
     }
+    this.pods.step(dt, {
+      music: State.spotifyPlaying,
+      dancing: this.engine.isDancing && !greetingActive,
+      visible: State.mode !== "hidden" && !State.roaming && !State.mochiOnDesktop,
+      islandW: this.width.value,
+      botX: this.botCx.value,
+      botY: this.botCy.value,
+      botSize: this.botSize.value,
+    }, this.engine);
 
     const uploadActive = this.uploadActive;
     if (uploadActive) this.uploadCanvas.draw(UploadSeq.frame(), nowMs / 1000);
@@ -1004,7 +1084,7 @@ export class Island {
       ? settling
       : settling ||
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
-        greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
+        greetingActive || this.engine.busy || this.pods.busy || UploadSeq.isActive || viewAnimating;
 
     if (busy) {
       requestAnimationFrame(this.frame);
@@ -1022,8 +1102,8 @@ export class Island {
 
     const greetingActive = State.mode === "expanded" && State.view === "greeting";
     // The drop canvas draws its own Mochi; two of them would overlap. Out on the
-    // desktop, he isn't here at all.
-    const away = State.mochiOnDesktop;
+    // desktop or the screen, he isn't here at all.
+    const away = State.mochiOnDesktop || State.roaming;
     const visible = p.opacity > 0 && !greetingActive && !this.uploadActive && !away;
     this.botCanvas.style.opacity = visible ? "1" : "0";
 

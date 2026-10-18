@@ -2628,3 +2628,13 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* AirPods and music notes: over the whole panel, so they can leave the island. */
+#pods-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 720px;
+  height: 320px;
+  pointer-events: none;
+}
