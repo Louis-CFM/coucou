@@ -128,8 +128,11 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
-  { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+  // Windows: whatever plays in the system media controls (src-tauri/src/music.rs),
+  // Spotify, Apple Music, YouTube Music or any other player. The Mac's Apple
+  // Music pill had this id; it has no Windows or Linux source of its own.
+  { id: "integration_music", name: "Music", color: "#FA2D48", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
