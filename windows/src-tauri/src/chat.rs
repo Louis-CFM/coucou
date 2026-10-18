@@ -24,10 +24,21 @@ pub enum ChatContext {
     Window { app_name: String, title: String, url: Option<String> },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatReply {
     pub text: String,
+    /// Something to know about how the answer was made (the attachment was
+    /// left out, a picture was uploaded to make a 3D model...), shown above it.
+    pub notice: Option<String>,
+    /// Images, video, speech or 3D a media model made (media.rs).
+    pub media: Vec<crate::media::MediaFile>,
+}
+
+impl ChatReply {
+    pub fn text(text: String) -> Self {
+        Self { text, ..Default::default() }
+    }
 }
 
 /// A model a provider offers, for the picker in the chat view.
@@ -76,6 +87,7 @@ impl Chat {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
         *c = Conversation { epoch, ..Default::default() };
+        crate::media::forget_last_image();
     }
 
     /// Starts a turn with `provider`, converting the history if another
@@ -206,6 +218,9 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
+    if provider == crate::media::PROVIDER {
+        return crate::media::chat_turn(app, settings, &query, context).await;
+    }
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;

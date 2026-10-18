@@ -65,6 +65,8 @@ export default defineConfig({
         settings: resolve(__dirname, "settings.html"),
         mochi: resolve(__dirname, "mochi.html"),
         pill: resolve(__dirname, "pill.html"),
+        // The screen overlay: the screenshot roam.
+        roam: resolve(__dirname, "roam.html"),
       },
     },
   },
