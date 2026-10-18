@@ -39,8 +39,8 @@ pub struct Settings {
     /// Off by default; nothing is installed for it.
     pub show_codex_plan_in_notch: bool,
     /// Who the chat talks to: "anthropic", a cloud provider of
-    /// openai_compat.rs ("openai", "google", "openrouter"), or a model server
-    /// of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
+    /// openai_compat.rs ("openai", "google", "openrouter", "deepseek"), or a
+    /// model server of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
     pub chat_provider: String,
     /// The model picked for each provider other than Anthropic (whose model is
     /// `model`), by provider id.
