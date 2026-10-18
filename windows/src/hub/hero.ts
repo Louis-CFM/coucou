@@ -17,6 +17,8 @@ interface Animated {
   /** Pages are built before they are put in the window: dropped only once gone. */
   shown?: boolean;
   born?: number;
+  /** Run when the entry leaves the set — listeners outlive canvases otherwise. */
+  dispose?(): void;
 }
 
 const live = new Set<Animated>();
@@ -32,7 +34,10 @@ function loop(now: number) {
   for (const a of live) {
     if (!a.el.isConnected) {
       // Built but not shown yet: wait for it (a few seconds at most).
-      if (a.shown || now - (a.born ??= now) > 5000) live.delete(a);
+      if (a.shown || now - (a.born ??= now) > 5000) {
+        live.delete(a);
+        a.dispose?.();
+      }
       continue;
     }
     a.shown = true;
@@ -320,12 +325,14 @@ export function liveMochi(canvas: HTMLCanvasElement, color = "#F5F6F8", state: B
   engine.setState(state, true);
   canvas.addEventListener("click", () => engine.slap());
   let mouse: { x: number; y: number } | null = null;
+  const stop = new AbortController();
   window.addEventListener("pointermove", (e) => {
     const r = canvas.getBoundingClientRect();
     mouse = { x: e.clientX - (r.left + r.width / 2), y: e.clientY - (r.top + r.height / 2) };
-  });
+  }, { signal: stop.signal });
   add({
     el: canvas,
+    dispose() { stop.abort(); },
     draw(dt) {
       const { w, h, ctx } = fit(canvas);
       if (!ctx || w === 0) return;

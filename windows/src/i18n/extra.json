@@ -4546,18 +4546,6 @@
       "id": "Claude Code",
       "cs": "Claude Code"
     },
-    "Clock": {
-      "zh-Hans": "时钟",
-      "hi": "घड़ी",
-      "es": "Reloj",
-      "ar": "الساعة",
-      "fr": "Horloge",
-      "bn": "ঘড়ি",
-      "pt-BR": "Relógio",
-      "ru": "Часы",
-      "id": "Jam",
-      "cs": "Hodiny"
-    },
     "Control from the phone": {
       "zh-Hans": "从手机控制",
       "hi": "फ़ोन से नियंत्रित करें",
@@ -5433,18 +5421,6 @@
       "ru": "Слова скопированы: щёлкните, куда их вставить, и нажмите Ctrl+V.",
       "id": "Kata-katamu disalin: klik di tempat yang kamu mau lalu tekan Ctrl+V.",
       "cs": "Vaše slova jsou zkopírována: klikněte, kam je chcete, a stiskněte Ctrl+V."
-    },
-    "time and date in the island while it rests": {
-      "zh-Hans": "岛停靠时显示时间和日期",
-      "hi": "आइलैंड रुका होने पर उसमें समय और तारीख़",
-      "es": "hora y fecha en la isla mientras descansa",
-      "ar": "الوقت والتاريخ في الشريط أثناء توقفه",
-      "fr": "l'heure et la date dans l'île au repos",
-      "bn": "আইল্যান্ড বিশ্রামে থাকলে তার মধ্যে সময় ও তারিখ",
-      "pt-BR": "hora e data na ilha enquanto ela descansa",
-      "ru": "время и дата на острове, пока он сложен",
-      "id": "waktu dan tanggal di pulau saat diam",
-      "cs": "čas a datum v ostrůvku, když je zavřený"
     },
     "{0} h {1}": {
       "zh-Hans": "{0} 小时 {1}",

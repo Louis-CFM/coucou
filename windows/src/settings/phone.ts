@@ -74,15 +74,7 @@ export function phoneSection(on: boolean, makeToggle: Toggle, settings: Settings
     );
   };
 
-  /** Kept up to date while the window is open and the link is on; nothing runs otherwise. */
   const clients = h("div", { class: "hint" });
-  const watch = window.setInterval(() => {
-    if (!section.isConnected) return window.clearInterval(watch);
-    if (document.visibilityState !== "visible" || !clients.isConnected) return;
-    void Bridge.phoneLinkStatus().then((s) => {
-      if (s?.running) clients.textContent = t("Phones connected: {count}", { count: s.clients });
-    });
-  }, 5000);
 
   const switchEl = makeToggle(on, (next) => {
     void (async () => {
@@ -110,7 +102,24 @@ export function phoneSection(on: boolean, makeToggle: Toggle, settings: Settings
     note,
     detail,
   );
+
+  // Kept up to date while the window is open and the link is on; nothing runs otherwise.
+  keepUpdated(section, 5000, () => {
+    if (!clients.isConnected) return;
+    void Bridge.phoneLinkStatus().then((s) => {
+      if (s?.running) clients.textContent = t("Phones connected: {count}", { count: s.clients });
+    });
+  });
   return section;
+}
+
+/** Re-runs `fn` while `anchor` stays mounted and the window is visible; stops the moment it is removed. */
+function keepUpdated(anchor: HTMLElement, ms: number, fn: () => void) {
+  const id = window.setInterval(() => {
+    if (!anchor.isConnected) return window.clearInterval(id);
+    if (document.visibilityState !== "visible") return;
+    fn();
+  }, ms);
 }
 
 /** What the status line says about the relay. */
@@ -182,11 +191,7 @@ function relayBlock(makeToggle: Toggle, changed: () => void): HTMLElement {
 
   void Bridge.phoneRelayStatus().then(show);
   // Kept up to date while the window is open; nothing runs while it is hidden.
-  const watch = window.setInterval(() => {
-    if (!state.isConnected) return window.clearInterval(watch);
-    if (document.visibilityState !== "visible") return;
-    void Bridge.phoneRelayStatus().then(show);
-  }, 5000);
+  keepUpdated(state, 5000, () => void Bridge.phoneRelayStatus().then(show));
 
   return h(
     "div",
@@ -485,9 +490,12 @@ export function copyLinkHint(): HTMLElement {
 }
 
 function pairingRows(pairing: PhoneLinkPairing, again: () => void): HTMLElement[] {
-  // The QR comes from Rust (qrcode crate) as an SVG made only of paths.
+  // The QR comes from Rust (qrcode crate) as an SVG made only of paths —
+  // parsed as a document and adopted, never spliced in as markup.
   const qr = h("div", { class: "qr" });
-  qr.innerHTML = pairing.qrSvg;
+  const svg = new DOMParser().parseFromString(pairing.qrSvg, "image/svg+xml");
+  const root = svg.documentElement;
+  if (root && root.tagName.toLowerCase() === "svg") qr.append(root);
 
   const link = h("input", { type: "text", readonly: "true", value: pairing.link, style: "width:100%" }) as HTMLInputElement;
   link.addEventListener("focus", () => link.select());

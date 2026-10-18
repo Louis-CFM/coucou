@@ -14,6 +14,8 @@ interface RemoteItem {
   decision?: string;
   /** Question text → the label picked, or the labels for a multi-select question. */
   answers?: Record<string, string | string[]>;
+  /** Questions the phone answered in words under "Other…" rather than with a label. */
+  other?: string[];
   text?: string;
   sessionId?: string;
   /** Which CLI the session belongs to — "devin" | "claude" | "codex" | "opencode" (default devin). */
@@ -104,6 +106,7 @@ function snapshot() {
       detail: req.command,
       options: questions.flatMap((q) => q.options),
       questions,
+      ...(req.always ? { always: { label: req.always.label, detail: req.always.detail } } : {}),
     };
   }
 
@@ -200,8 +203,16 @@ function applyRemote(island: Island, items: RemoteItem[]) {
       if (item.decision === "allow" || item.decision === "deny") {
         void Bridge.approvalDecision(req.requestId, item.decision);
         island.closeApproval();
+      } else if (item.decision === "always" && req.always) {
+        // Only ever the rule the card offered — never a blank cheque.
+        void Bridge.approvalDecision(req.requestId, "always");
+        island.closeApproval();
       } else if (item.decision === "answer" && item.answers) {
-        void Bridge.approvalAnswer(req.requestId, item.answers);
+        void Bridge.approvalAnswer(req.requestId, item.answers, item.other ?? []);
+        island.closeApproval();
+      } else if (item.decision === "decline") {
+        // "Reply in terminal" from the phone: nobody acts, the agent asks there.
+        void Bridge.approvalDecline(req.requestId);
         island.closeApproval();
       }
     } else if (item.type === "chat_sel") {
