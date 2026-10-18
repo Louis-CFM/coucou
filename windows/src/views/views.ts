@@ -371,6 +371,7 @@ function buildOverview(actions: ViewActions): ViewHost {
           language(), task.id, task.color, detailOpen, task.state, task.steps.join("|"),
           info?.loaded, info?.error, info?.configured,
           JSON.stringify(info?.data ?? {}),
+          State.pillLabel(task),
         ].join("~");
         if (key !== cardKey) {
           cardKey = key;
@@ -425,7 +426,7 @@ export function hasSessionTicker(task: AgentTask): boolean {
 }
 
 function buildPill(task: AgentTask, actions: ViewActions): HTMLElement {
-  const label = task.id === "integration_claude" ? pillDefinition(task.id)!.name : task.name;
+  const label = State.pillLabel(task);
   const canvas = createMiniBot(task, 24);
   const pill = h(
     "div",
