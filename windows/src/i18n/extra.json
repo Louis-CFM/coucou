@@ -5422,50 +5422,6 @@
       "ru": "Как чат себя называет и имя пилюли главного Мочи, когда ничего не работает. Имена цветных Мочи — в разделе Интеграции.",
       "zh-Hans": "聊天如何自称，以及空闲时主 Mochi 药丸的名称。每个彩色 Mochi 的名字在“集成”下。"
     },
-    "Done": {
-      "zh-Hans": "完成",
-      "hi": "हो गया",
-      "es": "Listo",
-      "ar": "تم",
-      "fr": "Valider",
-      "bn": "হয়েছে",
-      "pt-BR": "Concluir",
-      "ru": "Готово",
-      "id": "Selesai"
-    },
-    "No detail available.": {
-      "zh-Hans": "没有可用的详情。",
-      "hi": "कोई विवरण उपलब्ध नहीं।",
-      "es": "No hay detalles disponibles.",
-      "ar": "لا توجد تفاصيل.",
-      "fr": "Aucun détail disponible.",
-      "bn": "কোনো বিস্তারিত নেই।",
-      "pt-BR": "Nenhum detalhe disponível.",
-      "ru": "Подробностей нет.",
-      "id": "Tidak ada detail."
-    },
-    "Sending by email isn't in this version.": {
-      "zh-Hans": "此版本暂不支持通过邮件发送。",
-      "hi": "ईमेल से भेजना इस संस्करण में नहीं है।",
-      "es": "El envío por correo no está en esta versión.",
-      "ar": "الإرسال بالبريد الإلكتروني غير متاح في هذا الإصدار.",
-      "fr": "L'envoi par e-mail n'est pas dans cette version.",
-      "bn": "ইমেলে পাঠানো এই সংস্করণে নেই।",
-      "pt-BR": "O envio por e-mail não está nesta versão.",
-      "ru": "Отправки по почте в этой версии нет.",
-      "id": "Mengirim lewat email belum ada di versi ini."
-    },
-    "Session stopped on an error.": {
-      "zh-Hans": "会话因错误而停止。",
-      "hi": "सत्र एक त्रुटि पर रुक गया।",
-      "es": "La sesión se detuvo por un error.",
-      "ar": "توقفت الجلسة بسبب خطأ.",
-      "fr": "La session s'est arrêtée sur une erreur.",
-      "bn": "একটি ত্রুটিতে সেশন থেমে গেছে।",
-      "pt-BR": "A sessão parou por um erro.",
-      "ru": "Сессия остановилась из-за ошибки.",
-      "id": "Sesi berhenti karena galat."
-    },
     "Bean": {
       "zh-Hans": "豆子",
       "hi": "बीन",
@@ -5475,7 +5431,8 @@
       "bn": "শিম",
       "pt-BR": "Feijão",
       "ru": "Фасолинка",
-      "id": "Kacang"
+      "id": "Kacang",
+      "cs": "Fazole"
     },
     "Daifuku": {
       "zh-Hans": "大福",
@@ -5486,7 +5443,8 @@
       "bn": "দাইফুকু",
       "pt-BR": "Daifuku",
       "ru": "Дайфуку",
-      "id": "Daifuku"
+      "id": "Daifuku",
+      "cs": "Daifuku"
     },
     "Mochi": {
       "zh-Hans": "Mochi",
@@ -5497,7 +5455,8 @@
       "bn": "Mochi",
       "pt-BR": "Mochi",
       "ru": "Mochi",
-      "id": "Mochi"
+      "id": "Mochi",
+      "cs": "Mochi"
     },
     "Onigiri": {
       "zh-Hans": "饭团",
@@ -5508,7 +5467,8 @@
       "bn": "ওনিগিরি",
       "pt-BR": "Onigiri",
       "ru": "Онигири",
-      "id": "Onigiri"
+      "id": "Onigiri",
+      "cs": "Onigiri"
     },
     "Tofu": {
       "zh-Hans": "豆腐",
@@ -5519,7 +5479,8 @@
       "bn": "টোফু",
       "pt-BR": "Tofu",
       "ru": "Тофу",
-      "id": "Tahu"
+      "id": "Tahu",
+      "cs": "Tofu"
     },
     "Play an emote": {
       "zh-Hans": "播放表情",
@@ -5530,7 +5491,8 @@
       "bn": "ইমোট চালান",
       "pt-BR": "Tocar um emote",
       "ru": "Показать эмоцию",
-      "id": "Putar emote"
+      "id": "Putar emote",
+      "cs": "Přehrát emoci"
     }
   }
 }

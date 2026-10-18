@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn the_first_turn_carries_the_system_prompt_and_the_context() {
         let first = build_prompt("SYS", true, None, "hi", "Test").unwrap();
-        assert!(first.starts_with("You are Mochi"), "system prompt first: {first}");
+        assert!(first.starts_with("SYS"), "system prompt first: {first}");
         assert!(first.ends_with("hi"));
 
         // A resumed turn is only the question: --resume carries the rest.

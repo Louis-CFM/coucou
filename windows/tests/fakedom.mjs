@@ -29,6 +29,7 @@ class FakeElement {
     this.scrollHeight = 0;
     this.style = { setProperty: (k, v) => (this.style[k] = v) };
     const el = this;
+    if (tag === "canvas") this.getContext = () => fake2d;
     this.classList = {
       add: (c) => (el.className = [...new Set([...el.className.split(" ").filter(Boolean), c])].join(" ")),
       remove: (c) => (el.className = el.className.split(" ").filter((x) => x && x !== c).join(" ")),
@@ -127,6 +128,24 @@ class FakeElement {
     return [...this.walk()].filter(match);
   }
 }
+
+// A 2D context that does nothing: canvas-backed views (the wardrobe's icons)
+// build fine under the fake DOM, they just draw into the void.
+const fake2d = new Proxy(
+  {},
+  {
+    get: (t, k) => {
+      if (!(k in t)) t[k] = typeof k === "string" ? new Proxy(() => fake2d, { get: () => fake2d }) : undefined;
+      return t[k];
+    },
+    set: () => true,
+  },
+);
+
+// Path2D is a browser global the wardrobe icons build paths with.
+globalThis.Path2D ??= new Proxy(class {}, {
+  construct: () => new Proxy({}, { get: (t, k) => t[k] ?? (t[k] = () => {}) }),
+});
 
 export function installFakeDom() {
   globalThis.requestAnimationFrame = (fn) => fn();
