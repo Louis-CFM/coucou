@@ -765,6 +765,9 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     Some((g.width() as f64, g.height() as f64))
 }
 
+/// WebKitGTK has no memory target to set.
+pub fn set_memory_low(_win: &WebviewWindow, _low: bool) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
