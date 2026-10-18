@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
+import fr.louisraille.coucou.phone.outfit.Wardrobe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,6 +42,14 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
     /** Pull-to-refresh spinner. */
     var refreshing by mutableStateOf(false)
         private set
+    /** Mochi's wardrobe pick: "auto" (the season decides) or an outfit id. */
+    var outfitSel by mutableStateOf(Wardrobe.parse(Prefs.outfit(app)))
+        private set
+
+    fun setOutfit(selection: String) {
+        outfitSel = Wardrobe.parse(selection)
+        Prefs.setOutfit(getApplication(), outfitSel)
+    }
     /** Set when the pending card just got answered locally — shows the sent state until the PC confirms. */
     private var answeredId: String? = null
     private var answeredDecision: String? = null

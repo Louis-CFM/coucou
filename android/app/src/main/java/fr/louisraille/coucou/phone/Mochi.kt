@@ -24,7 +24,16 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onVisibilityChanged
 import androidx.compose.ui.platform.LocalContext
+import fr.louisraille.coucou.phone.outfit.ComposeGfx
+import fr.louisraille.coucou.phone.outfit.Ctx2D
+import fr.louisraille.coucou.phone.outfit.Outfit
+import fr.louisraille.coucou.phone.outfit.OutfitState
+import fr.louisraille.coucou.phone.outfit.drawOutfitBehind
+import fr.louisraille.coucou.phone.outfit.drawOutfitFront
+import fr.louisraille.coucou.phone.outfit.makeHead
+import fr.louisraille.coucou.phone.outfit.Wardrobe
 import kotlinx.coroutines.isActive
+import java.time.LocalDate
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -67,7 +76,7 @@ object MochiSpec {
         }
     }
 
-    enum class Eye { Pill, Wide, Flat, Happy, Closed, Tired, Spiral }
+    enum class Eye { Pill, Wide, Dot, Line, Flat, Happy, Closed, Spiral, Heart, Star, Tired, Wink, Cup }
     enum class Badge { Dots, Bang, Question, Dot }
 
     /** Tile behind a white Mochi — iOS mochiTile(): light agents get a grey tile. */
@@ -102,7 +111,16 @@ fun Mochi(
     modifier: Modifier = Modifier,
     bodyColor: Color = Color.White,
     seed: String = "",
+    /** What he wears — NONE stays plain. Defaults to the season's outfit, like the Mac's "auto". */
+    outfit: Outfit = Wardrobe.seasonal(LocalDate.now()),
 ) {
+    // The hat drops on when it appears and is taken off again when it goes
+    // (presence 0→1 drives the settle animation in the outfit layers).
+    val presence = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(outfit) {
+        if (outfit != Outfit.NONE) presence.animateTo(1f, androidx.compose.animation.core.tween(450))
+        else presence.snapTo(0f)
+    }
     val ctx = LocalContext.current
     // "Remove animations" — animator scale 0 means draw one still frame.
     val animate = remember {
@@ -132,13 +150,13 @@ fun Mochi(
     }
 
     Canvas(modifier.onVisibilityChanged { visible = it }) {
-        drawMochi(state, bodyColor, time, seed)
+        drawMochi(state, bodyColor, time, seed, outfit, presence.value)
     }
 }
 
 // MARK: - drawing (port of BotEngine.draw with isMini=true)
 
-private fun DrawScope.drawMochi(state: MochiSpec.State, bodyColor: Color, t: Float, seed: String) {
+private fun DrawScope.drawMochi(state: MochiSpec.State, bodyColor: Color, t: Float, seed: String, outfit: Outfit, presence: Float) {
     val W = size.width
     val H = size.height
     val R = W * 0.3f
@@ -169,11 +187,19 @@ private fun DrawScope.drawMochi(state: MochiSpec.State, bodyColor: Color, t: Flo
     val cx = W / 2f
     val cy = H / 2f + R * 0.06f + bob * R
 
+    val c2 = if (outfit != Outfit.NONE)
+        Ctx2D(ComposeGfx(drawContext.canvas, androidx.compose.ui.geometry.Rect(0f, 0f, W, H)))
+    else null
+    val st = OutfitState(presence.toDouble(), 0.0)
+    val head = makeHead(R.toDouble(), pose.yaw.toDouble(), pose.pitch.toDouble())
+
     withTransform({
         translate(cx, cy)
         if (pose.tilt != 0f) rotate(Math.toDegrees(pose.tilt.toDouble()).toFloat())
         scale(1f, breathe)
     }) {
+        if (c2 != null) drawOutfitBehind(c2, outfit, head, st)
+
         // Body — superellipse n=2.7, flat fill (the mini look).
         val body = superellipse(rx, ry)
         drawPath(body, bodyColor)
@@ -181,6 +207,8 @@ private fun DrawScope.drawMochi(state: MochiSpec.State, bodyColor: Color, t: Flo
         clipPath(body) {
             drawEyes(state, blinkPhase, pose, R, rx, ry, t)
         }
+
+        if (c2 != null) drawOutfitFront(c2, outfit, head, st)
     }
 
     // Badge — top-left corner, scale 1.25 like the mini bot.
@@ -290,7 +318,70 @@ private fun DrawScope.drawEye(
             drawPath(p, ink, style = Stroke(width = w * 0.22f,
                 cap = androidx.compose.ui.graphics.StrokeCap.Round))
         }
+        // The emote eyes of the upstream painter (love, proud, wink, the open-box cup).
+        MochiSpec.Eye.Dot -> drawCircle(ink, w * 0.45f)
+        MochiSpec.Eye.Line -> {
+            withTransform({ rotate(Math.toDegrees((-sd * 0.2f).toDouble()).toFloat()) }) {
+                drawRoundRect(ink, Offset(-w * 0.78f, -w * 0.21f), Size(w * 1.56f, w * 0.42f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.21f))
+            }
+        }
+        MochiSpec.Eye.Heart -> drawPath(heartPath(w * 1.2f), Color(0xFFFF4D6D))
+        MochiSpec.Eye.Star -> {
+            withTransform({ rotate(Math.toDegrees((t * 1.5f * sd).toDouble()).toFloat()) }) {
+                drawPath(starPath(w * 1.05f, w * 0.46f), Color(0xFFF7B32B))
+            }
+        }
+        MochiSpec.Eye.Wink -> {
+            if (sd < 0) {
+                val hh = max(h * open, w * 0.3f)
+                drawRoundRect(ink, Offset(-w / 2, -hh / 2), Size(w, hh),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(min(w, hh) / 2f))
+            } else {
+                drawArc(ink, startAngle = 192f, sweepAngle = -204f, useCenter = false,
+                    topLeft = Offset(-w * 0.82f, h * 0.18f - w * 0.82f),
+                    size = Size(w * 1.64f, w * 1.64f),
+                    style = Stroke(width = w * 0.5f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+        }
+        MochiSpec.Eye.Cup -> {
+            // Flat top, rounded bottom corners (U shape), used while the box is open.
+            val hh = max(h * open, w * 0.3f)
+            val cr = min(w / 2f, hh / 2f)
+            val p = Path().apply {
+                moveTo(-w / 2, -hh / 2)
+                lineTo(w / 2, -hh / 2)
+                lineTo(w / 2, hh / 2 - cr)
+                quadraticBezierTo(w / 2, hh / 2, w / 2 - cr, hh / 2)
+                lineTo(-w / 2 + cr, hh / 2)
+                quadraticBezierTo(-w / 2, hh / 2, -w / 2, hh / 2 - cr)
+                close()
+            }
+            drawPath(p, ink)
+        }
     }
+}
+
+private fun heartPath(s: Float): Path {
+    val p = Path()
+    p.moveTo(0f, s * 0.38f)
+    p.cubicTo(-s * 1.05f, -s * 0.15f, -s * 0.5f, -s * 0.95f, 0f, -s * 0.38f)
+    p.cubicTo(s * 0.5f, -s * 0.95f, s * 1.05f, -s * 0.15f, 0f, s * 0.38f)
+    p.close()
+    return p
+}
+
+private fun starPath(ro: Float, ri: Float): Path {
+    val p = Path()
+    for (i in 0 until 10) {
+        val rad = if (i % 2 == 1) ri else ro
+        val a = -PI.toFloat() / 2 + i * PI.toFloat() / 5
+        val px = cos(a) * rad
+        val py = sin(a) * rad
+        if (i == 0) p.moveTo(px, py) else p.lineTo(px, py)
+    }
+    p.close()
+    return p
 }
 
 private fun DrawScope.drawBadge(badge: MochiSpec.Badge, color: Color, R: Float, t: Float) {

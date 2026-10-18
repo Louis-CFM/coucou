@@ -62,6 +62,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.louisraille.coucou.phone.outfit.Outfit
+import fr.louisraille.coucou.phone.outfit.Wardrobe
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 // MARK: - Pairing
@@ -183,6 +186,7 @@ fun HomeScreen(vm: CoucouViewModel) {
                         pending = card,
                         sent = sent,
                         lineError = vm.lineError,
+                        outfit = Wardrobe.resolve(vm.outfitSel, LocalDate.now()),
                     )
                 }
 
@@ -256,6 +260,7 @@ fun HomeScreen(vm: CoucouViewModel) {
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
+                        WardrobeMenu(vm)
                         Text(
                             "Unpair",
                             color = Coucou.Error.copy(alpha = 0.8f),
@@ -272,6 +277,58 @@ fun HomeScreen(vm: CoucouViewModel) {
     }
 }
 
+/** Mochi's wardrobe: "auto" dresses him for the season, or a fixed outfit. */
+@Composable
+private fun WardrobeMenu(vm: CoucouViewModel) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .clip(CircleShape)
+                .clickable { open = true }
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                Wardrobe.LABELS[vm.outfitSel] ?: vm.outfitSel,
+                color = Coucou.Secondary,
+                fontSize = 13.sp,
+            )
+            Icon(
+                Icons.Filled.ArrowDropDown,
+                contentDescription = "Dress Mochi",
+                tint = Coucou.Tertiary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            containerColor = Coucou.Card,
+        ) {
+            Wardrobe.SELECTIONS.forEach { sel ->
+                val item = Wardrobe.resolve(sel, LocalDate.now())
+                DropdownMenuItem(
+                    leadingIcon = {
+                        Mochi(MochiSpec.State.Idle, Modifier.size(26.dp), seed = sel, outfit = item)
+                    },
+                    text = {
+                        Text(
+                            Wardrobe.LABELS[sel] ?: sel,
+                            color = if (sel == vm.outfitSel) Coucou.Ink else Coucou.Secondary,
+                            fontWeight = if (sel == vm.outfitSel) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    },
+                    onClick = {
+                        vm.setOutfit(sel)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
+
 /** The black island: the lead session's Mochi, a headline, what's going on. */
 @Composable
 private fun IslandHeader(
@@ -279,6 +336,7 @@ private fun IslandHeader(
     pending: Relay.Card?,
     sent: String?,
     lineError: String?,
+    outfit: Outfit = Outfit.NONE,
 ) {
     val lead = remember(box) {
         box?.state?.sessions.orEmpty().maxByOrNull { urgencyOf(it.state) }
@@ -311,7 +369,7 @@ private fun IslandHeader(
                 .padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Mochi(leadState, Modifier.size(52.dp), seed = pending?.requestId ?: lead?.pillId ?: "idle")
+                Mochi(leadState, Modifier.size(52.dp), seed = pending?.requestId ?: lead?.pillId ?: "idle", outfit = outfit)
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(headline, color = Coucou.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)

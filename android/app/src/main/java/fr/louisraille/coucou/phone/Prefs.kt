@@ -16,6 +16,7 @@ object Prefs {
     private const val K_NAME = "device_name"
     private const val K_DEVICE_ID = "device_id"
     private const val K_CLAIMED_TOKEN = "claimed_token"
+    private const val K_OUTFIT = "mochi_outfit"
 
     class Pairing(
         val worker: String,
@@ -55,6 +56,13 @@ object Prefs {
 
     fun setClaimedToken(ctx: Context, token: String) {
         sp(ctx).edit().putString(K_CLAIMED_TOKEN, token).apply()
+    }
+
+    /** Mochi's wardrobe pick: "auto" or an outfit id (Wardrobe.SELECTIONS). */
+    fun outfit(ctx: Context): String = sp(ctx).getString(K_OUTFIT, null) ?: "auto"
+
+    fun setOutfit(ctx: Context, selection: String) {
+        sp(ctx).edit().putString(K_OUTFIT, selection).apply()
     }
 
     fun clear(ctx: Context) = sp(ctx).edit().clear().apply()
