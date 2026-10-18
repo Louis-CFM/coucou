@@ -357,11 +357,19 @@ final class LiveActivityRelay {
                 for (id, result) in changes.modificationResultsByID {
                     guard case .success(let mod) = result, mod.record.recordType == "PhoneToken" else { continue }
                     let record = mod.record
+                    let updatedAt = record["updatedAt"] as? Date ?? .distantPast
+                    // A phone silent for a month is gone (app deleted, device
+                    // retired): drop the record so its stale tokens never get
+                    // a push. It re-joins the day the app writes again.
+                    guard updatedAt >= Date().addingTimeInterval(-30 * 24 * 3600) else {
+                        phones[id.recordName] = nil
+                        continue
+                    }
                     phones[id.recordName] = Phone(
                         env: record["env"] as? String ?? "production",
                         startToken: record.encryptedValues["startToken"] as? String ?? "",
                         updateToken: record.encryptedValues["updateToken"] as? String ?? "",
-                        updatedAt: record["updatedAt"] as? Date ?? .distantPast)
+                        updatedAt: updatedAt)
                 }
                 for deletion in changes.deletions where deletion.recordType == "PhoneToken" {
                     phones[deletion.recordID.recordName] = nil

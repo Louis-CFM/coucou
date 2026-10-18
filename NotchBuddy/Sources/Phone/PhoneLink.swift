@@ -103,7 +103,31 @@ final class PhoneLink {
 
     @ObservationIgnored private let container = CKContainer(identifier: PhoneLink.containerID)
     @ObservationIgnored private var database: CKDatabase { container.privateCloudDatabase }
-    @ObservationIgnored private var changeToken: CKServerChangeToken?
+    /// Persisted: a cold start used to replay the whole zone — every record
+    /// ever written — because the cursor lived in memory only.
+    @ObservationIgnored private var _changeToken: CKServerChangeToken?
+    @ObservationIgnored private var changeTokenLoaded = false
+    @ObservationIgnored private var changeToken: CKServerChangeToken? {
+        get {
+            if !changeTokenLoaded {
+                changeTokenLoaded = true
+                if let data = UserDefaults.standard.data(forKey: "coucou-changeToken") {
+                    _changeToken = try? NSKeyedUnarchiver.unarchivedObject(
+                        ofClass: CKServerChangeToken.self, from: data)
+                }
+            }
+            return _changeToken
+        }
+        set {
+            _changeToken = newValue
+            if let token = newValue,
+               let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true) {
+                UserDefaults.standard.set(data, forKey: "coucou-changeToken")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "coucou-changeToken")
+            }
+        }
+    }
     @ObservationIgnored private var firstFetchDone = false
     @ObservationIgnored private var subscribed = false
     @ObservationIgnored private var approvalsSubscribed = false
@@ -309,7 +333,10 @@ final class PhoneLink {
 
     /// State of the "coucou-approvals" subscription, shown on the link test screen.
     var approvalsStatus = "Not set up yet"
-    @ObservationIgnored private var notifiedFingerprints: Set<String> = []
+    /// Remembered across launches: a relaunch must not re-ping an approval it already told about.
+    @ObservationIgnored private var notifiedFingerprints: Set<String> = Self.loadSeen("notifiedFingerprints") {
+        didSet { Self.saveSeen(notifiedFingerprints, "notifiedFingerprints") }
+    }
 
     nonisolated static func approvalNotificationID(_ fingerprint: String) -> String { "approval-\(fingerprint)" }
 
@@ -335,12 +362,18 @@ final class PhoneLink {
                   !iCloudAlerted.contains(session.approvalFingerprint) else { continue }
             let content = UNMutableNotificationContent()
             content.title = "\(session.pillName) · \(session.title)"
+            // The banner stays generic — a locked phone's preview shows nothing
+            // of the command. The expanded view (unlocked) reads it from userInfo.
             content.body = session.approvalCommand.isEmpty
                 ? "An agent is waiting for your OK"
-                : "Waiting for your OK: \(session.approvalCommand.prefix(140))"
+                : "Waiting for your OK"
             content.sound = PhoneSettings.sound("approval")
             content.categoryIdentifier = NotificationActions.approvalCategory
-            content.userInfo = ["fingerprint": session.approvalFingerprint, "pillId": session.id]
+            content.userInfo = [
+                "fingerprint": session.approvalFingerprint,
+                "pillId": session.id,
+                "command": String(session.approvalCommand.prefix(140)),
+            ]
             let request = UNNotificationRequest(identifier: Self.approvalNotificationID(session.approvalFingerprint),
                                                 content: content, trigger: nil)
             try? await UNUserNotificationCenter.current().add(request)
@@ -353,7 +386,18 @@ final class PhoneLink {
     }
 
     /// Fingerprints whose iCloud alert reached this iPhone (shown or tapped).
-    @ObservationIgnored private var iCloudAlerted: Set<String> = []
+    @ObservationIgnored private var iCloudAlerted: Set<String> = Self.loadSeen("iCloudAlerted") {
+        didSet { Self.saveSeen(iCloudAlerted, "iCloudAlerted") }
+    }
+
+    private static func loadSeen(_ key: String) -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: "coucou-\(key)") ?? [])
+    }
+
+    private static func saveSeen(_ value: Set<String>, _ key: String) {
+        // The set only de-duplicates; dropping the oldest entries after 500 is harmless.
+        UserDefaults.standard.set(Array(value.suffix(500)), forKey: "coucou-\(key)")
+    }
 
     func noteICloudAlert(_ fingerprint: String) {
         iCloudAlerted.insert(fingerprint)
@@ -541,11 +585,19 @@ final class PhoneLink {
         return sent
     }
 
-    /// Hands the sessions to the widgets and asks them to redraw.
+    /// Hands the sessions to the widgets and asks them to redraw. A busy Mac
+    /// used to fire one reload per record — WidgetKit budgets those, so bursts
+    /// now settle into a single reload a few seconds after the last change.
+    @ObservationIgnored private var widgetTask: Task<Void, Never>?
     private func updateWidgets() {
         SharedSessions.save(sessions.map(\.shared) + services.values.map(\.shared))
-        WidgetCenter.shared.reloadAllTimelines()
-        ControlCenter.shared.reloadAllControls()
+        widgetTask?.cancel()
+        widgetTask = Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            WidgetCenter.shared.reloadAllTimelines()
+            ControlCenter.shared.reloadAllControls()
+        }
     }
 
     /// Writes a Pong linked to the latest Ping.

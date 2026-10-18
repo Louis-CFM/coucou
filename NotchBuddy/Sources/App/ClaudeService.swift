@@ -211,6 +211,19 @@ final class ClaudeService {
     // Multi-turn conversation messages (for API)
     private var conversationMessages: [[String: Any]] = []
 
+    /**
+     * The request carries the whole conversation; a long chat used to grow it
+     * without bound. Whole user+assistant pairs drop off from the oldest end so
+     * the roles keep alternating, and the first pair — which may carry the
+     * dropped-file context — survives a little longer than the middle ones.
+     */
+    private func trimConversation() {
+        let maxMessages = 40
+        while conversationMessages.count > maxMessages {
+            conversationMessages.removeSubrange(2..<4)
+        }
+    }
+
     func clearConversation() {
         conversationMessages = []
     }
@@ -277,6 +290,7 @@ final class ClaudeService {
         userContent.append(["type": "text", "text": query])
 
         conversationMessages.append(["role": "user", "content": userContent])
+        trimConversation()
 
         let body: [String: Any] = [
             "model": model,
@@ -376,6 +390,7 @@ final class ClaudeService {
         }
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
+        trimConversation()
 
         let useStream = provider.isLocal || provider == .deepseek || provider == .qwen || provider == .moonshot
         var body: [String: Any] = [

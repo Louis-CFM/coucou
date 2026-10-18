@@ -129,14 +129,13 @@ final class ApprovalRelay {
             return false
         }
         guard !found.isEmpty else { return false }
-        // Decisions are single use.
-        let ids = found.map(\.0)
-        Task { _ = try? await database.modifyRecords(saving: [], deleting: ids) }
-
+        // Decisions are single use — but only the one we answer is spent: a
+        // decision for a request still queued on the phone stays for it.
         guard let match = found.first(where: { $0.1 == fingerprint }) else {
-            log("ignored \(found.count) decision(s) for another request")
+            log("kept \(found.count) decision(s) for another request")
             return false
         }
+        Task { _ = try? await database.modifyRecords(saving: [], deleting: [match.0]) }
         apply(match.2, fingerprint: fingerprint)
         return true
     }
