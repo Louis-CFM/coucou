@@ -7,7 +7,7 @@
 import { Ease, lerp, type EaseFn } from "../core/anim";
 import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
-import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
+import { FROG_EYE_SCALE, SKIN_BODY, SKIN_EYE_INK, frogBumps, drawOutfitBehind, drawOutfitFront, drawSkinUnder, makeHead } from "./outfits";
 import type { Outfit } from "./wardrobe";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -53,6 +53,17 @@ interface BotStateCfg {
   sweat: boolean;
   look: readonly [number, number] | null;
   tilt: number;
+}
+
+/** One visible eye: side (-1 left, 1 right), centre and foreshortening. */
+interface EyeSpot {
+  sd: number;
+  ex: number;
+  ey: number;
+  fx: number;
+  fy: number;
+  /** How much the eye faces the viewer (<= 0: rolled out of sight). */
+  vis: number;
 }
 
 interface Particle {
@@ -815,7 +826,22 @@ export class BotEngine {
       x.restore();
     }
 
-    this.drawEyes(x, body, R, rx, ry);
+    // The panda's patches go under the eyes, which turn white to show on them.
+    if (head) drawSkinUnder(x, this.outfit, head, { ...outfitState, eyes: this.eyeSize });
+    const skinInk = head && this.skinAlpha > 0.5 ? SKIN_EYE_INK[this.outfit] : undefined;
+
+    // The frog wears Mochi's eyes on its bumps (outfits.ts frogBumps): they
+    // slide up as the skin fades in, and leave the body's clip once there.
+    let eyes = this.eyePoses(rx, ry).filter((e) => e.vis > 0.04);
+    const frog = this.outfit === "frog" && head ? this.skinAlpha : 0;
+    if (frog > 0.001 && head) {
+      const bumps = frogBumps(head);
+      eyes = eyes.map((e) => {
+        const b = bumps.find((c) => c.sd === e.sd)!;
+        return { ...e, ex: lerp(e.ex, b.x, frog), ey: lerp(e.ey, b.y, frog) };
+      });
+    }
+    this.drawEyes(x, body, R, eyes, lerp(1, FROG_EYE_SCALE, frog), frog < 0.5, skinInk);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
     if (head) drawOutfitFront(x, this.outfit, head, outfitState);
@@ -857,19 +883,19 @@ export class BotEngine {
     return p;
   }
 
-  /** How much of the pumpkin's orange shows on the body (it comes and goes with the outfit). */
-  private get pumpkinAlpha(): number {
-    if (this.isMini || this.outfit !== "pumpkin") return 0;
+  /** How much of a full skin's colours shows on the body (it comes and goes with the outfit). */
+  private get skinAlpha(): number {
+    if (this.isMini || !SKIN_BODY[this.outfit]) return 0;
     return Math.min(1, this.outfitPresence * 2.5) * (1 - this.morph);
   }
 
   private drawBody(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
-    const pumpkin = this.pumpkinAlpha;
+    const skin = this.skinAlpha;
     if (this.bodyColor) {
       // Mini bots: flat solid fill — no gradient, no reflection, no highlight
       x.fillStyle = rgba(this.bodyColor, 1);
       x.fill(body);
-      if (pumpkin <= 0.001) return;
+      if (skin <= 0.001) return;
     } else {
       const g = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
       g.addColorStop(0, rgba(BASE_TOP));
@@ -878,15 +904,16 @@ export class BotEngine {
       x.fill(body);
     }
     x.save();
-    if (pumpkin > 0.001) {
+    if (skin > 0.001) {
+      const [top, bottom] = SKIN_BODY[this.outfit]!;
       const pg = x.createLinearGradient(rx * 0.7, -ry * 0.85, -rx * 0.8, ry * 0.9);
-      pg.addColorStop(0, PUMPKIN_BODY[0]);
-      pg.addColorStop(1, PUMPKIN_BODY[1]);
-      x.globalAlpha = pumpkin;
+      pg.addColorStop(0, top);
+      pg.addColorStop(1, bottom);
+      x.globalAlpha = skin;
       x.fillStyle = pg;
       x.fill(body);
-      // A flat-coloured body only gets the shading while it is a pumpkin.
-      x.globalAlpha = this.bodyColor ? pumpkin : 1;
+      // A flat-coloured body only gets the shading while it wears a skin.
+      x.globalAlpha = this.bodyColor ? skin : 1;
     }
 
     const effectiveTint = this.tint * (1 - this.morph);
@@ -913,7 +940,36 @@ export class BotEngine {
     x.restore();
   }
 
-  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
+  /**
+   * Where both eyes sit on the body (sphere projection), local coords, with how
+   * much each faces the viewer.
+   */
+  private eyePoses(rx: number, ry: number): EyeSpot[] {
+    const spots: EyeSpot[] = [];
+    for (const sd of [-1, 1]) {
+      const eyeYaw = sd * EYE_SP + this.yaw;
+      // Rolling with an outfit on, the whole body turns: the eyes must not roll again.
+      let eyePitch = EYE_P + this.pitch + (this.rigidRoll ? 0 : this.roll);
+      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+      const cp = Math.cos(eyePitch);
+      const ex = Math.sin(eyeYaw) * cp * rx;
+      const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
+      const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
+      const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
+      spots.push({ sd, ex, ey, fx, fy, vis: Math.cos(eyeYaw) * cp });
+    }
+    return spots;
+  }
+
+  /** How big the eyes are drawn, 1 = the outfits' own (a mini's are bigger). */
+  private get eyeSize(): number {
+    return (this.isMini ? 1.9 : 1.0) * this.es;
+  }
+
+  private drawEyes(
+    x: CanvasRenderingContext2D, body: Path2D, R: number, spots: EyeSpot[],
+    scale = 1, clip = true, skinInk?: string,
+  ) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
     // Dancing: happy eyes in the calm states.
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
@@ -925,27 +981,14 @@ export class BotEngine {
     }
 
     x.save();
-    x.clip(body);
-    const ink = this.isMini ? MINI_INK : INK;
+    if (clip) x.clip(body);
+    const ink = skinInk ?? (this.isMini ? MINI_INK : INK);
     x.fillStyle = ink;
     x.strokeStyle = ink;
 
-    for (const sd of [-1, 1]) {
-      const eyeYaw = sd * EYE_SP + this.yaw;
-      // Rolling with an outfit on, the whole body turns: the eyes must not roll again.
-      let eyePitch = EYE_P + this.pitch + (this.rigidRoll ? 0 : this.roll);
-      eyePitch = (((eyePitch + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-      const cp = Math.cos(eyePitch);
-      if (Math.cos(eyeYaw) * cp <= 0.04) continue;
-
-      const ex = Math.sin(eyeYaw) * cp * rx;
-      const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
-      const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
-      const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
-      const eyeMult = this.isMini ? 1.9 : 1.0;
-      const ew = R * EYE_W * this.es * eyeMult;
-      const eh = R * EYE_H * this.es * eyeMult;
-
+    const ew = R * EYE_W * this.eyeSize * scale;
+    const eh = R * EYE_H * this.eyeSize * scale;
+    for (const { sd, ex, ey, fx, fy } of spots) {
       x.save();
       x.translate(ex, ey);
       x.scale(fx, fy);
