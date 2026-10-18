@@ -54,7 +54,12 @@ object Notifier {
     }
 
     private fun decisionPending(ctx: Context, card: Relay.Card, decision: String, req: Int): PendingIntent {
+        // The request id rides in the data URI too: PendingIntent equality
+        // ignores extras, so two waiting cards would otherwise share one
+        // PendingIntent — the newer one's extras would win, and Allow on the
+        // older card would decide the newer request.
         val i = Intent(ctx, DecisionReceiver::class.java)
+            .setData(Uri.parse("coucou://decide/${card.requestId}/$decision"))
             .putExtra(DecisionReceiver.EXTRA_REQUEST, card.requestId)
             .putExtra(DecisionReceiver.EXTRA_DECISION, decision)
         return PendingIntent.getBroadcast(

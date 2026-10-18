@@ -213,6 +213,11 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         val name = nameIn.ifBlank { Build.MODEL }
         when {
             workerUrl.isBlank() -> pairError = "Paste the relay URL — or the full code that includes it."
+            // Every request carries the pairing secret — it must not fly over
+            // plain HTTP (except local development).
+            !workerUrl.lowercase().let {
+                it.startsWith("https://") || it.startsWith("http://127.0.0.1") || it.startsWith("http://localhost")
+            } -> pairError = "The relay URL must be https:// — the code carries your pairing secret."
             parts.size < 2 || !id.matches(Regex("[0-9a-fA-F]{24,48}")) ->
                 pairError = "The code should look like id|secret|worker."
             !secret.matches(Regex("[0-9a-fA-F]{64}")) ->
