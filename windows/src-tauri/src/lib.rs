@@ -30,6 +30,7 @@ mod island;
 mod kiro_chat;
 mod local_chat;
 mod log;
+mod mail_crypto;
 mod media;
 mod music;
 mod net;

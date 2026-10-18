@@ -23,7 +23,7 @@ mod hub;
 mod interop;
 mod pairing;
 mod relay_client;
-mod relay_crypto;
+pub(crate) mod relay_crypto;
 mod server;
 #[cfg(test)]
 mod tests;

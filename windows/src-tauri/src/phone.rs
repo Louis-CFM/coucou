@@ -10,10 +10,11 @@
 //                                  while something is going on, else every 10 s
 //   PC     POST /v1/phone/unpair   the phone is forgotten, the box wiped
 //
-// The pc id lives in settings.json; the pairing secret lives in the keychain.
-// Nothing in this file knows or stores what a session is doing beyond what the
-// island already shows — the relay never sees a command, path or prompt either:
-// the card's text is sent only inside the box the user owns.
+// The pc id lives in settings.json; the pairing master lives in the keychain.
+// Since mail_crypto.rs the box holds ciphertext only: the relay authenticates
+// calls and stores blobs, but cannot read a command, a chat line or a decision
+// — nor forge one, which is the point. A pairing cut before encryption existed
+// keeps the old plaintext contract until it is re-paired.
 
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,6 +25,7 @@ use tokio::sync::Notify;
 
 use crate::i18n::t;
 use crate::island::WINDOW_LABEL;
+use crate::mail_crypto;
 
 /// How often the outbox is read while something is going on: a card up, or
 /// the phone having just said something.
@@ -43,13 +45,16 @@ const PUSH_GAP: Duration = Duration::from_millis(1500);
 const WORKER_PATH: &str = "/v1/phone";
 
 /// The credentials a box is created with. `pc_id` identifies it (and is fine
-/// in settings.json); `secret` authenticates every call. It reaches the
-/// keychain only once the relay has created the box, so a pairing that fails
-/// leaves the previous one working.
+/// in settings.json); `master` is the crypto root the code carries: only its
+/// HKDF derivative authenticates calls (the relay sees it), and the mailbox
+/// keys derive from it (the relay never sees them). It reaches the keychain
+/// only once the relay has created the box, so a pairing that fails leaves the
+/// previous one working.
 pub struct Pairing {
     pub worker: String,
     pub pc_id: String,
-    secret: String,
+    /// The master secret, `secret` in the pairing code — never sent as-is.
+    master: String,
     /// `id|secret|worker` — what the QR encodes and the manual fallback shows.
     pub code: String,
     /// The QR as SVG markup, for the settings window to drop into the page.
@@ -80,13 +85,13 @@ pub fn check_worker(raw: &str) -> Result<String, String> {
 pub fn start_pair(worker: &str) -> Result<Pairing, String> {
     let worker = check_worker(worker)?;
     let Some(pc_id) = hex(12) else { return Err("no random source".into()) };
-    let Some(secret) = hex(32) else { return Err("no random source".into()) };
-    let code = format!("{pc_id}|{secret}|{worker}");
+    let Some(master) = hex(32) else { return Err("no random source".into()) };
+    let code = format!("{pc_id}|{master}|{worker}");
     let qr_svg = qrcode::QrCode::new(code.as_bytes())
         .map_err(|e| e.to_string())?
         .render::<qrcode::render::svg::Color>()
         .build();
-    Ok(Pairing { worker, pc_id, secret, code, qr_svg })
+    Ok(Pairing { worker, pc_id, master, code, qr_svg })
 }
 
 /// The box this PC is paired with now, if any.
@@ -108,9 +113,11 @@ fn current_box(app: &AppHandle) -> Option<BoxRef> {
 /// Called once the code is on screen: creates the box, and only when the relay
 /// has it does the new pairing replace the old one, whose box is then wiped.
 pub async fn finish_pair(app: &AppHandle, pair: &Pairing) -> Result<(), String> {
-    post_async(&pair.worker, "pair", &json!({ "id": pair.pc_id, "secret": pair.secret })).await?;
+    let bearer = mail_crypto::auth_bearer(&pair.master, &pair.pc_id).ok_or("bad pairing material")?;
+    post_async(&pair.worker, "pair", &json!({ "id": pair.pc_id, "secret": bearer })).await?;
     let old = current_box(app);
-    crate::secrets::set("phone-secret", &pair.secret)?;
+    crate::secrets::set("phone-secret", &bearer)?;
+    crate::secrets::set("phone-key", &pair.master)?;
     *PAIRING_SINCE.lock().unwrap() = Some(Instant::now());
     update_settings(app, |s| {
         s.phone_worker = pair.worker.clone();
@@ -132,6 +139,7 @@ pub async fn unpair(app: &AppHandle) {
         let _ = post_async(&current.worker, "unpair", &json!({ "id": current.id, "secret": current.secret })).await;
     }
     let _ = crate::secrets::clear("phone-secret");
+    let _ = crate::secrets::clear("phone-key");
     update_settings(app, |s| {
         s.phone_paired = false;
         s.phone_device.clear();
@@ -275,11 +283,82 @@ async fn claimed(app: &AppHandle, worker: &str, id: &str, sec: &str) -> Result<(
     Ok(())
 }
 
+/// The mailbox crypto for this pairing: both directions' ciphers when the
+/// keychain holds the master (`phone-key`), None on a legacy pairing whose
+/// secret is the bearer itself — that one stays plaintext, as it always was.
+struct Mail {
+    p2h: mail_crypto::Cipher,
+    h2p: mail_crypto::Cipher,
+}
+
+fn mail(box_id: &str) -> Option<Mail> {
+    let master = crate::secrets::get("phone-key")?;
+    let (p2h, h2p) = mail_crypto::ciphers(&master, box_id)?;
+    Some(Mail { p2h, h2p })
+}
+
+/// The phone's own timestamp must sit inside the ciphertext — the relay's `at`
+/// says when it stored the copy, not when the phone wrote it. A blob older
+/// than the outbox's own TTL or from the future is a replay, not a message.
+const MAX_CLOCK_SKEW_MS: u64 = 5 * 60 * 1000;
+const MAX_ITEM_AGE_MS: u64 = 10 * 60 * 1000;
+
+/// Blobs already applied, by ciphertext — a relay replaying a stored item gets
+/// nothing the second time. Bounded; the outbox itself is at most 50 items.
+static SEEN: LazyLock<Mutex<std::collections::HashSet<String>>> =
+    LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
+
+/// The outbox items as they should reach the island: `enc` items decrypted
+/// (forgeries and replays dropped), plaintext kept only on a legacy pairing
+/// where encryption was never negotiated.
+fn decode_outbox(mail: Option<&Mail>, items: Vec<Value>, now_ms: u64) -> Vec<Value> {
+    let mut out = Vec::new();
+    for item in items {
+        if item.get("type").and_then(Value::as_str) == Some("enc") {
+            let Some(mail) = mail else { continue };
+            let Some(ct) = item.get("ct").and_then(Value::as_str).map(str::to_string) else { continue };
+            if !seen_insert(ct) {
+                continue;
+            }
+            let Some(bytes) = mail.p2h.open(&item) else { continue };
+            let Ok(inner) = serde_json::from_slice::<Value>(&bytes) else { continue };
+            let Some(at) = inner.get("at").and_then(Value::as_u64) else { continue };
+            if now_ms.saturating_sub(at) > MAX_ITEM_AGE_MS || at > now_ms + MAX_CLOCK_SKEW_MS {
+                continue;
+            }
+            out.push(inner);
+        } else if mail.is_none() {
+            // Legacy pairing, before encryption existed: no master on either
+            // side, so plaintext is the honest contract.
+            out.push(item);
+        } else {
+            crate::log::line("phone: dropped a plaintext outbox item on an encrypted box");
+        }
+    }
+    out
+}
+
+fn seen_insert(ct: String) -> bool {
+    let mut seen = SEEN.lock().unwrap();
+    if seen.len() > 1024 {
+        seen.clear();
+    }
+    seen.insert(ct)
+}
+
 /// Phone → PC: drain the outbox and hand it to the island, which applies
 /// decisions through the same commands its own buttons use.
 async fn take(app: &AppHandle, worker: &str, id: &str, sec: &str) -> Result<(), String> {
     let reply = post_async(worker, "take", &json!({ "id": id, "secret": sec })).await?;
-    let out = reply.get("out").and_then(Value::as_array).cloned().unwrap_or_default();
+    let raw = reply.get("out").and_then(Value::as_array).cloned().unwrap_or_default();
+    if raw.is_empty() {
+        return Ok(());
+    }
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let out = decode_outbox(mail(id).as_ref(), raw, now_ms);
     if out.is_empty() {
         return Ok(());
     }
@@ -373,15 +452,25 @@ async fn send_state(app: &AppHandle, payload: Value, alert: bool) -> Result<(), 
     let (Some(worker), Some(id), Some(sec)) = (nonempty(worker), nonempty(id), secret()) else {
         return Ok(());
     };
-    let mut body = json!({ "id": id, "secret": sec, "state": payload });
-    if alert {
-        // What wakes the phone: the card kind, nothing else.
-        body["alert"] = payload
+    // What wakes the phone: the card kind, nothing else. Read before the
+    // payload becomes ciphertext.
+    let alert_kind = alert.then(|| {
+        payload
             .get("awaiting")
             .and_then(|a| a.get("kind"))
             .and_then(Value::as_str)
             .map(|k| if k == "question" { json!("question") } else { json!("approval") })
-            .unwrap_or(json!("approval"));
+            .unwrap_or(json!("approval"))
+    });
+    // On an encrypted box the relay stores ciphertext only: the card's command
+    // and the chat tail are for the phone, not for the mailbox operator.
+    let state = match mail(&id) {
+        Some(m) => m.h2p.seal(payload.to_string().as_bytes()),
+        None => payload,
+    };
+    let mut body = json!({ "id": id, "secret": sec, "state": state });
+    if let Some(kind) = alert_kind {
+        body["alert"] = kind;
     }
     post_async(&worker, "state", &body).await.map(|_| ())
 }
@@ -425,8 +514,8 @@ mod tests {
         assert_eq!(parts.len(), 3);
         assert!(parts[0].len() == 24 && parts[0].bytes().all(|b| b.is_ascii_hexdigit()));
         assert!(parts[1].len() == 64 && parts[1].bytes().all(|b| b.is_ascii_hexdigit()));
-        // The secret travels in the code and is only stored once the box exists.
-        assert_eq!(parts[1], p.secret);
+        // The master travels in the code and is only stored once the box exists.
+        assert_eq!(parts[1], p.master);
         assert_eq!(parts[2], "https://relay.example.workers.dev");
         assert!(p.qr_svg.contains("<svg"));
     }
@@ -456,6 +545,56 @@ mod tests {
         assert_eq!(take_interval(false, Some(Duration::from_secs(30))), POLL);
         assert_eq!(take_interval(false, Some(ACTIVE_WINDOW + Duration::from_secs(1))), POLL_IDLE);
         assert_eq!(take_interval(false, None), POLL_IDLE);
+    }
+
+    /// A mailbox the phone sealed for us, for decode_outbox tests.
+    fn sealed_item(cipher: &mail_crypto::Cipher, inner: Value) -> Value {
+        let mut blob = cipher.seal(inner.to_string().as_bytes());
+        blob.as_object_mut().unwrap().insert("type".into(), Value::from("enc"));
+        blob.as_object_mut().unwrap().insert("at".into(), Value::from(1));
+        blob
+    }
+
+    #[test]
+    fn encrypted_items_decrypt_and_plaintext_forgery_is_dropped() {
+        let (p2h, _h2p) = mail_crypto::ciphers(
+            "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+            "0123456789abcdef01234567",
+        )
+        .unwrap();
+        let now = 1_800_000_000_000u64;
+        let mail = Mail { p2h, h2p: _h2p };
+        let good = sealed_item(&mail.p2h, json!({"type":"decision","requestId":"r1","decision":"allow","at":now}));
+        let forged = json!({"type":"decision","requestId":"r1","decision":"allow","at":now});
+        let out = decode_outbox(Some(&mail), vec![good, forged], now);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0]["decision"], "allow");
+    }
+
+    #[test]
+    fn stale_and_replayed_items_are_dropped() {
+        let (p2h, _h2p) = mail_crypto::ciphers(
+            "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+            "0123456789abcdef01234567",
+        )
+        .unwrap();
+        let now = 1_800_000_000_000u64;
+        let mail = Mail { p2h, h2p: _h2p };
+        // Older than the outbox TTL: a replay the relay is showing again.
+        let stale = sealed_item(&mail.p2h, json!({"type":"chat","text":"old","at": now - MAX_ITEM_AGE_MS - 1}));
+        // The same blob twice: applied once.
+        let item = sealed_item(&mail.p2h, json!({"type":"chat","text":"hi","at": now}));
+        let out = decode_outbox(Some(&mail), vec![stale, item.clone(), item], now);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0]["text"], "hi");
+    }
+
+    #[test]
+    fn a_legacy_pairing_keeps_plaintext() {
+        let item = json!({"type":"chat","text":"hi","at":1});
+        let out = decode_outbox(None, vec![item], 1_800_000_000_000);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0]["text"], "hi");
     }
 
     #[test]
