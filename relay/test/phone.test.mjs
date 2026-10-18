@@ -68,7 +68,7 @@ test("router: GET, unknown action and bad ids are rejected", async () => {
   assert.equal((await send("/v1/phone/pair", { body: "not json" })).status, 400);
   assert.equal((await send("/v1/phone/pair", { body: '{"id":"nothex!"}' })).status, 400);
   assert.equal(
-    (await send("/v1/phone/pair", { body: "{}", headers: { "content-length": "300000" } })).status,
+    (await send("/v1/phone/pair", { body: "{}", headers: { "content-length": "450000" } })).status,
     413,
   );
   assert.equal(
@@ -90,7 +90,7 @@ test("router: bodies are capped by what arrives and must be JSON objects", async
   // No Content-Length header, as a chunked upload sends it: the size is still counted.
   const big = new ReadableStream({
     start(c) {
-      c.enqueue(new TextEncoder().encode(`{"id":"${"a".repeat(300000)}"}`));
+      c.enqueue(new TextEncoder().encode(`{"id":"${"a".repeat(450000)}"}`));
       c.close();
     },
   });
@@ -343,4 +343,46 @@ test("unpair wipes the box; the old secret dies with it", async () => {
   const b = await paired();
   await ok(call(b, "unpair", { id: ID, secret: SECRET }));
   assert.equal((await call(b, "fetch", { id: ID, secret: SECRET })).status, 403);
+});
+
+// ── End-to-end blobs (the box stores, never reads) ────────────────────────────
+
+test("an encrypted state is stored untouched and fetched back as it arrived", async () => {
+  const b = await paired();
+  const blob = { enc: 1, n: "AQIDBAUGBwgJCgsM", ct: "s9NCsOUHmz_m5rSKEVucA1ZlOHm45daYIKuASYQjPZie6MWq" };
+  await ok(call(b, "state", { id: ID, secret: SECRET, state: blob, alert: "approval" }));
+  const { state } = await ok(call(b, "fetch", { id: ID, secret: SECRET }));
+  assert.deepEqual(state, blob); // verbatim — not clipped, not cleaned
+});
+
+test("sealed decide/chat/select land in the outbox as enc items", async () => {
+  const b = await paired();
+  const n = "AQIDBAUGBwgJCgsM";
+  const ct = "aGFuZHMtb2ZmLXRoZS1jb250ZW50cw"; // not plaintext the box could clip
+  await ok(call(b, "decide", { id: ID, secret: SECRET, n, ct }));
+  await ok(call(b, "chat", { id: ID, secret: SECRET, n, ct: ct + "2" }));
+  await ok(call(b, "select", { id: ID, secret: SECRET, n, ct: ct + "3" }));
+  const { out } = await ok(call(b, "take", { id: ID, secret: SECRET }));
+  assert.deepEqual(
+    out.map((i) => [i.type, i.n, i.ct]),
+    [
+      ["enc", n, ct],
+      ["enc", n, ct + "2"],
+      ["enc", n, ct + "3"],
+    ],
+  );
+});
+
+test("a malformed enc call falls through to the plain-field checks", async () => {
+  const b = await paired();
+  // n present but no ct → not a blob; the legacy decision validation answers.
+  assert.equal(
+    (await call(b, "decide", { id: ID, secret: SECRET, n: "AQIDBAUGBwgJCgsM" })).status,
+    400,
+  );
+  // Bad nonce length → same.
+  assert.equal(
+    (await call(b, "chat", { id: ID, secret: SECRET, n: "AA", ct: "AA" })).status,
+    400,
+  );
 });

@@ -200,9 +200,16 @@ function text(status: number, message: string): Response {
 //   phone POST /v1/phone/fetch  reads state + the waiting card
 //   phone POST /v1/phone/decide answers a permission / question
 //   phone POST /v1/phone/chat   sends a chat line
-// Every call carries the secret; the box stores only its SHA-256. FCM data
+// Every call carries a secret; the box stores only its SHA-256. FCM data
 // payloads carry no content (kind + pc id only): the phone fetches details
 // from the box over HTTPS, so nothing sensitive ever rides Google's push.
+//
+// End-to-end: the secret the calls carry is HKDF of the pairing master, which
+// stays on the two devices. Card text, chat lines and decisions travel as
+// {"enc":1,"n":…,"ct":…} AES-256-GCM blobs under keys derived from the master —
+// so the box below stores ciphertext it cannot read, and a blob it did not
+// receive from a paired device never verifies. A pairing cut before this
+// existed keeps its plaintext contract until it is re-paired.
 
 const ID_RE = /^[0-9a-f]{24,48}$/;
 const SECRET_RE = /^[0-9a-f]{64}$/;
@@ -252,8 +259,8 @@ async function readObject(request: Request, max: number): Promise<Record<string,
   return parsed as Record<string, unknown>;
 }
 
-/** State pushes carry the chat transcript tail — up to ~200 KB with every cleanState bound maxed out. */
-const PHONE_BODY_MAX = 262144;
+/** State pushes carry the chat transcript tail — ~200 KB plaintext, ~270 KB as an encrypted blob. */
+const PHONE_BODY_MAX = 400_000;
 const LIVE_ACTIVITY_BODY_MAX = 4096;
 const PHONE_ACTIONS = ["pair", "claim", "claimed", "state", "fetch", "decide", "chat", "select", "take", "unpair"];
 
@@ -325,8 +332,28 @@ function cleanCard(raw: unknown): PhoneCard {
   };
 }
 
+/** base64url, no padding — what mail_crypto.rs and BoxCrypto.kt write. */
+const B64URL_RE = /^[A-Za-z0-9_-]+$/;
+/** An end-to-end blob: fresh 12-byte nonce, ciphertext bounded by the body cap. */
+function encBlob(v: unknown): { enc: 1; n: string; ct: string } | null {
+  const r = (typeof v === "object" && v !== null ? v : {}) as Record<string, unknown>;
+  if (r.enc !== 1) return null;
+  const n = r.n, ct = r.ct;
+  if (typeof n !== "string" || n.length !== 16 || !B64URL_RE.test(n)) return null;
+  if (typeof ct !== "string" || ct.length > 300_000 || !B64URL_RE.test(ct)) return null;
+  return { enc: 1, n, ct };
+}
+/** Flat form on decide/chat/select calls: the phone sends {id, secret, n, ct}. */
+function encFields(body: Record<string, unknown>): { n: string; ct: string } | null {
+  const n = body.n, ct = body.ct;
+  if (typeof n !== "string" || typeof ct !== "string") return null;
+  if (n.length !== 16 || !B64URL_RE.test(n) || ct.length > 300_000 || !B64URL_RE.test(ct)) return null;
+  return { n, ct };
+}
+
 interface OutboxItem {
-  type: "decision" | "chat" | "chat_sel";
+  /** "enc" wraps a sealed item the box cannot read — the PC unwraps it. */
+  type: "decision" | "chat" | "chat_sel" | "enc";
   at: number;
   requestId?: string;
   decision?: string;
@@ -495,12 +522,19 @@ export class PhoneBox {
         });
       }
       case "state": {
-        const state = cleanState(body.state);
+        // An encrypted state is stored as the blob it arrived as — the box
+        // cannot read it, only hold it for the phone. A field claiming `enc`
+        // that is not a well-formed blob is refused, not silently emptied.
+        const rs = body.state;
+        const claimsEnc = typeof rs === "object" && rs !== null && "enc" in rs;
+        const state = claimsEnc ? encBlob(rs) : cleanState(rs);
         if (!state) return text(400, "state");
         const card = body.card;
         const batch: Record<string, unknown> = { state, stateAt: now, card: null };
         if (typeof card === "object" && card !== null) {
-          batch.card = cleanCard(card);
+          const cb = "enc" in card ? encBlob(card) : cleanCard(card);
+          if (!cb) return text(400, "card");
+          batch.card = cb;
         }
         await this.ctx.storage.put(batch);
         const alert = String(body.alert ?? "");
@@ -524,6 +558,11 @@ export class PhoneBox {
         });
       }
       case "decide": {
+        const enc = encFields(body);
+        if (enc) {
+          if (await this.enqueue({ type: "enc", at: now, ...enc }, now)) return json({ ok: true });
+          return text(429, "outbox full");
+        }
         const requestId = clipped(body.requestId, 64);
         const decision = clipped(body.decision, 16);
         if (!requestId || !["allow", "deny", "answer"].includes(decision)) return text(400, "decision");
@@ -544,6 +583,11 @@ export class PhoneBox {
         return text(429, "outbox full");
       }
       case "chat": {
+        const enc = encFields(body);
+        if (enc) {
+          if (await this.enqueue({ type: "enc", at: now, ...enc }, now)) return json({ ok: true });
+          return text(429, "outbox full");
+        }
         const textIn = clipped(body.text, 4000);
         if (!textIn) return text(400, "text");
         const item: OutboxItem = { type: "chat", at: now, text: textIn };
@@ -555,6 +599,11 @@ export class PhoneBox {
         return text(429, "outbox full");
       }
       case "select": {
+        const enc = encFields(body);
+        if (enc) {
+          if (await this.enqueue({ type: "enc", at: now, ...enc }, now)) return json({ ok: true });
+          return text(429, "outbox full");
+        }
         // Which CLI session's transcript the PC should push ("" = island chat).
         const sessionId = clipped(body.sessionId, 64);
         const agent = clipped(body.agent, 16);
