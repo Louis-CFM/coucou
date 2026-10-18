@@ -51,13 +51,13 @@ jobs:
 
       - name: Unsigned release APK
         run: |
-          node scripts/gen-strings.mjs --check
           ./gradlew assembleRelease --console=plain
           apk=app/build/outputs/apk/release/app-release-unsigned.apk
           test -f "$apk" || { echo "no unsigned release APK at $apk"; ls app/build/outputs/apk/release/; exit 1; }
           mkdir -p ../release-unsigned
           cp "$apk" ../release-unsigned/
-          cp app/build/outputs/mapping/release/mapping.txt ../release-unsigned/
+          # minify off → no mapping.txt today; keep it for the day it is on.
+          [ -f app/build/outputs/mapping/release/mapping.txt ] && cp app/build/outputs/mapping/release/mapping.txt ../release-unsigned/ || true
 
       - uses: actions/upload-artifact@v7
         with:
@@ -129,13 +129,13 @@ jobs:
           VERSION: ${{ needs.apk.outputs.version }}
         run: |
           v="$VERSION"
-          notes="Coucou for Android $v, by Rhytam Biswas (@Rhytam23): your coding agents on your Android phone.
+          notes="Coucou for Android $v: your coding agents on your Android phone.
 
           1. Download \`Coucou-Android-$v.apk\` on your phone (Android 11 or later) and open it. Android asks once to allow installs from your browser or file manager.
-          2. On your computer, Coucou 0.4.0 or later for Windows or Linux: Settings → Android phone, turn on Phone link, then Show pairing code.
+          2. On your computer, Coucou for Windows or Linux: Settings → Android phone, turn on Phone link, then Show pairing code.
           3. Scan the code with the app. The phone and the computer must be on the same Wi-Fi.
 
-          Check the download with \`sha256sum -c SHA256SUMS\`. Guide and troubleshooting: https://github.com/Louis-CFM/coucou/blob/main/android/README.md"
+          Check the download with \`sha256sum -c SHA256SUMS\`. Guide and troubleshooting: https://github.com/${{ github.repository }}/blob/main/android/README.md"
           # --latest=false: the macOS v* releases own the Latest slot, which the site's Download for Mac button points at.
           gh release create "$GITHUB_REF_NAME" \
             "Coucou-Android-$v.apk" \

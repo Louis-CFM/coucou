@@ -230,7 +230,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.85);
@@ -275,7 +275,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 600 12.5px var(--font);
+  font: 600 calc(12.5px * var(--fs, 1)) var(--font);
   letter-spacing: 0.2px;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
@@ -900,7 +900,7 @@ body {
 }
 
 .desc {
-  font: 400 11.5px var(--font);
+  font: 400 calc(11.5px * var(--fs, 1)) var(--font);
   color: var(--dim-2);
   max-width: 100%;
   overflow: hidden;
@@ -940,7 +940,7 @@ body {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--ink);
-  font: 400 12.5px var(--font);
+  font: 400 calc(12.5px * var(--fs, 1)) var(--font);
   outline: none;
   cursor: text;
 }
@@ -1160,7 +1160,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .reply-note {
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: #f7b32b;
   background: rgba(247, 179, 43, 0.1);
   border-radius: 8px;
@@ -1470,7 +1470,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .picker-flag {
   flex: 0 0 auto;
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: var(--amber);
 }
 
@@ -1528,7 +1528,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   min-width: 0;
 }
 
@@ -1549,7 +1549,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .mail-label {
   flex: 0 0 auto;
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: var(--dim-3);
 }
 
@@ -1559,7 +1559,7 @@ input[type="range"]::-webkit-slider-thumb {
   border: 0;
   background: transparent;
   color: var(--ink);
-  font: 400 12.5px var(--font);
+  font: 400 calc(12.5px * var(--fs, 1)) var(--font);
   outline: none;
   padding: 6px 0;
 }
@@ -1577,7 +1577,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .mail-status {
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: #ff8d97;
   min-height: 0;
 }
@@ -2117,7 +2117,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .cal-title {
   flex: 1 1 auto;
-  font: 400 10px var(--font);
+  font: 400 calc(10px * var(--fs, 1)) var(--font);
   color: #c5c8cd;
   text-align: center;
   white-space: nowrap;
@@ -2144,7 +2144,7 @@ input[type="range"]::-webkit-slider-thumb {
 .cal-wlabel {
   width: 26px;
   flex: 0 0 26px;
-  font: 400 7px var(--font);
+  font: 400 calc(7px * var(--fs, 1)) var(--font);
   color: #4b5563;
   text-align: right;
   padding-right: 4px;
@@ -2170,7 +2170,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font: 500 9px var(--font);
+  font: 500 calc(9px * var(--fs, 1)) var(--font);
   color: #9398a1;
 }
 
@@ -2374,14 +2374,14 @@ input[type="range"]::-webkit-slider-thumb {
 .plan-spend-col {
   flex: 0 0 64px;
   text-align: right;
-  font: 500 11px var(--font);
+  font: 500 calc(11px * var(--fs, 1)) var(--font);
   color: #c5c8cd;
   font-variant-numeric: tabular-nums;
 }
 
 .plan-spend-head .plan-spend-col,
 .plan-spend-head .plan-label {
-  font: 400 10px var(--font);
+  font: 400 calc(10px * var(--fs, 1)) var(--font);
   color: var(--dim-3);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2389,7 +2389,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .plan-spend-note {
   margin-top: 4px;
-  font: 400 10px var(--font);
+  font: 400 calc(10px * var(--fs, 1)) var(--font);
   color: var(--dim-3);
 }
 
@@ -3057,7 +3057,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 /* ── Music ─────────────────────────────────────────────────────────────────── */
 
 .music-title {
-  font: 600 12.5px var(--font);
+  font: 600 calc(12.5px * var(--fs, 1)) var(--font);
   color: #f5f6f8;
   white-space: nowrap;
   overflow: hidden;
@@ -3066,7 +3066,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 .music-artist {
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: #8e939c;
   white-space: nowrap;
   overflow: hidden;
@@ -3121,7 +3121,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 .int-hint {
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: #8e939c;
   margin-top: 4px;
 }
@@ -3135,7 +3135,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   padding: 5px 9px;
   border-radius: 9px;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
-  font: 500 11.5px var(--font);
+  font: 500 calc(11.5px * var(--fs, 1)) var(--font);
   color: #e6e7ea;
 }
 
@@ -3163,7 +3163,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   gap: 8px;
   padding: 3px 6px 3px 10px;
   background: rgba(255, 255, 255, 0.05);
-  font: 500 10px var(--font);
+  font: 500 calc(10px * var(--fs, 1)) var(--font);
   color: var(--dim-3);
 }
 
@@ -3219,7 +3219,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 .reply-note {
-  font: 400 11px var(--font);
+  font: 400 calc(11px * var(--fs, 1)) var(--font);
   color: #f7b32b;
   background: rgba(247, 179, 43, 0.1);
   border-radius: 8px;
@@ -3238,7 +3238,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   border-radius: 10px;
   background: rgba(247, 179, 43, 0.1);
   color: #f7b32b;
-  font: 400 11.5px var(--font);
+  font: 400 calc(11.5px * var(--fs, 1)) var(--font);
 }
 
 .image-ask.open {
@@ -3252,7 +3252,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 .btn.small {
-  font-size: 11px;
+  font-size: calc(11px * var(--fs, 1));
   padding: 4px 9px;
 }
 
@@ -3297,7 +3297,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--dim-3);
-  font: 500 10px var(--font);
+  font: 500 calc(10px * var(--fs, 1)) var(--font);
   cursor: pointer;
 }
 
@@ -3316,7 +3316,7 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 .code-block pre code {
-  font: 400 11px/1.45 var(--mono);
+  font: 400 calc(11px * var(--fs, 1))/1.45 var(--mono);
   white-space: pre;
 }
 
@@ -3429,13 +3429,13 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 }
 
 .gen-label {
-  font: 500 12.5px var(--font);
+  font: 500 calc(12.5px * var(--fs, 1)) var(--font);
 }
 
 .gen-meta {
   display: flex;
   gap: 8px;
-  font: 400 10.5px var(--font);
+  font: 400 calc(10.5px * var(--fs, 1)) var(--font);
   color: var(--dim-3);
   font-variant-numeric: tabular-nums;
 }
