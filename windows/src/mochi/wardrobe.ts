@@ -5,10 +5,15 @@
 
 import { N_, labels, t } from "../i18n/i18n";
 
-/** Every outfit, plus "auto" (dress for the season) and "none". Order of the wardrobe. */
+/**
+ * Every outfit, plus "auto" (dress for the season) and "none". Order of the
+ * wardrobe: the Mac's, then the hats drawn from SVG (outfits.ts). Only
+ * Windows and Linux have those.
+ */
 export const OUTFIT_SELECTIONS = [
   "auto", "none", "partyHat", "beanie", "crown", "sunglasses", "roundGlasses",
   "bow", "scarf", "witchHat", "pumpkin", "santaHat", "bunnyEars",
+  "catEars", "chefHat", "cowboyHat", "gradCap", "sprout", "strawHat", "topHat",
 ] as const;
 
 /** What can be stored in the preferences. The raw values are the Mac's, keep them stable. */
@@ -36,6 +41,13 @@ export const OUTFIT_KEYS: Record<OutfitSelection, string> = {
   pumpkin: N_("Pumpkin"),
   santaHat: N_("Santa hat"),
   bunnyEars: N_("Bunny ears"),
+  catEars: N_("Cat ears"),
+  chefHat: N_("Chef hat"),
+  cowboyHat: N_("Cowboy hat"),
+  gradCap: N_("Graduation cap"),
+  sprout: N_("Sprout"),
+  strawHat: N_("Straw hat"),
+  topHat: N_("Top hat"),
 };
 
 /** In the current language: every read goes through `t()`. */
@@ -54,8 +66,7 @@ const SELECTION_SET: ReadonlySet<string> = new Set(OUTFIT_SELECTIONS);
 
 /**
  * A stored preference → a selection. Anything unknown (a value from a newer or
- * older build, such as the Mac's removed "topHat", or garbage) means "auto",
- * exactly like `Outfit.stored` on macOS.
+ * older build, or garbage) means "auto", exactly like `Outfit.stored` on macOS.
  */
 export function parseOutfit(raw: unknown): OutfitSelection {
   return typeof raw === "string" && SELECTION_SET.has(raw) ? (raw as OutfitSelection) : DEFAULT_OUTFIT;

@@ -4350,6 +4350,83 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Cat ears": {
+   "zh-Hans": "猫耳朵",
+   "hi": "बिल्ली के कान",
+   "es": "Orejas de gato",
+   "ar": "آذان قطة",
+   "fr": "Oreilles de chat",
+   "bn": "বিড়ালের কান",
+   "pt-BR": "Orelhas de gato",
+   "ru": "Кошачьи ушки",
+   "id": "Telinga kucing"
+  },
+  "Chef hat": {
+   "zh-Hans": "厨师帽",
+   "hi": "शेफ़ की टोपी",
+   "es": "Gorro de chef",
+   "ar": "قبعة الطاهي",
+   "fr": "Toque de chef",
+   "bn": "শেফের টুপি",
+   "pt-BR": "Chapéu de chef",
+   "ru": "Поварской колпак",
+   "id": "Topi koki"
+  },
+  "Cowboy hat": {
+   "zh-Hans": "牛仔帽",
+   "hi": "काउबॉय टोपी",
+   "es": "Sombrero vaquero",
+   "ar": "قبعة رعاة البقر",
+   "fr": "Chapeau de cowboy",
+   "bn": "কাউবয় টুপি",
+   "pt-BR": "Chapéu de caubói",
+   "ru": "Ковбойская шляпа",
+   "id": "Topi koboi"
+  },
+  "Graduation cap": {
+   "zh-Hans": "学位帽",
+   "hi": "दीक्षांत टोपी",
+   "es": "Birrete",
+   "ar": "قبعة التخرج",
+   "fr": "Chapeau de diplômé",
+   "bn": "স্নাতক টুপি",
+   "pt-BR": "Capelo",
+   "ru": "Выпускная шапочка",
+   "id": "Topi wisuda"
+  },
+  "Sprout": {
+   "zh-Hans": "嫩芽",
+   "hi": "अंकुर",
+   "es": "Brote",
+   "ar": "برعم",
+   "fr": "Pousse",
+   "bn": "অঙ্কুর",
+   "pt-BR": "Broto",
+   "ru": "Росток",
+   "id": "Tunas"
+  },
+  "Straw hat": {
+   "zh-Hans": "草帽",
+   "hi": "पुआल की टोपी",
+   "es": "Sombrero de paja",
+   "ar": "قبعة من القش",
+   "fr": "Chapeau de paille",
+   "bn": "খড়ের টুপি",
+   "pt-BR": "Chapéu de palha",
+   "ru": "Соломенная шляпа",
+   "id": "Topi jerami"
+  },
+  "Top hat": {
+   "zh-Hans": "高礼帽",
+   "hi": "टॉप हैट",
+   "es": "Sombrero de copa",
+   "ar": "قبعة عالية",
+   "fr": "Haut-de-forme",
+   "bn": "টপ হ্যাট",
+   "pt-BR": "Cartola",
+   "ru": "Цилиндр",
+   "id": "Topi tinggi"
   }
  }
 }
