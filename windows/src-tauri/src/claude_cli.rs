@@ -119,6 +119,13 @@ pub fn find() -> bool {
     cli_path().is_some()
 }
 
+/// The API answer was "out of credit": the chat turn can go to the CLI
+/// instead, on the user's Claude Code subscription.
+pub fn out_of_credit(err: &str) -> bool {
+    let e = err.to_lowercase();
+    ["claude api 402", "credit balance", "billing", "insufficient", "quota"].iter().any(|w| e.contains(w))
+}
+
 /// One question without a chat or a session, for Flow when there is no Claude
 /// API key: the user's Claude Code subscription answers on Haiku, with no
 /// tools unless `web` (web search and fetch only), and the run ended after

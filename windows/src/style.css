@@ -1090,6 +1090,20 @@ input[type="range"]::-webkit-slider-thumb {
   min-width: 0;
 }
 
+.answer {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.reply-note {
+  font: 400 11px var(--font);
+  color: #f7b32b;
+  background: rgba(247, 179, 43, 0.1);
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin: 0 8px 6px 0;
+}
+
 /* ── Markdown in the answers ─────────────────────────────────────────────── */
 
 .md-p {

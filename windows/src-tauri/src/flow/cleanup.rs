@@ -28,7 +28,7 @@ pub fn has_api_key() -> bool {
 }
 
 pub async fn clean(raw: &str, style: Style, app: Option<&str>, words: &[String]) -> String {
-    if style == Style::Verbatim || text::word_count(raw) < 3 || !has_key() {
+    if style == Style::Verbatim || text::word_count(raw) < 3 || !has_api_key() {
         return raw.to_string();
     }
     let user = format!("<dictation>\n{raw}\n</dictation>");

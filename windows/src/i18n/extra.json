@@ -5493,6 +5493,18 @@
       "ru": "Показать эмоцию",
       "id": "Putar emote",
       "cs": "Přehrát emoci"
+    },
+    "Answered by Claude Code: the Claude API key is missing or out of credit.": {
+      "zh-Hans": "由 Claude Code 回答：Claude API 密钥缺失或额度已用完。",
+      "hi": "Claude Code ने जवाब दिया: Claude API कुंजी नहीं है या उसका क्रेडिट खत्म हो गया है।",
+      "es": "Respondido por Claude Code: falta la clave de la API de Claude o no le queda crédito.",
+      "ar": "أجاب Claude Code: مفتاح Claude API مفقود أو نفد رصيده.",
+      "fr": "Réponse de Claude Code : la clé de l'API Claude est absente ou n'a plus de crédit.",
+      "bn": "Claude Code উত্তর দিয়েছে: Claude API কী নেই বা এর ক্রেডিট শেষ।",
+      "pt-BR": "Respondido pelo Claude Code: a chave da API do Claude está ausente ou sem crédito.",
+      "ru": "Ответил Claude Code: ключа Claude API нет или на нём закончились средства.",
+      "id": "Dijawab oleh Claude Code: kunci API Claude tidak ada atau kreditnya habis.",
+      "cs": "Odpověděl Claude Code: chybí API klíč Claude nebo došel kredit."
     }
   }
 }

@@ -567,7 +567,7 @@ own window.
   Dropping him on a window doesn't attach it to the chat. While he sleeps, the
   transparent square around him (120 px) takes the first mouse move, which
   wakes him (and turns the cursor poll back on) and gives the rest back to the
-  desktop. (feat(windows): every Mochi falls asleep after a quiet spell)
+  desktop.
 
 ## Linux
 

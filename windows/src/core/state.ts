@@ -80,6 +80,8 @@ export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** How the answer was made (Claude Code answered for Claude), shown above it. */
+  notice?: string | null;
 }
 
 /** Default names of the coloured Mochis: a pun on what each one watches.

@@ -40,6 +40,9 @@ pub struct ChatReply {
     pub text: String,
     /// How the model felt about its answer, for Mochi to act out (take_mood).
     pub mood: Option<String>,
+    /// Something to know about how the answer was made (Claude Code answered
+    /// for a Claude key that is missing or out of credit), shown above it.
+    pub notice: Option<String>,
 }
 
 impl ChatReply {
@@ -389,7 +392,7 @@ where
     if let Some(id) = resumed {
         chat.set_cli_session(&turn, id);
     }
-    Ok(ChatReply { text, mood: None })
+    Ok(ChatReply { text, mood: None, notice: None })
 }
 
 /// One chat turn with the provider chosen in the settings. The reply's last
@@ -406,7 +409,21 @@ pub async fn send(
     *chat.persona.lock().unwrap() = settings.mochi_name.clone();
     let model = model_for(settings, provider);
     let reply = if provider == ANTHROPIC || provider.is_empty() {
-        claude::send(chat, &model, query, context).await
+        match claude::send(chat, &model, query.clone(), context.clone()).await {
+            // No key, or no credit left on it: Claude Code answers, if it is here.
+            Err(err) if (!secrets::present(claude::KEY) || claude_cli::out_of_credit(&err)) && claude_cli::find() => {
+                let cli_model = model_for(settings, CLAUDE_CLI);
+                let mut r = cli_send(chat, CLAUDE_CLI, query, context, |s, first, c, q| {
+                    claude_cli::send(cli_model.clone(), chat.system_prompt(true), first, s, q, c)
+                })
+                .await?;
+                r.notice = Some(crate::i18n::t(
+                    "Answered by Claude Code: the Claude API key is missing or out of credit.",
+                ));
+                Ok(r)
+            }
+            other => other,
+        }
     } else if provider == CURSOR {
         cli_send(chat, provider, query, context, |s, first, c, q| {
             cursor_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
@@ -441,7 +458,7 @@ pub async fn send(
         Err(format!("Unknown chat provider: {provider}"))
     }?;
     let (text, mood) = take_mood(&reply.text);
-    Ok(ChatReply { text, mood })
+    Ok(ChatReply { text, mood, notice: reply.notice })
 }
 
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as

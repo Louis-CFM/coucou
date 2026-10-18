@@ -392,7 +392,7 @@ export const Bridge = {
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
   chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string; mood: string | null }>("chat_send", { query, context }),
+    callOrThrow<{ text: string; mood: string | null; notice: string | null }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
