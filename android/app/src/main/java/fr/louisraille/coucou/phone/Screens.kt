@@ -41,12 +41,14 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +68,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -590,21 +593,48 @@ private fun PendingPanel(card: Relay.Card?, sent: String?, vm: CoucouViewModel) 
 @Composable
 private fun ApprovalButtons(card: Relay.Card, vm: CoucouViewModel) {
     val context = LocalContext.current
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        PillButton(
-            "Deny",
-            onClick = { vm.decide(card, "deny") },
-            container = Coucou.DenyBg,
-            ink = Coucou.DenyInk,
-            modifier = Modifier.weight(1f),
-        )
-        // iOS' "Allow asks for Face ID" — Deny stays a plain tap.
-        PillButton(
-            "Allow",
-            onClick = { gateWithBiometrics(context) { vm.decide(card, "allow") } },
-            container = Coucou.Allow,
-            ink = Color.Black,
-            modifier = Modifier.weight(1f),
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PillButton(
+                "Deny",
+                onClick = { vm.decide(card, "deny") },
+                container = Coucou.DenyBg,
+                ink = Coucou.DenyInk,
+                modifier = Modifier.weight(1f),
+            )
+            // iOS' "Allow asks for Face ID" — Deny stays a plain tap.
+            PillButton(
+                "Allow",
+                onClick = { gateWithBiometrics(context) { vm.decide(card, "allow") } },
+                container = Coucou.Allow,
+                ink = Color.Black,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        // The rule Claude Code offered — the same "Always allow …" the PC shows.
+        card.alwaysLabel?.let { label ->
+            PillButton(
+                label,
+                onClick = { gateWithBiometrics(context) { vm.decide(card, "always") } },
+                container = Coucou.Panel2,
+                ink = Coucou.Ink,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            card.alwaysDetail?.let {
+                Text(it, color = Coucou.Tertiary, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            }
+        }
+        // "Reply in terminal" — nobody acts here, the agent asks there.
+        Text(
+            "Reply in terminal",
+            color = Coucou.Tertiary,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { vm.decide(card, "decline") }
+                .padding(vertical = 8.dp),
         )
     }
 }
@@ -612,6 +642,8 @@ private fun ApprovalButtons(card: Relay.Card, vm: CoucouViewModel) {
 @Composable
 private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
     val picked = remember(card.requestId) { mutableStateMapOf<String, List<String>>() }
+    // question text → what was typed under "Other…" (blank/closed = not used)
+    val other = remember(card.requestId) { mutableStateMapOf<String, String>() }
     val groups = card.questions.ifEmpty { listOf(Relay.Question(card.title, card.options)) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -629,13 +661,37 @@ private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+                // "Other…" — the row opens a field; the words are the answer.
+                OptionRow(
+                    label = "Other…",
+                    selected = !other[q.q].isNullOrBlank(),
+                    onClick = {
+                        if (other.containsKey(q.q)) other.remove(q.q) else other[q.q] = ""
+                    },
+                    role = if (q.multi) Role.Checkbox else Role.RadioButton,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (other.containsKey(q.q)) {
+                    CoucouField(
+                        value = other[q.q].orEmpty(),
+                        onValueChange = { other[q.q] = it },
+                        hint = "Type your answer…",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
         PillButton(
             "Answer",
-            onClick = { vm.decide(card, "answer", QuestionAnswers.toAnswers(groups, picked)) },
+            onClick = {
+                vm.decide(
+                    card, "answer",
+                    QuestionAnswers.toAnswers(groups, picked, other),
+                    QuestionAnswers.others(groups, other),
+                )
+            },
             filled = true,
-            enabled = QuestionAnswers.complete(groups, picked),
+            enabled = QuestionAnswers.complete(groups, picked, other),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -662,9 +718,13 @@ private fun SentCard(decision: String) {
             }
             Spacer(Modifier.width(12.dp))
             Text(
-                if (decision == "allow") "Allowed — sent to your PC"
-                else if (decision == "deny") "Denied — sent to your PC"
-                else "Answered — sent to your PC",
+                when (decision) {
+                    "allow" -> "Allowed — sent to your PC"
+                    "always" -> "Always allowed — sent to your PC"
+                    "deny" -> "Denied — sent to your PC"
+                    "decline" -> "The agent asks in the terminal"
+                    else -> "Answered — sent to your PC"
+                },
                 color = if (decision == "deny") Coucou.Error else Coucou.Done,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -1242,7 +1302,9 @@ fun SettingsScreen(vm: CoucouViewModel) {
             }
         }
 
-        // Danger zone.
+        // Danger zone — a pairing cannot be restored from the phone, so
+        // unpairing asks first.
+        var confirmUnpair by remember { mutableStateOf(false) }
         Spacer(Modifier.height(18.dp))
         CoucouCard(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -1253,8 +1315,33 @@ fun SettingsScreen(vm: CoucouViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(Coucou.CornerCard))
-                    .clickable { vm.unpair() }
+                    .clickable { confirmUnpair = true }
                     .padding(16.dp),
+            )
+        }
+        if (confirmUnpair) {
+            AlertDialog(
+                onDismissRequest = { confirmUnpair = false },
+                containerColor = Coucou.Card,
+                title = { Text("Unpair this phone?", color = Coucou.Ink) },
+                text = {
+                    Text(
+                        "The PC forgets this phone and the code stops working — " +
+                            "a new pair has to start on the PC.",
+                        color = Coucou.Secondary,
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmUnpair = false
+                        vm.unpair()
+                    }) { Text("Unpair", color = Coucou.Error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmUnpair = false }) {
+                        Text("Cancel", color = Coucou.Secondary)
+                    }
+                },
             )
         }
         Spacer(Modifier.height(32.dp))

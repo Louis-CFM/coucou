@@ -44,6 +44,9 @@ object Relay {
         val detail: String,
         val options: List<String>,
         val questions: List<Question>,
+        /** The "Always allow …" rule the request offered — null when it offered none. */
+        val alwaysLabel: String? = null,
+        val alwaysDetail: String? = null,
     )
 
     data class Session(
@@ -154,7 +157,13 @@ object Relay {
         post(p.worker, action, body)
     }
 
-    fun decide(p: Prefs.Pairing, requestId: String, decision: String, answers: Map<String, Any>?) {
+    fun decide(
+        p: Prefs.Pairing,
+        requestId: String,
+        decision: String,
+        answers: Map<String, Any>? = null,
+        other: List<String> = emptyList(),
+    ) {
         val inner = JSONObject()
             .put("type", "decision")
             .put("requestId", requestId)
@@ -163,6 +172,8 @@ object Relay {
             inner.put("answers", JSONObject().apply {
                 answers.forEach { (k, v) -> put(k, if (v is List<*>) JSONArray(v) else v) }
             })
+            // Questions answered in words rather than with a label.
+            if (other.isNotEmpty()) inner.put("other", JSONArray(other))
         }
         sendSealed(p, "decide", inner)
     }
@@ -201,6 +212,8 @@ object Relay {
                 Question(q.optString("q"), q.optJSONArray("options").toStrings(), q.optBoolean("multi"))
             }
         },
+        alwaysLabel = o.optJSONObject("always")?.optString("label")?.ifBlank { null },
+        alwaysDetail = o.optJSONObject("always")?.optString("detail")?.ifBlank { null },
     )
 
     private fun parseState(o: JSONObject): State {

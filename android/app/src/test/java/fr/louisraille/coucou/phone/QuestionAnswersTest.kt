@@ -34,4 +34,19 @@ class QuestionAnswersTest {
         )
         assertFalse(QuestionAnswers.complete(listOf(single, multi), mapOf("Which one?" to listOf("B"))))
     }
+
+    @Test
+    fun wordsUnderOtherAnswerTheQuestionAndListIt() {
+        val groups = listOf(single, multi)
+        val picked = mapOf("Extras?" to listOf("Tests"))
+        val other = mapOf("Which one?" to "the third thing")
+        assertTrue(QuestionAnswers.complete(groups, picked, other))
+        assertEquals(
+            mapOf("Which one?" to "the third thing", "Extras?" to listOf("Tests")),
+            QuestionAnswers.toAnswers(groups, picked, other),
+        )
+        assertEquals(listOf("Which one?"), QuestionAnswers.others(groups, other))
+        // Blank words do not count as an answer.
+        assertFalse(QuestionAnswers.complete(groups, picked, mapOf("Which one?" to "  ")))
+    }
 }

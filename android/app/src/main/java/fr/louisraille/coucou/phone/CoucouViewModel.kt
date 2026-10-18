@@ -109,9 +109,12 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         syncToken(p)
         if (pollJob?.isActive == true) return
         pollJob = viewModelScope.launch {
+            var failures = 0
             while (isActive) {
-                refresh()
-                delay(3000)
+                failures = if (refresh()) 0 else (failures + 1).coerceAtMost(4)
+                // A relay that is not answering gets a pause, not a hammer:
+                // 3 s healthy, doubling to under a minute while it stays down.
+                delay(3000L shl failures)
             }
         }
     }
@@ -155,8 +158,9 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         }
     }
 
-    private suspend fun refresh() {
-        val p = Prefs.load(getApplication()) ?: return
+    /** @return false when the relay could not be reached — the poll backs off. */
+    private suspend fun refresh(): Boolean {
+        val p = Prefs.load(getApplication()) ?: return true
         try {
             val f = withContext(Dispatchers.IO) { Relay.fetch(p) }
             if (f.pending?.requestId != answeredId) {
@@ -169,6 +173,7 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
             announce(f)
             box = f
             lineError = null
+            return true
         } catch (e: Relay.Forbidden) {
             // The box wiped us — drop the pairing and go back to the code screen.
             Prefs.clear(getApplication())
@@ -178,7 +183,9 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
             show(Screen.PAIR)
         } catch (e: Exception) {
             lineError = "Can't reach the relay — ${e.message ?: e.javaClass.simpleName}"
+            return false
         }
+        return true
     }
 
     /**
@@ -189,7 +196,11 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
      */
     private fun announce(f: Relay.Fetch) {
         val app = getApplication<Application>()
-        for (s in f.state?.sessions.orEmpty()) {
+        val sessions = f.state?.sessions.orEmpty()
+        // A pill that left the state leaves the map too — its next appearance
+        // is a fresh session, not a transition to announce.
+        announced.keys.retainAll(sessions.mapTo(HashSet()) { it.pillId })
+        for (s in sessions) {
             val prev = announced[s.pillId]
             announced[s.pillId] = s.state
             if (prev != null && prev != s.state && s.state in setOf("finished", "error", "ratelimit")) {
@@ -252,13 +263,18 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         }
     }
 
-    fun decide(card: Relay.Card, decision: String, answers: Map<String, Any>? = null) {
+    fun decide(
+        card: Relay.Card,
+        decision: String,
+        answers: Map<String, Any>? = null,
+        other: List<String> = emptyList(),
+    ) {
         val p = Prefs.load(getApplication()) ?: return
         answeredId = card.requestId
         answeredDecision = decision
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { Relay.decide(p, card.requestId, decision, answers) }
+                withContext(Dispatchers.IO) { Relay.decide(p, card.requestId, decision, answers, other) }
                 refresh()
             } catch (e: Relay.Forbidden) {
                 refresh()
