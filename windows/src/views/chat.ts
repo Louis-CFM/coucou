@@ -225,11 +225,48 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const modelRow = h("div", { class: "model-row" }, modelBtn);
 
   const body = h("div", { class: "chat-body" });
+  const requests = h("div", { class: "cli-requests", style: "max-height:190px;overflow:auto" });
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
   });
-  body.append(chipRow, log, picker.el, modelRow, bar);
+  body.append(chipRow, log, requests, picker.el, modelRow, bar);
+
+  const requestCards = new Map<string, HTMLElement>();
+  void onEvent<{ id: string; provider: string; kind: string; detail: string;
+    questions?: { id: string; question: string; isSecret?: boolean; options?: { label: string }[] }[] | null
+  }>("agent-request", (request) => {
+    if (requestCards.has(request.id)) return;
+    const card = h("div", { class: "cli-request", style: "padding:10px;border:1px solid #F5A524;border-radius:10px;margin:6px 0" },
+      h("strong", { text: t("{provider} needs your answer", { provider: request.provider }) }));
+    const fields = new Map<string, HTMLInputElement>();
+    if (request.kind === "question") {
+      for (const question of request.questions ?? []) {
+        const input = h("input", { class: "chat-input", type: question.isSecret ? "password" : "text", autocomplete: "off" }) as HTMLInputElement;
+        fields.set(question.id, input);
+        card.append(h("label", { text: question.question }), input);
+        for (const option of question.options ?? []) {
+          card.append(h("button", { text: option.label, onclick: () => { input.value = option.label; } }));
+        }
+      }
+    } else { card.append(h("pre", { text: request.detail, style: "white-space:pre-wrap;max-height:80px;overflow:auto" })); }
+    const reply = (allow: boolean) => {
+      const answers = Object.fromEntries([...fields].map(([id, input]) => [id, allow ? [input.value] : []]));
+      void Bridge.cliAgentAnswer(request.id, { allow, answers }).then(() => {
+        card.remove(); requestCards.delete(request.id);
+      });
+    };
+    card.append(
+      h("button", { class: "cli-allow", text: request.kind === "question" ? t("Send") : t("Allow once"), onclick: () => reply(true) }),
+      h("button", { class: "cli-deny", text: t("Deny"), onclick: () => reply(false) }),
+    );
+    requestCards.set(request.id, card);
+    requests.append(card);
+    onHeightChange();
+  });
+  void onEvent<{ id: string }>("agent-request-ended", ({ id }) => {
+    requestCards.get(id)?.remove(); requestCards.delete(id);
+  });
 
   const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
@@ -242,9 +279,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    modelName.textContent = activeModel(State.settings) || (["codex", "antigravity"].includes(p.id) ? p.name : t(STRINGS.noModel));
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
+    const cli = ["codex", "antigravity"].includes(State.settings.chatProvider);
+    send.title = sending && cli ? t("Stop") : t(STRINGS.send);
+    send.disabled = sending && !cli;
+    send.textContent = sending && cli ? "■" : "↑";
   }
 
   modelBtn.addEventListener("click", () => {
@@ -289,9 +330,12 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
-      State.view = "note";
-      Sound.play("error");
+      const message = String(err).replace(/^Error:\s*/, "");
+      if (message !== "The CLI request was cancelled.") {
+        State.noteMessage = message;
+        State.view = "note";
+        Sound.play("error");
+      }
     } finally {
       sending = false;
       live = null;
@@ -303,7 +347,10 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     }
   }
 
-  send.addEventListener("click", () => void submit());
+  send.addEventListener("click", () => {
+    if (sending) void Bridge.chatCancel();
+    else void submit();
+  });
   input.addEventListener("keydown", (e) => {
     const key = (e as KeyboardEvent).key;
     if (key === "Enter") {

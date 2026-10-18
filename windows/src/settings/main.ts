@@ -5,7 +5,7 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CUSTOM_SERVER_KEY, providerDef, urlExposure, withModel } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
@@ -588,6 +588,32 @@ function chatProvidersSection(
       h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: t("Key from {site}", { site: def.where }) }),
     );
   }
+  for (const id of ["codex", "antigravity"] as const) {
+    const provider = providerDef(id);
+    const status = h("div", { class: "hint", text: t("Uses your signed-in CLI account for chat, voice and actions on this computer.") });
+    const connect = h("button", { text: t("Connect {provider}", { provider: provider.name }) }) as HTMLButtonElement;
+    connect.addEventListener("click", async () => {
+      connect.disabled = true;
+      status.textContent = t("Connecting…");
+      try {
+        const models = await Bridge.chatModels(id);
+        if (!models.length) throw new Error(t("The CLI returned no available models."));
+        const model = models.find((m) => m.id === settings.chatModels[id]) ?? models[0];
+        settings = withModel({ ...settings, chatProvider: id }, id, model.id);
+        await save();
+        status.textContent = t("{provider} connected for Mochi chat and voice.", { provider: provider.name });
+      } catch (err) { status.textContent = String(err).replace(/^Error:\s*/, ""); }
+      finally { connect.disabled = false; }
+    });
+    list.append(h("div", { class: "row" }, h("label", { text: provider.name }), connect), status);
+  }
+  const workspace = h("input", { type: "text", value: settings.cliWorkspace, placeholder: t("Home folder"), style: "flex:1" }) as HTMLInputElement;
+  workspace.addEventListener("change", () => { settings.cliWorkspace = workspace.value.trim(); void save(); });
+  list.append(h("div", { class: "row" }, h("label", { text: t("Working folder") }), workspace));
+  const fullAccess = h("input", { type: "checkbox", checked: settings.cliFullAccess }) as HTMLInputElement;
+  fullAccess.addEventListener("change", () => { settings.cliFullAccess = fullAccess.checked; void save(); });
+  list.append(h("label", { class: "row" }, fullAccess, h("span", { text: t("Run CLI agents without approval prompts") })),
+    h("div", { class: "hint", text: t("Enabled: commands and file changes run with your user account. Disabled: use each CLI's permissions; Antigravity actions that need a prompt must be approved in its terminal.") }));
   return h(
     "section",
     {},

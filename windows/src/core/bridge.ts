@@ -185,6 +185,8 @@ export const Bridge = {
 
   saveSettings: (settings: Settings) => call<void>("save_settings", { settings }),
 
+  cliAgentAnswer: (id: string, answer: Record<string, unknown>) => invoke<void>("cli_agent_answer", { id, answer }),
+
   /** Shrink the window down to the invisible wake strip (hidden) or back to full. */
   setCollapsed: (collapsed: boolean) => call<void>("set_collapsed", { collapsed }),
 
@@ -331,6 +333,7 @@ export const Bridge = {
   chatSend: (query: string, context: ChatContext | null) =>
     callOrThrow<{ text: string }>("chat_send", { query, context }),
   chatReset: () => call<void>("chat_reset"),
+  chatCancel: () => call<void>("chat_cancel"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
    * the provider only when it has a key (or a server address).

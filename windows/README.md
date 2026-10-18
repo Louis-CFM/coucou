@@ -256,6 +256,55 @@ mid-conversation carries the conversation over as plain text, so nothing in one
 provider's format is ever sent to another. These providers get no web search
 and no tools — they answer, they never act on your PC.
 
+**Codex and Antigravity accounts (Windows/Linux)**: sign in with `codex login`
+or an interactive `agy` session, then use **Settings → Chat → Connect Codex**
+or **Connect Antigravity**. Pick a model above Mochi's chat box. The model
+catalog comes from your installed CLI and account. Opening chat from the
+Codex or Antigravity pill selects that agent. **Settings → OK Coucou →
+Conversation provider** selects the same account and model for spoken dialogue;
+Parakeet still transcribes speech locally, and the configured system voice or
+ElevenLabs reads the reply. CLI account usage and limits apply.
+
+These integrations retain the CLIs' native shell, file, web, MCP and agent
+capabilities. **Working folder** selects their starting directory (your home
+folder by default). Codex runs through `codex app-server`; its permission
+requests and questions appear inside Mochi. Antigravity runs through `agy`
+with streaming JSON. Its headless protocol cannot receive permission answers:
+it follows existing CLI permission rules and may decline actions that need
+interactive approval. Those can be continued in the Antigravity terminal.
+See the official [Codex App Server](https://learn.chatgpt.com/docs/app-server)
+and [Antigravity headless protocol](https://www.antigravity.google/docs/cli/headless/).
+The explicit **Run CLI agents without approval prompts** option enables
+unattended command execution and file changes for Coucou's CLI sessions; it
+does not edit either CLI's global configuration. Turning it off starts a new
+native session under the CLI's own policy, carrying over the plain dialogue.
+The chat's send button becomes **Stop** during a CLI turn.
+
+Text and voice keep separate native conversation IDs. Coucou resumes only the
+session belonging to that conversation; it never uses `--continue` or attaches
+to an unrelated session. New chat starts afresh. Credentials stay with the
+CLIs, including their refresh and keyring handling; Coucou does not copy them.
+The transcript and requested tool results travel through the selected account.
+
+Validated with Codex CLI 0.163.0 and Antigravity CLI 1.4.1. Protocol tests can
+run without GTK or a microphone:
+
+```sh
+cargo test --manifest-path tests/codex-rpc/Cargo.toml
+```
+
+An optional account smoke test consumes small inference turns and creates
+marker files only inside its own temporary directory, which it removes:
+
+```sh
+cargo run --manifest-path tests/codex-rpc/Cargo.toml --example smoke -- \
+  /absolute/path/to/codex /absolute/path/to/agy
+```
+
+It checks model discovery, native session resumption and actual shell/file
+execution through both accounts. It does not test microphone capture or speech
+playback. It never changes login, global permissions or the installed Coucou.
+
 **Local models**: **Settings… → Local models** connects **Ollama** or **LM
 Studio** (leave the address empty for the usual one on this PC; Ollama's
 `OLLAMA_HOST` is honoured) or any server that speaks the OpenAI API (vLLM,

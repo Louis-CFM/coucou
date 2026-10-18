@@ -1,3 +1,4 @@
+import { providerForPill } from "../core/providers";
 // Keyboard shortcuts → island. Port of IslandWindowController.handleHotKey and
 // handleIslandKey from the macOS app.
 //
@@ -62,6 +63,13 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
 
     case "openChat":
       resume();
+      {
+        const provider = providerForPill(State.focusTask?.id);
+        if (provider) {
+          State.settings = { ...State.settings, chatProvider: provider };
+          void Bridge.saveSettings(State.settings);
+        }
+      }
       host.alert("prompt");
       break;
 

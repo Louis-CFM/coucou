@@ -54,7 +54,7 @@ test("a provider without a key is never asked for its models", async () => {
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter", "Codex", "Antigravity"]);
   assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
@@ -121,4 +121,83 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.equal(view.el.find(".reply")[0].textContent, "Hello there!");
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
+});
+
+test("Codex uses the signed-in account without asking for an API key", async () => {
+  answers.secret_present = false;
+  answers.chat_models = (args) => args.provider === "codex" ? [{ id: "account-model", label: "My Codex model" }] : [];
+  $(".model-btn").fire("click");
+  await flush();
+  const chip = view.el.find(".picker-chip").find((c) => c.textContent === "Codex");
+  assert.ok(chip);
+  chip.fire("click");
+  await flush();
+  assert.equal(State.settings.chatProvider, "codex");
+  assert.deepEqual(sent("chat_models"), [{ provider: "codex" }]);
+  assert.equal(sent("secret_present").length, 1, "only the initial Anthropic provider asked for a key");
+  assert.equal(State.settings.chatModels.codex, "account-model");
+  assert.deepEqual(models(), ["My Codex model"]);
+});
+
+test("Codex login errors stay visible without switching to a paid API provider", async () => {
+  State.settings = { ...State.settings, chatProvider: "codex" };
+  answers.chat_models = () => { throw new Error("Sign in with codex login"); };
+  $(".model-btn").fire("click");
+  await flush();
+  assert.match($(".picker-status").textContent, /codex login/);
+  assert.equal(State.settings.chatProvider, "codex");
+  assert.deepEqual(sent("secret_present"), []);
+});
+
+test("native CLI permissions are answered explicitly and command text stays plain", async () => {
+  await flush();
+  emit("agent-request", { id: "req-1", provider: "Codex", kind: "permission", detail: "echo '<script>hi</script>'" });
+  const card = $(".cli-request");
+  assert.ok(card);
+  assert.match(card.textContent, /<script>hi<\/script>/);
+  assert.equal(card.find("SCRIPT").length, 0);
+  assert.deepEqual(sent("cli_agent_answer"), []);
+  card.querySelector(".cli-allow").fire("click");
+  await flush();
+  assert.deepEqual(sent("cli_agent_answer"), [{ id: "req-1", answer: { allow: true, answers: {} } }]);
+  assert.equal($(".cli-request"), null);
+});
+
+test("CLI questions retain their ids and answers, and expired cards disappear", async () => {
+  await flush();
+  emit("agent-request", { id: "req-2", provider: "Codex", kind: "question", detail: "", questions: [{ id: "destination", question: "Where should it go?" }] });
+  $(".cli-request").querySelector(".chat-input").value = "/tmp/my-project";
+  $(".cli-allow").fire("click");
+  await flush();
+  assert.deepEqual(sent("cli_agent_answer")[0], { id: "req-2", answer: { allow: true, answers: { destination: ["/tmp/my-project"] } } });
+  emit("agent-request", { id: "req-3", provider: "Codex", kind: "permission", detail: "write" });
+  emit("agent-request-ended", { id: "req-3" });
+  assert.equal($(".cli-request"), null);
+});
+
+test("Antigravity selects models from its signed-in CLI account", async () => {
+  State.settings = { ...State.settings, chatProvider: "antigravity" };
+  answers.chat_models = [{ id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (Thinking)" }];
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(sent("secret_present"), []);
+  assert.deepEqual(sent("chat_models"), [{ provider: "antigravity" }]);
+  assert.equal(State.settings.chatModels.antigravity, "claude-sonnet-4-6");
+});
+
+test("a CLI turn can be stopped without showing a failure screen", async () => {
+  State.settings = { ...State.settings, chatProvider: "codex" };
+  let reject;
+  answers.chat_send = () => new Promise((_, no) => (reject = no));
+  $(".chat-input").value = "run this task";
+  $(".send-btn").fire("click");
+  await flush();
+  view.sync();
+  assert.equal($(".send-btn").title, "Stop");
+  $(".send-btn").fire("click");
+  await flush();
+  assert.equal(sent("chat_cancel").length, 1);
+  reject(new Error("The CLI request was cancelled."));
+  await flush();
+  assert.equal(State.view, "prompt");
 });

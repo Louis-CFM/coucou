@@ -2,7 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
-import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
@@ -12,6 +12,7 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
+import { providerForPill } from "../core/providers";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
@@ -121,6 +122,19 @@ export class Island {
       dizzyFromDesktop: () => this.handleDizzy(),
     });
     this.build();
+    const cliRequests = new Set<string>();
+    let wasPinned = false;
+    void onEvent<{ id: string }>("agent-request", ({ id }) => {
+      if (!cliRequests.size) wasPinned = this.fsm.pinned;
+      cliRequests.add(id);
+      this.fsm.pinned = true;
+      this.reveal();
+      this.setView("prompt");
+    });
+    void onEvent<{ id: string }>("agent-request-ended", ({ id }) => {
+      cliRequests.delete(id);
+      if (!cliRequests.size) this.fsm.pinned = wasPinned;
+    });
     this.wireFsm();
     this.wireInput();
     this.engine.onDizzy = () => this.handleDizzy();
@@ -157,7 +171,16 @@ export class Island {
 
   private build() {
     const actions: ViewActions = {
-      setView: (v) => this.setView(v),
+      setView: (v) => {
+        if (v === "prompt") {
+          const provider = providerForPill(State.focusTask?.id);
+          if (provider) {
+            State.settings = { ...State.settings, chatProvider: provider };
+            void Bridge.saveSettings(State.settings);
+          }
+        }
+        this.setView(v);
+      },
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
       foldApproval: () => this.foldApproval(),

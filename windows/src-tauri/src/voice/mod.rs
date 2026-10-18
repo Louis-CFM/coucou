@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::flow::pill;
 use crate::speech::{self, audio};
@@ -53,16 +53,23 @@ fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
 }
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-/// Whether « OK Coucou » can run: the voice model and a Claude key.
-pub fn requirements_met() -> bool {
-    speech::is_ready() && crate::secrets::present(crate::claude::KEY)
+/// The voice model and the selected brain's local prerequisites. Authentication
+/// is checked by Codex itself when the user connects or starts a turn.
+pub fn requirements_met(app: &AppHandle) -> bool {
+    let provider = app.try_state::<crate::Shared>()
+        .map(|s| s.settings.lock().unwrap().chat_provider.clone()).unwrap_or_default();
+    speech::is_ready() && match provider.as_str() {
+        "codex" => crate::codex_chat::installed(),
+        "antigravity" => crate::gravity_chat::executable().is_ok(),
+        _ => crate::secrets::present(crate::claude::KEY),
+    }
 }
 
 /// Starts or stops listening to follow the preference.
 pub fn sync(app: &AppHandle) {
     let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.voice);
     let mut running = RUNNING.lock().unwrap();
-    match (wanted && requirements_met(), running.is_some()) {
+    match (wanted && requirements_met(app), running.is_some()) {
         (true, false) => {
             let stop = Arc::new(AtomicBool::new(false));
             let app2 = app.clone();

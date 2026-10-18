@@ -46,14 +46,30 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
   page.append(ctx.hero("voice", "OK Coucou", t("Say « OK Coucou », then ask anything: add a pill, play music, the weather, an email to prepare.")));
 
   const ready = status.models.parakeet.state === "ready";
+  const boot = await Bridge.boot();
+  const provider = boot?.settings.chatProvider;
+  const cli = provider === "codex" || provider === "antigravity";
+  let codexError = "";
+  if (cli) {
+    try { await Bridge.chatModels(provider); }
+    catch (err) { codexError = String(err).replace(/^Error:\s*/, ""); }
+  }
   page.append(label(t("Listening")));
   const main = card(
+    row(t("Conversation provider"), t("Uses the same account and model as Mochi chat."),
+      segmented<"anthropic" | "codex" | "antigravity">([["anthropic", "Claude"], ["codex", "Codex"], ["antigravity", "Antigravity"]], cli ? provider : "anthropic", (provider) => {
+        if (!boot) return;
+        void Bridge.saveSettings({ ...boot.settings, chatProvider: provider }).then(() => ctx.navigate("voice"));
+      })),
+    divider(),
     row(t("Listen for « OK Coucou »"), t("The microphone stays open; only what follows « OK Coucou » goes further."),
       toggle(prefs.voice, (on) => void ctx.setPrefs((p) => (p.voice = on)).then(() => ctx.navigate("voice")))),
     divider(),
     row(t("Parakeet, on your computer"), t("Hears « OK Coucou » here, without the internet."), modelsControl(ctx, () => ctx.navigate("voice"))),
   );
-  if (prefs.voice && !status.hasClaudeKey) {
+  if (codexError) {
+    main.append(h("div", { class: "hub-warn", text: codexError }));
+  } else if (prefs.voice && !cli && !status.hasClaudeKey) {
     main.append(h("div", { class: "hub-warn", text: t("Coucou answers with Claude: add your Claude key in Notch → Chat.") }));
   } else if (prefs.voice && !ready) {
     main.append(h("div", { class: "hub-warn", text: t("Download the voice model so Coucou can hear you.") }));
@@ -76,9 +92,11 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
   page.append(answers);
 
   page.append(label(t("Privacy")));
-  page.append(card(
-    h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.") }),
-    divider(),
-    h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }),
-  ));
+  const privacy = card(
+    h("div", { class: "hub-note", text: cli
+      ? t("Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.")
+      : t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.") }),
+  );
+  if (!cli) privacy.append(divider(), h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }));
+  page.append(privacy);
 }

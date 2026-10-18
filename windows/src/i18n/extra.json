@@ -4394,6 +4394,160 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Allow once": {
+   "zh-Hans": "仅允许一次",
+   "hi": "एक बार अनुमति दें",
+   "es": "Permitir una vez",
+   "ar": "السماح مرة واحدة",
+   "fr": "Autoriser une fois",
+   "bn": "একবার অনুমতি দিন",
+   "pt-BR": "Permitir uma vez",
+   "ru": "Разрешить один раз",
+   "id": "Izinkan sekali"
+  },
+  "Connect {provider}": {
+   "zh-Hans": "连接 {provider}",
+   "hi": "{provider} से कनेक्ट करें",
+   "es": "Conectar {provider}",
+   "ar": "ربط {provider}",
+   "fr": "Connecter {provider}",
+   "bn": "{provider} সংযোগ করুন",
+   "pt-BR": "Ligar {provider}",
+   "ru": "Подключить {provider}",
+   "id": "Hubungkan {provider}"
+  },
+  "Conversation provider": {
+   "zh-Hans": "对话服务",
+   "hi": "बातचीत प्रदाता",
+   "es": "Proveedor de conversación",
+   "ar": "مزود المحادثة",
+   "fr": "Fournisseur de conversation",
+   "bn": "কথোপকথনের প্রদানকারী",
+   "pt-BR": "Fornecedor da conversa",
+   "ru": "Провайдер диалога",
+   "id": "Penyedia percakapan"
+  },
+  "Home folder": {
+   "zh-Hans": "主目录",
+   "hi": "होम फ़ोल्डर",
+   "es": "Carpeta personal",
+   "ar": "المجلد الرئيسي",
+   "fr": "Dossier personnel",
+   "bn": "হোম ফোল্ডার",
+   "pt-BR": "Pasta pessoal",
+   "ru": "Домашняя папка",
+   "id": "Folder beranda"
+  },
+  "Working folder": {
+   "zh-Hans": "工作目录",
+   "hi": "कार्य फ़ोल्डर",
+   "es": "Carpeta de trabajo",
+   "ar": "مجلد العمل",
+   "fr": "Dossier de travail",
+   "bn": "কাজের ফোল্ডার",
+   "pt-BR": "Pasta de trabalho",
+   "ru": "Рабочая папка",
+   "id": "Folder kerja"
+  },
+  "Run CLI agents without approval prompts": {
+   "zh-Hans": "运行 CLI 代理时不请求批准",
+   "hi": "अनुमोदन पूछे बिना CLI एजेंट चलाएँ",
+   "es": "Ejecutar agentes CLI sin pedir aprobación",
+   "ar": "تشغيل وكلاء CLI دون طلب الموافقة",
+   "fr": "Exécuter les agents CLI sans demander d’autorisation",
+   "bn": "অনুমতি না চেয়ে CLI এজেন্ট চালান",
+   "pt-BR": "Executar agentes CLI sem pedir aprovação",
+   "ru": "Запускать CLI-агентов без запросов разрешения",
+   "id": "Jalankan agen CLI tanpa meminta persetujuan"
+  },
+  "The CLI agent could not answer. Check its connection in Settings → Chat.": {
+   "zh-Hans": "CLI 代理无法回答。请在设置 → 聊天中检查连接。",
+   "hi": "CLI एजेंट उत्तर नहीं दे सका। सेटिंग्स → चैट में उसका कनेक्शन जाँचें।",
+   "es": "El agente CLI no pudo responder. Revisa su conexión en Ajustes → Chat.",
+   "ar": "تعذر على وكيل CLI الرد. تحقق من اتصاله في الإعدادات ← الدردشة.",
+   "fr": "L’agent CLI n’a pas pu répondre. Vérifiez sa connexion dans Réglages → Chat.",
+   "bn": "CLI এজেন্ট উত্তর দিতে পারেনি। সেটিংস → চ্যাটে সংযোগ পরীক্ষা করুন।",
+   "pt-BR": "O agente CLI não conseguiu responder. Verifica a ligação em Definições → Chat.",
+   "ru": "CLI-агент не смог ответить. Проверьте подключение в Настройки → Чат.",
+   "id": "Agen CLI tidak dapat menjawab. Periksa koneksinya di Pengaturan → Chat."
+  },
+  "The CLI returned no available models.": {
+   "zh-Hans": "CLI 未返回可用模型。",
+   "hi": "CLI ने कोई उपलब्ध मॉडल नहीं लौटाया।",
+   "es": "La CLI no devolvió modelos disponibles.",
+   "ar": "لم تُرجع CLI أي نماذج متاحة.",
+   "fr": "Le CLI n’a renvoyé aucun modèle disponible.",
+   "bn": "CLI কোনো উপলব্ধ মডেল ফেরত দেয়নি।",
+   "pt-BR": "O CLI não devolveu modelos disponíveis.",
+   "ru": "CLI не вернул доступных моделей.",
+   "id": "CLI tidak mengembalikan model yang tersedia."
+  },
+  "Uses the same account and model as Mochi chat.": {
+   "zh-Hans": "使用与 Mochi 聊天相同的账户和模型。",
+   "hi": "Mochi चैट वाला ही खाता और मॉडल इस्तेमाल करता है।",
+   "es": "Usa la misma cuenta y modelo que el chat de Mochi.",
+   "ar": "يستخدم الحساب والنموذج نفسيهما في دردشة Mochi.",
+   "fr": "Utilise le même compte et modèle que le chat de Mochi.",
+   "bn": "Mochi চ্যাটের একই অ্যাকাউন্ট ও মডেল ব্যবহার করে।",
+   "pt-BR": "Utiliza a mesma conta e modelo do chat do Mochi.",
+   "ru": "Использует те же аккаунт и модель, что и чат Mochi.",
+   "id": "Menggunakan akun dan model yang sama dengan chat Mochi."
+  },
+  "Uses your signed-in CLI account for chat, voice and actions on this computer.": {
+   "zh-Hans": "使用已登录的 CLI 账户进行聊天、语音对话和电脑操作。",
+   "hi": "इस कंप्यूटर पर चैट, आवाज़ और कार्रवाइयों के लिए आपके लॉगिन किए हुए CLI खाते का उपयोग करता है।",
+   "es": "Usa tu cuenta conectada de la CLI para chat, voz y acciones en este equipo.",
+   "ar": "يستخدم حساب CLI المسجل للدردشة والصوت وتنفيذ الإجراءات على هذا الكمبيوتر.",
+   "fr": "Utilise votre compte CLI connecté pour le chat, la voix et les actions sur cet ordinateur.",
+   "bn": "এই কম্পিউটারে চ্যাট, ভয়েস ও কাজের জন্য CLI-তে লগইন করা অ্যাকাউন্ট ব্যবহার করে।",
+   "pt-BR": "Utiliza a conta autenticada no CLI para chat, voz e ações neste computador.",
+   "ru": "Использует ваш аккаунт CLI для чата, голоса и действий на этом компьютере.",
+   "id": "Menggunakan akun CLI yang sudah masuk untuk chat, suara, dan tindakan di komputer ini."
+  },
+  "{provider} connected for Mochi chat and voice.": {
+   "zh-Hans": "{provider} 已连接，可用于 Mochi 聊天和语音。",
+   "hi": "Mochi चैट और आवाज़ के लिए {provider} कनेक्ट है।",
+   "es": "{provider} conectado para chat y voz de Mochi.",
+   "ar": "تم ربط {provider} لدردشة Mochi والصوت.",
+   "fr": "{provider} connecté pour le chat et la voix de Mochi.",
+   "bn": "Mochi চ্যাট ও ভয়েসের জন্য {provider} সংযুক্ত।",
+   "pt-BR": "{provider} ligado ao chat e à voz do Mochi.",
+   "ru": "{provider} подключён для чата и голоса Mochi.",
+   "id": "{provider} terhubung untuk chat dan suara Mochi."
+  },
+  "{provider} needs your answer": {
+   "zh-Hans": "{provider} 需要你的回答",
+   "hi": "{provider} को आपके उत्तर की ज़रूरत है",
+   "es": "{provider} necesita tu respuesta",
+   "ar": "يحتاج {provider} إلى إجابتك",
+   "fr": "{provider} attend votre réponse",
+   "bn": "{provider} আপনার উত্তর চায়",
+   "pt-BR": "{provider} precisa da tua resposta",
+   "ru": "{provider} ждёт вашего ответа",
+   "id": "{provider} memerlukan jawaban Anda"
+  },
+  "Enabled: commands and file changes run with your user account. Disabled: use each CLI's permissions; Antigravity actions that need a prompt must be approved in its terminal.": {
+   "zh-Hans": "启用后，以你的账户执行命令和修改文件。禁用时遵循各 CLI 的权限；Antigravity 需要确认的操作必须在其终端批准。",
+   "hi": "चालू होने पर कमांड और फ़ाइल बदलाव आपके खाते से चलते हैं। बंद होने पर हर CLI की अनुमतियाँ लागू होती हैं; Antigravity में पुष्टि वाले काम उसके टर्मिनल में स्वीकृत करने होंगे।",
+   "es": "Activado: ejecuta comandos y cambios con tu cuenta. Desactivado: usa los permisos de cada CLI; las aprobaciones de Antigravity se realizan en su terminal.",
+   "ar": "عند التفعيل، تُنفذ الأوامر وتعديلات الملفات بحسابك. عند التعطيل، تُحترم صلاحيات كل CLI؛ يجب الموافقة على طلبات Antigravity في طرفيته.",
+   "fr": "Activé : les commandes et modifications utilisent votre compte. Désactivé : les permissions de chaque CLI s’appliquent ; les demandes d’Antigravity doivent être approuvées dans son terminal.",
+   "bn": "চালু থাকলে আপনার অ্যাকাউন্টে কমান্ড ও ফাইল পরিবর্তন চলে। বন্ধ থাকলে প্রতিটি CLI-এর অনুমতি প্রযোজ্য; Antigravity-এর অনুমতির অনুরোধ তার টার্মিনালে অনুমোদন করতে হবে।",
+   "pt-BR": "Ativado: executa comandos e alterações de ficheiros com a tua conta. Desativado: respeita as permissões de cada CLI; os pedidos de aprovação do Antigravity devem ser tratados no respetivo terminal.",
+   "ru": "Включено: команды и изменения файлов выполняются от вашего имени. Выключено: действуют разрешения CLI; запросы Antigravity нужно одобрять в его терминале.",
+   "id": "Aktif: perintah dan perubahan berkas dijalankan dengan akun Anda. Nonaktif: gunakan izin tiap CLI; permintaan persetujuan Antigravity harus disetujui di terminalnya."
+  },
+  "Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.": {
+   "zh-Hans": "Parakeet 在本地转录语音。转录文本和所请求的工具结果通过所选 CLI 账户发送。若选择了 ElevenLabs，回复也会发送给它。",
+   "hi": "Parakeet आपकी आवाज़ को स्थानीय रूप से लिखता है। प्रतिलेख और अनुरोधित टूल के परिणाम चुने गए CLI खाते से जाते हैं। ElevenLabs चुनने पर उत्तर उसे भी भेजे जाते हैं।",
+   "es": "Parakeet transcribe tu voz localmente. La transcripción y los resultados solicitados pasan por la cuenta CLI seleccionada. Las respuestas también van a ElevenLabs si lo elegiste.",
+   "ar": "يحوّل Parakeet صوتك إلى نص محليًا. يُرسل النص ونتائج الأدوات المطلوبة عبر حساب CLI المحدد. تُرسل الردود أيضًا إلى ElevenLabs إذا اخترته.",
+   "fr": "Parakeet transcrit votre voix localement. La transcription et les résultats des outils demandés passent par le compte CLI choisi. Les réponses sont aussi envoyées à ElevenLabs si vous l’avez choisi.",
+   "bn": "Parakeet স্থানীয়ভাবে আপনার কণ্ঠ লিখে নেয়। প্রতিলিপি ও অনুরোধ করা টুলের ফলাফল নির্বাচিত CLI অ্যাকাউন্ট দিয়ে যায়। ElevenLabs বেছে নিলে উত্তর সেখানেও যায়।",
+   "pt-BR": "O Parakeet transcreve a voz localmente. A transcrição e os resultados das ferramentas solicitadas passam pela conta CLI selecionada. As respostas também seguem para o ElevenLabs se o selecionaste.",
+   "ru": "Parakeet расшифровывает голос локально. Текст и результаты запрошенных инструментов передаются через выбранный аккаунт CLI. Ответы также отправляются в ElevenLabs, если он выбран.",
+   "id": "Parakeet mentranskripsikan suara secara lokal. Transkrip dan hasil alat yang diminta dikirim melalui akun CLI terpilih. Balasan juga dikirim ke ElevenLabs jika dipilih."
   }
  }
 }

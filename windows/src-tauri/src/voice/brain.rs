@@ -14,12 +14,13 @@ const FORGET_AFTER: Duration = Duration::from_secs(90);
 
 pub struct Brain {
     messages: Vec<Value>,
+    cli_chat: crate::chat::Chat,
     last: Instant,
 }
 
 impl Default for Brain {
     fn default() -> Self {
-        Self { messages: Vec::new(), last: Instant::now() }
+        Self { messages: Vec::new(), cli_chat: Default::default(), last: Instant::now() }
     }
 }
 
@@ -106,8 +107,22 @@ impl Brain {
     pub fn respond(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
         if self.last.elapsed() > FORGET_AFTER {
             self.messages.clear();
+            self.cli_chat.reset();
         }
         self.last = Instant::now();
+        let settings = app.try_state::<crate::Shared>().map(|s| s.settings.lock().unwrap().clone());
+        if let Some(settings) = settings.filter(|s| matches!(s.chat_provider.as_str(), "codex" | "antigravity")) {
+            let model = crate::chat::model_for(&settings, &settings.chat_provider);
+            return match crate::cli_chat::run(app, &self.cli_chat, &settings, &settings.chat_provider, &model, transcript, None, true, &tools(), |_| {}) {
+                Ok((text, acted)) => {
+                    Some(Reply { text: spoken_text(&text), acted })
+                }
+                Err(err) => {
+                    crate::log::line(format!("voice: CLI turn failed: {err}"));
+                    Some(Reply { text: crate::i18n::t("The CLI agent could not answer. Check its connection in Settings → Chat."), acted: false })
+                }
+            };
+        }
         self.messages.push(json!({ "role": "user", "content": transcript }));
         self.trim();
         let pills = super::ask_island(app, "pills", json!({ "action": "list" })).unwrap_or_default();

@@ -124,6 +124,8 @@ export interface Settings {
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
   chatModels: Record<string, string>;
+  cliWorkspace: string;
+  cliFullAccess: boolean;
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -182,6 +184,8 @@ export const DEFAULT_SETTINGS: Settings = {
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
   chatProvider: "anthropic",
+  cliWorkspace: "",
+  cliFullAccess: false,
   chatModels: {},
   ollamaUrl: "",
   lmstudioUrl: "",

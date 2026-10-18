@@ -4,18 +4,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  PROVIDERS, activeModel, isLoopbackHost, pickModel, providerDef, urlExposure, visibleProviders, withModel,
+  PROVIDERS, activeModel, isLoopbackHost, pickModel, providerDef, providerForPill, urlExposure, visibleProviders, withModel,
 } from "../src/core/providers.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
-test("the ids and key names match the Rust side and the Mac", () => {
-  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom"]);
+test("the provider ids and credential requirements match the Rust side", () => {
+  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "codex", "antigravity", "ollama", "lmstudio", "custom"]);
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
   assert.equal(providerDef("ollama").key, null);
+  assert.equal(providerDef("codex").key, null);
+  assert.equal(providerDef("codex").urlField, null);
   // An unknown id (an older or newer settings.json) falls back to Claude.
   assert.equal(providerDef("nope").id, "anthropic");
 });
@@ -36,9 +38,9 @@ test("Claude's model is the existing setting; the others are kept per provider",
 
 test("model servers show in the picker once connected, or while in use", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter", "codex", "antigravity"]);
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "codex", "antigravity", "ollama"]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "codex", "antigravity", "custom"]);
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {
@@ -49,6 +51,13 @@ test("the saved model is kept when offered, else a sensible one is picked", () =
   assert.equal(pickModel(providerDef("ollama"), ["llama3.2", "qwen"], ""), "llama3.2");
   assert.equal(pickModel(providerDef("openrouter"), ["a/b", "openrouter/auto"], "gone"), "openrouter/auto");
   assert.equal(pickModel(google, [], "x"), null);
+});
+
+test("each CLI Mochi opens chat with its own account", () => {
+  assert.equal(providerForPill("agent_codex"), "codex");
+  assert.equal(providerForPill("agent_antigravity"), "antigravity");
+  assert.equal(providerForPill("vscode"), null);
+  assert.equal(providerForPill(undefined), null);
 });
 
 test("loopback hosts match net.rs", () => {

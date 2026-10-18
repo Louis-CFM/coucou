@@ -6,7 +6,7 @@ import type { Settings } from "./state";
 import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
-  | "anthropic" | "openai" | "google" | "openrouter"
+  | "anthropic" | "openai" | "google" | "openrouter" | "codex" | "antigravity"
   | "ollama" | "lmstudio" | "custom";
 
 export interface ProviderDef {
@@ -28,6 +28,8 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-2.0-flash", prefer: "flash" },
   { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, defaultModel: "gpt-4o", prefer: "mini" },
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
+  { id: "codex", name: "Codex", accent: "#10A37F", key: null, urlField: null, defaultModel: "", prefer: null },
+  { id: "antigravity", name: "Antigravity", accent: "#E879F9", key: null, urlField: null, defaultModel: "", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
@@ -38,6 +40,13 @@ export const CUSTOM_SERVER_KEY = "openai-compatible-key";
 
 export function providerDef(id: string): ProviderDef {
   return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
+}
+
+/** A chat opened from an agent's Mochi uses that agent's own CLI account. */
+export function providerForPill(id: string | undefined): ProviderId | null {
+  if (id === "agent_codex") return "codex";
+  if (id === "agent_antigravity") return "antigravity";
+  return null;
 }
 
 /** The model the chat uses for the active provider. */

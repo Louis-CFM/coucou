@@ -4,12 +4,15 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod codex_chat;
+mod cli_chat;
 mod codex_plan;
 mod config_file;
 mod desktop;
 mod files;
 mod flow;
 mod github;
+mod gravity_chat;
 mod hooks;
 mod i18n;
 mod identity;
@@ -135,6 +138,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         language_changed(&app);
     }
     // Keep the other window in step (island ⇄ settings window).
+    voice::sync(&app);
     let _ = app.emit("settings-changed", settings);
 }
 
@@ -520,6 +524,9 @@ fn chat_reset(chat: State<Chat>) {
     chat.reset();
 }
 
+#[tauri::command]
+fn chat_cancel(chat: State<Chat>) { chat.cancel(); }
+
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
 fn ingest_file(path: String) -> Result<DroppedFile, String> {
@@ -762,9 +769,11 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            cli_chat::cli_agent_answer,
             local_connect,
             local_set_key,
             chat_reset,
+            chat_cancel,
             ingest_file,
             secret_present,
             secret_set,

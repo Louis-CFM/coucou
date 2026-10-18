@@ -45,6 +45,10 @@ pub struct Settings {
     /// The model picked for each provider other than Anthropic (whose model is
     /// `model`), by provider id.
     pub chat_models: BTreeMap<String, String>,
+    /// Working folder for Mochi's CLI agents; empty means the user's home.
+    pub cli_workspace: String,
+    /// Explicit opt-in to unattended execution for Mochi's CLI sessions only.
+    pub cli_full_access: bool,
     /// Addresses of the model servers once connected; empty means not connected.
     pub ollama_url: String,
     pub lmstudio_url: String,
@@ -144,6 +148,8 @@ impl Default for Settings {
             show_codex_plan_in_notch: false,
             chat_provider: crate::chat::ANTHROPIC.into(),
             chat_models: BTreeMap::new(),
+            cli_workspace: String::new(),
+            cli_full_access: false,
             ollama_url: String::new(),
             lmstudio_url: String::new(),
             custom_url: String::new(),
@@ -431,6 +437,8 @@ mod tests {
   "showCodexPlanInNotch": true,
   "chatProvider": "ollama",
   "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "cliWorkspace": "/tmp/my-project",
+  "cliFullAccess": true,
   "ollamaUrl": "http://127.0.0.1:11434",
   "lmstudioUrl": "http://127.0.0.1:1234",
   "customUrl": "https://llm.example.com",
@@ -544,6 +552,18 @@ mod tests {
         assert_eq!(loaded.mochi_outfit, "auto");
         assert_eq!(loaded.model, "some-model");
         assert!(!loaded.sound_enabled);
+    }
+
+    #[test]
+    fn older_settings_never_enable_unattended_cli_execution() {
+        let mut old = custom();
+        old.as_object_mut().unwrap().remove("cliWorkspace");
+        old.as_object_mut().unwrap().remove("cliFullAccess");
+        let loaded = parse(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert!(!loaded.cli_full_access);
+        assert!(loaded.cli_workspace.is_empty());
+        assert_eq!(loaded.chat_provider, "ollama");
+        assert!(!parse(&custom_with("cliFullAccess", Some(json!("true")))).unwrap().cli_full_access);
     }
 
     #[test]
@@ -938,6 +958,8 @@ mod tests {
                 "showCodexPlanInNotch",
                 "chatProvider",
                 "chatModels",
+                "cliWorkspace",
+                "cliFullAccess",
                 "ollamaUrl",
                 "lmstudioUrl",
                 "customUrl",
