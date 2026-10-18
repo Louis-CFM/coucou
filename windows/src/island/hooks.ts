@@ -12,6 +12,7 @@ import { State, type AskedQuestion } from "../core/state";
 import { pillDefinition } from "../core/pills";
 import { APPROVAL_AGENTS, agentColor, agentName, validateAgent } from "./agents";
 import type { Island } from "./island";
+import { gitPushCommand, pushEnded, pushStarted } from "./integrations";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
@@ -344,7 +345,10 @@ function handleHook(island: Island, payload: HookPayload) {
       State.updateTask(agentId, "working");
       const tool = payload.tool_name ?? "Tool";
       State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-      surface("overview", false);
+      // A `git push` brings the GitHub card up with the push on it.
+      const push = isExternalAgent ? null : gitPushCommand(tool, payload.tool_input ?? {});
+      if (push) pushStarted(island, push, payload.cwd);
+      else surface("overview", false);
       break;
     }
 
@@ -362,12 +366,14 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       State.updateTask(agentId, "working");
       recordDiff(agentId, payload);
+      endPush(payload, true);
       break;
 
     case "PostToolUseFailure":
       supersedeStop();
       State.updateTask(agentId, "working");
       State.appendStep(agentId, t("⚠ failed"));
+      endPush(payload, false);
       break;
 
     case "Notification": {
@@ -512,4 +518,10 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
   }
   State.notify();
+}
+
+/** A `git push` tool call ended: the GitHub card says how it went. */
+function endPush(payload: HookPayload, ok: boolean) {
+  const push = gitPushCommand(payload.tool_name ?? "", payload.tool_input ?? {});
+  if (push) pushEnded(push, ok);
 }
