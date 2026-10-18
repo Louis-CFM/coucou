@@ -546,6 +546,11 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
+/// The chat's mic on Linux: WebKitGTK asks through its own permission request.
+// ponytail: not wired yet (needs enable-media-stream and a permission-request
+// handler on the WebView); the mic button reports the error until then.
+pub fn allow_microphone(_win: &WebviewWindow) {}
+
 /// Only this rectangle (window-logical pixels) takes the mouse; `None` means
 /// the whole window does. Everything outside goes to the window underneath.
 pub fn set_input_region(win: &WebviewWindow, rect: Region) {

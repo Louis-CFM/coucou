@@ -7,7 +7,9 @@ import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
-  | "ollama" | "lmstudio" | "custom";
+  | "ollama" | "lmstudio" | "custom"
+  /** The media models saved in Settings (src-tauri/src/media.rs): "Create". */
+  | "media";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -31,7 +33,15 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  // Images, video, speech and 3D from the models saved in Settings -> Media
+  // and voice models; its "model" is a saved entry's id.
+  { id: "media", name: "Create", accent: "#E879F9", key: null, urlField: null, defaultModel: "", prefer: null },
 ];
+
+/** The saved models the "Create" chip offers (speech-to-text only serves the mic). */
+export function creators(settings: Settings) {
+  return (settings.models ?? []).filter((m) => m.output !== "stt");
+}
 
 /** Credential store entry of the custom server's optional key. */
 export const CUSTOM_SERVER_KEY = "openai-compatible-key";
@@ -59,8 +69,10 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
  * active one, so the picker never hides where the chat goes.
  */
 export function visibleProviders(settings: Settings): ProviderDef[] {
-  return PROVIDERS.filter(
-    (p) => !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
+  return PROVIDERS.filter((p) =>
+    p.id === "media"
+      ? creators(settings).length > 0 || settings.chatProvider === p.id
+      : !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
   );
 }
 
