@@ -307,6 +307,8 @@ interface PhoneCard {
   options: string[];
   /** Question cards: each question's text, its labels and whether several may be picked. */
   questions: { q: string; options: string[]; multi: boolean }[];
+  /** The "Always allow" rule the request offered — shown on the phone's card too. */
+  always?: { label: string; detail: string };
 }
 
 /** The waiting card, clipped to bounds — used for both `state.awaiting` and `card`. */
@@ -320,7 +322,7 @@ function cleanCard(raw: unknown): PhoneCard {
       multi: qr.multi === true,
     };
   });
-  return {
+  const card: PhoneCard = {
     requestId: clipped(r.requestId, 64),
     pillId: clipped(r.pillId, 48),
     agent: clipped(r.agent, 40),
@@ -330,6 +332,10 @@ function cleanCard(raw: unknown): PhoneCard {
     options: (Array.isArray(r.options) ? r.options : []).slice(0, 8).map((o) => clipped(o, 80)),
     questions,
   };
+  const always = (typeof r.always === "object" && r.always !== null ? r.always : {}) as Record<string, unknown>;
+  const alwaysLabel = clipped(always.label, 160);
+  if (alwaysLabel) card.always = { label: alwaysLabel, detail: clipped(always.detail, 200) };
+  return card;
 }
 
 /** base64url, no padding — what mail_crypto.rs and BoxCrypto.kt write. */
@@ -359,6 +365,8 @@ interface OutboxItem {
   decision?: string;
   /** Question text → the label picked, or the labels picked for a multi-select question. */
   answers?: Record<string, string | string[]>;
+  /** The questions answered in words under "Other…" rather than with a label. */
+  other?: string[];
   text?: string;
   /** A chat line into a specific CLI session, or which transcript to push. */
   sessionId?: string;
@@ -565,7 +573,9 @@ export class PhoneBox {
         }
         const requestId = clipped(body.requestId, 64);
         const decision = clipped(body.decision, 16);
-        if (!requestId || !["allow", "deny", "answer"].includes(decision)) return text(400, "decision");
+        if (!requestId || !["allow", "deny", "always", "answer", "decline"].includes(decision)) {
+          return text(400, "decision");
+        }
         const item: OutboxItem = { type: "decision", at: now, requestId, decision };
         if (decision === "answer") {
           const raw = typeof body.answers === "object" && body.answers !== null
@@ -578,6 +588,10 @@ export class PhoneBox {
               : clipped(v, 200);
           }
           item.answers = answers;
+          // The questions answered in words under "Other…".
+          if (Array.isArray(body.other)) {
+            item.other = body.other.slice(0, 8).map((o) => clipped(o, 160)).filter((o) => o !== "");
+          }
         }
         if (await this.enqueue(item, now)) return json({ ok: true });
         return text(429, "outbox full");
