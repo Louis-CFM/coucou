@@ -124,6 +124,10 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+      - path: Components/ChromeNowPlaying/Sources
+        type: group
+      - path: Components/ChromeNowPlaying/Resources/bridge.pl
+        buildPhase: resources
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -189,6 +193,11 @@ targets:
           PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
     dependencies:
       - package: FluidAudio
+    preBuildScripts:
+      - name: Build own Chrome Now Playing bridge
+        script: /bin/bash "$SRCROOT/Components/ChromeNowPlaying/scripts/build-bridge.sh" "$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+        basedOnDependencyAnalysis: false
+        showEnvVars: false
     postBuildScripts:
       - name: "Write Git Hash to Info.plist"
         script: |

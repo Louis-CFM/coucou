@@ -568,6 +568,10 @@ final class AppState: ObservableObject {
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
+        // Replace the experimental browser-script integration with system Now Playing.
+        if activeIntegrations.remove("integration_youtube") != nil {
+            activeIntegrations.insert("integration_chrome")
+        }
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
            PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
             mainPillId = v

@@ -288,6 +288,7 @@ struct BotPlacement: View {
     let islandH: CGFloat
     #if !APPSTORE
     @ObservedObject private var spotify = SpotifyController.shared
+    @ObservedObject private var chrome = ChromeController.shared
     #endif
 
     var body: some View {
@@ -295,6 +296,7 @@ struct BotPlacement: View {
         #if !APPSTORE
         let playing = (state.musicPlaying && state.activeIntegrations.contains("integration_music"))
             || (spotify.isPlaying && state.activeIntegrations.contains(SpotifyController.pillId))
+            || (chrome.isPlaying && state.activeIntegrations.contains(ChromeController.pillId))
         let cx = state.mode == .compact && playing
             ? (islandW - state.notchWidth) / 4 - (diameter + 10) / 2 : baseCX
         #else
@@ -763,6 +765,7 @@ private struct CompactPlaybackView: View {
     let height: CGFloat
     @ObservedObject private var music = MusicController.shared
     @ObservedObject private var spotify = SpotifyController.shared
+    @ObservedObject private var chrome = ChromeController.shared
     @State private var systemVolume: Double = 0.5
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -775,26 +778,41 @@ private struct CompactPlaybackView: View {
     private var useSpotify: Bool {
         spotifyPlaying && (!musicPlaying || state.focusId == SpotifyController.pillId)
     }
-    private var playing: Bool { musicPlaying || spotifyPlaying }
-    private var accent: Color { Color(hex: useSpotify ? SpotifyController.green : "#FA2D48") }
+    private var useChrome: Bool {
+        state.activeIntegrations.contains(ChromeController.pillId) && chrome.isPlaying
+            && ((!musicPlaying && !spotifyPlaying) || state.focusId == ChromeController.pillId)
+    }
+    private var playing: Bool { musicPlaying || spotifyPlaying || useChrome }
+    private var accent: Color {
+        Color(hex: useChrome ? ChromeController.accentHex : (useSpotify ? SpotifyController.green : "#FA2D48"))
+    }
 
     var body: some View {
         let layout = IslandRestingLayout(width: width, height: height)
         ZStack(alignment: .topLeading) {
             if playing {
-                NowPlayingArtwork(image: useSpotify ? spotify.artwork : music.artwork, accent: accent)
-                    .frame(width: layout.botDiameter, height: layout.botDiameter)
-                    .position(x: (width - state.notchWidth) / 4 + (layout.botDiameter + 10) / 2, y: height / 2)
-                    .accessibilityLabel(Text("Album artwork"))
+                NowPlayingArtwork(
+                    image: useChrome ? chrome.artwork : (useSpotify ? spotify.artwork : music.artwork), accent: accent
+                )
+                .frame(width: layout.botDiameter, height: layout.botDiameter)
+                .position(x: (width - state.notchWidth) / 4 + (layout.botDiameter + 10) / 2, y: height / 2)
+                .accessibilityLabel(Text("Album artwork"))
 
                 TimelineView(.animation(minimumInterval: reduceMotion ? 1 : 1.0 / 12)) { context in
-                    let duration = useSpotify ? (spotify.track?.duration ?? 0) : music.duration
-                    let position = useSpotify ? spotify.position(at: context.date) : music.position(at: context.date)
+                    let duration =
+                        useChrome
+                        ? (chrome.track?.duration ?? 0) : (useSpotify ? (spotify.track?.duration ?? 0) : music.duration)
+                    let position =
+                        useChrome
+                        ? chrome.position(at: context.date)
+                        : (useSpotify ? spotify.position(at: context.date) : music.position(at: context.date))
                     HStack(spacing: 9) {
-                        CompactMusicWave(time: context.date.timeIntervalSinceReferenceDate,
-                                         volume: systemVolume, color: accent)
-                            .frame(width: 20, height: 14)
-                            .accessibilityHidden(true)
+                        CompactMusicWave(
+                            time: context.date.timeIntervalSinceReferenceDate,
+                            volume: systemVolume, color: accent
+                        )
+                        .frame(width: 20, height: 14)
+                        .accessibilityHidden(true)
                         Text(duration > 0 ? "-" + NowPlayingProgress.format(max(0, duration - position)) : "—:—")
                             .font(.system(size: 9, weight: .medium, design: .monospaced))
                             .foregroundColor(Color(hex: "#C5C8CD"))
@@ -824,7 +842,7 @@ private struct CompactPlaybackView: View {
     }
 }
 
-/// Decorative motion: one slow pulse, with a small height increase at higher system volume.
+/// Decorative voice-like silhouette: taller middle bars, gentle motion, no audio capture.
 private struct CompactMusicWave: View {
     let time: TimeInterval
     let volume: Double
@@ -832,14 +850,19 @@ private struct CompactMusicWave: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let pulse = reduceMotion ? 0.5 : (sin(time * 1.35) + 1) / 2
-        let amplitude = 2.0 + 3.0 * volume
+        let amplitude = 5.5 + 3.0 * min(1, max(0, volume))
         HStack(alignment: .center, spacing: 2) {
             ForEach(0..<5) { index in
-                let profile = [0.45, 0.75, 1.0, 0.75, 0.45][index]
+                let profile = [0.25, 0.64, 1.0, 0.64, 0.25][index]
+                let phase = Double(index) * 0.45
+                let pulse =
+                    reduceMotion
+                    ? 0.8
+                    : 0.78 + 0.14 * sin(time * 1.5 + phase)
+                        + 0.08 * sin(time * 2.1 - phase)
                 Capsule()
                     .fill(color.opacity(0.8))
-                    .frame(width: 2, height: 3 + profile * amplitude * (0.65 + 0.35 * pulse))
+                    .frame(width: 2, height: 3 + profile * amplitude * pulse)
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: volume)
@@ -849,13 +872,18 @@ private struct CompactMusicWave: View {
 /// Reads only the output device's volume and mute properties; never opens an audio stream.
 private enum CompactSystemVolume {
     static func read() -> Double {
-        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         var device = AudioObjectID(kAudioObjectUnknown)
         var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device) == noErr,
-              device != kAudioObjectUnknown else { return 0.5 }
-        address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute,
+        guard
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
+                == noErr,
+            device != kAudioObjectUnknown
+        else { return 0.5 }
+        address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
             mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
         var mute: UInt32 = 0
         size = UInt32(MemoryLayout<UInt32>.size)
@@ -869,7 +897,8 @@ private enum CompactSystemVolume {
             var value: Float32 = 0
             size = UInt32(MemoryLayout<Float32>.size)
             guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr,
-                  value.isFinite else { continue }
+                value.isFinite
+            else { continue }
             let level = min(1, max(0, Double(value)))
             if element == 0 { return level }
             channels.append(level)

@@ -83,6 +83,7 @@ struct SpotifyPill: View {
 // MARK: - Spotify Card (overview left card, GitHub build only)
 
 struct SpotifyCardView: View {
+    @Environment(\.musicCardExpansion) private var expansion
     @ObservedObject private var controller = SpotifyController.shared
 
     private let green = Color(hex: SpotifyController.green)
@@ -111,9 +112,11 @@ struct SpotifyCardView: View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 9) {
                 NowPlayingArtwork(image: controller.artwork, accent: green)
-                    .frame(width: 36, height: 36)
+                    .modifier(MusicArtworkExpansion(fraction: expansion))
                     .onTapGesture { controller.openSpotify() }
-                    .help(track.album.isEmpty ? String(localized: "Open Spotify") : String(localized: "\(track.album) — open Spotify"))
+                    .help(
+                        track.album.isEmpty
+                            ? String(localized: "Open Spotify") : String(localized: "\(track.album) — open Spotify"))
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
@@ -132,7 +135,7 @@ struct SpotifyCardView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.trailing, 24)   // the ↗ button sits top-right
+            .padding(.trailing, 24 + 67 * expansion)  // reserve the trailing cover
             .padding(.top, 6)
 
             // Position runs on its own clock only while playing and on screen
@@ -146,20 +149,24 @@ struct SpotifyCardView: View {
                 )
             }
             .padding(.top, 7)
+            .padding(.trailing, 67 * expansion)
 
             controls
                 .padding(.top, 4)
+                .padding(.trailing, 67 * expansion)
         }
         .padding(.leading, 108)
         .padding(.trailing, 12)
     }
 
     private var controls: some View {
-        HStack(spacing: 0) {
+        MusicTransportLayout(fraction: expansion) {
             HStack(spacing: 10) {
-                NowPlayingIconButton(icon: "shuffle", size: 10,
-                                  tint: controller.shuffling ? green : Color(hex: "#6B7079"),
-                                  help: controller.shuffling ? "Shuffle on" : "Shuffle off") {
+                NowPlayingIconButton(
+                    icon: "shuffle", size: 10,
+                    tint: controller.shuffling ? green : Color(hex: "#6B7079"),
+                    help: controller.shuffling ? "Shuffle on" : "Shuffle off"
+                ) {
                     controller.setShuffling(!controller.shuffling)
                 }
                 NowPlayingIconButton(icon: "backward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Previous") {
@@ -180,13 +187,14 @@ struct SpotifyCardView: View {
                 NowPlayingIconButton(icon: "forward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Next") {
                     controller.nextTrack()
                 }
-                NowPlayingIconButton(icon: "repeat", size: 10,
-                                  tint: controller.repeating ? green : Color(hex: "#6B7079"),
-                                  help: controller.repeating ? "Repeat on" : "Repeat off") {
+                NowPlayingIconButton(
+                    icon: "repeat", size: 10,
+                    tint: controller.repeating ? green : Color(hex: "#6B7079"),
+                    help: controller.repeating ? "Repeat on" : "Repeat off"
+                ) {
                     controller.setRepeating(!controller.repeating)
                 }
             }
-            Spacer(minLength: 8)
             NowPlayingVolume(volume: controller.volume, accent: green) { controller.setVolume($0) }
         }
     }

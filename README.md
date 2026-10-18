@@ -26,6 +26,14 @@ Approve permissions, watch your agents work, drop a file, chat with Claude — a
 
 </div>
 
+## Actualización de este fork: Ahora suena en macOS
+
+Coucou muestra la música y los vídeos que las aplicaciones compatibles publican en «Ahora suena»: portada, título, artista o canal, progreso y controles disponibles. No reproduce audio por sí mismo. Apple Music y Spotify mantienen sus integraciones independientes; el lector general cubre las otras fuentes, como Chrome y Safari.
+
+Las tarjetas de música se pueden ampliar arrastrando su borde derecho. La portada gana espacio, los controles quedan centrados y las otras cuatro etiquetas se muestran como cabecitas animadas en una columna. La vista compacta conserva portada, ondas decorativas y tiempo restante.
+
+Consulta la [documentación de la integración](NotchBuddy/Components/ChromeNowPlaying/README.md) para su arquitectura, pruebas, privacidad y límites de compatibilidad. Usa una interfaz privada de macOS; no garantiza reconocer todo el audio del equipo ni todos los controles. Spotify queda pendiente de una prueba con reproducción real.
+
 ---
 
 ## Why

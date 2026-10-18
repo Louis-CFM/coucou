@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
+        ChromeController.shared.shutdown()
         NoteTaker.shared.shutdown()
         #endif
         DemoEngine.shared.stop()
@@ -290,6 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if !APPSTORE
         _ = MusicController.shared
         _ = SpotifyController.shared
+        _ = ChromeController.shared
         MailController.shared.start()
         #endif
         CryptoController.shared.start()
