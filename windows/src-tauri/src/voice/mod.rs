@@ -55,7 +55,8 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Whether « OK Coucou » can run: the voice model and a Claude key.
 pub fn requirements_met() -> bool {
-    speech::is_ready() && crate::secrets::present(crate::claude::KEY)
+    // Fork: or through Claude Code, without a key.
+    speech::is_ready() && (crate::secrets::present(crate::claude::KEY) || crate::claude_code::find().is_some())
 }
 
 /// Starts or stops listening to follow the preference.
