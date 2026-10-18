@@ -67,6 +67,7 @@ struct IntroView: View {
     @State private var flightStart: Date?
     @State private var fade = false
     @State private var engine = IntroEngine()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var landing: IntroLanding { .shared }
 
     /// He plays at least this long, even when everything is already there,
@@ -83,7 +84,7 @@ struct IntroView: View {
             ZStack {
                 Color.black
                     .opacity(fade ? 0 : 1)
-                TimelineView(.animation) { timeline in
+                TimelineView(.animation(minimumInterval: reduceMotion ? 0.5 : nil)) { timeline in
                     Canvas { context, size in
                         let now = timeline.date
                         // Over 0.4 s of the flight his face settles back to neutral.

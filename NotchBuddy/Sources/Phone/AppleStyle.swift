@@ -39,6 +39,7 @@ extension View {
 /// in code (MeshGradient), 30 frames a second, only while on screen.
 struct AgentBackdrop: View {
     let hex: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// A soft glow from the top, fading into black.
     private var colors: [Color] {
@@ -75,7 +76,9 @@ struct AgentBackdrop: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
+        // Reduce Motion: the glow stays, the drift stops — one static frame.
+        TimelineView(.animation(minimumInterval: reduceMotion ? nil : 1 / 30,
+                                paused: reduceMotion)) { timeline in
             MeshGradient(width: 3, height: 3,
                          points: Self.points(at: Float(timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))),
                          colors: colors)
