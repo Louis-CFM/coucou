@@ -39,6 +39,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcut, Modifiers, Shortcut, ShortcutState};
 
 use crate::island::WINDOW_LABEL;
+use crate::mutex::MutexExt;
 
 /// One global action, as on the Mac (`ShortcutAction`). The ids are the Mac's
 /// raw values and are stored in settings.json: never rename one.
@@ -311,7 +312,7 @@ pub fn plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
                 return;
             }
             let Some(registry) = app.try_state::<Registry>() else { return };
-            let action = registry.by_id.lock().unwrap().get(&shortcut.id()).copied();
+            let action = registry.by_id.lock_recover().get(&shortcut.id()).copied();
             if let Some(action) = action {
                 dispatch(app, action);
             }
@@ -337,7 +338,7 @@ fn release<R: Runtime>(app: &AppHandle<R>) {
         }
     }
     if let Some(registry) = app.try_state::<Registry>() {
-        registry.by_id.lock().unwrap().clear();
+        registry.by_id.lock_recover().clear();
     }
 }
 
@@ -387,9 +388,9 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, stored: &Bindings) {
     }
 
     if let Some(registry) = app.try_state::<Registry>() {
-        *registry.by_id.lock().unwrap() = by_id;
-        *registry.report.lock().unwrap() = report;
-        *registry.portal.lock().unwrap() = None;
+        *registry.by_id.lock_recover() = by_id;
+        *registry.report.lock_recover() = report;
+        *registry.portal.lock_recover() = None;
     }
     let _ = app.emit("shortcuts-status", status(app));
 }
@@ -405,8 +406,8 @@ pub fn suspend<R: Runtime>(app: &AppHandle<R>) {
 
 pub fn status<R: Runtime>(app: &AppHandle<R>) -> Report {
     let registry = app.try_state::<Registry>();
-    let actions = registry.as_ref().map(|r| r.report.lock().unwrap().clone()).unwrap_or_default();
-    let portal = registry.as_ref().and_then(|r| *r.portal.lock().unwrap());
+    let actions = registry.as_ref().map(|r| r.report.lock_recover().clone()).unwrap_or_default();
+    let portal = registry.as_ref().and_then(|r| *r.portal.lock_recover());
     Report {
         actions,
         blocked: crate::platform::global_shortcuts_blocked().map(str::to_string),
@@ -469,7 +470,7 @@ mod wayland {
         let Some(registry) = app.try_state::<Registry>() else { return false };
         // Held until the request is sent, so the thread's answer (on_event
         // takes this lock too) always lands after the Pending report below.
-        let mut link = registry.wayland.lock().unwrap();
+        let mut link = registry.wayland.lock_recover();
         if matches!(*link, Link::Gone) {
             return false;
         }
@@ -482,14 +483,14 @@ mod wayland {
                     trigger: portal::xdg_trigger(&effective(def, stored).keys),
             })
             .collect();
-        *registry.report.lock().unwrap() = plan
+        *registry.report.lock_recover() = plan
             .iter()
             .map(|(def, outcome)| match outcome {
                 Err(status) => status.clone(),
                 Ok(_) => ActionStatus { id: def.id, status: Status::Pending, typed: None, trigger: None },
             })
             .collect();
-        *registry.portal.lock().unwrap() = Some(PortalState::Pending);
+        *registry.portal.lock_recover() = Some(PortalState::Pending);
 
         if matches!(*link, Link::NotStarted) {
             let events = app.clone();
@@ -513,7 +514,7 @@ mod wayland {
     /// one; the next `apply` binds them again.
     pub fn release<R: Runtime>(app: &AppHandle<R>) {
         let Some(registry) = app.try_state::<Registry>() else { return };
-        let mut link = registry.wayland.lock().unwrap();
+        let mut link = registry.wayland.lock_recover();
         if let Link::Running { handle, gen } = &mut *link {
             *gen += 1;
             handle.release();
@@ -529,14 +530,14 @@ mod wayland {
             }
             return;
         }
-        let mut link = registry.wayland.lock().unwrap();
+        let mut link = registry.wayland.lock_recover();
         let current = match &*link {
             Link::Running { gen, .. } => *gen,
             _ => 0,
         };
         {
-            let mut report = registry.report.lock().unwrap();
-            let mut portal = registry.portal.lock().unwrap();
+            let mut report = registry.report.lock_recover();
+            let mut portal = registry.portal.lock_recover();
             match event {
                 Event::Bound { gen, shortcuts } if gen == current => {
                     crate::log::line("shortcuts: registered with the desktop portal");

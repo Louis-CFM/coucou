@@ -12,13 +12,16 @@ struct BotCanvasView: View {
     /// Not drawn while true (e.g. the notch copy while Mochi is on the desktop).
     var paused: Bool = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // One engine per view instance (main bot)
     @StateObject private var engine = BotEngine()
 
     var body: some View {
         // Display refresh rate — every frame on a 60 Hz screen, every frame on ProMotion.
         // MochiFrameClock.advance accumulates the step debt so Mochi's speed never changes.
-        TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
+        // Reduce Motion: two stills a second — Mochi stays alive, nothing travels.
+        TimelineView(.animation(minimumInterval: reduceMotion ? 0.5 : nil,
+                                paused: state.mode == .hidden || paused)) { timeline in
             // The Canvas must capture the frame's date: a closure that doesn't change from
             // one tick to the next is not redrawn, and Mochi froze.
             let frame = timeline.date
@@ -74,7 +77,7 @@ struct BotCanvasView: View {
                     return false
                     #endif
                 }()
-                engine.setDancing(dancing)
+                engine.setDancing(dancing && !reduceMotion)
                 let isWardrobe = state.mode == .expanded && state.view == .wardrobe
                 let isFocusMain = state.focusId == state.mainPillId || state.focusId == nil
                 let showOutfit = isFocusMain || state.mode != .expanded || isWardrobe
@@ -244,15 +247,17 @@ struct MiniBotCanvasView: View {
     }
 
     @Environment(\.islandViewActive) private var viewActive
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
 
     var body: some View {
         // Display refresh rate. Paused in island views that are not shown.
-        TimelineView(.animation(paused: !viewActive)) { timeline in
+        TimelineView(.animation(minimumInterval: reduceMotion ? 0.5 : nil,
+                                paused: !viewActive)) { timeline in
             let frame = timeline.date   // see BotCanvasView: redraw on every tick
             Canvas { context, size in
                 _ = frame
-                engine.setDancing(isDancing)
+                engine.setDancing(isDancing && !reduceMotion)
                 MochiFrameClock.advance(engine)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)

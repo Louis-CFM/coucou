@@ -103,10 +103,19 @@ pub struct Prefs {
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
     pub voice: bool,
-    /// How Coucou answers out loud: "system", "elevenlabs" or "off".
+    /// A service is contacted only after the user explicitly selects it.
+    pub voice_search: crate::voice::search::SearchProvider,
+    /// How Coucou answers out loud: "system", "elevenlabs", "voicestudio",
+    /// "fishaudio" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
+    /// The local VoiceStudio server (OpenAI-compatible TTS).
+    pub voicestudio_url: String,
+    /// The VoiceStudio voice profile id.
+    pub voicestudio_voice: String,
+    /// The Fish Audio voice (a model ID from fish.audio); empty is Fish Audio's default voice.
+    pub fish_voice_id: String,
 }
 
 impl Default for Prefs {
@@ -122,8 +131,12 @@ impl Default for Prefs {
             summary_engine: SummaryEngine::Claude,
             open_at_launch: true,
             voice: false,
+            voice_search: crate::voice::search::SearchProvider::Anthropic,
             voice_output: "system".into(),
             voice_gender: "female".into(),
+            voicestudio_url: "http://127.0.0.1:3900".into(),
+            voicestudio_voice: String::new(),
+            fish_voice_id: String::new(),
         }
     }
 }
@@ -385,6 +398,7 @@ mod tests {
     fn prefs_read_from_an_older_file_keep_their_defaults() {
         let p: Prefs = serde_json::from_str(r#"{"enabled":true,"key":"right_alt"}"#).unwrap();
         assert!(p.enabled);
+        assert_eq!(p.voice_search, crate::voice::search::SearchProvider::Anthropic);
         assert_eq!(p.key, FlowKey::RightAlt);
         assert_eq!(p.keep_days, 30);
         assert!(p.open_at_launch);

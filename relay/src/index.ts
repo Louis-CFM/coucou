@@ -8,11 +8,19 @@
 // MochiActivityState.swift), and the relay builds the push itself, so it can't
 // be used to send arbitrary notifications.
 
+import { tokenGone } from "./fcm.js";
+
 export interface Env {
   APNS_KEY: string;      // contents of the AuthKey_XXXX.p8 file (secret)
   APNS_KEY_ID: string;   // the key's ID (secret)
   APNS_TEAM_ID: string;
   APNS_TOPIC: string;
+  // Android companion (self-hosted): the Firebase service account JSON,
+  // contents only — project_id, client_email and private_key are read from it.
+  FCM_SA?: string;
+  PHONE_BOX?: DurableObjectNamespace;
+  // Optional (wrangler.toml [[ratelimits]]): how many new boxes one address may create.
+  PAIR_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 }
 
 type Event = "start" | "update" | "end";
@@ -35,19 +43,15 @@ export default {
     if (request.method === "GET" && url.pathname === "/") {
       return text(200, "Coucou relay");
     }
+    if (url.pathname.startsWith("/v1/phone/")) {
+      return phoneRoute(request, url, env);
+    }
     if (request.method !== "POST" || url.pathname !== "/v1/live-activity") {
       return text(404, "not found");
     }
-    if (Number(request.headers.get("content-length") ?? "0") > 4096) {
-      return text(413, "too large");
-    }
-
-    let body: RelayRequest;
-    try {
-      body = await request.json();
-    } catch {
-      return text(400, "bad json");
-    }
+    const parsed = await readObject(request, LIVE_ACTIVITY_BODY_MAX);
+    if (parsed instanceof Response) return parsed;
+    const body = parsed as unknown as RelayRequest;
     const problem = validate(body);
     if (problem) return text(400, problem);
 
@@ -179,4 +183,553 @@ function base64url(input: string | Uint8Array): string {
 
 function text(status: number, message: string): Response {
   return new Response(message, { status, headers: { "content-type": "text/plain" } });
+}
+
+// MARK: Android companion (self-hosted).
+//
+// The Windows/Linux app and the Android app meet here the same way the Mac and
+// the iPhone meet through APNs: the PC owns a "box" on this worker, created with
+// a random id and a random secret at pairing time. The phone learns both from a
+// QR/code the PC shows, claims the box with its FCM token, and from then on:
+//   PC   POST /v1/phone/state   latest island state; "alert" pushes through FCM
+//   PC   POST /v1/phone/take    drains phone - PC messages (decisions, chat)
+//   PC   POST /v1/phone/claimed has a phone claimed the box yet
+//   PC   POST /v1/phone/pair    creates the box
+//   PC   POST /v1/phone/unpair  wipes the box (also the phone's reset)
+//   phone POST /v1/phone/claim  stores the FCM token + device name
+//   phone POST /v1/phone/fetch  reads state + the waiting card
+//   phone POST /v1/phone/decide answers a permission / question
+//   phone POST /v1/phone/chat   sends a chat line
+// Every call carries a secret; the box stores only its SHA-256. FCM data
+// payloads carry no content (kind + pc id only): the phone fetches details
+// from the box over HTTPS, so nothing sensitive ever rides Google's push.
+//
+// End-to-end: the secret the calls carry is HKDF of the pairing master, which
+// stays on the two devices. Card text, chat lines and decisions travel as
+// {"enc":1,"n":…,"ct":…} AES-256-GCM blobs under keys derived from the master —
+// so the box below stores ciphertext it cannot read, and a blob it did not
+// receive from a paired device never verifies. A pairing cut before this
+// existed keeps its plaintext contract until it is re-paired.
+
+const ID_RE = /^[0-9a-f]{24,48}$/;
+const SECRET_RE = /^[0-9a-f]{64}$/;
+/** The phone's own id, made once per pairing (Android Prefs): who may refresh the box's token. */
+const DEVICE_RE = /^[0-9a-f]{32}$/;
+const TOKEN_MAX = 512;
+const ALERTS = ["approval", "question"] as const;
+const OUTBOX_MAX = 50;
+const OUTBOX_TTL_MS = 10 * 60 * 1000;
+const STATE_TTL_MS = 24 * 3600 * 1000;
+
+/**
+ * The request body as a JSON object, refused past `max` bytes counted as they
+ * arrive — a chunked upload carries no Content-Length to trust — and refused
+ * when it is anything but an object (`null`, a list, a string).
+ */
+async function readObject(request: Request, max: number): Promise<Record<string, unknown> | Response> {
+  if (Number(request.headers.get("content-length") ?? "0") > max) return text(413, "too large");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  if (request.body) {
+    const reader = request.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) {
+        await reader.cancel();
+        return text(413, "too large");
+      }
+      chunks.push(value);
+    }
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return text(400, "bad json");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return text(400, "body");
+  return parsed as Record<string, unknown>;
+}
+
+/** State pushes carry the chat transcript tail — ~200 KB plaintext, ~270 KB as an encrypted blob. */
+const PHONE_BODY_MAX = 400_000;
+const LIVE_ACTIVITY_BODY_MAX = 4096;
+const PHONE_ACTIONS = ["pair", "claim", "claimed", "state", "fetch", "decide", "chat", "select", "take", "unpair"];
+
+async function phoneRoute(request: Request, url: URL, env: Env): Promise<Response> {
+  if (!env.PHONE_BOX) return text(501, "android support not deployed on this relay");
+  if (request.method !== "POST") return text(404, "not found");
+  const action = url.pathname.slice("/v1/phone/".length);
+  if (!PHONE_ACTIONS.includes(action)) return text(404, "not found");
+  const body = await readObject(request, PHONE_BODY_MAX);
+  if (body instanceof Response) return body;
+  const id = body.id;
+  if (typeof id !== "string" || !ID_RE.test(id)) return text(400, "id");
+  // `pair` is the one call without a secret: without a limit, anyone who finds
+  // this worker could spend its owner's Durable Object quota on empty boxes.
+  if (action === "pair" && env.PAIR_LIMITER) {
+    const { success } = await env.PAIR_LIMITER.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" });
+    if (!success) return text(429, "slow down");
+  }
+  const stub = env.PHONE_BOX.get(env.PHONE_BOX.idFromName(id));
+  return stub.fetch(new Request(`https://box/${action}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }));
+}
+
+interface PhoneStateSession {
+  pillId: string;
+  agent: string;
+  color: string;
+  state: string;
+  statusText: string;
+  stepIndex: number;
+  stepCount: number;
+}
+
+interface PhoneCard {
+  requestId: string;
+  pillId: string;
+  agent: string;
+  kind: "approval" | "question";
+  title: string;
+  detail: string;
+  options: string[];
+  /** Question cards: each question's text, its labels and whether several may be picked. */
+  questions: { q: string; options: string[]; multi: boolean }[];
+  /** The "Always allow" rule the request offered — shown on the phone's card too. */
+  always?: { label: string; detail: string };
+}
+
+/** The waiting card, clipped to bounds — used for both `state.awaiting` and `card`. */
+function cleanCard(raw: unknown): PhoneCard {
+  const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const questions = (Array.isArray(r.questions) ? r.questions : []).slice(0, 4).map((q) => {
+    const qr = (typeof q === "object" && q !== null ? q : {}) as Record<string, unknown>;
+    return {
+      q: clipped(qr.q, 160),
+      options: (Array.isArray(qr.options) ? qr.options : []).slice(0, 6).map((o) => clipped(o, 80)),
+      multi: qr.multi === true,
+    };
+  });
+  const card: PhoneCard = {
+    requestId: clipped(r.requestId, 64),
+    pillId: clipped(r.pillId, 48),
+    agent: clipped(r.agent, 40),
+    kind: r.kind === "question" ? "question" : "approval",
+    title: clipped(r.title, 160),
+    detail: clipped(r.detail, 600),
+    options: (Array.isArray(r.options) ? r.options : []).slice(0, 8).map((o) => clipped(o, 80)),
+    questions,
+  };
+  const always = (typeof r.always === "object" && r.always !== null ? r.always : {}) as Record<string, unknown>;
+  const alwaysLabel = clipped(always.label, 160);
+  if (alwaysLabel) card.always = { label: alwaysLabel, detail: clipped(always.detail, 200) };
+  return card;
+}
+
+/** base64url, no padding — what mail_crypto.rs and BoxCrypto.kt write. */
+const B64URL_RE = /^[A-Za-z0-9_-]+$/;
+/** An end-to-end blob: fresh 12-byte nonce, ciphertext bounded by the body cap. */
+function encBlob(v: unknown): { enc: 1; n: string; ct: string } | null {
+  const r = (typeof v === "object" && v !== null ? v : {}) as Record<string, unknown>;
+  if (r.enc !== 1) return null;
+  const n = r.n, ct = r.ct;
+  if (typeof n !== "string" || n.length !== 16 || !B64URL_RE.test(n)) return null;
+  if (typeof ct !== "string" || ct.length > 300_000 || !B64URL_RE.test(ct)) return null;
+  return { enc: 1, n, ct };
+}
+/** Flat form on decide/chat/select calls: the phone sends {id, secret, n, ct}. */
+function encFields(body: Record<string, unknown>): { n: string; ct: string } | null {
+  const n = body.n, ct = body.ct;
+  if (typeof n !== "string" || typeof ct !== "string") return null;
+  if (n.length !== 16 || !B64URL_RE.test(n) || ct.length > 300_000 || !B64URL_RE.test(ct)) return null;
+  return { n, ct };
+}
+
+interface OutboxItem {
+  /** "enc" wraps a sealed item the box cannot read — the PC unwraps it. */
+  type: "decision" | "chat" | "chat_sel" | "enc";
+  at: number;
+  requestId?: string;
+  decision?: string;
+  /** Question text → the label picked, or the labels picked for a multi-select question. */
+  answers?: Record<string, string | string[]>;
+  /** The questions answered in words under "Other…" rather than with a label. */
+  other?: string[];
+  text?: string;
+  /** A chat line into a specific CLI session, or which transcript to push. */
+  sessionId?: string;
+  /** Which CLI owns the session — "devin" | "claude" | "codex" | "opencode". */
+  agent?: string;
+}
+
+function clipped(v: unknown, max: number): string {
+  return typeof v === "string" ? v.slice(0, max) : "";
+}
+
+function cleanState(raw: unknown): {
+  sessions: PhoneStateSession[];
+  awaiting?: unknown;
+  chatTail?: { role: string; text: string }[];
+  chatSessions?: { id: string; title: string; dir: string; at: number; agent: string }[];
+  chatSel?: string;
+  chatTranscript?: { id: string; lines: { role: string; text: string; name?: string }[] };
+} | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const src = raw as Record<string, unknown>;
+  const sessionsIn = Array.isArray(src.sessions) ? src.sessions : [];
+  const sessions: PhoneStateSession[] = sessionsIn.slice(0, 12).map((s) => {
+    const r = (typeof s === "object" && s !== null ? s : {}) as Record<string, unknown>;
+    return {
+      pillId: clipped(r.pillId, 48),
+      agent: clipped(r.agent, 40),
+      color: /^#[0-9a-f]{6}$/i.test(String(r.color)) ? String(r.color) : "#8C8C8C",
+      state: clipped(r.state, 16),
+      statusText: clipped(r.statusText, 120),
+      stepIndex: Math.min(Math.max(Number(r.stepIndex) || 0, 0), 999),
+      stepCount: Math.min(Math.max(Number(r.stepCount) || 0, 0), 999),
+    };
+  });
+  const out: ReturnType<typeof cleanState> & object = { sessions };
+  const aw = src.awaiting;
+  if (typeof aw === "object" && aw !== null) {
+    out.awaiting = cleanCard(aw);
+  }
+  const tail = Array.isArray(src.chatTail) ? src.chatTail : [];
+  out.chatTail = tail.slice(0, 10).map((m) => {
+    const r = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;
+    return { role: r.role === "assistant" ? "assistant" : "user", text: clipped(r.text, 2000) };
+  });
+
+  // Remote session continuation: the CLI sessions the phone may pick (each
+  // tagged with its agent), the currently selected one, and its transcript tail.
+  const cliSessionsIn = Array.isArray(src.chatSessions) ? src.chatSessions : [];
+  out.chatSessions = cliSessionsIn.slice(0, 384).map((s) => {
+    const r = (typeof s === "object" && s !== null ? s : {}) as Record<string, unknown>;
+    return {
+      id: clipped(r.id, 64),
+      title: clipped(r.title, 120),
+      dir: clipped(r.dir, 160),
+      at: Number.isInteger(r.at) ? Number(r.at) : 0,
+      agent: clipped(r.agent, 16) || "devin",
+    };
+  });
+  if (typeof src.chatSel === "string") out.chatSel = src.chatSel.slice(0, 64);
+  const tr = src.chatTranscript;
+  if (typeof tr === "object" && tr !== null) {
+    const t = tr as Record<string, unknown>;
+    const lines = Array.isArray(t.lines) ? t.lines : [];
+    out.chatTranscript = {
+      id: clipped(t.id, 64),
+      lines: lines.slice(0, 40).map((m) => {
+        const r = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;
+        const role = r.role === "assistant" || r.role === "tool" ? r.role : "user";
+        const line: { role: string; text: string; name?: string } = {
+          role,
+          text: clipped(r.text, 4000),
+        };
+        const name = clipped(r.name, 40);
+        if (name) line.name = name;
+        return line;
+      }),
+    };
+  }
+  return out;
+}
+
+async function sha256hex(textIn: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(textIn));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** One PC - phone mailbox. Free-tier DO: a few keys, wiped on unpair. */
+export class PhoneBox {
+  private ctx: DurableObjectState;
+  private env: Env;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    this.ctx = ctx;
+    this.env = env;
+  }
+
+  private async authed(body: Record<string, unknown>): Promise<boolean> {
+    const want = await this.ctx.storage.get<string>("sec");
+    if (!want) return false;
+    const secret = body.secret;
+    if (typeof secret !== "string" || !SECRET_RE.test(secret)) return false;
+    const got = await sha256hex(secret);
+    // Fixed-width hex compare; no early exit.
+    let diff = 0;
+    for (let i = 0; i < 64; i++) diff |= got.charCodeAt(i) ^ want.charCodeAt(i);
+    return diff === 0;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const action = new URL(request.url).pathname.slice(1);
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return text(400, "bad json");
+    }
+    const now = Date.now();
+
+    if (action === "pair") {
+      const secret = body.secret;
+      if (typeof secret !== "string" || !SECRET_RE.test(secret)) return text(400, "secret");
+      const hash = await sha256hex(secret);
+      const have = await this.ctx.storage.get<string>("sec");
+      if (have && have !== hash) return text(409, "box id taken");
+      if (!have) {
+        await this.ctx.storage.put("sec", hash);
+        await this.ctx.storage.put("out", []);
+      }
+      return json({ ok: true });
+    }
+
+    if (!(await this.authed(body))) return text(403, "forbidden");
+
+    switch (action) {
+      case "claim": {
+        const token = clipped(body.token, TOKEN_MAX);
+        const name = clipped(body.name, 40);
+        if (!token) return text(400, "token");
+        const device = body.device === undefined ? "" : String(body.device);
+        if (device && !DEVICE_RE.test(device)) return text(400, "device");
+        const paired = (await this.ctx.storage.get<boolean>("paired")) === true;
+        const owner = (await this.ctx.storage.get<string>("devId")) ?? "";
+        // Once a phone has the box, only that phone may refresh its token: the
+        // code on the PC's screen is not a key to someone else's phone. A box
+        // paired by a build that sent no device id has no owner yet: its phone
+        // keeps refreshing as before, and the first claim that carries a device
+        // id becomes the owner.
+        if (paired && owner && device !== owner) return text(409, "claimed by another phone");
+        await this.ctx.storage.put({
+          token,
+          dev: name || "Android",
+          paired: true,
+          ...(device ? { devId: device } : {}),
+        });
+        return json({ ok: true });
+      }
+      case "claimed": {
+        return json({
+          paired: (await this.ctx.storage.get<boolean>("paired")) === true,
+          device: (await this.ctx.storage.get<string>("dev")) ?? null,
+        });
+      }
+      case "state": {
+        // An encrypted state is stored as the blob it arrived as — the box
+        // cannot read it, only hold it for the phone. A field claiming `enc`
+        // that is not a well-formed blob is refused, not silently emptied.
+        const rs = body.state;
+        const claimsEnc = typeof rs === "object" && rs !== null && "enc" in rs;
+        const state = claimsEnc ? encBlob(rs) : cleanState(rs);
+        if (!state) return text(400, "state");
+        const card = body.card;
+        const batch: Record<string, unknown> = { state, stateAt: now, card: null };
+        if (typeof card === "object" && card !== null) {
+          const cb = "enc" in card ? encBlob(card) : cleanCard(card);
+          if (!cb) return text(400, "card");
+          batch.card = cb;
+        }
+        await this.ctx.storage.put(batch);
+        const alert = String(body.alert ?? "");
+        if ((ALERTS as readonly string[]).includes(alert)) {
+          const token = await this.ctx.storage.get<string>("token");
+          // A token FCM says is gone is dropped; the phone claims a fresh one when it next opens.
+          if (token && (await pushFcm(this.env, token, alert))) await this.ctx.storage.delete("token");
+        }
+        return json({ ok: true });
+      }
+      case "fetch": {
+        const stateAt = (await this.ctx.storage.get<number>("stateAt")) ?? 0;
+        if (now - stateAt > STATE_TTL_MS) {
+          return json({ paired: true, device: null, state: null, card: null });
+        }
+        return json({
+          paired: (await this.ctx.storage.get<boolean>("paired")) === true,
+          device: (await this.ctx.storage.get<string>("dev")) ?? null,
+          state: (await this.ctx.storage.get("state")) ?? null,
+          card: (await this.ctx.storage.get("card")) ?? null,
+        });
+      }
+      case "decide": {
+        const enc = encFields(body);
+        if (enc) {
+          if (await this.enqueue({ type: "enc", at: now, ...enc }, now)) return json({ ok: true });
+          return text(429, "outbox full");
+        }
+        const requestId = clipped(body.requestId, 64);
+        const decision = clipped(body.decision, 16);
+        if (!requestId || !["allow", "deny", "always", "answer", "decline"].includes(decision)) {
+          return text(400, "decision");
+        }
+        const item: OutboxItem = { type: "decision", at: now, requestId, decision };
+        if (decision === "answer") {
+          const raw = typeof body.answers === "object" && body.answers !== null
+            ? body.answers as Record<string, unknown> : {};
+          const answers: Record<string, string | string[]> = {};
+          for (const [k, v] of Object.entries(raw).slice(0, 8)) {
+            const key = clipped(k, 160);
+            answers[key] = Array.isArray(v)
+              ? v.slice(0, 6).map((x) => clipped(x, 200)).filter((x) => x !== "")
+              : clipped(v, 200);
+          }
+          item.answers = answers;
+          // The questions answered in words under "Other…".
+          if (Array.isArray(body.other)) {
+            item.other = body.other.slice(0, 8).map((o) => clipped(o, 160)).filter((o) => o !== "");
+          }
+        }
+        if (await this.enqueue(item, now)) return json({ ok: true });
+        return text(429, "outbox full");
+      }
+      case "chat": {
+        const enc = encFields(body);
+        if (enc) {
+          if (await this.enqueue({ type: "enc", at: now, ...enc }, now)) return json({ ok: true });
+          return text(429, "outbox full");
+        }
+        const textIn = clipped(body.text, 4000);
+        if (!textIn) return text(400, "text");
+        const item: OutboxItem = { type: "chat", at: now, text: textIn };
+        const sessionId = clipped(body.sessionId, 64);
+        if (sessionId) item.sessionId = sessionId;
+        const agent = clipped(body.agent, 16);
+        if (agent) item.agent = agent;
+        if (await this.enqueue(item, now)) return json({ ok: true });
+        return text(429, "outbox full");
+      }
+      case "select": {
+        const enc = encFields(body);
+        if (enc) {
+          if (await this.enqueue({ type: "enc", at: now, ...enc }, now)) return json({ ok: true });
+          return text(429, "outbox full");
+        }
+        // Which CLI session's transcript the PC should push ("" = island chat).
+        const sessionId = clipped(body.sessionId, 64);
+        const agent = clipped(body.agent, 16);
+        const item: OutboxItem = { type: "chat_sel", at: now, sessionId };
+        if (agent) item.agent = agent;
+        if (await this.enqueue(item, now)) return json({ ok: true });
+        return text(429, "outbox full");
+      }
+      case "take": {
+        const stored = (await this.ctx.storage.get<OutboxItem[]>("out")) ?? [];
+        // The PC asks every few seconds: an empty outbox costs a read, never a write.
+        if (stored.length === 0) return json({ out: [] });
+        const out = stored.filter((i) => now - i.at < OUTBOX_TTL_MS);
+        await this.ctx.storage.put("out", []);
+        return json({ out });
+      }
+      case "unpair": {
+        await this.ctx.storage.deleteAll();
+        return json({ ok: true });
+      }
+      default:
+        return text(404, "not found");
+    }
+  }
+
+  private async enqueue(item: OutboxItem, now: number): Promise<boolean> {
+    const out = ((await this.ctx.storage.get<OutboxItem[]>("out")) ?? []).filter((i) => now - i.at < OUTBOX_TTL_MS);
+    if (out.length >= OUTBOX_MAX) return false;
+    out.push(item);
+    await this.ctx.storage.put("out", out);
+    return true;
+  }
+}
+
+// MARK: FCM OAuth (RS256 JWT from the service account) + send.
+
+let fcmCached: { token: string; at: number; email: string } | null = null;
+let fcmSa: { project_id: string; client_email: string; private_key: string } | null = null;
+
+function serviceAccount(env: Env) {
+  if (fcmSa) return fcmSa;
+  if (!env.FCM_SA) return null;
+  try {
+    fcmSa = JSON.parse(env.FCM_SA);
+  } catch {
+    return null;
+  }
+  return fcmSa;
+}
+
+async function fcmToken(env: Env): Promise<string | null> {
+  const sa = serviceAccount(env);
+  if (!sa) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (fcmCached && fcmCached.email === sa.client_email && now - fcmCached.at < 50 * 60) return fcmCached.token;
+
+  const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = base64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  }));
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToDer(sa.private_key),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    { name: "RSASSA-PKCS1-v1_5" },
+    key,
+    new TextEncoder().encode(`${header}.${claims}`),
+  );
+  const grant = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${header}.${claims}.${base64url(new Uint8Array(signature))}`,
+  });
+  if (grant.status !== 200) return null;
+  const token = ((await grant.json()) as { access_token?: string }).access_token;
+  if (!token) return null;
+  fcmCached = { token, at: now, email: sa.client_email };
+  return token;
+}
+
+/** Sends the wake-up. True when FCM says the token is gone for good. */
+async function pushFcm(env: Env, token: string, kind: string): Promise<boolean> {
+  const sa = serviceAccount(env);
+  const bearer = await fcmToken(env);
+  if (!sa || !bearer) return false;
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      message: {
+        token,
+        // Kind + timestamp only: the phone fetches the content from the box.
+        data: { k: kind, t: String(Math.floor(Date.now() / 1000)) },
+        android: { priority: "HIGH", ttl: "600s" },
+      },
+    }),
+  });
+  if (res.ok) return false;
+  return tokenGone(res.status, await res.text());
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 }

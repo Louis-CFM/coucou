@@ -31,6 +31,7 @@ use tokio_tungstenite::WebSocketStream;
 use super::pairing::SecretStore;
 use super::relay_crypto::{self as crypto, PairingKey, Session};
 use super::server::{self, Shared};
+use crate::mutex::MutexExt;
 
 pub(super) const ROOM_KEY: &str = "phone-relay-room";
 pub(super) const PAIRING_KEY: &str = "phone-relay-key";
@@ -201,10 +202,10 @@ impl StatusCell {
         StatusCell(Arc::new(Mutex::new(s)))
     }
     pub fn get(&self) -> State {
-        *self.0.lock().unwrap()
+        *self.0.lock_recover()
     }
     fn set(&self, s: State) {
-        *self.0.lock().unwrap() = s;
+        *self.0.lock_recover() = s;
     }
 }
 
@@ -513,7 +514,7 @@ mod tests {
     struct Recorder(Mutex<Vec<(String, bool)>>);
     impl super::super::hub::Host for Recorder {
         fn decide(&self, request_id: &str, allow: bool) {
-            self.0.lock().unwrap().push((request_id.to_string(), allow));
+            self.0.lock_recover().push((request_id.to_string(), allow));
         }
     }
 
@@ -540,9 +541,9 @@ mod tests {
                 let seen = seen2.clone();
                 let callback = move |req: &Request, mut resp: Response| -> Result<Response, ErrorResponse> {
                     let header = |n: &str| req.headers().get(n).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
-                    seen.auth.lock().unwrap().push(header("authorization"));
-                    seen.protocols.lock().unwrap().push(header("sec-websocket-protocol"));
-                    seen.paths.lock().unwrap().push(req.uri().to_string());
+                    seen.auth.lock_recover().push(header("authorization"));
+                    seen.protocols.lock_recover().push(header("sec-websocket-protocol"));
+                    seen.paths.lock_recover().push(req.uri().to_string());
                     if let Some(code) = refuse {
                         let mut r = ErrorResponse::new(None);
                         *r.status_mut() = StatusCode::from_u16(code).unwrap();
@@ -729,9 +730,9 @@ mod tests {
         block_on(async {
             let mut rig = Rig::start().await;
             let _ws = rig.socket().await;
-            assert_eq!(rig.seen.auth.lock().unwrap()[0], format!("Bearer {}", rig.access));
-            assert_eq!(rig.seen.protocols.lock().unwrap()[0], format!("coucou.v1, coucou.join.{}", crypto::join_proof(&rig.key())));
-            assert_eq!(rig.seen.paths.lock().unwrap()[0], format!("/v1/room/{}?role=pc", rig.room));
+            assert_eq!(rig.seen.auth.lock_recover()[0], format!("Bearer {}", rig.access));
+            assert_eq!(rig.seen.protocols.lock_recover()[0], format!("coucou.v1, coucou.join.{}", crypto::join_proof(&rig.key())));
+            assert_eq!(rig.seen.paths.lock_recover()[0], format!("/v1/room/{}?role=pc", rig.room));
             rig.wait_state(State::Waiting).await;
             rig.handle.stop();
         });
@@ -767,7 +768,7 @@ mod tests {
             phone.send(json!({ "type": "decision", "fingerprint": "0".repeat(64), "decision": "allow" })).await;
             phone.send(json!({ "type": "decision", "fingerprint": fp, "decision": "allow" })).await;
             phone.expect("approvalResolved").await;
-            assert_eq!(rig.host.0.lock().unwrap().clone(), vec![("req-1".to_string(), true)]);
+            assert_eq!(rig.host.0.lock_recover().clone(), vec![("req-1".to_string(), true)]);
             rig.handle.stop();
         });
     }
@@ -781,7 +782,7 @@ mod tests {
             phone.send(json!({ "type": "hello", "v": 1, "token": "wrong-token-0123456789abcdef", "caps": [] })).await;
             let err = phone.expect("error").await;
             assert_eq!(err["code"], "auth");
-            assert!(rig.host.0.lock().unwrap().is_empty());
+            assert!(rig.host.0.lock_recover().is_empty());
             rig.handle.stop();
         });
     }
@@ -1057,11 +1058,11 @@ mod tests {
                 server::now_ms(),
             );
             let mut waited = 0;
-            while host.0.lock().unwrap().is_empty() && waited < 1200 {
+            while host.0.lock_recover().is_empty() && waited < 1200 {
                 tokio::time::sleep(Duration::from_millis(100)).await;
                 waited += 1;
             }
-            assert_eq!(host.0.lock().unwrap().clone(), vec![("e2e-req".to_string(), true)], "the phone's decision reached the computer");
+            assert_eq!(host.0.lock_recover().clone(), vec![("e2e-req".to_string(), true)], "the phone's decision reached the computer");
             handle.stop();
         });
     }

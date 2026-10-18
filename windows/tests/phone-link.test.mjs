@@ -8,6 +8,7 @@ import { calls, emit, internals, sent } from "./tauri.mjs";
 import { bareCommand, folderName, linkSnapshot, registerPhoneLink } from "../src/island/phone-link.ts";
 import { makeDiffStep } from "../src/core/diff.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
+import { MAIN_MOCHI, setLook } from "../src/mochi/wardrobe.ts";
 
 const CLAUDE = "integration_claude";
 
@@ -275,7 +276,7 @@ test("the question is published when it appears and withdrawn when it is answere
   assert.equal(q()[2].question, null);
 });
 
-test("the outfit is published when the link comes up and whenever the wardrobe changes, and not repeated", async () => {
+test("the main Mochi's outfit is published when the link comes up and whenever the wardrobe changes, and not repeated", async () => {
   dispose = registerPhoneLink(island);
   await settle();
   tick(250);
@@ -283,7 +284,7 @@ test("the outfit is published when the link comes up and whenever the wardrobe c
   assert.equal(p().length, 1);
   assert.equal(p()[0].outfit, "auto", "the default of the wardrobe");
 
-  State.settings.mochiOutfit = "beanie";
+  setLook(State.settings, MAIN_MOCHI, { outfit: "beanie" });
   State.notify();
   tick(250);
   assert.equal(p().length, 2);
@@ -293,10 +294,17 @@ test("the outfit is published when the link comes up and whenever the wardrobe c
   tick(250);
   assert.equal(p().length, 2, "unchanged: not sent again");
 
-  State.settings.mochiOutfit = "topHat"; // a value no build knows: the wardrobe reads it as auto
+  setLook(State.settings, MAIN_MOCHI, { outfit: "topHat" }); // an SVG hat the phone does not draw: it gets auto
   State.notify();
   tick(250);
   assert.equal(p().at(-1).outfit, "auto");
+
+  // Every Mochi in the same outfit: the shared one.
+  State.settings.wardrobeMode = "all";
+  State.settings.mochiOutfit = "crown";
+  State.notify();
+  tick(250);
+  assert.equal(p().at(-1).outfit, "crown");
 });
 
 test("a session lists the files it changed by name and counts, never a path", async () => {

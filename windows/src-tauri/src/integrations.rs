@@ -21,6 +21,7 @@ use crate::github::{self, GitHubActivity, GitHubPulse};
 use crate::island::WINDOW_LABEL;
 use crate::log;
 use crate::secrets;
+use crate::mutex::MutexExt;
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -47,11 +48,18 @@ fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
-fn client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .timeout(TIMEOUT)
-        .build()
-        .unwrap_or_default()
+/// One client for every poller, built once with the 10 s timeout. A client that
+/// cannot be built (no TLS backend) means no polling at all, said once in the
+/// log, rather than a client without a timeout.
+fn client() -> Option<&'static reqwest::Client> {
+    static CLIENT: std::sync::LazyLock<Option<reqwest::Client>> = std::sync::LazyLock::new(|| {
+        reqwest::Client::builder()
+            .timeout(TIMEOUT)
+            .build()
+            .map_err(|err| log::line(format!("integrations: no HTTP client: {err}")))
+            .ok()
+    });
+    CLIENT.as_ref()
 }
 
 /// Set from the tray's Pause item. While it is on, nothing reaches the network:
@@ -78,7 +86,7 @@ pub fn start(app: AppHandle) {
 fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
-            let settings = shared.settings.lock().unwrap();
+            let settings = shared.settings.lock_recover();
             settings.active_integrations.iter().any(|x| x == id)
         })
         .unwrap_or(false)
@@ -133,7 +141,7 @@ static SEEN: std::sync::LazyLock<Seen> =
 /// Returns true the first time a given id is seen (and false on the very first
 /// load, which only fills the card).
 fn is_new(key: &'static str, id: &str) -> bool {
-    let mut map = SEEN.0.lock().unwrap();
+    let mut map = SEEN.0.lock_recover();
     match map.insert(key, id.to_string()) {
         Some(previous) => previous != id,
         None => false, // first poll: populate silently, like the Swift pollers
@@ -155,7 +163,7 @@ fn status_error(code: u16, unauthorised_hint: &str) -> String {
 async fn poll_stripe(app: AppHandle) {
     let Some(key) = secrets::get("stripe-api-key") else { return };
     let auth = format!("Basic {}", crate::claude::base64_for(format!("{key}:").as_bytes()));
-    let http = client();
+    let Some(http) = client() else { return };
 
     let balance = http
         .get("https://api.stripe.com/v1/balance")
@@ -275,7 +283,7 @@ async fn poll_stripe(app: AppHandle) {
 
 async fn poll_github(app: AppHandle) {
     let Some(token) = secrets::get("github-token") else { return };
-    let http = client();
+    let Some(http) = client() else { return };
 
     let user = http
         .get("https://api.github.com/user")
@@ -324,7 +332,7 @@ async fn poll_github(app: AppHandle) {
         _ => 0,
     };
 
-    GITHUB.cache.lock().unwrap().stats = Some((public + private, stars));
+    GITHUB.cache.lock_recover().stats = Some((public + private, stars));
     emit_github(&app);
 }
 
@@ -393,7 +401,7 @@ fn github_card_data(cache: &GitHubCache) -> Value {
 }
 
 fn emit_github(app: &AppHandle) {
-    let data = github_card_data(&GITHUB.cache.lock().unwrap());
+    let data = github_card_data(&GITHUB.cache.lock_recover());
     emit(app, IntegrationUpdate { id: GITHUB_ID, data, error: None, event: None });
 }
 
@@ -421,7 +429,7 @@ fn spawn_github_loops(app: AppHandle) {
 /// One authenticated GraphQL call. Partial errors are logged (as a count) and the
 /// data parsed anyway; only a response without `data` is dropped.
 async fn github_graphql(token: &str, query: &str, what: &str) -> Option<Value> {
-    let response = client()
+    let response = client()?
         .post("https://api.github.com/graphql")
         .header("Authorization", format!("Bearer {token}"))
         .header("Content-Type", "application/json")
@@ -460,7 +468,7 @@ async fn run_github_pulse(app: &AppHandle) -> bool {
     let pending = pulse.has_pending();
 
     let events = {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         // The token changed while this was in flight: it answers for someone else.
         if GITHUB.generation.load(Ordering::SeqCst) != generation {
             return pending;
@@ -487,7 +495,7 @@ async fn run_github_activity(app: &AppHandle) {
     GITHUB.activity_busy.store(false, Ordering::SeqCst);
     let Some(activity) = root.and_then(|r| GitHubActivity::parse(&r, now_ms())) else { return };
     {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         if GITHUB.generation.load(Ordering::SeqCst) != generation {
             return;
         }
@@ -507,7 +515,7 @@ fn wake_github_pulse() {
 /// request is already in flight.
 pub fn github_refresh_if_stale(section: &str) {
     let now = now_ms();
-    let cache = GITHUB.cache.lock().unwrap();
+    let cache = GITHUB.cache.lock_recover();
     match section {
         "pulse" => {
             let fetched = cache.pulse.as_ref().map(|p| p.fetched_at);
@@ -531,7 +539,7 @@ pub fn github_token_changed(app: &AppHandle) {
     GITHUB.generation.fetch_add(1, Ordering::SeqCst);
     let has_token = secrets::get("github-token").is_some();
     {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         cache.pulse = None;
         cache.activity = None;
         if !has_token {
@@ -553,7 +561,7 @@ pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
         return;
     }
     let had_data = {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         let had = cache.pulse.is_some() || cache.activity.is_some();
         cache.pulse = None;
         cache.activity = None;
@@ -568,7 +576,8 @@ pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
 
 async fn poll_vercel(app: AppHandle) {
     let Some(token) = secrets::get("vercel-token") else { return };
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .get("https://api.vercel.com/v6/deployments?limit=5")
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/json")
@@ -640,7 +649,8 @@ async fn poll_vercel(app: AppHandle) {
 
 async fn poll_resend(app: AppHandle) {
     let Some(key) = secrets::get("resend-api-key") else { return };
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .get("https://api.resend.com/emails?limit=100")
         .header("Authorization", format!("Bearer {key}"))
         .header("Accept", "application/json")
@@ -693,11 +703,89 @@ async fn poll_resend(app: AppHandle) {
     });
 }
 
+// ── Resend: sending the dropped file ─────────────────────────────────────────
+// MailView.sendViaResend on the Mac. Errors are stable codes the island turns
+// into sentences, so a localized string never rides a Result.
+
+/// Resend caps a request at 40 MB; base64 inflates a third, so 25 MB of file
+/// stays safely under it.
+const RESEND_MAX_ATTACHMENT: u64 = 25 * 1024 * 1024;
+
+const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// Base64 with padding — the encoding Resend's `attachments[].content` wants.
+fn b64(data: &[u8]) -> String {
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        // Left-align the group's bytes in 24 bits: 1 byte → 2 chars, 2 → 3.
+        let n = chunk.iter().fold(0u32, |n, b| (n << 8) | u32::from(*b)) << ((3 - chunk.len()) * 8);
+        for i in 0..4 {
+            out.push(if i <= chunk.len() {
+                B64[((n >> (18 - 6 * i)) & 63) as usize] as char
+            } else {
+                '='
+            });
+        }
+    }
+    out
+}
+
+pub async fn resend_send(
+    to: &str,
+    subject: &str,
+    body: &str,
+    path: Option<&str>,
+) -> Result<(), String> {
+    let key = secrets::get("resend-api-key").ok_or("no-key")?;
+    let from = secrets::get("resend-from").ok_or("no-from")?;
+
+    let mut payload = json!({
+        "from": from,
+        "to": [to],
+        "subject": subject,
+        "text": if body.is_empty() { " " } else { body },
+    });
+    if let Some(p) = path.filter(|p| !p.is_empty()) {
+        // The page names the path: like the chat's file context, only a file
+        // that actually came in through a drop — a copy inside the inbox —
+        // can leave the machine.
+        if !crate::chat::is_inside(&crate::files::inbox_dir(), std::path::Path::new(p)) {
+            return Err("bad-path".into());
+        }
+        if std::fs::metadata(p).map_err(|e| e.to_string())?.len() > RESEND_MAX_ATTACHMENT {
+            return Err("too-big".into());
+        }
+        let bytes = std::fs::read(p).map_err(|e| e.to_string())?;
+        let name = std::path::Path::new(p)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "file".into());
+        payload["attachments"] = json!([{ "filename": name, "content": b64(&bytes) }]);
+    }
+
+    let Some(http) = client() else { return Err("http-0".into()) };
+    let response = http
+        .post("https://api.resend.com/emails")
+        .header("Authorization", format!("Bearer {key}"))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    match response.status().as_u16() {
+        200 | 201 => Ok(()),
+        code => {
+            log::line(format!("resend send: HTTP {code}"));
+            Err(format!("http-{code}"))
+        }
+    }
+}
+
 // ── Notion ────────────────────────────────────────────────────────────────────
 
 async fn poll_notion(app: AppHandle) {
     let Some(token) = secrets::get("notion-api-key") else { return };
-    let response = client()
+    let Some(http) = client() else { return };
+    let response = http
         .post("https://api.notion.com/v1/search")
         .header("Authorization", format!("Bearer {token}"))
         .header("Notion-Version", "2022-06-28")
@@ -787,10 +875,35 @@ fn parse_notion_page(obj: &Value) -> Option<Value> {
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
+/// YYYY-MM-DD for today + `offset_days`, in UTC — civil-from-days, no chrono.
+fn utc_date(offset_days: i64) -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let z = secs.div_euclid(86_400) + offset_days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    format!("{:04}-{:02}-{:02}", if m <= 2 { y + 1 } else { y }, m, d)
+}
+
 async fn poll_calcom(app: AppHandle) {
     let Some(key) = secrets::get("calcom-api-key") else { return };
-    let response = client()
-        .get("https://api.cal.com/v2/bookings?status=upcoming")
+    // v2 answers to afterStart/beforeEnd (start/end are silently ignored):
+    // today through today + 60 days, at most 50 rows — the Mac's range.
+    let after = utc_date(0);
+    let before = utc_date(60);
+    let Some(http) = client() else { return };
+    let response = http
+        .get(format!(
+            "https://api.cal.com/v2/bookings?status=upcoming&afterStart={after}&beforeEnd={before}&take=50"
+        ))
         .header("Authorization", format!("Bearer {key}"))
         .header("cal-api-version", "2024-08-13")
         .send()
@@ -828,6 +941,7 @@ async fn poll_calcom(app: AppHandle) {
                         "id": b.get("id").map(|v| v.to_string()).unwrap_or_default(),
                         "title": b.get("title").and_then(Value::as_str).unwrap_or("Meeting"),
                         "start": start,
+                        "end": b.get("end").or_else(|| b.get("endTime")).and_then(Value::as_str),
                         "status": b.get("status").and_then(Value::as_str).unwrap_or("accepted"),
                         "attendeeName": attendee.and_then(|a| a.get("name")).and_then(Value::as_str),
                         "attendeeEmail": attendee.and_then(|a| a.get("email")).and_then(Value::as_str),
@@ -853,7 +967,7 @@ async fn poll_n8n(app: AppHandle) {
         return;
     };
     let base = raw_base.trim_end_matches('/').to_string();
-    let http = client();
+    let Some(http) = client() else { return };
 
     // Same two shapes as the Swift poller: the public API first, then /rest.
     let list_urls = [
@@ -1020,5 +1134,25 @@ mod tests {
         assert_eq!(data["totalRepos"], json!(12));
         assert_eq!(data["activity"], json!({ "total": 5, "weeks": [], "fetchedAt": 9 }));
         assert!(data.get("pulse").is_none());
+    }
+
+    #[test]
+    fn b64_pads_partial_groups() {
+        assert_eq!(b64(b""), "");
+        assert_eq!(b64(b"f"), "Zg==");
+        assert_eq!(b64(b"fo"), "Zm8=");
+        assert_eq!(b64(b"foo"), "Zm9v");
+        assert_eq!(b64(b"foobar"), "Zm9vYmFy");
+        // A binary byte trips nothing — every 6-bit window lands in the table.
+        assert_eq!(b64(&[0xff, 0x00]), "/wA=");
+    }
+
+    #[test]
+    fn utc_date_formats_and_offsets() {
+        // 2026-10-09 12:34:56 UTC = 1775829296 s — today + 60 days stays sane.
+        let today = utc_date(0);
+        let later = utc_date(60);
+        assert_eq!(today.len(), 10);
+        assert!(later > today, "{later} should be after {today}");
     }
 }

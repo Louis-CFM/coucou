@@ -21,6 +21,7 @@ use gtk::prelude::*;
 use tauri::{AppHandle, WebviewWindow};
 
 use super::{home_dir, LocalTime};
+use crate::mutex::MutexExt;
 
 /// File name of the Claude Code relay.
 pub const HOOK_EXE: &str = "coucou-hook";
@@ -213,6 +214,18 @@ pub fn relay_socket_path() -> Option<PathBuf> {
     is_private_dir(&dir).then(|| dir.join("coucou.sock"))
 }
 
+/// True when `pid` is the deployed relay binary — the only process allowed to
+/// raise an Allow/Deny card on the island (see pipe.rs). The client's uid was
+/// already checked when it connected; here the executable matters.
+pub fn exe_is_hook(pid: u32) -> bool {
+    // /proc/<pid>/exe is fully resolved; canonicalize the path we compare with.
+    let want = std::fs::canonicalize(crate::settings::hook_exe_path())
+        .unwrap_or_else(|_| crate::settings::hook_exe_path());
+    std::fs::read_link(format!("/proc/{pid}/exe"))
+        .ok()
+        .is_some_and(|got| got == want)
+}
+
 // ── Who we are ────────────────────────────────────────────────────────────────
 
 /// The account's full name: the first field of the passwd GECOS entry
@@ -322,6 +335,7 @@ mod layer {
     pub const EDGE_TOP: c_int = 2;
     pub const EDGE_BOTTOM: c_int = 3;
     pub const KEYBOARD_NONE: c_int = 0;
+    pub const KEYBOARD_EXCLUSIVE: c_int = 1;
     pub const KEYBOARD_ON_DEMAND: c_int = 2;
 
     #[link(name = "gtk-layer-shell")]
@@ -422,13 +436,13 @@ pub fn make_non_activating(win: &WebviewWindow) {
     // right after the first map, gets it drawing for good.
     let remapped = std::cell::Cell::new(false);
     gw.connect_map_event(move |w, _| {
-        apply_input_region(w, *INPUT_REGION.lock().unwrap());
+        apply_input_region(w, *INPUT_REGION.lock_recover());
         if !remapped.replace(true) {
             let w = w.clone();
             gtk::glib::idle_add_local_once(move || {
                 w.hide();
                 w.show_all();
-                apply_input_region(&w, *INPUT_REGION.lock().unwrap());
+                apply_input_region(&w, *INPUT_REGION.lock_recover());
             });
         }
         gtk::glib::Propagation::Proceed
@@ -546,10 +560,15 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
+/// The chat's mic on Linux: WebKitGTK asks through its own permission request.
+// ponytail: not wired yet (needs enable-media-stream and a permission-request
+// handler on the WebView); the mic button reports the error until then.
+pub fn allow_microphone(_win: &WebviewWindow) {}
+
 /// Only this rectangle (window-logical pixels) takes the mouse; `None` means
 /// the whole window does. Everything outside goes to the window underneath.
 pub fn set_input_region(win: &WebviewWindow, rect: Region) {
-    *INPUT_REGION.lock().unwrap() = rect;
+    *INPUT_REGION.lock_recover() = rect;
     let Ok(gw) = win.gtk_window() else { return };
     apply_input_region(&gw, rect);
 }
@@ -655,13 +674,13 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
             // Same first-frame problem as the island (see make_non_activating).
             let remapped = std::cell::Cell::new(false);
             gw.connect_map_event(move |w, _| {
-                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                apply_mouse_shape(w, *MOCHI_SHAPE.lock_recover());
                 if !remapped.replace(true) {
                     let w = w.clone();
                     gtk::glib::idle_add_local_once(move || {
                         w.hide();
                         w.show_all();
-                        apply_mouse_shape(&w, *MOCHI_SHAPE.lock().unwrap());
+                        apply_mouse_shape(&w, *MOCHI_SHAPE.lock_recover());
                     });
                 }
                 gtk::glib::Propagation::Proceed
@@ -670,7 +689,7 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
         }
         super::DesktopMode::Window => {
             gw.connect_map_event(|w, _| {
-                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                apply_mouse_shape(w, *MOCHI_SHAPE.lock_recover());
                 gtk::glib::Propagation::Proceed
             });
             true
@@ -681,7 +700,7 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
 
 /// Which part of the desktop Mochi takes the mouse. Main thread.
 pub fn set_desktop_shape(win: &WebviewWindow, shape: super::MouseShape) {
-    *MOCHI_SHAPE.lock().unwrap() = shape;
+    *MOCHI_SHAPE.lock_recover() = shape;
     let Ok(gw) = win.gtk_window() else { return };
     apply_mouse_shape(&gw, shape);
 }
@@ -763,6 +782,194 @@ pub fn layer_display(island: &WebviewWindow, mochi: &WebviewWindow) -> Option<(f
     }
     let g = monitor.geometry();
     Some((g.width() as f64, g.height() as f64))
+}
+
+pub fn moving_window() -> bool {
+    false
+}
+
+/// Layer-shell keeps the island above the other surfaces already.
+pub fn raise_topmost(_win: &WebviewWindow) {}
+
+pub fn keep_topmost(_app: &AppHandle) {}
+
+// ── Window under a point (drop Mochi on it → chat context) ────────────────────
+// IslandWindowController.windowContextAtPoint on the Mac. X11 only: Wayland
+// deliberately does not tell a client what is under the pointer, and on a
+// layer surface the drop coordinates are not screen coordinates anyway.
+
+pub fn window_context_at(_x: f64, _y: f64) -> Option<super::WindowContext> {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{AtomEnum, ConnectionExt};
+
+    // The pointer IS at the drop point — this is a release. On Wayland the
+    // connect itself fails, which is the honest answer there.
+    let (conn, screen) = x11rb::connect(None).ok()?;
+    let root = conn.setup().roots.get(screen)?.root;
+    let pointer = conn.query_pointer(root).ok()?.reply().ok()?;
+    // `child` is the top-level window under the pointer — the WM's frame. The
+    // client inside carries _NET_WM_PID; frames do not.
+    let mut win = pointer.child;
+    if win == 0 {
+        return None;
+    }
+    let intern = |name: &str| -> Option<u32> {
+        conn.intern_atom(false, name.as_bytes()).ok()?.reply().ok().map(|r| r.atom)
+    };
+    let wm_pid = intern("_NET_WM_PID")?;
+    let wm_state = intern("WM_STATE")?;
+    let wm_name = intern("_NET_WM_NAME")?;
+    let utf8 = intern("UTF8_STRING")?;
+
+    let prop = |window: u32, atom: u32, kind: u32| -> Option<Vec<u8>> {
+        conn.get_property(false, window, atom, kind, 0, 1024)
+            .ok()?
+            .reply()
+            .ok()
+            .map(|r| r.value)
+            .filter(|v| !v.is_empty())
+    };
+    // A CARDINAL is read through value32: the bytes are in the wire order,
+    // not necessarily the host's.
+    let pid_of = |window: u32| -> Option<u32> {
+        conn.get_property(false, window, wm_pid, u32::from(AtomEnum::CARDINAL), 0, 1)
+            .ok()?
+            .reply()
+            .ok()?
+            .value32()?
+            .next()
+    };
+
+    // Descend into the frame until a window carries a PID — the client lives
+    // there. Children come bottom-to-top; the topmost is the visible one.
+    for _ in 0..3 {
+        if pid_of(win).is_some() {
+            break;
+        }
+        let kids = conn.query_tree(win).ok()?.reply().ok()?.children;
+        let Some(next) = kids
+            .iter()
+            .rev()
+            .find(|k| prop(**k, wm_state, u32::from(AtomEnum::ANY)).is_some() || pid_of(**k).is_some())
+            .copied()
+        else {
+            return None;
+        };
+        win = next;
+    }
+
+    let pid = pid_of(win)?;
+    if pid == std::process::id() {
+        return None;
+    }
+    let title = prop(win, wm_name, utf8)
+        .or_else(|| prop(win, u32::from(AtomEnum::WM_NAME), u32::from(AtomEnum::STRING)))
+        .map(|v| String::from_utf8_lossy(&v).trim_end_matches('\0').to_string())
+        .unwrap_or_default();
+    let app_name = std::fs::read_to_string(format!("/proc/{pid}/comm"))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())?;
+    Some(super::WindowContext { app_name, title })
+}
+
+// ── Screen overlay (screenshot roam, media preview) ───────────────────────────
+
+/// True once the island is a layer-shell surface (centred on the top edge).
+pub fn island_is_layer_surface() -> bool {
+    LAYER_SURFACE.load(Ordering::Relaxed)
+}
+
+/// True once the overlay is a layer-shell surface.
+static ROAM_LAYER: AtomicBool = AtomicBool::new(false);
+
+/// True while a media preview is on the overlay: it then takes the mouse over
+/// its whole surface instead of none of it (a roaming Mochi never takes a click).
+static ROAM_INPUT: AtomicBool = AtomicBool::new(false);
+
+/// The overlay's input region as currently wanted; GTK resets it on every map.
+fn roam_input(gw: &impl IsA<gtk::Widget>) {
+    if ROAM_INPUT.load(Ordering::Relaxed) {
+        apply_input_region(gw, None);
+    } else {
+        apply_input_region(gw, Some((0.0, 0.0, 0.0, 0.0)));
+    }
+}
+
+pub fn set_roam_input(win: &WebviewWindow, take: bool) {
+    ROAM_INPUT.store(take, Ordering::Relaxed);
+    if let Ok(gw) = win.gtk_window() {
+        roam_input(&gw);
+    }
+}
+
+/// Turns the overlay window into a transparent layer-shell surface over the
+/// whole monitor, above everything, that never takes a click. Like the island,
+/// it must be set up before the window is first shown. Without layer-shell
+/// (GNOME, X11) it stays a regular window, made fullscreen when shown.
+pub fn make_roam_overlay(win: &WebviewWindow) {
+    let Ok(gw) = win.gtk_window() else { return };
+    let supported = unsafe { layer::gtk_layer_is_supported() } != 0;
+    if layer_shell_wanted() && supported && !gw.is_realized() {
+        gw.set_titlebar(None::<&gtk::Widget>);
+        let ptr = gtk_window_ptr(&gw);
+        unsafe {
+            layer::gtk_layer_init_for_window(ptr);
+            layer::gtk_layer_set_namespace(ptr, c"coucou-roam".as_ptr());
+            layer::gtk_layer_set_layer(ptr, layer::LAYER_OVERLAY);
+            for edge in [layer::EDGE_LEFT, layer::EDGE_RIGHT, layer::EDGE_TOP, layer::EDGE_BOTTOM] {
+                layer::gtk_layer_set_anchor(ptr, edge, 1);
+            }
+            layer::gtk_layer_set_exclusive_zone(ptr, -1);
+            layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_NONE);
+        }
+        ROAM_LAYER.store(true, Ordering::Relaxed);
+    }
+    // GTK resets the input region on every map; WebKitGTK in a fresh layer
+    // surface also needs one unmap/map to paint (see make_non_activating).
+    let remapped = std::cell::Cell::new(false);
+    gw.connect_map_event(move |w, _| {
+        roam_input(w);
+        if ROAM_LAYER.load(Ordering::Relaxed) && !remapped.replace(true) {
+            let w = w.clone();
+            gtk::glib::idle_add_local_once(move || {
+                w.hide();
+                w.show_all();
+                roam_input(&w);
+            });
+        }
+        gtk::glib::Propagation::Proceed
+    });
+}
+
+/// Shows the overlay on the island's monitor and gives it the keyboard, so Esc
+/// reaches the page while Mochi roams.
+pub fn show_roam_overlay(win: &WebviewWindow, island: &WebviewWindow) {
+    let (Ok(gw), Ok(igw)) = (win.gtk_window(), island.gtk_window()) else { return };
+    if ROAM_LAYER.load(Ordering::Relaxed) {
+        let ptr = gtk_window_ptr(&gw);
+        if let (Some(display), Some(gdk_window)) = (gtk::gdk::Display::default(), igw.window()) {
+            if let Some(monitor) = display.monitor_at_window(&gdk_window) {
+                unsafe { layer::gtk_layer_set_monitor(ptr, monitor.to_glib_none().0) };
+            }
+        }
+        unsafe { layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_EXCLUSIVE) };
+        let _ = win.show();
+    } else {
+        let _ = win.set_fullscreen(true);
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+    roam_input(&gw);
+}
+
+pub fn hide_roam_overlay(win: &WebviewWindow) {
+    if let Ok(gw) = win.gtk_window() {
+        if ROAM_LAYER.load(Ordering::Relaxed) {
+            unsafe { layer::gtk_layer_set_keyboard_mode(gtk_window_ptr(&gw), layer::KEYBOARD_NONE) };
+        }
+    }
+    let _ = win.hide();
 }
 
 #[cfg(test)]
@@ -858,7 +1065,7 @@ static PILL_SHAPE: Mutex<Vec<(f64, f64, f64, f64)>> = Mutex::new(Vec::new());
 pub fn prepare_pill_window(win: &WebviewWindow, mode: super::DesktopMode) -> bool {
     let Ok(gw) = win.gtk_window() else { return false };
     gw.set_accept_focus(false);
-    let reapply = |w: &gtk::ApplicationWindow| apply_rects(w, &PILL_SHAPE.lock().unwrap());
+    let reapply = |w: &gtk::ApplicationWindow| apply_rects(w, &PILL_SHAPE.lock_recover());
     match mode {
         super::DesktopMode::Layer => {
             if gw.is_realized() {
@@ -882,7 +1089,7 @@ pub fn prepare_pill_window(win: &WebviewWindow, mode: super::DesktopMode) -> boo
                     gtk::glib::idle_add_local_once(move || {
                         w.hide();
                         w.show_all();
-                        apply_rects(&w, &PILL_SHAPE.lock().unwrap());
+                        apply_rects(&w, &PILL_SHAPE.lock_recover());
                     });
                 }
                 gtk::glib::Propagation::Proceed
@@ -918,7 +1125,7 @@ pub fn set_pill_edge(win: &WebviewWindow, edge: &str) {
 
 /// The parts of the pill's window that take the mouse. Main thread.
 pub fn set_pill_input(win: &WebviewWindow, rects: Vec<(f64, f64, f64, f64)>) {
-    *PILL_SHAPE.lock().unwrap() = rects.clone();
+    *PILL_SHAPE.lock_recover() = rects.clone();
     let Ok(gw) = win.gtk_window() else { return };
     apply_rects(&gw, &rects);
 }

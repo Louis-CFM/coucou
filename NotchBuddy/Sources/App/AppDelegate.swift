@@ -267,6 +267,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if !APPSTORE
         _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
         FlowDictation.shared.start()  // watches the dictation key only if Flow dictation is on
+        CallWatcher.shared.start()
         #endif
         N8nPoller.shared.start()
         VercelPoller.shared.start()

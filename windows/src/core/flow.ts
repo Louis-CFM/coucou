@@ -36,8 +36,13 @@ export interface FlowPrefs {
   openAtLaunch: boolean;
   /** « OK Coucou »: listen for it and answer with Claude. */
   voice: boolean;
+  voiceSearch: "anthropic" | "parallel" | "off";
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
+  voicestudioUrl: string;
+  voicestudioVoice: string;
+  /** The Fish Audio voice (a model ID from fish.audio); empty is its default voice. */
+  fishVoiceId: string;
 }
 
 export type ModelState =
@@ -180,7 +185,7 @@ export interface VoiceView {
   answer: string;
 }
 
-export type VoiceOutput = "system" | "elevenlabs" | "off";
+export type VoiceOutput = "system" | "elevenlabs" | "voicestudio" | "fishaudio" | "off";
 
 export const FlowBridge = {
   status: () => call<FlowStatus>("flow_status"),

@@ -23,7 +23,10 @@ use ::windows::Win32::System::Diagnostics::ToolHelp::{
 use ::windows::Win32::System::Ole::RevokeDragDrop;
 use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
-use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+use ::windows::Win32::System::Threading::{
+    GetCurrentProcess, OpenProcess, OpenProcessToken, QueryFullProcessImageNameW,
+    PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, GetKeyboardLayoutList, MapVirtualKeyExW, ToUnicodeEx, HKL, MAPVK_VK_TO_VSC,
     VK_CONTROL, VK_LBUTTON, VK_MENU, VK_SHIFT,
@@ -32,10 +35,10 @@ use ::windows::Win32::UI::Shell::{
     ShellExecuteExW, SHELLEXECUTEINFOW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC,
 };
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
-    GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
-    SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOWNORMAL, WS_EX_NOACTIVATE,
-    WS_EX_TOOLWINDOW,
+    EnumChildWindows, EnumWindows, GetAncestor, GetClassNameW, GetCursorPos, GetWindow,
+    GetWindowLongPtrW, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible,
+    SetForegroundWindow, SetWindowLongPtrW, ShowWindow, WindowFromPoint, GA_ROOT, GWL_EXSTYLE,
+    GW_OWNER, SW_RESTORE, SW_SHOWNORMAL, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
 use super::LocalTime;
@@ -324,6 +327,58 @@ unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
     true.into()
 }
 
+/// True while the foreground window is being moved or resized by its title bar
+/// or border — a held button that is not a drag the island should answer.
+pub fn moving_window() -> bool {
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetGUIThreadInfo, GUITHREADINFO, GUI_INMOVESIZE};
+    let mut info = GUITHREADINFO {
+        cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
+        ..Default::default()
+    };
+    unsafe { GetGUIThreadInfo(0, &mut info).is_ok() && (info.flags.0 & GUI_INMOVESIZE.0) != 0 }
+}
+
+/// Puts the island back on top of the other always-on-top windows.
+///
+/// Every topmost window shares one band, and whichever was raised last wins.
+/// A full-width status bar along the top of the screen is often topmost too, and
+/// then covers the strip that wakes the island and takes dropped files. Raising the island
+/// again hands that edge back to it. Never activates, never moves or resizes.
+pub fn raise_topmost(win: &WebviewWindow) {
+    let Some(hwnd) = hwnd_of(win) else { return };
+    raise_hwnd(hwnd);
+}
+
+fn raise_hwnd(hwnd: HWND) {
+    use ::windows::Win32::UI::WindowsAndMessaging::{
+        SetWindowPos, HWND_TOPMOST, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+    };
+    unsafe {
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS,
+        );
+    }
+}
+
+/// Such bars can raise themselves again later (on a redraw, or coming back from
+/// a full-screen app), so the island checks back every couple of seconds. One
+/// cheap call, no wake-up of the page.
+pub fn keep_topmost(app: &AppHandle) {
+    let Some(win) = app.get_webview_window(crate::island::WINDOW_LABEL) else { return };
+    let Some(hwnd) = hwnd_of(&win) else { return };
+    let raw = hwnd.0 as isize; // HWND isn't Send; the handle itself is just a number
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        raise_hwnd(HWND(raw as *mut _));
+    });
+}
+
 /// WS_EX_NOACTIVATE keeps clicks from stealing focus; WS_EX_TOOLWINDOW keeps the
 /// island out of Alt-Tab.
 pub fn make_non_activating(win: &WebviewWindow) {
@@ -349,6 +404,63 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
+/// Tells WebView2 how much memory a window may keep. A hidden window (the
+/// Coucou window, the screen overlay) is set to Low: it drops caches and decoded
+/// images and hands its heap slack back, and gets it all back when it is shown again.
+/// It is also made invisible to WebView2, which stops its painting and
+/// animation frames: with occlusion tracking off (BROWSER_ARGS) a hidden
+/// window otherwise kept rendering, the settings window ~60% of a core.
+/// Back to Normal, the window is shown first: made visible to WebView2 while
+/// its window was still hidden, the click-through overlay never painted nor
+/// ran a frame again (the screenshot roam hung, with nothing on screen).
+pub fn set_memory_low(win: &WebviewWindow, low: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
+        COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+    };
+    use wv2_core::Interface;
+    if !low {
+        let _ = win.show();
+    }
+    let _ = win.with_webview(move |wv| unsafe {
+        let _ = wv.controller().SetIsVisible(!low);
+        let Ok(core) = wv.controller().CoreWebView2() else { return };
+        let Ok(core) = core.cast::<ICoreWebView2_19>() else { return };
+        let level = if low {
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW
+        } else {
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL
+        };
+        let _ = core.SetMemoryUsageTargetLevel(level);
+    });
+}
+
+/// Lets the island's own page use the microphone (the chat's mic button)
+/// without WebView2's permission prompt, which has no room in the island. The
+/// island only ever shows Coucou's own pages.
+pub fn allow_microphone(win: &WebviewWindow) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_MICROPHONE,
+        COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+    };
+    use webview2_com::PermissionRequestedEventHandler;
+    let _ = win.with_webview(|wv| unsafe {
+        let Ok(core) = wv.controller().CoreWebView2() else { return };
+        let handler = PermissionRequestedEventHandler::create(Box::new(|_, args| {
+            if let Some(args) = args {
+                let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+                args.PermissionKind(&mut kind)?;
+                if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE {
+                    args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                }
+            }
+            Ok(())
+        }));
+        let mut token = 0i64;
+        let _ = core.add_PermissionRequested(&handler, &mut token);
+    });
+}
+
 /// Click-through here is the poll's WS_EX_TRANSPARENT toggle, not a region.
 pub fn set_input_region(_win: &WebviewWindow, _rect: Option<(f64, f64, f64, f64)>) {}
 
@@ -368,6 +480,35 @@ pub fn pipe_client_pid(handle: RawHandle) -> Option<u32> {
     let mut pid = 0u32;
     unsafe { GetNamedPipeClientProcessId(HANDLE(handle), &mut pid).ok()? };
     (pid != 0).then_some(pid)
+}
+
+/// True when `pid` is the deployed relay binary — the only process allowed to
+/// raise an Allow/Deny card on the island (see pipe.rs). Compared by resolved
+/// image path, case-insensitively.
+pub fn exe_is_hook(pid: u32) -> bool {
+    let Some(want) = std::fs::canonicalize(crate::settings::hook_exe_path()).ok() else {
+        return false;
+    };
+    unsafe {
+        let Ok(proc) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
+            return false;
+        };
+        let mut buf = vec![0u16; 32768];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(proc, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(proc);
+        if !ok {
+            return false;
+        }
+        let got = PathBuf::from(String::from_utf16_lossy(&buf[..len as usize]));
+        // canonicalize() emits \\?\C:\… — QueryFullProcessImageNameW does not.
+        let strip = |p: &std::path::Path| {
+            p.to_string_lossy()
+                .trim_start_matches(r"\\?\")
+                .to_lowercase()
+        };
+        strip(&got) == strip(&want)
+    }
 }
 
 /// Every process, by ID: its parent and its executable's name.
@@ -527,6 +668,7 @@ fn activate_claude_protocol() -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod claude_launch_tests {
     use super::open_claude_with;
     use std::cell::RefCell;
@@ -627,6 +769,122 @@ pub fn set_layer_overlay(_win: &WebviewWindow, _on: bool) {}
 /// Layer-shell only (Linux): the logical size of the display the island is on.
 pub fn layer_display(_island: &WebviewWindow, _mochi: &WebviewWindow) -> Option<(f64, f64)> {
     None
+}
+
+// ── Window under a point (drop Mochi on it → chat context) ────────────────────
+// IslandWindowController.windowContextAtPoint + WindowContextCapture on the
+// Mac: the top-level visible window under the point that isn't ours. The
+// browser URL stays out — Chrome keeps it behind UI Automation.
+
+/// The window under the physical screen point, as chat context — `None` on our
+/// own windows, on invisible ones and on anything without a readable name.
+pub fn window_context_at(x: f64, y: f64) -> Option<super::WindowContext> {
+    unsafe {
+        let hit = WindowFromPoint(POINT { x: x as i32, y: y as i32 });
+        if hit.0.is_null() {
+            return None;
+        }
+        let hwnd = GetAncestor(hit, GA_ROOT);
+        if hwnd.0.is_null() || !IsWindowVisible(hwnd).as_bool() {
+            return None;
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == 0 || pid == std::process::id() {
+            return None;
+        }
+        let mut buf = [0u16; 512];
+        let n = GetWindowTextW(hwnd, &mut buf);
+        let title = String::from_utf16_lossy(&buf[..n.max(0) as usize]);
+        let app_name = process_app_name(pid)?;
+        Some(super::WindowContext { app_name, title })
+    }
+}
+
+/// How the process owns its windows: FileDescription ("Google Chrome") first,
+/// the exe's stem ("chrome") when the resource is absent.
+fn process_app_name(pid: u32) -> Option<String> {
+    let exe = unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = [0u16; 1024];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            PWSTR(buf.as_mut_ptr()),
+            &mut len,
+        )
+        .is_ok();
+        let _ = CloseHandle(handle);
+        ok.then(|| String::from_utf16_lossy(&buf[..len as usize]))
+    }?;
+    file_description(&exe).or_else(|| {
+        std::path::Path::new(&exe)
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .filter(|s| !s.is_empty())
+    })
+}
+
+/// The FileDescription string in an exe's version resource, in whatever
+/// language/codepage pair the file declares.
+fn file_description(path: &str) -> Option<String> {
+    use ::windows::Win32::Storage::FileSystem::{
+        GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
+    };
+    let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+    unsafe {
+        let size = GetFileVersionInfoSizeW(::windows::core::PCWSTR(wide.as_ptr()), None);
+        if size == 0 {
+            return None;
+        }
+        let mut data = vec![0u8; size as usize];
+        GetFileVersionInfoW(
+            ::windows::core::PCWSTR(wide.as_ptr()),
+            Some(0),
+            size,
+            data.as_mut_ptr().cast(),
+        )
+        .ok()?;
+        // The file tells us which (lang, codepage) pairs its strings live under.
+        let mut tr = std::ptr::null_mut();
+        let mut tr_len = 0u32;
+        if !VerQueryValueW(
+            data.as_ptr().cast(),
+            ::windows::core::w!("\\VarFileInfo\\Translation"),
+            &mut tr,
+            &mut tr_len,
+        )
+        .as_bool()
+            || tr_len < 4
+        {
+            return None;
+        }
+        let packed = *(tr as *const u32);
+        let subkey =
+            format!("\\StringFileInfo\\{:04x}{:04x}\\FileDescription", packed & 0xffff, packed >> 16);
+        let wkey: Vec<u16> = subkey.encode_utf16().chain(std::iter::once(0)).collect();
+        let mut s = std::ptr::null_mut();
+        let mut s_len = 0u32;
+        if !VerQueryValueW(
+            data.as_ptr().cast(),
+            ::windows::core::PCWSTR(wkey.as_ptr()),
+            &mut s,
+            &mut s_len,
+        )
+        .as_bool()
+            || s.is_null()
+            || s_len == 0
+        {
+            return None;
+        }
+        let text = String::from_utf16_lossy(std::slice::from_raw_parts(
+            s as *const u16,
+            s_len as usize,
+        ));
+        let text = text.trim_end_matches('\0').trim();
+        (!text.is_empty()).then(|| text.to_string())
+    }
 }
 
 // ── Flow dictation's pill ─────────────────────────────────────────────────────

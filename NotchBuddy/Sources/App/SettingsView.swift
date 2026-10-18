@@ -338,6 +338,22 @@ struct SettingsView: View {
             .padding(6)
         }
 
+        #if !APPSTORE
+        GroupBox("Calls") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("The island hides and goes silent while one of these is in use. Read from the menu bar's camera, microphone and screen indicators.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Camera on", isOn: $state.quietOnCamera)
+                Toggle("Microphone on", isOn: $state.quietOnMic)
+                Toggle("Screen sharing", isOn: $state.quietOnScreenShare)
+                    .help("A screen shared by an app that is also on the mic or the camera. A recorder or a screenshot tool does not count.")
+            }
+            .padding(6)
+        }
+        #endif
+
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Open on hover", isOn: $state.openOnHover)
@@ -540,10 +556,6 @@ struct SettingsView: View {
                 Text("Choose the tools you use. Coucou only shows what you declare here.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-
-                Text(String(format: String(localized: "settings.slots-used %lld"), Int64(state.activeIntegrations.count)))
-                    .font(.system(size: 11))
-                    .foregroundColor(state.activeIntegrations.count >= 4 ? .orange : .secondary)
 
                 Picker(String(localized: "settings.main-pill"), selection: $state.mainPillId) {
                     ForEach(PillCatalog.available.filter { $0.category == .workspace && !$0.comingSoon }, id: \.id) { def in
@@ -1560,13 +1572,6 @@ struct SettingsView: View {
     }
 
     #if !APPSTORE
-    private func localModelStatusLabel(_ status: LocalModelStatus) -> String {
-        switch status {
-        case .available:            return String(localized: "voice.model-available")
-        case .notMacOS26:           return String(localized: "voice.model-not-macos26")
-        case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
-        }
-    }
     #endif
 
     // MARK: - Transcript history debug view (in-memory, cleared on close)
@@ -2173,7 +2178,6 @@ struct SettingsView: View {
     private func pillRow(_ def: PillDefinition) -> some View {
         let isMain = def.id == state.mainPillId
         let isOn   = state.activeIntegrations.contains(def.id)
-        let atMax  = state.activeIntegrations.count >= 4 && !isOn && !isMain
         let hint: String? = {
             if isMain { return nil }
             if def.comingSoon { return String(localized: "Coming soon") }
@@ -2227,7 +2231,7 @@ struct SettingsView: View {
             }
             Text(def.name)
                 .font(.system(size: 12))
-                .foregroundColor(atMax ? .secondary : .primary)
+                .foregroundColor(.primary)
             Spacer()
             if isMain {
                 Text("Main")
@@ -2244,7 +2248,6 @@ struct SettingsView: View {
                     set: { _ in state.toggleIntegration(def.id) }
                 ))
                 .labelsHidden()
-                .disabled(atMax)
             }
         }
     }

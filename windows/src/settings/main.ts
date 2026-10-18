@@ -5,23 +5,27 @@
 
 import "./settings.css";
 import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
-import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
+import { CUSTOM_SERVER_KEY, providerDef, urlExposure, type ProviderId } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_MOCHI_NAMES, DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
+import {
+  COMMON_FONTS, FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, applyFont, cleanFontFamily, cleanFontScale,
+} from "../core/font";
 import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { colorDot } from "./colors";
+import { extrasSettingsChanged, mediaModelsSection, mochiSection, nameInput, type ExtrasContext } from "./extras";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -43,6 +47,13 @@ let hub: { redraw(): void; current(): PageId } | null = null;
 async function save() {
   await Bridge.saveSettings(settings);
 }
+
+/** How extras.ts reads and saves the settings, which are replaced on every outside save. */
+const extras: ExtrasContext = {
+  settings: () => settings,
+  save: () => void save(),
+  toggle: (on, onChange) => toggle(on, onChange),
+};
 
 /** A colour was picked for a pill's Mochi (see ./colors.ts): the island follows. */
 function pickColor(next: Record<string, string>) {
@@ -408,6 +419,123 @@ function apiSection(hasKey: boolean): HTMLElement {
   );
 }
 
+// ── Android companion section ────────────────────────────────────────────────
+
+/**
+ * Approve permissions and answer questions from an Android phone. The PC and
+ * the phone meet in a private "box" on a relay the user deploys (see
+ * android/README.md) — nothing is shared with any third party but the user's
+ * own worker, and the pairing secret lives in the keychain.
+ */
+function phoneCompanionSection(): HTMLElement {
+  const section = h("section", {}, h("h2", {}, h("span", { text: t("Android phone") })), h("div", {}));
+  const body = section.lastElementChild as HTMLElement;
+  let pairing: { code: string; qrSvg: string } | null = null;
+
+  async function draw() {
+    clear(body);
+    const st = (await Bridge.phoneStatus()) ?? {
+      enabled: false, paired: false, device: "", worker: "", pcId: "",
+    };
+    if (!st.paired && pairing) {
+      // The code is on screen and the phone hasn't claimed the box yet.
+      const qr = new DOMParser()
+        .parseFromString(pairing.qrSvg, "image/svg+xml")
+        .documentElement as unknown as SVGElement;
+      qr.setAttribute("width", "168");
+      qr.setAttribute("height", "168");
+      (qr as unknown as HTMLElement).style.cssText =
+        "background:#fff;border-radius:10px;padding:10px";
+      const code = h("input", {
+        type: "text",
+        value: pairing.code,
+        readonly: true,
+        style: "width:100%;font-family:monospace;font-size:10px",
+        onclick: (e) => (e.currentTarget as HTMLInputElement).select(),
+      });
+      body.append(
+        h("div", {
+          class: "hint",
+          text: t("Scan this with the Coucou app on your Android phone, or paste the code there."),
+        }),
+        h("div", { class: "row", style: "justify-content:center" }, qr as unknown as Node),
+        h("div", { class: "row" }, code),
+        h("div", { class: "hint", text: t("Waiting for the phone…") }),
+      );
+      return;
+    }
+    if (st.paired) {
+      body.append(
+        h("div", {
+          class: "hint",
+          text: t("Approvals, questions and chat reach {device} through your relay.", {
+            device: st.device || "Android",
+          }),
+        }),
+        h("div", { class: "row" },
+          h("label", { text: t("Phone") }),
+          statusDot(true),
+          h("span", { class: "hint", text: st.device || "Android" }),
+        ),
+        h("div", { class: "row" },
+          h("label", { text: t("Control from the phone") }),
+          toggle(st.enabled, (on) => void Bridge.phoneEnable(on)),
+        ),
+        h("div", { class: "row" },
+          h("label", { text: "" }),
+          h("button", {
+            class: "danger",
+            text: t("Unpair phone"),
+            onclick: () => void Bridge.phoneUnpair().then(draw),
+          }),
+        ),
+      );
+      return;
+    }
+    const worker = h("input", {
+      type: "text",
+      value: st.worker,
+      placeholder: "https://coucou-relay.you.workers.dev",
+      style: "flex:1 1 auto;min-width:0",
+      spellcheck: "false",
+    }) as HTMLInputElement;
+    const feedback = h("div", {});
+    body.append(
+      h("div", {
+        class: "hint",
+        text: t("Approve permissions, answer questions and chat from your Android phone. The phone and Coucou meet in a private mailbox on a relay you deploy yourself — free on Cloudflare's free tier (android/README.md)."),
+      }),
+      h("div", { class: "row" }, h("label", { text: t("Relay address") }), worker),
+      h("div", { class: "row" },
+        h("label", { text: "" }),
+        h("button", {
+          class: "primary",
+          text: t("Pair phone…"),
+          onclick: async () => {
+            clear(feedback);
+            try {
+              pairing = await Bridge.phonePair(worker.value.trim());
+              if (pairing) await draw();
+            } catch (err) {
+              feedback.append(
+                h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
+              );
+            }
+          },
+        }),
+      ),
+      feedback,
+    );
+  }
+
+  draw();
+  void onEvent("phone-paired", () => {
+    pairing = null;
+    void draw();
+  });
+  return section;
+}
+
 // ── Active pills section ──────────────────────────────────────────────────────
 
 /**
@@ -416,7 +544,6 @@ function apiSection(hasKey: boolean): HTMLElement {
  * want as pills. Services are declared in Integrations below, next to their keys.
  */
 function activePillsSection(connected: Record<string, boolean>): HTMLElement {
-  const slots = h("div", { class: "hint" });
   const main = h("select", {}) as HTMLSelectElement;
   for (const def of mainPillChoices()) main.append(h("option", { value: def.id, text: def.name }));
   main.addEventListener("change", () => {
@@ -440,8 +567,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   function row(def: PillDefinition): HTMLElement {
     const isMain = def.id === settings.mainPill;
     const on = settings.activeIntegrations.includes(def.id);
-    const full = !isMain && !on && settings.activeIntegrations.length >= MAX_ACTIVE;
-    const el = h("div", { class: full ? "pill-row full" : "pill-row" },
+    const el = h("div", { class: "pill-row" },
       colorDot(def, "width:10px;height:10px", () => settings.pillColors, pickColor),
       h("span", { class: "name", text: def.name }),
     );
@@ -452,7 +578,6 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     const why = hint(def);
     el.append(h("span", { class: "state", text: why ?? "" }));
     const sw = h("button", { class: on ? "switch on" : "switch" }) as HTMLButtonElement;
-    sw.disabled = full;
     sw.addEventListener("click", () => {
       const next = toggleDeclared(settings, def.id);
       if (!next) return;
@@ -464,9 +589,6 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
   }
 
   function draw() {
-    const used = settings.activeIntegrations.length;
-    slots.textContent = t("{used}/{max} slots in use — the main tool doesn't take one.", { used, max: MAX_ACTIVE });
-    slots.classList.toggle("full", used >= MAX_ACTIVE);
     main.value = settings.mainPill;
     clear(groups);
     for (const cat of PILL_CATEGORIES) {
@@ -484,7 +606,6 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     {},
     h("h2", {}, h("span", { text: t("Active pills") })),
     h("div", { class: "hint", text: t("Choose the tools you use. Coucou only shows what you declare here.") }),
-    slots,
     h("div", { class: "row" }, h("label", { text: t("Main tool") }), main),
     groups,
   );
@@ -751,6 +872,118 @@ function localSection(customKey: boolean): HTMLElement {
   return section;
 }
 
+// ── Chat through your CLIs section ───────────────────────────────────────────
+
+const CLI_STRINGS = {
+  get title() { return t("On your plan"); },
+  get hint() { return t("Chat through the tools you already pay for: Claude Code, Cursor's agent, Devin, ChatGPT and Kiro answer on your subscription — no API key. Once signed in, pick them above the chat box."); },
+  get checking() { return t("Checking…"); },
+  get notInstalled() { return t("Not installed"); },
+  get notSignedIn() { return t("Not signed in"); },
+  get signIn() { return t("Sign in…"); },
+  get browser() { return t("Finish the sign-in in your browser…"); },
+  terminal: (cmd: string) => t("Run `{cmd}` in a terminal to sign in.", { cmd }),
+};
+
+/** A chat CLI the user already pays for: its status is asked once the section draws. */
+function cliSection(): HTMLElement {
+  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
+  const section = h(
+    "section",
+    {},
+    h("h2", {}, h("span", { text: CLI_STRINGS.title })),
+    h("div", { class: "hint", text: CLI_STRINGS.hint }),
+    body,
+  );
+
+  /** The terminal command each CLI's sign-in lives behind, when a button can't open it. */
+  const loginCmd: Partial<Record<ProviderId, string>> = {
+    "claude-cli": "claude",
+    devin: "devin auth login",
+    codex: "codex login",
+    kiro: "kiro-cli login",
+  };
+  /** The binary behind each row, so "ChatGPT" next to `codex login` makes sense. */
+  const cliBin: Partial<Record<ProviderId, string>> = {
+    "claude-cli": "claude",
+    cursor: "agent",
+    devin: "devin",
+    codex: "codex",
+    kiro: "kiro-cli",
+  };
+
+  for (const id of ["claude-cli", "cursor", "devin", "codex", "kiro"] as const) {
+    const p = providerDef(id);
+    const dotEl = statusDot(false);
+    const state = h("span", { class: "hint", text: CLI_STRINGS.checking });
+    const actions = h("span", { style: "display:inline-flex;gap:8px" });
+    body.append(h("div", { class: "row" },
+      h("label", {},
+        h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+        h("span", { text: t(p.name) }),
+        h("span", { class: "hint", text: ` (${cliBin[id]})` }),
+      ),
+      state, actions, dotEl,
+    ));
+
+    const refresh = async () => {
+      const st = await Bridge.cliStatus(id);
+      if (st === null) return;
+      clear(actions);
+      dotEl.style.background = st.loggedIn ? "#22c55e" : st.cli ? "#f5a524" : "#f4505e";
+      if (!st.cli) {
+        state.textContent = CLI_STRINGS.notInstalled;
+        return;
+      }
+      if (st.loggedIn) {
+        state.textContent = st.status;
+        const inUse = settings.chatProvider === id;
+        actions.append(h("button", {
+          class: inUse ? "" : "primary",
+          text: inUse ? CHAT_STRINGS.inUse : CHAT_STRINGS.useInChat,
+          disabled: inUse,
+          onclick: () => {
+            settings.chatProvider = id;
+            void save().then(refresh);
+          },
+        }));
+        return;
+      }
+      const cmd = loginCmd[id];
+      state.textContent = cmd
+        ? CLI_STRINGS.terminal(cmd)
+        : st.status || CLI_STRINGS.notSignedIn;
+      if (id === "cursor") {
+        // `agent login` opens the browser; the row watches for it to finish.
+        actions.append(h("button", {
+          class: "primary",
+          text: CLI_STRINGS.signIn,
+          onclick: async (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.disabled = true;
+            try {
+              await Bridge.cliLogin(id);
+            } catch {
+              btn.disabled = false;
+              return;
+            }
+            state.textContent = CLI_STRINGS.browser;
+            for (let i = 0; i < 30; i++) {
+              await new Promise((r) => window.setTimeout(r, 3000));
+              const next = await Bridge.cliStatus(id);
+              if (next?.loggedIn) { void refresh(); return; }
+            }
+            btn.disabled = false;
+            state.textContent = CLI_STRINGS.notSignedIn;
+          },
+        }));
+      }
+    };
+    void refresh();
+  }
+  return section;
+}
+
 // ── Integrations section ──────────────────────────────────────────────────────
 
 interface IntegrationDef {
@@ -777,16 +1010,22 @@ const INTEGRATIONS: IntegrationDef[] = [
       { key: "n8n-api-key", label: N_("API key"), placeholder: "…", secret: true },
     ] },
   { id: "integration_resend", name: "Resend", color: "#22C55E",
-    fields: [{ key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true }] },
+    fields: [
+      { key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true },
+      // The sender shown on outgoing mail — the Mac's Keychain `resend-from`.
+      { key: "resend-from", label: N_("From address"), placeholder: "you@yourdomain.com", secret: true },
+    ] },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C",
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter either: the Windows media controls (Windows only, music.rs).
+  { id: "integration_music", name: "Music", color: "#FA2D48", fields: [],
+    hint: "Shows what plays in Spotify, Apple Music, YouTube Music or any other player in the Windows media controls, with play, pause and skip. Mochi dances to music, not to videos." },
 ];
 
-const MAX_ACTIVE = MAX_DECLARED;
 
 /** Everything that shows the declared pills, redrawn when any of them changes. */
 const declaredViews: (() => void)[] = [];
@@ -800,11 +1039,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
   const note = h("div", { class: "hint" });
   const list = h("div", { style: "display:flex;flex-direction:column;gap:14px" });
 
-  function updateNote() {
-    const used = settings.activeIntegrations.length;
-    note.textContent = t("Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.", { max: MAX_ACTIVE, used, store: KEY_STORE });
-  }
-  declaredViews.push(updateNote);
+  note.textContent = t("Keys are stored in the {store}, never on disk.", { store: KEY_STORE });
 
   const offered = new Set(availablePills().map((p) => p.id));
   for (const def of INTEGRATIONS.filter((d) => offered.has(d.id))) {
@@ -815,7 +1050,6 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       if (on) {
         settings.activeIntegrations = settings.activeIntegrations.filter((x) => x !== def.id);
       } else {
-        if (settings.activeIntegrations.length >= MAX_ACTIVE) return;
         settings.activeIntegrations = [...settings.activeIntegrations, def.id];
       }
       sw.classList.toggle("on", !on);
@@ -823,6 +1057,18 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     });
 
     const rows = h("div", { style: "display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0" });
+    // This coloured Mochi's name, then its keys.
+    rows.append(
+      h("div", { class: "row" },
+        h("label", { style: "min-width:104px", text: t("Mochi's name") }),
+        nameInput(settings.mochiNames?.[def.id] ?? "", DEFAULT_MOCHI_NAMES[def.id] ?? def.name, (v) => {
+          const names = { ...(settings.mochiNames ?? {}) };
+          if (v) names[def.id] = v;
+          else delete names[def.id];
+          settings.mochiNames = names;
+        }, extras.save),
+      ),
+    );
     for (const field of def.fields) {
       const input = h("input", {
         type: field.secret ? "password" : "text",
@@ -868,14 +1114,13 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
         h("div", { style: "display:flex;align-items:center;gap:8px;min-width:132px;padding-top:4px" },
           sw,
           colorDot(def, "", () => settings.pillColors, pickColor),
-          h("span", { style: "font-size:12.5px", text: def.name }),
+          h("span", { style: "font-size:calc(12.5px * var(--fs, 1))", text: def.name }),
         ),
         rows,
       ),
     );
   }
 
-  updateNote();
   return h("section", {}, h("h2", {}, h("span", { text: t("Integrations") })), note, list);
 }
 
@@ -916,6 +1161,16 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const editor = h("input", {
+    type: "text",
+    placeholder: "code (or $VISUAL / $EDITOR)",
+    value: settings.editor ?? "",
+  }) as HTMLInputElement;
+  editor.addEventListener("change", () => {
+    settings.editor = editor.value.trim() || null;
+    void save();
+  });
+
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -942,6 +1197,44 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // Where along the top edge: a share of the display's width, −50 (left edge)
+  // to 50 (right edge), 0 centred where a Mac's notch would be. The window
+  // moves as the slider does, so the right spot is found by eye. The island
+  // can also be dragged, which sets a fractional share and a drop from the top
+  // edge (islandDrop): the slider then shows the nearest step, and Centre
+  // brings it back to the top centre.
+  const shift = h("input", {
+    type: "range", min: "-50", max: "50", step: "1",
+    value: String(Math.max(-50, Math.min(50, Math.round(Number(settings.islandShift) || 0)))),
+    style: "width:160px",
+  }) as HTMLInputElement;
+  const shiftLabel = h("span", { class: "hint" });
+  const describeShift = (v: number) => {
+    const n = Math.round(v);
+    return n === 0 ? t("centred") : n < 0 ? t("{0}% to the left", { 0: String(-n) }) : t("{0}% to the right", { 0: String(n) });
+  };
+  shiftLabel.textContent = describeShift(Number(shift.value));
+  shift.addEventListener("input", () => {
+    settings.islandShift = Number(shift.value) || 0;
+    shiftLabel.textContent = describeShift(settings.islandShift);
+    void save();
+  });
+  const centreShift = h("button", { class: "btn", text: t("Centre") });
+  centreShift.addEventListener("click", () => {
+    shift.value = "0";
+    settings.islandShift = 0;
+    settings.islandDrop = 0;
+    settings.islandDock = "top";
+    shiftLabel.textContent = describeShift(0);
+    void save();
+  });
+  // A drag of the island lands here as settings-changed.
+  declaredViews.push(() => {
+    const v = Math.max(-50, Math.min(50, Math.round(Number(settings.islandShift) || 0)));
+    shift.value = String(v);
+    shiftLabel.textContent = describeShift(v);
+  });
+
   return h(
     "section",
     {},
@@ -953,27 +1246,130 @@ function generalSection(): HTMLElement {
     ),
     h("div", { class: "row" }, soundsFolder, reloadSounds, customCount),
     h("div", { class: "hint", text: t("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.") }),
+    h("div", { class: "row" }, h("label", { text: t("Calls") })),
+    h("div", { class: "row" },
+      h("label", { text: t("Camera on") }),
+      toggle(settings.quietOnCamera, (v) => { settings.quietOnCamera = v; void save(); }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Microphone on") }),
+      toggle(settings.quietOnMic, (v) => { settings.quietOnMic = v; void save(); }),
+    ),
+    h("div", { class: "row", title: t("A screen shared by an app that is also on the mic or the camera. A recorder or a screenshot tool does not count.") },
+      h("label", { text: t("Screen sharing") }),
+      toggle(settings.quietOnScreenShare, (v) => { settings.quietOnScreenShare = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("The island hides and goes silent while one of these is in use.") }),
     h("div", { class: "row" },
       h("label", { text: t("Open on hover") }),
       toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); }),
     ),
     h("div", { class: "hint", text: t("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.") }),
     h("div", { class: "row" },
+      h("label", { text: t("Show clock in the island") }),
+      toggle(settings.showClock, (v) => { settings.showClock = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("The date and the time in the middle of the island when it is compact.") }),
+    h("div", { class: "row" },
       h("label", { text: t("Auto-close") }),
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Editor command") }),
+      editor,
+      h("span", { class: "hint", text: "e.g. cursor, zed, code" }),
     ),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,
     ),
     h("div", { class: "row" },
+      h("label", { text: t("Along the top edge") }),
+      shift,
+      shiftLabel,
+      centreShift,
+    ),
+    h("div", { class: "hint", text: t("Slide the island left or right, or drag it with the mouse to wherever suits you, out of the way of a browser's tabs or a window title. Centre puts it back at the top.") }),
+    h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
     ),
     ...recapRows(),
     languageRow(),
+    ...fontRows(),
   );
+}
+
+/**
+ * Settings → General → Font and Text size. The family is any font installed on
+ * the PC: the list comes from the system when the webview allows reading it,
+ * else from a few common ones, and a name typed by hand is kept as it is. The
+ * island and this window apply a change at once (core/font.ts), without a
+ * restart. Reset gives back the fonts and sizes that ship.
+ */
+function fontRows(): HTMLElement[] {
+  const listId = "font-families";
+  const list = h("datalist", { id: listId });
+  const fill = (names: string[]) => {
+    clear(list);
+    for (const name of names) list.append(h("option", { value: name }));
+  };
+  fill(COMMON_FONTS);
+  // Chromium's Local Font Access API. It may ask, or refuse: the short list stays then.
+  const query = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts;
+  if (typeof query === "function") {
+    void query.call(window).then(
+      (faces) => {
+        const families = [...new Set(faces.map((f) => f.family))].sort((a, b) => a.localeCompare(b));
+        if (families.length > 0) fill(families);
+      },
+      () => {},
+    );
+  }
+
+  const family = h("input", {
+    type: "text", list: listId, placeholder: t("Default"), value: settings.fontFamily, style: "width:220px",
+  }) as HTMLInputElement;
+  family.addEventListener("change", () => {
+    settings.fontFamily = cleanFontFamily(family.value);
+    family.value = settings.fontFamily;
+    applyFont(settings);
+    void save();
+  });
+
+  const shown = h("span", { class: "hint" });
+  const scale = h("input", {
+    type: "range", min: String(FONT_SCALE_MIN), max: String(FONT_SCALE_MAX), step: String(FONT_SCALE_STEP),
+    value: String(cleanFontScale(settings.fontScale)),
+  }) as HTMLInputElement;
+  const showScale = () => { shown.textContent = `${Math.round(cleanFontScale(settings.fontScale) * 100)}%`; };
+  showScale();
+  scale.addEventListener("input", () => {
+    settings.fontScale = cleanFontScale(Number(scale.value));
+    showScale();
+    applyFont(settings);
+    void save();
+  });
+
+  const reset = h("button", {
+    text: t("Reset"),
+    onclick: () => {
+      settings.fontFamily = "";
+      settings.fontScale = 1;
+      family.value = "";
+      scale.value = "1";
+      showScale();
+      applyFont(settings);
+      void save();
+    },
+  });
+
+  return [
+    h("div", { class: "row" }, h("label", { text: t("Font") }), family, list),
+    h("div", { class: "row" }, h("label", { text: t("Text size") }), scale, shown, reset),
+    h("div", { class: "hint", text: t("Any font installed on this PC. Mochi's drawings keep their own lettering.") }),
+  ];
 }
 
 /**
@@ -1281,6 +1677,7 @@ async function main() {
     version = boot.version;
   }
   setLanguage(resolveLanguage(settings.language, systemLanguages()));
+  applyFont(settings);
   applyDirection();
   hub = await startHub(windowRoot, {
     version,
@@ -1302,9 +1699,11 @@ async function main() {
     settings = { ...settings, ...s };
     shortcutsListener?.settingsChanged();
     for (const redraw of declaredViews) redraw();
+    extrasSettingsChanged();
     const after = `${settings.chatProvider}|${settings.ollamaUrl}|${settings.lmstudioUrl}|${settings.customUrl}`;
     if (before !== after) localRedraw?.();
     applyLanguage();
+    applyFont(settings);
   });
 }
 
@@ -1323,7 +1722,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "resend-from", "notion-api-key", "calcom-api-key",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
@@ -1355,12 +1754,13 @@ async function render() {
   shortcutsListener = null;
   clear(root);
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
-    general: () => [generalSection()],
+    general: () => [generalSection(), mochiSection(extras)],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey), cliSection(), mediaModelsSection(extras)],
     integrations: () => [integrationsSection(present)],
-    phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
+    // Our cloud-relay companion first, then the upstream LAN phone link.
+    phone: () => [phoneCompanionSection(), phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],
   };
   root.append(...(sections[notchPage]?.() ?? []));

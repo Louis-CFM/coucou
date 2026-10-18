@@ -309,7 +309,7 @@ final class LiveActivityRelay {
     /// Sends one push through the relay. Returns true when Apple accepted it.
     @discardableResult
     private func post(event: String, token: String, env: String, state: MochiActivityState,
-                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String) async -> Bool {
+                      urgent: Bool = false, dismissAfter: Int? = nil, phoneID: String, retried: Bool = false) async -> Bool {
         guard let url = relayURL else { return false }
         var state = state
         if state.since == nil { state.since = activitySince }
@@ -327,17 +327,14 @@ final class LiveActivityRelay {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             if status == 200 { return true }
             let reason = String(data: data, encoding: .utf8) ?? ""
-            if reason.contains("BadDeviceToken") {
-                // A token only works on one of Apple's two push servers (sandbox for
-                // builds run from Xcode, production for TestFlight and the App Store).
-                // Try the other one once and keep it if it works.
-                let other = env == "production" ? "development" : "production"
-                if phones[phoneID]?.env == env {
-                    phones[phoneID]?.env = other
-                    log("relay \(event): token not valid on \(env), trying \(other)")
-                    return await post(event: event, token: token, env: other, state: state,
-                                      urgent: urgent, dismissAfter: dismissAfter, phoneID: phoneID)
-                }
+            if reason.contains("BadDeviceToken"),
+               let other = ApnsRetry.otherEnvironment(after: env, alreadyRetried: retried) {
+                // Try the other push server once, and keep it only if it works.
+                log("relay \(event): token not valid on \(env), trying \(other)")
+                let ok = await post(event: event, token: token, env: other, state: state,
+                                    urgent: urgent, dismissAfter: dismissAfter, phoneID: phoneID, retried: true)
+                if ok { phones[phoneID]?.env = other }
+                return ok
             }
             if status == 410 {
                 // That token is gone (activity ended on the iPhone, app deleted…).
@@ -360,11 +357,19 @@ final class LiveActivityRelay {
                 for (id, result) in changes.modificationResultsByID {
                     guard case .success(let mod) = result, mod.record.recordType == "PhoneToken" else { continue }
                     let record = mod.record
+                    let updatedAt = record["updatedAt"] as? Date ?? .distantPast
+                    // A phone silent for a month is gone (app deleted, device
+                    // retired): drop the record so its stale tokens never get
+                    // a push. It re-joins the day the app writes again.
+                    guard updatedAt >= Date().addingTimeInterval(-30 * 24 * 3600) else {
+                        phones[id.recordName] = nil
+                        continue
+                    }
                     phones[id.recordName] = Phone(
                         env: record["env"] as? String ?? "production",
                         startToken: record.encryptedValues["startToken"] as? String ?? "",
                         updateToken: record.encryptedValues["updateToken"] as? String ?? "",
-                        updatedAt: record["updatedAt"] as? Date ?? .distantPast)
+                        updatedAt: updatedAt)
                 }
                 for deletion in changes.deletions where deletion.recordType == "PhoneToken" {
                     phones[deletion.recordID.recordName] = nil

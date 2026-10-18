@@ -250,25 +250,6 @@ final class MusicController: ObservableObject {
         }
     }
 
-    func playArtist(_ name: String) async -> Bool {
-        let escaped = name
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        let result = await runAppleScript("""
-            tell application id "com.apple.Music"
-                try
-                    set tr to (first track of library playlist 1 whose artist contains "\(escaped)")
-                    play tr
-                    return "ok"
-                on error
-                    return "notfound"
-                end try
-            end tell
-        """)
-        if case .success(let vals) = result, vals.first == "ok" { return true }
-        return false
-    }
-
     func playSearch(_ query: String) async -> Bool {
         let escaped = query
             .replacingOccurrences(of: "\\", with: "\\\\")

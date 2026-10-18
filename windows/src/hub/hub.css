@@ -20,7 +20,7 @@
 body.hub-window {
   background: #000;
   color: var(--hub-text);
-  font: 400 13px/1.45 var(--font);
+  font: 400 calc(13px * var(--fs, 1))/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
   height: 100vh;
   overflow: hidden;
@@ -48,7 +48,7 @@ body.hub-window {
   align-items: center;
   gap: 10px;
   padding: 4px 8px 14px;
-  font: 700 18px var(--font);
+  font: 700 calc(18px * var(--fs, 1)) var(--font);
 }
 
 .hub-brand canvas {
@@ -57,7 +57,7 @@ body.hub-window {
 }
 
 .hub-group {
-  font: 700 10.5px var(--font);
+  font: 700 calc(10.5px * var(--fs, 1)) var(--font);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--hub-muted);
@@ -74,7 +74,7 @@ body.hub-window {
   border-radius: 9px;
   background: transparent;
   color: #c7cad0;
-  font: 500 13.5px var(--font);
+  font: 500 calc(13.5px * var(--fs, 1)) var(--font);
   text-align: start;
 }
 
@@ -118,7 +118,7 @@ body.hub-window {
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--hub-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   line-height: 1.3;
 }
 
@@ -129,7 +129,7 @@ body.hub-window {
 
 .hub-version {
   color: var(--hub-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--fs, 1));
   padding: 8px 12px 0;
 }
 
@@ -210,17 +210,17 @@ body.hub-window {
 }
 
 .hub-hero h1 {
-  font: 700 30px var(--font);
+  font: 700 calc(30px * var(--fs, 1)) var(--font);
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
 .hub-hero.compact h1 {
-  font-size: 24px;
+  font-size: calc(24px * var(--fs, 1));
 }
 
 .hub-hero p {
-  font-size: 14px;
+  font-size: calc(14px * var(--fs, 1));
   color: #b7bbc2;
   max-width: 420px;
 }
@@ -235,7 +235,7 @@ body.hub-window {
 /* ── Cards, rows and controls of the Flow pages ───────────────────────────── */
 
 .hub-label {
-  font: 700 11px var(--font);
+  font: 700 calc(11px * var(--fs, 1)) var(--font);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--hub-muted);
@@ -268,12 +268,12 @@ body.hub-window {
 }
 
 .hub-row .title {
-  font: 600 13.5px var(--font);
+  font: 600 calc(13.5px * var(--fs, 1)) var(--font);
 }
 
 .hub-row .detail,
 .hub-note {
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   color: var(--hub-secondary);
 }
 
@@ -284,7 +284,7 @@ body.hub-window {
 }
 
 .hub-keycap {
-  font: 600 12.5px var(--font);
+  font: 600 calc(12.5px * var(--fs, 1)) var(--font);
   padding: 0 10px;
   height: 26px;
   display: inline-flex;
@@ -297,7 +297,7 @@ body.hub-window {
 button.hub-btn {
   border-radius: 10px;
   padding: 8px 14px;
-  font: 600 12.5px var(--font);
+  font: 600 calc(12.5px * var(--fs, 1)) var(--font);
   background: rgba(255, 255, 255, 0.09);
   color: var(--hub-text);
 }
@@ -318,7 +318,7 @@ button.hub-btn.danger {
 
 button.hub-btn.small {
   padding: 5px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
 }
 
 button.hub-icon {
@@ -346,7 +346,7 @@ button.hub-icon svg {
 .hub-input,
 .hub-select,
 .hub-textarea {
-  font: 400 13px var(--font);
+  font: 400 calc(13px * var(--fs, 1)) var(--font);
   color: var(--hub-text);
   background: var(--hub-field);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -380,7 +380,7 @@ button.hub-icon svg {
   padding: 5px 14px;
   background: transparent;
   color: #c7cad0;
-  font: 500 12.5px var(--font);
+  font: 500 calc(12.5px * var(--fs, 1)) var(--font);
 }
 
 .hub-segmented button.on {
@@ -429,7 +429,7 @@ button.hub-icon svg {
   background: rgba(247, 179, 43, 0.1);
   border: 1px solid rgba(247, 179, 43, 0.22);
   color: #f5d28a;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--fs, 1));
 }
 
 /* ── Dictation page ───────────────────────────────────────────────────────── */
@@ -453,7 +453,7 @@ button.hub-icon svg {
 }
 
 .hub-day {
-  font: 600 12.5px var(--font);
+  font: 600 calc(12.5px * var(--fs, 1)) var(--font);
   color: var(--hub-secondary);
   padding: 6px 2px 0;
 }
@@ -483,12 +483,12 @@ button.hub-icon svg {
   flex-direction: column;
   gap: 6px;
   color: var(--hub-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
 }
 
 .hub-tag {
   display: inline-block;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs, 1));
   padding: 1px 7px;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.07);
@@ -502,7 +502,7 @@ button.hub-icon svg {
 
 .hub-entry .words {
   flex: 1 1 auto;
-  font-size: 14px;
+  font-size: calc(14px * var(--fs, 1));
   line-height: 1.5;
   color: var(--hub-body);
   white-space: pre-wrap;
@@ -528,13 +528,13 @@ button.hub-icon svg {
 }
 
 .hub-big-number b {
-  font: 700 32px var(--font);
+  font: 700 calc(32px * var(--fs, 1)) var(--font);
   letter-spacing: -0.02em;
 }
 
 .hub-big-number span {
   color: var(--hub-secondary);
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
 }
 
 /* A card in a colour: the band's black and particles. */
@@ -564,7 +564,7 @@ button.hub-icon svg {
   background: none;
   padding: 0;
   color: var(--hub-accent);
-  font: 600 13px var(--font);
+  font: 600 calc(13px * var(--fs, 1)) var(--font);
   align-self: flex-start;
 }
 
@@ -580,7 +580,7 @@ button.hub-icon svg {
   gap: 10px;
   padding: 26px 20px;
   color: var(--hub-secondary);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--fs, 1));
   text-align: center;
 }
 
@@ -609,17 +609,17 @@ button.hub-icon svg {
 
 .hub-stat .label {
   color: var(--hub-secondary);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--fs, 1));
 }
 
 .hub-stat b {
-  font: 700 28px var(--font);
+  font: 700 calc(28px * var(--fs, 1)) var(--font);
   letter-spacing: -0.02em;
 }
 
 .hub-stat .sub {
   color: var(--hub-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
 }
 
 .hub-chart-row {
@@ -652,7 +652,7 @@ button.hub-icon svg {
   display: flex;
   justify-content: space-between;
   color: var(--hub-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--fs, 1));
 }
 
 .hub-app-bar {
@@ -664,7 +664,7 @@ button.hub-icon svg {
 .hub-app-bar .top {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
 }
 
 .hub-app-bar .top span {
@@ -700,7 +700,7 @@ button.hub-icon svg {
   padding: 5px 6px 5px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
 }
 
 .hub-chip button {
@@ -754,7 +754,7 @@ button.hub-icon svg {
 
 .hub-snippet-text {
   color: var(--hub-secondary);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--fs, 1));
   white-space: pre-wrap;
   overflow: hidden;
   display: -webkit-box;
@@ -802,7 +802,7 @@ button.hub-icon svg {
 }
 
 .hub-note-item .t {
-  font: 600 13.5px var(--font);
+  font: 600 calc(13.5px * var(--fs, 1)) var(--font);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -810,7 +810,7 @@ button.hub-icon svg {
 
 .hub-note-item .m {
   color: var(--hub-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
 }
 
 .hub-note-detail {
@@ -822,7 +822,7 @@ button.hub-icon svg {
 }
 
 .hub-note-detail h2 {
-  font: 700 22px var(--font);
+  font: 700 calc(22px * var(--fs, 1)) var(--font);
   letter-spacing: -0.01em;
 }
 
@@ -839,7 +839,7 @@ button.hub-icon svg {
   padding: 4px 10px 4px 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
-  font-size: 13px;
+  font-size: calc(13px * var(--fs, 1));
   color: var(--hub-text);
 }
 
@@ -850,7 +850,7 @@ button.hub-icon svg {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font: 700 11px var(--font);
+  font: 700 calc(11px * var(--fs, 1)) var(--font);
   color: #0b0c0e;
 }
 
@@ -863,16 +863,16 @@ button.hub-icon svg {
 
 .hub-line .ts {
   color: var(--hub-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
   padding-top: 2px;
 }
 
 .hub-line .who {
-  font: 600 12.5px var(--font);
+  font: 600 calc(12.5px * var(--fs, 1)) var(--font);
 }
 
 .hub-line .said {
-  font-size: 14px;
+  font-size: calc(14px * var(--fs, 1));
   color: var(--hub-body);
   line-height: 1.5;
 }
@@ -881,7 +881,7 @@ button.hub-icon svg {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--fs, 1));
 }
 
 .hub-todo input {
@@ -891,7 +891,7 @@ button.hub-icon svg {
 
 .hub-todo .who {
   color: var(--hub-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--fs, 1));
 }
 
 .hub-rec {

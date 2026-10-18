@@ -9,10 +9,12 @@ import { registerHookHandlers } from "./island/hooks";
 import { registerPhoneLink } from "./island/phone-link";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
+import { wirePhone } from "./core/phone";
 import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
+import { applyFont } from "./core/font";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -49,6 +51,7 @@ async function main() {
   // sync. Nothing is rebuilt, so tasks, steps and the chat stay as they are.
   onLanguageChange(() => State.notify());
   applyLanguage();
+  applyFont(State.settings);
   // Rust shows the tray and its errors in the same language as the webview.
   void Bridge.setSystemLanguages(systemLanguages());
   island.applySettings();
@@ -57,6 +60,7 @@ async function main() {
   await island.desktop.init();
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
+  await onEvent<boolean>("mouse-button", (down) => island.onMouseButton(down));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
@@ -92,6 +96,7 @@ async function main() {
     }
   });
 
+
   const checkZoom = async () => {
     const dpr = window.devicePixelRatio || 1;
     await Bridge.fitZoom(dpr);
@@ -117,6 +122,18 @@ async function main() {
       e.preventDefault();
     }
   });
+  // The screenshot roam is over: Mochi is back, with the screenshot if it took one.
+  await onEvent<string | null>("roam-end", (path) => island.onRoamEnd(path));
+
+  // A call on another app: the island stays away and quiet (calls.rs).
+  const onCallSensors = (held: string[] | null) => {
+    State.callSensors = new Set(held ?? []);
+    island.syncCall();
+  };
+  await onEvent<string[]>("call-sensors", onCallSensors);
+  void Bridge.callSensors().then(onCallSensors).catch(() => {});
+
+  
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.
   await onEvent<null>("sounds-changed", () => {
@@ -128,6 +145,7 @@ async function main() {
     const previousMain = State.mainPillId;
     State.settings = { ...State.settings, ...s };
     applyLanguage();
+    applyFont(State.settings);
     island.applySettings();
     State.loadIntegrationTasks();
     // A new main tool comes to the front, as on macOS.
@@ -138,6 +156,7 @@ async function main() {
   registerHookHandlers(island);
   registerPhoneLink(island);
   registerIntegrationHandlers(island);
+  wirePhone(island);
   registerShortcutHandlers(island, () => setPaused(false));
   registerVoiceHandlers();
   registerSpotifyHandlers(island);
@@ -151,6 +170,17 @@ async function main() {
   island.onGreetingDone = checkRecap;
   island.onWake = checkRecap;
   await onEvent<null>("recap-check", checkRecap);
+
+  // Resume from sleep: timers freeze with the machine, so a jump in wall-clock
+  // between ticks means the box slept (the Mac's NSWorkspace.didWake). One
+  // timestamp a minute; Recap.check self-gates, so a late background tick only
+  // costs a prefs lookup.
+  let lastTick = Date.now();
+  setInterval(() => {
+    const now = Date.now();
+    if (now - lastTick > 5 * 60_000) checkRecap();
+    lastTick = now;
+  }, 60_000);
 
   island.launch();
 

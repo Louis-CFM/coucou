@@ -6,8 +6,10 @@
 // exactly as on macOS, because this canvas draws its own.
 
 import { State } from "../core/state";
+import { wipe } from "../core/canvas";
 import { SCRIPT_FONTS } from "../core/fonts";
 import { N_, isRtl, t } from "../i18n/i18n";
+import { shapeOf, shapePoint, type ShapeDef } from "../mochi/shapes";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
   type UploadEyeShape, type UploadFrame,
@@ -30,24 +32,32 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.roundRect(x, y, w, h, rad);
 }
 
-/** Superellipse body — port of usBodyPath(m, R). */
-function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number): { rx: number; ry: number } {
+/** The worn shape's R, so it is as wide as the reference body (rx 1.04 R). */
+const shapeR = (shape: ShapeDef, R: number) => (R * 1.04) / shape.rx;
+
+/**
+ * Superellipse body (port of usBodyPath(m, R)), starting from the worn
+ * shape, so Mochi keeps its own shape until it turns into the box.
+ */
+function bodyPath(ctx: CanvasRenderingContext2D, m: number, R: number, shape: ShapeDef): { rx: number; ry: number } {
   const mc = Math.max(0, Math.min(m, 1));
   const n = 2.15 + (5.5 - 2.15) * mc;
   const rx = R * (1.04 - 0.04 * mc);
   const ry = R * (0.97 - 0.03 * mc);
+  const Rs = shapeR(shape, R);
   ctx.beginPath();
   for (let i = 0; i <= 96; i++) {
     const a = (i / 96) * Math.PI * 2;
     const ca = Math.cos(a);
     const sa = Math.sin(a);
-    const px = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
-    const py = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    const sp = shapePoint(shape, ca, sa);
+    const px = lerp(sp.x * Rs, rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n), mc);
+    const py = lerp(sp.y * Rs, ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n), mc);
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
   ctx.closePath();
-  return { rx, ry };
+  return { rx: lerp(shape.rx * Rs, rx, mc), ry: lerp(shape.ry * Rs, ry, mc) };
 }
 
 function text(
@@ -121,6 +131,8 @@ export class UploadCanvas {
   private ctx: CanvasRenderingContext2D | null;
   private overlay: HTMLElement;
   private sizedFor = 0;
+  /** The focused Mochi's body shape from the wardrobe ("" = the classic Mochi). */
+  shape = "";
 
   constructor(actions: UploadCanvasActions) {
     this.canvas = document.createElement("canvas");
@@ -162,7 +174,7 @@ export class UploadCanvas {
     const ctx = this.ctx;
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, USC.W, USC.ISL_H);
+    wipe(ctx);
 
     this.drawScene(ctx, f, wallTime);
 
@@ -368,7 +380,8 @@ export class UploadCanvas {
     ctx.rotate(f.tilt);
     ctx.scale(f.sx, f.sy);
 
-    const { rx, ry } = bodyPath(ctx, f.morph, R);
+    const shape = shapeOf(this.shape);
+    const { rx, ry } = bodyPath(ctx, f.morph, R, shape);
 
     // Body.
     const bg = ctx.createLinearGradient(rx * 0.7, -ry * 0.9, -rx * 0.8, ry * 0.9);
@@ -387,7 +400,7 @@ export class UploadCanvas {
 
     // The body path is reused as a clip for everything drawn inside it.
     ctx.save();
-    bodyPath(ctx, f.morph, R);
+    bodyPath(ctx, f.morph, R, shape);
     ctx.clip();
 
     // Top rim, once Mochi is box-shaped enough to have one.

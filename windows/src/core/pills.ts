@@ -128,8 +128,11 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
-  { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",
-    subtitle: N_("Integration"), source: "n8n", support: "no", connect: none },
+  // Windows: whatever plays in the system media controls (src-tauri/src/music.rs),
+  // Spotify, Apple Music, YouTube Music or any other player. The Mac's Apple
+  // Music pill had this id; it has no Windows or Linux source of its own.
+  { id: "integration_music", name: "Music", color: "#FA2D48", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
   // Spotify through MPRIS on Linux and the system media controls on Windows
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
@@ -138,9 +141,6 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
 
 /** The always-on pill unless the user picks another workspace tool. */
 export const DEFAULT_MAIN_PILL = "integration_claude";
-
-/** How many declared pills may sit next to the main one. */
-export const MAX_DECLARED = 4;
 
 /** The OS this page runs on. Only the Windows webview says "Windows". */
 export const HOST_OS: HostOs =
@@ -211,14 +211,13 @@ export function sanitizeDeclared(d: Declared, os: HostOs = HOST_OS): Declared {
 
 /**
  * Declares or undeclares a pill. Returns the new list, or null when the click
- * changes nothing: the main pill is never toggled, an unknown pill never
- * declared, and a fifth pill never added.
+ * changes nothing: the main pill is never toggled and an unknown pill never
+ * declared.
  */
 export function toggleDeclared(d: Declared, id: string, os: HostOs = HOST_OS): string[] | null {
   if (id === d.mainPill) return null;
   if (!availablePills(os).some((p) => p.id === id)) return null;
   if (d.activeIntegrations.includes(id)) return d.activeIntegrations.filter((x) => x !== id);
-  if (d.activeIntegrations.length >= MAX_DECLARED) return null;
   return [...d.activeIntegrations, id];
 }
 

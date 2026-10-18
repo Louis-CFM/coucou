@@ -212,7 +212,7 @@ async function writeClipboard(text: string) {
 }
 
 /** Puts the code on the clipboard; the check mark shows for a moment. */
-function copyButton(text: string): HTMLElement {
+export function copyButton(text: string): HTMLElement {
   const btn = h("button", { class: "md-copy", title: t(STRINGS.copy), "aria-label": t(STRINGS.copy) }, svg(ICONS.copy, 11));
   btn.addEventListener("click", async (e) => {
     e.stopPropagation();
@@ -263,4 +263,10 @@ function render(block: Block): HTMLElement {
 /** Replaces what `into` shows with the Markdown rendered. */
 export function renderMarkdown(into: HTMLElement, markdown: string) {
   into.replaceChildren(...parseMarkdown(markdown).map(render));
+}
+
+/** Inline Markdown only (bold, `code`, links…), for compact one-line surfaces. */
+export function renderInline(into: HTMLElement, text: string) {
+  into.replaceChildren();
+  appendInline(into, parseInline(text));
 }

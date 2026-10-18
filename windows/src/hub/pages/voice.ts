@@ -10,26 +10,27 @@ import { button, card, divider, label, row, segmented, toggle } from "../ui";
 import { modelsControl } from "./flowsettings";
 
 const ELEVEN = "elevenlabs-api-key";
+const FISH = "fish-audio-api-key";
 /** Where secrets.rs keeps the keys on this OS (same words as Notch → Chat). */
 const KEY_STORE = navigator.userAgent.includes("Windows") ? "Windows Credential Manager" : "Secret Service (GNOME Keyring, KWallet)";
 
-function elevenKey(): HTMLElement {
+function keyField(secret: string, placeholderText: string): HTMLElement {
   const box = h("div", { style: "display:flex;align-items:center;gap:8px" });
   const draw = async () => {
-    const present = (await Bridge.secretPresent(ELEVEN)) ?? false;
+    const present = (await Bridge.secretPresent(secret)) ?? false;
     clear(box);
     if (present) {
       box.append(
         h("span", { class: "hub-note", style: "color:var(--hub-green)", text: `✓ ${t("Key saved in the {store}.", { store: KEY_STORE })}` }),
-        button(t("Remove"), () => void Bridge.secretClear(ELEVEN).then(draw), "", true),
+        button(t("Remove"), () => void Bridge.secretClear(secret).then(draw), "", true),
       );
       return;
     }
-    const input = h("input", { class: "hub-input", type: "password", placeholder: t("ElevenLabs key"), autocomplete: "off", spellcheck: "false", style: "width:220px" }) as HTMLInputElement;
+    const input = h("input", { class: "hub-input", type: "password", placeholder: placeholderText, autocomplete: "off", spellcheck: "false", style: "width:220px" }) as HTMLInputElement;
     const save = button(t("Save key"), () => {
       const value = input.value.trim();
       if (!value) return;
-      void Bridge.secretSet(ELEVEN, value).then(draw, () => input.classList.add("err"));
+      void Bridge.secretSet(secret, value).then(draw, () => input.classList.add("err"));
     }, "primary", true);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") save.click();
@@ -38,6 +39,22 @@ function elevenKey(): HTMLElement {
   };
   void draw();
   return box;
+}
+
+
+function textPref(value: string, placeholder: string, save: (v: string) => void): HTMLElement {
+  const input = h("input", { class: "hub-input", type: "text", value, placeholder, autocomplete: "off", spellcheck: "false", style: "width:220px" }) as HTMLInputElement;
+  input.addEventListener("change", () => save(input.value.trim()));
+  return input;
+}
+
+/** The Fish Audio voice: a model ID (or the link to its page) from fish.audio; empty is Fish Audio's default. */
+function fishVoiceField(value: string, save: (id: string) => void): HTMLElement {
+  const input = h("input", { class: "hub-input", type: "text", placeholder: t("Voice ID (optional)"), autocomplete: "off", spellcheck: "false", style: "width:220px" }) as HTMLInputElement;
+  input.value = value;
+
+  input.addEventListener("change", () => save(input.value.trim()));
+  return input;
 }
 
 export async function voicePage(page: HTMLElement, ctx: HubContext) {
@@ -61,7 +78,8 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
   page.append(main);
 
   page.append(label(t("Answers")));
-  const outputs: [VoiceOutput, string][] = [["system", t("System voice")], ["elevenlabs", "ElevenLabs"], ["off", t("Text only")]];
+  const outputs: [VoiceOutput, string][] = [["system", t("System voice")], ["elevenlabs", "ElevenLabs"], ["voicestudio", "VoiceStudio"], ["fishaudio", "Fish Audio"], ["off", t("Text only")]];
+
   const answers = card(
     row(t("Coucou answers out loud"), null, segmented(outputs, prefs.voiceOutput, (v) => void ctx.setPrefs((p) => (p.voiceOutput = v)).then(() => ctx.navigate("voice")))),
   );
@@ -70,14 +88,47 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
       divider(),
       row(t("Voice"), null, segmented([["female", t("Female")], ["male", t("Male")]], prefs.voiceGender, (g) => void ctx.setPrefs((p) => (p.voiceGender = g)))),
       divider(),
-      row(t("ElevenLabs key"), null, elevenKey()),
+      row(t("ElevenLabs key"), null, keyField(ELEVEN, t("ElevenLabs key"))),
+    );
+  } else if (prefs.voiceOutput === "fishaudio") {
+    answers.append(
+      divider(),
+      row(t("Voice"), null, fishVoiceField(prefs.fishVoiceId, (id) => void ctx.setPrefs((p) => (p.fishVoiceId = id)))),
+      divider(),
+      row(t("Fish Audio key"), null, keyField(FISH, t("Fish Audio key"))),
+    );
+  }
+  if (prefs.voiceOutput === "voicestudio") {
+    answers.append(
+      divider(),
+      row(t("VoiceStudio address"), null, textPref(prefs.voicestudioUrl, "http://127.0.0.1:3900", (v) => void ctx.setPrefs((p) => (p.voicestudioUrl = v)))),
+      divider(),
+      row(t("VoiceStudio voice id"), null, textPref(prefs.voicestudioVoice, "alloy", (v) => void ctx.setPrefs((p) => (p.voicestudioVoice = v)))),
     );
   }
   page.append(answers);
 
+
+  page.append(label(t("Web search")));
+  page.append(card(
+    row(t("Search provider"), null, segmented<"anthropic" | "parallel" | "off">(
+      [["anthropic", "Anthropic"], ["parallel", "Parallel"], ["off", t("Off")]],
+      prefs.voiceSearch ?? "anthropic",
+      (v) => void ctx.setPrefs((p) => (p.voiceSearch = v)).then(() => ctx.navigate("voice")),
+    )),
+    divider(),
+    h("div", { class: "hub-note", text: t("Choose Parallel to send web search queries to Parallel Search MCP. Free Fast search for light use, with no Parallel account or key; anonymous rate limits apply. Claude still needs your Anthropic key. Off disables web search for voice.") }),
+  ));
+
+  const privacyNote = prefs.voiceOutput === "fishaudio"
+    ? t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to Fish Audio if you picked it for the answers.")
+    : prefs.voiceOutput === "voicestudio"
+      ? t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers. VoiceStudio runs on this computer.")
+      : t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.");
   page.append(label(t("Privacy")));
   page.append(card(
-    h("div", { class: "hub-note", text: t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.") }),
+    h("div", { class: "hub-note", text: privacyNote }),
+
     divider(),
     h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }),
   ));

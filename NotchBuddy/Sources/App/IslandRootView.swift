@@ -29,9 +29,11 @@ struct IslandContainer: View {
     // topRadius > 0 → convex expanded corners; < 0 → concave ear cutouts
     @State private var islandTopRadius: CGFloat = 0
     @State private var greetNotif: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let openSpring = Animation.spring(response: 0.5, dampingFraction: 0.72)
-    private let closeEase  = Animation.timingCurve(0.45, 0, 0.2, 1, duration: 0.34)
+    // Reduce Motion swaps the springs for a short, flat fade.
+    private var openSpring: Animation { reduceMotion ? .easeInOut(duration: 0.12) : .spring(response: 0.5, dampingFraction: 0.72) }
+    private var closeEase:  Animation { reduceMotion ? .easeInOut(duration: 0.12) : .timingCurve(0.45, 0, 0.2, 1, duration: 0.34) }
 
     private var chatPromptHeight: CGFloat {
         let base: CGFloat = 240
@@ -315,7 +317,8 @@ struct BotPlacement: View {
             // Normal: extra 40pt canvas at top for heart particles; position offset up by 20pt;
             // BotEngine compensates with cy = H/2 + particleOverhang/2 + oy*R + R*0.06.
             if isUploading {
-                TimelineView(.animation) { tl in
+                // A hidden island does not tick: the schedule pauses outright.
+                TimelineView(.animation(paused: state.mode == .hidden)) { tl in
                     let elapsed: Double = {
                         guard let start = state.uploadStartTime else { return 0 }
                         return tl.date.timeIntervalSince(start)
@@ -710,7 +713,7 @@ struct CompactMiniGrid: View {
     @ObservedObject var state: AppState
 
     private var others: [AgentTask] {
-        Array(state.tasks.filter { $0.id != state.focusId }.prefix(4))
+        Array(state.othersByActivity.prefix(4))
     }
 
     var body: some View {

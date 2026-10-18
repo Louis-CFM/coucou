@@ -1,0 +1,43 @@
+name: Relay CI
+
+# Type-checks and tests the Cloudflare Worker relay on every pull request
+# that touches it. Nothing is deployed: wrangler deploy stays manual.
+
+on:
+  pull_request:
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relay
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: relay/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # npm test already type-checks the sources before running node --test.
+      - name: Tests
+        run: npm test

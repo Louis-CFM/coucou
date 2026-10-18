@@ -11,6 +11,7 @@
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use crate::mutex::MutexExt;
 
 /// The DNS-SD service type. The phone browses for `_coucou._tcp`.
 pub const SERVICE_TYPE: &str = "_coucou._tcp.local.";
@@ -91,7 +92,7 @@ impl Advertiser {
     /// (the phone still has the saved address).
     pub fn start(&self, name: &str, port: u16, fingerprint: &str) -> Result<(), String> {
         let ad = advert(name, port, fingerprint).ok_or("the certificate fingerprint is not valid")?;
-        let mut cur = self.current.lock().unwrap();
+        let mut cur = self.current.lock_recover();
         if let Some(old) = cur.take() {
             self.publisher.withdraw(&old);
         }
@@ -102,14 +103,14 @@ impl Advertiser {
 
     /// Withdraws the announcement (switch off, link stopped, app quitting). Safe to call when nothing is announced.
     pub fn stop(&self) {
-        if let Some(ad) = self.current.lock().unwrap().take() {
+        if let Some(ad) = self.current.lock_recover().take() {
             self.publisher.withdraw(&ad);
         }
     }
 
     #[cfg(test)]
     pub fn is_advertising(&self) -> bool {
-        self.current.lock().unwrap().is_some()
+        self.current.lock_recover().is_some()
     }
 }
 
@@ -137,12 +138,12 @@ impl Publisher for MdnsPublisher {
             let _ = daemon.shutdown();
             return Err(e.to_string());
         }
-        *self.daemon.lock().unwrap() = Some(daemon);
+        *self.daemon.lock_recover() = Some(daemon);
         Ok(())
     }
 
     fn withdraw(&self, ad: &Advert) {
-        let Some(daemon) = self.daemon.lock().unwrap().take() else { return };
+        let Some(daemon) = self.daemon.lock_recover().take() else { return };
         let fullname = format!("{}.{}", ad.instance, SERVICE_TYPE);
         // A goodbye packet lets phones forget the service at once; then the daemon thread ends.
         if let Ok(done) = daemon.unregister(&fullname) {
@@ -169,14 +170,14 @@ pub mod tests {
 
     impl Publisher for Recorder {
         fn publish(&self, ad: &Advert) -> Result<(), String> {
-            if *self.fail.lock().unwrap() {
+            if *self.fail.lock_recover() {
                 return Err("no network".into());
             }
-            self.log.lock().unwrap().push(format!("publish {} {} {:?}", ad.instance, ad.port, ad.txt));
+            self.log.lock_recover().push(format!("publish {} {} {:?}", ad.instance, ad.port, ad.txt));
             Ok(())
         }
         fn withdraw(&self, ad: &Advert) {
-            self.log.lock().unwrap().push(format!("withdraw {}", ad.instance));
+            self.log.lock_recover().push(format!("withdraw {}", ad.instance));
         }
     }
 
@@ -236,7 +237,7 @@ pub mod tests {
         adv.stop();
         assert!(!adv.is_advertising());
         adv.stop(); // nothing more to withdraw
-        let log = rec.log.lock().unwrap();
+        let log = rec.log.lock_recover();
         assert_eq!(log.len(), 2);
         assert!(log[0].starts_with("publish PC 47821"));
         assert_eq!(log[1], "withdraw PC");
@@ -248,7 +249,7 @@ pub mod tests {
         let adv = Advertiser::new(rec.clone());
         adv.start("PC", 47821, FP).unwrap();
         adv.start("PC", 47822, FP).unwrap();
-        let log = rec.log.lock().unwrap().clone();
+        let log = rec.log.lock_recover().clone();
         assert_eq!(log.iter().filter(|l| l.starts_with("withdraw")).count(), 1);
         assert!(log.last().unwrap().contains("47822"));
     }
@@ -256,7 +257,7 @@ pub mod tests {
     #[test]
     fn a_failing_network_is_an_error_not_a_crash_and_leaves_nothing_announced() {
         let rec = Arc::new(Recorder::default());
-        *rec.fail.lock().unwrap() = true;
+        *rec.fail.lock_recover() = true;
         let adv = Advertiser::new(rec.clone());
         assert!(adv.start("PC", 47821, FP).is_err());
         assert!(!adv.is_advertising());
@@ -267,6 +268,6 @@ pub mod tests {
     fn nothing_is_announced_before_start() {
         let rec = Arc::new(Recorder::default());
         let _adv = Advertiser::new(rec.clone());
-        assert!(rec.log.lock().unwrap().is_empty());
+        assert!(rec.log.lock_recover().is_empty());
     }
 }

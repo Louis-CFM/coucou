@@ -54,9 +54,11 @@ You can also [build it yourself](#build-it-yourself).
 | Click the small island | It opens. With **Settings → General → Open on hover**, resting the pointer on it is enough, and it folds again shortly after the pointer leaves (click inside to keep it open) |
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
-| Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…) |
+| Right-click Mochi | The wardrobe: rest the pointer on an outfit to try it on, click to keep it. **Auto** dresses him for the season (witch hat in October, Santa hat in December…). The row below picks his body shape. Each Mochi has its own look: right-click a pill to dress its Mochi. The same wardrobe is in **Settings → General → Mochi**, which can also give every Mochi the same look |
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
+| `Ctrl`+drag Mochi out of the island and drop him | He scans the screen and brings a screenshot back to the chat (**Settings → General → Quick screenshot** skips the scan) |
+| Hold `Shift` while `Ctrl`+dragging him | Pick an area instead: only that part is scanned and captured. `Esc` or a right-click cancels |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
@@ -115,8 +117,9 @@ runs in to the front.
 
 When Mochi lives on the desktop, he flies back to the island with a permission
 request or a question and returns to his spot once you have answered; he does a
-little jump when a task finishes, and dozes off when nothing has happened for
-two minutes and your cursor is elsewhere — asleep, he costs nothing: no cursor
+little jump when a task finishes, and dozes off with the island's Mochis (after
+30 s plus the auto-close delay without a chat message or a session
+starting; the pointer doesn't wake them). Asleep, he costs nothing: no cursor
 polling, a few frames a second. He remembers his spot between launches; if it
 was on a display that is no longer connected, he stays in the island.
 
@@ -147,8 +150,8 @@ against its SHA-256, kept in Coucou's data folder under `Models`).
 
 Your voice never leaves the computer. With Claude's clean-up (Flow → Styles),
 a call's summary or « OK Coucou », the text — never the audio — goes to
-Anthropic with your key; an ElevenLabs voice for the answers sends them to
-ElevenLabs with yours.
+Anthropic with your key; an ElevenLabs or Fish Audio voice for the answers sends
+them to ElevenLabs or Fish Audio with yours.
 
 ## Your pills
 
@@ -185,12 +188,18 @@ As on the Mac, the island's header can show your plan limits: a small pill
 ("Claude 73%", green below 50 %, orange up to 80 %, red above) for the 5-hour and
 weekly Claude limits, and another for Codex. Click one for the details and the
 reset times. Both are off by default; turn them on in **Settings… → Plan usage**.
+The Claude card also lists what each model took today and over the week, from
+Claude Code's own cost estimates at API list price (`cost.total_cost_usd` of
+each session, added as it grows, under the session's model): a share of your
+use, not a limit — Claude's limits are not split by model. Kept locally, eight
+days at most, nothing is sent anywhere.
 
 - **Claude** (Pro and Max plans): the numbers come from Claude Code's own status
   line. **Show in notch** first shows you the diff of the `statusLine` change in
   `%USERPROFILE%\.claude\settings.json`, takes a dated backup and writes only
   after your click, with the same writer as the hooks: the status line becomes `coucou-hook --statusline`, which
-  passes only the limits on (300 ms at most) and runs the status line you had
+  passes only the limits, the session's model and its running cost estimate on
+  (300 ms at most) and runs the status line you had
   before — kept in `statusline-previous.json` next to the relay — with the same
   input, printing what it prints. On Windows that one runs through Git Bash, as
   Claude Code runs it (`CLAUDE_CODE_GIT_BASH_PATH`, then the Git for Windows that
@@ -224,9 +233,9 @@ Weekly recap** turns it off or clears it.
 
 ## Languages
 
-Coucou speaks the same ten languages as the Mac app: English, 简体中文, हिन्दी,
-Español, العربية, Français, বাংলা, Português (Brasil), Русский and Bahasa
-Indonesia. **Settings… → General → Language** picks one; **System** (the
+Coucou speaks the same languages as the Mac app: English, 简体中文, हिन्दी,
+Español, العربية, Français, বাংলা, Português (Brasil), Русский, Bahasa
+Indonesia and Čeština. **Settings… → General → Language** picks one; **System** (the
 default) follows your system's language when it is one of these, English
 otherwise. The island, the settings window and the tray menu switch at once —
 nothing restarts, and the island keeps its sessions, steps and chat.
@@ -265,6 +274,18 @@ hidden. A text file you dropped goes along inline (24 000 characters at most);
 images and PDFs by name only. Settings tells you whether the address is this
 PC — nothing leaves it then — and warns before a key would travel over plain
 `http://` to another machine.
+
+**On your plan**: **Settings… → On your plan** lets the chat answer through the
+command-line tools you already pay for — **Claude Code** (`claude -p`),
+**Cursor** (`agent -p`, browser sign-in from the settings page), **Devin**
+(`devin -p`), **ChatGPT** (`codex exec`, sign-in through `codex login`) and
+**Kiro** (`kiro-cli chat`). No API key: each runs on its own sign-in, on your
+subscription. Each keeps its own conversation (`--resume`), so switching to one
+mid-chat carries the plain text over and switching back picks its own
+conversation up where it left off. They run read-only in a private, empty
+folder of Coucou's own — Claude Code with `--setting-sources project`, Devin
+with a private `--config`, Codex with `--disable hooks`, so the Coucou hook
+never sees these turns — and every call has a two-minute deadline.
 
 Answers from every provider are shown as **Markdown**: headings, lists, bold,
 inline code, quotes, and code blocks with a copy button. It is built from text
@@ -321,7 +342,8 @@ to work on the island's looks. It also serves `dev/upload-preview.html`, which
 replays the whole file-drop choreography on a loop — the one part of the UI that
 otherwise needs a real drag from Explorer to see — and `dev/recap-preview.html`,
 the weekly recap card and its shared image on a sample week. None of these pages
-ships in the app.
+ships in the app. `dev/dictation-check.html` is a self-check for the mic's
+voice detection: its title turns to PASS or FAIL.
 
 `npm run pack` leaves two files in `windows/release/`, the same names the release
 workflow publishes:
@@ -386,7 +408,7 @@ Linux.
 | Antigravity | `.gemini\config\hooks.json` (a `coucou` hook group) | asked in Antigravity |
 | Cursor Agent | `.cursor\hooks.json` — Claude Code in Cursor's terminal also goes on the Cursor pill, through the Claude Code hooks | asked in Cursor |
 | Claude Desktop (Windows) | nothing to install: Claude Code sessions from the Claude app are tagged by the relay | asked in the Claude app |
-| OpenCode | plugin `.config\opencode\plugins\coucou.js` | asked in OpenCode |
+| OpenCode | plugin `.config\opencode\plugins\coucou.js` | Allow / Deny in the island |
 | Amp | plugin `.config\amp\plugins\coucou.ts` | asked in Amp |
 | Hermes Agent | plugin `.hermes\plugins\coucou\` — then `hermes plugins enable coucou` once | asked in Hermes |
 | Any other | run `coucou-hook --agent <name> [<Event>]` from your tool's hooks | asked in the tool |
@@ -445,7 +467,19 @@ own window.
   where WebKitGTK has none, `spd-say` (speech-dispatcher) or `espeak-ng`
   speaks if installed.
 - No notch, so the island lives at the top centre of the screen and retracts into
-  the top edge instead of hiding in a notch.
+  the top edge instead of hiding in a notch. **Settings… → General → Along the
+  top edge** slides it left or right (a share of the display's width, −50 to 50),
+  out of the way of a browser's tabs or a window's title; the wake strip follows.
+  Or **drag it**: hold the island anywhere that is not a button, a field or
+  text, and drop it where it suits you, on any display. Dropped within 48 px
+  of an edge it docks to that edge and takes its shape: a bar along the top or
+  the bottom (retracting into that edge), standing on end against the left or
+  right side — Mochi at the top, the agents below him — and opening out from
+  that side as the usual panel. Away from every edge it floats as a bar,
+  rounded all round. It is kept on the screen, and its place is remembered as
+  shares of that display, so it survives a change of resolution. **Centre**
+  puts it back at the top centre. A drag from a control, the chat or Mochi is
+  what it was before: Mochi is still carried out to the desktop.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
@@ -459,8 +493,11 @@ own window.
   [Linux](#linux)). A waiting card is also folded with its **⌃** or `Esc` in
   the island, and reopened by clicking the island, Open in the tray or **Go to
   alert**.
-- Apple Music, the one pill from the Mac catalog with nothing behind it here,
-  is left out.
+
+- **Music** (Settings → Integrations, Windows only) takes the Mac's Apple Music
+  pill and shows whatever plays in the system media controls: Spotify, Apple
+  Music, YouTube Music or any other player, with play/pause and skip. Mochi
+  dances to music, not to videos or browser tabs.
 - **Spotify** (Settings → Integrations) is read from the system media
   controls, the session Spotify publishes for the media keys: the same pill
   and card as on Linux (cover, progress bar, play/pause, previous, next,
@@ -471,11 +508,41 @@ own window.
   its `spotify:` link, and without Spotify **Get Spotify** opens its download
   page. Windows gives no Spotify link for the track, so an ad is told apart by
   having a title and no artist or album.
+- Sending a dropped file by email goes through Resend (API key **and** a From
+  address in Settings → Integrations), like the Mac. Without a key, Send opens
+  a draft in your mail app instead — `mailto:` cannot attach a file, so the
+  note asks you to attach it yourself.
+- Dropping Mochi on a window attaches that window to the chat (the app and its
+  title), like the Mac — he goes back where the drag began and the island
+  opens the chat with it as the context chip. On Linux this needs X11; on
+  Wayland there is no way to know what is under the pointer, so a drop just
+  lands him on the desktop. The browser's URL stays out of it — Chrome keeps
+  it behind UI Automation.
+- Cal.com shows the Mac's calendar: two week rows at a time, page through the
+  month with the arrows, a day opens its bookings and a booking its details.
+- The chat field has a dictation mic on Windows (WinRT speech recognition in
+  the system's speech language); tap to talk, tap again to stop, each phrase
+  lands at the caret. Linux does not show the mic.
+- The phone companion is an Android app (`android/`, sideloaded APK) rather
+  than the iPhone one: sessions, approval and question cards and chat over a
+  Cloudflare Worker relay you deploy yourself — free tier, Firebase wake-ups,
+  see `android/README.md` and `relay/README.md`. Settings → Phone also offers
+  the upstream phone link: an encrypted LAN pairing for the official
+  `com.coucou.android` app (`phone_link/`).
+
+- Apple Music, the one pill from the Mac catalog with nothing behind it here,
+  is left out. Spotify is on Linux only (see [Linux](#linux)): Windows has
+  nothing to read it from yet.
+- Settings → General → Calls reads PipeWire on Linux (`pw-dump --monitor`):
+  another app's stream on a microphone, on a PipeWire camera, or on a shared
+  screen. A camera opened directly as `/dev/video*`, outside PipeWire, is not
+  seen. Windows has nothing behind it yet, so no call is ever detected there.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
   here, and the drop card would need a third button it doesn't have.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
@@ -500,8 +567,7 @@ own window.
 - Keyboard shortcuts use `Ctrl+Alt` where the Mac uses `⌃⌥`, with different
   keys (see [Keyboard shortcuts](#keyboard-shortcuts)), and `Ctrl` where the
   Mac uses `⌘` inside the island. "Bring the terminal forward" is "Open
-  terminal" here. Not in this version: attaching the front window (its id is
-  kept for later). The island only reads its own shortcuts while it has the
+  terminal" here. The island only reads its own shortcuts while it has the
   keyboard: in the chat, or after a global shortcut opened it. `Ctrl+↓`
   `Ctrl+↑` `Ctrl+O` walk the GitHub lists, as on the Mac, and the highlighted
   row scrolls into view where the Mac's three-row list doesn't follow it; in the
@@ -533,11 +599,11 @@ own window.
   without a restart (the Mac's **Restart Coucou** isn't needed). Arabic turns
   the island's text right to left but not its layout: Mochi and the pills keep
   their sides.
-- Mochi on the desktop dances to Spotify. While he dances he stays awake (the
-  Mac lets him doze off mid-dance). Dropping him on a window doesn't attach it
-  to the chat. While he
-  sleeps, the transparent square around him (120 px) takes the first mouse
-  move, which wakes him and gives the rest back to the desktop.
+- Mochi on the desktop dances to Spotify, and on Windows to the Music pill too.
+  Dropping him on a window doesn't attach it to the chat. While he sleeps, the
+  transparent square around him (120 px) takes the first mouse move, which
+  wakes him (and turns the cursor poll back on) and gives the rest back to the
+  desktop.
 
 ## Linux
 
@@ -579,8 +645,7 @@ What changes on Linux:
   shape, so the compositor sends every other click to what is underneath.
 - **Mochi's eyes** follow the pointer only while it is over the island: Wayland
   gives no app the cursor position anywhere else. On the desktop, likewise,
-  they follow it only while it is over him, and "the cursor is far away" (so
-  he may fall asleep) means it hasn't been over him for a few seconds.
+  they follow it only while it is over him.
 - **Mochi on the desktop** is a layer-shell surface on the island's display
   (KDE Plasma, COSMIC, Hyprland, Sway…), placed with margins and dragged within
   that display; on X11 it is an ordinary always-on-top window that goes
@@ -670,3 +735,24 @@ What changes on Linux:
     still can be). There, and for a session under tmux, screen or ssh, whose
     terminal is no ancestor, the folder opens in VS Code as before.
 - No **Claude Desktop** pill: the Claude app has no Linux build.
+
+### Voice web search
+
+In **OK Coucou → Web search**, choose **Parallel** to use
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp) for
+current questions. Search uses Fast mode and needs no Parallel account or API key.
+The anonymous service is intended for light use and has rate limits; an error
+is returned to the assistant without switching search providers. The voice
+assistant still uses your Anthropic key for Claude.
+
+Anthropic remains the default for existing and new installations. Parallel
+receives search objectives and keyword queries only after you select it. Voice
+transcripts and conversation history still go to your configured Claude service;
+they are not sent wholesale to Parallel. **Off** disables voice web search.
+Changing the provider starts a new voice conversation so previous search-tool
+formats cannot carry over. This setting applies to voice on Windows and Linux,
+not the island chat or the Mac app.
+
+For a network proxy with a private certificate authority, `SSL_CERT_FILE` can
+point to its PEM CA bundle (at most 1 MiB). Invalid bundles stop the search;
+certificate verification is always enabled.

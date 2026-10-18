@@ -5,9 +5,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Settings } from "./state";
+import type { MediaFile, NowPlaying, Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { Outfit } from "../mochi/wardrobe";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -178,6 +179,32 @@ export interface PhoneAnswersStatus {
   enabled: boolean;
 }
 
+/** What the island's Mochi looks like when it is carried out for a screenshot. */
+export interface RoamLook {
+  state: string;
+  bodyColor: readonly [number, number, number] | null;
+  /** The wardrobe's outfit (mochi/wardrobe.ts). */
+  outfit?: Outfit;
+}
+
+/** A chat answer: the text, and what came with it. */
+export interface ChatAnswer {
+  text: string;
+  /** How the model felt about its answer, for Mochi to act out (moods). */
+  mood: string | null;
+  /** How the answer was made (Claude Code answered, the image was left out...), shown above it. */
+  notice: string | null;
+  /** Images, video, speech or 3D a media model made. */
+  media: MediaFile[];
+}
+
+/** Extensions media.rs saves pictures, video and sound with (it sniffs the bytes), and their types. */
+const MEDIA_TYPES: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
+  mp4: "video/mp4", webm: "video/webm",
+  wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4",
+};
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
   /** The system's languages as the webview sees them, for Rust's own texts (i18n.rs). */
@@ -200,6 +227,12 @@ export const Bridge = {
 
   reposition: () => call<void>("reposition"),
   fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),
+
+  /** One step of the island being dragged, in logical pixels. */
+  nudgeIsland: (dx: number, dy: number) => call<void>("nudge_island", { dx, dy }),
+
+  /** The drag ended: Rust reads where the island landed, stores it, places it by the rules. */
+  islandDropped: () => call<void>("island_dropped"),
 
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
@@ -274,16 +307,79 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  // ── Chat through a CLI the user already pays for (Cursor, Kiro, Claude Code) ──
+  /** Whether the provider's CLI is installed and signed in; null for a name that is not one. */
+  cliStatus: (provider: string) => call<CliStatus | null>("cli_status", { provider }),
+  /** The provider's own sign-in, when a button can start it (Cursor's opens the browser). */
+  cliLogin: (provider: string) => callOrThrow<void>("cli_login", { provider }),
+
+  /** "always" carries no rule: the relay applies the ones Claude Code offered. */
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
-  /** Answers a question Claude Code asked: question text → chosen label. */
-  approvalAnswer: (requestId: string, answers: Record<string, string | string[]>) =>
-    call<void>("approval_answer", { requestId, answers }),
+  /**
+   * Answers a question Claude Code asked: question text → chosen label, or the
+   * words typed under "Other…" for the questions listed in `other`.
+   */
+  approvalAnswer: (requestId: string, answers: Record<string, string | string[]>, other: string[] = []) =>
+    call<void>("approval_answer", { requestId, answers, other }),
 
   /** "Nobody can act on this" — Claude Code asks in the terminal right away. */
   approvalDecline: (requestId: string) => call<void>("approval_decline", { requestId }),
+
+  // ── Android companion (core/phone.ts uses the island-facing ones) ────────
+  phoneStatus: () =>
+    call<{ enabled: boolean; paired: boolean; device: string; worker: string; pcId: string }>(
+      "phone_status",
+    ),
+  phoneEnable: (on: boolean) => call<void>("phone_enable", { on }),
+  /** Creates the relay box and the pairing code + QR SVG. */
+  phonePair: (worker: string) =>
+    callOrThrow<{ code: string; qrSvg: string }>("phone_pair", { worker }),
+  phoneUnpair: () => call<void>("phone_unpair"),
+  /** The island's visible state, pushed after each change. */
+  phoneState: (payload: unknown, alert: boolean) =>
+    call<boolean>("phone_state", { payload, alert }),
+
+  // ── Devin sessions (the phone picks one to read & continue) ───────────────
+  /** Every session in Devin's global sessions.db, newest first. */
+  devinSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>(
+      "devin_sessions",
+    ),
+  /** The transcript tail of one session — chat lines plus tool calls. */
+  devinTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("devin_transcript", { sessionId }),
+  /** Continues a session: `devin -p "<text>" -r "<sessionId>"`, answer text back. */
+  devinResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("devin_resume", { sessionId, text }),
+
+  // ── Claude Code sessions (~/.claude/projects/*.jsonl) ─────────────────────
+  claudeSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>(
+      "claude_sessions",
+    ),
+  claudeTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("claude_transcript", { sessionId }),
+  claudeResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("claude_resume", { sessionId, text }),
+
+  // ── Codex sessions (~/.codex/sessions/rollout-*.jsonl) ────────────────────
+  codexSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>("codex_sessions"),
+  codexTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("codex_transcript", { sessionId }),
+  codexResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("codex_resume", { sessionId, text }),
+
+  // ── OpenCode sessions (~/.local/share/opencode/opencode.db) ───────────────
+  opencodeSessions: () =>
+    call<{ id: string; title: string; dir: string; lastActivityAt: number }[]>("opencode_sessions"),
+  opencodeTranscript: (sessionId: string) =>
+    call<{ role: string; text: string; name?: string }[]>("opencode_transcript", { sessionId }),
+  opencodeResume: (sessionId: string, text: string) =>
+    callOrThrow<string>("opencode_resume", { sessionId, text }),
 
   // ── Phone link (Coucou for Android) ───────────────────────────────────────
   phoneLinkStatus: () => call<PhoneLinkStatus>("phone_link_status"),
@@ -328,22 +424,66 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
+  chatSend: (query: string, context: ChatContext | null, textOnly = false) =>
+    callOrThrow<ChatAnswer>("chat_send", { query, context, textOnly }),
+  /** A dropped text or code file's contents, for the chat's code card. */
+  readAttachment: (path: string) => call<{ text: string; lang: string }>("read_attachment", { path }),
+  /** The mic's recording to text, through the saved speech-to-text model. */
+  transcribe: async (audio: Blob): Promise<string> => {
+    if (!IS_TAURI) throw new Error("not running inside Coucou");
+    return invoke<string>("transcribe_audio", new Uint8Array(await audio.arrayBuffer()), {
+      headers: { "x-mime": audio.type || "audio/webm" },
+    });
+  },
+  /** A generated file as a blob: URL (revoke it when done), or null. Only
+   *  files in the app's media folder can be read, by bare name. */
+  mediaUrl: async (name: string): Promise<string | null> => {
+    const bytes = await call<ArrayBuffer>("media_bytes", { name });
+    if (!bytes) return null;
+    const ext = name.split(".").pop() ?? "";
+    return URL.createObjectURL(new Blob([bytes], { type: MEDIA_TYPES[ext] ?? "" }));
+  },
+  /** A generated file's raw bytes (3D models are parsed, not shown by URL). */
+  mediaBytes: (name: string) => call<ArrayBuffer>("media_bytes", { name }),
+  /** Copies a generated file into Downloads; returns where it went. */
+  mediaDownload: (name: string) => callOrThrow<string>("media_download", { name }),
+  /** Full-screen preview, on the screen overlay window. */
+  mediaPreview: (file: MediaFile) => call<void>("media_preview", { name: file.name, kind: file.kind }),
+  mediaPreviewClose: () => call<void>("media_preview_close"),
+  /** "image", "video", "audio", "3d", "stt" or "text", guessed from a model id. */
+  guessOutput: (model: string) => call<string>("guess_model_output", { model }),
+  /** Credential name of an endpoint's key (one per provider host). */
+  endpointKey: (endpoint: string) => call<string>("endpoint_key", { endpoint }),
   chatReset: () => call<void>("chat_reset"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
    * the provider only when it has a key (or a server address).
    */
   chatModels: (provider: string) => callOrThrow<ModelInfo[]>("chat_models", { provider }),
-  /** Settings → Local models → Connect: does the server answer, and with which models? */
+  /** Models this provider refused (404 for a model its list offers) and that have not answered since. */
+  chatRefused: (provider: string) => call<string[]>("chat_refused", { provider }),
   /** The custom server's key, bound to the address it is entered for. */
   localSetKey: (url: string, key: string) => call<void>("local_set_key", { url, key }),
 
+  /** Settings → Local models → Connect: does the server answer, and with which models? */
   localConnect: (provider: "ollama" | "lmstudio" | "custom", url: string) =>
     callOrThrow<LocalServer>("local_connect", { provider, url }),
   /** Copies a dropped file into the inbox. */
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
+  /**
+   * Sends the dropped file through Resend. Rejects with a stable code —
+   * "no-key" / "no-from" / "too-big" / "http-…" — the view maps it to words.
+   */
+  resendSend: (to: string, subject: string, body: string, path: string | null) =>
+    callOrThrow<void>("resend_send", { to, subject, body, path }),
+  // ── Dictation (Windows.Media.SpeechRecognition) ────────────────────────────
+  /** False on Linux: the chat bar hides the mic. */
+  dictationSupported: () => call<boolean>("dictation_supported"),
+  /** Starts the continuous session; lines arrive as `dictation-line` events. */
+  dictationStart: () => callOrThrow<void>("dictation_start"),
+  /** Commits what was heard so far; the session also ends itself on silence. */
+  dictationStop: () => call<void>("dictation_stop"),
+
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
@@ -355,9 +495,26 @@ export const Bridge = {
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
+  /** What's playing now in the Windows media controls (then "now-playing" keeps it current). */
+  musicNow: () => call<NowPlaying | null>("music_now"),
+  /** Play/pause, next or previous on the player that's on show. */
+  musicControl: (action: "toggle" | "next" | "previous") => call<void>("music_control", { action }),
+  /** The AirPods' trip to or from the monitor's edges on the screen overlay,
+   *  from (x, y) in the island window; false when the overlay is busy. */
+  podsFlight: (out: boolean, x: number, y: number, size: number) =>
+    call<boolean>("pods_flight", { out, x, y, size }),
+
+  // ── Screenshot roam (src-tauri/src/roam.rs) ───────────────────────────────
+  /** Mochi was Ctrl+dragged out of the island: the screen overlay takes over. */
+  roamStart: (look: RoamLook) => call<void>("roam_start", { look }),
+  /** Linux: the carried pointer, in island coordinates ("move", "drop", "cancel"). */
+  roamPointer: (x: number, y: number, phase: "move" | "drop" | "cancel") =>
+    call<void>("roam_pointer", { x, y, phase }),
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+  /** `cam`, `mic`, `scr` held by another app (calls.rs); updates come as "call-sensors". */
+  callSensors: () => call<string[]>("call_sensors"),
 
   // ── Global shortcuts ──────────────────────────────────────────────────────
   /** How each global shortcut went when Rust last registered them. */
@@ -479,6 +636,14 @@ export interface DroppedFile {
   size: number;
 }
 
+/** What a chat CLI's own status says (Cursor's `agent status`, Kiro's `whoami`…). */
+export interface CliStatus {
+  /** Path of the CLI, or null when it is not installed. */
+  cli: string | null;
+  status: string;
+  loggedIn: boolean;
+}
+
 export interface HookStatus {
   installed: boolean;
   /** Coucou's status line relay (plan usage) is the status line in settings.json. */
@@ -524,12 +689,6 @@ async function callOrThrow<T>(cmd: string, args?: Record<string, unknown>): Prom
   if (!IS_TAURI) throw new Error("not running inside Coucou");
   return invoke<T>(cmd, args);
 }
-
-export type BridgeEvent =
-  | { name: "cursor"; payload: { x: number; y: number } }
-  | { name: "tray"; payload: string }
-  | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";

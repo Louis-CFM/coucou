@@ -7,12 +7,15 @@
 // what you said after it goes to Claude with your own key (brain.rs), never
 // the audio. Mochi shows it all in the pill at the bottom of the screen —
 // listening, thinking, then the answer, said out loud by the system's voice
-// (the pill's speechSynthesis) or ElevenLabs with your key.
+// (the pill's speechSynthesis), ElevenLabs or Fish Audio with your key.
 //
 // It stops listening while you dictate, while a call is recorded and while it
 // speaks itself.
 
+use crate::mutex::MutexExt;
+
 pub mod brain;
+pub mod search;
 pub mod wake;
 
 use std::collections::HashMap;
@@ -60,8 +63,8 @@ pub fn requirements_met() -> bool {
 
 /// Starts or stops listening to follow the preference.
 pub fn sync(app: &AppHandle) {
-    let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.voice);
-    let mut running = RUNNING.lock().unwrap();
+    let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock_recover().prefs.voice);
+    let mut running = RUNNING.lock_recover();
     match (wanted && requirements_met(), running.is_some()) {
         (true, false) => {
             let stop = Arc::new(AtomicBool::new(false));
@@ -70,13 +73,14 @@ pub fn sync(app: &AppHandle) {
             std::thread::Builder::new().name("coucou-voice".into()).spawn(move || run(app2, stop2)).ok();
             *running = Some(Running { stop });
             speech::preload();
+            warm_up(app);
             crate::log::line("voice: « OK Coucou » listening");
         }
         (false, true) => {
             if let Some(r) = running.take() {
                 r.stop.store(true, Ordering::Relaxed);
             }
-            let dictation = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.enabled);
+            let dictation = crate::flow::get(app).is_some_and(|f| f.store.lock_recover().prefs.enabled);
             if !dictation && !crate::notes::is_recording(app) {
                 speech::unload();
             }
@@ -88,12 +92,12 @@ pub fn sync(app: &AppHandle) {
 
 /// « OK Coucou » is listening (the voice model stays loaded).
 pub fn is_listening() -> bool {
-    RUNNING.lock().unwrap().is_some()
+    RUNNING.lock_recover().is_some()
 }
 
 /// Starts again on another microphone.
 pub fn restart(app: &AppHandle) {
-    if let Some(r) = RUNNING.lock().unwrap().take() {
+    if let Some(r) = RUNNING.lock_recover().take() {
         r.stop.store(true, Ordering::Relaxed);
     }
     sync(app);
@@ -113,7 +117,7 @@ enum Mode {
 }
 
 fn run(app: AppHandle, stop: Arc<AtomicBool>) {
-    let mic = crate::flow::get(&app).map(|f| f.store.lock().unwrap().prefs.mic.clone()).unwrap_or_default();
+    let mic = crate::flow::get(&app).map(|f| f.store.lock_recover().prefs.mic.clone()).unwrap_or_default();
     let (tx, rx) = mpsc::channel::<Vec<f32>>();
     let capture = audio::Capture::start(audio::Source::Mic(if mic.is_empty() { None } else { Some(mic) }), move |s| {
         let _ = tx.send(s.to_vec());
@@ -122,7 +126,7 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
         Ok(c) => c,
         Err(err) => {
             crate::log::line(format!("voice: microphone: {err}"));
-            *RUNNING.lock().unwrap() = None;
+            *RUNNING.lock_recover() = None;
             return;
         }
     };
@@ -229,37 +233,48 @@ struct Say {
     id: u64,
     text: String,
     lang: Option<&'static str>,
-    /// ElevenLabs' MP3, base64.
+    /// The cloud voice's MP3 (ElevenLabs or Fish Audio), base64.
     audio: Option<String>,
     gender: String,
 }
 
 /// Says `text` and returns once it is said (or after a sensible time).
 fn speak(app: &AppHandle, text: &str) {
-    let (output, gender) = crate::flow::get(app)
+    let (output, gender, studio, fish_voice) = crate::flow::get(app)
         .map(|f| {
-            let p = &f.store.lock().unwrap().prefs;
-            (p.voice_output.clone(), p.voice_gender.clone())
+            let p = &f.store.lock_recover().prefs;
+            (
+                p.voice_output.clone(),
+                p.voice_gender.clone(),
+                (p.voicestudio_url.clone(), p.voicestudio_voice.clone()),
+                p.fish_voice_id.clone(),
+            )
         })
-        .unwrap_or_else(|| ("system".into(), "female".into()));
+        .unwrap_or_else(|| ("system".into(), "female".into(), Default::default(), String::new()));
     if output == "off" {
         std::thread::sleep(Duration::from_millis(1500));
         return;
     }
-    let audio = if output == "elevenlabs" { elevenlabs(text, &gender).map(|mp3| base64(&mp3)) } else { None };
+    let audio = match output.as_str() {
+        "elevenlabs" => elevenlabs(text, &gender),
+        "voicestudio" => voicestudio(text, &studio.0, &studio.1, SPEECH_TIMEOUT),
+        "fishaudio" => fishaudio(text, &fish_voice),
+        _ => None,
+    }
+    .map(|mp3| base64(&mp3));
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
-    pending().lock().unwrap().insert(id, tx);
+    pending().lock_recover().insert(id, tx);
     let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: wake::speech_lang(text), audio, gender });
     let words = crate::flow::text::word_count(text) as u64;
     let _ = rx.recv_timeout(Duration::from_millis(4000 + words * 600));
-    pending().lock().unwrap().remove(&id);
+    pending().lock_recover().remove(&id);
 }
 
 /// The pill says it has finished speaking (`id`), or the island answers a question.
 #[tauri::command]
 pub fn voice_done(id: u64, text: Option<String>) {
-    if let Some(tx) = pending().lock().unwrap().remove(&id) {
+    if let Some(tx) = pending().lock_recover().remove(&id) {
         let _ = tx.send(text.unwrap_or_default());
     }
 }
@@ -323,6 +338,106 @@ fn elevenlabs(text: &str, gender: &str) -> Option<Vec<u8>> {
     })
 }
 
+const SPEECH_TIMEOUT: Duration = Duration::from_secs(8);
+const WARM_UP_TIMEOUT: Duration = Duration::from_secs(90);
+
+/// The MP3 of a local VoiceStudio server for `text`; None (it is down, still
+/// loading its model and answers 503, or no voice is set) and the system voice speaks.
+fn voicestudio(text: &str, url: &str, voice: &str, timeout: Duration) -> Option<Vec<u8>> {
+    if voice.is_empty() {
+        return None;
+    }
+    tauri::async_runtime::block_on(async {
+        let client = reqwest::Client::builder().timeout(timeout).build().ok()?;
+        let response = client
+            .post(format!("{}/v1/audio/speech", url.trim_end_matches('/')))
+            .json(&json!({ "model": "tts-1", "input": text, "voice": voice, "response_format": "mp3" }))
+            .send()
+            .await
+            .map_err(|e| crate::log::line(format!("voice: VoiceStudio {e}")))
+            .ok()?;
+        if !response.status().is_success() {
+            crate::log::line(format!("voice: VoiceStudio {}", response.status()));
+            return None;
+        }
+        Some(response.bytes().await.ok()?.to_vec())
+    })
+}
+
+/// VoiceStudio's first answer takes ~20 s (it compiles its model): asks for a
+/// short phrase now, retrying while it starts, so the first real answer is fast.
+pub fn warm_up(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("coucou-voicestudio-warm".into())
+        .spawn(move || {
+            for _ in 0..30 {
+                let Some((url, voice)) = studio_prefs(&app) else { return };
+                if voicestudio("Hello.", &url, &voice, WARM_UP_TIMEOUT).is_some() {
+                    crate::log::line("voice: VoiceStudio ready");
+                    return;
+                }
+                std::thread::sleep(Duration::from_secs(2));
+            }
+        })
+        .ok();
+}
+
+/// The VoiceStudio address and voice while « OK Coucou » answers with it.
+fn studio_prefs(app: &AppHandle) -> Option<(String, String)> {
+    let flow = crate::flow::get(app)?;
+    let p = &flow.store.lock_recover().prefs;
+    (p.voice && p.voice_output == "voicestudio").then(|| (p.voicestudio_url.clone(), p.voicestudio_voice.clone()))
+}
+
+/// Models tried in turn: the free developer tier has its own model, which a
+/// paid key answers 402 to, and the other way round.
+const FISH_MODELS: &[&str] = &["s2.1-pro", "s2.1-pro-free"];
+
+/// Fish Audio's MP3 for `text`, with the user's key and voice (see
+/// [`fish_body`]); None and the system voice speaks.
+fn fishaudio(text: &str, voice_id: &str) -> Option<Vec<u8>> {
+    let key = crate::secrets::get("fish-audio-api-key")?;
+    tauri::async_runtime::block_on(async {
+        let client = reqwest::Client::builder().timeout(Duration::from_secs(15)).build().ok()?;
+        for model in FISH_MODELS {
+            let response = client
+                .post("https://api.fish.audio/v1/tts")
+                .bearer_auth(&key)
+                .header("model", *model)
+                .json(&fish_body(text, voice_id))
+                .send()
+                .await
+                .ok()?;
+            if response.status().is_success() {
+                return Some(response.bytes().await.ok()?.to_vec());
+            }
+            crate::log::line(format!("voice: Fish Audio {} ({model})", response.status()));
+            if response.status().as_u16() != 402 {
+                break;
+            }
+        }
+        None
+    })
+}
+
+/// The JSON body of a Fish Audio text-to-speech request. `voice_id` is a model
+/// ID from fish.audio, or the link to its page (fish.audio/m/<id>); empty
+/// leaves the choice of voice to Fish Audio.
+pub fn fish_body(text: &str, voice_id: &str) -> Value {
+    let mut body = json!({ "text": text, "format": "mp3", "mp3_bitrate": 128 });
+    let raw = voice_id.trim();
+    let id = match raw.find("/m/") {
+        Some(i) => raw[i + 3..].split(['/', '?', '#']).next().unwrap_or(""),
+        None => raw,
+    };
+    if !id.is_empty() {
+        body["reference_id"] = json!(id);
+    }
+    body
+
+}
+
 /// First English voice of the gender (a young one first for a man); else any
 /// voice of the gender; else the first one. Same choice as the Mac.
 pub fn pick_voice(voices: &[Value], gender: &str) -> Option<String> {
@@ -362,10 +477,10 @@ fn base64(bytes: &[u8]) -> String {
 pub fn ask_island(app: &AppHandle, kind: &str, input: Value) -> Option<String> {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
-    pending().lock().unwrap().insert(id, tx);
+    pending().lock_recover().insert(id, tx);
     let _ = app.emit_to(crate::island::WINDOW_LABEL, "voice-ask", json!({ "id": id, "kind": kind, "input": input }));
     let answer = rx.recv_timeout(Duration::from_secs(5)).ok();
-    pending().lock().unwrap().remove(&id);
+    pending().lock_recover().remove(&id);
     answer
 }
 
@@ -525,6 +640,12 @@ mod tests {
     }
 
     #[test]
+    fn voicestudio_down_or_without_a_voice_leaves_the_system_voice() {
+        assert_eq!(voicestudio("hola", "http://127.0.0.1:1", "abc", Duration::from_secs(1)), None);
+        assert_eq!(voicestudio("hola", "http://127.0.0.1:1", "", Duration::from_secs(1)), None);
+    }
+
+    #[test]
     fn the_voice_is_picked_like_on_the_mac() {
         let voices: Vec<Value> = serde_json::from_str(r#"[
             {"voice_id":"a","labels":{"gender":"male","accent":"american","age":"middle aged"}},
@@ -535,6 +656,17 @@ mod tests {
         assert_eq!(pick_voice(&voices, "male").as_deref(), Some("b"));
         assert_eq!(pick_voice(&voices, "female").as_deref(), Some("c"));
         assert_eq!(pick_voice(&[], "female"), None);
+    }
+
+    #[test]
+    fn fish_audio_request_body() {
+        let body = fish_body("Salut", "");
+        assert_eq!(body["text"], "Salut");
+        assert_eq!(body["format"], "mp3");
+        assert!(body.get("reference_id").is_none());
+        assert_eq!(fish_body("Hi", "  abc123 ")["reference_id"], "abc123");
+        assert_eq!(fish_body("Hi", "https://fish.audio/m/abc123/?ref=x")["reference_id"], "abc123");
+        assert!(fish_body("Hi", "https://fish.audio/m/").get("reference_id").is_none());
     }
 }
 

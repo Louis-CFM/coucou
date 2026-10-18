@@ -34,7 +34,10 @@ final class NotificationViewController: UIViewController, @preconcurrency UNNoti
         let note = CKNotification(fromRemoteNotificationDictionary: content.userInfo) as? CKQueryNotification
         let pillId = content.userInfo["pillId"] as? String
             ?? note?.recordFields?["pillId"] as? String ?? "integration_claude"
-        host.rootView = ApprovalNotificationView(pillId: pillId, title: content.title, message: content.body)
+        // The command rides in userInfo since banners stopped carrying it;
+        // older builds put it in the body after "Waiting for your OK: ".
+        let message = content.userInfo["command"] as? String ?? content.body
+        host.rootView = ApprovalNotificationView(pillId: pillId, title: content.title, message: message)
         preferredContentSize = CGSize(width: view.bounds.width, height: 200)
     }
 }

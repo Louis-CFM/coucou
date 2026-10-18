@@ -24,6 +24,7 @@ use dbus::Path;
 
 use super::KeyEvent;
 use crate::portal;
+use crate::mutex::MutexExt;
 
 pub const SHORTCUT_ID: &str = "flowDictate";
 
@@ -98,18 +99,18 @@ fn request(conn: &Connection, method: &str, args: impl FnOnce(&str) -> dbus::Mes
     let rule = MatchRule::new_signal("org.freedesktop.portal.Request", "Response").with_path(Path::from(path.clone()));
     let id = conn
         .add_match(rule, move |(): (), _, msg| {
-            *slot.lock().unwrap() = Some(portal::parse_response(msg));
+            *slot.lock_recover() = Some(portal::parse_response(msg));
             false
         })
         .map_err(|e| e.to_string())?;
     let msg = args(&token);
     conn.send_with_reply_and_block(msg, Duration::from_secs(10)).map_err(|e| format!("{method}: {e}"))?;
     let until = Instant::now() + Duration::from_secs(120);
-    while answer.lock().unwrap().is_none() && Instant::now() < until {
+    while answer.lock_recover().is_none() && Instant::now() < until {
         conn.process(Duration::from_millis(200)).map_err(|e| e.to_string())?;
     }
     let _ = conn.remove_match(id);
-    let result = answer.lock().unwrap().take();
+    let result = answer.lock_recover().take();
     match result {
         Some(Ok(results)) => Ok(results),
         Some(Err(code)) => Err(format!("{method} refused ({code})")),
@@ -169,15 +170,15 @@ fn key(remote: &Remote, keysym: i32, pressed: bool) -> Result<(), String> {
 
 /// Ctrl+V (Ctrl+Shift+V) through the RemoteDesktop portal.
 pub fn send_paste(shift: bool) -> Result<(), String> {
-    if *REFUSED.lock().unwrap() {
+    if *REFUSED.lock_recover() {
         return Err("remote desktop refused".into());
     }
-    let mut slot = REMOTE.lock().unwrap();
+    let mut slot = REMOTE.lock_recover();
     if slot.is_none() {
         match open() {
             Ok(r) => *slot = Some(r),
             Err(err) => {
-                *REFUSED.lock().unwrap() = true;
+                *REFUSED.lock_recover() = true;
                 return Err(err);
             }
         }

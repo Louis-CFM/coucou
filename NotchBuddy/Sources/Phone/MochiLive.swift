@@ -13,9 +13,12 @@ struct MochiLive: View {
 
     @StateObject private var engine = BotEngine()
     @State private var visible = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: fps.map { 1 / $0 }, paused: !visible)) { timeline in
+        // Reduce Motion: a couple of stills a second instead of full-rate motion.
+        TimelineView(.animation(minimumInterval: reduceMotion ? 0.5 : fps.map { 1 / $0 },
+                                paused: !visible)) { timeline in
             Canvas { context, size in
                 _ = timeline.date
                 let dt = min(0.05, max(0, CACurrentMediaTime() - engine.lastTime))

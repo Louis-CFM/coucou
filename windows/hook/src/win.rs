@@ -93,7 +93,8 @@ unsafe fn token_sid(process: HANDLE) -> Option<String> {
         let _ = CloseHandle(token);
         return None;
     }
-    let mut buf = vec![0u8; needed as usize];
+    // TOKEN_USER must be pointer-aligned; a u8 buffer is UB on paper.
+    let mut buf = vec![0u64; needed.div_ceil(8) as usize];
     let ok = GetTokenInformation(
         token,
         TokenUser,
@@ -113,4 +114,49 @@ unsafe fn token_sid(process: HANDLE) -> Option<String> {
     let sid = text.to_string().ok();
     let _ = LocalFree(Some(HLOCAL(text.0 as *mut _)));
     sid
+}
+
+/// The process that ran the relay (Claude Code, or the shell it used), held
+/// open so its end can be seen even if Windows reuses its number.
+pub struct Parent(HANDLE);
+
+impl Parent {
+    /// True once that process has exited.
+    pub fn gone(&self) -> bool {
+        use windows::Win32::Foundation::WAIT_OBJECT_0;
+        use windows::Win32::System::Threading::WaitForSingleObject;
+        unsafe { WaitForSingleObject(self.0, 0) == WAIT_OBJECT_0 }
+    }
+}
+
+impl Drop for Parent {
+    fn drop(&mut self) {
+        let _ = unsafe { CloseHandle(self.0) };
+    }
+}
+
+/// Our parent process, from a process snapshot. None if it can't be opened
+/// (then nothing is watched and the budget alone ends the wait).
+pub fn parent() -> Option<Parent> {
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+    };
+    use windows::Win32::System::Threading::{GetCurrentProcessId, PROCESS_SYNCHRONIZE};
+    unsafe {
+        let me = GetCurrentProcessId();
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).ok()?;
+        let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        let mut ppid = None;
+        let mut more = Process32FirstW(snapshot, &mut entry).is_ok();
+        while more {
+            if entry.th32ProcessID == me {
+                ppid = Some(entry.th32ParentProcessID);
+                break;
+            }
+            more = Process32NextW(snapshot, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snapshot);
+        let handle = OpenProcess(PROCESS_SYNCHRONIZE, false, ppid?).ok()?;
+        Some(Parent(handle))
+    }
 }

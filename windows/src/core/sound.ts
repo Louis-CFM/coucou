@@ -16,6 +16,8 @@ export const SOUND_NAMES = [
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
+const IS_LINUX = typeof navigator !== "undefined" && /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
+
 class SoundEngine {
   enabled = true;
   volume = 0.12;
@@ -43,6 +45,9 @@ class SoundEngine {
       master.connect(ctx.destination);
       this.master = master;
       await this.loadAll(ctx);
+      // A context starts out running. A page that plays nothing — the desktop
+      // Mochi's window, hidden until he is sent out — would keep it for good.
+      this.idle();
     })();
     return this.loading;
   }
@@ -99,8 +104,14 @@ class SoundEngine {
    *
    * The delay covers the tail of whatever just played — suspending mid-sound
    * would clip it — and `play()` resumes the context on its own.
+   *
+   * Not on Linux: WebKitGTK's `resume()` waits for the audio server to bring the
+   * output back and blocks the whole page meanwhile, 3 to 8 seconds measured, so
+   * the island froze at every sound that followed a quiet moment (a finished
+   * session, a click). A running context costs a few percent of one core there.
    */
   idle() {
+    if (IS_LINUX) return;
     if (!this.ctx || this.ctx.state !== "running" || this.idleTimer != null) return;
     this.idleTimer = window.setTimeout(() => {
       this.idleTimer = null;
@@ -113,12 +124,15 @@ class SoundEngine {
     if (this.master) this.master.gain.value = this.volume;
   }
 
+  /** A call is on: no sound at all until it ends. */
+  quiet = false;
+
   setEnabled(on: boolean) {
     this.enabled = on;
   }
 
   play(name: SoundName | string) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.quiet) return;
     const ctx = this.ctx;
     const master = this.master;
     const buf = this.buffers.get(name);

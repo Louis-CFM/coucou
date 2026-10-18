@@ -129,14 +129,6 @@ final class VoiceEngine: ObservableObject {
 
     func cancelListening() { endCommand(postFinished: false) }
 
-    /// Settings → Voice language changed: restart recognition in the new language.
-    func reloadLanguage() {
-        guard audio != nil else { return }
-        stopAudioPipeline()
-        if isEnabled && !isPaused { startAudioPipeline() }
-        VoiceBrain.shared.endConversation()   // next session gets instructions in the new language
-    }
-
     /// Start the next conversation turn (re-listen for 8 s without wake phrase).
     /// Called by IslandWindowController after showing a command result.
     func startConversationTurn(firstWordTimeout: TimeInterval = 8.0) {

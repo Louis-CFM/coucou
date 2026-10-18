@@ -7,6 +7,8 @@
 // their SHA-256 and kept in %LOCALAPPDATA%\Coucou\Models (Windows) or
 // ~/.local/share/coucou/Models (Linux). From then on everything runs offline.
 
+use crate::mutex::MutexExt;
+
 pub mod audio;
 
 use std::io::Write;
@@ -146,7 +148,7 @@ fn downloads() -> &'static Mutex<Downloads> {
 
 /// Both sets count as one download: dictation and the Notetaker are ready together.
 pub fn status() -> ModelsStatus {
-    let d = downloads().lock().unwrap();
+    let d = downloads().lock_recover();
     let parakeet = if d.running {
         ModelState::Downloading { fraction: d.fraction }
     } else if PARAKEET.is_present() && DIARIZER.is_present() {
@@ -171,7 +173,7 @@ fn emit_status(app: &AppHandle) {
 /// Downloads what is missing, with the progress in `speech-models` events.
 pub fn download(app: AppHandle) {
     {
-        let mut d = downloads().lock().unwrap();
+        let mut d = downloads().lock_recover();
         if d.running {
             return;
         }
@@ -183,7 +185,7 @@ pub fn download(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let result = download_all(&app).await;
         {
-            let mut d = downloads().lock().unwrap();
+            let mut d = downloads().lock_recover();
             d.running = false;
             if let Err(err) = &result {
                 d.error = Some(err.clone());
@@ -236,7 +238,7 @@ async fn download_all(app: &AppHandle) -> Result<(), String> {
                 }
                 if last_emit.elapsed() > Duration::from_millis(250) {
                     last_emit = Instant::now();
-                    downloads().lock().unwrap().fraction = (done + got) as f64 / total as f64;
+                    downloads().lock_recover().fraction = (done + got) as f64 / total as f64;
                     emit_status(app);
                 }
             }
@@ -260,7 +262,7 @@ pub fn remove(app: &AppHandle) {
     unload();
     let _ = std::fs::remove_dir_all(PARAKEET.dir());
     let _ = std::fs::remove_dir_all(DIARIZER.dir());
-    downloads().lock().unwrap().error = None;
+    downloads().lock_recover().error = None;
     emit_status(app);
 }
 
@@ -283,14 +285,14 @@ fn threads() -> i32 {
 
 /// The loaded recognizer, loading it on first use (about 2 s).
 pub fn recognizer() -> Option<Arc<OfflineRecognizer>> {
-    if let Some(r) = recognizer_slot().lock().unwrap().clone() {
+    if let Some(r) = recognizer_slot().lock_recover().clone() {
         return Some(r);
     }
     if !PARAKEET.is_present() {
         return None;
     }
-    let _guard = load_lock().lock().unwrap();
-    if let Some(r) = recognizer_slot().lock().unwrap().clone() {
+    let _guard = load_lock().lock_recover();
+    if let Some(r) = recognizer_slot().lock_recover().clone() {
         return Some(r);
     }
     let mut config = OfflineRecognizerConfig::default();
@@ -308,13 +310,13 @@ pub fn recognizer() -> Option<Arc<OfflineRecognizer>> {
         Some(_) => crate::log::line(format!("Parakeet loaded in {:?}", started.elapsed())),
         None => crate::log::line("Parakeet could not be loaded"),
     }
-    *recognizer_slot().lock().unwrap() = r.clone();
+    *recognizer_slot().lock_recover() = r.clone();
     r
 }
 
 /// Loads the model in the background, so the first dictation is not slowed down.
 pub fn preload() {
-    if !PARAKEET.is_present() || recognizer_slot().lock().unwrap().is_some() {
+    if !PARAKEET.is_present() || recognizer_slot().lock_recover().is_some() {
         return;
     }
     std::thread::spawn(|| {
@@ -324,7 +326,7 @@ pub fn preload() {
 
 /// Frees the model's memory (dictation turned off, models removed).
 pub fn unload() {
-    *recognizer_slot().lock().unwrap() = None;
+    *recognizer_slot().lock_recover() = None;
 }
 
 /// What was said, and each word with its place in the audio.

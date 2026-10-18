@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use windows::core::PWSTR;
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use crate::mutex::MutexExt;
 use windows::Win32::System::Threading::{
     GetCurrentThreadId, OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
 };
@@ -35,7 +36,6 @@ const VK_LSHIFT: u32 = 0xA0;
 const VK_RSHIFT: u32 = 0xA1;
 const VK_LCONTROL: u32 = 0xA2;
 const VK_RCONTROL: u32 = 0xA3;
-const VK_LMENU: u32 = 0xA4;
 const VK_RMENU: u32 = 0xA5;
 const VK_LWIN: u32 = 0x5B;
 const VK_RWIN: u32 = 0x5C;
@@ -62,7 +62,7 @@ fn key_code(key: FlowKey) -> u8 {
 }
 
 fn send(event: KeyEvent) {
-    if let Some(tx) = SINK.lock().unwrap().as_ref() {
+    if let Some(tx) = SINK.lock_recover().as_ref() {
         let _ = tx.send((event, Instant::now()));
     }
 }
@@ -136,14 +136,14 @@ impl Drop for KeyListener {
         if let Some(t) = self.thread.take() {
             let _ = t.join();
         }
-        *SINK.lock().unwrap() = None;
+        *SINK.lock_recover() = None;
     }
 }
 
 pub fn listen(key: FlowKey, tx: Sender<(KeyEvent, Instant)>) -> Result<KeyListener, String> {
     KEY.store(key_code(key), Ordering::Relaxed);
     COMBO.store(0, Ordering::Relaxed);
-    *SINK.lock().unwrap() = Some(tx);
+    *SINK.lock_recover() = Some(tx);
     let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<u32, String>>();
     let thread = std::thread::Builder::new()
         .name("coucou-flow-keys".into())

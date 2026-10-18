@@ -21,6 +21,7 @@
 
 use serde::Serialize;
 use tauri::AppHandle;
+use crate::mutex::MutexExt;
 
 pub const PILL_ID: &str = "integration_spotify";
 /// Where "Get Spotify" leads when it isn't installed.
@@ -643,7 +644,7 @@ mod linux {
 
     pub fn set_active(out: Out, on: bool) {
         let wake = {
-            let mut s = SHARED.lock().unwrap();
+            let mut s = SHARED.lock_recover();
             if s.active == on {
                 return;
             }
@@ -654,7 +655,7 @@ mod linux {
             s.listener.take()
         };
         if on {
-            let generation = SHARED.lock().unwrap().generation;
+            let generation = SHARED.lock_recover().generation;
             let spawned = std::thread::Builder::new()
                 .name("coucou-spotify".into())
                 .spawn(move || listen(out, generation));
@@ -665,13 +666,13 @@ mod linux {
             if let Some(name) = wake {
                 wake_listener(&name);
             }
-            let state = SHARED.lock().unwrap().state.clone();
+            let state = SHARED.lock_recover().state.clone();
             out.state(&state);
         }
     }
 
     fn current(generation: u64) -> bool {
-        let s = SHARED.lock().unwrap();
+        let s = SHARED.lock_recover();
         s.active && s.generation == generation
     }
 
@@ -708,7 +709,7 @@ mod linux {
             }
         };
         {
-            let mut s = SHARED.lock().unwrap();
+            let mut s = SHARED.lock_recover();
             if !(s.active && s.generation == generation) {
                 return;
             }
@@ -751,7 +752,7 @@ mod linux {
                 if new.is_empty() {
                     // Spotify quit: nothing is playing anymore.
                     let state = {
-                        let mut s = SHARED.lock().unwrap();
+                        let mut s = SHARED.lock_recover();
                         s.owner = None;
                         s.state.running = false;
                         s.state.clear(now_ms());
@@ -791,7 +792,7 @@ mod linux {
     }
 
     fn from_owner(sender: Option<&str>) -> bool {
-        let s = SHARED.lock().unwrap();
+        let s = SHARED.lock_recover();
         match (&s.owner, sender) {
             (Some(owner), Some(sender)) => owner == sender,
             // The owner isn't known yet: the bus only routes Spotify's to us.
@@ -803,13 +804,13 @@ mod linux {
     /// Applies a change; when the status or the track moved, reads the
     /// position (never signalled), then tells the island.
     fn apply_and_emit(conn: &Connection, out: &Out, props: &[(String, Value)]) {
-        let applied = SHARED.lock().unwrap().state.apply(props, now_ms());
+        let applied = SHARED.lock_recover().state.apply(props, now_ms());
         if (applied.status_changed || applied.track_changed) && !applied.position_set {
             if let Some(position) = get_property(conn, "Position") {
-                SHARED.lock().unwrap().state.apply(&[("Position".into(), position)], now_ms());
+                SHARED.lock_recover().state.apply(&[("Position".into(), position)], now_ms());
             }
         }
-        let state = SHARED.lock().unwrap().state.clone();
+        let state = SHARED.lock_recover().state.clone();
         out.state(&state);
     }
 
@@ -833,7 +834,7 @@ mod linux {
             proxy.get_all(PLAYER).ok().map(|m| props_of(&m))
         });
         let state = {
-            let mut s = SHARED.lock().unwrap();
+            let mut s = SHARED.lock_recover();
             if !(s.active && s.generation == generation) {
                 return;
             }
@@ -854,7 +855,7 @@ mod linux {
 
     /// Runs `f` on the control connection, made (again) when needed.
     fn with_control<R>(f: impl FnOnce(&Connection) -> Result<R, dbus::Error>) -> Option<R> {
-        let mut slot = CONTROL.lock().unwrap();
+        let mut slot = CONTROL.lock_recover();
         if slot.as_ref().is_none_or(|c| !c.channel().is_connected()) {
             *slot = Connection::new_session().ok();
         }
@@ -864,7 +865,7 @@ mod linux {
 
     pub fn refresh(out: &Out) -> Option<PlayerState> {
         let generation = {
-            let s = SHARED.lock().unwrap();
+            let s = SHARED.lock_recover();
             if !s.active {
                 return None;
             }
@@ -879,7 +880,7 @@ mod linux {
             Ok((owner, props))
         });
         let state = {
-            let mut s = SHARED.lock().unwrap();
+            let mut s = SHARED.lock_recover();
             if !(s.active && s.generation == generation) {
                 return None;
             }
@@ -903,7 +904,7 @@ mod linux {
 
     pub fn control(out: &Out, action: &str, value: Option<f64>) -> bool {
         let (active, state) = {
-            let s = SHARED.lock().unwrap();
+            let s = SHARED.lock_recover();
             (s.active && s.owner.is_some(), s.state.clone())
         };
         if !active {
@@ -953,7 +954,7 @@ mod linux {
         };
         if let Some(prop) = optimistic {
             let state = {
-                let mut s = SHARED.lock().unwrap();
+                let mut s = SHARED.lock_recover();
                 s.state.apply(&[prop], now_ms());
                 s.state.clone()
             };
@@ -1040,7 +1041,7 @@ mod linux {
     fn want_artwork(app: &AppHandle, state: &PlayerState) {
         let Some(url) = state.track.as_ref().and_then(|t| t.art_url.clone()) else { return };
         {
-            let mut art = ART.lock().unwrap();
+            let mut art = ART.lock_recover();
             if let Some((_, data)) = art.entries.iter().find(|(u, _)| *u == url) {
                 let _ = app.emit_to(
                     crate::island::WINDOW_LABEL,
@@ -1059,7 +1060,7 @@ mod linux {
             Some(ArtSource::Https(remote)) => {
                 // Pause means nothing reaches the network.
                 if crate::integrations::PAUSED.load(std::sync::atomic::Ordering::Relaxed) {
-                    ART.lock().unwrap().loading = None;
+                    ART.lock_recover().loading = None;
                     return;
                 }
                 tauri::async_runtime::spawn(async move {
@@ -1077,7 +1078,7 @@ mod linux {
                 });
             }
             None => {
-                ART.lock().unwrap().loading = None;
+                ART.lock_recover().loading = None;
             }
         }
     }
@@ -1097,7 +1098,7 @@ mod linux {
 
     fn finish_artwork(app: &AppHandle, url: String, bytes: Option<Vec<u8>>) {
         let data = bytes.as_deref().and_then(data_url);
-        let mut art = ART.lock().unwrap();
+        let mut art = ART.lock_recover();
         if art.loading.as_deref() == Some(url.as_str()) {
             art.loading = None;
         }
@@ -1109,7 +1110,7 @@ mod linux {
         }
         drop(art);
         // Only if it is still the track on screen.
-        let current = SHARED.lock().unwrap().state.track.as_ref().and_then(|t| t.art_url.clone());
+        let current = SHARED.lock_recover().state.track.as_ref().and_then(|t| t.art_url.clone());
         if current.as_deref() == Some(url.as_str()) {
             let _ = app.emit_to(crate::island::WINDOW_LABEL, ARTWORK_EVENT, Artwork { art_url: url, data_url: data });
         }
@@ -1227,7 +1228,7 @@ mod linux {
             assert_eq!(next().volume, 25);
             assert!(!control(&out, "dance", None));
             assert_eq!(
-                *calls.lock().unwrap(),
+                *calls.lock_recover(),
                 vec!["PlayPause", "SetPosition /com/spotify/track/fake1 60000000", "Set Shuffle", "Set Volume"]
             );
 
@@ -1294,17 +1295,17 @@ mod linux {
                     }
                     "Set" => {
                         let (_, name): (String, String) = msg.read2().unwrap();
-                        calls.lock().unwrap().push(format!("Set {name}"));
+                        calls.lock_recover().push(format!("Set {name}"));
                         msg.method_return()
                     }
                     "SetPosition" => {
                         let (path, us): (dbus::Path, i64) = msg.read2().unwrap();
-                        calls.lock().unwrap().push(format!("SetPosition {path} {us}"));
+                        calls.lock_recover().push(format!("SetPosition {path} {us}"));
                         position = us;
                         msg.method_return()
                     }
                     "PlayPause" => {
-                        calls.lock().unwrap().push("PlayPause".into());
+                        calls.lock_recover().push("PlayPause".into());
                         playing = !playing;
                         position += 1_000_000;
                         let mut changed: PropMap = HashMap::new();
@@ -1320,7 +1321,7 @@ mod linux {
                         msg.method_return()
                     }
                     other => {
-                        calls.lock().unwrap().push(other.to_string());
+                        calls.lock_recover().push(other.to_string());
                         msg.method_return()
                     }
                 };
@@ -1458,7 +1459,7 @@ mod win {
     }
 
     fn current(generation: u64) -> bool {
-        let s = SHARED.lock().unwrap();
+        let s = SHARED.lock_recover();
         s.active && s.generation == generation
     }
 
@@ -1467,7 +1468,7 @@ mod win {
     pub fn sync(app: &AppHandle, on: bool) {
         let (tx, rx) = mpsc::channel();
         let (old, generation, state) = {
-            let mut s = SHARED.lock().unwrap();
+            let mut s = SHARED.lock_recover();
             if s.active == on {
                 return;
             }
@@ -1646,7 +1647,7 @@ mod win {
         let volume = read.as_ref().and_then(|_| spotify_volume());
         let now = now_ms();
         let (state, props) = {
-            let mut s = SHARED.lock().unwrap();
+            let mut s = SHARED.lock_recover();
             if !(s.active && s.generation == generation) {
                 return;
             }
@@ -1690,12 +1691,12 @@ mod win {
     fn artwork(app: &AppHandle, track: &Track, props: &MediaProperties) {
         use tauri::Emitter;
         let Some(key) = track.art_url.clone() else { return };
-        let cached = ART.lock().unwrap().iter().find(|(k, _)| *k == key).map(|(_, d)| d.clone());
+        let cached = ART.lock_recover().iter().find(|(k, _)| *k == key).map(|(_, d)| d.clone());
         let data = match cached {
             Some(data) => data,
             None => {
                 let Some(data) = thumbnail(props).as_deref().and_then(data_url) else { return };
-                let mut art = ART.lock().unwrap();
+                let mut art = ART.lock_recover();
                 art.push_back((key.clone(), data.clone()));
                 while art.len() > 12 {
                     art.pop_front();
@@ -1781,7 +1782,7 @@ mod win {
 
     pub fn refresh(app: &AppHandle) -> Option<PlayerState> {
         let generation = {
-            let s = SHARED.lock().unwrap();
+            let s = SHARED.lock_recover();
             if !s.active {
                 return None;
             }
@@ -1791,13 +1792,13 @@ mod win {
         let manager = Manager::RequestAsync().and_then(|op| op.get()).ok();
         let session = manager.as_ref().and_then(find_session);
         read_and_emit(app, generation, session.as_ref());
-        let s = SHARED.lock().unwrap();
+        let s = SHARED.lock_recover();
         (s.active && s.generation == generation).then(|| s.state.clone())
     }
 
     pub fn control(app: &AppHandle, action: &str, value: Option<f64>) -> bool {
         let state = {
-            let s = SHARED.lock().unwrap();
+            let s = SHARED.lock_recover();
             if !(s.active && s.state.running) {
                 return false;
             }
@@ -1841,7 +1842,7 @@ mod win {
         let optimistic = matches!(action, "seek" | "shuffle" | "repeat" | "volume");
         if optimistic {
             let state = {
-                let mut s = SHARED.lock().unwrap();
+                let mut s = SHARED.lock_recover();
                 match action {
                     "seek" => {
                         if let Some(target) = seek_to {
@@ -1874,7 +1875,7 @@ mod win {
     /// Spotify's URI scheme brings it forward, or starts it. Without Spotify,
     /// its download page.
     pub fn open() -> bool {
-        let running = SHARED.lock().unwrap().state.running;
+        let running = SHARED.lock_recover().state.running;
         if running || installed() {
             crate::platform::open_url("spotify:");
             return true;

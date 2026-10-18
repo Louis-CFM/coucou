@@ -1,12 +1,26 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+use crate::mutex::MutexExt;
+
 mod agent_hooks;
+mod awake;
 mod agents;
+mod calls;
 mod chat;
 mod claude;
+mod claude_cli;
+mod claude_sessions;
+mod cli_chat;
+mod cli_sessions;
+mod codex_chat;
 mod codex_plan;
+mod codex_sessions;
 mod config_file;
+mod cursor_chat;
 mod desktop;
+mod devin_chat;
+mod devin_sessions;
+mod dictation;
 mod files;
 mod flow;
 mod github;
@@ -15,21 +29,31 @@ mod i18n;
 mod identity;
 mod integrations;
 mod island;
+mod kiro_chat;
 mod local_chat;
 mod log;
+mod mail_crypto;
+mod media;
+mod music;
+mod mutex;
 mod net;
 mod notes;
 mod openai_compat;
+mod opencode_sessions;
+mod phone;
 mod phone_link;
 mod pipe;
 mod platform;
 #[cfg(target_os = "linux")]
 mod portal;
 mod recap;
+#[cfg_attr(not(windows), path = "roam_linux.rs")]
+mod roam;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod shot;
 mod sounds;
 mod speech;
 mod spotify;
@@ -43,6 +67,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
+use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
 
@@ -72,11 +97,15 @@ pub struct BootInfo {
 
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
-    let mut settings = shared.settings.lock().unwrap().clone();
-    // The real state of ~/.claude/settings.json wins over whatever we stored.
+    // The real state of ~/.claude/settings.json wins over whatever we stored,
+    // and is what a later save keeps (Settings::from_webview).
     let hooks_status = hooks::status();
-    settings.hooks_installed = hooks_status.installed;
-    settings.plan_relay_installed = hooks_status.plan_relay_installed;
+    let settings = {
+        let mut current = shared.settings.lock_recover();
+        current.hooks_installed = hooks_status.installed;
+        current.plan_relay_installed = hooks_status.plan_relay_installed;
+        current.clone()
+    };
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,
@@ -89,29 +118,20 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed, shortcuts_changed) = {
-        let mut current = shared.settings.lock().unwrap();
-        let screen_changed = current.screen != settings.screen;
-        let autostart_changed = current.autostart != settings.autostart;
-        let shortcuts_changed = current.shortcuts != settings.shortcuts;
-        // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
-        let mut settings = settings.clone();
-        settings.desktop_mochi = current.desktop_mochi.clone();
-        // Same for the phone link: only its own commands turn it on or off.
-        settings.phone_link = current.phone_link;
-        settings.phone_chat = current.phone_chat;
-        settings.phone_details = current.phone_details;
-        settings.phone_answers = current.phone_answers;
-        settings.phone_diffs = current.phone_diffs;
-        settings.phone_usage = current.phone_usage;
-        settings.phone_services = current.phone_services.clone();
-        settings.phone_relay = current.phone_relay;
-        settings.phone_relay_url = current.phone_relay_url.clone();
-        settings.phone_chat_models = current.phone_chat_models.clone();
-        *current = settings;
-        (screen_changed, autostart_changed, shortcuts_changed)
+    let (settings, screen_changed, autostart_changed, shortcuts_changed) = {
+        let mut current = shared.settings.lock_recover();
+        // What only Rust changes (the phone pairing and link, the hooks state,
+        // Mochi's desktop spot) is not a webview's to say: its copy may be stale.
+        let next = current.from_webview(settings);
+        let screen_changed = current.screen != next.screen
+            || current.island_dock != next.island_dock
+            || current.island_shift != next.island_shift
+            || current.island_drop != next.island_drop;
+        let autostart_changed = current.autostart != next.autostart;
+        let shortcuts_changed = current.shortcuts != next.shortcuts;
+        *current = next.clone();
+        (next, screen_changed, autostart_changed, shortcuts_changed)
     };
-    let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
         log::line(format!("could not save settings: {err}"));
     }
@@ -160,12 +180,13 @@ fn language_changed(app: &AppHandle) {
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let pref = shared.settings.lock_recover().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
+    // Stop the cursor poll first so no in-flight tick can undo what follows.
+    shared.gate.set_active(!collapsed);
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
-    shared.gate.set_active(!collapsed);
     platform::set_pointer_watch(!collapsed);
 }
 
@@ -190,7 +211,7 @@ fn focus_window(app: AppHandle, focused: bool) {
 
 #[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let pref = shared.settings.lock_recover().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
 }
@@ -203,7 +224,7 @@ fn fit_zoom(app: AppHandle, dpr: f64) -> bool {
     let Some(win) = island::window(&app) else { return false };
     let scale = win.scale_factor().unwrap_or(1.0);
     static ZOOM: std::sync::Mutex<f64> = std::sync::Mutex::new(1.0);
-    let mut zoom = ZOOM.lock().unwrap();
+    let mut zoom = ZOOM.lock_recover();
     if let Some(new_zoom) = island::calculate_zoom_correction(*zoom, scale, dpr) {
         *zoom = new_zoom;
         log::line(format!("webview dpr {dpr} != window scale {scale} — setting zoom {new_zoom:.3}"));
@@ -214,6 +235,43 @@ fn fit_zoom(app: AppHandle, dpr: f64) -> bool {
     }
 }
 
+/// The island follows the mouse while it is held: one step of a drag, in
+/// logical pixels. Where it ends up is settled by `island_dropped`.
+#[tauri::command]
+fn nudge_island(app: AppHandle, dx: f64, dy: f64) {
+    let Some(win) = island::window(&app) else { return };
+    let Ok(pos) = win.outer_position() else { return };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let x = pos.x + (dx * scale).round() as i32;
+    let y = pos.y + (dy * scale).round() as i32;
+    let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+}
+
+/// The mouse let go of the island: where it landed becomes its place in the
+/// settings (shares of the display, and the display itself when it changed),
+/// then it is placed again by the rules, which keeps it on the screen.
+#[tauri::command]
+fn island_dropped(app: AppHandle, shared: State<Shared>) {
+    let pref = shared.settings.lock_recover().screen.clone();
+    let island = *shared.gate.rect.lock_recover();
+    let Some(landing) = island::landing(&app, &pref, island) else { return };
+    let settings = {
+        let mut current = shared.settings.lock_recover();
+        current.island_dock = landing.dock.name().to_string();
+        current.island_shift = landing.shift;
+        current.island_drop = landing.drop;
+        if let Some(screen) = landing.screen {
+            current.screen = screen;
+        }
+        current.clone()
+    };
+    if let Err(err) = settings::save(&settings) {
+        log::line(format!("could not save settings: {err}"));
+    }
+    let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
+    island::apply_geometry(&app, &settings.screen, collapsed);
+    let _ = app.emit("settings-changed", settings);
+}
 
 /// The displays the island can be pinned to, for Settings.
 #[tauri::command]
@@ -229,10 +287,35 @@ fn open_url(url: String) {
     platform::open_url(&url);
 }
 
-/// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
-/// and falls back to the file manager otherwise.
+fn resolve_editor(custom: Option<&str>) -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(c) = custom.filter(|s| !s.trim().is_empty()) {
+        candidates.push(c.trim().to_string());
+    }
+    if let Some(vis) = std::env::var("VISUAL").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(vis.trim().to_string());
+    }
+    if let Some(ed) = std::env::var("EDITOR").ok().filter(|s| !s.trim().is_empty()) {
+        candidates.push(ed.trim().to_string());
+    }
+    candidates.push("code".to_string());
+
+    for name in candidates {
+        let p = std::path::Path::new(&name);
+        if p.is_file() {
+            return Some(p.to_path_buf());
+        }
+        if let Some(found) = platform::find_on_path(&name) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// "Open terminal" opens the working folder in the configured editor (or
+/// VS Code / $EDITOR), and falls back to the file manager otherwise.
 #[tauri::command]
-fn open_in_vscode(path: Option<String>) -> bool {
+fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
     // No shell anywhere near this. The path is a project folder chosen by
     // whoever is using Claude Code, and a shell would happily read `&`, `^`, `%`
     // or `$` in a folder name as syntax. Finding the launcher ourselves and
@@ -247,8 +330,9 @@ fn open_in_vscode(path: Option<String>) -> bool {
             return false;
         }
     }
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = shared.settings.lock_recover().editor.clone();
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
             cmd.arg(p);
         }
@@ -264,32 +348,45 @@ fn open_in_vscode(path: Option<String>) -> bool {
 
 /// "Open terminal": brings forward the terminal or editor window the session
 /// runs in, when it was found (see session_window.rs); otherwise opens the
-/// folder in VS Code, as before.
+/// folder in the editor, as before.
 #[tauri::command]
-fn open_session(session_id: Option<String>, path: Option<String>) -> bool {
+fn open_session(shared: State<Shared>, session_id: Option<String>, path: Option<String>) -> bool {
+    let custom = shared.settings.lock_recover().editor.clone();
+    let open_editor = move |path: Option<String>| {
+        if let Some(editor) = resolve_editor(custom.as_deref()) {
+            let mut cmd = Command::new(editor);
+            if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+                let p = std::path::Path::new(p);
+                if p.is_absolute() && p.is_dir() {
+                    cmd.arg(p);
+                }
+            }
+            if platform::no_console(&mut cmd).spawn().is_ok() {
+                return true;
+            }
+        }
+        if let Some(p) = path.as_deref().filter(|p| !p.is_empty()) {
+            let p = std::path::Path::new(p);
+            if p.is_absolute() && p.is_dir() {
+                platform::reveal_folder(&p.to_string_lossy());
+            }
+        }
+        false
+    };
     let Some(owners) = session_id.as_deref().and_then(session_window::lookup) else {
-        return open_in_vscode(path);
+        return open_editor(path);
     };
     let folder = path.as_deref().map(session_window::folder_name).unwrap_or_default().to_string();
-    #[cfg(windows)]
-    {
-        if platform::focus_session_window(&owners, &folder) {
-            return true;
+    // Finding and raising the window asks the OS about every top-level window
+    // (on Linux the display server, KWin or the terminal): never on the UI
+    // thread a sync command runs on. The editor still opens when nothing could
+    // bring the window forward.
+    std::thread::spawn(move || {
+        if !platform::focus_session_window(&owners, &folder) {
+            open_editor(path);
         }
-        open_in_vscode(path)
-    }
-    // Linux asks the display server, KWin or the terminal, which can take a
-    // moment: never on the UI thread a sync command runs on. VS Code still
-    // opens when none of them could bring the window forward.
-    #[cfg(target_os = "linux")]
-    {
-        std::thread::spawn(move || {
-            if !platform::focus_session_window(&owners, &folder) {
-                open_in_vscode(path);
-            }
-        });
-        true
-    }
+    });
+    true
 }
 
 /// The Claude Desktop pill's target: the Claude app (Windows only — it has no
@@ -307,14 +404,16 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
     (p.is_absolute() && p.is_file()).then_some(p)
 }
 
-/// The diff card's ↗: opens the edited file in VS Code when `code` is on PATH,
-/// otherwise shows its folder. The file itself is never opened by its type —
-/// xdg-open or Explorer would run a script that Claude just wrote.
+/// The diff card's ↗: opens the edited file in the configured editor (or VS
+/// Code / $EDITOR), otherwise shows its folder. The file itself is never
+/// opened by its type — xdg-open or Explorer would run a script that Claude
+/// just wrote.
 #[tauri::command]
-fn open_file_in_vscode(path: String) -> bool {
+fn open_file_in_vscode(shared: State<Shared>, path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    if let Some(code) = platform::find_on_path("code") {
-        let mut cmd = Command::new(code);
+    let custom = shared.settings.lock_recover().editor.clone();
+    if let Some(editor) = resolve_editor(custom.as_deref()) {
+        let mut cmd = Command::new(editor);
         cmd.arg(file);
         if platform::no_console(&mut cmd).spawn().is_ok() {
             return true;
@@ -369,7 +468,7 @@ fn hooks_apply(
     // settings.json that changed in between is refused rather than overwritten.
     let backup = hooks::write(install, &fingerprint)?;
     let updated = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         current.hooks_installed = install;
         if let Err(err) = settings::save(&current) {
             log::line(format!("could not save settings: {err}"));
@@ -422,7 +521,7 @@ fn status_line_apply(
 ) -> Result<String, String> {
     let backup = hooks::status_line_write(install, &fingerprint)?;
     let updated = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         current.plan_relay_installed = install;
         // As on the Mac: taking the relay out turns the pill off with it.
         if !install {
@@ -444,8 +543,17 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+/// Only the island may drive an approval — the buttons live there, and the
+/// request ids stay unguessable (pipe.rs) so they cannot be borrowed either.
+fn from_island(window: &tauri::WebviewWindow) -> bool {
+    window.label() == island::WINDOW_LABEL
+}
+
 #[tauri::command]
-fn approval_decision(app: AppHandle, request_id: String, decision: String) {
+fn approval_decision(window: tauri::WebviewWindow, app: AppHandle, request_id: String, decision: String) {
+    if !from_island(&window) {
+        return;
+    }
     recap::record_decision(&app, &request_id, &decision);
     pipe::answer(&app, &request_id, &decision);
 }
@@ -453,29 +561,180 @@ fn approval_decision(app: AppHandle, request_id: String, decision: String) {
 /// An option picked on the island for a question Claude Code asked.
 #[tauri::command]
 fn approval_answer(
+    window: tauri::WebviewWindow,
     app: AppHandle,
     request_id: String,
     answers: std::collections::HashMap<String, serde_json::Value>,
+    other: Option<Vec<String>>,
 ) {
+    if !from_island(&window) {
+        return;
+    }
     // An answered question is not an Allow / Deny: nothing for the recap.
     recap::forget_request(&app, &request_id);
-    pipe::answer_question(&app, &request_id, &answers);
+    pipe::answer_question(&app, &request_id, &answers, &other.unwrap_or_default());
 }
 
 /// The island has the card on screen, so the long wait for a human may begin.
 /// Until this arrives the relay only waits a few hundred milliseconds, which is
 /// what stops a paused or unresponsive island from freezing Claude Code.
 #[tauri::command]
-fn approval_ack(app: AppHandle, request_id: String) {
+fn approval_ack(window: tauri::WebviewWindow, app: AppHandle, request_id: String) {
+    if !from_island(&window) {
+        return;
+    }
     pipe::acknowledge(&app, &request_id);
 }
 
 /// Nobody can act on this request — the island is paused, or another card is
 /// already up. Claude Code falls back to asking in the terminal immediately.
 #[tauri::command]
-fn approval_decline(app: AppHandle, request_id: String) {
+fn approval_decline(window: tauri::WebviewWindow, app: AppHandle, request_id: String) {
+    if !from_island(&window) {
+        return;
+    }
     recap::forget_request(&app, &request_id);
     pipe::decline(&app, &request_id);
+}
+
+// ── Android companion ───────────────────────────────────────────────────────
+
+/// What the settings window shows: enabled, paired, which phone, which relay.
+#[tauri::command]
+fn phone_status(shared: State<'_, Shared>) -> serde_json::Value {
+    let s = shared.settings.lock_recover();
+    json!({
+        "enabled": s.phone_enabled,
+        "paired": s.phone_paired,
+        "device": s.phone_device,
+        "worker": s.phone_worker,
+        "pcId": s.phone_pc_id,
+    })
+}
+
+/// Turn remote control on or off. On needs a paired box — settings calls
+/// `phone_pair` for that; this just gates the poll loop.
+#[tauri::command]
+fn phone_enable(app: AppHandle, on: bool) {
+    phone::set_enabled(&app, on);
+}
+
+/// Create the pairing code/QR and the relay box. The phone claims it with
+/// `coucou://` payload the code carries. Async: the relay may take seconds, and
+/// a sync command would hold the UI thread meanwhile.
+#[tauri::command]
+async fn phone_pair(app: AppHandle, worker: String) -> Result<serde_json::Value, String> {
+    let pair = phone::start_pair(&worker)?;
+    phone::finish_pair(&app, &pair).await?;
+    Ok(json!({ "code": pair.code, "qrSvg": pair.qr_svg }))
+}
+
+/// Forget the phone and wipe its mailbox on the relay.
+#[tauri::command]
+async fn phone_unpair(app: AppHandle) {
+    phone::unpair(&app).await;
+}
+
+/// The island pushes its visible state after each change; `alert` wakes the
+/// phone for a waiting card. False when the relay could not be reached, so the
+/// island tries the alert again with its next change.
+#[tauri::command]
+async fn phone_state(app: AppHandle, payload: serde_json::Value, alert: bool) -> bool {
+    phone::push_state(&app, payload, alert).await.is_ok()
+}
+
+/// The Devin CLI's own session list — the phone's "continue this chat" picker.
+/// Read straight from the CLI's session store, newest first.
+#[tauri::command]
+async fn devin_sessions() -> Vec<devin_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(devin_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Devin session's conversation, for the phone's scrollback.
+#[tauri::command]
+async fn devin_transcript(session_id: String) -> Vec<devin_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || devin_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone, sent inside the picked Devin session —
+/// `devin -p <text> -r <id>` under the user's real config.
+#[tauri::command]
+async fn devin_resume(session_id: String, text: String) -> Result<String, String> {
+    devin_sessions::resume(&session_id, &text).await
+}
+
+/// The Claude Code session list — same picker as Devin's, sourced from
+/// ~/.claude/projects/*.jsonl.
+#[tauri::command]
+async fn claude_sessions() -> Vec<claude_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(claude_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Claude Code session's conversation.
+#[tauri::command]
+async fn claude_transcript(session_id: String) -> Vec<claude_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || claude_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone, sent inside the picked Claude Code session —
+/// `claude -p <text> --resume <id>` under the user's real config.
+#[tauri::command]
+async fn claude_resume(session_id: String, text: String) -> Result<String, String> {
+    claude_sessions::resume(&session_id, &text).await
+}
+
+/// The Codex session list — ~/.codex/sessions/* ⁄rollout-*.jsonl files.
+#[tauri::command]
+async fn codex_sessions() -> Vec<codex_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(codex_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one Codex session's conversation.
+#[tauri::command]
+async fn codex_transcript(session_id: String) -> Vec<codex_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || codex_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone inside a Codex session —
+/// `codex exec resume <id> <text>` under the user's real config.
+#[tauri::command]
+async fn codex_resume(session_id: String, text: String) -> Result<String, String> {
+    codex_sessions::resume(&session_id, &text).await
+}
+
+/// The OpenCode session list — ~/.local/share/opencode/opencode.db.
+#[tauri::command]
+async fn opencode_sessions() -> Vec<opencode_sessions::SessionMeta> {
+    tokio::task::spawn_blocking(opencode_sessions::list_recent)
+        .await
+        .unwrap_or_default()
+}
+
+/// The tail of one OpenCode session's conversation.
+#[tauri::command]
+async fn opencode_transcript(session_id: String) -> Vec<opencode_sessions::ChatLine> {
+    tokio::task::spawn_blocking(move || opencode_sessions::transcript(&session_id))
+        .await
+        .unwrap_or_default()
+}
+
+/// A message typed on the phone inside an OpenCode session —
+/// `opencode run -s <id> <text>` under the user's real config.
+#[tauri::command]
+async fn opencode_resume(session_id: String, text: String) -> Result<String, String> {
+    opencode_sessions::resume(&session_id, &text).await
 }
 
 // ── Chat, files and secrets ───────────────────────────────────────────────────
@@ -489,17 +748,57 @@ async fn chat_send(
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    text_only: Option<bool>,
 ) -> Result<ChatReply, String> {
-    let settings = shared.settings.lock().unwrap().clone();
-    chat::send(&app, &chat, &settings, query, context).await
+    let settings = shared.settings.lock_recover().clone();
+    let result = chat::send(&app, &chat, &settings, query, context, text_only.unwrap_or(false)).await;
+    // A model that refused a picture reads text only: remembered, so the island
+    // asks first next time instead of spending a request.
+    if matches!(&result, Err(e) if e == chat::IMAGES_UNSUPPORTED) {
+        let who = format!("{}/{}", settings.chat_provider, chat::model_for(&settings, &settings.chat_provider));
+        let updated = {
+            let mut s = shared.settings.lock_recover();
+            (!s.text_only_models.contains(&who)).then(|| {
+                s.text_only_models.push(who);
+                s.clone()
+            })
+        };
+        if let Some(s) = updated {
+            if let Err(err) = settings::save(&s) {
+                log::line(format!("could not save settings: {err}"));
+            }
+            let _ = app.emit("settings-changed", s);
+        }
+    }
+    result
+}
+
+/// A dropped text or code file's contents and language, for the chat's code
+/// card (none for images, PDFs, binaries or big files). Only Coucou's own
+/// copies in the inbox can be read.
+#[tauri::command]
+fn read_attachment(path: String) -> Option<serde_json::Value> {
+    if !chat::is_inside(&files::inbox_dir(), std::path::Path::new(&path)) {
+        return None;
+    }
+    let (text, lang) = chat::read_text(&path)?;
+    Some(serde_json::json!({ "text": text, "lang": lang }))
 }
 
 /// The models a provider offers, for the picker in the chat view. Only asked
 /// once the user picked that provider, and only with its key or address.
 #[tauri::command]
 async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
-    let settings = shared.settings.lock().unwrap().clone();
+    let settings = shared.settings.lock_recover().clone();
     chat::models(&settings, &provider).await
+}
+
+/// The models of a provider that it refused and that have not answered since:
+/// a 404 for a model its own list offers. The picker marks them. Nothing is
+/// asked of anyone.
+#[tauri::command]
+fn chat_refused(chat: State<'_, Chat>, provider: String) -> Vec<String> {
+    chat.refused_models(&provider)
 }
 
 /// Settings → Local models → Connect: does the server answer, and with which models?
@@ -515,15 +814,76 @@ fn local_set_key(url: String, key: String) -> Result<(), String> {
     local_chat::set_custom_key(&url, &key)
 }
 
+/// The chat's mic: the recording's bytes in, its words out, through the saved
+/// model that transcribes speech. The page sends the audio type as `x-mime`.
+#[tauri::command]
+async fn transcribe_audio(shared: State<'_, Shared>, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the recording".into());
+    };
+    let audio = bytes.clone();
+    let mime = request.headers().get("x-mime").and_then(|v| v.to_str().ok()).unwrap_or("audio/webm").to_string();
+    let settings = shared.settings.lock_recover().clone();
+    media::transcribe_with(&settings, audio, &mime).await
+}
+
+/// The credential name of an endpoint's key (one per provider host), for
+/// Settings -> Media and voice models.
+#[tauri::command]
+fn endpoint_key(endpoint: String) -> String {
+    secrets::endpoint_key(&endpoint)
+}
+
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
     chat.reset();
 }
 
-/// Copies a dropped file into the inbox and reports its name back.
+/// Whether a chat CLI (Cursor's `agent`, `kiro-cli`, `claude`) is installed and
+/// signed in — for the settings window and the picker's provider chips.
 #[tauri::command]
-fn ingest_file(path: String) -> Result<DroppedFile, String> {
-    files::ingest(&path)
+async fn cli_status(provider: String) -> Option<cli_chat::CliStatus> {
+    match provider.as_str() {
+        "cursor" => Some(cursor_chat::status().await),
+        "kiro" => Some(kiro_chat::status().await),
+        "claude-cli" => Some(claude_cli::status().await),
+        "devin" => Some(devin_chat::status().await),
+        "codex" => Some(codex_chat::status().await),
+        _ => None,
+    }
+}
+
+/// Only from the settings' sign-in button: opens the CLI's browser sign-in and
+/// returns at once. Kiro's and Claude Code's logins are interactive — they are
+/// run in a terminal instead, so they get a hint line, not a button.
+#[tauri::command]
+fn cli_login(provider: String) -> Result<(), String> {
+    match provider.as_str() {
+        "cursor" => cursor_chat::login(),
+        _ => Err("That sign-in runs in a terminal.".into()),
+    }
+}
+
+/// Copies a dropped file into the inbox and reports its name back — on the
+/// blocking pool: a large file must not freeze the island while it copies.
+#[tauri::command]
+async fn ingest_file(path: String) -> Result<DroppedFile, String> {
+    tauri::async_runtime::spawn_blocking(move || files::ingest(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Sends the dropped file through Resend — MailView.sendViaResend on the Mac.
+/// The island already checked the keys exist; the Result carries a stable
+/// error code ("no-key" / "no-from" / "too-big" / "http-…"), not a sentence.
+#[tauri::command]
+async fn resend_send(
+    to: String,
+    subject: String,
+    body: String,
+    path: Option<String>,
+) -> Result<(), String> {
+    integrations::resend_send(&to, &subject, &body, path.as_deref()).await
 }
 
 /// The island may only ask whether a key exists — never read it.
@@ -606,7 +966,7 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
     if suspended {
         shortcuts::suspend(&app);
     } else {
-        let stored = shared.settings.lock().unwrap().shortcuts.clone();
+        let stored = shared.settings.lock_recover().shortcuts.clone();
         shortcuts::apply(&app, &stored);
     }
 }
@@ -618,18 +978,31 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+///
+/// `--renderer-process-limit=1`: the island, settings, desktop Mochi,
+/// dictation and screen overlay windows share one renderer process instead of
+/// one each.
+///
+/// `CalculateNativeWinOcclusion` off: Chromium's guess at whether a window is
+/// covered. It marks every window occluded when the display turns off or the
+/// session locks, and only re-checks on a few system events; an occluded page
+/// still runs its scripts and plays sounds but gets no animation frames and
+/// paints nothing. The island sat as its 6 px wake strip through a long idle,
+/// was never re-checked, and a session coming back played Mochi's sound over
+/// an island that never drew (port notes, "Island silent after a long idle").
+/// Coucou shows and hides its windows itself, so the guess has nothing to add.
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required --renderer-process-limit=1";
 
-/// In a dev build the pages are served by Vite, so the second window needs the
-/// absolute dev URL; a bundled build resolves it inside the app bundle.
-fn settings_page_url(app: &AppHandle) -> WebviewUrl {
+/// In a dev build the pages are served by Vite, so the extra windows need the
+/// absolute dev URL; a bundled build resolves them inside the app bundle.
+fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
+        base.set_path(&format!("/{page}"));
         return WebviewUrl::External(base);
     }
     let _ = app;
-    WebviewUrl::App("settings.html".into())
+    WebviewUrl::App(page.into())
 }
 
 /// The Coucou window (Flow dictation, the Notetaker and every setting of the
@@ -641,7 +1014,7 @@ pub const HUB_LABEL: &str = "settings";
 /// not — silently comes up blank in this app, so the window that works is the
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
-    let url = settings_page_url(app);
+    let url = page_url(app, "settings.html");
     match WebviewWindowBuilder::new(app, HUB_LABEL, url)
         .additional_browser_args(BROWSER_ARGS)
         .title("Coucou")
@@ -700,7 +1073,14 @@ fn open_settings_window(app: AppHandle, page: Option<String>) {
 
 pub fn run() {
     platform::prepare_environment();
-    let loaded = settings::load();
+    let mut loaded = settings::load();
+    // Each Mochi's own look (wardrobe-looks.json); on the first launch with it
+    // the main Mochi's is the outfit every Mochi wore until then.
+    if settings::load_looks(&mut loaded) {
+        if let Err(err) = settings::save(&loaded) {
+            log::line(format!("could not save settings: {err}"));
+        }
+    }
     i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
 
@@ -726,7 +1106,8 @@ pub fn run() {
             gate: gate.clone(),
         })
         .manage(Pending::default())
-        .manage(Chat::default())
+        .manage(Chat::stored())
+        .manage(dictation::Dictation::default())
         .manage(shortcuts::Registry::default())
         .manage(recap::load())
         .invoke_handler(tauri::generate_handler![
@@ -738,6 +1119,8 @@ pub fn run() {
             focus_window,
             reposition,
             fit_zoom,
+            nudge_island,
+            island_dropped,
             list_monitors,
             open_url,
             open_in_vscode,
@@ -759,13 +1142,40 @@ pub fn run() {
             approval_answer,
             approval_ack,
             approval_decline,
+            phone_status,
+            phone_enable,
+            phone_pair,
+            phone_unpair,
+            phone_state,
+            devin_sessions,
+            devin_transcript,
+            devin_resume,
+            claude_sessions,
+            claude_transcript,
+            claude_resume,
+            codex_sessions,
+            codex_transcript,
+            codex_resume,
+            opencode_sessions,
+            opencode_transcript,
+            opencode_resume,
             log_line,
             chat_send,
             chat_models,
+            chat_refused,
+            cli_status,
+            cli_login,
             local_connect,
             local_set_key,
             chat_reset,
+            read_attachment,
+            transcribe_audio,
+            endpoint_key,
             ingest_file,
+            resend_send,
+            dictation::dictation_supported,
+            dictation::dictation_start,
+            dictation::dictation_stop,
             secret_present,
             secret_set,
             secret_clear,
@@ -824,6 +1234,7 @@ pub fn run() {
             sounds::custom_sound,
             sounds::reveal_sounds_folder,
             sounds::reload_sounds,
+            calls::call_sensors,
             spotify::spotify_refresh,
             spotify::spotify_control,
             spotify::spotify_open,
@@ -862,17 +1273,33 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            music::music_now,
+            music::music_control,
+            roam::roam_start,
+            roam::roam_capture,
+            roam::roam_pointer,
+            roam::roam_end,
+            roam::pods_flight,
+            roam::pods_flight_end,
+            media::guess_model_output,
+            media::media_bytes,
+            media::media_download,
+            media::media_preview,
+            media::media_preview_close,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             app.manage(phone_link::PhoneLink::new(handle.clone()));
             tray::build(&handle)?;
+            platform::keep_topmost(&handle);
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
-            // Same rule for Mochi's desktop window and the dictation pill.
+            // Same rule for Mochi's desktop window, the dictation pill and the
+            // screen overlay.
             desktop::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
+            roam::create_window(&handle, page_url(&handle, "roam.html"), BROWSER_ARGS);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the
@@ -883,6 +1310,7 @@ pub fn run() {
                     }
                 });
                 platform::make_non_activating(&win);
+                platform::allow_microphone(&win);
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, false);
@@ -896,20 +1324,26 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            island::spawn_drop_zone_watch(handle.clone(), gate.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
+            phone::spawn(handle.clone());
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            music::start(handle.clone());
+            // Sound, a call or the camera keeps the Mochis awake.
+            awake::start(handle.clone());
+            calls::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
                 // writing it again adds it, so the window stays hidden at login.
                 let _ = handle.autolaunch().enable();
             }
-            let open_window = flow::get(&handle).map(|f| f.store.lock().unwrap().prefs.open_at_launch).unwrap_or(true);
+            let open_window = flow::get(&handle).map(|f| f.store.lock_recover().prefs.open_at_launch).unwrap_or(true);
             if open_window && !launched_at_login() {
                 show_hub(&handle, None);
             }
@@ -928,7 +1362,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::diff_file;
+    use super::*;
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
@@ -946,5 +1380,24 @@ mod tests {
         assert!(diff_file("").is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_editor_finds_configured_executable() {
+        #[cfg(windows)]
+        let target = "cmd";
+        #[cfg(not(windows))]
+        let target = "sh";
+
+        let found = resolve_editor(Some(target));
+        assert!(found.is_some());
+        assert!(found.unwrap().to_string_lossy().to_lowercase().contains(target));
+    }
+
+    #[test]
+    fn resolve_editor_ignores_empty_custom_value() {
+        let none = resolve_editor(Some(""));
+        let spaces = resolve_editor(Some("   "));
+        assert_eq!(none, spaces);
     }
 }

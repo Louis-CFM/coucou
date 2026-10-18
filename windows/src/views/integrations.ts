@@ -6,7 +6,7 @@
 
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
-import { State, type AgentTask } from "../core/state";
+import { MUSIC_ID, State, type AgentTask } from "../core/state";
 import { Bridge } from "../core/bridge";
 import { isComingSoon, pillDefinition } from "../core/pills";
 import { refreshHookPills } from "../island/integrations";
@@ -150,7 +150,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
     { class: "int-card" },
     header(
       task.color,
-      task.id === "integration_claude" ? def!.name : task.name,
+      State.pillLabel(task),
       t(def?.subtitle ?? N_("Integration")),
     ),
     h("div", { class: "int-status" }, dot(status.color, 5), h("span", { text: status.label })),
@@ -332,29 +332,193 @@ function notionCard(): HTMLElement {
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────
 
-function calcomCard(): HTMLElement {
-  const bookings = arr("integration_calcom", "bookings")
+// Three levels like the Mac's CalcomCardView: a sequential month grid (days
+// 1..N in rows of 7, two rows at a time — "Qn" pages), then the day, then the
+// booking. Navigation lives here so a re-render keeps the drilled-in spot.
+const calcom = { month: 0, half: 0, day: "", booking: "" };
+
+function calcomBookings(): Record<string, unknown>[] {
+  return arr("integration_calcom", "bookings")
     .slice()
+    .filter((b) => {
+      const s = String(b.status ?? "accepted").toLowerCase();
+      return s === "accepted" || s === "pending";
+    })
     .sort((a, b) => new Date(String(a.start)).getTime() - new Date(String(b.start)).getTime());
-  const rows = h("div", { class: "int-rows tight" });
-  if (bookings.length === 0) {
-    rows.append(h("div", { class: "int-empty", text: t("No calls scheduled") }));
+}
+
+/** Local yyyy-MM-dd — the same key the Mac's `dayKey` produces. */
+function calcomDayKey(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function calcomCard(openDetail: () => void): HTMLElement {
+  calcom.day = "";
+  calcom.booking = "";
+  const bookings = calcomBookings();
+  const byDay = new Map<string, number>();
+  for (const b of bookings) {
+    const k = calcomDayKey(new Date(String(b.start)));
+    byDay.set(k, (byDay.get(k) ?? 0) + 1);
   }
-  for (const b of bookings.slice(0, 3)) {
-    const when = new Date(String(b.start));
-    const day = when.toLocaleDateString(language(), { day: "2-digit", month: "2-digit" });
+
+  const first = new Date();
+  first.setDate(1);
+  first.setMonth(first.getMonth() + calcom.month);
+  const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  // Sequential rows of 7 starting at day 1 — the Mac's `allWeeks`.
+  const weeks: number[][] = [];
+  for (let d = 1; d <= days; d += 7) weeks.push(Array.from({ length: 7 }, (_, i) => d + i).filter((d) => d <= days));
+  const halves = Math.ceil(weeks.length / 2);
+  calcom.half = Math.min(calcom.half, halves - 1);
+  const visible = weeks.slice(calcom.half * 2, calcom.half * 2 + 2);
+  const today = calcomDayKey(new Date());
+
+  const nav = h(
+    "div",
+    { class: "cal-nav" },
+    h("button", {
+      class: "int-back cal-arrow",
+      onclick: () => {
+        if (calcom.half > 0) calcom.half--;
+        else {
+          calcom.month--;
+          calcom.half = 99; // clamped to the new month's last half below
+        }
+        State.notify();
+      },
+      title: t("Previous"),
+    }, svg(ICONS.chevronLeft, 8, { stroke: 2.4 })),
+    h("span", {
+      class: "cal-title",
+      text: `${first.toLocaleDateString(language(), { month: "long", year: "numeric" })} · Q${calcom.half + 1}`,
+    }),
+    h("button", {
+      class: "int-back cal-arrow",
+      onclick: () => {
+        if (calcom.half < halves - 1) calcom.half++;
+        else {
+          calcom.month++;
+          calcom.half = 0;
+        }
+        State.notify();
+      },
+      title: t("Next"),
+    }, svg(ICONS.chevronRight, 8, { stroke: 2.4 })),
+  );
+
+  const grid = h("div", { class: "cal-grid" });
+  for (const week of visible) {
+    const row = h("div", { class: "cal-week" });
+    const wFirst = new Date(first.getFullYear(), first.getMonth(), week[0]);
+    row.append(h("span", {
+      class: "cal-wlabel",
+      text: wFirst.toLocaleDateString(language(), { day: "2-digit", month: "2-digit" }),
+    }));
+    for (const d of week) {
+      const date = new Date(first.getFullYear(), first.getMonth(), d);
+      const key = calcomDayKey(date);
+      const cell = h(
+        "button",
+        {
+          class: `cal-day${key === today ? " today" : ""}`,
+          onclick: () => {
+            calcom.day = key;
+            openDetail();
+          },
+        },
+        h("span", { class: "cal-num", text: String(d) }),
+      );
+      if (byDay.has(key)) cell.append(h("i", { class: "cal-dot" }));
+      row.append(cell);
+    }
+    grid.append(row);
+  }
+  return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), nav, grid);
+}
+
+function calcomDetail(closeDetail: () => void): HTMLElement {
+  const bookings = calcomBookings();
+  const booking = calcom.booking ? bookings.find((b) => String(b.id) === calcom.booking) : null;
+  const backToDay = () => {
+    calcom.booking = "";
+    State.notify();
+  };
+
+  if (booking) {
+    const when = new Date(String(booking.start));
     const time = when.toLocaleTimeString(language(), { hour: "2-digit", minute: "2-digit" });
-    rows.append(
+    const rows = h("div", { class: "int-detail-body" });
+    const line = (icon: Node, textValue: string) =>
+      rows.append(h("div", { class: "int-stat" }, h("span", { class: "int-stat-icon" }, icon), h("span", { class: "int-stat-label", text: textValue })));
+    if (booking.attendeeName) line(svg(ICONS.person, 9), String(booking.attendeeName));
+    if (booking.attendeeEmail) line(svg(ICONS.envelope, 9, { stroke: 1.6 }), String(booking.attendeeEmail));
+    if (booking.attendeeNotes) line(svg(ICONS.doc, 9), String(booking.attendeeNotes));
+    if (!rows.childElementCount) rows.append(h("div", { class: "int-empty", text: t("No details") }));
+    return h(
+      "div",
+      { class: "int-card detail" },
       h(
         "div",
-        { class: "int-row" },
+        { class: "int-detail-head" },
+        h("button", { class: "int-back", onclick: backToDay }, svg(ICONS.chevronLeft, 10, { stroke: 2.4 })),
+        dot("#C9956A", 6),
+        h("b", { text: `${time} — ${String(booking.title ?? t("Meeting"))}` }),
+      ),
+      rows,
+    );
+  }
+
+  // Day level: "EEEE d MMMM" + that day's bookings.
+  const day = calcom.day ? new Date(`${calcom.day}T12:00:00`) : new Date();
+  const todays = bookings.filter((b) => calcomDayKey(new Date(String(b.start))) === calcom.day);
+  const list = h("div", { class: "int-rows tight" });
+  if (todays.length === 0) list.append(h("div", { class: "int-empty", text: t("No calls scheduled") }));
+  for (const b of todays) {
+    const when = new Date(String(b.start));
+    const time = when.toLocaleTimeString(language(), { hour: "2-digit", minute: "2-digit" });
+    list.append(
+      h(
+        "button",
+        {
+          class: "int-row cal-booking",
+          onclick: () => {
+            calcom.booking = String(b.id ?? "");
+            State.notify();
+          },
+        },
         dot("#C9956A", 4),
-        h("span", { class: "int-time", text: `${day} ${time}` }),
+        h("span", { class: "int-time", text: time }),
         h("span", { class: "int-name", text: String(b.title ?? t("Meeting")) }),
+        (() => { const c = svg(ICONS.chevronRight, 8, { stroke: 2.4 }); c.classList.add("cal-chev"); return c; })(),
       ),
     );
   }
-  return h("div", { class: "int-card" }, header("#C9956A", "Cal.com", t("Schedule")), rows);
+  return h(
+    "div",
+    { class: "int-card detail" },
+    h(
+      "div",
+      { class: "int-detail-head" },
+      h(
+        "button",
+        {
+          class: "int-back",
+          onclick: () => {
+            calcom.day = "";
+            calcom.booking = "";
+            closeDetail();
+          },
+        },
+        svg(ICONS.chevronLeft, 10, { stroke: 2.4 }),
+      ),
+      dot("#C9956A", 6),
+      h("b", { text: day.toLocaleDateString(language(), { weekday: "long", day: "numeric", month: "long" }) }),
+    ),
+    list,
+  );
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
@@ -446,6 +610,7 @@ export function hasIntegrationData(id: string): boolean {
 }
 
 export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHooks): HTMLElement {
+  if (task.id === MUSIC_ID) return musicCard(task);
   if (task.id === "integration_n8n") {
     const hasActivity = task.steps.length > 0 && (task.state === "finished" || task.state === "error");
     return hooks.detailOpen && hasActivity
@@ -478,10 +643,68 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     case "integration_notion":
       return notionCard();
     case "integration_calcom":
-      return calcomCard();
+      return hooks.detailOpen ? calcomDetail(hooks.closeDetail) : calcomCard(hooks.openDetail);
     default:
       return idleCard(task, hooks.openSettings);
   }
 }
 
 export { clear };
+
+// ── Music (Windows: the system media controls, src-tauri/src/music.rs) ────────
+
+/** A player control; the action goes to whichever player is on show. */
+function musicButton(icon: string, title: string, action: "toggle" | "next" | "previous", main = false): HTMLElement {
+  const b = h("button", { class: main ? "music-btn main" : "music-btn", title }, svg(icon, main ? 12 : 10, { fill: "currentColor" }));
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    void Bridge.musicControl(action);
+  });
+  return b;
+}
+
+/** The Music pill's card: the track and its player, with previous / play / next. */
+function musicCard(task: AgentTask): HTMLElement {
+  const np = State.nowPlaying;
+  if (!np) {
+    // No key: it shows whatever a player reports to Windows.
+    return h(
+      "div",
+      { class: "int-card" },
+      header(task.color, task.name, t("Integration")),
+      h("div", { class: "int-status" }, dot("#6B7079", 5), h("span", { text: "Nothing playing" })),
+      h("div", { class: "int-hint", text: "Play something in Spotify, Apple Music or another player." }),
+    );
+  }
+  return h(
+    "div",
+    { class: "int-card music-card" },
+    header(task.color, task.name, np.app),
+    h("div", { class: "music-title", text: np.title }),
+    np.artist ? h("div", { class: "music-artist", text: np.artist }) : null,
+    h(
+      "div",
+      { class: "music-controls" },
+      musicButton(ICONS.backward, t("Previous"), "previous"),
+      musicButton(np.playing ? ICONS.pause : ICONS.play, np.playing ? t("Pause") : t("Play"), "toggle", true),
+      musicButton(ICONS.forward, t("Next"), "next"),
+    ),
+  );
+}
+
+/** Play/pause and skip on the Music pill, shown on hover while a track is loaded. */
+export function musicPillControls(): HTMLElement {
+  const toggle = musicButton(ICONS.play, "Play/pause", "toggle", true);
+  const box = h("span", { class: "pill-music" }, toggle, musicButton(ICONS.forward, t("Next"), "next"));
+  const sync = () => {
+    const np = State.nowPlaying;
+    box.classList.toggle("has-track", !!np);
+    toggle.replaceChildren(svg(np?.playing ? ICONS.pause : ICONS.play, 12, { fill: "currentColor" }));
+  };
+  sync();
+  // Pills are rebuilt wholesale (every new cover recolours them): one no longer
+  // on screen stops listening.
+  const listen = () => (box.isConnected ? sync() : window.removeEventListener("now-playing", listen));
+  window.addEventListener("now-playing", listen);
+  return box;
+}

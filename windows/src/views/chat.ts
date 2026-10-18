@@ -5,16 +5,23 @@
 // answer: Rust sends `chat-delta` events with the text visible so far. The
 // model name above the text field opens the picker: provider chips, then the
 // models of the chosen provider, asked for only once it is picked.
+// The "Create" chip lists the media models saved in Settings (images, video,
+// speech, 3D): their answer is a file, shown as a media card.
+//
+// One button sends: it is the mic while the field is empty and a
+// speech-to-text model is saved (dictation.ts), Send once it holds text.
 
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
-import { renderMarkdown } from "./markdown";
+import { copyButton, renderMarkdown } from "./markdown";
+import { startDictation, type Dictation, type DictationPhase } from "./dictation";
+import { generatingCard, mediaCard, resetProgress } from "./media";
 import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  PROVIDERS, activeModel, creators, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
-import { State, type ChatMessage } from "../core/state";
+import { State, type ChatMessage, type ModelOutput } from "../core/state";
 import type { ViewHost } from "./views";
 import { N_, t, tl } from "../i18n/i18n";
 
@@ -22,10 +29,18 @@ const STRINGS = {
   placeholderFirst: N_("Ask me anything…"),
   placeholderNext: N_("Continue…"),
   send: N_("Send"),
+  dictate: N_("Dictate"),
+  listening: N_("Listening…"),
+  noSpeech: N_("Speech recognition isn't available."),
+  noMic: N_("The microphone isn't available."),
+  noSpeechNet: N_("Dictation needs an internet connection."),
+  noSpeechLang: N_("Speech recognition isn't set up for this language."),
   switchModel: N_("Switch provider or model"),
   noModel: N_("Choose a model"),
   loading: N_("Loading models…"),
   noKey: N_("No API key — add it in Settings."),
+  noLogin: N_("Not signed in — see the Settings page."),
+  notAvailable: N_("Not available"),
   openSettings: N_("Open Settings"),
 };
 
@@ -33,15 +48,33 @@ let nextId = 1;
 
 function bubble(message: ChatMessage): HTMLElement {
   if (message.role === "user") {
+    const a = message.attachment;
     return h(
       "div",
       { class: "chat-row user" },
-      h("div", { class: "bubble", text: message.content }),
+      h(
+        "div",
+        { class: "user-turn" },
+        // The dropped code file, as the model got it.
+        a ? fileCard(a.text, `${a.name} · ${a.text.split("\n").length} lines`) : null,
+        h("div", { class: "bubble", text: message.content }),
+      ),
     );
   }
   const reply = h("div", { class: "reply" });
-  renderMarkdown(reply, message.content);
-  return h("div", { class: "chat-row" }, reply);
+  if (message.content) renderMarkdown(reply, message.content);
+  return h(
+    "div",
+    { class: "chat-row" },
+    h(
+      "div",
+      { class: "answer" },
+      message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
+      // A media model may answer with files only.
+      message.content ? reply : null,
+      ...(message.media ?? []).map(mediaCard),
+    ),
+  );
 }
 
 function typingDots(): HTMLElement {
@@ -52,15 +85,60 @@ function typingDots(): HTMLElement {
   );
 }
 
-/** The coloured chip showing what the question is about (a dropped file). */
-function contextChip(label: string): HTMLElement {
-  const chip = h("div", { class: "chip" }, h("i", { class: "chip-dot" }), h("span", { text: label }));
+/** A dropped text or code file, as the model got it: its name, the code, a copy button. */
+function fileCard(code: string, title: string): HTMLElement {
+  return h(
+    "div",
+    { class: "code-block" },
+    h("div", { class: "code-head" }, h("span", { class: "code-lang", text: title }), copyButton(code)),
+    h("pre", {}, h("code", { text: code })),
+  );
+}
+
+/** The coloured chip showing what the question is about (a dropped file), with
+ *  an x to drop it. */
+function contextChip(label: string, onRemove: () => void): HTMLElement {
+  const remove = h("button", { class: "chip-x", title: "Remove the attachment" }, svg(ICONS.xmark, 9));
+  remove.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onRemove();
+  });
+  const chip = h("div", { class: "chip" }, h("i", { class: "chip-dot" }), h("span", { text: label }), remove);
   requestAnimationFrame(() => chip.classList.add("settled"));
   return chip;
 }
 
 function saveSettings() {
   void Bridge.saveSettings(State.settings);
+}
+
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp)$/i;
+/** The error chat_send reports when a model refuses an image (chat.rs). */
+const IMAGES_UNSUPPORTED = "IMAGES_UNSUPPORTED";
+
+/** "provider/model": how chat.rs remembers a model that refused an image. */
+function modelKey(): string {
+  return `${State.settings.chatProvider}/${activeModel(State.settings)}`;
+}
+
+/** The saved media model in use on the "Create" chip, if that is the provider. */
+function creator() {
+  if (State.settings.chatProvider !== "media") return null;
+  return creators(State.settings).find((m) => m.id === activeModel(State.settings)) ?? null;
+}
+
+/** What the next answer will be: text, or a file of this kind. */
+function making(): ModelOutput | "text" {
+  return creator()?.output ?? "text";
+}
+
+/** The model button's words: a media model by its name, any other by its id. */
+function modelLabel(): string {
+  if (State.settings.chatProvider === "media") {
+    const m = creator();
+    return m ? `${m.label || m.model} · ${m.output}` : t(STRINGS.noModel);
+  }
+  return activeModel(State.settings) || t(STRINGS.noModel);
 }
 
 // ── Model picker ──────────────────────────────────────────────────────────────
@@ -80,12 +158,45 @@ function buildPicker(onChange: () => void): Picker {
 
   /** Models already asked for, by provider; a model server is asked again each time. */
   const cache = new Map<string, ModelInfo[]>();
+  /** The keys the credential store held the last time it was asked. */
+  const stored = new Set<string>();
+  /** The CLI providers signed in the last time they were asked (`agent`, `kiro-cli`, `claude`). */
+  const cliOk = new Set<string>();
   let isOpen = false;
   let request = 0;
 
+  /** Which cloud providers have their key: asked again each time the picker opens. */
+  async function findKeys() {
+    const keys = PROVIDERS.flatMap((p) => (p.key ? [p.key] : []));
+    const present = await Promise.all(keys.map((key) => Bridge.secretPresent(key)));
+    stored.clear();
+    keys.forEach((key, i) => {
+      if (present[i]) stored.add(key);
+    });
+    if (isOpen) drawChips();
+  }
+
+  /**
+   * Which chat CLIs are signed in — `agent status`, `kiro-cli whoami`, the
+   * saved Claude Code login. Each spawns the CLI, so this runs with findKeys
+   * when the picker opens, not on every redraw.
+   */
+  async function findClis() {
+    const clis = PROVIDERS.filter((p) => p.cli);
+    const status = await Promise.all(clis.map((p) => Bridge.cliStatus(p.id)));
+    cliOk.clear();
+    clis.forEach((p, i) => {
+      if (status[i]?.loggedIn) cliOk.add(p.id);
+    });
+    if (isOpen) drawChips();
+  }
+  // Known before the first opening, so the chips do not arrive one after another.
+  void findKeys();
+  void findClis();
+
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings)) {
+    for (const p of visibleProviders(State.settings, (key) => stored.has(key), (id) => cliOk.has(id))) {
       const on = p.id === State.settings.chatProvider;
       const chip = h(
         "button",
@@ -121,15 +232,22 @@ function buildPicker(onChange: () => void): Picker {
     list.append(line);
   }
 
-  function drawModels(p: ProviderDef, models: ModelInfo[]) {
+  function drawModels(p: ProviderDef, models: ModelInfo[], refused: ReadonlySet<string>) {
     clear(list);
     const current = activeModel(State.settings);
     for (const m of models) {
       const on = m.id === current;
+      // The provider lists it and answered "not found" when it was used.
+      const gone = refused.has(m.id);
       const row = h(
         "button",
-        { class: on ? "picker-model on" : "picker-model", style: `--accent:${p.accent}`, title: m.id },
+        {
+          class: `picker-model${on ? " on" : ""}${gone ? " refused" : ""}`,
+          style: `--accent:${p.accent}`,
+          title: m.id,
+        },
         h("span", { class: "picker-model-name", text: m.label }),
+        gone ? h("span", { class: "picker-flag", text: t(STRINGS.notAvailable) }) : null,
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
@@ -146,9 +264,27 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
+    // The media models are the ones saved in Settings: nothing to ask anyone.
+    if (p.id === "media") {
+      const saved = creators(State.settings).map((m) => ({ id: m.id, label: `${m.label || m.model} · ${m.output}` }));
+      if (saved.length === 0) {
+        status("No media model yet: add one in Settings → Media and voice models.", true);
+        return;
+      }
+      const keep = pickModel(p, saved.map((m) => m.id), activeModel(State.settings));
+      if (keep && keep !== activeModel(State.settings)) {
+        State.settings = withModel(State.settings, p.id, keep);
+        saveSettings();
+        onChange();
+      }
+      drawModels(p, saved, new Set());
+      return;
+    }
+    const refused = new Set((await Bridge.chatRefused(p.id)) ?? []);
+    if (ticket !== request) return;
     const cached = p.urlField ? undefined : cache.get(p.id);
     if (cached) {
-      drawModels(p, cached);
+      drawModels(p, cached, refused);
       return;
     }
     // Nothing is asked of a provider that has no key yet.
@@ -156,19 +292,32 @@ function buildPicker(onChange: () => void): Picker {
       if (ticket === request) status(t(STRINGS.noKey), true);
       return;
     }
+    // A chat CLI answers the same way: nothing until it is signed in. Asked
+    // here rather than trusting findClis, so the answer is always current.
+    if (p.cli) {
+      const st = await Bridge.cliStatus(p.id);
+      if (st?.loggedIn) cliOk.add(p.id);
+      else cliOk.delete(p.id);
+      if (ticket !== request) return;
+      if (!st?.loggedIn) {
+        status(t(STRINGS.noLogin), true);
+        return;
+      }
+    }
     if (ticket !== request) return;
     status(t(STRINGS.loading));
     try {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
       if (!p.urlField) cache.set(p.id, models);
+      // `keep` may be "": Claude Code lists its own default under that id.
       const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
-      if (keep && keep !== activeModel(State.settings)) {
+      if (keep !== null && keep !== activeModel(State.settings)) {
         State.settings = withModel(State.settings, p.id, keep);
         saveSettings();
         onChange();
       }
-      drawModels(p, models);
+      drawModels(p, models, refused);
     } catch (err) {
       if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
     }
@@ -178,6 +327,8 @@ function buildPicker(onChange: () => void): Picker {
     isOpen = true;
     el.classList.add("on");
     drawChips();
+    void findKeys();
+    void findClis();
     onChange();
     void loadModels();
   }
@@ -211,7 +362,11 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     spellcheck: "false",
   }) as HTMLInputElement;
   const send = h("button", { class: "send-btn", title: tl(STRINGS.send) }, svg(ICONS.arrowUp, 11));
-  const bar = h("div", { class: "chat-bar" }, input, send);
+  const mic = h("button", { class: "mic-btn", title: tl(STRINGS.dictate), style: "display:none" }, svg(ICONS.mic, 11)) as HTMLButtonElement;
+  void Bridge.dictationSupported().then((ok) => {
+    mic.style.display = ok ? "" : "none";
+  });
+  const bar = h("div", { class: "chat-bar" }, input, mic, send);
 
   const modelDot = h("i", { class: "model-dot" });
   const modelName = h("span", { class: "model-name" });
@@ -224,25 +379,59 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   );
   const modelRow = h("div", { class: "model-row" }, modelBtn);
 
+  // "This model can't see images": asked instead of failing.
+  let askImage = false;
+  let pendingQuery = "";
+  const askText = h("span", {});
+  const sendTextOnly = h("button", { class: "btn primary small", text: "Send without the image" });
+  const switchModel = h("button", { class: "btn secondary small", text: "Switch model" });
+  const cancelAsk = h("button", { class: "btn secondary small", text: t("Cancel") });
+  const ask = h("div", { class: "image-ask" }, askText, h("div", { class: "image-ask-btns" }, sendTextOnly, switchModel, cancelAsk));
+
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
+    // The list needs room: the island is as tall as it can be while it is open.
+    if (State.pickingModel !== picker.isOpen) {
+      State.pickingModel = picker.isOpen;
+      onHeightChange();
+    }
   });
-  body.append(chipRow, log, picker.el, modelRow, bar);
+  body.append(chipRow, log, ask, picker.el, modelRow, bar);
 
-  const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
+  // Under Mochi: start the conversation over, dropped file included, so an
+  // unrelated question doesn't carry (and pay for) it again.
+  const clearChat = h("button", { class: "chat-clear", title: "Clear the chat (Ctrl+K)" }, svg(ICONS.trash, 11), h("span", { text: t("Clear") }));
+  clearChat.addEventListener("click", () => {
+    if (sending) return;
+    resetChat();
+    input.focus();
+  });
+
+  const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, clearChat, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
   let renderedCount = -1;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
+  /** What the request in flight makes; anything but text shows the "making it" card. */
+  let inFlight: ModelOutput | "text" = "text";
+
+  function resetChat() {
+    State.chatHistory = [];
+    State.dropAttachment();
+    void Bridge.chatReset();
+    renderedCount = -1;
+    State.notify();
+    onHeightChange();
+  }
 
   function drawModelButton() {
     const p = providerDef(State.settings.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    modelName.textContent = modelLabel();
     modelBtn.classList.toggle("open", picker.isOpen);
     modelBtn.disabled = sending;
   }
@@ -253,45 +442,209 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     else picker.open();
   });
 
+  sendTextOnly.addEventListener("click", () => {
+    askImage = false;
+    input.value = pendingQuery;
+    void submit(true);
+  });
+  switchModel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    askImage = false;
+    input.value = pendingQuery;
+    picker.open();
+    State.notify();
+  });
+  cancelAsk.addEventListener("click", () => {
+    askImage = false;
+    input.value = pendingQuery;
+    State.notify();
+    onHeightChange();
+  });
+
   void onEvent<string>("chat-delta", (text) => {
-    if (!sending || !text) return; // nothing visible yet: the dots stay
+    // The mood line comes last: never shown while it streams in.
+    const visible = text.replace(/\n?\s*(?:```(?:json)?\s*)?\{\s*"mood[\s\S]*$/, "").trimEnd();
+    if (!sending || !visible) return; // nothing visible yet: the dots stay
     if (!live) {
       live = h("div", { class: "reply" });
       log.querySelector(".typing")?.parentElement?.remove();
       log.append(h("div", { class: "chat-row" }, live));
     }
-    renderMarkdown(live, text);
+    renderMarkdown(live, visible);
     log.scrollTop = log.scrollHeight;
   });
 
-  async function submit() {
-    const query = input.value.trim();
+  // ── The mic ─────────────────────────────────────────────────────────────────
+
+  let dictation: Dictation | null = null;
+  let micPhase: DictationPhase | null = null;
+  /** The prompt in flight was spoken: with "Keep the mic on", listen again after the reply. */
+  let spoken = false;
+  let opening = false;
+  // A hidden page never keeps listening (besides the on-screen check below).
+  document.addEventListener?.("visibilitychange", () => {
+    if (document.hidden) dictation?.cancel();
+  });
+  const sttModel = () => (State.settings.models ?? []).find((m) => m.output === "stt") ?? null;
+  const chatOnScreen = () => State.mode === "expanded" && State.view === "prompt";
+  const micFailed = (message: string) => {
+    State.noteMessage = message;
+    State.view = "note";
+    Sound.play("error");
+    State.notify();
+  };
+
+  async function startMic(rearmed = false) {
+    if (dictation || opening || sending) return;
+    input.value = "";
+    opening = true;
+    try {
+      dictation = await startDictation({
+        // Hands-free waits longer for the next question, but never forever.
+        idleMs: rearmed ? 30_000 : 8_000,
+        onText(text) {
+          input.value = text;
+          input.scrollLeft = input.scrollWidth;
+        },
+        onLevel(level) {
+          send.style.setProperty("--level", level.toFixed(2));
+          // The island closed or moved on: stop listening.
+          if (!chatOnScreen()) dictation?.cancel();
+        },
+        onPhase(phase) {
+          micPhase = phase;
+          drawButton();
+        },
+      });
+    } catch {
+      micFailed("Coucou can't use the microphone: it's blocked, or there isn't one.");
+      return;
+    } finally {
+      opening = false;
+    }
+    Sound.play("peek");
+    drawButton();
+    let text = "";
+    try {
+      text = await dictation.done;
+    } catch (err) {
+      micFailed(String(err).replace(/^Error:\s*/, ""));
+    }
+    dictation = null;
+    micPhase = null;
+    send.style.removeProperty("--level");
+    if (text && chatOnScreen()) {
+      input.value = text;
+      spoken = true;
+      void submit();
+    } else {
+      input.value = "";
+      if (chatOnScreen()) Sound.play("blip");
+    }
+    State.notify();
+  }
+
+  /** The one button's face: mic, listening (with the level), transcribing, or Send. */
+  function drawButton() {
+    const mic = !!dictation || (!input.value?.trim() && !!sttModel() && making() !== "3d");
+    const face = !mic ? "send" : micPhase ?? "mic";
+    input.readOnly = !!dictation;
+    if (send.dataset.face === face) return;
+    send.dataset.face = face;
+    send.classList.toggle("mic", mic);
+    send.classList.toggle("rec", face === "listening");
+    send.classList.toggle("busy", face === "transcribing");
+    send.replaceChildren(svg(mic ? ICONS.mic : ICONS.arrowUp, mic ? 13 : 11));
+    const stt = sttModel();
+    send.title = {
+      send: t(STRINGS.send),
+      mic: `Speak instead of typing (${stt?.label || stt?.model || "speech to text"})`,
+      listening: "Listening: click to send now, Esc to cancel",
+      transcribing: "Writing down what you said… Esc to cancel",
+    }[face];
+  }
+
+  // ── Sending ─────────────────────────────────────────────────────────────────
+
+  async function submit(textOnly = false) {
+    // A picture-to-3D model needs no words: the picture is the prompt.
+    const query = input.value.trim() || (making() === "3d" ? "3D model" : "");
     if (!query || sending) return;
     if (picker.isOpen) picker.close();
+    const file = State.droppedFile;
+    const withImage = State.chatHistory.length === 0 && !!file?.path && IMAGE_FILE.test(file.path) && !textOnly;
+    // A model known to read text only: ask before the image is sent, not after.
+    if (withImage && (State.settings.textOnlyModels ?? []).includes(modelKey())) {
+      pendingQuery = query;
+      askImage = true;
+      State.notify();
+      onHeightChange();
+      return;
+    }
+    const wasSpoken = spoken;
+    spoken = false;
     input.value = "";
     sending = true;
+    askImage = false;
+    inFlight = making();
+    resetProgress();
     drawModelButton();
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    // A dropped text or code file goes along on the first turn: show it too.
+    const firstTurn = State.chatHistory.length === 0;
+    const attachment =
+      firstTurn && file?.path && !IMAGE_FILE.test(file.path) ? await Bridge.readAttachment(file.path) : null;
+    State.chatHistory.push({
+      id: nextId++,
+      role: "user",
+      content: query,
+      attachment: attachment ? { name: file!.name, ...attachment } : null,
+    });
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();
 
-    const file = State.droppedFile;
+    const pc = State.promptContext;
+    // A picture-to-3D model works from the dropped picture on every turn.
+    const pictureTo3d = inFlight === "3d" && !!pc && pc.kind === "file" && IMAGE_FILE.test(pc.path ?? "");
     const context: ChatContext | null =
-      State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
+      (State.chatHistory.length === 1 || pictureTo3d) && pc
+        ? pc.kind === "window"
+          ? { kind: "window", appName: pc.appName, title: pc.title, url: pc.url }
+          : pc.path
+            ? { kind: "file", name: pc.name, path: pc.path }
+            : null
+        : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      const reply = await Bridge.chatSend(query, context, textOnly);
+      if (context) State.promptContext = null; // consumed: rides the first turn only
+      State.chatHistory.push({
+        id: nextId++, role: "assistant", content: reply.text, notice: reply.notice ?? null, media: reply.media ?? [],
+      });
+      // The model ends with how it feels about its answer; the island acts it out.
+      if (reply.mood) window.dispatchEvent(new CustomEvent("mochi-mood", { detail: reply.mood }));
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
-      State.view = "note";
-      Sound.play("error");
+      const message = String(err).replace(/^Error:\s*/, "");
+      if (message === IMAGES_UNSUPPORTED) {
+        // The model turned the image down: take the question back and ask.
+        State.chatHistory.pop();
+        pendingQuery = query;
+        askImage = true;
+        Sound.play("blip");
+      } else {
+        // What the error asks for (another model, a key) is done from the chat:
+        // the note's OK button comes back here.
+        State.noteMessage = message;
+        State.noteThen = "prompt";
+        State.noteAt = performance.now();
+        State.view = "note";
+        Sound.play("error");
+      }
     } finally {
       sending = false;
       live = null;
@@ -300,12 +653,26 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.notify();
       onHeightChange();
       input.focus();
+      // Hands-free: the reply is in, listen for the next question.
+      if (wasSpoken && State.settings.keepMicOn && chatOnScreen() && sttModel()) void startMic(true);
     }
   }
 
-  send.addEventListener("click", () => void submit());
+  send.addEventListener("click", () => {
+    if (dictation) dictation.finish();
+    else if (send.dataset.face === "mic") void startMic();
+    else void submit();
+  });
+  input.addEventListener("input", drawButton);
   input.addEventListener("keydown", (e) => {
     const key = (e as KeyboardEvent).key;
+    if (dictation && (key === "Enter" || key === "Escape")) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (key === "Enter") dictation.finish();
+      else dictation.cancel();
+      return;
+    }
     if (key === "Enter") {
       e.preventDefault();
       void submit();
@@ -316,24 +683,85 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     e.stopPropagation(); // Escape closes the island, not the chat
   });
 
+  // Dictation — one tap starts the session, the next commits what was heard;
+  // each finished phrase lands at the caret, like the Mac's prefix+transcript.
+  let listening = false;
+  function drawMic() {
+    mic.classList.toggle("listening", listening);
+    mic.title = listening ? t(STRINGS.listening) : t(STRINGS.dictate);
+    mic.disabled = sending;
+  }
+  mic.addEventListener("click", () => {
+    if (listening) {
+      listening = false;
+      drawMic();
+      void Bridge.dictationStop();
+      return;
+    }
+    void Bridge.dictationStart()
+      .then(() => {
+        listening = true;
+        drawMic();
+        input.focus();
+      })
+      .catch(() => {
+        State.noteMessage = t(STRINGS.noSpeech);
+        State.view = "note";
+        Sound.play("error");
+        State.notify();
+      });
+  });
+  void onEvent<{ text: string }>("dictation-line", (e) => {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const piece = (start > 0 && !/\s$/.test(input.value.slice(0, start)) ? " " : "") + e.text + " ";
+    input.setRangeText(piece, start, end, "end");
+  });
+  void onEvent<null>("dictation-end", () => {
+    listening = false;
+    drawMic();
+  });
+  void onEvent<{ code: string }>("dictation-error", (e) => {
+    const msg =
+      e.code === "mic"
+        ? t(STRINGS.noMic)
+        : e.code === "net"
+          ? t(STRINGS.noSpeechNet)
+          : e.code === "language"
+            ? t(STRINGS.noSpeechLang)
+            : t(STRINGS.noSpeech);
+    State.noteMessage = msg;
+    State.view = "note";
+    Sound.play("error");
+    State.notify();
+  });
+
   return {
     el,
     sync() {
-      const file = State.droppedFile;
-      const wantChip = file?.name ?? "";
+      const pc = State.promptContext;
+      const wantChip = pc ? (pc.kind === "window" ? pc.appName : pc.name) : "";
       if (chipRow.dataset.label !== wantChip) {
         chipRow.dataset.label = wantChip;
         clear(chipRow);
-        if (wantChip) chipRow.append(contextChip(wantChip));
+        if (wantChip) {
+          chipRow.append(
+            contextChip(wantChip, () => {
+              State.dropAttachment();
+              onHeightChange();
+            }),
+          );
+        }
       }
 
+      clearChat.style.display = State.chatHistory.length || State.droppedFile ? "" : "none";
       const thinking = State.stateOverride === "thinking";
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);
       if (count !== renderedCount && !live) {
         renderedCount = count;
         clear(log);
         for (const m of State.chatHistory) log.append(bubble(m));
-        if (thinking) log.append(typingDots());
+        if (thinking) log.append(inFlight === "text" ? typingDots() : generatingCard(inFlight));
         log.scrollTop = log.scrollHeight;
       }
 
@@ -341,8 +769,31 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       if (State.view !== "prompt" && picker.isOpen) picker.close();
       drawModelButton();
 
-      input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
+      const hints: Record<string, string> = {
+        image: "Describe an image…",
+        video: "Describe a video…",
+        audio: "Text to speak…",
+        "3d": State.droppedFile ? "Press Enter to make it 3D…" : "Drop a picture to make it 3D…",
+      };
+      const named = State.settings.mochiName?.trim();
+      const output = making();
+      input.placeholder =
+        output !== "text"
+          ? hints[output] ?? ""
+          : listening
+            ? t(STRINGS.listening)
+            : State.chatHistory.length > 0
+              ? t(STRINGS.placeholderNext)
+              : named
+                ? `Ask ${named} anything…`
+                : t(STRINGS.placeholderFirst);
+      if (micPhase === "listening") input.placeholder = t("Listening…");
       input.disabled = sending;
+      mic.disabled = sending;
+      drawButton();
+
+      ask.classList.toggle("open", askImage);
+      askText.textContent = `${activeModel(State.settings) || t(STRINGS.noModel)} can't see images.`;
     },
     focus() {
       input.focus();

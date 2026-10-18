@@ -27,9 +27,11 @@ struct DesktopBotView: View {
     /// Engine owned by DesktopMochiController; controller calls methods on it directly.
     let engine: BotEngine
     @ObservedObject var viewState: DesktopBotViewState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(paused: viewState.paused)) { timeline in
+        TimelineView(.animation(minimumInterval: reduceMotion ? 0.5 : nil,
+                                paused: viewState.paused)) { timeline in
             Canvas { ctx, size in
                 _ = timeline.date   // force redraw every tick (see BotCanvasView)
 
@@ -54,7 +56,7 @@ struct DesktopBotView: View {
                     return false
                     #endif
                 }()
-                engine.setDancing(dancing)
+                engine.setDancing(dancing && !reduceMotion)
                 MochiFrameClock.advance(engine)
 
                 var c = ctx

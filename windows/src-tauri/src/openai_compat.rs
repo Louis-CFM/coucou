@@ -165,7 +165,7 @@ pub async fn send(
     }
     let turn = chat.begin(p.id);
     let user = user_message(turn.first, context.as_ref(), &query);
-    let body = request_body(p, model, &chat::system_prompt(false), &turn.history, &user);
+    let body = request_body(p, model, &chat.system_prompt(false), &turn.history, &user);
 
     let endpoint = url(p, "chat/completions")?;
     let response = net::client(&endpoint, Duration::from_secs(90))?
@@ -177,16 +177,26 @@ pub async fn send(
         .map_err(|e| tf("Network error: {error}", &[("error", &e.to_string())]))?;
     let status = response.status();
     if !status.is_success() {
+        // A provider's list offers models a key cannot use (Gemini's, for new
+        // accounts): the picker marks this one from now on.
+        if status.as_u16() == 404 {
+            chat.refuse(p.id, model);
+        }
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
+        if chat::refused_image(status.as_u16(), chat::has_image(&user)) {
+            crate::log::line(format!("{} refused the image: {status}", p.name));
+            return Err(chat::IMAGES_UNSUPPORTED.into());
+        }
         return Err(status_error(p, status.as_u16(), &net::error_detail(&body)));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
     let json: Value = serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))?;
     let text = reply_text(p, &json)?;
+    chat.accept(p.id, model);
 
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": text }), &plain, &text);
-    Ok(ChatReply { text })
+    Ok(ChatReply::text(text))
 }
 
 /// The provider's chat models. Only ever asked with the user's key, once they
@@ -258,6 +268,15 @@ fn is_free(m: &Value, id: &str) -> bool {
 enum FilePart {
     Image(Value),
     Text(String),
+}
+
+/// A dropped picture as an OpenAI `image_url` part (a data URL), if it is one
+/// and small enough. Local servers send pictures this way too (local_chat.rs).
+pub(crate) fn image_part(path: &str) -> Option<Value> {
+    match file_part(path)? {
+        FilePart::Image(part) => Some(part),
+        FilePart::Text(_) => None,
+    }
 }
 
 /// Images → image_url data URL, text/code → inline text. PDFs and other binary

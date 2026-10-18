@@ -11,11 +11,20 @@ import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
 
 test("the ids and key names match the Rust side and the Mac", () => {
-  assert.deepEqual(PROVIDERS.map((p) => p.id), ["anthropic", "google", "openai", "openrouter", "ollama", "lmstudio", "custom"]);
+  assert.deepEqual(
+    PROVIDERS.map((p) => p.id),
+    ["anthropic", "google", "openai", "openrouter", "claude-cli", "cursor", "devin", "codex", "kiro", "ollama", "lmstudio", "custom", "media"],
+  );
   assert.equal(providerDef("google").key, "google-api-key");
   assert.equal(providerDef("openai").key, "openai-api-key");
   assert.equal(providerDef("openrouter").key, "openrouter-api-key");
   assert.equal(providerDef("ollama").key, null);
+  // The CLI providers have no key: the sign-in lives in their own binary.
+  for (const id of ["claude-cli", "cursor", "devin", "codex", "kiro"]) {
+    assert.equal(providerDef(id).cli, true, id);
+    assert.equal(providerDef(id).key, null, id);
+    assert.equal(providerDef(id).urlField, null, id);
+  }
   // An unknown id (an older or newer settings.json) falls back to Claude.
   assert.equal(providerDef("nope").id, "anthropic");
 });
@@ -34,11 +43,46 @@ test("Claude's model is the existing setting; the others are kept per provider",
   assert.deepEqual(DEFAULT_SETTINGS.chatModels, {});
 });
 
-test("model servers show in the picker once connected, or while in use", () => {
+test("the picker shows what is set up, and always where the chat goes", () => {
+  const ids = (s, keys = []) => visibleProviders(s, (key) => keys.includes(key)).map((p) => p.id);
+  // Nothing set up: only the active provider, which says its key is missing.
+  assert.deepEqual(ids(settings()), ["anthropic"]);
+  assert.deepEqual(ids(settings({ chatProvider: "openai" })), ["openai"]);
+  // A cloud provider shows once its key is stored.
+  assert.deepEqual(ids(settings(), ["anthropic-api-key", "google-api-key"]), ["anthropic", "google"]);
+  assert.deepEqual(ids(settings(), ["openrouter-api-key"]), ["anthropic", "openrouter"]);
+  // A model server shows once connected, or while in use.
+  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" }), ["anthropic-api-key"]), ["anthropic", "ollama"]);
+  assert.deepEqual(ids(settings({ chatProvider: "custom" }), ["anthropic-api-key"]), ["anthropic", "custom"]);
+  // In the catalog's order, whatever the order the keys were added in.
+  assert.deepEqual(
+    ids(settings({ lmstudioUrl: "http://127.0.0.1:1234" }), ["openai-api-key", "anthropic-api-key"]),
+    ["anthropic", "openai", "lmstudio"],
+  );
+});
+
+test("a CLI provider shows once signed in, and always while in use", () => {
+  const ids = (s, clis = []) =>
+    visibleProviders(s, () => false, (id) => clis.includes(id)).map((p) => p.id);
+  // Signed out of everything: the picker is unchanged.
+  assert.deepEqual(ids(settings()), ["anthropic"]);
+  // Signed in to a CLI: it joins the chips in catalog order.
+  assert.deepEqual(ids(settings(), ["cursor"]), ["anthropic", "cursor"]);
+  assert.deepEqual(ids(settings({ chatProvider: "claude-cli" }), []), ["claude-cli"]);
+  assert.deepEqual(ids(settings(), ["claude-cli", "kiro", "cursor"]), ["anthropic", "claude-cli", "cursor", "kiro"]);
+  assert.deepEqual(ids(settings(), ["devin", "codex"]), ["anthropic", "devin", "codex"]);
+  // A signed-out CLI stays while the chat uses it.
+  assert.deepEqual(ids(settings({ chatProvider: "kiro" }), ["cursor"]), ["cursor", "kiro"]);
+  assert.deepEqual(ids(settings({ chatProvider: "codex" }), []), ["codex"]);
+});
+
+test("the Create chip shows once a media model is saved, never for speech-to-text alone", () => {
   const ids = (s) => visibleProviders(s).map((p) => p.id);
-  assert.deepEqual(ids(settings()), ["anthropic", "google", "openai", "openrouter"]);
-  assert.deepEqual(ids(settings({ ollamaUrl: "http://127.0.0.1:11434" })), ["anthropic", "google", "openai", "openrouter", "ollama"]);
-  assert.deepEqual(ids(settings({ chatProvider: "custom" })), ["anthropic", "google", "openai", "openrouter", "custom"]);
+  const entry = (output) => ({ id: `m-${output}`, label: output, kind: "openai", model: output, endpoint: "https://x.dev/v1", vision: null, output, voice: "", detail: "" });
+  assert.ok(!ids(settings({ models: [entry("stt")] })).includes("media"));
+  assert.deepEqual(ids(settings({ models: [entry("stt"), entry("image")] })).at(-1), "media");
+  // In use with nothing left to pick: still shown, so the picker never hides where the chat goes.
+  assert.ok(ids(settings({ chatProvider: "media" })).includes("media"));
 });
 
 test("the saved model is kept when offered, else a sensible one is picked", () => {

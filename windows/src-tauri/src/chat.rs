@@ -6,6 +6,7 @@
 // API keys never leave the credential store and file bytes never cross the IPC
 // boundary: the island sends the question and gets the answer's text back.
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -13,9 +14,19 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::mutex::MutexExt;
+use crate::{
+    claude, claude_cli, codex_chat, cursor_chat, devin_chat, kiro_chat, local_chat, openai_compat,
+    secrets,
+};
 
 pub const ANTHROPIC: &str = "anthropic";
+/// Chat through the user's own CLI sign-ins instead of an API key.
+pub const CLAUDE_CLI: &str = "claude-cli";
+pub const CODEX: &str = "codex";
+pub const CURSOR: &str = "cursor";
+pub const DEVIN: &str = "devin";
+pub const KIRO: &str = "kiro";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -24,10 +35,39 @@ pub enum ChatContext {
     Window { app_name: String, title: String, url: Option<String> },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatReply {
     pub text: String,
+    /// How the model felt about its answer, for Mochi to act out (take_mood).
+    pub mood: Option<String>,
+    /// Something to know about how the answer was made (Claude Code answered
+    /// for a Claude key that is missing or out of credit, the image was left
+    /// out, a picture was uploaded to make a 3D model...), shown above it.
+    pub notice: Option<String>,
+    /// Images, video, speech or 3D a media model made (media.rs).
+    pub media: Vec<crate::media::MediaFile>,
+}
+
+impl ChatReply {
+    pub fn text(text: String) -> Self {
+        Self { text, ..Default::default() }
+    }
+}
+
+/// The error a model's refusal of an image is reported as, so the island can
+/// ask whether to send without it instead of failing.
+pub const IMAGES_UNSUPPORTED: &str = "IMAGES_UNSUPPORTED";
+
+/// A 4xx to a message that carried an image: the model reads text only. Many
+/// do (most of Groq's, many of OpenRouter's free ones) and say so this way.
+pub fn refused_image(status: u16, sent_image: bool) -> bool {
+    sent_image && matches!(status, 400 | 415 | 422)
+}
+
+/// True when an OpenAI-shaped user message carries an image part.
+pub fn has_image(user: &Value) -> bool {
+    user["content"].as_array().is_some_and(|parts| parts.iter().any(|p| p["type"] == "image_url"))
 }
 
 /// A model a provider offers, for the picker in the chat view.
@@ -48,7 +88,19 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// (provider, model) pairs a provider answered "not found" for, oldest
+    /// first. Its own list offers them, this key cannot use them, and nothing
+    /// says so before trying: the picker marks them (`refused_models`) until
+    /// they answer again.
+    refused: Mutex<Vec<(String, String)>>,
+    /// Where `refused` is kept between launches. `None` keeps it in memory only.
+    store: Option<PathBuf>,
+    /// The main Mochi's name from Settings, for the system prompt.
+    persona: Mutex<String>,
 }
+
+/// The most refused models that are remembered; past that the oldest go.
+const MAX_REFUSED: usize = 200;
 
 #[derive(Default)]
 struct Conversation {
@@ -59,6 +111,11 @@ struct Conversation {
     native: Vec<Value>,
     /// `{"role", "content": text}` turns, the same whoever answered.
     plain: Vec<Value>,
+    /// The resume token of each CLI provider that keeps the conversation in
+    /// its own binary (`agent --resume <id>`, `claude --resume <id>`; Kiro's is
+    /// the folder's latest, so the value is only a "started" marker). A
+    /// provider switching away keeps its own — it resumes where it left off.
+    cli_sessions: std::collections::HashMap<String, String>,
 }
 
 /// What a provider needs to build one turn.
@@ -72,16 +129,79 @@ pub struct Turn {
 }
 
 impl Chat {
+    /// Mochi's instructions, with the name the user gave him.
+    pub fn system_prompt(&self, web_search: bool) -> String {
+        let name = self.persona.lock_recover().clone();
+        system_prompt_for(crate::identity::first_name(), web_search, &name)
+    }
+
+    /// The running app's chat: what its providers refused is read from
+    /// `refused-models.json`, next to the log, and written back as it changes.
+    /// Only model names are in it, and it never leaves the machine.
+    pub fn stored() -> Self {
+        Self::stored_at(crate::settings::local_dir().join("refused-models.json"))
+    }
+
+    fn stored_at(path: PathBuf) -> Self {
+        // A file that is missing or cannot be used means nothing was refused.
+        let mut refused: Vec<(String, String)> = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+        let extra = refused.len().saturating_sub(MAX_REFUSED);
+        refused.drain(..extra);
+        Self { refused: Mutex::new(refused), store: Some(path), ..Default::default() }
+    }
+
+    /// Writes `refused` where it is kept. Failing to only costs the memory of it.
+    fn keep(&self, refused: &[(String, String)]) {
+        let Some(path) = &self.store else { return };
+        let dir_ready = path.parent().is_none_or(|dir| crate::platform::ensure_private_dir(dir).is_ok());
+        if let (true, Ok(json)) = (dir_ready, serde_json::to_vec(refused)) {
+            let _ = std::fs::write(path, json);
+        }
+    }
+
+    /// `provider` listed `model`, then answered that it has no such model.
+    pub fn refuse(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock_recover();
+        if refused.iter().any(|(p, m)| p == provider && m == model) {
+            return;
+        }
+        refused.push((provider.to_string(), model.to_string()));
+        let extra = refused.len().saturating_sub(MAX_REFUSED);
+        refused.drain(..extra);
+        self.keep(&refused);
+    }
+
+    /// `model` answered: what was held against it no longer is. Called for
+    /// every answer, so the file is only touched when a mark really goes.
+    pub fn accept(&self, provider: &str, model: &str) {
+        let mut refused = self.refused.lock_recover();
+        let before = refused.len();
+        refused.retain(|(p, m)| !(p == provider && m == model));
+        if refused.len() != before {
+            self.keep(&refused);
+        }
+    }
+
+    /// The models of `provider` the picker marks as not available.
+    pub fn refused_models(&self, provider: &str) -> Vec<String> {
+        let refused = self.refused.lock_recover();
+        refused.iter().filter(|(p, _)| p == provider).map(|(_, m)| m.clone()).collect()
+    }
+
     pub fn reset(&self) {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         let epoch = c.epoch + 1;
         *c = Conversation { epoch, ..Default::default() };
+        crate::media::forget_last_image();
     }
 
     /// Starts a turn with `provider`, converting the history if another
     /// provider answered the previous turns.
     pub fn begin(&self, provider: &str) -> Turn {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         if c.owner.as_deref() != Some(provider) {
             c.native = c.plain.clone();
             c.owner = Some(provider.to_string());
@@ -98,7 +218,7 @@ impl Chat {
     /// provider's format, and their plain text. Only a successful turn is
     /// recorded, so the history always matches what the model saw.
     pub fn commit(&self, turn: &Turn, user: Value, assistant: Value, user_text: &str, answer: &str) {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
             return;
         }
@@ -107,21 +227,59 @@ impl Chat {
         c.plain.push(json!({ "role": "user", "content": user_text }));
         c.plain.push(json!({ "role": "assistant", "content": answer }));
     }
+
+    /// The token a CLI provider resumes with — its own conversation in its own
+    /// binary — or None until its first answer.
+    pub fn cli_session(&self, provider: &str) -> Option<String> {
+        self.inner.lock_recover().cli_sessions.get(provider).cloned()
+    }
+
+    /// Stores the token, guarded like commit: an answer that lands after a
+    /// reset or a switch cannot write one.
+    pub fn set_cli_session(&self, turn: &Turn, session: String) {
+        let mut c = self.inner.lock_recover();
+        if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
+            return;
+        }
+        c.cli_sessions.insert(turn.provider.clone(), session);
+    }
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-/// Mochi's instructions. Greets the user by their first name when the account
-/// has one worth using (identity.rs), and only claims web search where the
-/// provider runs it (Claude).
-pub fn system_prompt(web_search: bool) -> String {
-    system_prompt_for(crate::identity::first_name(), web_search)
-}
+/// The moods Mochi can act out (see the end of the system prompt).
+const MOODS: [&str; 13] = [
+    "happy", "sad", "shy", "angry", "thankful", "welcome", "scared", "celebration", "surprised", "proud",
+    "hype", "confused", "sleepy",
+];
 
-fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
+/// When to pick each mood, for the prompt. Mochi reacts to how the user
+/// treats it, not only to the topic: rudeness and insults make it angry.
+const MOOD_GUIDE: &str = "happy (a friendly, pleased answer: the default for ordinary replies), \
+sad (bad news, a loss, or you couldn't help), \
+shy (the user compliments or flirts with you), \
+angry (the user insults you, swears at you, uses slurs or is rude or hostile to you, or something unfair or infuriating happened), \
+thankful (the user thanks you or does something kind for you), \
+welcome (a greeting, hello or goodbye), \
+scared (something alarming, dangerous or creepy), \
+celebration (something was finished, won or achieved), \
+surprised (something unexpected or astonishing), \
+proud (you solved something hard or gave a great answer), \
+hype (big excitement, a huge win, or the user wants to get pumped up), \
+confused (the message is unclear, nonsense or you had to guess), \
+sleepy (late at night, or the user says they're tired or bored)";
+
+/// Mochi's instructions. Greets the user by their first name when the account
+/// has one worth using (identity.rs), goes by the name given in Settings, and
+/// only claims web search where the provider runs it (Claude). It also asks
+/// every reply to end with a mood line for Mochi to act out (MOOD_GUIDE).
+fn system_prompt_for(first_name: Option<&str>, web_search: bool, mochi: &str) -> String {
+    let mochi: String = mochi.trim().chars().take(32).collect();
+    let mochi = if mochi.is_empty() { "Mochi".to_string() } else { mochi };
+
     let opening = match first_name {
-        Some(name) => format!("You are Mochi, {name}'s personal AI assistant living at the top of their screen."),
-        None => "You are Mochi, a personal AI assistant living at the top of the user's screen.".to_string(),
+        Some(name) => format!("You are {mochi}, {name}'s personal AI assistant living at the top of their screen."),
+        None => format!("You are {mochi}, a personal AI assistant living at the top of the user's screen."),
     };
     let abilities = if web_search {
         "You have web search access and can help with absolutely anything — research, coding, finding places, recommendations, tasks, questions."
@@ -131,8 +289,68 @@ fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
     format!(
         "{opening} {abilities} \
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
-Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small."
+Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small. \
+End every reply with one last line holding only a JSON object with how you feel about it, for your avatar to act out, \
+exactly like {{\"mood\":\"happy\"}}. Pick the one that fits best: {MOOD_GUIDE}. Write nothing after that line and never mention it."
     )
+}
+
+/// Splits the trailing `{"mood": "..."}` off a reply. Tolerates a code fence
+/// around it and stray whitespace; an unknown or missing mood leaves the text
+/// as it is.
+pub fn take_mood(text: &str) -> (String, Option<String>) {
+    let Some(start) = text.rfind('{') else { return (text.to_string(), None) };
+    let tail = text[start..].trim().trim_end_matches('`').trim();
+    let Ok(value) = serde_json::from_str::<Value>(tail) else { return (text.to_string(), None) };
+    let Some(mood) = value.get("mood").and_then(Value::as_str).map(str::to_lowercase) else {
+        return (text.to_string(), None);
+    };
+    if !MOODS.contains(&mood.as_str()) {
+        return (text.to_string(), None);
+    }
+    let body = text[..start].trim_end();
+    let body = body.strip_suffix("```json").or_else(|| body.strip_suffix("```")).unwrap_or(body).trim_end();
+    (body.to_string(), Some(mood))
+}
+
+/// Whether a dropped file is a picture the chat can attach.
+pub fn is_image(path: &str) -> bool {
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp")
+}
+
+/// A text or code file's contents and its Markdown language, if it is small
+/// enough to show and really text: the island's code card for a dropped file.
+pub fn read_text(path: &str) -> Option<(String, String)> {
+    if std::fs::metadata(path).ok()?.len() > 200_000 {
+        return None;
+    }
+    let text = std::fs::read_to_string(path).ok()?;
+    if text.contains('\0') {
+        return None;
+    }
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let lang = match ext.as_str() {
+        "rs" => "rust",
+        "py" => "python",
+        "js" | "mjs" | "cjs" => "javascript",
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" => "tsx",
+        "jsx" => "jsx",
+        "ps1" | "psm1" => "powershell",
+        "bat" | "cmd" => "batch",
+        "sh" | "bash" | "zsh" => "bash",
+        "cs" => "csharp",
+        "cpp" | "cc" | "cxx" | "hpp" | "hh" => "cpp",
+        "h" => "c",
+        "kt" | "kts" => "kotlin",
+        "rb" => "ruby",
+        "yml" => "yaml",
+        "md" => "markdown",
+        "txt" | "log" => "",
+        other => other,
+    };
+    Some((text, lang.to_string()))
 }
 
 /// The window context line, as ClaudeService.chat() writes it.
@@ -163,11 +381,19 @@ pub fn model_for(settings: &Settings, provider: &str) -> String {
         let m = settings.model.trim();
         return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
     }
+    let cli_default = match provider {
+        CURSOR => Some(cursor_chat::DEFAULT_MODEL),
+        KIRO => Some(kiro_chat::DEFAULT_MODEL),
+        // An empty model means the user's own CLI setting for these.
+        CLAUDE_CLI | CODEX | DEVIN => Some(""),
+        _ => None,
+    };
     settings
         .chat_models
         .get(provider)
         .map(|m| m.trim().to_string())
-        .filter(|m| !m.is_empty())
+        .filter(|m| !m.is_empty() || matches!(provider, CLAUDE_CLI | CODEX | DEVIN))
+        .or_else(|| cli_default.map(str::to_string))
         .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
         .unwrap_or_default()
 }
@@ -190,56 +416,157 @@ fn checked_context(context: ChatContext) -> Result<ChatContext, String> {
 
 /// True when `path` is a regular file directly inside `dir`, both resolved
 /// (no `..`, no symlink pointing out of it).
-fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
+pub(crate) fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
     let (Ok(dir), Ok(file)) = (dir.canonicalize(), path.canonicalize()) else { return false };
     file.parent() == Some(dir.as_path())
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
 }
 
-/// One chat turn with the provider chosen in the settings.
+/// One turn through a provider whose conversation lives in its own CLI —
+/// `agent -p`, `kiro-cli chat`, `claude -p`. The resume token is the only
+/// history it needs, but the shared Chat still records the plain turns so
+/// switching provider mid-conversation loses nothing. `run` answers with the
+/// reply text and the token to resume with, when the CLI gave one.
+async fn cli_send<F, Fut>(
+    chat: &Chat,
+    provider: &str,
+    query: String,
+    context: Option<ChatContext>,
+    run: F,
+) -> Result<ChatReply, String>
+where
+    F: FnOnce(Option<String>, bool, Option<ChatContext>, String) -> Fut,
+    Fut: std::future::Future<Output = Result<(String, Option<String>), String>>,
+{
+    let turn = chat.begin(provider);
+    let session = chat.cli_session(provider);
+    let (text, resumed) = run(session, turn.first, context.clone(), query.clone()).await?;
+    let plain = plain_question(turn.first, context.as_ref(), &query);
+    chat.commit(
+        &turn,
+        json!({ "role": "user", "content": plain.clone() }),
+        json!({ "role": "assistant", "content": text.clone() }),
+        &plain,
+        &text,
+    );
+    if let Some(id) = resumed {
+        chat.set_cli_session(&turn, id);
+    }
+    Ok(ChatReply { text, mood: None, notice: None, media: Vec::new() })
+}
+
+/// One chat turn with the provider chosen in the settings. The reply's last
+/// line, Mochi's mood, is split off here. `text_only` sends a dropped picture
+/// by name only (the user chose to, for a model that reads no images).
 pub async fn send(
     app: &AppHandle,
     chat: &Chat,
     settings: &Settings,
     query: String,
     context: Option<ChatContext>,
+    text_only: bool,
 ) -> Result<ChatReply, String> {
-    let context = context.map(checked_context).transpose()?;
+    let mut context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
+    *chat.persona.lock_recover() = settings.mochi_name.clone();
+    let mut query = query;
+    let mut notice = None;
+    if provider == crate::media::PROVIDER {
+        return crate::media::chat_turn(app, settings, &query, context).await;
+    }
+    if let Some(ChatContext::File { name, path }) = context.as_ref().filter(|_| text_only) {
+        if is_image(path) {
+            query = format!("[An image ({name}) was attached, but the user chose to send text only.]\n\n{query}");
+            notice = Some("Sent without the image.".to_string());
+            context = None;
+        }
+    }
     let model = model_for(settings, provider);
-    if provider == ANTHROPIC || provider.is_empty() {
-        return claude::send(chat, &model, query, context).await;
-    }
-    if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, &model, query, context).await;
-    }
-    if let Some(server) = local_chat::server(settings, provider) {
-        return local_chat::send(app, chat, &server, &model, query, context).await;
-    }
-    Err(format!("Unknown chat provider: {provider}"))
+    let reply = if provider == ANTHROPIC || provider.is_empty() {
+        match claude::send(chat, &model, query.clone(), context.clone()).await {
+            // No key, or no credit left on it: Claude Code answers, if it is here.
+            Err(err) if (!secrets::present(claude::KEY) || claude_cli::out_of_credit(&err)) && claude_cli::find() => {
+                let cli_model = model_for(settings, CLAUDE_CLI);
+                let mut r = cli_send(chat, CLAUDE_CLI, query, context, |s, first, c, q| {
+                    claude_cli::send(cli_model.clone(), chat.system_prompt(true), first, s, q, c)
+                })
+                .await?;
+                r.notice = Some(crate::i18n::t(
+                    "Answered by Claude Code: the Claude API key is missing or out of credit.",
+                ));
+                Ok(r)
+            }
+            other => other,
+        }
+    } else if provider == CURSOR {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
+            cursor_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
+        })
+        .await
+    } else if provider == KIRO {
+        cli_send(chat, provider, query, context, |s, _first, c, q| {
+            // `first` is not Kiro's to know — its resume is the folder's latest.
+            kiro_chat::send(model.clone(), chat.system_prompt(false), s.is_some(), q, c)
+        })
+        .await
+    } else if provider == CLAUDE_CLI {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
+            claude_cli::send(model.clone(), chat.system_prompt(true), first, s, q, c)
+        })
+        .await
+    } else if provider == DEVIN {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
+            devin_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
+        })
+        .await
+    } else if provider == CODEX {
+        cli_send(chat, provider, query, context, |s, first, c, q| {
+            codex_chat::send(model.clone(), chat.system_prompt(true), first, s, q, c)
+        })
+        .await
+    } else if let Some(p) = openai_compat::provider(provider) {
+        openai_compat::send(chat, p, &model, query, context).await
+    } else if let Some(server) = local_chat::server(settings, provider) {
+        local_chat::send(app, chat, &server, &model, query, context).await
+    } else {
+        Err(format!("Unknown chat provider: {provider}"))
+    }?;
+    let (text, mood) = take_mood(&reply.text);
+    Ok(ChatReply { text, mood, notice: notice.or(reply.notice), media: reply.media })
 }
 
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as
 /// [`send`], with no file or window context and no `AppHandle`. `on_delta` gets the streamed
 /// text so far, which only the model servers produce; the cloud providers answer all at once.
+/// Mochi's mood line (the system prompt asks for one) never reaches the phone.
 pub async fn send_for_phone(
     settings: &Settings,
     chat: &Chat,
     provider: &str,
     model: &str,
     query: String,
-    on_delta: impl FnMut(String),
+    mut on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
-    if provider == ANTHROPIC {
-        return claude::send(chat, model, query, None).await;
-    }
-    if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, model, query, None).await;
-    }
-    if let Some(server) = local_chat::server(settings, provider) {
-        return local_chat::send_with(chat, &server, model, query, None, on_delta).await;
-    }
-    Err(format!("Unknown chat provider: {provider}"))
+    let reply = if provider == ANTHROPIC {
+        claude::send(chat, model, query, None).await
+    } else if let Some(p) = openai_compat::provider(provider) {
+        openai_compat::send(chat, p, model, query, None).await
+    } else if let Some(server) = local_chat::server(settings, provider) {
+        local_chat::send_with(chat, &server, model, query, None, |so_far| on_delta(hide_mood_tail(&so_far))).await
+    } else {
+        Err(format!("Unknown chat provider: {provider}"))
+    }?;
+    let (text, _) = take_mood(&reply.text);
+    Ok(ChatReply { text, ..reply })
+}
+
+/// Streamed text without the mood line coming in at its end (as views/chat.ts hides it).
+fn hide_mood_tail(text: &str) -> String {
+    let Some(start) = text.rfind('{').filter(|&i| text[i + 1..].trim_start().starts_with("\"mood")) else {
+        return text.to_string();
+    };
+    let body = text[..start].trim_end();
+    body.strip_suffix("```json").or_else(|| body.strip_suffix("```")).unwrap_or(body).trim_end().to_string()
 }
 
 /// The models `provider` offers. Asked only when the user opens the picker on
@@ -254,6 +581,22 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
     if let Some(p) = openai_compat::provider(provider) {
         let key = secrets::get(p.key).ok_or_else(no_key)?;
         return openai_compat::models(p, &key).await;
+    }
+    // The CLI providers ask the binary itself; no key gates it.
+    if provider == CURSOR {
+        return Ok(cursor_chat::models().await.into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == KIRO {
+        return Ok(kiro_chat::models().await.into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == CLAUDE_CLI {
+        return Ok(claude_cli::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == DEVIN {
+        return Ok(devin_chat::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
+    }
+    if provider == CODEX {
+        return Ok(codex_chat::models().into_iter().map(|(id, label)| ModelInfo { id, label }).collect());
     }
     if let Some(server) = local_chat::server(settings, provider) {
         return local_chat::models(&server).await;
@@ -270,6 +613,99 @@ mod tests {
             .iter()
             .map(|m| (m["role"].as_str().unwrap().to_string(), m["content"].clone()))
             .collect()
+    }
+
+    #[test]
+    fn a_refused_model_is_remembered_until_it_answers() {
+        let chat = Chat::default();
+        assert!(chat.refused_models("google").is_empty());
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openai", "gpt-x");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(chat.refused_models("openai"), ["gpt-x"]);
+        // "New chat" forgets the conversation, not what the provider said of its models.
+        chat.reset();
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        // Another provider's model of the same name is its own business.
+        chat.accept("openai", "gemini-2.5-pro");
+        assert_eq!(chat.refused_models("google"), ["gemini-2.5-pro"]);
+        chat.accept("google", "gemini-2.5-pro");
+        assert!(chat.refused_models("google").is_empty());
+    }
+
+    #[test]
+    fn refused_models_are_kept_between_launches_until_they_answer() {
+        let dir = std::env::temp_dir().join(format!("coucou-refused-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = dir.join("refused-models.json");
+
+        // Nothing there yet: nothing refused, and nothing written until something is.
+        let chat = Chat::stored_at(file.clone());
+        assert!(chat.refused_models("google").is_empty());
+        chat.accept("google", "gemini-3.5-flash");
+        assert!(!file.exists());
+
+        chat.refuse("google", "gemini-2.5-pro");
+        chat.refuse("openrouter", "a/b:free");
+        // The next launch still knows.
+        let next = Chat::stored_at(file.clone());
+        assert_eq!(next.refused_models("google"), ["gemini-2.5-pro"]);
+        assert_eq!(next.refused_models("openrouter"), ["a/b:free"]);
+
+        // Once it answers, the mark is gone for good.
+        next.accept("google", "gemini-2.5-pro");
+        let later = Chat::stored_at(file.clone());
+        assert!(later.refused_models("google").is_empty());
+        assert_eq!(later.refused_models("openrouter"), ["a/b:free"]);
+
+        // A file that cannot be used reads as nothing refused, and is replaced on the next change.
+        std::fs::write(&file, b"not json").unwrap();
+        let broken = Chat::stored_at(file.clone());
+        assert!(broken.refused_models("openrouter").is_empty());
+        broken.refuse("google", "x");
+        assert_eq!(Chat::stored_at(file.clone()).refused_models("google"), ["x"]);
+
+        // Only the newest MAX_REFUSED are remembered.
+        for i in 0..MAX_REFUSED + 5 {
+            broken.refuse("openrouter", &format!("m{i}"));
+        }
+        let full = Chat::stored_at(file.clone());
+        assert_eq!(full.refused_models("openrouter").len(), MAX_REFUSED);
+        assert!(full.refused_models("google").is_empty(), "the oldest went first");
+        assert_eq!(full.refused_models("openrouter").last().unwrap(), &format!("m{}", MAX_REFUSED + 4));
+
+        // A chat without a store (the tests' own) writes nothing anywhere.
+        let _ = std::fs::remove_dir_all(&dir);
+        Chat::default().refuse("google", "y");
+        assert!(!file.exists());
+    }
+
+    #[test]
+    fn a_cli_session_is_per_provider_and_follows_the_turn_rules() {
+        let chat = Chat::default();
+        let t1 = chat.begin("cursor");
+        chat.commit(&t1, json!({"role":"user","content":"q"}), json!({"role":"assistant","content":"a"}), "q", "a");
+        chat.set_cli_session(&t1, "ses-1".into());
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // Another provider keeps its own; switching away keeps cursor's.
+        let t2 = chat.begin("kiro");
+        chat.commit(&t2, json!({"role":"user","content":"q2"}), json!({"role":"assistant","content":"a2"}), "q2", "a2");
+        chat.set_cli_session(&t2, "-".into());
+        assert_eq!(chat.cli_session("kiro").as_deref(), Some("-"));
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // A stale turn — one begun before a switch — cannot write a token back.
+        let stale = chat.begin("cursor");
+        let _other = chat.begin("kiro");
+        chat.set_cli_session(&stale, "ses-old".into());
+        assert_eq!(chat.cli_session("cursor").as_deref(), Some("ses-1"));
+
+        // "New chat" starts every provider's conversation over.
+        chat.reset();
+        assert!(chat.cli_session("cursor").is_none());
+        assert!(chat.cli_session("kiro").is_none());
     }
 
     #[test]
@@ -332,11 +768,11 @@ mod tests {
 
     #[test]
     fn the_prompt_greets_by_first_name_and_claims_web_search_only_for_claude() {
-        let p = system_prompt_for(Some("Louis"), true);
+        let p = system_prompt_for(Some("Louis"), true, "");
         assert!(p.starts_with("You are Mochi, Louis's personal AI assistant living at the top of their screen."));
         assert!(p.contains("web search access"));
         assert!(p.contains("light Markdown"));
-        let p = system_prompt_for(None, false);
+        let p = system_prompt_for(None, false, "  ");
         assert!(p.starts_with("You are Mochi, a personal AI assistant living at the top of the user's screen."));
         assert!(!p.contains("web search"));
         assert!(p.contains("no web access"));
@@ -386,5 +822,55 @@ mod tests {
             assert!(!is_inside(&inbox, &inbox.join("link.txt")));
         }
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn mochi_goes_by_the_name_given_in_settings() {
+        let p = system_prompt_for(Some("Louis"), false, "Pebble");
+        assert!(p.starts_with("You are Pebble, Louis's personal AI assistant"));
+        // An absurdly long name is cut, never sent whole.
+        let p = system_prompt_for(None, false, &"x".repeat(100));
+        assert!(p.starts_with(&format!("You are {}, a", "x".repeat(32))));
+}
+
+    #[test]
+    fn the_prompt_asks_for_a_mood() {
+        let p = system_prompt_for(Some("Louis"), false, "");
+        assert!(p.contains("{\"mood\":\"happy\"}"), "{p}");
+        assert!(p.contains("celebration"));
+    }
+
+    #[test]
+    fn a_trailing_mood_is_split_off_the_answer() {
+        assert_eq!(take_mood("Done!\n{\"mood\":\"happy\"}"), ("Done!".into(), Some("happy".into())));
+        assert_eq!(
+            take_mood("Hi\n\n```json\n{ \"mood\": \"Thankful\" }\n```\n"),
+            ("Hi".into(), Some("thankful".into()))
+        );
+        // Unknown mood, or JSON that is the answer itself: left alone.
+        assert_eq!(take_mood("x {\"mood\":\"bored\"}").1, None);
+        assert_eq!(take_mood("Use {\"a\": 1} here.").1, None);
+        assert_eq!(take_mood("No mood at all").0, "No mood at all");
+    }
+
+    #[test]
+    fn an_image_refused_with_a_4xx_means_a_text_only_model() {
+        assert!(refused_image(400, true) && refused_image(415, true) && refused_image(422, true));
+        assert!(!refused_image(400, false));
+        assert!(!refused_image(401, true) && !refused_image(500, true));
+        assert!(has_image(&json!({"role":"user","content":[{"type":"image_url","image_url":{"url":"data:x"}},{"type":"text","text":"q"}]})));
+        assert!(!has_image(&json!({"role":"user","content":"q"})));
+    }
+
+    #[test]
+    fn a_code_file_is_read_with_its_language() {
+        let dir = std::env::temp_dir().join(format!("coucou-read-text-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.rs"), "fn main() {}").unwrap();
+        std::fs::write(dir.join("blob.bin"), b"a\0b").unwrap();
+        assert_eq!(read_text(&dir.join("main.rs").to_string_lossy()), Some(("fn main() {}".into(), "rust".into())));
+        assert_eq!(read_text(&dir.join("blob.bin").to_string_lossy()), None);
+        assert_eq!(read_text(&dir.join("missing.txt").to_string_lossy()), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

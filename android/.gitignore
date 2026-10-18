@@ -1,16 +1,17 @@
-build/
+# Android build output
 .gradle/
-local.properties
-*.iml
-.idea/
+build/
+app/build/
+captures/
 *.apk
 *.aab
-.kotlin/
-hs_err_pid*.log
-replay_pid*.log
-*.log
-# Release signing: never in git (the build reads the keystore path and passwords from the environment or Gradle properties)
-*.jks
-*.keystore
-*.p12
-keystore.properties
+*.iml
+.idea/
+.cxx/
+
+# Machine-local SDK pointer
+local.properties
+
+# Each user generates their own Firebase project — never commit it.
+google-services.json
+app/google-services.json

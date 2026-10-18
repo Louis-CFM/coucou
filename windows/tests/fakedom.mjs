@@ -29,6 +29,7 @@ class FakeElement {
     this.scrollHeight = 0;
     this.style = { setProperty: (k, v) => (this.style[k] = v) };
     const el = this;
+    if (tag === "canvas") this.getContext = () => fake2d;
     this.classList = {
       add: (c) => (el.className = [...new Set([...el.className.split(" ").filter(Boolean), c])].join(" ")),
       remove: (c) => (el.className = el.className.split(" ").filter((x) => x && x !== c).join(" ")),
@@ -104,6 +105,13 @@ class FakeElement {
   remove() {
     this.parentNode?.removeChild(this);
   }
+  replaceWith(node) {
+    const parent = this.parentNode;
+    if (!parent) return;
+    node.parentNode = parent;
+    parent.childNodes[parent.childNodes.indexOf(this)] = node;
+    this.parentNode = null;
+  }
   /** `.a.b` class selectors only: the first descendant carrying every class. */
   querySelector(selector) {
     const wanted = selector.split(".").filter(Boolean);
@@ -128,6 +136,24 @@ class FakeElement {
   }
 }
 
+// A 2D context that does nothing: canvas-backed views (the wardrobe's icons)
+// build fine under the fake DOM, they just draw into the void.
+const fake2d = new Proxy(
+  {},
+  {
+    get: (t, k) => {
+      if (!(k in t)) t[k] = typeof k === "string" ? new Proxy(() => fake2d, { get: () => fake2d }) : undefined;
+      return t[k];
+    },
+    set: () => true,
+  },
+);
+
+// Path2D is a browser global the wardrobe icons build paths with.
+globalThis.Path2D ??= new Proxy(class {}, {
+  construct: () => new Proxy({}, { get: (t, k) => t[k] ?? (t[k] = () => {}) }),
+});
+
 export function installFakeDom() {
   globalThis.requestAnimationFrame = (fn) => fn();
   globalThis.document = {
@@ -135,6 +161,19 @@ export function installFakeDom() {
     createElementNS: (ns, tag) => new FakeElement(tag, ns),
     createTextNode: (text) => new FakeText(text),
     body: new FakeElement("body"),
+  };
+  // Window-level listeners (window === globalThis under the tests): a plain
+  // registry, since a bare Node global is no EventTarget.
+  const listeners = new Map();
+  globalThis.addEventListener = (type, fn) => {
+    listeners.set(type, [...(listeners.get(type) ?? []), fn]);
+  };
+  globalThis.removeEventListener = (type, fn) => {
+    listeners.set(type, (listeners.get(type) ?? []).filter((f) => f !== fn));
+  };
+  globalThis.dispatchEvent = (event) => {
+    for (const fn of listeners.get(event.type) ?? []) fn(event);
+    return true;
   };
   return { root: () => new FakeElement("div") };
 }

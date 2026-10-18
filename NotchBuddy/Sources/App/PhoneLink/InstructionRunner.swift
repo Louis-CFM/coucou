@@ -30,6 +30,10 @@ final class InstructionRunner {
     /// Instructions older than this are dropped instead of run.
     private let maxAge: TimeInterval = 10 * 60
 
+    /// A run longer than this is stopped: until it ends, the session takes no
+    /// other instruction from the iPhone.
+    private let maxRun: TimeInterval = 20 * 60
+
     func setEnabled(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: Self.enabledKey)
         if on && CloudProbe.isEnabled { start() } else { stop() }
@@ -154,6 +158,8 @@ final class InstructionRunner {
         } else {
             env["TERM_PROGRAM"] = "vscode"
         }
+        // A `claude -p` run: the hooks skip those unless told it is watched.
+        env["COUCOU_WATCHED"] = "1"
         process.environment = env
         process.standardInput = FileHandle.nullDevice
         // Output goes to a file (a pipe could fill up and stall claude); its
@@ -180,6 +186,16 @@ final class InstructionRunner {
             try process.run()
             running[sessionId] = process
             log("running in \(URL(fileURLWithPath: cwd).lastPathComponent) (\(sessionId.prefix(8))): \(text.count) chars")
+            let limit = maxRun
+            let started = ObjectIdentifier(process)
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(limit))
+                // Only this run: a later one for the same session has its own limit.
+                guard let self, let current = self.running[sessionId],
+                      ObjectIdentifier(current) == started, current.isRunning else { return }
+                self.log("stopped after \(Int(limit / 60)) min (\(sessionId.prefix(8)))")
+                current.terminate()
+            }
         } catch {
             log("couldn't start claude: \(error.localizedDescription)")
         }

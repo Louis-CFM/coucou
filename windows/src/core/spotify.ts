@@ -112,7 +112,8 @@ export function islandDances(o: {
 }): boolean {
   if (!o.music || !DANCE_STATES.has(o.state)) return false;
   if (o.mode === "compact") return true;
-  return o.mode === "expanded" && o.view === "overview" && o.focusId === SPOTIFY_ID;
+  // The Windows Music pill (core/state.ts MUSIC_ID, music.rs) is a music card too.
+  return o.mode === "expanded" && o.view === "overview" && (o.focusId === SPOTIFY_ID || o.focusId === "integration_music");
 }
 
 /** Mochi on the desktop: the compact island's rules (DesktopMochi.swift). */

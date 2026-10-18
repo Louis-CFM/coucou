@@ -25,7 +25,7 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
@@ -34,10 +34,23 @@ mod reply;
 
 /// Budget for getting a pipe connection. Beyond this the agent wins, always.
 const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
-/// Whole-run budget for an event nobody waits on: connect and write, no more.
-const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
+/// Whole-run budget for an event nobody waits on: connect, write, and stay
+/// until Coucou hangs up (which it does once the event is handled), no more.
+/// Claude Code waits for this on every tool call, twice.
+const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_millis(500);
+/// Longest wait for the agent to finish writing the event on stdin.
+pub const STDIN_BUDGET: Duration = Duration::from_secs(2);
+/// Stdin is agent-controlled: buffer no more than this. Legit payloads are
+/// kilobytes; the rest would only ever be truncated away anyway.
+const MAX_STDIN: u64 = 16 * 1024 * 1024;
+/// The serialized event must stay under the app's 1 MiB pipe read. Truncation
+/// bounds string *values*; this bounds the whole line (keys, field count) and
+/// falls back to a minimal event rather than a line the app cuts mid-JSON.
+const MAX_LINE: usize = 900 * 1024;
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
+/// How often a waiting relay checks that the process that ran it is still there.
+const PARENT_POLL: Duration = Duration::from_millis(100);
 
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
@@ -62,12 +75,12 @@ const MAX_DIFF_TOTAL: usize = 512 * 1024;
 #[cfg(windows)]
 mod win;
 #[cfg(windows)]
-use win::connect;
+use win::{connect, parent};
 
 #[cfg(target_os = "linux")]
 mod unix;
 #[cfg(target_os = "linux")]
-use unix::connect;
+use unix::{connect, parent};
 
 /// What the command line says: `--agent <name>` and the event name.
 struct Args {
@@ -75,10 +88,30 @@ struct Args {
     event: String,
 }
 
+/// All of `input`, read on a helper thread, at most `cap` bytes; `None` if it
+/// is still open after `budget` (an agent that never closes our stdin must not
+/// hold its own turn, and an agent that never stops writing must not grow this
+/// buffer without bound).
+pub fn read_all_within(input: impl Read + Send + 'static, cap: u64, budget: Duration) -> Option<Vec<u8>> {
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut raw = Vec::new();
+        let _ = input.take(cap).read_to_end(&mut raw);
+        let _ = tx.send(raw);
+    });
+    rx.recv_timeout(budget).ok()
+}
+
+/// The arguments as text; one that is not valid Unicode is read lossily
+/// instead of aborting the relay (`std::env::args` panics on it).
+fn arg_list() -> Vec<String> {
+    std::env::args_os().skip(1).map(|a| a.to_string_lossy().into_owned()).collect()
+}
+
 fn args() -> Args {
     let mut agent = String::new();
     let mut event = String::new();
-    let mut it = std::env::args().skip(1);
+    let mut it = arg_list().into_iter();
     while let Some(arg) = it.next() {
         if arg == "--agent" {
             agent = it.next().unwrap_or_default();
@@ -97,19 +130,27 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// The agent sent `"coucou_approval": true` on a PermissionRequest: it
+    /// opted into a blocking Allow / Deny card, and its answer comes back as
+    /// `permissionDecision` (docs/AGENTS.md). Off by default, so agents that
+    /// do not expect a blocking answer keep re-asking in their own terminal.
+    opted_in: bool,
+    /// Claude Code's PermissionRequest `permission_suggestions`, as sent: the
+    /// rules an island "Always allow" applies (never one the app makes up).
+    suggestions: Option<Value>,
 }
 
 fn main() {
-    if std::env::args().skip(1).any(|a| a == "--statusline") {
+    if arg_list().iter().any(|a| a == "--statusline") {
         statusline::run();
     }
     let args = args();
-    let mut raw = Vec::new();
-    let _ = std::io::stdin().read_to_end(&mut raw);
+    let raw = read_all_within(std::io::stdin(), MAX_STDIN, STDIN_BUDGET).unwrap_or_default();
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    let Some(event) = prepare(&raw, &args, &env, &cwd) else {
+    let Some(event) = prepare(&raw, &args, &env, &cwd, now_ms, &claude_session_name) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -118,8 +159,10 @@ fn main() {
     };
 
     // Only an agent whose decisions the island can give waits for one; any other
-    // would be held for nothing, its decision being thrown away (reply.rs).
-    let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
+    // would be held for nothing, its decision being thrown away (reply.rs). A
+    // third-party agent that sent "coucou_approval": true asked for the wait.
+    let opt_in = event.name == "PermissionRequest" && event.opted_in && !reply::takes_decisions(&args.agent);
+    let waits_for_answer = event.name == "PermissionRequest" && (reply::takes_decisions(&args.agent) || opt_in);
     let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
 
     // The worker owns every blocking call. If it overruns the budget we simply
@@ -132,9 +175,41 @@ fn main() {
         let _ = tx.send(talk(&line, waits_for_answer));
     });
 
-    let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    // Claude Code ends the relay when its prompt is answered in the terminal,
+    // and the app sees the pipe close at once. A shell between them (Git Bash,
+    // cmd) can be the one ended, leaving us orphaned: its going ends us too.
+    let parent = if waits_for_answer { parent() } else { None };
+    let decision = wait(&rx, budget, || parent.as_ref().is_some_and(|p| p.gone()));
+    if opt_in {
+        print(reply::opt_in(decision.as_deref()));
+    } else {
+        print(reply::stdout_with(
+            &args.agent,
+            &event.name,
+            decision.as_deref(),
+            event.question.as_ref(),
+            event.suggestions.as_ref(),
+        ));
+    }
     std::process::exit(0);
+}
+
+/// The worker's answer, or None once `budget` runs out or `gone()` says the
+/// process that ran us has gone.
+fn wait(rx: &mpsc::Receiver<Option<String>>, budget: Duration, gone: impl Fn() -> bool) -> Option<String> {
+    let deadline = Instant::now() + budget;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            return None;
+        }
+        match rx.recv_timeout(left.min(PARENT_POLL)) {
+            Ok(decision) => return decision,
+            Err(mpsc::RecvTimeoutError::Timeout) if gone() => return None,
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+        }
+    }
 }
 
 fn print(line: Option<String>) {
@@ -147,9 +222,13 @@ fn print(line: Option<String>) {
 
 /// The payload to forward, from the raw stdin bytes. `env` reads an environment
 /// variable and `cwd` is the working directory, so tests stay pure.
-fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str) -> Option<Event> {
+fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str, now_ms: u64,
+           names: &dyn Fn(&str) -> Option<String>) -> Option<Event> {
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
+    if headless(env) {
+        return None;
+    }
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
     let map = payload.as_object_mut()?;
 
@@ -176,6 +255,9 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     normalize::fields(map, env);
     let name = normalize::refine(normalize::event(&raw_event), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
+    // When this relay saw the event: the island orders by it, since separate
+    // relay processes can reach it out of order (a PostToolUse after the Stop).
+    map.insert("coucou_ts".into(), Value::from(now_ms));
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -187,19 +269,69 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     add_terminal_context(map, env);
 
+    // The session's own name (Claude Code's /rename) and the home folder, for the pill's name.
+    if let Some(name) = map.get("session_id").and_then(Value::as_str).and_then(|id| names(id)) {
+        map.insert("session_name".into(), Value::String(name));
+    }
+    if let Some(home) = env("HOME").or_else(|| env("USERPROFILE")) {
+        map.insert("home".into(), Value::String(home));
+    }
+
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
         .then(|| map.get("tool_input").cloned())
         .flatten();
+    let suggestions = (name == "PermissionRequest").then(|| map.get("permission_suggestions").cloned()).flatten();
+
+    // The opt-in is read here and left in the payload: the island needs it too.
+    let opted_in = map.get("coucou_approval").and_then(Value::as_bool).unwrap_or(false);
 
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
     truncate_payload(&mut payload, &name);
 
     let mut line = payload.to_string();
+    if line.len() > MAX_LINE {
+        // Keys and field count escape truncate_payload, so the line can still
+        // be too long. Send what the island needs rather than bytes the app
+        // would cut mid-line and drop as invalid JSON.
+        let mut minimal = Map::new();
+        for key in ["hook_event_name", "session_id", "tool_name", "coucou_agent", "cwd"] {
+            if let Some(v) = payload.get(key) {
+                minimal.insert(key.into(), v.clone());
+            }
+        }
+        minimal.insert("coucou_truncated".into(), Value::Bool(true));
+        line = Value::Object(minimal).to_string();
+    }
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, opted_in, suggestions })
+}
+
+/// `claude -p`, the SDK and scheduled jobs: no one watches them, so they stay
+/// off the island. Coucou's own runs set COUCOU_WATCHED=1.
+fn headless(env: &dyn Fn(&str) -> Option<String>) -> bool {
+    env("CLAUDE_CODE_ENTRYPOINT").is_some_and(|e| e.starts_with("sdk-"))
+        && env("COUCOU_WATCHED").as_deref() != Some("1")
+}
+
+/// The name given with /rename, from Claude Code's session registry.
+fn claude_session_name(session_id: &str) -> Option<String> {
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).ok()?;
+    let dir = std::path::Path::new(&home).join(".claude").join("sessions");
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else { continue };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else { continue };
+        if v.get("sessionId").and_then(Value::as_str) == Some(session_id) {
+            return v.get("name").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string);
+        }
+    }
+    None
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -340,6 +472,13 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
     let _ = pipe.flush();
 
     if !waits_for_answer {
+        // Stay on the line until Coucou hangs up, which it does as soon as the
+        // event is handled. Coucou finds the window a session runs in by
+        // walking up from the process on this end (session_window.rs): exiting
+        // right after the write left it nothing to walk from, so "Open
+        // terminal" fell back to the folder. Still bounded by the budget.
+        let mut chunk = [0u8; 64];
+        while matches!(pipe.read(&mut chunk), Ok(n) if n > 0) {}
         return None;
     }
 
@@ -350,7 +489,9 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
             Ok(0) => break,
             Ok(n) => {
                 buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') {
+                // The biggest legit answer is an {"answers":{…}} line — a peer
+                // that keeps streaming is not one we wait on.
+                if buf.contains(&b'\n') || buf.len() > 64 * 1024 {
                     break;
                 }
             }
@@ -367,9 +508,23 @@ mod tests {
 
     fn run(raw: &str, agent: &str, event: &str) -> (Value, Event) {
         let args = Args { agent: agent.into(), event: event.into() };
-        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here").expect("forwarded");
+        let ev = prepare(raw.as_bytes(), &args, &|_| None, "/home/me/here", 1234, &|_| None).expect("forwarded");
         let v = serde_json::from_str(ev.line.trim_end()).unwrap();
         (v, ev)
+    }
+
+    #[test]
+    fn session_name_and_home_ride_along() {
+        let args = Args { agent: "".into(), event: "SessionStart".into() };
+        let names = |id: &str| (id == "s1").then(|| "coucou-mac".to_string());
+        let raw = br#"{"session_id":"s1","hook_event_name":"SessionStart","cwd":"/home/me"}"#;
+        let ev = prepare(raw, &args, &env_of(&[("HOME", "/home/me")]), "/home/me", 1234, &names).unwrap();
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["session_name"], "coucou-mac");
+        assert_eq!(v["home"], "/home/me");
+        let ev = prepare(raw, &args, &|_| None, "/home/me", 1234, &|_| None).unwrap();
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert!(v.get("session_name").is_none());
     }
 
     fn env_of(vars: &'static [(&'static str, &'static str)]) -> impl Fn(&str) -> Option<String> {
@@ -383,6 +538,18 @@ mod tests {
         assert_eq!(agent_tag("gemini", &desktop).as_deref(), Some("gemini"));
         assert_eq!(agent_tag("", &env_of(&[("CLAUDE_CODE_ENTRYPOINT", "cli")])), None);
         assert_eq!(agent_tag("", &env_of(&[])), None);
+    }
+
+    #[test]
+    fn headless_runs_are_not_forwarded_unless_watched() {
+        let raw = br#"{"hook_event_name":"Stop","session_id":"s"}"#;
+        let args = Args { agent: String::new(), event: String::new() };
+        let run = |vars: &'static [(&'static str, &'static str)]| prepare(raw, &args, &env_of(vars), "/p", 0, &|_| None).is_some();
+        assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli")]));
+        assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-py")]));
+        assert!(run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli"), ("COUCOU_WATCHED", "1")]));
+        assert!(run(&[("CLAUDE_CODE_ENTRYPOINT", "cli")]));
+        assert!(run(&[]));
     }
 
     #[test]
@@ -404,6 +571,25 @@ mod tests {
         );
         assert_eq!(term_editor(&env_of(&[("CURSOR_TRACE_ID", "")])), None);
         assert_eq!(term_editor(&env_of(&[("TERM_PROGRAM", "vscode")])), None);
+    }
+
+    #[test]
+    fn coucou_approval_is_read_and_left_in_the_line() {
+        let (v, ev) = run(
+            r#"{"hook_event_name":"PermissionRequest","coucou_approval":true,"tool_name":"Bash"}"#,
+            "my-tool",
+            "PermissionRequest",
+        );
+        assert!(ev.opted_in);
+        assert_eq!(v["coucou_approval"], true);
+        // Anything but a real true is not an opt-in.
+        for raw in [
+            r#"{"hook_event_name":"PermissionRequest"}"#,
+            r#"{"hook_event_name":"PermissionRequest","coucou_approval":false}"#,
+            r#"{"hook_event_name":"PermissionRequest","coucou_approval":"yes"}"#,
+        ] {
+            assert!(!run(raw, "my-tool", "PermissionRequest").1.opted_in, "{raw}");
+        }
     }
 
     #[test]
@@ -456,15 +642,62 @@ mod tests {
     }
 
     #[test]
+    fn every_forwarded_event_carries_the_relays_clock() {
+        let (v, _) = run(r#"{"hook_event_name":"PreToolUse","tool_name":"Bash"}"#, "", "");
+        assert_eq!(v["coucou_ts"], 1234);
+    }
+
+    #[test]
+    fn an_agent_that_never_closes_stdin_does_not_hold_the_relay() {
+        let (reader, writer) = std::io::pipe().unwrap();
+        let started = std::time::Instant::now();
+        assert!(read_all_within(reader, MAX_STDIN, Duration::from_millis(200)).is_none());
+        assert!(started.elapsed() < Duration::from_secs(1));
+        drop(writer);
+    }
+
+    #[test]
+    fn a_line_that_is_still_too_long_becomes_a_minimal_event() {
+        // Keys escape truncate_payload: a giant key name still forwards —
+        // as a minimal, well-formed event rather than a line the app drops.
+        let mut payload = Map::new();
+        payload.insert("hook_event_name".into(), serde_json::json!("PermissionRequest"));
+        payload.insert("session_id".into(), serde_json::json!("s1"));
+        payload.insert("tool_name".into(), serde_json::json!("Bash"));
+        payload.insert("k".repeat(MAX_LINE).into(), serde_json::json!("v"));
+        let raw = serde_json::to_vec(&payload).unwrap();
+        let args = Args { agent: String::new(), event: String::new() };
+        let ev = prepare(&raw, &args, &|_| None, "/tmp", 1234, &|_| None).expect("forwarded");
+        assert!(ev.line.len() < MAX_LINE);
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["hook_event_name"], "PermissionRequest");
+        assert_eq!(v["tool_name"], "Bash");
+        assert_eq!(v["coucou_truncated"], true);
+    }
+
+    #[test]
+    fn a_closed_stdin_is_read_whole() {
+        let (reader, mut writer) = std::io::pipe().unwrap();
+        writer.write_all(br#"{"a":1}"#).unwrap();
+        drop(writer);
+        assert_eq!(read_all_within(reader, MAX_STDIN, Duration::from_secs(2)).unwrap(), br#"{"a":1}"#);
+    }
+
+    #[test]
+    fn fire_and_forget_events_get_half_a_second() {
+        assert!(FIRE_AND_FORGET_BUDGET <= Duration::from_millis(500));
+    }
+
+    #[test]
     fn what_cannot_be_read_is_not_forwarded() {
         let args = Args { agent: "copilot".into(), event: "preToolUse".into() };
         for raw in ["", "not json", "[1,2]"] {
-            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/").is_none());
+            assert!(prepare(raw.as_bytes(), &args, &|_| None, "/", 1234, &|_| None).is_none());
         }
         // A BOM is not a reason to drop the event.
         let mut bom = vec![0xEF, 0xBB, 0xBF];
         bom.extend_from_slice(br#"{"hook_event_name":"Stop"}"#);
-        assert!(prepare(&bom, &args, &|_| None, "/").is_some());
+        assert!(prepare(&bom, &args, &|_| None, "/", 1234, &|_| None).is_some());
     }
 
     #[test]
@@ -538,5 +771,26 @@ mod tests {
         truncate_payload(&mut multi, "PostToolUse");
         assert!(multi.to_string().len() < MAX_DIFF_TOTAL + 64 * 1024);
         assert_eq!(multi["coucou_diff_truncated"], serde_json::Value::Bool(true));
+    }
+
+    #[test]
+    fn a_waiting_relay_gives_up_as_soon_as_its_parent_is_gone() {
+        let (tx, rx) = mpsc::channel::<Option<String>>();
+        let started = Instant::now();
+        let checks = std::cell::Cell::new(0);
+        let gone = || {
+            checks.set(checks.get() + 1);
+            checks.get() >= 2
+        };
+        assert_eq!(wait(&rx, Duration::from_secs(5), gone), None);
+        assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+        // An answer still wins while the parent is there.
+        tx.send(Some("allow".into())).unwrap();
+        assert_eq!(wait(&rx, Duration::from_secs(5), || false).as_deref(), Some("allow"));
+        // And the budget still ends a wait nobody answers.
+        let started = Instant::now();
+        assert_eq!(wait(&rx, Duration::from_millis(150), || false), None);
+        assert!(started.elapsed() >= Duration::from_millis(150));
+        drop(tx);
     }
 }

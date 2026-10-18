@@ -301,12 +301,34 @@ final class AppState: ObservableObject {
     @Published var openOnHover: Bool = false {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
+    // Settings → General → Calls: the island hides and goes silent while one of these is in use
+    @Published var quietOnCamera: Bool = true {
+        didSet { UserDefaults.standard.set(quietOnCamera, forKey: "quietOnCamera"); updateInCall() }
+    }
+    @Published var quietOnMic: Bool = true {
+        didSet { UserDefaults.standard.set(quietOnMic, forKey: "quietOnMic"); updateInCall() }
+    }
+    @Published var quietOnScreenShare: Bool = true {
+        didSet { UserDefaults.standard.set(quietOnScreenShare, forKey: "quietOnScreenShare"); updateInCall() }
+    }
+    /// `cam`, `mic`, `scr` held by another app right now (CallWatcher).
+    var callSensors: Set<String> = [] {
+        didSet { updateInCall() }
+    }
+    /// A call is on: nothing reveals, no alert, no sound, until it ends.
+    @Published private(set) var inCall = false
+    private func updateInCall() {
+        let on = quietOnCamera && callSensors.contains("cam")
+            || quietOnMic && callSensors.contains("mic")
+            || quietOnScreenShare && callSensors.contains("scr")
+        if on != inCall { inCall = on }
+    }
     @Published var autoCloseInterval: TimeInterval = 15 {
         didSet { UserDefaults.standard.set(autoCloseInterval, forKey: "autoCloseInterval") }
     }
 
     // Absence interval — persisted
-    var absenceInterval: TimeInterval = 3 * 60 {
+    @Published var absenceInterval: TimeInterval = 3 * 60 {
         didSet { UserDefaults.standard.set(absenceInterval, forKey: "absenceInterval") }
     }
 
@@ -538,6 +560,9 @@ final class AppState: ObservableObject {
         if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
+        if let v = ud.object(forKey: "quietOnCamera") as? Bool { quietOnCamera = v }
+        if let v = ud.object(forKey: "quietOnMic") as? Bool { quietOnMic = v }
+        if let v = ud.object(forKey: "quietOnScreenShare") as? Bool { quietOnScreenShare = v }
         if let v = ud.object(forKey: "autoCloseInterval") as? Double {
             autoCloseInterval = (v == 60) ? 15 : v
         }
@@ -657,7 +682,7 @@ final class AppState: ObservableObject {
         // If no tasks and not expanded/peek, go hidden
         if tasks.isEmpty && mode == .compact {
             mode = .hidden
-        } else if !tasks.isEmpty && mode == .hidden && isPresent {
+        } else if !tasks.isEmpty && mode == .hidden && isPresent && !inCall {
             mode = .compact
         }
     }
@@ -720,7 +745,6 @@ final class AppState: ObservableObject {
             tasks.removeAll { $0.id == id }
             if focusId == id { focusId = mainPillId }
         } else {
-            guard activeIntegrations.count < 4 else { return }
             activeIntegrations.insert(id)
             if let def = PillCatalog.available.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {
@@ -735,6 +759,22 @@ final class AppState: ObservableObject {
 
     /// Sort tasks so catalog pills are in catalog order, undeclared pills sit right after
     /// integration_claude (matching HookServer insertion behaviour), and the rest follows.
+    /// The pills that are not in front, the ones with something going on first:
+    /// an alert, then a running session, then the rest in catalog order.
+    var othersByActivity: [AgentTask] {
+        func rank(_ t: AgentTask) -> Int {
+            if t.pillBadge != nil { return 0 }
+            switch t.state {
+            case .approval, .question, .error: return 0
+            case .working, .thinking, .searching: return 1
+            default: return 2
+            }
+        }
+        return tasks.filter { $0.id != focusId }.enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element)
+    }
+
     private func sortTasksByCatalog() {
         let order = PillCatalog.available.enumerated()
             .reduce(into: [String: Int]()) { $0[$1.element.id] = $1.offset }

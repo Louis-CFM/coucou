@@ -26,6 +26,7 @@ use super::hub::{ApprovalIn, DiffIn, FileIn, Host, Hub, PlanIn, ServiceIn, Servi
 use super::server::Features;
 use super::pairing::{self, tests::MemStore};
 use super::server;
+use crate::mutex::MutexExt;
 
 struct Printing;
 impl Host for Printing {
@@ -56,7 +57,7 @@ impl Features for Switches {
         self.usage.load(Ordering::SeqCst)
     }
     fn services(&self) -> Vec<String> {
-        self.services.lock().unwrap().clone()
+        self.services.lock_recover().clone()
     }
 }
 
@@ -168,13 +169,13 @@ fn interop_server() {
                 ),
                 (Some("clear"), _, _) => hub.publish(vec![], None, server::now_ms()),
                 (Some("repair"), Some(new_token), _) => {
-                    *shared.token.lock().unwrap() = new_token.to_string();
+                    *shared.token.lock_recover() = new_token.to_string();
                     hub.kick_all("auth", "unpaired");
                 }
                 (Some("chat"), Some(state), _) => fake.on.store(state == "on", Ordering::SeqCst),
                 // `services stripe,notion` ticks those (empty: none); `servicecards` publishes a Stripe and a Notion card.
                 (Some("services"), ticks, _) => {
-                    *switches.services.lock().unwrap() = ticks.unwrap_or("").split(',').filter(|s| !s.is_empty()).map(|s| format!("integration_{s}")).collect();
+                    *switches.services.lock_recover() = ticks.unwrap_or("").split(',').filter(|s| !s.is_empty()).map(|s| format!("integration_{s}")).collect();
                 }
                 (Some("servicecards"), _, _) => hub.publish_services(vec![
                     ServiceIn { id: "integration_stripe".into(), title: "Stripe".into(), headline: "12.50 EUR".into(), reason: Some("Payments".into()), items: vec![ServiceItemIn { label: "Payment".into(), detail: "+9.00 · 2m".into() }] },

@@ -30,7 +30,7 @@
 body.settings-window {
   background: var(--bg);
   color: var(--ink);
-  font: 400 13px/1.45 var(--font);
+  font: 400 calc(13px * var(--fs, 1))/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
@@ -45,12 +45,12 @@ body.settings-window {
 }
 
 h1 {
-  font: 600 17px var(--font);
+  font: 600 calc(17px * var(--fs, 1)) var(--font);
   letter-spacing: -0.01em;
 }
 
 h1 .version {
-  font: 400 12px var(--font);
+  font: 400 calc(12px * var(--fs, 1)) var(--font);
   color: var(--dim-2);
   margin-left: 8px;
 }
@@ -66,14 +66,14 @@ section {
 }
 
 section > h2 {
-  font: 600 13px var(--font);
+  font: 600 calc(13px * var(--fs, 1)) var(--font);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .hint {
-  font: 400 12px var(--font);
+  font: 400 calc(12px * var(--fs, 1)) var(--font);
   color: var(--dim);
 }
 
@@ -87,7 +87,7 @@ section > h2 {
 .row > label {
   min-width: 132px;
   color: var(--dim);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--fs, 1));
 }
 
 .spacer {
@@ -103,7 +103,7 @@ section > h2 {
 }
 
 button {
-  font: 500 12.5px var(--font);
+  font: 500 calc(12.5px * var(--fs, 1)) var(--font);
   padding: 7px 14px;
   border: 0;
   border-radius: 999px;
@@ -142,7 +142,7 @@ button:disabled {
 
 code,
 .path {
-  font: 400 11.5px var(--mono);
+  font: 400 calc(11.5px * var(--fs, 1)) var(--mono);
   color: var(--dim);
   word-break: break-all;
   user-select: text;
@@ -199,7 +199,7 @@ input[type="number"],
 input[type="text"],
 input[type="password"],
 select {
-  font: 400 12.5px var(--font);
+  font: 400 calc(12.5px * var(--fs, 1)) var(--font);
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid var(--hairline);
   border-radius: 8px;
@@ -225,7 +225,7 @@ select option {
 }
 
 .diff {
-  font: 400 11.5px/1.5 var(--mono);
+  font: 400 calc(11.5px * var(--fs, 1))/1.5 var(--mono);
   background: #08090b;
   border: 1px solid var(--hairline);
   border-radius: 10px;
@@ -249,7 +249,7 @@ select option {
 }
 
 .notice {
-  font: 400 12px var(--font);
+  font: 400 calc(12px * var(--fs, 1)) var(--font);
   border-radius: 10px;
   padding: 8px 12px;
 }
@@ -280,7 +280,7 @@ select option {
 }
 
 .pill-group > h3 {
-  font: 600 11px var(--font);
+  font: 600 calc(11px * var(--fs, 1)) var(--font);
   color: var(--dim);
 }
 
@@ -292,7 +292,7 @@ select option {
 }
 
 .pill-row .name {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--fs, 1));
 }
 
 /* The dot of a pill's row opens the colour palette (see ./colors.ts). The dot
@@ -332,27 +332,19 @@ select option {
 
 .palette .reset {
   padding: 3px 10px;
-  font-size: 11.5px;
-}
-
-.pill-row.full .name {
-  color: var(--dim-2);
+  font-size: calc(11.5px * var(--fs, 1));
 }
 
 .pill-row .state {
   margin-left: auto;
-  font: 400 11.5px var(--font);
+  font: 400 calc(11.5px * var(--fs, 1)) var(--font);
   color: var(--dim);
-}
-
-.hint.full {
-  color: var(--amber);
 }
 
 /* Shortcuts section */
 
 .subhead {
-  font: 600 11px var(--font);
+  font: 600 calc(11px * var(--fs, 1)) var(--font);
   color: var(--dim-2);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -377,11 +369,11 @@ select option {
 .shortcut-name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--fs, 1));
 }
 
 .keycap {
-  font: 500 11.5px var(--mono);
+  font: 500 calc(11.5px * var(--fs, 1)) var(--mono);
   min-width: 118px;
   padding: 5px 10px;
   border-radius: 8px;
@@ -403,7 +395,7 @@ select option {
 }
 
 .tag {
-  font: 500 10.5px var(--font);
+  font: 500 calc(10.5px * var(--fs, 1)) var(--font);
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -431,3 +423,41 @@ html[dir="rtl"] :is(.diff, .path, .keycap, input[type="password"], input[type="t
 /* Settings → Android phone: the pairing QR code (an SVG from Rust, black on white). */
 .qr { width: 220px; max-width: 100%; background: #fff; border-radius: 8px; padding: 4px; }
 .qr svg { display: block; width: 100%; height: auto; }
+
+/* Mochi → Wardrobe: the island's picker (views/wardrobe.ts), same look. */
+.wardrobe-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wardrobe-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.wardrobe-item {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+}
+
+.wardrobe-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.wardrobe-item.on {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.wardrobe-item canvas {
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}

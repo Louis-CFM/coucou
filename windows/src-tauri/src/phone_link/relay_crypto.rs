@@ -120,8 +120,9 @@ impl hkdf::KeyType for Len {
     }
 }
 
-/// HKDF-SHA-256 (RFC 5869).
-fn hkdf_sha256(ikm: &[u8], salt: &[u8], info: &[u8], out: &mut [u8]) {
+/// HKDF-SHA-256 (RFC 5869). `pub(crate)`: the mailbox crypto (mail_crypto.rs)
+/// derives its keys the same way.
+pub(crate) fn hkdf_sha256(ikm: &[u8], salt: &[u8], info: &[u8], out: &mut [u8]) {
     let prk = hkdf::Salt::new(hkdf::HKDF_SHA256, salt).extract(ikm);
     let info = [info];
     let okm = prk.expand(&info, Len(out.len())).expect("HKDF output length is within 255 blocks");

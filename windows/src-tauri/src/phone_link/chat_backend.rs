@@ -14,6 +14,7 @@ use super::chat::{BoxFuture, ChatBackend, ChatConfig, ChatFail, ModelOption};
 use crate::chat::Chat;
 use crate::settings::Settings;
 use crate::{chat, claude, log, openai_compat, secrets, Shared};
+use crate::mutex::MutexExt;
 
 /// Most models the user can allow, and the longest model name taken.
 pub const MAX_ALLOWED: usize = 50;
@@ -32,7 +33,7 @@ impl AppChat {
     }
 
     fn settings(&self) -> Settings {
-        self.app.state::<Shared>().settings.lock().unwrap().clone()
+        self.app.state::<Shared>().settings.lock_recover().clone()
     }
 }
 

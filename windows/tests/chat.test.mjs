@@ -10,6 +10,7 @@ import { calls, emit, internals, sent } from "./tauri.mjs";
 installFakeDom();
 const { buildPrompt } = await import("../src/views/chat.ts");
 const { DEFAULT_SETTINGS, State } = await import("../src/core/state.ts");
+const { CHAT_PICKER_H, PANEL_H, chatPromptHeight, islandSize } = await import("../src/core/layout.ts");
 
 /** What the mocked Rust side answers, by command. */
 let answers;
@@ -31,6 +32,7 @@ beforeEach(() => {
   State.stateOverride = null;
   State.view = "prompt";
   State.droppedFile = null;
+  State.pickingModel = false;
   view = buildPrompt(() => {});
   view.sync();
 });
@@ -54,10 +56,26 @@ test("a provider without a key is never asked for its models", async () => {
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
-  assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
+  // Nothing is set up: only where the chat goes is shown, and it says what is missing.
+  assert.deepEqual(chips(), ["Anthropic"]);
+  // The credential store is only ever asked whether a provider's key is there.
+  const keys = ["anthropic-api-key", "google-api-key", "openai-api-key", "openrouter-api-key"];
+  assert.ok(sent("secret_present").every((call) => keys.includes(call.key)));
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
+});
+
+test("the picker offers the providers that are set up, and the active one", async () => {
+  answers.secret_present = (args) => args.key === "google-api-key" || args.key === "openrouter-api-key";
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenRouter"]);
+  // A key added in Settings since shows the next time the picker opens.
+  $(".model-btn").fire("click");
+  answers.secret_present = true;
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
 });
 
 test("with a key, the models are listed and picking one saves it", async () => {
@@ -77,6 +95,46 @@ test("with a key, the models are listed and picking one saves it", async () => {
   assert.equal($(".model-name").textContent, "claude-sonnet-5");
 });
 
+test("a model its provider refused is marked in the list, and can still be picked", async () => {
+  answers.secret_present = true;
+  answers.chat_models = [
+    { id: "claude-opus-5", label: "Claude Opus 5" },
+    { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+  ];
+  answers.chat_refused = (args) => (args.provider === "anthropic" ? ["claude-sonnet-5"] : []);
+  $(".model-btn").fire("click");
+  await flush();
+  const rows = view.el.find(".picker-model");
+  assert.ok(!rows[0].classList.contains("refused"));
+  assert.ok(rows[1].classList.contains("refused"));
+  assert.match(rows[1].textContent, /Not available/);
+  rows[1].fire("click");
+  assert.equal(State.settings.model, "claude-sonnet-5");
+});
+
+test("the island makes room while the model picker is open, and takes it back", async () => {
+  let resized = 0;
+  const chat = buildPrompt(() => resized++);
+  chat.sync();
+  const button = chat.el.querySelector(".model-btn");
+  button.fire("click");
+  await flush();
+  assert.equal(State.pickingModel, true);
+  assert.equal(resized, 1);
+  button.fire("click");
+  assert.equal(State.pickingModel, false);
+  assert.equal(resized, 2);
+});
+
+test("the chat is as tall as the panel allows while its picker is open", () => {
+  assert.equal(islandSize("expanded", "prompt", 0).h, 240);
+  assert.equal(islandSize("expanded", "prompt", 0, true).h, CHAT_PICKER_H);
+  assert.equal(islandSize("expanded", "prompt", 9, true).h, CHAT_PICKER_H);
+  assert.ok(CHAT_PICKER_H > chatPromptHeight(99) && CHAT_PICKER_H < PANEL_H);
+  // Only the chat: every other view keeps its own height.
+  assert.equal(islandSize("expanded", "overview", 0, true).h, islandSize("expanded", "overview").h);
+});
+
 test("switching provider saves it and asks the new provider only", async () => {
   answers.secret_present = (args) => args.key === "google-api-key";
   answers.chat_models = (args) => (args.provider === "google" ? [{ id: "gemini-2.5-flash", label: "gemini-2.5-flash" }] : []);
@@ -91,6 +149,45 @@ test("switching provider saves it and asks the new provider only", async () => {
   assert.equal(State.settings.chatModels.google, "gemini-2.5-flash");
   assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-2.5-flash");
   assert.deepEqual(models(), ["gemini-2.5-flash"]);
+});
+
+test("a signed-in CLI joins the chips; a signed-out one is never asked for models", async () => {
+  answers.secret_present = false;
+  answers.cli_status = (args) => (args.provider === "cursor" ? { cli: "/usr/bin/agent", status: "Logged in as a@b.c", loggedIn: true } : { cli: null, status: "", loggedIn: false });
+  $(".model-btn").fire("click");
+  await flush(); await flush();
+  // The CLIs are asked for their status, by name (once eagerly, once on open).
+  assert.deepEqual(
+    [...new Set(sent("cli_status").map((c) => c.provider))].sort(),
+    ["claude-cli", "codex", "cursor", "devin", "kiro"],
+  );
+  assert.deepEqual(chips(), ["Anthropic", "Cursor"]);
+  // The key providers were still asked about their keys the same way.
+  const keys = ["anthropic-api-key", "google-api-key", "openai-api-key", "openrouter-api-key"];
+  assert.ok(sent("secret_present").every((call) => keys.includes(call.key)));
+});
+
+test("a CLI provider without a sign-in says so and is never asked for its models", async () => {
+  answers.cli_status = { cli: "/usr/bin/claude", status: "", loggedIn: false };
+  State.settings = { ...State.settings, chatProvider: "claude-cli" };
+  view.sync();
+  $(".model-btn").fire("click");
+  await flush(); await flush();
+  assert.match($(".picker-status").textContent, /Not signed in/);
+  assert.deepEqual(sent("chat_models"), []);
+});
+
+test("a signed-in CLI provider lists its models and picking one saves it", async () => {
+  answers.cli_status = { cli: "/usr/bin/agent", status: "Logged in", loggedIn: true };
+  answers.chat_models = [{ id: "auto", label: "Auto" }, { id: "gpt-5", label: "GPT-5" }];
+  State.settings = { ...State.settings, chatProvider: "cursor" };
+  view.sync();
+  $(".model-btn").fire("click");
+  await flush(); await flush();
+  assert.deepEqual(sent("chat_models"), [{ provider: "cursor" }]);
+  assert.deepEqual(models(), ["Auto", "GPT-5"]);
+  view.el.find(".picker-model")[1].fire("click");
+  assert.equal(State.settings.chatModels.cursor, "gpt-5");
 });
 
 test("a local answer streams into one reply, then the finished text replaces it", async () => {
@@ -121,4 +218,62 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.equal(view.el.find(".reply")[0].textContent, "Hello there!");
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
+});
+
+test("a failed turn shows a note that knows the way back to the chat", async () => {
+  answers.chat_send = () => Promise.reject("Google AI: model not found (404).");
+  State.noteThen = null;
+  $(".chat-input").value = "hello";
+  $(".send-btn").fire("click");
+  await flush();
+  assert.equal(State.view, "note");
+  assert.equal(State.noteMessage, "Google AI: model not found (404).");
+  assert.equal(State.noteThen, "prompt");
+  assert.ok(State.noteAt > 0);
+});
+
+test("a media model's answer is a card per file: the picture with Full screen and Download, a 3D model to view in 3D", async () => {
+  State.settings = {
+    ...State.settings,
+    chatProvider: "media",
+    chatModels: { media: "m-1" },
+    models: [{ id: "m-1", label: "FLUX", kind: "openai", model: "flux", endpoint: "https://x.dev/v1", vision: null, output: "image", voice: "", detail: "" }],
+  };
+  view.sync();
+  assert.equal($(".model-name").textContent, "FLUX · image");
+  assert.equal($(".chat-input").placeholder, "Describe an image…");
+  let finish;
+  answers.chat_send = () => new Promise((resolve) => (finish = resolve));
+  // The picture loads; the 3D model's file is gone, so its still can't be made.
+  answers.media_bytes = ({ name }) => (name.endsWith(".glb") ? null : new Uint8Array([0x89, 0x50]).buffer);
+  $(".chat-input").value = "a cat";
+  $(".send-btn").fire("click");
+  await flush();
+  view.sync();
+  assert.ok($(".gen-card"), "the making-it card, not the dots");
+  assert.equal($(".typing"), null);
+
+  finish({ text: "", notice: null, media: [{ name: "image-1-0.png", kind: "image" }, { name: "3d-1-0.glb", kind: "3d" }] });
+  await flush();
+  view.sync();
+  assert.equal($(".gen-card"), null);
+  assert.equal(view.el.find(".reply").length, 0, "no empty text bubble");
+  assert.deepEqual(view.el.find(".media-card").map((c) => c.find("BUTTON").map((b) => b.textContent)), [["Full screen", "Download"], ["View in 3D", "Download .glb"]]);
+  await flush();
+  const model = view.el.find(".media-card")[1];
+  assert.equal(model.find(".reply-note")[0]?.textContent, "Couldn't show this 3D model; it can still be downloaded.");
+});
+
+test("with a speech-to-text model saved, Send is the mic while the field is empty", () => {
+  assert.ok(!$(".send-btn").classList.contains("mic"), "no model: plain Send");
+  State.settings = {
+    ...State.settings,
+    models: [{ id: "m-1", label: "Whisper", kind: "openai", model: "whisper-large-v3-turbo", endpoint: "https://x.dev/v1", vision: null, output: "stt", voice: "", detail: "" }],
+  };
+  view.sync();
+  assert.ok($(".send-btn").classList.contains("mic"));
+  assert.match($(".send-btn").title, /Whisper/);
+  $(".chat-input").value = "hello";
+  $(".chat-input").fire("input");
+  assert.ok(!$(".send-btn").classList.contains("mic"), "text in the field: Send");
 });

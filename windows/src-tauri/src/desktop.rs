@@ -26,6 +26,7 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewUrl, We
 use crate::island::{self, PollGate};
 use crate::platform::{self, DesktopMode, MouseShape};
 use crate::settings::{self, DesktopSpot};
+use crate::mutex::MutexExt;
 
 pub const LABEL: &str = "mochi";
 
@@ -221,6 +222,8 @@ struct Inner {
     overlay: bool,
     /// Top-left corner, in the mode's space.
     pos: (f64, f64),
+    /// Where a desktop drag began: a drop on a window sends him back there.
+    drag_origin: Option<(f64, f64)>,
     /// Layer mode: logical size of the display he lives on.
     display: Option<(f64, f64)>,
     /// Poll mode: the click-through state last applied.
@@ -246,6 +249,8 @@ impl Desktop {
 struct Dropped {
     from: Source,
     home: bool,
+    /// Set when the drop landed on a window: the island attaches it to the chat.
+    context: Option<platform::WindowContext>,
 }
 
 #[derive(Serialize, Clone)]
@@ -347,7 +352,7 @@ fn create_window(app: &AppHandle, _mode: DesktopMode) -> Option<WebviewWindow> {
 /// Connected displays in the mode's space.
 fn displays(app: &AppHandle, d: &Desktop) -> Vec<Display> {
     if d.mode == DesktopMode::Layer {
-        let (w, h) = d.inner.lock().unwrap().display.unwrap_or((1920.0, 1080.0));
+        let (w, h) = d.inner.lock_recover().display.unwrap_or((1920.0, 1080.0));
         let frame = Rect { x: 0.0, y: 0.0, w, h };
         return vec![Display { frame, work: frame, scale: 1.0 }];
     }
@@ -373,7 +378,7 @@ fn displays(app: &AppHandle, d: &Desktop) -> Vec<Display> {
 /// The island's top-centre point and the scale there, in the mode's space.
 fn island_anchor(app: &AppHandle, d: &Desktop) -> Option<(f64, f64, f64)> {
     if d.mode == DesktopMode::Layer {
-        let (w, _) = d.inner.lock().unwrap().display?;
+        let (w, _) = d.inner.lock_recover().display?;
         return Some((w / 2.0, 0.0, 1.0));
     }
     let win = island::window(app)?;
@@ -404,7 +409,7 @@ fn refresh_layer_display(app: &AppHandle, d: &Desktop) {
         let _ = tx.send(platform::layer_display(&island, &mochi));
     });
     if let Ok(Some(size)) = rx.recv_timeout(Duration::from_secs(1)) {
-        d.inner.lock().unwrap().display = Some(size);
+        d.inner.lock_recover().display = Some(size);
     }
 }
 
@@ -414,7 +419,7 @@ fn from_island_client(app: &AppHandle, d: &Desktop, x: f64, y: f64) -> Option<(f
     match d.mode {
         DesktopMode::Layer => {
             // The island is anchored to the top edge and centred.
-            let (dw, _) = d.inner.lock().unwrap().display?;
+            let (dw, _) = d.inner.lock_recover().display?;
             let scale = island.scale_factor().unwrap_or(1.0);
             let iw = island.inner_size().ok()?.width as f64 / scale;
             Some(((dw - iw) / 2.0 + x, y))
@@ -431,7 +436,7 @@ fn from_island_client(app: &AppHandle, d: &Desktop, x: f64, y: f64) -> Option<(f
 // ── Window operations ─────────────────────────────────────────────────────────
 
 fn place(app: &AppHandle, d: &Desktop, pos: (f64, f64)) {
-    d.inner.lock().unwrap().pos = pos;
+    d.inner.lock_recover().pos = pos;
     let Some(win) = window(app) else { return };
     match d.mode {
         DesktopMode::Poll | DesktopMode::Window => {
@@ -446,7 +451,7 @@ fn place(app: &AppHandle, d: &Desktop, pos: (f64, f64)) {
 
 fn show(app: &AppHandle, d: &Desktop, at: (f64, f64)) {
     place(app, d, at);
-    d.inner.lock().unwrap().shown = true;
+    d.inner.lock_recover().shown = true;
     if let Some(win) = window(app) {
         if !PARK {
             let _ = win.show();
@@ -460,7 +465,7 @@ fn show(app: &AppHandle, d: &Desktop, at: (f64, f64)) {
 
 fn hide(app: &AppHandle, d: &Desktop) {
     {
-        let mut i = d.inner.lock().unwrap();
+        let mut i = d.inner.lock_recover();
         i.shown = false;
         i.landed = false;
         i.carry = None;
@@ -478,7 +483,7 @@ fn hide(app: &AppHandle, d: &Desktop) {
 /// Re-derives the poll gate and what takes the mouse from the current state.
 fn refresh(app: &AppHandle, d: &Desktop) {
     let (active, ignore, shape) = {
-        let mut i = d.inner.lock().unwrap();
+        let mut i = d.inner.lock_recover();
         let active = i.shown && (i.carry.is_some() || (i.landed && !i.asleep));
         // Poll mode: Some(flag) is decided here; None leaves it to the poll.
         let ignore = if !i.shown || (!i.landed && i.carry.is_none()) {
@@ -511,7 +516,7 @@ fn refresh(app: &AppHandle, d: &Desktop) {
     match d.mode {
         DesktopMode::Poll => {
             if let Some(flag) = ignore {
-                d.inner.lock().unwrap().ignoring = Some(flag);
+                d.inner.lock_recover().ignoring = Some(flag);
                 let _ = win.set_ignore_cursor_events(flag);
             }
             d.gate.set_active(active);
@@ -527,7 +532,7 @@ fn refresh(app: &AppHandle, d: &Desktop) {
 /// flight took over before the end.
 async fn fly(app: &AppHandle, d: &Desktop, to: (f64, f64), ms: u64, ease: fn(f64) -> f64) -> bool {
     let token = d.flight.fetch_add(1, Ordering::SeqCst) + 1;
-    let from = d.inner.lock().unwrap().pos;
+    let from = d.inner.lock_recover().pos;
     let (tx, rx) = tokio::sync::oneshot::channel();
     let app2 = app.clone();
     std::thread::spawn(move || {
@@ -551,7 +556,7 @@ async fn fly(app: &AppHandle, d: &Desktop, to: (f64, f64), ms: u64, ease: fn(f64
 fn remember(app: &AppHandle, change: impl FnOnce(&mut settings::DesktopMochiPref)) {
     let Some(shared) = app.try_state::<crate::Shared>() else { return };
     let snapshot = {
-        let mut s = shared.settings.lock().unwrap();
+        let mut s = shared.settings.lock_recover();
         change(&mut s.desktop_mochi);
         s.clone()
     };
@@ -573,7 +578,7 @@ fn remember_spot(app: &AppHandle, d: &Desktop, pos: (f64, f64), on_desktop: bool
 /// with the desktop shortcut: then the first-visit corner.
 fn target_spot(app: &AppHandle, d: &Desktop, anywhere: bool) -> Option<(f64, f64)> {
     let all = displays(app, d);
-    let saved = app.try_state::<crate::Shared>().and_then(|s| s.settings.lock().unwrap().desktop_mochi.spot.clone());
+    let saved = app.try_state::<crate::Shared>().and_then(|s| s.settings.lock_recover().desktop_mochi.spot.clone());
     // A fresh start in the corner of the island's display.
     let corner = || {
         let (cx, top, _) = island_anchor(app, d)?;
@@ -590,19 +595,29 @@ fn target_spot(app: &AppHandle, d: &Desktop, anywhere: bool) -> Option<(f64, f64
     }
 }
 
-/// The drop, wherever it came from: home if it is over the island's panel,
-/// otherwise his new spot.
+/// The drop, wherever it came from: home if it is over the island's panel, an
+/// attach if it is over a window (he goes back where the drag began and the
+/// island picks the window up as chat context — the Mac's WindowContextCapture
+/// drop), otherwise his new spot.
 async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source) {
     let s = side(app, d);
     let center = (pos.0 + s / 2.0, pos.1 + s / 2.0);
     let home = island_anchor(app, d)
         .map(|(cx, top, scale)| logic::home_zone(cx, top, scale).contains(center))
         .unwrap_or(false);
-    {
-        let mut i = d.inner.lock().unwrap();
+    // Poll and Window are the modes where `center` is a real screen coordinate;
+    // a layer surface keeps its own display-local space.
+    let attached = if home || !matches!(d.mode, DesktopMode::Poll | DesktopMode::Window) {
+        None
+    } else {
+        platform::window_context_at(center.0, center.1)
+    };
+    let origin = {
+        let mut i = d.inner.lock_recover();
         i.carry = None;
-        i.landed = !home;
-    }
+        i.landed = !home && (attached.is_none() || from == Source::Desktop);
+        i.drag_origin.take()
+    };
     if home {
         if from == Source::Island {
             // Back where he came from: he simply reappears in the island.
@@ -611,6 +626,29 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
             // The island page flies him home (and forgets the spot).
             refresh(app, d);
         }
+    } else if let Some(context) = attached {
+        match from {
+            // Dragged out of the island onto a window: home is where he was.
+            Source::Island => hide(app, d),
+            // Picked up from his spot: straight back, like the Mac's setFrameOrigin.
+            Source::Desktop => {
+                if let Some(origin) = origin {
+                    place(app, d, origin);
+                }
+                refresh(app, d);
+            }
+        }
+        let _ = app.emit_to(
+            island::WINDOW_LABEL,
+            "desktop-mochi-dropped",
+            Dropped {
+                from,
+                // An island drag that attached went home.
+                home: from == Source::Island,
+                context: Some(context),
+            },
+        );
+        return;
     } else {
         let spot = logic::settle(pos, &displays(app, d), SIZE, MARGIN);
         refresh(app, d);
@@ -619,7 +657,11 @@ async fn finish_drop(app: &AppHandle, d: &Desktop, pos: (f64, f64), from: Source
         }
         remember_spot(app, d, spot, true);
     }
-    let _ = app.emit_to(island::WINDOW_LABEL, "desktop-mochi-dropped", Dropped { from, home });
+    let _ = app.emit_to(
+        island::WINDOW_LABEL,
+        "desktop-mochi-dropped",
+        Dropped { from, home, context: None },
+    );
 }
 
 // ── Poll (Windows) ────────────────────────────────────────────────────────────
@@ -634,18 +676,18 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
             std::thread::sleep(Duration::from_millis(TICK_MS));
             let Some(win) = window(&app) else { continue };
             let Some((cx, cy)) = platform::cursor_physical() else { continue };
-            let carry = d.inner.lock().unwrap().carry;
+            let carry = d.inner.lock_recover().carry;
 
             if let Some(c) = carry {
                 let pos = (cx - c.grab.0, cy - c.grab.1);
                 if platform::left_button_down() {
-                    if pos != d.inner.lock().unwrap().pos {
+                    if pos != d.inner.lock_recover().pos {
                         place(&app, &d, pos);
                     }
                 } else {
                     // Released: hand the drop to the async pool, where the
                     // snap animation may wait.
-                    d.inner.lock().unwrap().carry = None;
+                    d.inner.lock_recover().carry = None;
                     let app2 = app.clone();
                     let d2 = d.clone();
                     tauri::async_runtime::spawn(async move { finish_drop(&app2, &d2, pos, c.from).await });
@@ -653,7 +695,7 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
                 continue;
             }
             // Between a release and the drop being settled, nothing to decide.
-            if !d.inner.lock().unwrap().landed {
+            if !d.inner.lock_recover().landed {
                 continue;
             }
 
@@ -662,7 +704,7 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
             let local = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
             let accept = logic::is_over_body(local, SIZE);
             {
-                let mut i = d.inner.lock().unwrap();
+                let mut i = d.inner.lock_recover();
                 if i.ignoring != Some(!accept) {
                     i.ignoring = Some(!accept);
                     let _ = win.set_ignore_cursor_events(!accept);
@@ -682,7 +724,7 @@ fn spawn_poll(app: AppHandle, d: Arc<Desktop>) {
 pub fn desktop_mochi_info(app: AppHandle, desktop: State<Arc<Desktop>>) -> DesktopInfo {
     let on_desktop = app
         .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().desktop_mochi.on_desktop)
+        .map(|s| s.settings.lock_recover().desktop_mochi.on_desktop)
         .unwrap_or(false);
     DesktopInfo { mode: desktop.mode.as_str(), on_desktop: on_desktop && desktop.mode != DesktopMode::Off }
 }
@@ -693,7 +735,7 @@ pub fn desktop_mochi_info(app: AppHandle, desktop: State<Arc<Desktop>>) -> Deskt
 #[tauri::command]
 pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if d.mode == DesktopMode::Off || window(&app).is_none() || d.inner.lock().unwrap().shown {
+    if d.mode == DesktopMode::Off || window(&app).is_none() || d.inner.lock_recover().shown {
         return false;
     }
     refresh_layer_display(&app, &d);
@@ -704,7 +746,7 @@ pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
     };
     let Some(center) = center else { return false };
     d.flight.fetch_add(1, Ordering::SeqCst);
-    d.inner.lock().unwrap().carry = Some(Carry { grab: (s / 2.0, s / 2.0), from: Source::Island });
+    d.inner.lock_recover().carry = Some(Carry { grab: (s / 2.0, s / 2.0), from: Source::Island });
     show(&app, &d, (center.0 - s / 2.0, center.1 - s / 2.0));
     true
 }
@@ -713,7 +755,7 @@ pub async fn desktop_mochi_pick_up(app: AppHandle, x: f64, y: f64) -> bool {
 #[tauri::command]
 pub async fn desktop_mochi_carry(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if d.mode == DesktopMode::Poll || d.inner.lock().unwrap().carry.is_none() {
+    if d.mode == DesktopMode::Poll || d.inner.lock_recover().carry.is_none() {
         return;
     }
     let s = side(&app, &d);
@@ -726,13 +768,13 @@ pub async fn desktop_mochi_carry(app: AppHandle, x: f64, y: f64) {
 #[tauri::command]
 pub async fn desktop_mochi_carry_end(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if d.mode == DesktopMode::Poll || d.inner.lock().unwrap().carry.is_none() {
+    if d.mode == DesktopMode::Poll || d.inner.lock_recover().carry.is_none() {
         return;
     }
     let s = side(&app, &d);
     let pos = from_island_client(&app, &d, x, y)
         .map(|c| (c.0 - s / 2.0, c.1 - s / 2.0))
-        .unwrap_or_else(|| d.inner.lock().unwrap().pos);
+        .unwrap_or_else(|| d.inner.lock_recover().pos);
     finish_drop(&app, &d, pos, Source::Island).await;
 }
 
@@ -742,10 +784,11 @@ pub async fn desktop_mochi_carry_end(app: AppHandle, x: f64, y: f64) {
 pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
     let d = app.state::<Arc<Desktop>>().inner().clone();
     let pos = {
-        let i = d.inner.lock().unwrap();
+        let mut i = d.inner.lock_recover();
         if !i.landed || i.carry.is_some() {
             return None;
         }
+        i.drag_origin = Some(i.pos);
         i.pos
     };
     // A drag takes over from a snap still settling him.
@@ -756,11 +799,11 @@ pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
             let (cx, cy) = platform::cursor_physical()?;
             let origin = win.outer_position().ok()?;
             let grab = (cx - origin.x as f64, cy - origin.y as f64);
-            d.inner.lock().unwrap().carry = Some(Carry { grab, from: Source::Desktop });
+            d.inner.lock_recover().carry = Some(Carry { grab, from: Source::Desktop });
             refresh(&app, &d);
         }
         DesktopMode::Layer => {
-            d.inner.lock().unwrap().overlay = true;
+            d.inner.lock_recover().overlay = true;
             let win = window(&app)?;
             let _ = app.run_on_main_thread(move || {
                 platform::set_layer_overlay(&win, true);
@@ -776,7 +819,7 @@ pub async fn desktop_mochi_drag_begin(app: AppHandle) -> Option<(f64, f64)> {
 #[tauri::command]
 pub async fn desktop_mochi_drag_move(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if d.mode == DesktopMode::Window && d.inner.lock().unwrap().landed {
+    if d.mode == DesktopMode::Window && d.inner.lock_recover().landed {
         place(&app, &d, (x, y));
     }
 }
@@ -786,11 +829,11 @@ pub async fn desktop_mochi_drag_move(app: AppHandle, x: f64, y: f64) {
 #[tauri::command]
 pub async fn desktop_mochi_drag_end(app: AppHandle, x: f64, y: f64) {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if d.mode == DesktopMode::Poll || !d.inner.lock().unwrap().landed {
+    if d.mode == DesktopMode::Poll || !d.inner.lock_recover().landed {
         return;
     }
     if d.mode == DesktopMode::Layer {
-        d.inner.lock().unwrap().overlay = false;
+        d.inner.lock_recover().overlay = false;
         if let Some(win) = window(&app) {
             let _ = app.run_on_main_thread(move || {
                 platform::set_layer_overlay(&win, false);
@@ -824,7 +867,7 @@ pub async fn desktop_mochi_fly_out(app: AppHandle, anywhere: Option<bool>) -> bo
     let Some((cx, top, scale)) = island_anchor(&app, &d) else { return false };
     let start = logic::island_spot(cx, top, SIZE, scale);
     {
-        let mut i = d.inner.lock().unwrap();
+        let mut i = d.inner.lock_recover();
         i.landed = false;
         i.carry = None;
         i.asleep = false;
@@ -834,7 +877,7 @@ pub async fn desktop_mochi_fly_out(app: AppHandle, anywhere: Option<bool>) -> bo
     if !fly(&app, &d, target, FLIGHT_MS, logic::ease_in_out).await {
         return false;
     }
-    d.inner.lock().unwrap().landed = true;
+    d.inner.lock_recover().landed = true;
     refresh(&app, &d);
     remember_spot(&app, &d, target, true);
     true
@@ -846,14 +889,14 @@ pub async fn desktop_mochi_fly_out(app: AppHandle, anywhere: Option<bool>) -> bo
 #[tauri::command]
 pub async fn desktop_mochi_fly_home(app: AppHandle, forget: bool) -> bool {
     let d = app.state::<Arc<Desktop>>().inner().clone();
-    if !d.inner.lock().unwrap().shown {
+    if !d.inner.lock_recover().shown {
         if forget {
             remember(&app, |p| p.on_desktop = false);
         }
         return true;
     }
     {
-        let mut i = d.inner.lock().unwrap();
+        let mut i = d.inner.lock_recover();
         i.landed = false;
         i.carry = None;
         i.asleep = false;
@@ -880,7 +923,7 @@ pub async fn desktop_mochi_fly_home(app: AppHandle, forget: bool) -> bool {
 #[tauri::command]
 pub fn desktop_mochi_set_asleep(app: AppHandle, desktop: State<Arc<Desktop>>, asleep: bool) {
     let changed = {
-        let mut i = desktop.inner.lock().unwrap();
+        let mut i = desktop.inner.lock_recover();
         let changed = i.asleep != asleep;
         i.asleep = asleep;
         changed

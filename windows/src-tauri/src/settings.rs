@@ -25,6 +25,18 @@ pub struct Settings {
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
+    /// Where the island sits along the top edge, as a share of the display's
+    /// width: 0 = centred, −50 = left edge, 50 = right edge. Lets it clear a
+    /// browser's tabs or a window title on a screen without a notch. Fractional
+    /// once the island has been dragged: a slider's step would snap it back.
+    pub island_shift: f64,
+    /// How far down the display the island sits, as a share of its height:
+    /// 0 = the top edge, where it retracts like a notch; more once dragged.
+    pub island_drop: f64,
+    /// The edge of the display the island is against — "top" (a bar along the
+    /// top, as shipped), "bottom", "left" or "right" (standing on end), or
+    /// "none" (afloat). Set by a drag, read by island::Dock.
+    pub island_dock: String,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -57,6 +69,20 @@ pub struct Settings {
     /// season), "none" or an outfit id — the Mac's raw values. The island reads
     /// anything it doesn't know as "auto", so the value is stored as it comes.
     pub mochi_outfit: String,
+    /// Mochi's body shape, picked in the wardrobe too: "" (the classic Mochi)
+    /// or a shape id of src/mochi/shapes.ts. Kept as it comes, like
+    /// `mochi_outfit`: the island reads an id it doesn't know as "".
+    pub mochi_shape: String,
+    /// "perMochi": each Mochi wears its own look (`mochi_looks`). "all": every
+    /// Mochi wears `mochi_outfit` and `mochi_shape`. Anything else reads as
+    /// "perMochi" (src/mochi/wardrobe.ts parseWardrobeMode).
+    pub wardrobe_mode: String,
+    /// Each Mochi's own look, by Mochi: `MAIN_MOCHI` or a coloured Mochi's pill
+    /// id. Sent to the webviews with the rest, but kept in wardrobe-looks.json,
+    /// never in settings.json (see `load_looks`). Both sets are kept whatever
+    /// the mode, so switching back finds every Mochi dressed as before.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub mochi_looks: BTreeMap<String, MochiLook>,
     /// A colour of the user's own for a pill's Mochi, by pill ID ("#RRGGBB"),
     /// picked in Settings → Active pills. Empty means the catalog's colours.
     /// Kept as it comes, like `mochi_outfit`: src/core/pill-colors.ts reads
@@ -66,9 +92,34 @@ pub struct Settings {
     /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
     /// code this build doesn't know reads as "".
     pub language: String,
+    /// Interface font, picked in Settings → General: "" keeps the default
+    /// stack, else the name of a family installed on the PC. Kept as it comes,
+    /// like `mochi_outfit`: src/core/font.ts cleans it before it reaches the
+    /// stylesheet. The Mac has no such setting.
+    pub font_family: String,
+    /// Text size factor, 1 = as shipped. Kept as it comes too: the page keeps
+    /// it inside the slider's range (core/font.ts).
+    pub font_scale: f64,
     /// Mochi on the desktop: whether he lives there, and his spot. Owned by
     /// the Rust side (desktop.rs) — what a webview sends back is ignored.
     pub desktop_mochi: DesktopMochiPref,
+    /// Custom editor command to open project folders (e.g. "cursor", "zed", "code").
+    /// Falls back to $VISUAL, $EDITOR, then "code".
+    #[serde(default)]
+    pub editor: Option<String>,
+    /// Show the time and date in the island while it is compact, for setups
+    /// where the top panel (and its clock) auto-hides under it.
+    #[serde(default)]
+    pub show_clock: bool,
+    /// The Android companion: control the island's cards from the phone.
+    /// The worker address and box id live here; the pairing secret lives in
+    /// the keychain ("phone-secret"), so it never sits in a file.
+    pub phone_enabled: bool,
+    pub phone_worker: String,
+    pub phone_pc_id: String,
+    /// A phone claimed the box; `phone_device` is the name it gave itself.
+    pub phone_paired: bool,
+    pub phone_device: String,
     /// The phone link (phone_link/) is on: a TLS server for the Android app on
     /// the local network. Off until the user turns it on in Settings → Phone;
     /// owned by the Rust side, so what a webview sends back is ignored.
@@ -97,6 +148,78 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// The main Mochi's name: the chat's persona. Empty = "Mochi".
+    pub mochi_name: String,
+    /// Names of the coloured Mochis, by pill id. Missing or empty = the
+    /// default pun name (src/core/state.ts DEFAULT_MOCHI_NAMES).
+    pub mochi_names: BTreeMap<String, String>,
+    /// Screenshot roam without the scan cutscene: a quick sweep, then capture.
+    pub quick_scan: bool,
+    /// "provider/model" of chat models that refused an image: next time the
+    /// island asks before sending one.
+    pub text_only_models: Vec<String>,
+    /// Hands-free chat: after a spoken question, the mic listens again once
+    /// the reply is in.
+    pub keep_mic_on: bool,
+    /// Models that make something other than chat text: images, video,
+    /// speech, 3D, or speech-to-text for the chat's mic (media.rs). Each has
+    /// its endpoint; its key is per host (secrets::endpoint_key).
+    pub models: Vec<ModelEntry>,
+    /// Settings → General → Calls: the island hides and goes silent while one
+    /// of these is in use. On by default.
+    pub quiet_on_camera: bool,
+    pub quiet_on_mic: bool,
+    pub quiet_on_screen_share: bool,
+}
+
+/// One Mochi's own look: an outfit as `mochi_outfit` stores it, a shape as
+/// `mochi_shape` does. Kept as they come; the island reads what it doesn't know
+/// as "auto" and the classic body.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct MochiLook {
+    pub outfit: String,
+    pub shape: String,
+}
+
+/// The main Mochi's key in `mochi_looks` (the coloured ones use their pill id).
+pub const MAIN_MOCHI: &str = "main";
+
+/// Gives the main Mochi the look every Mochi shares, unless he has his own.
+/// Returns true: the caller saves, so wardrobe-looks.json exists from then on.
+fn seed_looks(s: &mut Settings) -> bool {
+    let main = MochiLook { outfit: s.mochi_outfit.clone(), shape: s.mochi_shape.clone() };
+    s.mochi_looks.entry(MAIN_MOCHI.into()).or_insert(main);
+    true
+}
+
+/// A model on an OpenAI-compatible endpoint that makes something.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ModelEntry {
+    pub id: String,
+    pub label: String,
+    /// "openai" for any OpenAI-compatible endpoint.
+    pub kind: String,
+    pub model: String,
+    pub endpoint: String,
+    /// Whether it reads images (unused by media models, kept as it comes).
+    pub vision: Option<bool>,
+    /// What it makes: "image", "video", "audio", "3d" or "stt". Empty or
+    /// "text" makes nothing media.rs can use (see `is_text`).
+    pub output: String,
+    /// Text-to-speech voice, for "audio" models. Empty = the model's default.
+    pub voice: String,
+    /// Output detail for "3d" models that offer it (TRELLIS 2: "low",
+    /// "medium" or "high"). Empty = the model's default.
+    pub detail: String,
+}
+
+impl ModelEntry {
+    pub fn is_text(&self) -> bool {
+        matches!(self.output.as_str(), "" | "text")
+    }
+
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -136,6 +259,9 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
+            island_shift: 0.0,
+            island_drop: 0.0,
+            island_dock: "top".into(),
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -149,9 +275,21 @@ impl Default for Settings {
             custom_url: String::new(),
             shortcuts: Default::default(),
             mochi_outfit: "auto".into(),
+            mochi_shape: String::new(),
+            wardrobe_mode: "perMochi".into(),
+            mochi_looks: BTreeMap::new(),
             pill_colors: BTreeMap::new(),
             language: String::new(),
+            font_family: String::new(),
+            font_scale: 1.0,
             desktop_mochi: DesktopMochiPref::default(),
+            editor: None,
+            show_clock: false,
+            phone_enabled: false,
+            phone_worker: String::new(),
+            phone_pc_id: String::new(),
+            phone_paired: false,
+            phone_device: String::new(),
             phone_link: false,
             phone_chat: false,
             phone_chat_models: Vec::new(),
@@ -162,7 +300,49 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            mochi_name: String::new(),
+            mochi_names: BTreeMap::new(),
+            quick_scan: false,
+            text_only_models: Vec::new(),
+            keep_mic_on: false,
+            models: Vec::new(),
+            quiet_on_camera: true,
+            quiet_on_mic: true,
+            quiet_on_screen_share: true,
         }
+    }
+}
+
+impl Settings {
+    /// What a webview sends back, with the fields only Rust changes kept as they
+    /// are: the phone pairing (phone.rs), whether Coucou's hooks and status line
+    /// are in Claude Code's settings.json (hooks.rs) and Mochi's desktop spot
+    /// (desktop.rs). A webview holds a copy taken at boot and writes the whole
+    /// object back on any change, so its stale copy would otherwise undo them.
+    pub fn from_webview(&self, mut incoming: Settings) -> Settings {
+        incoming.desktop_mochi = self.desktop_mochi.clone();
+        incoming.hooks_installed = self.hooks_installed;
+        incoming.plan_relay_installed = self.plan_relay_installed;
+        incoming.phone_enabled = self.phone_enabled;
+        incoming.phone_worker = self.phone_worker.clone();
+        incoming.phone_pc_id = self.phone_pc_id.clone();
+        incoming.phone_paired = self.phone_paired;
+        incoming.phone_device = self.phone_device.clone();
+        incoming.phone_link = self.phone_link;
+        incoming.phone_chat = self.phone_chat;
+        incoming.phone_chat_models = self.phone_chat_models.clone();
+        incoming.phone_details = self.phone_details;
+        incoming.phone_answers = self.phone_answers;
+        incoming.phone_diffs = self.phone_diffs;
+        incoming.phone_usage = self.phone_usage;
+        incoming.phone_services = self.phone_services.clone();
+        incoming.phone_relay = self.phone_relay;
+        incoming.phone_relay_url = self.phone_relay_url.clone();
+        // A page that never had the Mochis' own looks must not wipe them.
+        if incoming.mochi_looks.is_empty() {
+            incoming.mochi_looks = self.mochi_looks.clone();
+        }
+        incoming
     }
 }
 
@@ -176,14 +356,71 @@ fn settings_path() -> PathBuf {
     config_dir().join("settings.json")
 }
 
+/// Each Mochi's own look (`Settings::mochi_looks`), apart from the settings
+/// the window shows.
+fn looks_path() -> PathBuf {
+    config_dir().join("wardrobe-looks.json")
+}
+
 pub fn load() -> Settings {
     load_from(&settings_path())
 }
 
+/// Writes settings.json, then wardrobe-looks.json: the first error is
+/// returned, but one file failing never keeps the other from being written.
 pub fn save(settings: &Settings) -> std::io::Result<()> {
     let dir = config_dir();
     crate::platform::ensure_private_dir(&dir)?;
-    save_to(&settings_path(), settings)
+    let main = save_to(&settings_path(), settings);
+    let looks = save_looks_to(&looks_path(), &settings.mochi_looks);
+    main.and(looks)
+}
+
+/// Reads each Mochi's own look from wardrobe-looks.json into `s`, at launch.
+/// Returns true when there was none to read: the first launch with it, or a
+/// file that could not be read or used (copied aside first, or else left as
+/// it is: no save writes over it, see `protect`). The main Mochi then starts
+/// in the look settings.json gives every Mochi, and the caller saves.
+pub fn load_looks(s: &mut Settings) -> bool {
+    load_looks_from(&looks_path(), s)
+}
+
+fn load_looks_from(path: &Path, s: &mut Settings) -> bool {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(err) if err.kind() == ErrorKind::NotFound => return seed_looks(s),
+        Err(err) => {
+            note(format!("can't read {}: {err}", path.display()));
+            protect(path);
+            return seed_looks(s);
+        }
+    };
+    let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
+    if text.iter().all(u8::is_ascii_whitespace) {
+        return seed_looks(s);
+    }
+    match serde_json::from_slice::<BTreeMap<String, MochiLook>>(text) {
+        Ok(looks) => {
+            s.mochi_looks = looks;
+            false
+        }
+        Err(_) => {
+            match set_aside(path, "corrupt", &bytes) {
+                Ok(copy) => note(format!("{} is not usable, kept as {}", path.display(), copy.display())),
+                Err(err) => {
+                    note(format!("{} is not usable and could not be copied: {err}", path.display()));
+                    protect(path);
+                }
+            }
+            seed_looks(s)
+        }
+    }
+}
+
+/// `save`'s half for wardrobe-looks.json: the map as it is, by Mochi.
+fn save_looks_to(path: &Path, looks: &BTreeMap<String, MochiLook>) -> std::io::Result<()> {
+    let json = serde_json::to_vec_pretty(looks).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    write_atomic(path, &json)
 }
 
 /// How many copies `set_aside` can make within one second before it gives up.
@@ -382,11 +619,21 @@ fn write_whole(file: &mut std::fs::File, bytes: &[u8]) -> std::io::Result<()> {
     file.sync_all()
 }
 
-/// `save`, for the file at `path`, whose directory already exists.
+/// `save`, for the file at `path`, whose directory already exists. Each
+/// Mochi's look is left out: it goes to wardrobe-looks.json.
 fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
+    let mut value = serde_json::to_value(settings).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    if let Value::Object(fields) = &mut value {
+        fields.remove("mochiLooks");
+    }
+    let json = serde_json::to_vec_pretty(&value).map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
+    write_atomic(path, &json)
+}
+
+/// Writes `json` over the file at `path` in one go, never over one that could
+/// not be loaded and could not be copied aside (`keep_what_was_not_loaded`).
+fn write_atomic(path: &Path, json: &[u8]) -> std::io::Result<()> {
     keep_what_was_not_loaded(path)?;
-    let json = serde_json::to_vec_pretty(settings)
-        .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))?;
 
     // A dotfiles setup can make settings.json a symlink: write to the file it
     // points at, so the link survives the rename below.
@@ -399,7 +646,7 @@ fn save_to(path: &Path, settings: &Settings) -> std::io::Result<()> {
     // power cut leaves the previous settings.json intact rather than half a file.
     let temp = path.with_extension(format!("json.coucou-{}", std::process::id()));
     let written = std::fs::File::create(&temp)
-        .and_then(|mut file| write_whole(&mut file, &json))
+        .and_then(|mut file| write_whole(&mut file, json))
         .and_then(|()| std::fs::rename(&temp, path));
     if written.is_err() {
         let _ = std::fs::remove_file(&temp);
@@ -412,6 +659,32 @@ mod tests {
     use super::*;
     use serde_json::{json, Value};
 
+    #[test]
+    fn a_webview_save_keeps_what_only_rust_may_change() {
+        let mut current = Settings::default();
+        current.phone_enabled = true;
+        current.phone_worker = "https://relay.example".into();
+        current.phone_pc_id = "a1b2c3d4e5f6a1b2c3d4e5f6".into();
+        current.phone_paired = true;
+        current.phone_device = "Pixel".into();
+        current.hooks_installed = true;
+        current.plan_relay_installed = true;
+        current.desktop_mochi.on_desktop = true;
+
+        // A webview's copy from before the pairing, carrying one real change.
+        let mut stale = Settings::default();
+        stale.sound_volume = 0.05;
+
+        let saved = current.from_webview(stale);
+        assert_eq!(saved.sound_volume, 0.05, "the webview's own change goes through");
+        assert!(saved.phone_enabled && saved.phone_paired);
+        assert_eq!(saved.phone_worker, "https://relay.example");
+        assert_eq!(saved.phone_pc_id, "a1b2c3d4e5f6a1b2c3d4e5f6");
+        assert_eq!(saved.phone_device, "Pixel");
+        assert!(saved.hooks_installed && saved.plan_relay_installed);
+        assert!(saved.desktop_mochi.on_desktop);
+    }
+
     /// A settings.json in which no value is the default one.
     // Two #: the colours in it are written "#RRGGBB".
     const CUSTOM: &str = r##"{
@@ -423,6 +696,9 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
+  "islandShift": -20.5,
+  "islandDrop": 35.0,
+  "islandDock": "left",
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -436,9 +712,20 @@ mod tests {
   "customUrl": "https://llm.example.com",
   "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
   "mochiOutfit": "witchHat",
+  "mochiShape": "bean",
+  "wardrobeMode": "all",
   "pillColors": { "integration_claude": "#2DD4BF" },
   "language": "pt-BR",
+  "fontFamily": "Cascadia Code",
+  "fontScale": 1.15,
   "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } },
+  "editor": "zed",
+  "showClock": true,
+  "phoneEnabled": true,
+  "phoneWorker": "https://coucou-relay.example.workers.dev",
+  "phonePcId": "pc-123",
+  "phonePaired": true,
+  "phoneDevice": "Pixel 9",
   "phoneLink": true,
   "phoneChat": true,
   "phoneChatModels": ["openai/gpt-x"],
@@ -448,7 +735,17 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "mochiName": "Momo",
+  "mochiNames": { "integration_github": "Gus" },
+  "quickScan": true,
+  "textOnlyModels": ["custom/llama-3.3"],
+  "keepMicOn": true,
+  "models": [{ "id": "m-1", "label": "Orpheus", "kind": "openai", "model": "canopylabs/orpheus-v1-english",
+    "endpoint": "https://api.groq.com/openai/v1", "vision": null, "output": "audio", "voice": "hannah", "detail": "" }],
+  "quietOnCamera": false,
+  "quietOnMic": false,
+  "quietOnScreenShare": false
 }"##;
 
     fn custom() -> Value {
@@ -930,6 +1227,9 @@ mod tests {
                 "activeIntegrations",
                 "mainPill",
                 "screen",
+                "islandShift",
+                "islandDrop",
+                "islandDock",
                 "autostart",
                 "hooksInstalled",
                 "model",
@@ -943,9 +1243,20 @@ mod tests {
                 "customUrl",
                 "shortcuts",
                 "mochiOutfit",
+                "mochiShape",
+                "wardrobeMode",
                 "pillColors",
                 "language",
+                "fontFamily",
+                "fontScale",
                 "desktopMochi",
+                "editor",
+                "showClock",
+                "phoneEnabled",
+                "phoneWorker",
+                "phonePcId",
+                "phonePaired",
+                "phoneDevice",
                 "phoneLink",
                 "phoneChat",
                 "phoneChatModels",
@@ -956,6 +1267,15 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "mochiName",
+                "mochiNames",
+                "quickScan",
+                "textOnlyModels",
+                "keepMicOn",
+                "models",
+                "quietOnCamera",
+                "quietOnMic",
+                "quietOnScreenShare",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -990,6 +1310,81 @@ mod tests {
 
         assert!(save_to(&file, &Settings::default()).is_err());
         assert_eq!(std::fs::read(&file).unwrap(), CUSTOM.as_bytes());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── Each Mochi's own look (wardrobe-looks.json) ───────────────────────────
+
+    #[test]
+    fn the_first_launch_gives_the_shared_look_to_the_main_mochi_too() {
+        let (dir, file) = scratch("looks-first");
+        let looks = dir.join("wardrobe-looks.json");
+        let mut s = Settings { mochi_outfit: "crown".into(), mochi_shape: "bean".into(), ..Default::default() };
+        assert!(load_looks_from(&looks, &mut s));
+        let main = MochiLook { outfit: "crown".into(), shape: "bean".into() };
+        assert_eq!(s.mochi_looks.get(MAIN_MOCHI), Some(&main));
+        // The shared look stays what "all" mode wears.
+        assert_eq!((s.mochi_outfit.as_str(), s.mochi_shape.as_str()), ("crown", "bean"));
+
+        // Saved apart: settings.json never holds them, the next launch reads them back.
+        s.mochi_looks.insert("integration_github".into(), MochiLook { outfit: "scarf".into(), shape: "tofu".into() });
+        save_to(&file, &s).unwrap();
+        save_looks_to(&looks, &s.mochi_looks).unwrap();
+        let written: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+        assert!(written.get("mochiLooks").is_none());
+        let mut again = load_from(&file);
+        assert!(!load_looks_from(&looks, &mut again));
+        assert_eq!(again.mochi_looks, s.mochi_looks);
+        assert_eq!(names(&dir), ["settings.json", "wardrobe-looks.json"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn switching_modes_keeps_both_sets_of_looks() {
+        let (dir, file) = scratch("looks-modes");
+        let looks = dir.join("wardrobe-looks.json");
+        let mut s = Settings { mochi_outfit: "crown".into(), ..Default::default() };
+        s.mochi_looks.insert(MAIN_MOCHI.into(), MochiLook { outfit: "beanie".into(), shape: String::new() });
+        for mode in ["all", "perMochi", "all"] {
+            s.wardrobe_mode = mode.into();
+            save_to(&file, &s).unwrap();
+            save_looks_to(&looks, &s.mochi_looks).unwrap();
+            let mut back = load_from(&file);
+            load_looks_from(&looks, &mut back);
+            assert_eq!(back.wardrobe_mode, mode);
+            assert_eq!(back.mochi_outfit, "crown");
+            assert_eq!(back.mochi_looks, s.mochi_looks);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_corrupt_looks_file_is_kept_aside_before_anything_is_saved() {
+        let (dir, _) = scratch("looks-corrupt");
+        let looks = dir.join("wardrobe-looks.json");
+        let garbage = b"{ \"main\": { \"outfit\": ";
+        std::fs::write(&looks, garbage).unwrap();
+        let mut s = Settings { mochi_outfit: "scarf".into(), ..Default::default() };
+        assert!(load_looks_from(&looks, &mut s));
+        assert_eq!(s.mochi_looks.get(MAIN_MOCHI).map(|l| l.outfit.as_str()), Some("scarf"));
+        let copies: Vec<String> = names(&dir).into_iter().filter(|n| n.starts_with("wardrobe-looks.json.corrupt-")).collect();
+        assert_eq!(copies.len(), 1);
+        assert_eq!(std::fs::read(dir.join(&copies[0])).unwrap(), garbage);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_looks_file_that_cannot_be_read_is_never_written_over() {
+        // A directory squatting on the name cannot be read as a file.
+        let (dir, _) = scratch("looks-unread");
+        let looks = dir.join("wardrobe-looks.json");
+        std::fs::create_dir(&looks).unwrap();
+        std::fs::write(looks.join("keep"), b"x").unwrap();
+        let mut s = Settings::default();
+        assert!(load_looks_from(&looks, &mut s));
+        assert!(save_looks_to(&looks, &s.mochi_looks).is_err());
+        assert_eq!(std::fs::read(looks.join("keep")).unwrap(), b"x");
+        not_loaded().retain(|p| p != &looks);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
