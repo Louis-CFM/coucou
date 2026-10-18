@@ -58,6 +58,8 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private countdown!: HTMLElement;
+  /** The closed island's middle: what the focused Mochi is doing, else the time. */
+  private compactStatus!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -259,6 +261,11 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.countdown = h("div", { id: "countdown" });
+    this.compactStatus = h("div", { id: "compact-status" });
+    // The clock moves on its own; a timer this slow costs nothing.
+    window.setInterval(() => {
+      if (State.mode === "compact") this.syncCompactStatus();
+    }, 15_000);
 
     this.header = buildHeader(actions);
     this.views = buildViews(actions, () => this.animateGeometry(false));
@@ -292,6 +299,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactStatus,
       this.countdown,
     );
 
@@ -1190,8 +1198,30 @@ export class Island {
       }
     }
 
+    // Only with "Keep island visible"; otherwise the closed island keeps its usual look.
+    const status = showGrid && State.settings.keepVisible;
+    this.compactStatus.style.opacity = status ? "1" : "0";
+    if (status) this.syncCompactStatus();
+    // An off-screen shimmer would keep the compositor busy while hidden.
+    else this.compactStatus.classList.remove("shimmer");
+
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+  }
+
+  /** The closed island's middle: the focused Mochi's current step, else the clock. */
+  private syncCompactStatus() {
+    const t = State.focusTask;
+    const step = t && t.state !== "idle" && t.steps.length > 0
+      ? t.steps[Math.min(t.stepIndex, t.steps.length - 1)]
+      : null;
+    const text = step ?? new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (this.compactStatus.textContent !== text) this.compactStatus.textContent = text;
+    const live = !!step && t!.state !== "finished" && t!.state !== "error";
+    this.compactStatus.classList.toggle("shimmer", live);
+    this.compactStatus.classList.toggle("clock", !step);
+    this.compactStatus.classList.toggle("ok", !!step && t!.state === "finished");
+    this.compactStatus.classList.toggle("bad", !!step && t!.state === "error");
   }
 
   /** Applies settings coming from Rust at boot. */
@@ -1200,6 +1230,10 @@ export class Island {
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
+    this.fsm.keepVisible = State.settings.keepVisible ?? false;
+    // Turned on while hidden: come back now rather than at the next hover.
+    // (Paused stays hidden; that is what pausing is for.)
+    if (this.fsm.keepVisible && !State.paused) this.fsm.reveal();
     State.notify();
   }
 

@@ -97,6 +97,9 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// The island never fades to the invisible wake strip: at rest it stays
+    /// compact at the top of the screen.
+    pub keep_visible: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -162,6 +165,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            keep_visible: false,
         }
     }
 }
@@ -448,7 +452,8 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "keepVisible": true
 }"##;
 
     fn custom() -> Value {
@@ -956,6 +961,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "keepVisible",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
