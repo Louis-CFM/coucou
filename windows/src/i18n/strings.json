@@ -4910,6 +4910,18 @@
    "id": "Muat ulang suara",
    "cs": "Znovu načíst zvuky"
   },
+  "Remove": {
+   "zh-Hans": "移除",
+   "hi": "हटाएँ",
+   "es": "Quitar",
+   "ar": "إزالة",
+   "fr": "Retirer",
+   "bn": "সরান",
+   "pt-BR": "Remover",
+   "ru": "Удалить",
+   "id": "Hapus",
+   "cs": "Odebrat"
+  },
   "Remove from favorites": {
    "zh-Hans": "取消收藏",
    "hi": "पसंदीदा से हटाएँ",
@@ -6409,6 +6421,18 @@
    "ru": "Используется чатом. Список берётся из твоего аккаунта Anthropic.",
    "id": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda.",
    "cs": "Používá ho chat. Seznam pochází z vašeho účtu Anthropic."
+  },
+  "Video": {
+   "zh-Hans": "视频",
+   "hi": "वीडियो",
+   "es": "Vídeo",
+   "ar": "فيديو",
+   "fr": "Vidéo",
+   "bn": "ভিডিও",
+   "pt-BR": "Vídeo",
+   "ru": "Видео",
+   "id": "Video",
+   "cs": "Video"
   },
   "Voice": {
    "zh-Hans": "声音",

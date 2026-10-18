@@ -165,10 +165,10 @@ const PROVIDERS: [string, string][] = [
 
 const OUTPUTS: [ModelOutput, string][] = [
   ["image", N_("Images")],
-  ["video", "Video"],
-  ["audio", "Speech"],
-  ["3d", "3D"],
-  ["stt", "Transcribes speech (the chat's mic)"],
+  ["video", N_("Video")],
+  ["audio", N_("Speech")],
+  ["3d", N_("3D")],
+  ["stt", N_("Transcribes speech (the chat's mic)")],
 ];
 
 /** Groq's Orpheus English voices (console.groq.com/docs/text-to-speech/orpheus). */
