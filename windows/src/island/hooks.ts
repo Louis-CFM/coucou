@@ -263,6 +263,11 @@ function handleHook(island: Island, payload: HookPayload) {
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
+    if (State.settings.companionMode) {
+      if (isAlert) { State.setFocus(agentId); island.alert(view); }
+      else State.notify();
+      return;
+    }
     if (State.mode === "expanded") {
       if (isAlert) island.setView(view);
     } else if (isAlert) {
@@ -399,7 +404,7 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       Sound.play("finish");
       // A card waiting for an answer is never covered by another alert.
-      if (focused && !State.pendingApproval) surface("finished", true);
+      if ((focused || State.settings.companionMode) && !State.pendingApproval) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
@@ -428,7 +433,7 @@ function handleHook(island: Island, payload: HookPayload) {
       supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");
-      if (focused && !State.pendingApproval) surface("error", true);
+      if ((focused || State.settings.companionMode) && !State.pendingApproval) surface("error", true);
       else State.setPillBadge(agentId, "error");
       break;
 
@@ -483,6 +488,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // The card always comes up, even over another pill or an island that is
       // already open: its pill comes to the front, and the one you were on
       // comes back once you answer (Mac #117, #120).
+      if (State.settings.companionMode && State.mode === "expanded" && State.focusId !== agentId) island.collapse();
       State.beginApproval({
         requestId,
         sessionId,

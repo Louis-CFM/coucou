@@ -32,3 +32,10 @@ test("Gemini and Claude voice sessions have their own visible pets; unknown rout
   emit("voice-pet", "unknown");
   assert.equal(State.tasks.length, 2);
 });
+
+test("the existing local Ollama pet also owns its continuous voice conversation", () => {
+  emit("voice-pet", "ollama");
+  assert.equal(State.focusId, "ai_ollama");
+  assert.equal(State.settings.chatProvider, "codex");
+  assert.deepEqual(sent("save_settings"), []);
+});

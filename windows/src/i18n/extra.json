@@ -4219,17 +4219,6 @@
    "ru": "Ключ ElevenLabs",
    "id": "Kunci ElevenLabs"
   },
-  "Say « OK Coucou », then ask anything: add a pill, play music, the weather, an email to prepare.": {
-   "zh-Hans": "说「OK Coucou」，然后随便问：添加一个胶囊、播放音乐、天气、准备一封邮件。",
-   "hi": "« OK Coucou » कहें, फिर कुछ भी पूछें: एक पिल जोड़ें, संगीत चलाएँ, मौसम, कोई ईमेल तैयार करें।",
-   "es": "Di « OK Coucou » y pide lo que quieras: añadir una píldora, poner música, el tiempo, un correo por preparar.",
-   "ar": "قل « OK Coucou »، ثم اطلب أي شيء: إضافة كبسولة، تشغيل الموسيقى، الطقس، بريد إلكتروني لتجهيزه.",
-   "fr": "Dis « OK Coucou », puis demande ce que tu veux : ajouter une pilule, lancer de la musique, la météo, un e-mail à préparer.",
-   "bn": "« OK Coucou » বলুন, তারপর যা খুশি জিজ্ঞেস করুন: একটি পিল যোগ করা, গান চালানো, আবহাওয়া, একটি ইমেল তৈরি করা।",
-   "pt-BR": "Diga « OK Coucou » e peça o que quiser: adicionar uma pílula, tocar música, o clima, um e-mail para preparar.",
-   "ru": "Скажите « OK Coucou » и просите что угодно: добавить плашку, включить музыку, погоду, подготовить письмо.",
-   "id": "Ucapkan « OK Coucou », lalu minta apa saja: tambah pil, putar musik, cuaca, email yang perlu disiapkan."
-  },
   "Listening": {
    "zh-Hans": "聆听",
    "hi": "सुनना",
@@ -4273,17 +4262,6 @@
    "pt-BR": "Ouve « OK Coucou » aqui, sem internet.",
    "ru": "Слышит « OK Coucou » прямо здесь, без интернета.",
    "id": "Mendengar « OK Coucou » di sini, tanpa internet."
-  },
-  "Coucou answers with Claude: add your Claude key in Notch → Chat.": {
-   "zh-Hans": "Coucou 用 Claude 回答：请在 Notch → 聊天 中添加你的 Claude 密钥。",
-   "hi": "Coucou Claude से जवाब देता है: Notch → चैट में अपनी Claude कुंजी जोड़ें।",
-   "es": "Coucou responde con Claude: añade tu clave de Claude en Notch → Chat.",
-   "ar": "يجيب Coucou باستخدام Claude: أضف مفتاح Claude الخاص بك في Notch ← الدردشة.",
-   "fr": "Coucou répond avec Claude : ajoute ta clé Claude dans Notch → Chat.",
-   "bn": "Coucou Claude দিয়ে উত্তর দেয়: Notch → চ্যাট-এ আপনার Claude কী যোগ করুন।",
-   "pt-BR": "O Coucou responde com o Claude: adicione sua chave do Claude em Notch → Chat.",
-   "ru": "Coucou отвечает с помощью Claude: добавьте свой ключ Claude в Notch → Чат.",
-   "id": "Coucou menjawab dengan Claude: tambahkan kunci Claude-mu di Notch → Obrolan."
   },
   "Download the voice model so Coucou can hear you.": {
    "zh-Hans": "下载语音模型，Coucou 才能听到你。",
@@ -4362,17 +4340,6 @@
    "ru": "Мужской",
    "id": "Laki-laki"
   },
-  "Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.": {
-   "zh-Hans": "你的声音永远不会离开这台电脑：Parakeet 在本机把它转成文字。只有「OK Coucou」之后的文字会用你的 Claude 密钥发送给 Anthropic；如果你选了 ElevenLabs 来朗读回答，也会发送给 ElevenLabs。",
-   "hi": "आपकी आवाज़ कभी इस कंप्यूटर से बाहर नहीं जाती: Parakeet उसे यहीं टेक्स्ट में बदलता है। केवल « OK Coucou » के बाद के शब्द आपकी Claude कुंजी के साथ Anthropic को जाते हैं, और अगर आपने जवाबों के लिए ElevenLabs चुना है तो ElevenLabs को भी।",
-   "es": "Tu voz nunca sale de este ordenador: Parakeet la convierte en texto aquí. Solo las palabras después de « OK Coucou » van a Anthropic con tu clave de Claude, y a ElevenLabs si lo elegiste para las respuestas.",
-   "ar": "لا يغادر صوتك هذا الحاسوب أبدًا: يحوّله Parakeet إلى نص هنا. لا تذهب إلا الكلمات التي تلي « OK Coucou » إلى Anthropic بمفتاح Claude الخاص بك، وإلى ElevenLabs إن اخترته للإجابات.",
-   "fr": "Ta voix ne quitte jamais cet ordinateur : Parakeet la transforme en texte ici. Seuls les mots qui suivent « OK Coucou » partent chez Anthropic avec ta clé Claude, et chez ElevenLabs si tu l'as choisi pour les réponses.",
-   "bn": "আপনার কণ্ঠ কখনো এই কম্পিউটার ছেড়ে যায় না: Parakeet এখানেই একে টেক্সটে রূপান্তর করে। কেবল « OK Coucou »-এর পরের শব্দগুলো আপনার Claude কী দিয়ে Anthropic-এ যায়, আর উত্তরের জন্য ElevenLabs বেছে নিলে ElevenLabs-এও।",
-   "pt-BR": "Sua voz nunca sai deste computador: o Parakeet a transforma em texto aqui. Só as palavras depois de « OK Coucou » vão para a Anthropic com sua chave do Claude, e para a ElevenLabs se você a escolheu para as respostas.",
-   "ru": "Ваш голос никогда не покидает этот компьютер: Parakeet превращает его в текст здесь. Только слова после « OK Coucou » уходят в Anthropic с вашим ключом Claude и в ElevenLabs, если вы выбрали его для ответов.",
-   "id": "Suaramu tidak pernah keluar dari komputer ini: Parakeet mengubahnya menjadi teks di sini. Hanya kata-kata setelah « OK Coucou » yang dikirim ke Anthropic dengan kunci Claude-mu, dan ke ElevenLabs jika kamu memilihnya untuk jawaban."
-  },
   "An email is never sent by Coucou: your mail app opens with it written, and you send it.": {
    "zh-Hans": "Coucou 从不发送邮件：你的邮件应用会打开并填好内容，由你来发送。",
    "hi": "Coucou कभी ईमेल नहीं भेजता: आपका मेल ऐप उसे लिखा हुआ खोलता है, और भेजते आप हैं।",
@@ -4384,16 +4351,247 @@
    "ru": "Coucou никогда не отправляет письма: ваше почтовое приложение откроется с готовым текстом, а отправите его вы.",
    "id": "Coucou tidak pernah mengirim email: aplikasi email-mu terbuka dengan email yang sudah ditulis, dan kamu yang mengirimnya."
   },
-  "Coucou couldn't answer: check your Claude key in Notch → Chat.": {
-   "zh-Hans": "Coucou 无法回答：请检查 Notch → 聊天 中的 Claude 密钥。",
-   "hi": "Coucou जवाब नहीं दे सका: Notch → चैट में अपनी Claude कुंजी जाँचें।",
-   "es": "Coucou no pudo responder: revisa tu clave de Claude en Notch → Chat.",
-   "ar": "تعذّر على Coucou الإجابة: تحقّق من مفتاح Claude في Notch ← الدردشة.",
-   "fr": "Coucou n'a pas pu répondre : vérifie ta clé Claude dans Notch → Chat.",
-   "bn": "Coucou উত্তর দিতে পারেনি: Notch → চ্যাট-এ আপনার Claude কী যাচাই করুন।",
-   "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
-   "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
-   "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  "No speech detected. Check your microphone.": {
+   "pt-BR": "Não foi detetada fala. Verifica o microfone.",
+   "fr": "Aucune parole détectée. Vérifiez le microphone.",
+   "es": "No se detectó voz. Comprueba el micrófono.",
+   "ru": "Речь не обнаружена. Проверьте микрофон.",
+   "zh-Hans": "未检测到语音。请检查麦克风。",
+   "hi": "बोली नहीं मिली। अपना माइक्रोफ़ोन जाँचें।",
+   "bn": "কথা শনাক্ত হয়নি। মাইক্রোফোন পরীক্ষা করুন।",
+   "ar": "لم يُكتشف كلام. تحقّق من الميكروفون.",
+   "id": "Tidak ada ucapan terdeteksi. Periksa mikrofon Anda."
+  },
+  "Desktop companion": {
+   "zh-Hans": "桌面伙伴",
+   "hi": "डेस्कटॉप साथी",
+   "es": "Compañero de escritorio",
+   "ar": "رفيق سطح المكتب",
+   "fr": "Compagnon de bureau",
+   "bn": "ডেস্কটপ সঙ্গী",
+   "pt-BR": "Companheiro da área de trabalho",
+   "ru": "Спутник на рабочем столе",
+   "id": "Teman desktop"
+  },
+  "Finish": {
+   "zh-Hans": "完成",
+   "hi": "समाप्त करें",
+   "es": "Finalizar",
+   "ar": "إنهاء",
+   "fr": "Terminer",
+   "bn": "শেষ করুন",
+   "pt-BR": "Concluir",
+   "ru": "Завершить",
+   "id": "Selesai"
+  },
+  "Play / pause": {
+   "zh-Hans": "播放 / 暂停",
+   "hi": "चलाएँ / रोकें",
+   "es": "Reproducir / pausar",
+   "ar": "تشغيل / إيقاف مؤقت",
+   "fr": "Lecture / pause",
+   "bn": "চালু / বিরতি",
+   "pt-BR": "Reproduzir / pausar",
+   "ru": "Воспроизвести / пауза",
+   "id": "Putar / jeda"
+  },
+  "Pet": {
+   "zh-Hans": "抚摸",
+   "hi": "दुलार करें",
+   "es": "Acariciar",
+   "ar": "ملاطفة",
+   "fr": "Caresser",
+   "bn": "আদর করুন",
+   "pt-BR": "Fazer festas",
+   "ru": "Погладить",
+   "id": "Elus"
+  },
+  "Resume companions": {
+   "zh-Hans": "唤醒伙伴",
+   "hi": "साथियों को फिर सक्रिय करें",
+   "es": "Reanudar compañeros",
+   "ar": "استئناف الرفاق",
+   "fr": "Réactiver les compagnons",
+   "bn": "সঙ্গীদের আবার চালু করুন",
+   "pt-BR": "Retomar companheiros",
+   "ru": "Возобновить компаньонов",
+   "id": "Lanjutkan pendamping"
+  },
+  "Pause companions": {
+   "zh-Hans": "暂停伙伴",
+   "hi": "साथियों को रोकें",
+   "es": "Pausar compañeros",
+   "ar": "إيقاف الرفاق مؤقتًا",
+   "fr": "Mettre les compagnons en pause",
+   "bn": "সঙ্গীদের বিরতি দিন",
+   "pt-BR": "Pausar companheiros",
+   "ru": "Приостановить компаньонов",
+   "id": "Jeda pendamping"
+  },
+  "Companion movement": {
+   "zh-Hans": "伙伴移动",
+   "hi": "साथियों की गतिविधि",
+   "es": "Movimiento de compañeros",
+   "ar": "حركة الرفاق",
+   "fr": "Mouvement des compagnons",
+   "bn": "সঙ্গীদের চলাচল",
+   "pt-BR": "Movimento dos companheiros",
+   "ru": "Движение компаньонов",
+   "id": "Gerakan pendamping"
+  },
+  "Keep clear of the top bar": {
+   "zh-Hans": "避开顶部栏",
+   "hi": "ऊपरी पट्टी से दूरी रखें",
+   "es": "Dejar libre la barra superior",
+   "ar": "اترك مساحة للشريط العلوي",
+   "fr": "Laisser la barre supérieure libre",
+   "bn": "উপরের বার খালি রাখুন",
+   "pt-BR": "Deixar livre a barra superior",
+   "ru": "Отступ от верхней панели",
+   "id": "Jarak dari bilah atas"
+  },
+  "pixels": {
+   "zh-Hans": "像素",
+   "hi": "पिक्सेल",
+   "es": "píxeles",
+   "ar": "بكسل",
+   "fr": "pixels",
+   "bn": "পিক্সেল",
+   "pt-BR": "píxeis",
+   "ru": "пикселей",
+   "id": "piksel"
+  },
+  "Each active integration has its own companion. Click a pet for its controls; right-click for actions. Restart Coucou after changing companion mode.": {
+   "zh-Hans": "每个已启用的集成都有自己的伙伴。单击伙伴打开控件；右键单击显示操作。更改伙伴模式后请重启 Coucou。",
+   "hi": "हर सक्रिय एकीकरण का अपना साथी है। नियंत्रण खोलने के लिए साथी पर क्लिक करें; क्रियाओं के लिए दायाँ क्लिक करें। साथी मोड बदलने के बाद Coucou पुनः शुरू करें।",
+   "es": "Cada integración activa tiene su propio compañero. Haz clic para abrir sus controles y clic derecho para ver acciones. Reinicia Coucou al cambiar el modo de compañeros.",
+   "ar": "لكل تكامل نشط رفيقه الخاص. انقر على الرفيق لفتح أدواته، وبالزر الأيمن للإجراءات. أعد تشغيل Coucou بعد تغيير وضع الرفاق.",
+   "fr": "Chaque intégration active a son compagnon. Cliquez pour ouvrir ses commandes ; faites un clic droit pour les actions. Redémarrez Coucou après un changement de mode.",
+   "bn": "প্রতিটি সক্রিয় সংযোগের নিজস্ব সঙ্গী আছে। নিয়ন্ত্রণ খুলতে সঙ্গীকে ক্লিক করুন; কাজের জন্য ডান ক্লিক করুন। সঙ্গী মোড বদলানোর পরে Coucou আবার চালু করুন।",
+   "pt-BR": "Cada integração ativa tem o seu companheiro. Clique num pet para abrir os controlos; use o botão direito para ver ações. Reinicie o Coucou após mudar o modo de companheiros.",
+   "ru": "У каждой активной интеграции свой компаньон. Нажмите на него для управления; правая кнопка открывает действия. После смены режима перезапустите Coucou.",
+   "id": "Setiap integrasi aktif memiliki pendamping sendiri. Klik untuk membuka kontrol; klik kanan untuk tindakan. Mulai ulang Coucou setelah mengubah mode pendamping."
+  },
+  "Pets stay in a narrow strip below this margin. Increase it if they cover a bar control. Movement also respects reduced motion.": {
+   "zh-Hans": "伙伴只在此边距下方的窄条区域活动。如果挡住栏上的控件，请增大边距。移动也会遵循减少动态效果设置。",
+   "hi": "साथी इस दूरी के नीचे एक पतली पट्टी में रहते हैं। यदि वे पट्टी के नियंत्रण ढकें तो दूरी बढ़ाएँ। कम गति की सेटिंग का भी पालन किया जाता है।",
+   "es": "Los compañeros permanecen en una franja bajo este margen. Auméntalo si cubren un control de la barra. El movimiento respeta la preferencia de movimiento reducido.",
+   "ar": "يبقى الرفاق في شريط ضيق أسفل هذا الهامش. زِده إذا حجبوا أحد عناصر الشريط. تُراعى أيضًا إعدادات تقليل الحركة.",
+   "fr": "Les compagnons restent dans une bande sous cette marge. Augmentez-la s’ils masquent une commande de la barre. Le réglage de réduction des animations est respecté.",
+   "bn": "সঙ্গীরা এই ব্যবধানের নিচে একটি সরু জায়গায় থাকে। বারের নিয়ন্ত্রণ ঢেকে গেলে ব্যবধান বাড়ান। কম অ্যানিমেশনের পছন্দও মেনে চলে।",
+   "pt-BR": "Os pets ficam numa faixa estreita abaixo desta margem. Aumente-a se taparem algum controlo da barra. O movimento também respeita a preferência de animações reduzidas.",
+   "ru": "Компаньоны остаются в узкой полосе под этим отступом. Увеличьте его, если они закрывают элементы панели. Учитывается настройка уменьшения движения.",
+   "id": "Pendamping tetap berada di jalur sempit di bawah jarak ini. Tambahkan jarak jika menutupi kontrol bilah. Preferensi kurangi gerakan juga dihormati."
+  },
+  "Talk to Mochi": {
+   "zh-Hans": "与 Mochi 交谈",
+   "hi": "Mochi से बात करें",
+   "es": "Hablar con Mochi",
+   "ar": "تحدث مع Mochi",
+   "fr": "Parler à Mochi",
+   "bn": "Mochi-এর সাথে কথা বলুন",
+   "pt-BR": "Falar com Mochi",
+   "ru": "Поговорить с Mochi",
+   "id": "Bicara dengan Mochi"
+  },
+  "Talk to Mochi using the selected voice provider.": {
+   "zh-Hans": "使用所选语音服务与 Mochi 交谈。",
+   "hi": "चुने हुए वॉइस प्रदाता से Mochi से बात करें।",
+   "es": "Habla con Mochi usando el proveedor de voz seleccionado.",
+   "ar": "تحدث مع Mochi باستخدام مزود الصوت المحدد.",
+   "fr": "Parlez à Mochi avec le fournisseur vocal sélectionné.",
+   "bn": "নির্বাচিত ভয়েস প্রদানকারীর মাধ্যমে Mochi-এর সাথে কথা বলুন।",
+   "pt-BR": "Converse com Mochi usando o provedor de voz selecionado.",
+   "ru": "Говорите с Mochi через выбранного голосового провайдера.",
+   "id": "Bicara dengan Mochi memakai penyedia suara yang dipilih."
+  },
+  "Choose a local Ollama model or configure Claude, and download the voice model first.": {
+   "zh-Hans": "请先选择本地 Ollama 模型或配置 Claude，并下载语音模型。",
+   "hi": "पहले स्थानीय Ollama मॉडल चुनें या Claude कॉन्फ़िगर करें और वॉइस मॉडल डाउनलोड करें।",
+   "es": "Primero elige un modelo Ollama local o configura Claude y descarga el modelo de voz.",
+   "ar": "اختر نموذج Ollama محليًا أو اضبط Claude، ونزّل نموذج الصوت أولًا.",
+   "fr": "Choisissez un modèle Ollama local ou configurez Claude, puis téléchargez le modèle vocal.",
+   "bn": "প্রথমে স্থানীয় Ollama মডেল বেছে নিন বা Claude কনফিগার করুন এবং ভয়েস মডেল ডাউনলোড করুন।",
+   "pt-BR": "Escolha um modelo Ollama local ou configure Claude e baixe primeiro o modelo de voz.",
+   "ru": "Сначала выберите локальную модель Ollama или настройте Claude и загрузите голосовую модель.",
+   "id": "Pilih model Ollama lokal atau atur Claude, lalu unduh model suara terlebih dahulu."
+  },
+  "Coucou couldn't answer: check the selected voice provider.": {
+   "zh-Hans": "Coucou 无法回答：请检查所选语音服务。",
+   "hi": "Coucou जवाब नहीं दे सका: चुने हुए वॉइस प्रदाता की जाँच करें।",
+   "es": "Coucou no pudo responder: revisa el proveedor de voz seleccionado.",
+   "ar": "تعذر على Coucou الإجابة: تحقق من مزود الصوت المحدد.",
+   "fr": "Coucou n’a pas pu répondre : vérifiez le fournisseur vocal sélectionné.",
+   "bn": "Coucou উত্তর দিতে পারেনি: নির্বাচিত ভয়েস প্রদানকারী পরীক্ষা করুন।",
+   "pt-BR": "Coucou não conseguiu responder: verifique o provedor de voz selecionado.",
+   "ru": "Coucou не смог ответить: проверьте выбранного голосового провайдера.",
+   "id": "Coucou tidak dapat menjawab: periksa penyedia suara yang dipilih."
+  },
+  "Continuous listening keeps Bluetooth headphones in call mode. Turn it off to keep stereo between conversations.": {
+   "zh-Hans": "持续监听会让蓝牙耳机保持通话模式。关闭后可在对话间恢复立体声。",
+   "hi": "लगातार सुनने से Bluetooth हेडफ़ोन कॉल मोड में रहते हैं। बातचीत के बीच स्टीरियो रखने के लिए इसे बंद करें।",
+   "es": "La escucha continua mantiene los auriculares Bluetooth en modo de llamada. Desactívala para conservar el estéreo entre conversaciones.",
+   "ar": "الاستماع المستمر يبقي سماعات Bluetooth في وضع المكالمات. أوقفه للحفاظ على الاستريو بين المحادثات.",
+   "fr": "L’écoute continue maintient les écouteurs Bluetooth en mode appel. Désactivez-la pour retrouver la stéréo entre les conversations.",
+   "bn": "একটানা শোনা Bluetooth হেডফোনকে কল মোডে রাখে। কথোপকথনের মাঝে স্টেরিও রাখতে এটি বন্ধ করুন।",
+   "pt-BR": "A escuta contínua mantém os fones Bluetooth no modo de chamada. Desative-a para manter o estéreo entre conversas.",
+   "ru": "Постоянное прослушивание оставляет Bluetooth-наушники в режиме звонка. Отключите его для стереозвука между разговорами.",
+   "id": "Mendengarkan terus-menerus membuat headphone Bluetooth tetap dalam mode panggilan. Matikan agar stereo aktif di antara percakapan."
+  },
+  "Ctrl+Alt+C starts a turn. Pause to send; Ctrl+Alt+Enter sends now; Ctrl+Alt+Esc cancels. The microphone closes before the answer.": {
+   "zh-Hans": "Ctrl+Alt+C 开始对话。停顿后发送；Ctrl+Alt+Enter 立即发送；Ctrl+Alt+Esc 取消。回答前会关闭麦克风。",
+   "hi": "Ctrl+Alt+C से बातचीत शुरू होती है। भेजने के लिए रुकें; Ctrl+Alt+Enter तुरंत भेजता है; Ctrl+Alt+Esc रद्द करता है। जवाब से पहले माइक्रोफ़ोन बंद होता है।",
+   "es": "Ctrl+Alt+C inicia un turno. Haz una pausa para enviar; Ctrl+Alt+Enter envía ahora; Ctrl+Alt+Esc cancela. El micrófono se cierra antes de responder.",
+   "ar": "يبدأ Ctrl+Alt+C محادثة. توقف للإرسال؛ Ctrl+Alt+Enter يرسل الآن؛ Ctrl+Alt+Esc يلغي. يُغلق الميكروفون قبل الإجابة.",
+   "fr": "Ctrl+Alt+C démarre un échange. Faites une pause pour envoyer ; Ctrl+Alt+Entrée envoie immédiatement ; Ctrl+Alt+Échap annule. Le microphone se ferme avant la réponse.",
+   "bn": "Ctrl+Alt+C একটি পালা শুরু করে। পাঠাতে থামুন; Ctrl+Alt+Enter এখনই পাঠায়; Ctrl+Alt+Esc বাতিল করে। উত্তরের আগে মাইক্রোফোন বন্ধ হয়।",
+   "pt-BR": "Ctrl+Alt+C inicia uma conversa. Faça uma pausa para enviar; Ctrl+Alt+Enter envia agora; Ctrl+Alt+Esc cancela. O microfone fecha antes da resposta.",
+   "ru": "Ctrl+Alt+C начинает реплику. Пауза отправляет её; Ctrl+Alt+Enter отправляет сразу; Ctrl+Alt+Esc отменяет. Микрофон закрывается до ответа.",
+   "id": "Ctrl+Alt+C memulai giliran. Berhenti sejenak untuk mengirim; Ctrl+Alt+Enter mengirim sekarang; Ctrl+Alt+Esc membatalkan. Mikrofon ditutup sebelum jawaban."
+  },
+  "Voice recognition stays on this computer. Ollama voice uses your local model; Claude sends the question text to Anthropic. ElevenLabs is used only if selected.": {
+   "zh-Hans": "语音识别在本机完成。Ollama 语音使用本地模型；Claude 会将问题文本发送给 Anthropic。仅在选中时使用 ElevenLabs。",
+   "hi": "आवाज़ की पहचान इसी कंप्यूटर पर होती है। Ollama स्थानीय मॉडल इस्तेमाल करता है; Claude प्रश्न का पाठ Anthropic को भेजता है। ElevenLabs केवल चुने जाने पर इस्तेमाल होता है।",
+   "es": "El reconocimiento de voz permanece en este equipo. Ollama usa tu modelo local; Claude envía el texto de la pregunta a Anthropic. ElevenLabs solo se usa si lo seleccionas.",
+   "ar": "يبقى التعرف على الصوت على هذا الكمبيوتر. يستخدم Ollama نموذجك المحلي؛ يرسل Claude نص السؤال إلى Anthropic. لا يُستخدم ElevenLabs إلا عند اختياره.",
+   "fr": "La reconnaissance vocale reste sur cet ordinateur. Ollama utilise votre modèle local ; Claude envoie le texte de la question à Anthropic. ElevenLabs n’est utilisé que si vous le sélectionnez.",
+   "bn": "কণ্ঠ শনাক্তকরণ এই কম্পিউটারেই হয়। Ollama স্থানীয় মডেল ব্যবহার করে; Claude প্রশ্নের লেখা Anthropic-এ পাঠায়। বেছে নিলেই ElevenLabs ব্যবহৃত হয়।",
+   "pt-BR": "O reconhecimento de voz fica neste computador. Ollama usa seu modelo local; Claude envia o texto da pergunta à Anthropic. ElevenLabs só é usado quando selecionado.",
+   "ru": "Распознавание речи остаётся на этом компьютере. Ollama использует локальную модель; Claude отправляет текст вопроса в Anthropic. ElevenLabs используется только при выборе.",
+   "id": "Pengenalan suara tetap di komputer ini. Ollama memakai model lokal; Claude mengirim teks pertanyaan ke Anthropic. ElevenLabs hanya dipakai jika dipilih."
+  },
+  "Use the free space in the top bar": {
+   "zh-Hans": "使用顶栏的空闲空间",
+   "hi": "शीर्ष बार की खाली जगह इस्तेमाल करें",
+   "es": "Usar el espacio libre de la barra superior",
+   "ar": "استخدام المساحة الفارغة في الشريط العلوي",
+   "fr": "Utiliser les espaces libres de la barre supérieure",
+   "bn": "উপরের বারের খালি স্থান ব্যবহার করুন",
+   "pt-BR": "Usar o espaço livre na barra superior",
+   "ru": "Использовать свободное место верхней панели",
+   "id": "Gunakan ruang kosong di bilah atas"
+  },
+  "Live bar geometry keeps pets away from controls and windows. Without free space, use the tray or shortcuts.": {
+   "zh-Hans": "实时栏布局让宠物避开控件和窗口。没有空闲空间时，请使用托盘或快捷键。",
+   "hi": "बार का वर्तमान आकार पालतुओं को नियंत्रणों और विंडो से दूर रखता है। जगह न हो तो ट्रे या शॉर्टकट इस्तेमाल करें।",
+   "es": "La geometría actual mantiene las mascotas fuera de los controles y ventanas. Sin espacio libre, usa la bandeja o los atajos.",
+   "ar": "يبقي تخطيط الشريط المباشر الحيوانات بعيدًا عن عناصر التحكم والنوافذ. عند غياب المساحة استخدم علبة النظام أو الاختصارات.",
+   "fr": "La géométrie actuelle garde les compagnons hors des contrôles et fenêtres. Sans espace libre, utilisez la zone de notification ou les raccourcis.",
+   "bn": "বারের বর্তমান বিন্যাস পোষ্যদের নিয়ন্ত্রণ ও উইন্ডো থেকে দূরে রাখে। জায়গা না থাকলে ট্রে বা শর্টকাট ব্যবহার করুন।",
+   "pt-BR": "A geometria atual da barra mantém os pets longe dos controles e janelas. Sem espaço livre, use a bandeja ou os atalhos.",
+   "ru": "Актуальная геометрия панели удерживает питомцев вдали от элементов управления и окон. Если места нет, используйте трей или сочетания клавиш.",
+   "id": "Geometri bilah saat ini menjaga peliharaan jauh dari kontrol dan jendela. Tanpa ruang kosong, gunakan baki atau pintasan."
+  },
+  "Thinking…": {
+   "zh-Hans": "思考中…",
+   "hi": "सोच रहा है…",
+   "es": "Pensando…",
+   "ar": "يفكر…",
+   "fr": "Réflexion…",
+   "bn": "ভাবছে…",
+   "pt-BR": "A pensar…",
+   "ru": "Думает…",
+   "id": "Berpikir…"
   },
   "Allow once": {
    "zh-Hans": "仅允许一次",
@@ -4416,17 +4614,6 @@
    "pt-BR": "Ligar {provider}",
    "ru": "Подключить {provider}",
    "id": "Hubungkan {provider}"
-  },
-  "Conversation provider": {
-   "zh-Hans": "对话服务",
-   "hi": "बातचीत प्रदाता",
-   "es": "Proveedor de conversación",
-   "ar": "مزود المحادثة",
-   "fr": "Fournisseur de conversation",
-   "bn": "কথোপকথনের প্রদানকারী",
-   "pt-BR": "Fornecedor da conversa",
-   "ru": "Провайдер диалога",
-   "id": "Penyedia percakapan"
   },
   "Home folder": {
    "zh-Hans": "主目录",
@@ -4461,17 +4648,6 @@
    "ru": "Запускать CLI-агентов без запросов разрешения",
    "id": "Jalankan agen CLI tanpa meminta persetujuan"
   },
-  "The CLI agent could not answer. Check its connection in Settings → Chat.": {
-   "zh-Hans": "CLI 代理无法回答。请在设置 → 聊天中检查连接。",
-   "hi": "CLI एजेंट उत्तर नहीं दे सका। सेटिंग्स → चैट में उसका कनेक्शन जाँचें।",
-   "es": "El agente CLI no pudo responder. Revisa su conexión en Ajustes → Chat.",
-   "ar": "تعذر على وكيل CLI الرد. تحقق من اتصاله في الإعدادات ← الدردشة.",
-   "fr": "L’agent CLI n’a pas pu répondre. Vérifiez sa connexion dans Réglages → Chat.",
-   "bn": "CLI এজেন্ট উত্তর দিতে পারেনি। সেটিংস → চ্যাটে সংযোগ পরীক্ষা করুন।",
-   "pt-BR": "O agente CLI não conseguiu responder. Verifica a ligação em Definições → Chat.",
-   "ru": "CLI-агент не смог ответить. Проверьте подключение в Настройки → Чат.",
-   "id": "Agen CLI tidak dapat menjawab. Periksa koneksinya di Pengaturan → Chat."
-  },
   "The CLI returned no available models.": {
    "zh-Hans": "CLI 未返回可用模型。",
    "hi": "CLI ने कोई उपलब्ध मॉडल नहीं लौटाया।",
@@ -4482,39 +4658,6 @@
    "pt-BR": "O CLI não devolveu modelos disponíveis.",
    "ru": "CLI не вернул доступных моделей.",
    "id": "CLI tidak mengembalikan model yang tersedia."
-  },
-  "Uses the same account and model as Mochi chat.": {
-   "zh-Hans": "使用与 Mochi 聊天相同的账户和模型。",
-   "hi": "Mochi चैट वाला ही खाता और मॉडल इस्तेमाल करता है।",
-   "es": "Usa la misma cuenta y modelo que el chat de Mochi.",
-   "ar": "يستخدم الحساب والنموذج نفسيهما في دردشة Mochi.",
-   "fr": "Utilise le même compte et modèle que le chat de Mochi.",
-   "bn": "Mochi চ্যাটের একই অ্যাকাউন্ট ও মডেল ব্যবহার করে।",
-   "pt-BR": "Utiliza a mesma conta e modelo do chat do Mochi.",
-   "ru": "Использует те же аккаунт и модель, что и чат Mochi.",
-   "id": "Menggunakan akun dan model yang sama dengan chat Mochi."
-  },
-  "Uses your signed-in CLI account for chat, voice and actions on this computer.": {
-   "zh-Hans": "使用已登录的 CLI 账户进行聊天、语音对话和电脑操作。",
-   "hi": "इस कंप्यूटर पर चैट, आवाज़ और कार्रवाइयों के लिए आपके लॉगिन किए हुए CLI खाते का उपयोग करता है।",
-   "es": "Usa tu cuenta conectada de la CLI para chat, voz y acciones en este equipo.",
-   "ar": "يستخدم حساب CLI المسجل للدردشة والصوت وتنفيذ الإجراءات على هذا الكمبيوتر.",
-   "fr": "Utilise votre compte CLI connecté pour le chat, la voix et les actions sur cet ordinateur.",
-   "bn": "এই কম্পিউটারে চ্যাট, ভয়েস ও কাজের জন্য CLI-তে লগইন করা অ্যাকাউন্ট ব্যবহার করে।",
-   "pt-BR": "Utiliza a conta autenticada no CLI para chat, voz e ações neste computador.",
-   "ru": "Использует ваш аккаунт CLI для чата, голоса и действий на этом компьютере.",
-   "id": "Menggunakan akun CLI yang sudah masuk untuk chat, suara, dan tindakan di komputer ini."
-  },
-  "{provider} connected for Mochi chat and voice.": {
-   "zh-Hans": "{provider} 已连接，可用于 Mochi 聊天和语音。",
-   "hi": "Mochi चैट और आवाज़ के लिए {provider} कनेक्ट है।",
-   "es": "{provider} conectado para chat y voz de Mochi.",
-   "ar": "تم ربط {provider} لدردشة Mochi والصوت.",
-   "fr": "{provider} connecté pour le chat et la voix de Mochi.",
-   "bn": "Mochi চ্যাট ও ভয়েসের জন্য {provider} সংযুক্ত।",
-   "pt-BR": "{provider} ligado ao chat e à voz do Mochi.",
-   "ru": "{provider} подключён для чата и голоса Mochi.",
-   "id": "{provider} terhubung untuk chat dan suara Mochi."
   },
   "{provider} needs your answer": {
    "zh-Hans": "{provider} 需要你的回答",
@@ -4538,16 +4681,104 @@
    "ru": "Включено: команды и изменения файлов выполняются от вашего имени. Выключено: действуют разрешения CLI; запросы Antigravity нужно одобрять в его терминале.",
    "id": "Aktif: perintah dan perubahan berkas dijalankan dengan akun Anda. Nonaktif: gunakan izin tiap CLI; permintaan persetujuan Antigravity harus disetujui di terminalnya."
   },
-  "Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.": {
-   "zh-Hans": "Parakeet 在本地转录语音。转录文本和所请求的工具结果通过所选 CLI 账户发送。若选择了 ElevenLabs，回复也会发送给它。",
-   "hi": "Parakeet आपकी आवाज़ को स्थानीय रूप से लिखता है। प्रतिलेख और अनुरोधित टूल के परिणाम चुने गए CLI खाते से जाते हैं। ElevenLabs चुनने पर उत्तर उसे भी भेजे जाते हैं।",
-   "es": "Parakeet transcribe tu voz localmente. La transcripción y los resultados solicitados pasan por la cuenta CLI seleccionada. Las respuestas también van a ElevenLabs si lo elegiste.",
-   "ar": "يحوّل Parakeet صوتك إلى نص محليًا. يُرسل النص ونتائج الأدوات المطلوبة عبر حساب CLI المحدد. تُرسل الردود أيضًا إلى ElevenLabs إذا اخترته.",
-   "fr": "Parakeet transcrit votre voix localement. La transcription et les résultats des outils demandés passent par le compte CLI choisi. Les réponses sont aussi envoyées à ElevenLabs si vous l’avez choisi.",
-   "bn": "Parakeet স্থানীয়ভাবে আপনার কণ্ঠ লিখে নেয়। প্রতিলিপি ও অনুরোধ করা টুলের ফলাফল নির্বাচিত CLI অ্যাকাউন্ট দিয়ে যায়। ElevenLabs বেছে নিলে উত্তর সেখানেও যায়।",
-   "pt-BR": "O Parakeet transcreve a voz localmente. A transcrição e os resultados das ferramentas solicitadas passam pela conta CLI selecionada. As respostas também seguem para o ElevenLabs se o selecionaste.",
-   "ru": "Parakeet расшифровывает голос локально. Текст и результаты запрошенных инструментов передаются через выбранный аккаунт CLI. Ответы также отправляются в ElevenLabs, если он выбран.",
-   "id": "Parakeet mentranskripsikan suara secara lokal. Transkrip dan hasil alat yang diminta dikirim melalui akun CLI terpilih. Balasan juga dikirim ke ElevenLabs jika dipilih."
+  "Review": {
+   "fr": "Voir",
+   "pt-BR": "Rever",
+   "es": "Revisar",
+   "zh-Hans": "查看",
+   "hi": "समीक्षा करें",
+   "ar": "مراجعة",
+   "bn": "পর্যালোচনা",
+   "ru": "Просмотр",
+   "id": "Tinjau"
+  },
+  "Dismiss": {
+   "fr": "Fermer",
+   "pt-BR": "Dispensar",
+   "es": "Descartar",
+   "zh-Hans": "关闭",
+   "hi": "खारिज करें",
+   "ar": "إغلاق",
+   "bn": "বন্ধ করুন",
+   "ru": "Закрыть",
+   "id": "Tutup"
+  },
+  "Recent music or Spotify link": {
+   "fr": "Musique récente ou lien Spotify",
+   "pt-BR": "Música recente ou link do Spotify",
+   "es": "Música reciente o enlace de Spotify",
+   "zh-Hans": "最近音乐或 Spotify 链接",
+   "hi": "हाल का संगीत या Spotify लिंक",
+   "ar": "موسيقى حديثة أو رابط Spotify",
+   "bn": "সাম্প্রতিক গান বা Spotify লিঙ্ক",
+   "ru": "Недавняя музыка или ссылка Spotify",
+   "id": "Musik terbaru atau tautan Spotify"
+  },
+  "Sent to Spotify": {
+   "fr": "Envoyé à Spotify",
+   "pt-BR": "Enviado ao Spotify",
+   "es": "Enviado a Spotify",
+   "zh-Hans": "已发送到 Spotify",
+   "hi": "Spotify को भेजा गया",
+   "ar": "أُرسل إلى Spotify",
+   "bn": "Spotify-এ পাঠানো হয়েছে",
+   "ru": "Отправлено в Spotify",
+   "id": "Dikirim ke Spotify"
+  },
+  "Spotify could not play this item.": {
+   "fr": "Spotify ne peut pas lire cet élément.",
+   "pt-BR": "O Spotify não conseguiu reproduzir este item.",
+   "es": "Spotify no pudo reproducir este elemento.",
+   "zh-Hans": "Spotify 无法播放此项目。",
+   "hi": "Spotify इसे नहीं चला सका।",
+   "ar": "تعذر على Spotify تشغيل هذا العنصر.",
+   "bn": "Spotify এটি চালাতে পারেনি।",
+   "ru": "Spotify не смог воспроизвести этот элемент.",
+   "id": "Spotify tidak dapat memutar item ini."
+  },
+  "Play this link": {
+   "fr": "Lire ce lien",
+   "pt-BR": "Reproduzir este link",
+   "es": "Reproducir este enlace",
+   "zh-Hans": "播放此链接",
+   "hi": "यह लिंक चलाएँ",
+   "ar": "تشغيل هذا الرابط",
+   "bn": "এই লিঙ্কটি চালান",
+   "ru": "Воспроизвести ссылку",
+   "id": "Putar tautan ini"
+  },
+  "No matches in recent music.": {
+   "fr": "Aucun résultat dans la musique récente.",
+   "pt-BR": "Sem resultados na música recente.",
+   "es": "Sin resultados en la música reciente.",
+   "zh-Hans": "最近音乐中没有匹配项。",
+   "hi": "हाल के संगीत में कोई मिलान नहीं।",
+   "ar": "لا توجد نتائج في الموسيقى الحديثة.",
+   "bn": "সাম্প্রতিক গানে কোনো মিল নেই।",
+   "ru": "В недавней музыке совпадений нет.",
+   "id": "Tidak ada hasil dalam musik terbaru."
+  },
+  "Search catalog in Spotify ↗": {
+   "fr": "Chercher dans Spotify ↗",
+   "pt-BR": "Pesquisar catálogo no Spotify ↗",
+   "es": "Buscar catálogo en Spotify ↗",
+   "zh-Hans": "在 Spotify 搜索目录 ↗",
+   "hi": "Spotify में कैटलॉग खोजें ↗",
+   "ar": "البحث في كتالوج Spotify ↗",
+   "bn": "Spotify ক্যাটালগে খুঁজুন ↗",
+   "ru": "Поиск в каталоге Spotify ↗",
+   "id": "Cari katalog di Spotify ↗"
+  },
+  "{provider} connected.": {
+   "fr": "{provider} connecté.",
+   "pt-BR": "{provider} conectado.",
+   "es": "{provider} conectado.",
+   "zh-Hans": "{provider} 已连接。",
+   "hi": "{provider} कनेक्ट हो गया।",
+   "ar": "تم توصيل {provider}.",
+   "bn": "{provider} সংযুক্ত।",
+   "ru": "{provider} подключён.",
+   "id": "{provider} terhubung."
   },
   "Cancelled": {
    "pt-BR": "Cancelado",
@@ -4658,17 +4889,6 @@
    "bn": "স্থানীয় কণ্ঠ উপলব্ধ নয়। pt-PT মডেল ফোল্ডার পরীক্ষা করুন। সিস্টেম কণ্ঠ ব্যবহার হচ্ছে।",
    "ar": "الصوت المحلي غير متاح. تحقّق من مجلد نموذج pt-PT. يُستخدم صوت النظام.",
    "id": "Suara lokal tidak tersedia. Periksa folder model pt-PT. Menggunakan suara sistem."
-  },
-  "No speech detected. Check your microphone.": {
-   "pt-BR": "Não foi detetada fala. Verifica o microfone.",
-   "fr": "Aucune parole détectée. Vérifiez le microphone.",
-   "es": "No se detectó voz. Comprueba el micrófono.",
-   "ru": "Речь не обнаружена. Проверьте микрофон.",
-   "zh-Hans": "未检测到语音。请检查麦克风。",
-   "hi": "बोली नहीं मिली। अपना माइक्रोफ़ोन जाँचें।",
-   "bn": "কথা শনাক্ত হয়নি। মাইক্রোফোন পরীক্ষা করুন।",
-   "ar": "لم يُكتشف كلام. تحقّق من الميكروفون.",
-   "id": "Tidak ada ucapan terdeteksi. Periksa mikrofon Anda."
   },
   "Say a pet name to choose who answers.": {
    "pt-BR": "Diz o nome do pet que deve responder.",
@@ -4801,6 +5021,28 @@
    "pt-BR": "A Raquel está indisponível. Verifica a ligação à internet e o ambiente da voz. A resposta continua disponível em texto.",
    "ru": "Raquel недоступна. Проверьте интернет и среду голоса. Ответ остаётся в виде текста.",
    "id": "Raquel tidak tersedia. Periksa koneksi internet dan lingkungan suara. Jawaban tetap tersedia sebagai teks."
+  },
+  "Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.": {
+   "zh-Hans": "Parakeet 在本地转录语音。转录文本和所请求的工具结果通过所选 CLI 账户发送。若选择了 ElevenLabs，回复也会发送给它。",
+   "hi": "Parakeet आपकी आवाज़ को स्थानीय रूप से लिखता है। प्रतिलेख और अनुरोधित टूल के परिणाम चुने गए CLI खाते से जाते हैं। ElevenLabs चुनने पर उत्तर उसे भी भेजे जाते हैं।",
+   "es": "Parakeet transcribe tu voz localmente. La transcripción y los resultados solicitados pasan por la cuenta CLI seleccionada. Las respuestas también van a ElevenLabs si lo elegiste.",
+   "ar": "يحوّل Parakeet صوتك إلى نص محليًا. يُرسل النص ونتائج الأدوات المطلوبة عبر حساب CLI المحدد. تُرسل الردود أيضًا إلى ElevenLabs إذا اخترته.",
+   "fr": "Parakeet transcrit votre voix localement. La transcription et les résultats des outils demandés passent par le compte CLI choisi. Les réponses sont aussi envoyées à ElevenLabs si vous l’avez choisi.",
+   "bn": "Parakeet স্থানীয়ভাবে আপনার কণ্ঠ লিখে নেয়। প্রতিলিপি ও অনুরোধ করা টুলের ফলাফল নির্বাচিত CLI অ্যাকাউন্ট দিয়ে যায়। ElevenLabs বেছে নিলে উত্তর সেখানেও যায়।",
+   "pt-BR": "O Parakeet transcreve a voz localmente. A transcrição e os resultados das ferramentas solicitadas passam pela conta CLI selecionada. As respostas também seguem para o ElevenLabs se o selecionaste.",
+   "ru": "Parakeet расшифровывает голос локально. Текст и результаты запрошенных инструментов передаются через выбранный аккаунт CLI. Ответы также отправляются в ElevenLabs, если он выбран.",
+   "id": "Parakeet mentranskripsikan suara secara lokal. Transkrip dan hasil alat yang diminta dikirim melalui akun CLI terpilih. Balasan juga dikirim ke ElevenLabs jika dipilih."
+  },
+  "The CLI agent could not answer. Check its connection in Settings → Chat.": {
+   "zh-Hans": "CLI 代理无法回答。请在设置 → 聊天中检查连接。",
+   "hi": "CLI एजेंट उत्तर नहीं दे सका। सेटिंग्स → चैट में उसका कनेक्शन जाँचें।",
+   "es": "El agente CLI no pudo responder. Revisa su conexión en Ajustes → Chat.",
+   "ar": "تعذر على وكيل CLI الرد. تحقق من اتصاله في الإعدادات ← الدردشة.",
+   "fr": "L’agent CLI n’a pas pu répondre. Vérifiez sa connexion dans Réglages → Chat.",
+   "bn": "CLI এজেন্ট উত্তর দিতে পারেনি। সেটিংস → চ্যাটে সংযোগ পরীক্ষা করুন।",
+   "pt-BR": "O agente CLI não conseguiu responder. Verifica a ligação em Definições → Chat.",
+   "ru": "CLI-агент не смог ответить. Проверьте подключение в Настройки → Чат.",
+   "id": "Agen CLI tidak dapat menjawab. Periksa koneksinya di Pengaturan → Chat."
   }
  }
 }

@@ -330,9 +330,9 @@ export const Bridge = {
 
   // ── Chat, files, secrets ──────────────────────────────────────────────────
   /** One chat turn. The API key and any file bytes never leave Rust. */
-  chatSend: (query: string, context: ChatContext | null) =>
-    callOrThrow<{ text: string }>("chat_send", { query, context }),
-  chatReset: () => call<void>("chat_reset"),
+  chatSend: (query: string, context: ChatContext | null, provider?: string) =>
+    callOrThrow<{ text: string }>("chat_send", { query, context, provider }),
+  chatReset: (provider?: string) => call<void>("chat_reset", {provider}),
   chatCancel: () => call<void>("chat_cancel"),
   /**
    * The models a provider offers, for the picker in the chat view. Rust asks
@@ -383,6 +383,10 @@ export const Bridge = {
   recapRevealSaved: () => call<void>("recap_reveal_saved"),
 
   // ── Mochi on the desktop (src-tauri/src/desktop.rs) ───────────────────────
+  companionsConfigure: (enabled: boolean, count: number) => call<{ width: number; height: number; top: number; band: { height: number; lanes: [number, number][] } | null }>("companions_configure", { enabled, count }),
+  companionsAnchor: (x: number, y: number) => call<void>("companions_anchor", {x,y}),
+  companionsInput: (rects: number[][]) => call<void>("companions_input", { rects }),
+  companionsOpen: (pillId: string, x: number, y: number, view?: string) => call<void>("companions_open", { pillId, x, y, view }),
   desktopInfo: () => call<DesktopInfo>("desktop_mochi_info"),
   /** Dragged out of the island: (x, y) is the pointer in island-window coordinates. */
   desktopPickUp: (x: number, y: number) => call<boolean>("desktop_mochi_pick_up", { x, y }),
@@ -404,6 +408,7 @@ export const Bridge = {
 
   // ── Spotify (src-tauri/src/spotify.rs) ────────────────────────────────────
   /** Reads the player again (the card came on screen) and reports it. */
+  spotifyPlayItem: (uri: string) => call<boolean>("spotify_play_item",{uri}),
   spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
   /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
   spotifyControl: (action: SpotifyAction, value?: number) =>
@@ -414,7 +419,7 @@ export const Bridge = {
   spotifyInstalled: () => call<boolean>("spotify_installed"),
 };
 
-export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
+export type SpotifyAction = "play" | "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 
 export type ShortcutStatus =
   | "active" | "off" | "inUse" | "duplicate" | "invalid"

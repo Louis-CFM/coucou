@@ -7,6 +7,8 @@
 // One animation loop draws every live canvas; it stops when none is on screen
 // or the window is hidden, so a hidden window costs nothing.
 
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { IS_TAURI, onEvent } from "../core/bridge";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import type { Outfit } from "../mochi/wardrobe";
@@ -20,12 +22,14 @@ interface Animated {
 }
 
 const live = new Set<Animated>();
+let nativeVisible = !IS_TAURI;
 let frame: number | null = null;
 let last = performance.now();
 const start = performance.now();
 
 function loop(now: number) {
   frame = null;
+  if (!nativeVisible || document.hidden) return;
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   const t = (now - start) / 1000;
@@ -38,16 +42,24 @@ function loop(now: number) {
     a.shown = true;
     a.draw(dt, t);
   }
-  if (live.size > 0 && document.visibilityState === "visible") frame = requestAnimationFrame(loop);
+  if (nativeVisible && live.size > 0 && document.visibilityState === "visible") frame = requestAnimationFrame(loop);
 }
 
 function wake() {
-  if (frame === null && live.size > 0 && document.visibilityState === "visible") {
+  if (frame === null && nativeVisible && live.size > 0 && document.visibilityState === "visible") {
     last = performance.now();
     frame = requestAnimationFrame(loop);
   }
 }
 
+function visibility(visible: boolean) {
+  nativeVisible = visible;
+  if (!visible && frame != null) { cancelAnimationFrame(frame); frame = null; }
+  if (visible) wake();
+}
+if (IS_TAURI) {
+  void onEvent<boolean>("hub-visible", visibility).then(async () => visibility(await getCurrentWindow().isVisible()));
+}
 document.addEventListener("visibilitychange", wake);
 
 function add(a: Animated) {

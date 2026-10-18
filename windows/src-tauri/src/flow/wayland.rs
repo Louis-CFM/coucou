@@ -36,13 +36,29 @@ pub struct HoldKey {
 pub fn listen(tx: Sender<(KeyEvent, Instant)>) -> Option<HoldKey> {
     let handle = portal::start(move |event| match event {
         portal::Event::Activated(id) if id == SHORTCUT_ID => {
+            crate::log::line("flow: shortcut pressed");
             let _ = tx.send((KeyEvent::Down, Instant::now()));
         }
         portal::Event::Deactivated(id) if id == SHORTCUT_ID => {
+            crate::log::line("flow: shortcut released");
             let _ = tx.send((KeyEvent::Up, Instant::now()));
+        }
+        portal::Event::Activated(id) if id == "flowRelease" => {
+            crate::log::line("flow: shortcut release recovered");
+            let _ = tx.send((KeyEvent::Up, Instant::now()));
+        }
+        portal::Event::Activated(id) if id == "voiceTalk" => {
+            let _ = tx.send((KeyEvent::Voice, Instant::now()));
+        }
+        portal::Event::Activated(id) if id == "flowCancel" => {
+            let _ = tx.send((KeyEvent::Cancel, Instant::now()));
+        }
+        portal::Event::Activated(id) if id == "flowFinish" => {
+            let _ = tx.send((KeyEvent::Finish, Instant::now()));
         }
         portal::Event::Bound { .. } => crate::log::line("flow: dictation shortcut held by the desktop"),
         portal::Event::Failed { reason, .. } | portal::Event::Unavailable(reason) => {
+            let _ = tx.send((KeyEvent::Cancel, Instant::now()));
             crate::log::line(format!("flow: no dictation shortcut from the desktop ({reason})"));
         }
         _ => {}
@@ -52,7 +68,11 @@ pub fn listen(tx: Sender<(KeyEvent, Instant)>) -> Option<HoldKey> {
         description: crate::i18n::t("Hold to dictate"),
         trigger: Some("CTRL+ALT+v".into()),
     };
-    if !handle.bind(1, vec![wanted]) {
+    let cancel = portal::Wanted { id: "flowCancel".into(), description: crate::i18n::t("Cancel"), trigger: Some("CTRL+ALT+Escape".into()) };
+    let finish = portal::Wanted { id: "flowFinish".into(), description: crate::i18n::t("Finish"), trigger: Some("CTRL+ALT+Return".into()) };
+    let release = portal::Wanted { id: "flowRelease".into(), description: crate::i18n::t("Hold to dictate"), trigger: None };
+    let voice = portal::Wanted { id: "voiceTalk".into(), description: crate::i18n::t("Talk to Mochi"), trigger: Some("CTRL+ALT+c".into()) };
+    if !handle.bind(1, vec![wanted, cancel, finish, release, voice]) {
         return None;
     }
     Some(HoldKey { _handle: handle })

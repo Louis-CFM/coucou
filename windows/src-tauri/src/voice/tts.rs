@@ -24,8 +24,11 @@ pub fn generate(
         .clone();
     if output == "edge" {
         let epoch = NATIVE_EPOCH.load(Ordering::Relaxed);
+        let python = settings.edge_voice_python.strip_prefix("~/")
+            .map(|relative| crate::platform::home_dir().join(relative))
+            .unwrap_or_else(|| std::path::PathBuf::from(&settings.edge_voice_python));
         let result = crate::speech::edge_tts::generate(
-            std::path::Path::new(&settings.edge_voice_python),
+            &python,
             text,
             || {
                 NATIVE_EPOCH.load(Ordering::Relaxed) == epoch

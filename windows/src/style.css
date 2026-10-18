@@ -163,13 +163,13 @@ body {
   width: 0;
 }
 
-/* Compact 2×2 mini grid, to the right of the notch. */
+/* Compact 3×2 mini grid, to the right of the notch. */
 #mini-grid {
   position: absolute;
-  width: 29px;
+  width: 45px;
   height: 29px;
   display: grid;
-  grid-template-columns: 13px 13px;
+  grid-template-columns: repeat(3, 13px);
   grid-auto-rows: 13px;
   gap: 3px;
   pointer-events: none;
@@ -666,7 +666,8 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: 28px;
   gap: 4px;
-  align-content: center;
+  align-content: safe center;
+  overflow-y: auto;
   padding: 0 8px;
 }
 
@@ -2628,3 +2629,17 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* A companion owns one context; other integrations live on their own pets. */
+.companion-card .overview > .right { display: none; }
+.companion-card .overview > .left { flex: 1 1 auto; width: auto; }
+.companion-owner { max-width: 115px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.companion-owner[hidden] { display: none; }
+
+/* Music search stays inside the same card, including its longest result list. */
+.np-root { overflow-y: auto; overscroll-behavior: contain; }
+.np-options { padding: 0 12px 12px; }
+.np-options .chat-input { box-sizing: border-box; width: 100%; }
+
+.header-actions .close-card { width: 24px; height: 24px; cursor: pointer; color: #C5C8CD; border-radius: 6px; }
+.header-actions .close-card:hover { color: white; background: #ffffff20; }

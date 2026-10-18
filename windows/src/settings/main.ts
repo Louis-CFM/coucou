@@ -590,7 +590,7 @@ function chatProvidersSection(
   }
   for (const id of ["codex", "antigravity"] as const) {
     const provider = providerDef(id);
-    const status = h("div", { class: "hint", text: t("Uses your signed-in CLI account for chat, voice and actions on this computer.") });
+    const status = h("div", { class: "hint", text: t("Connect {provider}", {provider:provider.name}) });
     const connect = h("button", { text: t("Connect {provider}", { provider: provider.name }) }) as HTMLButtonElement;
     connect.addEventListener("click", async () => {
       connect.disabled = true;
@@ -599,9 +599,9 @@ function chatProvidersSection(
         const models = await Bridge.chatModels(id);
         if (!models.length) throw new Error(t("The CLI returned no available models."));
         const model = models.find((m) => m.id === settings.chatModels[id]) ?? models[0];
-        settings = withModel({ ...settings, chatProvider: id }, id, model.id);
+        settings = {...withModel(settings,id,model.id),chatProvider:settings.chatProvider};
         await save();
-        status.textContent = t("{provider} connected for Mochi chat and voice.", { provider: provider.name });
+        status.textContent = t("{provider} connected.", { provider: provider.name });
       } catch (err) { status.textContent = String(err).replace(/^Error:\s*/, ""); }
       finally { connect.disabled = false; }
     });
@@ -942,6 +942,16 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const companionClearance = h("input", {
+    type: "number", min: "0", max: "240", step: "8",
+    value: String(settings.companionTopClearance), style: "width:72px",
+  }) as HTMLInputElement;
+  companionClearance.addEventListener("change", () => {
+    const value = Number(companionClearance.value);
+    settings.companionTopClearance = Number.isFinite(value) ? Math.max(0, Math.min(240, value)) : 64;
+    companionClearance.value = String(settings.companionTopClearance);
+    void save();
+  });
   const screen = h("select", {}) as HTMLSelectElement;
   screen.append(
     h("option", { value: "primary", text: t("Main display") }),
@@ -989,6 +999,25 @@ function generalSection(): HTMLElement {
       autoClose,
       h("span", { class: "hint", text: t("seconds after you leave the island") }),
     ),
+    h("div", { class: "row" },
+      h("label", { text: t("Desktop companion") }),
+      toggle(settings.companionMode, (v) => { settings.companionMode = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("Each active integration has its own companion. Click a pet for its controls; right-click for actions. Restart Coucou after changing companion mode.") }),
+    h("div", { class: "row" },
+      h("label", { text: t("Companion movement") }),
+      toggle(settings.companionMotion, v => { settings.companionMotion = v; void save(); }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: t("Use the free space in the top bar") }),
+      toggle(settings.companionBarMode, v => { settings.companionBarMode = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: t("Live bar geometry keeps pets away from controls and windows. Without free space, use the tray or shortcuts.") }),
+    h("div", { class: "row", style: settings.companionBarMode ? "display:none" : "" },
+      h("label", { text: t("Keep clear of the top bar") }), companionClearance,
+      h("span", { class: "hint", text: t("pixels") }),
+    ),
+    h("div", { class: "hint", style: settings.companionBarMode ? "display:none" : "", text: t("Pets stay in a narrow strip below this margin. Increase it if they cover a bar control. Movement also respects reduced motion.") }),
     h("div", { class: "row" },
       h("label", { text: t("Island lives on") }),
       screen,

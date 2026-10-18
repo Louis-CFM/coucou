@@ -169,6 +169,8 @@ Windows and Linux are released together, under the `windows-v*` and `linux-v*` t
 
 | Windows & Linux | Date | Highlights |
 |---------|------|------------|
+| 0.5.1-mochi.2 · Linux fork | Oct 18, 2026 | Native-account pet conversations, Super microphone toggle and Raquel pt-PT speech; see [voice accounts](docs/LINUX-VOICE-ACCOUNTS.md). |
+| 0.5.1-mochi.1 · Linux fork | Oct 18, 2026 | Bar companions, local manual voice, Bluetooth capture and resource fixes; see [companions](docs/COMPANIONS.md). |
 | 0.5.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.5.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.5.0) | Oct 15, 2026 | Catches up with the Mac: the Coucou window, Flow dictation with Parakeet offline (X11 and Wayland), the Notetaker, « OK Coucou » |
 | 0.4.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.4.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.4.0) | Oct 11, 2026 | Your Android phone: the link for Coucou for Android, by @Rhytam23 — approvals with your fingerprint, answers, chat, off by default |
 | 0.3.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.3.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.3.0) | Oct 9, 2026 | Linux catches up: Spotify with Mochi dancing, global shortcuts on Wayland, Open terminal brings the terminal back; open on hover, your own sounds, a colour per Mochi |

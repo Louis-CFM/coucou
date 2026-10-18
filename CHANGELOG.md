@@ -1,5 +1,24 @@
 # Changelog
 
+## Linux fork 0.5.1-mochi.2 — October 18, 2026
+
+- Continuous voice conversations using the native Codex and Gravity CLI accounts, with separate pet contexts and their original tools and permission prompts.
+- Select Codex, Gravity, Gemini, Claude or the existing local Ollama backend by speaking its name. Stop with bare Super, a spoken stop command or inactivity; release capture before inference and playback.
+- Optional Raquel pt-PT Read Aloud speech through a pinned private Python environment, local Parakeet recognition and learned pet-name spellings. Voice feedback follows the selected companion.
+- Preserve independent companions, per-provider text histories, local Ollama voice, trusted upstream relay, Bluetooth handling and existing shortcuts.
+
+This Linux-only build keeps the macOS bundle and Info.plist unchanged. See [voice accounts](docs/LINUX-VOICE-ACCOUNTS.md).
+
+## Linux fork 0.5.1-mochi.1 — October 18, 2026
+
+- One companion per integration, positioned in the free areas of a compatible desktop bar. Unused pets park and sleep; active pets wander and greet without covering bar controls.
+- Cards, permissions and voice feedback belong to their pet. Fix unstable hover targets, overlapping click areas and stale popup wake behavior.
+- Native PipeWire capture and cancellable local Ollama voice turns; close the microphone before inference and keep stereo between turns. Load ASR on demand and evict its cache after idle use.
+- Spotify playback controls do not raise the application; optional desktop helper starts it out of the way. Confirm playback from the actual player.
+- Stop dormant rendering, suspend hidden settings animations and preserve the trusted upstream hook relay.
+
+This is a Linux-only fork build. The macOS bundle and its Info.plist retain the upstream version. See docs/COMPANIONS.md for validation and platform limits.
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.

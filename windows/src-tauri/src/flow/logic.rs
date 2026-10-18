@@ -40,6 +40,11 @@ pub const HOLD_THRESHOLD: f64 = 0.30;
 /// The second tap of a double tap comes within this.
 pub const DOUBLE_TAP_WINDOW: f64 = 0.40;
 
+/// Bound a lost key release or a device which produces only silence.
+pub fn capture_expired(seconds: f64, peak: f32) -> bool {
+    seconds >= 600.0 || (seconds >= 15.0 && peak < 0.004)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct KeyLogic {
     phase: Phase,
@@ -269,5 +274,27 @@ mod tests {
         }
         assert_eq!(bands::level(-100.0), 0.0);
         assert_eq!(bands::level(0.0), 1.0);
+    }
+}
+
+#[cfg(test)]
+mod capture_limit_tests {
+    use super::*;
+    #[test]
+    fn silence_and_lost_release_have_bounded_lifetimes() {
+        assert!(!capture_expired(14.9, 0.0));
+        assert!(capture_expired(15.0, 0.0));
+        assert!(!capture_expired(30.0, 0.02));
+        assert!(capture_expired(600.0, 0.02));
+    }
+    #[test]
+    fn duplicate_modifier_release_is_harmless() {
+        let mut k = KeyLogic::default();
+        assert_eq!(k.key_up(0.0), Action::None);
+        assert_eq!(k.key_down(1.0), Action::Start);
+        assert_eq!(k.key_up(2.0), Action::Finish);
+        assert_eq!(k.key_up(2.1), Action::None);
+        k.lock();
+        assert_eq!(k.key_up(3.0), Action::None);
     }
 }

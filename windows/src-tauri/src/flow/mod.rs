@@ -41,6 +41,7 @@ use text::Snippet;
 /// What reaches the dictation thread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyEvent {
+    Voice,
     Down,
     Up,
     /// Another key while the dictation key is held: a shortcut.
@@ -174,7 +175,7 @@ fn enable(app: &AppHandle, flow: &Arc<Flow>) {
         .ok();
     *running = Some(Running { tx, _listener: listener });
     drop(running);
-    speech::preload();
+    // Enabling the shortcut is not a request to keep a 650 MB model resident.
     pill::update(app, |s| s.enabled = true);
     crate::log::line(format!("flow dictation on ({})", prefs.key.label()));
 }
@@ -249,6 +250,8 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
                 }
             }
             Some((KeyEvent::Finish, _)) => {
+                crate::voice::session::finish_capture();
+                crate::voice::manual::finish();
                 if logic.is_active() || listening.is_some() {
                     logic.reset();
                     Action::Finish
@@ -256,7 +259,13 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
                     Action::None
                 }
             }
+            Some((KeyEvent::Voice, _)) => {
+                crate::voice::manual::toggle(&app);
+                Action::None
+            }
             Some((KeyEvent::Cancel, _)) => {
+                crate::voice::session::cancel(&app);
+                crate::voice::manual::cancel(&app);
                 logic.reset();
                 Action::Cancel
             }
@@ -290,6 +299,16 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
                 }
             }
         }
+        // A missing key release or a failed device must not keep the
+        // microphone (and a Bluetooth call profile) open indefinitely.
+        let expired = listening.as_ref().is_some_and(|l| {
+            let t = l.take.lock().unwrap();
+            logic::capture_expired(l.started.elapsed().as_secs_f64(), t.peak)
+        });
+        if expired {
+            logic.reset();
+            if let Some(l) = listening.take() { finish(&app, &flow, l, busy.clone()); }
+        }
         // The pill's dots, about 30 times a second while you speak.
         if let Some(l) = &listening {
             let levels = l.take.lock().unwrap().meter.levels;
@@ -301,6 +320,7 @@ fn run(app: AppHandle, flow: Arc<Flow>, rx: mpsc::Receiver<(KeyEvent, Instant)>)
 
 /// Opens the microphone. None (and the pill says why) when it can't.
 fn begin(app: &AppHandle, flow: &Arc<Flow>) -> Option<Listening> {
+    crate::voice::manual::cancel(app);
     if !speech::is_ready() {
         pill::announce(
             app,
@@ -359,7 +379,9 @@ fn finish(app: &AppHandle, flow: &Arc<Flow>, mut l: Listening, busy: Arc<AtomicB
     };
     // Too short or silent: nothing to send to the model.
     if samples.len() < 16_000 / 4 || peak < 0.004 {
+        crate::log::line(format!("flow: no speech (samples={}, peak={peak:.5})", samples.len()));
         pill::update(app, |s| s.phase = "idle".into());
+        pill::announce(app, "mic", "#FFB84D", t("No speech detected. Check your microphone."), None, 6);
         return;
     }
     pill::update(app, |s| s.phase = "thinking".into());
@@ -383,6 +405,7 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let raw = transcript.text.trim().to_string();
     if raw.is_empty() {
         pill::update(app, |s| s.phase = "idle".into());
+        pill::announce(app, "mic", "#FFB84D", t("No speech detected. Check your microphone."), None, 6);
         return Ok(());
     }
     let (prepared, style, cleanup, words, key) = {
@@ -452,6 +475,7 @@ pub struct FlowStatus {
     /// "ok", or why the key can't be watched here ("wayland", "no-display").
     keys: String,
     has_claude_key: bool,
+    voice_provider_ready: bool,
     mics: Vec<audio::InputDevice>,
     platform: &'static str,
     /// Coucou started with the computer.
@@ -461,7 +485,7 @@ pub struct FlowStatus {
 }
 
 #[tauri::command]
-pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
+pub fn flow_status(app: AppHandle, flow: State<Arc<Flow>>) -> FlowStatus {
     FlowStatus {
         prefs: flow.store.lock().unwrap().prefs.clone(),
         models: speech::status(),
@@ -470,6 +494,7 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
             Err(why) => why.into(),
         },
         has_claude_key: cleanup::has_key(),
+        voice_provider_ready: crate::voice::provider_ready(&app),
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
         autostarted: crate::launched_at_login(),
@@ -688,8 +713,9 @@ pub fn pill_action(app: AppHandle, flow: State<Arc<Flow>>, action: String, id: O
             }
             flow.send(KeyEvent::HandsFree);
         }
-        "finish" => flow.send(KeyEvent::Finish),
-        "cancel" => flow.send(KeyEvent::Cancel),
+        "voice" => crate::voice::manual::toggle(&app),
+        "finish" => { crate::voice::session::finish_capture(); flow.send(KeyEvent::Finish); },
+        "cancel" => { crate::voice::session::cancel(&app); flow.send(KeyEvent::Cancel); },
         "note" => crate::notes::toggle(&app),
         "stopNote" => crate::notes::stop(&app),
         "hub" => crate::show_hub(&app, None),

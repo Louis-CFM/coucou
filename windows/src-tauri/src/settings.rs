@@ -13,6 +13,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    pub spotify_quiet_ads: bool,
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub auto_close_interval: f64,
@@ -25,6 +26,11 @@ pub struct Settings {
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
+    /// Desktop companion with a nearby popup, instead of a permanent top island.
+    pub companion_mode: bool,
+    pub companion_motion: bool,
+    pub companion_bar_mode: bool,
+    pub companion_top_clearance: f64,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -131,6 +137,7 @@ fn default_model() -> String {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            spotify_quiet_ads: false,
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
@@ -144,6 +151,10 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
+            companion_mode: false,
+            companion_motion: true,
+            companion_bar_mode: false,
+            companion_top_clearance: 64.0,
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -429,6 +440,7 @@ mod tests {
     /// A settings.json in which no value is the default one.
     // Two #: the colours in it are written "#RRGGBB".
     const CUSTOM: &str = r##"{
+  "spotifyQuietAds": true,
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
@@ -437,6 +449,10 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
+  "companionMode": true,
+  "companionMotion": false,
+  "companionBarMode": false,
+  "companionTopClearance": 80.0,
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -954,6 +970,7 @@ mod tests {
         assert_eq!(
             keys,
             [
+                "spotifyQuietAds",
                 "soundEnabled",
                 "soundVolume",
                 "autoCloseInterval",
@@ -962,6 +979,10 @@ mod tests {
                 "activeIntegrations",
                 "mainPill",
                 "screen",
+                "companionMode",
+                "companionMotion",
+                "companionBarMode",
+                "companionTopClearance",
                 "autostart",
                 "hooksInstalled",
                 "model",

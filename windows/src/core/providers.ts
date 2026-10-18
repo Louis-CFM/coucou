@@ -44,6 +44,8 @@ export function providerDef(id: string): ProviderDef {
 
 /** A chat opened from an agent's Mochi uses that agent's own CLI account. */
 export function providerForPill(id: string | undefined): ProviderId | null {
+  const direct: Record<string, ProviderId> = {ai_ollama:"ollama",ai_lmstudio:"lmstudio",ai_openai:"openai",ai_google:"google",ai_anthropic:"anthropic",integration_claude:"anthropic",integration_cursor:"anthropic",integration_vscode:"anthropic"};
+  if (id && direct[id]) return direct[id];
   if (id === "agent_codex") return "codex";
   if (id === "agent_antigravity") return "antigravity";
   return null;

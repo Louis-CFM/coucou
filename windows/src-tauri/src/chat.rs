@@ -7,6 +7,7 @@
 // boundary: the island sends the question and gets the answer's text back.
 
 use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
@@ -49,6 +50,7 @@ pub struct ModelInfo {
 #[derive(Clone, Default)]
 pub struct Chat {
     inner: Arc<Mutex<Conversation>>,
+    saved: Arc<Mutex<HashMap<String, Conversation>>>,
 }
 
 #[derive(Default)]
@@ -84,6 +86,7 @@ impl Chat {
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         if let Some(active) = &c.active { active.store(true, Ordering::Relaxed); }
+        self.saved.lock().unwrap().clear();
         let epoch = c.epoch + 1;
         *c = Conversation { epoch, ..Default::default() };
     }
@@ -98,13 +101,16 @@ impl Chat {
     /// a stop that arrived just before the CLI was started.
     pub fn begin_with_cancel(&self, provider: &str, cancel: Arc<AtomicBool>) -> Turn {
         let mut c = self.inner.lock().unwrap();
+        if c.owner.as_deref() != Some(provider) {
+            let mut saved = self.saved.lock().unwrap();
+            let old = std::mem::take(&mut *c);
+            if let Some(active) = &old.active { active.store(true, Ordering::Relaxed); }
+            if let Some(owner) = &old.owner { saved.insert(owner.clone(), old); }
+            *c = saved.remove(provider).unwrap_or_default();
+            c.owner = Some(provider.to_string());
+        }
         if let Some(previous) = c.active.replace(cancel.clone()) {
             if !Arc::ptr_eq(&previous, &cancel) { previous.store(true, Ordering::Relaxed); }
-        }
-        if c.owner.as_deref() != Some(provider) {
-            c.native = c.plain.clone();
-            c.owner = Some(provider.to_string());
-            c.session = None;
         }
         Turn {
             epoch: c.epoch,
@@ -114,6 +120,15 @@ impl Chat {
             session: c.session.clone(),
             cancel,
         }
+    }
+
+    pub fn reset_provider(&self, provider: &str) {
+        let mut c = self.inner.lock().unwrap();
+        if c.owner.as_deref() == Some(provider) {
+            if let Some(active) = &c.active { active.store(true, Ordering::Relaxed); }
+            *c = Conversation { epoch: c.epoch + 1, owner: Some(provider.into()), ..Default::default() };
+        }
+        self.saved.lock().unwrap().remove(provider);
     }
 
     pub fn is_current(&self, turn: &Turn) -> bool {
@@ -144,6 +159,8 @@ impl Chat {
         c.native.push(assistant);
         c.plain.push(json!({ "role": "user", "content": user_text }));
         c.plain.push(json!({ "role": "assistant", "content": answer }));
+        if c.native.len()>80 { let extra=c.native.len()-80;c.native.drain(..extra); }
+        if c.plain.len()>80 { let extra=c.plain.len()-80;c.plain.drain(..extra); }
     }
 }
 
@@ -347,31 +364,17 @@ mod tests {
     }
 
     #[test]
-    fn switching_provider_never_sends_claude_blocks_to_another_one() {
+    fn switching_provider_keeps_each_context_private() {
         let chat = Chat::default();
         let t = chat.begin("anthropic");
-        let blocks = json!([
-            {"type":"server_tool_use","id":"srvtoolu_1","name":"web_search","input":{"query":"x"}},
-            {"type":"web_search_tool_result","tool_use_id":"srvtoolu_1","content":[]},
-            {"type":"text","text":"Found it."}
-        ]);
-        chat.commit(&t, json!({"role":"user","content":[{"type":"text","text":"look"}]}), json!({"role":"assistant","content":blocks}), "look", "Found it.");
-
-        let t = chat.begin("openai");
-        assert!(!t.first);
-        assert_eq!(
-            turn_texts(&t.history),
-            vec![("user".into(), json!("look")), ("assistant".into(), json!("Found it."))]
-        );
-        let raw = serde_json::to_string(&t.history).unwrap();
-        assert!(!raw.contains("web_search"), "{raw}");
-
-        // And back: Claude gets the plain turns too, including OpenAI's answer.
-        chat.commit(&t, json!({"role":"user","content":"more"}), json!({"role":"assistant","content":"Sure."}), "more", "Sure.");
-        let t = chat.begin("anthropic");
-        assert_eq!(t.history.len(), 4);
-        assert_eq!(t.history[3], json!({"role":"assistant","content":"Sure."}));
-        assert!(!serde_json::to_string(&t.history).unwrap().contains("web_search"));
+        chat.commit(&t,json!({"role":"user","content":"private"}),json!({"role":"assistant","content":"reply"}),"private","reply");
+        let other = chat.begin("ollama");
+        assert!(other.first && other.history.is_empty());
+        chat.commit(&other,json!({"role":"user","content":"local"}),json!({"role":"assistant","content":"ok"}),"local","ok");
+        assert_eq!(chat.begin("anthropic").history.len(),2);
+        chat.reset_provider("anthropic");
+        assert!(chat.begin("anthropic").first);
+        assert_eq!(chat.begin("ollama").history.len(),2);
     }
 
     #[test]

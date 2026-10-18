@@ -1,3 +1,4 @@
+import { providerForPill } from "../core/providers";
 // Island views — DOM ports of IslandViewContent.swift. Paddings, font sizes,
 // colours and wording are copied from the Swift views so both platforms read
 // identically.
@@ -112,10 +113,12 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabDrop = h("button", { class: "tab", title: tl("Drop"), onclick: () => go("upload") }, svg(ICONS.plus, 13));
 
   const gearBtn = h("button", { title: tl("Settings"), onclick: () => go("settings") }, svg(ICONS.gear, 14));
+  const closeBtn = h("button", { class: "close-card", title: tl("Close"), "aria-label": tl("Close"), onclick: () => actions.collapse() }, svg(ICONS.xmark, 12));
   const soundBtn = h("button", { title: tl("Mute"), onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));
   // Plan usage pills (off by default): before the gear, Claude first, as on the Mac.
   const claudePill = buildPlanPill(false);
   const codexPill = buildPlanPill(true);
+  const companionName = h("span", { class: "companion-owner" });
   const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
   let codexShown = false;
 
@@ -128,7 +131,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabDrop),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn),
+    h("div", { class: "header-actions" }, companionName, planPills, gearBtn, soundBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -136,7 +139,10 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
+      closeBtn.hidden = !State.settings.companionMode;
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
+      const ownChat = !State.settings.companionMode || providerForPill(State.focusId ?? undefined) != null;
+      tabChat.hidden = tabDrop.hidden = !ownChat;
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
@@ -144,14 +150,17 @@ export function buildHeader(actions: ViewActions): ViewHost {
       gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      companionName.hidden = !State.settings.companionMode;
+      companionName.textContent = State.focusTask?.name ?? "Mochi";
+      companionName.style.color = State.focusTask?.color ?? "inherit";
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
   };
 
   function syncPlanPills() {
-    const claudeOn = claudePillVisible();
-    const codexOn = codexPillVisible();
+    const claudeOn = claudePillVisible() && (!State.settings.companionMode || State.focusId === "agent_claude");
+    const codexOn = codexPillVisible() && (!State.settings.companionMode || State.focusId === "agent_codex");
     claudePill.el.style.display = claudeOn ? "" : "none";
     codexPill.el.style.display = codexOn ? "" : "none";
     planPills.classList.toggle("on", claudeOn || codexOn);
@@ -389,7 +398,7 @@ function buildOverview(actions: ViewActions): ViewHost {
       highlightRow(rows, State.cardSelection, State.cardSelection !== shownSelection);
       shownSelection = State.cardSelection;
 
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks;
       const pillKey = others.map((t) => `${t.id}:${t.color}:${t.pillBadge ?? ""}`).join("|");
       if (pillKey !== pillIds) {
         pillIds = pillKey;

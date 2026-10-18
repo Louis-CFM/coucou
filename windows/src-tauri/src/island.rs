@@ -21,6 +21,18 @@ pub const PANEL_H: f64 = 320.0;
 pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
 
+static LOCAL_ORIGIN: Mutex<(f64, f64)> = Mutex::new((0.0, 0.0));
+
+pub fn local_origin() -> (f64, f64) { *LOCAL_ORIGIN.lock().unwrap() }
+
+/// A popup close to the companion, fully inside the display and clear of
+/// its top/bottom controls. Positions are logical pixels on that display.
+fn companion_origin(point: (f64, f64), display: (f64, f64), size: (f64, f64)) -> (f64, f64) {
+    let x = (point.0 - size.0 / 2.0).clamp(8.0, (display.0 - size.0 - 8.0).max(8.0));
+    let y = if point.1 >= size.1 + 96.0 { point.1 - size.1 - 48.0 } else { point.1 + 28.0 };
+    (x, y.clamp(48.0, (display.1 - size.1 - 64.0).max(48.0)))
+}
+
 pub const WINDOW_LABEL: &str = "island";
 
 /// Margin around the island that still counts as "on the island", in logical px.
@@ -362,8 +374,19 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let companion = app.try_state::<crate::Shared>()
+        .is_some_and(|s| s.settings.lock().unwrap().companion_mode);
+    let display = (ms.width as f64 / scale, ms.height as f64 / scale);
+    let origin = if companion {
+        let point = crate::desktop::companion_center(app, &m)
+            .unwrap_or((display.0 - 100.0, display.1 - 180.0));
+        companion_origin(point, display, (PANEL_W, PANEL_H))
+    } else {
+        ((display.0 - lw) / 2.0, 0.0)
+    };
+    *LOCAL_ORIGIN.lock().unwrap() = origin;
+    let x = mp.x + (origin.0 * scale).round() as i32;
+    let y = mp.y + (origin.1 * scale).round() as i32;
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -376,6 +399,8 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_position(PhysicalPosition::new(x, y));
     let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
+    #[cfg(target_os = "linux")]
+    platform::place_island(&win, companion.then_some(origin));
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
@@ -518,7 +543,9 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
         // The wake strip itself, never "the whole window": if the window ever
         // fails to shrink to the strip, the rest of it must not swallow clicks
         // meant for whatever sits under the top of the screen.
-        Some((0.0, 0.0, STRIP_W, STRIP_H))
+        let companion = app.try_state::<crate::Shared>()
+            .is_some_and(|s| s.settings.lock().unwrap().companion_mode);
+        Some((0.0, 0.0, if companion { 0.0 } else { STRIP_W }, STRIP_H))
     } else {
         let r = *gate.rect.lock().unwrap();
         if r.w <= 0.0 {
@@ -538,5 +565,20 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 pub fn set_ignore_cursor(app: &AppHandle, ignore: bool) {
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(ignore);
+    }
+}
+
+#[cfg(test)]
+mod companion_tests {
+    use super::*;
+    #[test]
+    fn popup_stays_inside_each_display_and_off_the_bars() {
+        for display in [(3440.0,1440.0),(1920.0,1080.0),(800.0,600.0)] {
+            for point in [(0.0,0.0),(display.0,display.1),(display.0/2.0,display.1/2.0)] {
+                let (x,y) = companion_origin(point,display,(PANEL_W,PANEL_H));
+                assert!(x >= 8.0 && x + PANEL_W <= display.0 - 8.0);
+                assert!(y >= 48.0 && y + PANEL_H <= display.1 - 64.0);
+            }
+        }
     }
 }

@@ -1,12 +1,13 @@
+import { MusicAssistant } from "../core/music-assistant";
 // Spotify's reports → the page (src-tauri/src/spotify.rs). The parts of
 // SpotifyController.swift that touch the app: the pill wears the track's
 // title, music starting shows the compact island without a sound, and the
 // card reads the player again whenever it comes on screen (seeks made in
 // Spotify's own window are never signalled).
 
-import { Bridge, onEvent } from "../core/bridge";
+import { Bridge, emitToWindow, onEvent } from "../core/bridge";
 import { pillDefinition } from "../core/pills";
-import { SPOTIFY_ID, Spotify, isAd, type SpotifyState } from "../core/spotify";
+import { SPOTIFY_ID, Spotify, isAd, recentMusic, type SpotifyState } from "../core/spotify";
 import { State } from "../core/state";
 import { t } from "../i18n/i18n";
 
@@ -27,13 +28,31 @@ export function registerSpotifyHandlers(island: SpotifyHost) {
   });
 }
 
+const assistant = new MusicAssistant();
+let healthTimer: number | null = null;
+let noticeSequence=0;
+function musicAssist(s: SpotifyState) {
+  const result=assistant.update(s,Date.now(),State.settings.spotifyQuietAds);
+  if(result.volume!=null) void Bridge.spotifyControl("volume",result.volume);
+  if(result.notice && State.settings.companionMode && !State.paused) void emitToWindow("companions","companions-notice",{
+    key:`spotify:${++noticeSequence}`,pet:SPOTIFY_ID,text:result.notice,urgent:false,view:"overview",
+  });
+  const watch=s.running && s.playing && State.tasks.some(t=>t.id===SPOTIFY_ID);
+  if(watch && healthTimer==null) healthTimer=window.setTimeout(()=>{
+    healthTimer=null;void Bridge.spotifyRefresh();
+  },30000);
+  else if(!watch && healthTimer!=null){window.clearTimeout(healthTimer);healthTimer=null;}
+}
+
 /** A report from Rust (or the answer to a refresh). */
 export function applySpotify(island: SpotifyHost, next: SpotifyState) {
   const wasPlaying = State.spotifyPlaying;
   Spotify.state = next;
+  recentMusic.observe(next.track);
+  musicAssist(next);
   syncPillName();
   // Only on not playing → playing (SpotifyController.setPlaying).
-  if (!wasPlaying && State.spotifyPlaying && !State.paused && State.mode === "hidden") {
+  if (!State.settings.companionMode && !wasPlaying && State.spotifyPlaying && !State.paused && State.mode === "hidden") {
     island.revealSilently();
   }
   State.notify();

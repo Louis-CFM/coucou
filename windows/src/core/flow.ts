@@ -57,6 +57,7 @@ export interface FlowStatus {
   /** "ok", or why the key can't be watched ("wayland", "no-display"). */
   keys: string;
   hasClaudeKey: boolean;
+  voiceProviderReady: boolean;
   mics: { name: string; default: boolean }[];
   platform: "windows" | "linux";
   autostarted: boolean;

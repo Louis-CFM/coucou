@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coucou companions</title>
+    <style>
+      html, body { margin: 0; overflow: hidden; background: transparent; user-select: none; -webkit-user-select: none; font: 11px system-ui, sans-serif; color: #f1f5f9; }
+      .pet { position: absolute; left: 0; top: 0; width: 64px; height: 84px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; }
+      .pet[hidden], .pet span[hidden] { display: none; }
+      .pet canvas { width: 64px; height: 64px; display: block; pointer-events: none; }
+      .pet span { position: absolute; top: 51px; left: 2px; right: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 6px; background: #111827b8; padding: 2px 3px; font-size: 10px; }
+      .pet[data-attention="true"] span { box-shadow: 0 0 0 1px #fbbf24; }
+      #menu { position: absolute; display: grid; min-width: 148px; padding: 4px; border: 1px solid #ffffff38; border-radius: 9px; background: #18202ff5; z-index: 2; }
+      #menu[hidden] { display: none; }
+      #menu button { padding: 6px 9px; text-align: start; color: inherit; font: inherit; border: 0; border-radius: 5px; background: transparent; cursor: pointer; }
+      #menu button:hover { background: #ffffff24; }
+      #voice { position: absolute; box-sizing: border-box; width: 340px; padding: 12px 14px; background: #131720f5; border: 1px solid #f4c54280; border-radius: 14px; z-index: 3; font-size: 12px; }
+      #voice[hidden] { display: none; }
+      #voice::before { content: ""; position: absolute; top: -7px; left: var(--tip, 50%); width: 12px; height: 12px; transform: rotate(45deg); background: #131720; border-top: 1px solid #f4c54280; border-left: 1px solid #f4c54280; }
+      #voice strong { color: #f4c542; }
+      #voice p { margin: 8px 0; line-height: 1.4; overflow-wrap: anywhere; max-height: 90px; overflow: auto; }
+      #voice .heard { color: #aab2c2; max-height: 40px; }
+      #voice button { margin-right: 8px; border: 1px solid #ffffff35; border-radius: 6px; padding: 4px 9px; color: inherit; background: #ffffff0a; cursor: pointer; }
+    .pet-notice{position:absolute;width:300px;box-sizing:border-box;padding:12px;border-radius:14px;color:#eef2f6;background:#20242ef5;border:1px solid #ffffff32;font:13px system-ui;box-shadow:0 4px 14px #0005}
+.pet-notice[hidden]{display:none}.pet-notice:before{content:"";position:absolute;top:-7px;left:var(--tip);width:12px;height:12px;background:#20242e;transform:rotate(45deg);border-left:1px solid #ffffff32;border-top:1px solid #ffffff32}.pet-notice p{line-height:1.4;margin:8px 0}.pet-notice button{color:inherit;background:#ffffff13;border:1px solid #ffffff28;border-radius:7px;padding:5px 10px;margin-right:8px;cursor:pointer}
+</style>
+  </head>
+  <body>
+    <div id="pets"></div><div id="menu" hidden></div><div id="voice" hidden role="status" aria-live="polite"></div>
+    <script type="module" src="/src/desktop/companions.ts"></script>
+  </body>
+</html>

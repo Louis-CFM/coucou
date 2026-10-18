@@ -186,7 +186,7 @@ pub fn run(
     Ok((text, acted))
 }
 
-pub fn ask(
+pub(crate) fn ask(
     app: &AppHandle,
     provider: &str,
     method: &str,

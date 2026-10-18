@@ -5,6 +5,7 @@
 // the last turn. Port of ClaudeVoiceBrain.swift.
 
 use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
@@ -15,26 +16,28 @@ const FORGET_AFTER: Duration = Duration::from_secs(90);
 pub struct Brain {
     messages: Vec<Value>,
     cli_chat: crate::chat::Chat,
+    local: super::local::Brain,
     last: Instant,
     family_model: Option<String>,
 }
 
 impl Default for Brain {
     fn default() -> Self {
-        Self { messages: Vec::new(), cli_chat: Default::default(), last: Instant::now(), family_model: None }
+        Self { messages: Vec::new(), cli_chat: Default::default(), local: Default::default(), last: Instant::now(), family_model: None }
     }
 }
 
 pub struct Reply {
     pub text: String,
     pub acted: bool,
+    pub language: Option<String>,
 }
 
-fn tools() -> Vec<Value> {
+pub(super) fn tools() -> Vec<Value> {
     vec![
         json!({
             "name": "pills",
-            "description": "Add, remove, set as main or list the pills shown in the island at the top of the screen. At most 4 pills besides the main one: remove one first if needed.",
+            "description": "Add, remove, set as main or list the pills shown in the island at the top of the screen. At most 6 pills besides the main one: remove one first if needed.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -111,6 +114,7 @@ impl Brain {
         if self.last.elapsed() > FORGET_AFTER {
             self.messages.clear();
             self.cli_chat.reset();
+            self.local.clear();
         }
     }
 
@@ -123,6 +127,12 @@ impl Brain {
             settings.chat_provider = if matches!(provider, "gemini-cli" | "claude-cli") { "antigravity" } else { provider }.into();
             settings
         });
+        if let Some(settings) = settings.as_ref().filter(|s| s.chat_provider == "ollama") {
+            self.messages.clear();
+            let not_stopped = AtomicBool::new(false);
+            return self.local.respond(app, settings, transcript, stop.as_deref().unwrap_or(&not_stopped));
+        }
+        self.local.clear();
         if let Some(mut settings) = settings.clone().filter(|s| matches!(s.chat_provider.as_str(), "codex" | "antigravity")) {
             if matches!(provider, "gemini-cli" | "claude-cli") {
                 let family = if provider == "gemini-cli" { "gemini" } else { "claude" };
@@ -132,21 +142,22 @@ impl Brain {
                     let offered = tauri::async_runtime::block_on(super::until_stopped(crate::gravity_chat::models(), stop.as_deref()))?.ok()?;
                     offered.into_iter().find(|m| m.id.to_lowercase().contains(family)).map(|m| m.id)
                 });
-                let Some(model) = model else { return Some(Reply { text: crate::i18n::t("Connect this pet in Settings → Chat first."), acted: false }); };
+                let Some(model) = model else { return Some(Reply { text: crate::i18n::t("Connect this pet in Settings → Chat first."), acted: false, language: None }); };
                 self.family_model = Some(model.clone());
                 settings.chat_models.insert("antigravity".into(), model);
             }
             let model = crate::chat::model_for(&settings, &settings.chat_provider);
             return match crate::cli_chat::run(app, &self.cli_chat, &settings, &settings.chat_provider, &model, transcript, None, true, &tools(), stop, |_| {}) {
                 Ok((text, acted)) => {
-                    Some(Reply { text: spoken_text(&text), acted })
+                    Some(Reply { text: spoken_text(&text), acted, language: None })
                 }
                 Err(err) => {
                     crate::log::line(format!("voice: CLI turn failed: {err}"));
-                    Some(Reply { text: crate::i18n::t("The CLI agent could not answer. Check its connection in Settings → Chat."), acted: false })
+                    Some(Reply { text: crate::i18n::t("The CLI agent could not answer. Check its connection in Settings → Chat."), acted: false, language: None })
                 }
             };
         }
+        if !matches!(provider, "" | "anthropic") { return None; }
         self.messages.push(json!({ "role": "user", "content": transcript }));
         self.trim();
         let pills = super::ask_island(app, "pills", json!({ "action": "list" })).unwrap_or_default();
@@ -176,7 +187,7 @@ impl Brain {
                     if self.messages.last().is_some_and(|m| m["content"].is_string()) {
                         self.messages.pop();
                     }
-                    return acted.then(|| Reply { text: String::new(), acted });
+                    return acted.then(|| Reply { text: String::new(), acted, language: None });
                 }
             };
             let content = turn["content"].as_array().cloned().unwrap_or_default();
@@ -204,7 +215,7 @@ impl Brain {
             spoken.clear();
         }
         self.repair();
-        Some(Reply { text: spoken_text(&spoken), acted })
+        Some(Reply { text: spoken_text(&spoken), acted, language: None })
     }
 
     /// Keeps the last exchanges, never cutting between a tool call and its result.

@@ -1,6 +1,8 @@
+import { emitToWindow } from "../core/bridge";
 // The island: DOM shell, sizing animation, Mochi placement, mouse handling.
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
+import { FrameLoop } from "../core/frame-loop";
 import { Tracked, Spring, clamp } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop, onEvent } from "../core/bridge";
 import {
@@ -77,8 +79,10 @@ export class Island {
   private greetingShown = false;
   private seasons = new SeasonCache();
 
-  private running = false;
-  private lastFrame = 0;
+  private frames = new FrameLoop((dt, now) => this.renderFrame(dt, now), (error) => {
+    this.dirty = true;
+    console.error("Coucou island frame failed", error);
+  });
   private dirty = true;
   private canvasPx = 0;
 
@@ -116,7 +120,9 @@ export class Island {
 
   constructor(root: HTMLElement) {
     this.root = root;
+    void onEvent("companions-hide-popup", () => { if (State.settings.companionMode) this.collapse(); });
     this.desktop = new DesktopLink({
+      openFromDesktop: (id, view) => this.openFromDesktop(id, view),
       reveal: () => this.reveal(),
       wardrobeFromDesktop: () => this.wardrobeFromDesktop(),
       dizzyFromDesktop: () => this.handleDizzy(),
@@ -124,12 +130,13 @@ export class Island {
     this.build();
     const cliRequests = new Set<string>();
     let wasPinned = false;
-    void onEvent<{ id: string }>("agent-request", ({ id }) => {
+    void onEvent<{ id: string; provider: string }>("agent-request", ({ id, provider }) => {
       if (!cliRequests.size) wasPinned = this.fsm.pinned;
       cliRequests.add(id);
       this.fsm.pinned = true;
-      this.reveal();
-      this.setView("prompt");
+      if (State.settings.companionMode) {
+        void emitToWindow("companions", "companions-present", {id: ({codex:"agent_codex",antigravity:"agent_antigravity",copilot:"agent_copilot"} as Record<string,string>)[provider.toLowerCase()],view:"prompt"});
+      } else { this.reveal(); this.setView("prompt"); }
     });
     void onEvent<{ id: string }>("agent-request-ended", ({ id }) => {
       cliRequests.delete(id);
@@ -163,6 +170,7 @@ export class Island {
   foldApproval() {
     if (!State.pendingApproval || State.mode !== "expanded") return;
     State.isPinned = true;
+    if (State.settings.companionMode) { this.fsm.pinned = false; this.fsm.forceHidden(); return; }
     this.fsm.pinned = true;
     this.fsm.forcePetit();
   }
@@ -171,21 +179,13 @@ export class Island {
 
   private build() {
     const actions: ViewActions = {
-      setView: (v) => {
-        if (v === "prompt") {
-          const provider = providerForPill(State.focusTask?.id);
-          if (provider) {
-            State.settings = { ...State.settings, chatProvider: provider };
-            void Bridge.saveSettings(State.settings);
-          }
-        }
-        this.setView(v);
-      },
+      setView: (v) => this.setView(v),
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
       foldApproval: () => this.foldApproval(),
       setFocus: (id) => {
         State.setFocus(id);
+        if (State.settings.companionMode) this.alert("overview");
         Sound.play("blip");
         // A pill with a waiting request opens on its card: going back to it
         // after looking at another pill brings the card up again.
@@ -332,6 +332,7 @@ export class Island {
 
   private wireFsm() {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.companionMode ? 2 : 60;
     this.fsm.openOnHover = State.settings.openOnHover;
     this.fsm.onTransition = (from, to) => {
       // The greeting is over, however it ended: back to his desktop spot.
@@ -341,6 +342,10 @@ export class Island {
           this.setMode("hidden");
           break;
         case "petit":
+          if (State.settings.companionMode && this.desktop.supported) {
+            this.fsm.forceHidden();
+            return;
+          }
           if (from === "coucou") this.greeting.interrupt();
           else if (from === "hidden" && !this.silentReveal) Sound.play("peek");
           this.setMode("compact");
@@ -365,7 +370,22 @@ export class Island {
   }
 
   launch() {
-    this.fsm.launch();
+    if (State.settings.companionMode && this.desktop.supported) {
+      this.desktop.launch();
+      this.fsm.forceHidden();
+      this.collapsed = true;
+      void Bridge.setCollapsed(true);
+    } else {
+      this.fsm.launch();
+    }
+  }
+
+  openFromDesktop(id?: string, view?: string) {
+    if (id) State.setFocus(id);
+    void Bridge.reposition();
+    const request = State.pendingApproval;
+    const target = view && view in VIEW_LAYOUTS ? view as IslandViewName : id && request?.pillId !== id ? "overview" : State.defaultView();
+    this.alert(target, true);
   }
 
   // ── Mode / view ─────────────────────────────────────────────────────────────
@@ -405,6 +425,7 @@ export class Island {
   }
 
   expand(view: IslandViewName) {
+    if (view === "prompt" && State.settings.companionMode && !providerForPill(State.focusId ?? undefined)) view = "overview";
     this.stopSequenceIfLeaving(view);
     if (view !== "overview") closePlanCard();
     State.view = view;
@@ -415,6 +436,7 @@ export class Island {
   }
 
   setView(view: IslandViewName) {
+    if (view === "prompt" && State.settings.companionMode && !providerForPill(State.focusId ?? undefined)) view = "overview";
     this.stopSequenceIfLeaving(view);
     if (view !== "overview") closePlanCard();
     if (State.mode !== "expanded") {
@@ -432,6 +454,7 @@ export class Island {
   }
 
   collapse() {
+    if (State.settings.companionMode) { this.fsm.pinned = false; this.fsm.forceHidden(); return; }
     // A waiting card is only ever folded, never dropped by a close.
     if (State.pendingApproval) {
       this.foldApproval();
@@ -446,18 +469,27 @@ export class Island {
   }
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
-  alert(view: IslandViewName) {
+  alert(view: IslandViewName, anchored = false) {
+    if (this.desktop.companionsActive && !anchored) {
+      void emitToWindow("companions", "companions-present", { id: State.focusId, view });
+      return;
+    }
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
+    // forceHome also cancels timers when another card is already open. In
+    // that case there is no FSM transition to restart the leave countdown.
+    if (!this.wasInIsland) this.fsm.mouseLeft();
   }
 
   reveal() {
+    if (State.settings.companionMode) return;
     this.fsm.reveal();
   }
 
   /** Music started playing: the compact island, without the peek sound (musicReveal). */
   revealSilently() {
+    if (State.settings.companionMode) return;
     this.silentReveal = true;
     this.fsm.reveal();
     this.silentReveal = false;
@@ -596,7 +628,7 @@ export class Island {
     State.droppedFile = { name, path };
     State.promptContext = { kind: "file", name, path };
     State.chatHistory = [];
-    void Bridge.chatReset();
+    void Bridge.chatReset(State.chatProvider);
 
     UploadSeq.performDrop(State.uploadDuration);
     this.uploadTens = 0;
@@ -668,6 +700,10 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    if (State.mode === "expanded" && State.view === "overview") {
+      if (State.settings.companionMode) w = 380;
+      if (State.focusId === "integration_spotify") h = 300;
+    }
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -693,13 +729,14 @@ export class Island {
     const w = this.width.value;
     const hh = this.height.value;
     const r = this.radius.value;
+    this.islandEl.classList.toggle("companion-card", State.settings.companionMode);
     this.islandEl.style.width = `${w}px`;
     this.islandEl.style.height = `${hh}px`;
-    this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
+    this.islandEl.style.borderRadius = State.settings.companionMode ? `${r}px` : `0 0 ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
-    this.miniGrid.style.left = `${w - 40 - 14.5}px`;
+    this.miniGrid.style.left = `${w - 40 - 22.5}px`;
     this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
@@ -724,21 +761,22 @@ export class Island {
   // ── Window collapse (hidden → tiny wake strip, zero polling) ────────────────
 
   private updateWindowCollapsed() {
-    if (this.collapseTimer != null) {
-      window.clearTimeout(this.collapseTimer);
-      this.collapseTimer = null;
-    }
     if (State.mode === "hidden") {
-      // Let the island finish retracting, then drop the window to the wake strip:
-      // from there the OS delivers no cursor events, so nothing polls at all.
+      // State notifications must not keep postponing the same hide operation.
+      if (this.collapsed || this.collapseTimer != null) return;
       this.collapseTimer = window.setTimeout(() => {
         this.collapseTimer = null;
         if (State.mode !== "hidden") return;
         this.collapsed = true;
         void Bridge.setCollapsed(true);
       }, 420);
-    } else if (this.collapsed) {
-      // Grow the window back before the island animates open.
+      return;
+    }
+    if (this.collapseTimer != null) {
+      window.clearTimeout(this.collapseTimer);
+      this.collapseTimer = null;
+    }
+    if (this.collapsed) {
       this.collapsed = false;
       void Bridge.setCollapsed(false);
     }
@@ -749,6 +787,7 @@ export class Island {
   private wireInput() {
     // The wake strip is the only thing the OS can hit while the island is hidden.
     this.wakeStrip.addEventListener("mouseenter", () => {
+      if (this.desktop.companionsActive) return;
       Sound.resume();
       if (State.mode === "hidden") this.fsm.mouseEntered();
     });
@@ -850,6 +889,7 @@ export class Island {
 
   /** Cursor in window-logical coordinates. */
   onCursor(x: number, y: number) {
+    if (this.desktop.companionsActive && State.mode === "hidden") { this.wasInIsland = false; return; }
     // WebKitGTK can deliver a mousemove after the pointer has left the layer
     // surface; trusting it re-enters the island and the auto-close never runs.
     if (this.pointerInside === false) {
@@ -965,15 +1005,10 @@ export class Island {
   // ── Frame loop ──────────────────────────────────────────────────────────────
 
   ensureRunning() {
-    if (this.running) return;
-    this.running = true;
-    this.lastFrame = performance.now();
-    requestAnimationFrame(this.frame);
+    this.frames.wake();
   }
 
-  private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
-    this.lastFrame = nowMs;
+  private renderFrame(dt: number, nowMs: number): boolean {
 
     this.width.step(dt, nowMs);
     this.height.step(dt, nowMs);
@@ -1029,13 +1064,9 @@ export class Island {
         !this.botCx.settled || !this.botCy.settled || !this.botSize.settled ||
         greetingActive || this.engine.busy || UploadSeq.isActive || viewAnimating;
 
-    if (busy) {
-      requestAnimationFrame(this.frame);
-    } else {
-      this.running = false;
-      Sound.idle();
-    }
-  };
+    if (!busy) Sound.idle();
+    return busy;
+  }
 
   private updateBotTargets() {
     const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
@@ -1201,7 +1232,7 @@ export class Island {
     const showGrid = State.mode === "compact";
     this.miniGrid.style.opacity = showGrid ? "1" : "0";
     if (showGrid) {
-      const others = State.otherTasks.slice(0, 4);
+      const others = State.otherTasks.slice(0, 6);
       const key = others.map((t) => t.id).join("|");
       if (this.miniGrid.dataset.key !== key) {
         this.miniGrid.dataset.key = key;
@@ -1222,6 +1253,7 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.companionMode ? 2 : 60;
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
   }

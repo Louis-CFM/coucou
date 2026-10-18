@@ -21,6 +21,7 @@ export interface DesktopSnapshot {
   paused: boolean;
   /** Music plays: he dances (the compact island's rules, core/spotify.ts). */
   dancing: boolean;
+  companionMode?: boolean;
 }
 
 /** Events between the two windows. Rust adds `desktop-mochi-dropped`. */
@@ -31,6 +32,7 @@ export const DESKTOP_EVENTS = {
   /** desktop window → island */
   ready: "desktop-mochi-ready",
   home: "desktop-mochi-home",
+  open: "desktop-mochi-open",
   wardrobe: "desktop-mochi-wardrobe",
   dizzy: "desktop-mochi-dizzy",
   /** Rust → island: a drag ended, `{ from: "island" | "desktop", home }`. */

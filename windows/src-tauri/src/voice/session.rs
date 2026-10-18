@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 static SESSION: Mutex<Option<Arc<AtomicBool>>> = Mutex::new(None);
+static FINISH: AtomicBool = AtomicBool::new(false);
 // An explicit session takes over from the hotword. After Super/timeout, the
 // microphone stays closed until a new session or an explicit hotword preference.
 static HOTWORD_SUSPENDED: AtomicBool = AtomicBool::new(false);
@@ -31,6 +32,7 @@ pub fn allow_hotword() {
 }
 
 fn reserve(app: &AppHandle) -> Result<Arc<AtomicBool>, String> {
+    if super::manual::active() { return Err(crate::i18n::t("The microphone is already in use.")); }
     let mut session = SESSION.lock().unwrap();
     if session.is_some() || pill::dictating(app) || crate::notes::is_recording(app) {
         return Err(crate::i18n::t("The microphone is already in use."));
@@ -70,6 +72,7 @@ pub fn toggle(app: &AppHandle) {
         super::show(app, None);
         return;
     }
+    if super::manual::active() { super::manual::cancel(app); return; }
     if pill::dictating(app) {
         crate::flow::voice_dictation(app, false);
         return;
@@ -97,22 +100,34 @@ pub fn toggle(app: &AppHandle) {
     }
 }
 
-fn view(app: &AppHandle, phase: &str, heard: &str, answer: &str) {
-    super::show(
+pub fn cancel(app: &AppHandle) {
+    if let Some(stop) = SESSION.lock().unwrap().as_ref() {
+        stop.store(true, Ordering::Relaxed);
+        super::cancel_speech(app);
+        super::show(app, None);
+    }
+}
+
+pub fn finish_capture() { if active() { FINISH.store(true, Ordering::Relaxed); } }
+
+fn view(app: &AppHandle, phase: &str, heard: &str, answer: &str, pet: Option<Pet>) {
+    super::show_for_pet(
         app,
         Some(VoiceView {
             phase: phase.into(),
             heard: heard.into(),
             answer: answer.into(),
         }),
+        pet.map(Pet::pill),
     );
 }
 
-fn available(pet: Pet) -> bool {
+fn available(app: &AppHandle, pet: Pet) -> bool {
     match pet {
         Pet::Codex => crate::codex_chat::installed(),
         Pet::Gravity => crate::gravity_chat::executable().is_ok(),
         Pet::Claude | Pet::Gemini => crate::gravity_chat::executable().is_ok(),
+        Pet::Ollama => super::local::config(&app.state::<crate::Shared>().settings.lock().unwrap()).is_some(),
     }
 }
 
@@ -136,6 +151,7 @@ fn listen(app: &AppHandle, stop: &AtomicBool, idle: &mut Idle) -> Result<Option<
         crate::i18n::t("Coucou can't hear you: the microphone is not allowed or not available.")
     })?;
     let mut vad = super::wake::Vad::default();
+    FINISH.store(false, Ordering::Relaxed);
     let mut meter = audio::BandMeter::default();
     let segment = loop {
         if stop.load(Ordering::Relaxed)
@@ -144,6 +160,9 @@ fn listen(app: &AppHandle, stop: &AtomicBool, idle: &mut Idle) -> Result<Option<
             || crate::notes::is_recording(app)
         {
             break None;
+        }
+        if FINISH.swap(false, Ordering::Relaxed) {
+            if let Some(segment) = vad.feed(&vec![0.0; vad.hangover * super::wake::FRAME]).into_iter().next() { break Some(segment); }
         }
         match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(chunk) => {
@@ -182,6 +201,7 @@ fn run(app: &AppHandle, stop: &Arc<AtomicBool>) -> bool {
             "listening",
             selected.map(Pet::name).unwrap_or(""),
             &answer,
+            selected,
         );
         let samples = match listen(app, stop, &mut idle) {
             Ok(Some(samples)) => samples,
@@ -194,7 +214,7 @@ fn run(app: &AppHandle, stop: &Arc<AtomicBool>) -> bool {
         if stop.load(Ordering::Relaxed) {
             break;
         }
-        view(app, "thinking", "", "");
+        view(app, "thinking", "", "", selected);
         let transcript = speech::transcribe(&samples)
             .map(|t| t.text)
             .unwrap_or_default();
@@ -212,7 +232,7 @@ fn run(app: &AppHandle, stop: &Arc<AtomicBool>) -> bool {
             Command::Stop => break,
             Command::Dictate => return true,
             Command::Select(pet, question) => {
-                if !available(pet) {
+                if !available(app, pet) {
                     answer = crate::i18n::t("Connect this pet in Settings → Chat first.");
                     idle.touch(Instant::now());
                     continue;
@@ -236,7 +256,7 @@ fn run(app: &AppHandle, stop: &Arc<AtomicBool>) -> bool {
             idle.touch(Instant::now());
             continue;
         }
-        view(app, "thinking", &format!("{} · {question}", pet.name()), "");
+        view(app, "thinking", &format!("{} · {question}", pet.name()), "", Some(pet));
         let reply = brains.entry(pet).or_default().respond_as(
             app,
             &question,
@@ -255,6 +275,7 @@ fn run(app: &AppHandle, stop: &Arc<AtomicBool>) -> bool {
             "speaking",
             &format!("{} · {question}", pet.name()),
             &answer,
+            Some(pet),
         );
         super::speak_stoppable(app, &answer, Some(stop), Some(pet.provider()));
         idle.touch(Instant::now());
@@ -269,7 +290,7 @@ pub async fn voice_learn_alias(app: AppHandle, provider: String) -> Result<Strin
     let pet = Pet::from_provider(&provider).ok_or_else(|| "Unknown pet.".to_string())?;
     let stop = reserve(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        view(&app, "listening", pet.name(), &crate::i18n::t("Say only this pet's name."));
+        view(&app, "listening", pet.name(), &crate::i18n::t("Say only this pet's name."), Some(pet));
         let result = (|| {
             let samples = listen(&app, &stop, &mut Idle::new(Instant::now(), 20))?.ok_or_else(|| crate::i18n::t("No speech detected. Check your microphone."))?;
             let spelling = speech::transcribe(&samples).map(|t| super::wake::normalize(&t.text)).filter(|s| !s.is_empty() && s.len() <= 80)

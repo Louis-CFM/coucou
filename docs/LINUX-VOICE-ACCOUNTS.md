@@ -1,10 +1,10 @@
 # Mochi: contas CLI e conversa em português de Portugal
 
-Estado: implementação no checkout isolado `~/Projects/coucou-codex`, branch
-`feat/mochi-cli-accounts`. A integração de contas está no commit `a6479f0`.
-Não foi instalada sobre o Coucou da outra sessão, nem foram alterados o seu
-checkout, preferências ou atalhos ativos. A integração Super está preparada na
-branch `sistema/coucou-super-voz` de `~/sysworkspace-coucou-voice`.
+A versão Linux `0.5.1-mochi.2` integra a conversa contínua desta branch com o
+fork de companions `eeb7844`, preservando as suas correções de áudio, os
+históricos por provider e o fluxo Ollama. A integração inicial de contas está
+em `a6479f0`; a voz em `35dbe2e`. O módulo Super e a configuração da estação
+são geridos em `sysworkspace`, branch `sistema/coucou-super-voz`.
 
 ## Conversa e ferramentas
 
@@ -17,7 +17,7 @@ do CLI. `cliWorkspace` escolhe o diretório; o acesso completo exige a opção
 explícita `cliFullAccess`. As aprovações nativas continuam a exigir um clique.
 
 `coucou --voice-session` alterna uma conversa contínua na instância única.
-Dizer «Codex», «Gravity», «Claude» ou «Gemini» seleciona o pet, também com um
+Dizer «Codex», «Gravity», «Claude», «Gemini» ou «Ollama» seleciona o pet, também com um
 pedido na mesma frase. Claude e Gemini usam os modelos dessa família oferecidos
 pelo Gravity, sem ativar APIs pagas. Cada pet mantém o seu próprio contexto.
 As frases seguintes vão para o pet selecionado. Mencionar um nome no meio de
@@ -59,7 +59,7 @@ O script cria `.build/edge-voice-env` com `uv` e dependências fixadas por vers�
 e hash em `linux/requirements-edge-voice.txt`. Não instala ferramentas globais.
 Na build integrada, escolher **Raquel · pt-PT** em Voz → Respostas e usar o
 caminho Python impresso pelo script em **Ambiente da voz (Python)**
-(`edgeVoicePython`). A preferência Flow correspondente é `voiceOutput: "edge"`.
+(`edgeVoicePython`). O prefixo `~/` é expandido para a pasta pessoal. A preferência Flow correspondente é `voiceOutput: "edge"`.
 Usar **Ouvir** para verificar. A síntese passa o texto por stdin, mantém MP3 em
 memória, limita tamanho/tempo e termina apenas o seu próprio processo ao cancelar.
 Não remover o ambiente enquanto a app estiver configurada para o usar.
@@ -109,18 +109,22 @@ para reutilizar essa voz no Mochi com a conta do Gravity. Os benefícios de
 subscrição não devem ser tratados como acesso genérico à
 [API Gemini](https://ai.google.dev/gemini-api/docs/billing).
 
-## Integração com o fork em curso
+## Instalação da versão integrada
 
-Integrar os commits com as mudanças da outra sessão antes de instalar. Preservar
-os seus providers locais, alterações de UI, atalhos e configuração de áudio.
-Não iniciar esta build ao lado da instalada com a mesma identidade Tauri.
-Só depois instalar a build e aplicar o módulo Super preparado no sysworkspace,
-acrescentando o `require` ao `binds.lua` ativo sem o substituir integralmente.
+A integração conserva os providers locais, atalhos Ctrl+Alt, configuração de
+áudio e os pets separados. Super usa só `--voice-session`; `--shortcut voiceTalk`
+mantém a conversa manual anterior. O feedback inclui o ID do pet escolhido,
+para a bolha não ser atribuída ao Ollama quando a resposta é de um CLI.
+Construir o RPM com `linux/build-fedora-rpm.sh` no contentor do projeto;
+a receita conserva o relay oficial verificado. Não iniciar uma segunda app
+com a mesma identidade Tauri. Instalar o RPM, preparar o ambiente de voz e
+aplicar os alvos revistos do sysworkspace. O `binds.lua` deve conservar os
+atalhos existentes. As versões macOS e o seu Info.plist não foram alterados.
 Os testes de protocolo, parser, contexto, cancelamento e eventos UI não
 substituem a validação manual final com o hardware real.
 
-Validação desta implementação: 411 testes JavaScript, TypeScript e build Vite;
-500 testes Rust da app e 34 do relay, mais a síntese online pelo caminho real
+Validação desta implementação: 445 testes JavaScript, TypeScript e build Vite;
+507 testes Rust da app e 34 do relay, mais a síntese online pelo caminho real
 Rust → Python → MP3. O ensaio da ponte Raquel gerou 37 152 bytes em 3,71 s.
 O sysworkspace passou 423 testes (2 ignorados) e a verificação de configuração
 do Hyprland. Nenhuma destas verificações abriu o microfone do utilizador.

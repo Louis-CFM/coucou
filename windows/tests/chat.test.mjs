@@ -201,3 +201,33 @@ test("a CLI turn can be stopped without showing a failure screen", async () => {
   await flush();
   assert.equal(State.view, "prompt");
 });
+
+
+test("switching pets closes the old model picker and keeps each draft with its owner", async () => {
+  State.settings = { ...State.settings, companionMode: true, chatProvider: "ollama", ollamaUrl: "http://localhost:11434" };
+  State.focusId = "agent_codex";
+  view.sync();
+  let finishModels;
+  answers.chat_models = () => new Promise(resolve => { finishModels = resolve; });
+  $(".chat-input").value = "Codex draft";
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Codex"]);
+  State.focusId = "ai_ollama";
+  view.sync();
+  assert.equal($(".chat-input").value, "");
+  assert.ok(!$(".chat-body").classList.contains("picking"));
+  finishModels([{id:"late-codex-model",label:"Late Codex model"}]);
+  await flush();
+  assert.deepEqual(sent("save_settings"), [], "a stale model response cannot modify another pet's settings");
+  $(".chat-input").value = "Ollama draft";
+  answers.chat_models = [{id:"local-model",label:"Local model"}];
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(chips(), ["Ollama"]);
+  State.focusId = "agent_codex";
+  view.sync();
+  assert.equal($(".chat-input").value, "Codex draft");
+  assert.ok(!$(".chat-body").classList.contains("picking"));
+  assert.equal(State.settings.chatProvider, "ollama", "pet navigation preserves the global voice provider");
+});

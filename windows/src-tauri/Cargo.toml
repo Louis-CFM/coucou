@@ -101,8 +101,8 @@ gtk = "0.18"
 dbus = "0.9.12"
 # EWMH on X11 for "Open terminal", already in the tree (global-hotkey).
 x11rb = { version = "0.13", default-features = false, features = ["xinput", "xtest"] }
-# PulseAudio (or PipeWire's PulseAudio server) for the microphone list and the
-# monitor of the speakers, the Notetaker's "computer sound". Pure Rust client.
-cpal = { version = "0.18", features = ["pulseaudio"] }
+# Prefer native PipeWire, including its default-device following and sink capture.
+# Keep PulseAudio for desktops without PipeWire.
+cpal = { version = "0.18", features = ["pipewire", "pulseaudio"] }
 # The clipboard for Flow dictation (X11, and Wayland's data-control protocol).
 arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }

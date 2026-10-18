@@ -13,6 +13,8 @@
 // speaks itself.
 
 pub mod brain;
+pub mod local;
+pub mod manual;
 pub mod wake;
 pub mod dialogue;
 pub mod session;
@@ -70,24 +72,29 @@ fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
 }
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-/// The voice model and the selected brain's local prerequisites. Authentication
-/// is checked by Codex itself when the user connects or starts a turn.
-pub fn requirements_met(app: &AppHandle) -> bool {
-    let provider = app.try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().chat_provider.clone()).unwrap_or_default();
-    speech::is_ready() && match provider.as_str() {
+/// Whether « OK Coucou » can run: the voice model and a Claude key.
+pub fn provider_ready(app: &AppHandle) -> bool {
+    let Some(shared) = app.try_state::<crate::Shared>() else { return false };
+    let settings = shared.settings.lock().unwrap();
+    match settings.chat_provider.as_str() {
+        "ollama" => local::config(&settings).is_some(),
         "codex" => crate::codex_chat::installed(),
         "antigravity" => crate::gravity_chat::executable().is_ok(),
-        _ => crate::secrets::present(crate::claude::KEY),
+        "" | "anthropic" => crate::secrets::present(crate::claude::KEY),
+        _ => false,
     }
+}
+
+pub fn requirements_met(app: &AppHandle) -> bool {
+    speech::is_ready() && provider_ready(app)
 }
 
 /// Starts or stops listening to follow the preference.
 pub fn sync(app: &AppHandle) {
     let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.voice);
-    let explicit = session::active();
+    let explicit = session::active() || manual::active();
     let mut running = RUNNING.lock().unwrap();
-    match (wanted && !session::suspend_hotword() && requirements_met(app), running.is_some()) {
+    match (wanted && !explicit && !session::suspend_hotword() && requirements_met(app), running.is_some()) {
         (true, false) => {
             let stop = Arc::new(AtomicBool::new(false));
             let app2 = app.clone();
@@ -113,7 +120,7 @@ pub fn sync(app: &AppHandle) {
 
 /// « OK Coucou » is listening (the voice model stays loaded).
 pub fn is_listening() -> bool {
-    session::active() || RUNNING.lock().unwrap().is_some()
+    session::active() || manual::active() || RUNNING.lock().unwrap().is_some()
 }
 
 /// Starts again on another microphone.
@@ -125,7 +132,19 @@ pub fn restart(app: &AppHandle) {
 }
 
 fn show(app: &AppHandle, view: Option<VoiceView>) {
-    pill::update(app, |s| s.voice = view);
+    let owner = app.try_state::<crate::Shared>().and_then(|shared| {
+        let settings = shared.settings.lock().unwrap();
+        dialogue::Pet::from_provider(&settings.chat_provider).map(dialogue::Pet::pill)
+    });
+    show_for_pet(app, view, owner.or(Some("ai_ollama")));
+}
+
+fn show_for_pet(app: &AppHandle, view: Option<VoiceView>, pet: Option<&str>) {
+    if crate::companions::enabled(app) {
+        let payload = view.as_ref().map(|view| json!({"phase":view.phase,"heard":view.heard,"answer":view.answer,"pet":pet}));
+        let _ = app.emit_to(crate::companions::LABEL, "companions-voice", payload);
+        pill::update(app, |s| s.voice = None);
+    } else { pill::update(app, |s| s.voice = view); }
 }
 
 enum Mode {
@@ -140,9 +159,9 @@ enum Mode {
 fn run(app: AppHandle, stop: Arc<AtomicBool>) {
     let Some(_lease) = capture_lease(&stop) else { return };
     let mic = crate::flow::get(&app).map(|f| f.store.lock().unwrap().prefs.mic.clone()).unwrap_or_default();
-    let (tx, rx) = mpsc::channel::<Vec<f32>>();
+    let (tx, rx) = mpsc::sync_channel::<Vec<f32>>(8);
     let capture = audio::Capture::start(audio::Source::Mic(if mic.is_empty() { None } else { Some(mic) }), move |s| {
-        let _ = tx.send(s.to_vec());
+        let _ = tx.try_send(s.to_vec());
     });
     let mut capture = match capture {
         Ok(c) => c,
@@ -227,7 +246,7 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
                 show(&app, Some(VoiceView {
                     phase: "speaking".into(),
                     heard: question,
-                    answer: if done { "✓".into() } else { crate::i18n::t("Coucou couldn't answer: check your Claude key in Notch → Chat.") },
+                    answer: if done { "✓".into() } else { crate::i18n::t("Coucou couldn't answer: check the selected voice provider.") },
                 }));
                 hide_at = Some(Instant::now() + Duration::from_secs(5));
                 continue;
@@ -257,7 +276,7 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
 struct Say {
     id: u64,
     text: String,
-    lang: Option<&'static str>,
+    lang: Option<String>,
     /// Audio data URI (local WAV or ElevenLabs MP3).
     audio: Option<String>,
     gender: String,
@@ -283,6 +302,15 @@ fn cancel_speech(app: &AppHandle) {
 }
 
 fn speak_stoppable(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, provider: Option<&str>) {
+    speak_with_language(app, text, stop, provider, None);
+}
+
+fn speak(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, language: Option<&str>) {
+    speak_with_language(app, text, stop, None, language);
+}
+
+fn speak_with_language(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, provider: Option<&str>, language: Option<&str>) {
+    if stop.is_some_and(|s| s.load(Ordering::Relaxed)) { return; }
     let epoch = tts::epoch();
     let (output, gender) = crate::flow::get(app)
         .map(|f| {
@@ -302,9 +330,9 @@ fn speak_stoppable(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, provi
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     pending().lock().unwrap().insert(id, tx);
-    let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: wake::speech_lang(text), audio, gender, allow_system_fallback: output != "edge" });
+    let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: language.or_else(|| wake::speech_lang(text)).map(str::to_string), audio, gender, allow_system_fallback: output != "edge" });
     let words = crate::flow::text::word_count(text) as u64;
-    let until = Instant::now() + Duration::from_millis(4000 + words * 600);
+    let until = Instant::now() + Duration::from_millis(4000 + words.min(200) * 600);
     while Instant::now() < until {
         if stop.is_some_and(|s| s.load(Ordering::Relaxed)) { cancel_speech(app); break; }
         if rx.recv_timeout(Duration::from_millis(50)).is_ok() { break; }

@@ -5,6 +5,7 @@ import { h, clear } from "../../views/dom";
 import { t } from "../../i18n/i18n";
 import { Bridge } from "../../core/bridge";
 import { invoke } from "@tauri-apps/api/core";
+import { FlowBridge } from "../../core/flow";
 import type { VoiceOutput } from "../../core/flow";
 import type { HubContext } from "../shell";
 import { button, card, divider, label, row, segmented, toggle } from "../ui";
@@ -44,37 +45,27 @@ function elevenKey(): HTMLElement {
 export async function voicePage(page: HTMLElement, ctx: HubContext) {
   const status = await ctx.refresh();
   const prefs = status.prefs;
-  page.append(ctx.hero("voice", "OK Coucou", t("Say « OK Coucou », then ask anything: add a pill, play music, the weather, an email to prepare.")));
+  const boot = await Bridge.boot();
+  page.append(ctx.hero("voice", "OK Coucou", t("Talk to Mochi using the selected voice provider.")));
 
   const ready = status.models.parakeet.state === "ready";
-  const boot = await Bridge.boot();
-  const provider = boot?.settings.chatProvider;
-  const cli = provider === "codex" || provider === "antigravity";
-  let codexError = "";
-  if (cli) {
-    try { await Bridge.chatModels(provider); }
-    catch (err) { codexError = String(err).replace(/^Error:\s*/, ""); }
-  }
+  page.append(card(
+    row(t("Talk to Mochi"), t("Ctrl+Alt+C starts a turn. Pause to send; Ctrl+Alt+Enter sends now; Ctrl+Alt+Esc cancels. The microphone closes before the answer."),
+      button(t("Talk to Mochi"), () => void FlowBridge.pillAction("voice"), "primary")),
+  ));
   page.append(label(t("Listening")));
   const main = card(
-    row(t("Conversation provider"), t("Uses the same account and model as Mochi chat."),
-      segmented<"anthropic" | "codex" | "antigravity">([["anthropic", "Claude"], ["codex", "Codex"], ["antigravity", "Antigravity"]], cli ? provider : "anthropic", (provider) => {
-        if (!boot) return;
-        void Bridge.saveSettings({ ...boot.settings, chatProvider: provider }).then(() => ctx.navigate("voice"));
-      })),
-    divider(),
     row(t("Listen for « OK Coucou »"), t("The microphone stays open; only what follows « OK Coucou » goes further."),
       toggle(prefs.voice, (on) => void ctx.setPrefs((p) => (p.voice = on)).then(() => ctx.navigate("voice")))),
     divider(),
     row(t("Parakeet, on your computer"), t("Hears « OK Coucou » here, without the internet."), modelsControl(ctx, () => ctx.navigate("voice"))),
   );
-  if (codexError) {
-    main.append(h("div", { class: "hub-warn", text: codexError }));
-  } else if (prefs.voice && !cli && !status.hasClaudeKey) {
-    main.append(h("div", { class: "hub-warn", text: t("Coucou answers with Claude: add your Claude key in Notch → Chat.") }));
-  } else if (prefs.voice && !ready) {
+  if (!status.voiceProviderReady) {
+    main.append(h("div", { class: "hub-warn", text: t("Choose a local Ollama model or configure Claude, and download the voice model first.") }));
+  } else if (!ready) {
     main.append(h("div", { class: "hub-warn", text: t("Download the voice model so Coucou can hear you.") }));
   }
+  main.append(h("div", { class: "hub-note", text: t("Continuous listening keeps Bluetooth headphones in call mode. Turn it off to keep stereo between conversations.") }));
   page.append(main);
 
   if (boot) {
@@ -93,7 +84,7 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
       row(t("Inactivity timeout (seconds)"), t("The microphone closes after silence, or when you press Super again."), timeout),
     ));
     const aliases = card(h("div", { class: "hub-note", text: t("Learn names locally. Recordings are discarded.") }));
-    for (const [provider, name] of [["codex", "Codex"], ["antigravity", "Gravity"], ["claude-cli", "Claude"], ["gemini-cli", "Gemini"]]) {
+    for (const [provider, name] of [["codex", "Codex"], ["antigravity", "Gravity"], ["claude-cli", "Claude"], ["gemini-cli", "Gemini"], ["ollama", "Ollama"]]) {
       const input = h("input", { class: "hub-input", value: (settings.voicePetAliases[provider] ?? []).join(", "), placeholder: name, style: "width:170px" }) as HTMLInputElement;
       input.addEventListener("change", () => {
         settings.voicePetAliases[provider] = input.value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20);
@@ -154,11 +145,11 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
 
   page.append(label(t("Privacy")));
   const privacy = card(
-    h("div", { class: "hub-note", text: cli
-      ? t("Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.")
-      : t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.") }),
+    h("div", { class: "hub-note", text: t("Voice recognition stays on this computer. Ollama voice uses your local model; Claude sends the question text to Anthropic. ElevenLabs is used only if selected.") }),
+    divider(),
+    h("div", { class: "hub-note", text: t("Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.") }),
   );
   if (prefs.voiceOutput === "edge") privacy.append(divider(), h("div", { class: "hub-note", text: t("Reply text is sent to Microsoft to generate Raquel's voice. Microphone audio stays on this computer.") }));
-  if (!cli) privacy.append(divider(), h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }));
+  privacy.append(divider(), h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }));
   page.append(privacy);
 }

@@ -7,10 +7,11 @@ pub enum Pet {
     Gravity,
     Claude,
     Gemini,
+    Ollama,
 }
 
 impl Pet {
-    pub const ALL: [Self; 4] = [Self::Codex, Self::Gravity, Self::Claude, Self::Gemini];
+    pub const ALL: [Self; 5] = [Self::Codex, Self::Gravity, Self::Claude, Self::Gemini, Self::Ollama];
     pub fn from_provider(provider: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|p| p.provider() == provider)
     }
@@ -20,6 +21,7 @@ impl Pet {
             Self::Gravity => "antigravity",
             Self::Claude => "claude-cli",
             Self::Gemini => "gemini-cli",
+            Self::Ollama => "ollama",
         }
     }
     pub fn name(self) -> &'static str {
@@ -28,6 +30,16 @@ impl Pet {
             Self::Gravity => "Gravity",
             Self::Claude => "Claude",
             Self::Gemini => "Gemini",
+            Self::Ollama => "Ollama",
+        }
+    }
+    pub fn pill(self) -> &'static str {
+        match self {
+            Self::Codex => "agent_codex",
+            Self::Gravity => "agent_antigravity",
+            Self::Claude => "integration_claude",
+            Self::Gemini => "agent_gemini",
+            Self::Ollama => "ai_ollama",
         }
     }
 }
@@ -93,6 +105,7 @@ pub fn parse(text: &str) -> Command {
         ("anti", Some("gravity" | "gravidade")) => (Pet::Gravity, 2),
         ("claude", _) => (Pet::Claude, 1),
         ("gemini", _) => (Pet::Gemini, 1),
+        ("ollama" | "olama", _) => (Pet::Ollama, 1),
         _ => return Command::Message(text.trim().into()),
     };
     let question = words[start + count..]
