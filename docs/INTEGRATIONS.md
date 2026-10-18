@@ -321,6 +321,18 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 
 ---
 
+## 6bis. Cursor Cloud Agents
+
+- Doc : https://cursor.com/docs/cloud-agent/api/endpoints.md
+- Pastille service `integration_cursor_cloud` (distincte de `agent_cursor`, les sessions locales).
+- Clé : User API key (`crsr_…`) dans le Trousseau (`cursor-api-key`), créée sur cursor.com/dashboard → API Keys.
+- Polling ~30 s : `GET https://api.cursor.com/v1/agents?limit=20` (Basic auth, username = clé).
+- Pour jusqu’à 2 agents `ACTIVE`, un `GET …/agents/{id}/runs/{latestRunId}` ajoute un libellé court (`Running`, `Starting`…).
+- Agents `ACTIVE` → pastille `working` ; sortie d'`ACTIVE` → `finished` (badge + son). Clic sur une ligne : deeplink `cursor://anysphere.cursor-deeplink/background-agent?bcId=…` (app Desktop) ; le ↗ ouvre encore `cursor.com/agents`.
+- Lecture seule : pas de création / annulation d’agents depuis Coucou. Pas de jauge de forfait personnel (pas d’API User pour Plan & Usage).
+
+---
+
 ## 7. Permissions macOS demandées (récapitulatif pour Louis)
 
 | Permission | Pourquoi | Quand |
