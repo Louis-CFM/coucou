@@ -411,7 +411,8 @@ function handleHook(island: Island, payload: HookPayload) {
         agentId,
         window.setTimeout(() => {
           stopTimers.delete(agentId);
-          if (isExternalAgent) {
+          const task = State.tasks.find(t => t.id === agentId);
+          if (isExternalAgent && !(State.settings.companionMode && task?.sessionId)) {
             State.removeTask(agentId);
           } else {
             State.updateTask(agentId, "idle");
@@ -442,12 +443,7 @@ function handleHook(island: Island, payload: HookPayload) {
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);
       State.clearSessionDiffs(agentId);
-      if (isExternalAgent) {
-        State.removeTask(agentId);
-      } else {
-        State.updateTask(agentId, "idle");
-        clearSession(agentId);
-      }
+      clearSession(agentId);
       break;
 
     case "SubagentStart":

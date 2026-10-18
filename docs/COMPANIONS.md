@@ -17,11 +17,23 @@ with ten pixels of clearance are used. Bar controls and application content
 are never paths for ambient wandering. The ordinary clearance mode remains
 available when bar geometry is not configured.
 
-Unused integrations sleep together at the left of the first free interval.
-Configuration or an installed hook alone is not use: agent sessions, actual
-work and the running music player supply activity. Sleeping pets are static.
-Hovering or clicking wakes one in its parking slot, without moving its target.
-Real activity wakes it for walking. Active pets take longer random walks,
+Unused integrations are absent. Configuration or an installed hook alone is
+not use: a known open agent session, actual work or a running player justifies
+presence. Closing the app/session shrinks and fades its pet out over 350 ms;
+the exiting pet immediately releases its pointer target. New events reverse
+an unfinished transition smoothly. Reduced motion uses immediate changes.
+
+Open but quiet integrations rest at the left of the first free interval after
+60 seconds without meaningful events or interaction. Sleeping pets are static.
+Work, permissions and questions stay awake. A track change or a new tool step
+wakes only its owner; repeated status/progress polls do not postpone rest.
+A completed CLI turn is distinct from SessionEnd: the former can leave an
+open session resting, while the latter clears even a declared pill's presence.
+Hovering or clicking wakes a resting pet in its parking slot without moving
+its target. A manual call, original card or voice/notice event also recalls an
+absent pet; it leaves again after the card/bubble closes and its eight-second
+interaction grace expires, unless real app/session activity keeps it present.
+Real activity wakes resting pets for walking. Active pets take longer random walks,
 pause, look around and greet neighbours. Alerts take priority over movement.
 An open card holds its own pet still. Bar changes reposition its card without
 changing the selected integration or view.
@@ -56,20 +68,29 @@ fallback. MPRIS does not provide account sign-in or arbitrary music search.
 
 Rendering is bounded to 24 fps while walking/dancing/greeting, 4 fps while
 awake and stationary, 1 fps for reduced motion, and no recurring frames when
-all pets sleep. Sleeping canvases are cached even while neighbours animate.
+all pets sleep or are absent. Presence transitions use the same bounded loop;
+they do not install a new poller. Sleeping canvases are cached even while neighbours animate.
 Hidden habitats stop timers. Regions update at most 10 times a second and only
 if changed. The settings animation is gated by native window visibility as
 well as document visibility; WebKit alone did not reliably suspend it.
 
 ## Validation and platform limits
 
-TypeScript and the 439 JavaScript tests pass at this stage. Tests simulate ten
-minutes of movement, narrow displays, live bar resizing, bounds/collisions,
-parking, unchanged hover targets, separate identities, permission isolation
-and Spotify's actual-player confirmation. Rust reports 497 application tests
-and 34 relay tests passing, with eight existing tests ignored. Linux compilation
-uses the project's Fedora container; never deploy a test-rebuilt hook over a
-relay whose hash a user already trusted.
+For mochi.4, TypeScript, all 457 JavaScript tests and the Fedora RPM build pass.
+Tests simulate ten minutes of movement, narrow displays, live bar resizing,
+bounds/collisions, presence transitions, idle-session rest, manual recall,
+unchanged hover targets, separate identities, approval focus and Spotify's
+actual-player confirmation. This presence update changes no Rust application
+logic. Linux compilation uses the project's Fedora container; never deploy a
+test-rebuilt hook over a relay whose hash a user already trusted.
+
+An equivalent ten-minute lifecycle simulation with six open quiet sessions
+reduced recurring-frame demand from 600 to 60 seconds; configured-only pets
+went from six visible to zero. These are model observations, not CPU savings.
+Native checks confirmed a synthetic session appearing, resting without movement
+after a minute, then shrinking/fading out on SessionEnd. The test executes no
+agent commands. The Codex/Gravity approval regression is also covered by state
+tests; concurrent real requests can prevent an isolated native approval test.
 
 Native station checks confirmed bar placement, clicking Spotify without
 launching it, then Play yielding MPRIS Playing on an inactive special workspace
@@ -95,6 +116,9 @@ The Close button and a second click on the same pet hide its card immediately.
 Closing a permission keeps the request pending and its pet marked. Switching
 cards restarts the configured leave countdown. Companion mode closes straight
 to the habitat instead of showing an intermediate compact island.
+Answering a permission preserves that pet's focus; it no longer restores a
+previously selected integration (such as Gravity after a Codex approval).
+If the user manually selects another pet, completion preserves that choice.
 
 The island webview owns event handlers even while no card is visible. On Linux
 it must remain mapped as a transparent, zero-input strip: hiding its GTK window

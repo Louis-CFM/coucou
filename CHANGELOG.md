@@ -1,5 +1,12 @@
 # Changelog
 
+## Linux fork 0.5.1-mochi.4 — October 18, 2026
+
+- Unused companions stay absent, with short fade/shrink transitions when an app or session closes. Calls, cards and meaningful events recall only their owning pet.
+- Open, quiet applications rest after one minute; actual work and permission requests stay awake. Unchanged polling does not keep pets awake, and absent/sleeping pets stop recurring frames.
+- Keep a known CLI session after a completed turn, and clear its presence on SessionEnd even for declared integrations.
+- Answering a Codex permission keeps its own card instead of switching to a previously selected Gravity card.
+
 ## Linux fork 0.5.1-mochi.3 — October 18, 2026
 
 - Play spoken replies in the visible companion surface instead of the suspended hidden pill. Share playback/cancellation between surfaces and confirm playback completion without logging conversation text.

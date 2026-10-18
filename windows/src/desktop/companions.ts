@@ -31,6 +31,7 @@ function showNextNotice() {
   if(shownNotice || !snapshot.enabled || snapshot.paused || !nativeVisible || voicePet || snapshot.presented) return;
   const next=noticeQueue.take(); if(!next)return;
   const p=world.pets.get(next.pet);
+  if(p && !p.retired) world.touch(next.pet,performance.now()/1000);
   if(!p?.shown){showNextNotice();return;}
   shownNotice=next; world.presented=next.pet; world.touch(next.pet,performance.now()/1000);
   const name=document.createElement("strong");name.textContent=p.identity.name;
@@ -60,6 +61,7 @@ function voiceBubble(view: VoiceView | null, dictation = false) {
   if (!view) { voicePet = null; showNextNotice(); world.presented = snapshot.presented ?? null; input(performance.now()/1000, true); return; }
   const owner = dictation ? "ai_ollama" : view.pet;
   const p = owner ? world.pets.get(owner) : world.pets.get("agent_codex") ?? world.pets.get("ai_ollama");
+  if(p && !p.retired) world.touch(p.identity.id,performance.now()/1000);
   if (!p?.shown) { voice.hidden = true; return; }
   voicePet = p.identity.id;
   if(shownNotice) dismissNotice();
@@ -110,6 +112,7 @@ function presentPending() {
   if (!e) return;
   if (performance.now() > e.until) { pendingPresentation = null; return; }
   const p = world.pets.get(e.id);
+  if(p && !p.retired) world.touch(e.id,performance.now()/1000);
   if (p?.shown && nativeVisible) open(p, e.view);
 }
 
@@ -163,6 +166,7 @@ function showMenu(p: PetLife) {
 function create(p: PetLife): PetView {
   const button = document.createElement("button");
   button.className = "pet";
+  button.hidden = true;
   const canvas = document.createElement("canvas");
   const label = document.createElement("span");
   button.append(canvas, label);
@@ -213,7 +217,7 @@ function input(now: number, force = false) {
   if (!force && now - shapeAt < 0.1) return;
   const rects: [number, number, number, number][] = [];
   if (snapshot.enabled) for (const p of world.pets.values()) {
-    if (!p.shown) continue;
+    if (!p.shown || p.visibility === "leaving" || p.opacity <= 0.05) continue;
     const scale = world.scale;
     // Disc rows around the body, plus its own label. Empty habitat never takes
     // input. A small margin accommodates the movement between region updates.
@@ -240,6 +244,11 @@ function draw(p: PetLife, v: PetView, dt: number, now: number) {
   const { engine, canvas, button, label } = v;
   button.hidden = !p.shown;
   if (!p.shown) { v.sleepKey = undefined; return; }
+  button.disabled = p.visibility === "leaving";
+  button.style.opacity = String(p.opacity);
+  const scale = world.scale * (0.35 + 0.65 * p.opacity);
+  button.style.transform = `translate(${p.x - 32 * scale}px, ${p.y - 32 * scale + (1 - p.opacity) * 8 * world.scale}px) scale(${scale})`;
+  button.style.transformOrigin = "top left";
   const sleeping = p.action === "sleep";
   const sleepKey = sleeping ? JSON.stringify([p.x,p.y,world.scale,p.identity.color,p.identity.outfit]) : undefined;
   if (sleeping && v.sleepKey === sleepKey) return;
@@ -295,8 +304,6 @@ function draw(p: PetLife, v: PetView, dt: number, now: number) {
     ctx.beginPath(); ctx.arc(52, 11, 5, 0, Math.PI*2); ctx.fill();
   }
   ctx.restore();
-  button.style.transform = `translate(${p.x - 32 * world.scale}px, ${p.y - 32 * world.scale}px) scale(${world.scale})`;
-  button.style.transformOrigin = "top left";
   button.style.clipPath = world.band ? "circle(25px at 32px 32px)" : "none";
   label.hidden = !!world.band;
   button.dataset.attention = String(p.identity.attention);
@@ -306,7 +313,7 @@ function draw(p: PetLife, v: PetView, dt: number, now: number) {
 }
 
 function wake() {
-  if (timer != null || ![...world.pets.values()].some(p => p.shown) || !snapshot.enabled || !nativeVisible || document.hidden || !world.pets.size) return;
+  if (timer != null || !snapshot.enabled || !nativeVisible || document.hidden) return;
   timer = window.setTimeout(frame, 0);
 }
 function frame() {
@@ -317,6 +324,7 @@ function frame() {
   last = now;
   try {
     world.tick(dt, now);
+    for (const [id, v] of views) if (!world.pets.has(id)) { v.button.remove(); views.delete(id); }
     for (const p of world.pets.values()) draw(p, views.get(p.identity.id)!, dt, now);
     input(now);
   } catch (error) {
@@ -327,7 +335,7 @@ function frame() {
     return;
   }
   if (world.needsFrames) {
-    const moving = [...world.pets.values()].some(p => p.shown && ["walk","wave","dance","celebrate"].includes(p.action));
+    const moving = [...world.pets.values()].some(p => p.shown && (p.visibility !== "visible" || ["walk","wave","dance","celebrate"].includes(p.action)));
     timer = window.setTimeout(frame, !world.motion ? 1000 : moving ? 1000 / 24 : 250);
   }
 }

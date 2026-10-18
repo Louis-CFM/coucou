@@ -8,6 +8,8 @@ import { pillDefinition } from "../core/pills";
 
 export const PET_SIZE = 64;
 export const PET_SPACING = 76;
+export const PET_IDLE_SECONDS = 60;
+export const PET_TRANSITION_SECONDS = 0.35;
 export const PET_EVENTS = {
   state: "companions-state", ready: "companions-ready", open: "companions-open", action: "companions-action",
 } as const;
@@ -21,6 +23,10 @@ export interface PetIdentity {
   dancing: boolean;
   /** Actual work, an open agent session or a running player; configuration alone is not activity. */
   active: boolean;
+  /** Real work stays awake; an open but quiet session can rest. */
+  busy: boolean;
+  /** Meaningful events only, never a poll/position timestamp or transcript. */
+  activity: string;
   outfit: Outfit;
 }
 
@@ -38,6 +44,7 @@ export interface CompanionsSnapshot {
 export function companionIdentities(
   tasks: readonly AgentTask[], pending: ApprovalInfo | null, music: boolean, outfit: Outfit,
   running: ReadonlySet<string> = new Set(),
+  activity: ReadonlyMap<string, string> = new Map(),
 ): PetIdentity[] {
   const seen = new Set<string>();
   return tasks.filter(t => !seen.has(t.id) && !!seen.add(t.id)).map(t => {
@@ -46,6 +53,8 @@ export function companionIdentities(
       id: t.id, name: pillDefinition(t.id)?.name ?? t.name,
       color: /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : "#94A3B8", state, outfit,
       active: running.has(t.id) || !!t.sessionId || !["idle", "sleeping"].includes(state) || !!t.pillBadge,
+      busy: ["working", "thinking", "searching"].includes(state),
+      activity: JSON.stringify([state, t.sessionId ?? null, t.stepSeq ?? t.stepIndex, t.pillBadge ?? null, activity.get(t.id) ?? null]),
       attention: ["approval", "question", "error", "ratelimit"].includes(state),
       dancing: t.id === SPOTIFY_ID && music && !["approval", "question", "error", "sleeping"].includes(state),
     };
@@ -68,6 +77,11 @@ export interface PetLife {
   shown: boolean;
   lane: [number, number] | null;
   parked: boolean;
+  visibility: "hidden" | "appearing" | "visible" | "leaving";
+  opacity: number;
+  transitionAt: number;
+  transitionFrom: number;
+  retired: boolean;
 }
 
 function seedFor(id: string): number {
@@ -102,28 +116,36 @@ export class CompanionWorld {
     this.presented = snapshot.presented ?? null;
     this.motion = snapshot.motion;
     const ids = new Set(snapshot.pets.map(p => p.id));
-    for (const id of this.pets.keys()) if (!ids.has(id)) this.pets.delete(id);
+    for (const p of this.pets.values()) if (!ids.has(p.identity.id)) p.retired = true;
     for (const identity of snapshot.pets) {
       const p = this.pets.get(identity.id);
       if (p) {
-        if (p.identity.state !== identity.state || p.identity.dancing !== identity.dancing) {
+        if (p.retired || p.identity.activity !== identity.activity || p.identity.active !== identity.active || p.identity.dancing !== identity.dancing) {
           p.lastActivity = now;
+          // Never move a target out from under the pointer or its open card.
+          if (this.hovered !== identity.id && this.presented !== identity.id) p.parked = false;
           if (identity.state === "finished") { p.emote = "happy"; p.until = now + 2; p.action = "celebrate"; }
         }
         p.identity = identity;
+        p.retired = false;
       } else {
         this.pets.set(identity.id, {
           identity, x: 0, y: PET_SIZE / 2, direction: 1, action: "rest", until: now + 3,
-          lastActivity: now, socialAfter: now + 12, holdUntil: now, emote: null, seed: seedFor(identity.id), shown: true, lane: null, parked: false,
+          lastActivity: now, socialAfter: now + 12, holdUntil: now, emote: null, seed: seedFor(identity.id), shown: false, lane: null, parked: false,
+          visibility: "hidden", opacity: 0, transitionAt: now, transitionFrom: 0, retired: false,
         });
       }
     }
+    this.updatePresence(now);
+    this.layout(now);
+  }
+
+  private layout(now: number) {
     if (this.band) { this.layoutBand(now); return; }
-    for (const p of this.pets.values()) { p.shown = true; p.lane = null; }
-    // Every integration remains present. On a narrow display use additional
-    // rows; never silently discard the seventh pet or overlap their hit areas.
+    for (const p of this.pets.values()) { p.shown = p.visibility !== "hidden"; p.lane = null; }
+    // Only present pets need space. Narrow displays still use additional rows.
     const columns = Math.max(1, Math.floor((this.width - 16) / PET_SPACING));
-    const all = [...this.pets.values()];
+    const all = [...this.pets.values()].filter(p => p.shown);
     const layoutKey = JSON.stringify([this.width, all.map(p => p.identity.id)]);
     const relayout = layoutKey !== this.layoutKey;
     this.layoutKey = layoutKey;
@@ -139,19 +161,53 @@ export class CompanionWorld {
     }
   }
 
-  private shouldPark(p: PetLife, _now: number) {
+  private shouldPark(p: PetLife, now: number) {
     // Pointer interaction must never relocate the target under that pointer.
     // A dormant pet wakes in its parking slot, and only real activity moves it.
-    return !p.identity.active && !p.identity.attention && !p.identity.dancing;
+    if (p.visibility === "hidden" || p.retired || !p.identity.active || p.identity.busy || p.identity.attention) return false;
+    if (p.parked) return true;
+    return this.hovered !== p.identity.id && this.presented !== p.identity.id
+      && now >= p.holdUntil && now - p.lastActivity >= PET_IDLE_SECONDS;
+  }
+
+  private updatePresence(now: number): boolean {
+    let changed = false;
+    for (const p of this.pets.values()) {
+      const wanted = !p.retired && (p.identity.active || p.identity.attention || this.presented === p.identity.id
+        || this.hovered === p.identity.id || now < p.holdUntil);
+      const target = wanted ? 1 : 0;
+      if ((wanted && ["hidden", "leaving"].includes(p.visibility))
+          || (!wanted && ["visible", "appearing"].includes(p.visibility))) {
+        p.visibility = wanted ? "appearing" : "leaving";
+        p.transitionAt = now;
+        p.transitionFrom = p.opacity;
+        changed = true;
+      }
+      if (!this.motion || this.paused) {
+        p.opacity = target;
+        p.visibility = wanted ? "visible" : "hidden";
+      } else if (p.visibility === "appearing" || p.visibility === "leaving") {
+        const t = Math.max(0, Math.min(1, (now - p.transitionAt) / PET_TRANSITION_SECONDS));
+        const eased = t * t * (3 - 2 * t);
+        p.opacity = p.transitionFrom + (target - p.transitionFrom) * eased;
+        if (t === 1) { p.visibility = wanted ? "visible" : "hidden"; changed = true; }
+      }
+      if (p.visibility === "hidden") {
+        p.shown = false; p.parked = false; p.lane = null;
+        if (p.retired) this.pets.delete(p.identity.id);
+      }
+    }
+    return changed;
   }
 
   private layoutBand(now: number) {
     if (!this.band) return;
-    const all = [...this.pets.values()];
+    const pets = [...this.pets.values()];
+    const all = pets.filter(p => p.visibility !== "hidden");
     const lanes = this.band.lanes.filter(([a,b]) => Number.isFinite(a) && Number.isFinite(b) && b-a >= this.spacing)
       .map(([a,b]) => [a,b] as [number,number]).sort((a,b)=>a[0]-b[0]);
-    for (const p of all) { p.parked = this.shouldPark(p, now); p.shown = false; p.y = this.band.height/2; }
-    // Dormant integrations occupy only the beginning of the first free space.
+    for (const p of pets) { p.parked = this.shouldPark(p, now); p.shown = false; p.y = this.band.height/2; }
+    // Open but quiet integrations rest at the beginning of the free space.
     // The compositor owns the opaque bar controls: never cross them to park.
     for (const p of all.filter(p=>p.parked)) {
       const lane = lanes.find(([a,b])=>b-a >= this.spacing);
@@ -183,7 +239,7 @@ export class CompanionWorld {
   }
 
   /** Sleeping pets are static. Only activity/input/layout events restart frames. */
-  get needsFrames() { return [...this.pets.values()].some(p=>p.shown && p.action!=="sleep"); }
+  get needsFrames() { return [...this.pets.values()].some(p=>p.shown && (p.action!=="sleep" || p.visibility!=="visible")); }
 
   get height(): number {
     return Math.max(88, ...[...this.pets.values()].map(p => p.y + PET_SIZE / 2 + 20));
@@ -197,22 +253,28 @@ export class CompanionWorld {
     p.lastActivity = now;
     p.holdUntil = now + 8;
     p.emote = "love";
+    this.updatePresence(now);
+    this.layout(now);
   }
 
   tick(dt: number, now: number) {
     // A resumed frame never tries to catch up minutes of missed movement.
     dt = Math.max(0, Math.min(0.1, dt));
-    if (this.band && [...this.pets.values()].some(p=>p.parked!==this.shouldPark(p,now))) this.layoutBand(now);
+    const relayout = this.updatePresence(now);
+    if (relayout || (this.band && [...this.pets.values()].some(p=>p.parked!==this.shouldPark(p,now)))) this.layout(now);
     for (const p of this.pets.values()) {
       if (!p.shown) continue;
       if (this.hovered === p.identity.id) p.lastActivity = now;
       if (this.paused) { p.action = "sleep"; continue; }
       if (p.identity.attention) { p.action = "attention"; continue; }
+      if (p.visibility === "leaving") { p.action = "rest"; continue; }
+      const resting = !p.identity.busy && now - p.lastActivity >= PET_IDLE_SECONDS
+        && this.hovered !== p.identity.id && this.presented !== p.identity.id && now >= p.holdUntil;
       if (p.parked) {
-        p.action = this.hovered === p.identity.id || this.presented === p.identity.id || now < p.holdUntil ? "rest" : "sleep";
+        p.action = resting ? "sleep" : "rest";
         continue;
       }
-      if (p.identity.state === "sleeping" || (p.identity.state === "idle" && !p.identity.active && !p.identity.dancing && now - p.lastActivity > 120)) {
+      if (resting) {
         p.action = "sleep"; continue;
       }
       if (!this.motion || this.hovered === p.identity.id || this.presented === p.identity.id || now < p.holdUntil) { p.action = "rest"; continue; }
@@ -249,7 +311,7 @@ export class CompanionWorld {
   }
 
   hit(x: number, y: number): PetLife | null {
-    return [...this.pets.values()].find(p => p.shown && (Math.hypot(x - p.x, y - p.y) <= 23 * this.scale
+    return [...this.pets.values()].find(p => p.shown && p.visibility !== "leaving" && p.opacity > 0.05 && (Math.hypot(x - p.x, y - p.y) <= 23 * this.scale
       || (!this.band && Math.abs(x - p.x) <= 30 && y >= p.y + 16 && y <= p.y + 42))) ?? null;
   }
 }

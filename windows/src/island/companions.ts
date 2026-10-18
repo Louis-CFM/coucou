@@ -58,7 +58,7 @@ export class CompanionsLink {
         const snapshot: CompanionsSnapshot = {
           enabled: this.enabled, paused: State.paused, motion: State.settings.companionMotion,
           language: State.settings.language, presented: State.mode === "expanded" ? State.focusId : null,
-          pets: companionIdentities(State.tasks.map(t => State.chatBusyProvider && providerForPill(t.id) === State.chatBusyProvider ? {...t,state:"thinking" as const} : t), State.pendingApproval, State.spotifyPlaying, this.outfit(), new Set(Spotify.state.running ? [SPOTIFY_ID] : [])),
+          pets: companionIdentities(State.tasks.map(t => State.chatBusyProvider && providerForPill(t.id) === State.chatBusyProvider ? {...t,state:"thinking" as const} : t), State.pendingApproval, State.spotifyPlaying, this.outfit(), new Set(Spotify.state.running ? [SPOTIFY_ID] : []), new Map([[SPOTIFY_ID, Spotify.state.track?.id ?? ""]])),
         };
         const configuration = JSON.stringify([snapshot.enabled, snapshot.pets.length, State.settings.screen, State.settings.companionTopClearance, State.settings.companionBarMode]);
         if (configuration !== this.configuration) {

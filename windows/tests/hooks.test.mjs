@@ -242,6 +242,28 @@ test("an agent's pill goes away when its session ends, or 5.2 s after it stops",
   assert.equal(task("agent_codex"), undefined);
 });
 
+test("companions retain an open quiet CLI session until SessionEnd, then clear its presence",()=>{
+  State.settings={...DEFAULT_SETTINGS,companionMode:true,activeIntegrations:["agent_codex"]};
+  State.loadIntegrationTasks();
+  hook({hook_event_name:"SessionStart",coucou_agent:"codex",session_id:"open-cli"});
+  hook({hook_event_name:"Stop",coucou_agent:"codex",session_id:"open-cli"});
+  seconds(5.2);
+  assert.equal(task("agent_codex").state,"idle");
+  assert.equal(task("agent_codex").sessionId,"open-cli");
+  hook({hook_event_name:"SessionEnd",coucou_agent:"codex",session_id:"open-cli"});
+  assert.equal(task("agent_codex").sessionId,null);
+  assert.equal(task("agent_codex").state,"idle");
+});
+
+test("an undeclared companion also retains a known open session without making the pill permanent",()=>{
+  State.settings={...DEFAULT_SETTINGS,companionMode:true};
+  hook({hook_event_name:"SessionStart",coucou_agent:"gemini",session_id:"temporary-cli"});
+  hook({hook_event_name:"Stop",coucou_agent:"gemini",session_id:"temporary-cli"});
+  seconds(5.2);assert.equal(task("agent_gemini").state,"idle");
+  hook({hook_event_name:"SessionEnd",coucou_agent:"gemini",session_id:"temporary-cli"});
+  assert.equal(task("agent_gemini"),undefined);
+});
+
 test("an agent's permission request is declined, never shown as Claude Code's", () => {
   for (const agent of ["gemini", "antigravity", "cursor", "opencode", "amp", "hermes", "my-tool"]) {
     calls.length = 0;
