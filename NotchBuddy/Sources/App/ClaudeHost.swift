@@ -30,6 +30,19 @@ struct ClaudeHost: Equatable {
         "dev.zed.Zed":                "Zed",
         "com.cmuxterm.app":           "cmux",    // sets TERM_PROGRAM=ghostty: the bundle id decides
         "com.stablyai.orca":          "Orca",
+        // JetBrains IDEs: the Claude Code [Beta] plugin runs `claude` in the IDE terminal,
+        // which sets no TERM_PROGRAM, so only the bundle id identifies them.
+        "com.jetbrains.intellij":     "IntelliJ IDEA",
+        "com.jetbrains.intellij.ce":  "IntelliJ IDEA",
+        "com.jetbrains.pycharm":      "PyCharm",
+        "com.jetbrains.pycharm.ce":   "PyCharm",
+        "com.jetbrains.WebStorm":     "WebStorm",
+        "com.jetbrains.goland":       "GoLand",
+        "com.jetbrains.PhpStorm":     "PhpStorm",
+        "com.jetbrains.rubymine":     "RubyMine",
+        "com.jetbrains.CLion":        "CLion",
+        "com.jetbrains.rider":        "Rider",
+        "com.google.android.studio":  "Android Studio",
     ]
     private static let termPrograms: [String: String] = [
         "warpterminal":   "dev.warp.Warp-Stable",
