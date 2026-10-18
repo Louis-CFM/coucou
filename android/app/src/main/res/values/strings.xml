@@ -2,6 +2,13 @@
 <resources>
     <string name="app_name">Coucou</string>
     <string name="channel_alerts">Agent cards</string>
+    <string name="channel_updates">Updates</string>
+    <string name="channel_updates_desc">An agent finished, failed or has a question</string>
     <string name="allow">Allow</string>
     <string name="deny">Deny</string>
+    <string name="notif_unlock">Unlock to see the request</string>
+    <string name="notif_finished">Finished</string>
+    <string name="notif_error">Stopped on an error</string>
+    <string name="notif_question">Has a question</string>
+    <string name="notif_ratelimit">Hit a usage limit</string>
 </resources>

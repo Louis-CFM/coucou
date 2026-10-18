@@ -23,7 +23,7 @@ class DecisionReceiver : BroadcastReceiver() {
             } catch (_: Exception) {
                 // A stale card is simply ignored by the PC.
             } finally {
-                Notifier.cancelCard(context)
+                Notifier.cancelCard(context, requestId)
                 pending.finish()
             }
         }.start()

@@ -1,7 +1,12 @@
 package fr.louisraille.coucou.phone
 
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
@@ -56,6 +62,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 // MARK: - Pairing
 
@@ -547,7 +554,23 @@ private fun PendingPanel(card: Relay.Card?, sent: String?, vm: CoucouViewModel) 
         return
     }
     val tint = if (card.isQuestion) Coucou.Question else Coucou.Approval
-    CoucouCard(tint = tint, modifier = Modifier.fillMaxWidth().animateContentSize()) {
+    // Pop in like the island's card on the PC: the grow spring (response 0.5 s,
+    // damping 0.72 — ~dampingRatio 0.72 at StiffnessLow), a plain jump when the
+    // user asked for no animations. Each new requestId pops once.
+    val resolver = LocalContext.current.contentResolver
+    val reduced = remember {
+        MotionSpec.isReduced(Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+    }
+    val pop = remember(card.requestId) { Animatable(if (reduced) 1f else 0.92f) }
+    val fade = remember(card.requestId) { Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(card.requestId) {
+        if (!reduced) {
+            launch { pop.animateTo(1f, spring(0.72f, Spring.StiffnessLow)) }
+            fade.animateTo(1f, tween(220))
+        }
+    }
+    CoucouCard(tint = tint, wash = true, modifier = Modifier.fillMaxWidth().animateContentSize()
+        .graphicsLayer { scaleX = pop.value; scaleY = pop.value; alpha = fade.value }) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             // The iOS banner row: agent tile, its name, then the waiting line
             // in the accent — "waiting for your OK".

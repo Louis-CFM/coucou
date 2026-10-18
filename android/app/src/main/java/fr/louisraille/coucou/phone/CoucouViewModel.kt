@@ -45,6 +45,11 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
     private var answeredId: String? = null
     private var answeredDecision: String? = null
 
+    /** pillId → last state we announced; a change into a terminal state pings quietly. */
+    private val announced = mutableMapOf<String, String>()
+    /** The pending card we last saw — a new id gets Mochi's sound in-app. */
+    private var lastCardId: String? = null
+
     fun isAnswered(requestId: String) = requestId == answeredId
     fun sentDecision(requestId: String): String? =
         if (requestId == answeredId) answeredDecision else null
@@ -90,6 +95,8 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
 
     fun onForeground() {
         val p = Prefs.load(getApplication()) ?: return
+        // Coucou is on screen: the quiet notices in the shade are redundant.
+        Notifier.cancelAllStatus(getApplication())
         syncToken(p)
         if (pollJob?.isActive == true) return
         pollJob = viewModelScope.launch {
@@ -147,6 +154,7 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                 answeredId = null
                 answeredDecision = null
             }
+            announce(f)
             box = f
             lineError = null
         } catch (e: Relay.Forbidden) {
@@ -159,6 +167,28 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         } catch (e: Exception) {
             lineError = "Can't reach the relay — ${e.message ?: e.javaClass.simpleName}"
         }
+    }
+
+    /**
+     * Quiet pings for what changed: a session reaching finished/error/ratelimit
+     * posts to the updates channel (questions and approvals are the loud card),
+     * and a fresh card plays Mochi's sound in-app. Only transitions announce —
+     * a state we already saw stays silent.
+     */
+    private fun announce(f: Relay.Fetch) {
+        val app = getApplication<Application>()
+        for (s in f.state?.sessions.orEmpty()) {
+            val prev = announced[s.pillId]
+            announced[s.pillId] = s.state
+            if (prev != null && prev != s.state && s.state in setOf("finished", "error", "ratelimit")) {
+                Notifier.showStatus(app, s)
+            }
+        }
+        val cardId = f.pending?.requestId
+        if (cardId != null && cardId != lastCardId) {
+            Sounds.play(app, if (f.pending!!.isQuestion) R.raw.question else R.raw.approval)
+        }
+        lastCardId = cardId
     }
 
     /** code is `id|secret` or `id|secret|worker` — the QR fallback the PC shows. */

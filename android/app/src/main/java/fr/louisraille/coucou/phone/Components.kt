@@ -31,16 +31,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
@@ -57,23 +60,37 @@ import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** The iOS glassCard(): a rounded card at white-11% with an optional tint edge. */
+/** The iOS glassCard(): a rounded card at white-11% with an optional tint edge,
+ * and with [wash] the PC island's glow of that colour rising from the bottom. */
 @Composable
 fun CoucouCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = Coucou.CornerCard,
     tint: Color? = null,
+    wash: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(shape)
             .background(Coucou.Card)
             .then(
-                if (tint != null) Modifier.border(1.dp, tint.copy(alpha = 0.35f), RoundedCornerShape(cornerRadius))
-                else Modifier.border(1.dp, Coucou.CardStroke, RoundedCornerShape(cornerRadius))
+                if (wash && tint != null) Modifier.drawBehind { drawWash(tint, 0.5f) }
+                else Modifier
             )
+            .border(1.dp, (tint?.copy(alpha = 0.35f) ?: Coucou.CardStroke), shape)
     ) { content() }
+}
+
+/** The glow: [color] under the bottom edge, gone by about 70% of the way up (the PC's `.wash`). */
+private fun DrawScope.drawWash(color: Color, alpha: Float) {
+    drawRect(
+        Brush.radialGradient(
+            0f to color.copy(alpha = alpha * 0.35f), 1f to Color.Transparent,
+            center = Offset(size.width / 2f, size.height * 1.3f), radius = size.width * 0.85f,
+        ),
+    )
 }
 
 /**
