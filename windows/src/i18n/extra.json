@@ -49,6 +49,42 @@
       "id": "Sudah ada grup hook bernama “coucou” yang tidak ditulis Coucou — Coucou tidak menyentuhnya.",
       "cs": "Skupina hooků s názvem \"coucou\", kterou nezapsal Coucou, už tam je — Coucou se jí nedotkl."
     },
+    "Add a model": {
+      "zh-Hans": "添加一个模型",
+      "hi": "एक मॉडल जोड़ें",
+      "es": "Añadir un modelo",
+      "ar": "إضافة نموذج",
+      "fr": "Ajouter un modèle",
+      "bn": "একটি মডেল যোগ করুন",
+      "pt-BR": "Adicionar um modelo",
+      "ru": "Добавить модель",
+      "id": "Tambahkan model",
+      "cs": "Přidat model"
+    },
+    "Add model": {
+      "zh-Hans": "添加模型",
+      "hi": "मॉडल जोड़ें",
+      "es": "Añadir modelo",
+      "ar": "إضافة نموذج",
+      "fr": "Ajouter le modèle",
+      "bn": "মডেল যোগ করুন",
+      "pt-BR": "Adicionar modelo",
+      "ru": "Добавить модель",
+      "id": "Tambah model",
+      "cs": "Přidat model"
+    },
+    "After a spoken question, the mic listens again once the reply is in.": {
+      "zh-Hans": "语音提问后，麦克风在回复完成后会再次聆听。",
+      "hi": "बोले गए प्रश्न के बाद, उत्तर आने पर माइक फिर से सुनता है।",
+      "es": "Tras una pregunta hablada, el micro vuelve a escuchar cuando llega la respuesta.",
+      "ar": "بعد سؤال منطوق، يستمع الميكروفون مجدداً فور وصول الرد.",
+      "fr": "Après une question parlée, le micro réécoute une fois la réponse arrivée.",
+      "bn": "বলা প্রশ্নের পরে, উত্তর এলে মাইক আবার শোনে।",
+      "pt-BR": "Após uma pergunta falada, o microfone volta a ouvir quando a resposta chega.",
+      "ru": "После голосового вопроса микрофон снова слушает, когда приходит ответ.",
+      "id": "Setelah pertanyaan lisan, mikrofon mendengarkan lagi setelah jawaban tiba.",
+      "cs": "Po mluvené otázce mikrofon znovu poslouchá, jakmile dorazí odpověď."
+    },
     "AI for the chat": {
       "zh-Hans": "聊天用的 AI",
       "hi": "चैट के लिए AI",
@@ -96,6 +132,18 @@
       "ru": "API-ключ (необязательно)",
       "id": "Kunci API (opsional)",
       "cs": "API klíč (volitelný)"
+    },
+    "API key for this provider": {
+      "zh-Hans": "此提供商的 API 密钥",
+      "hi": "इस प्रदाता की API कुंजी",
+      "es": "Clave API de este proveedor",
+      "ar": "مفتاح API لهذا المزوّد",
+      "fr": "Clé API de ce fournisseur",
+      "bn": "এই প্রদানকারীর API কী",
+      "pt-BR": "Chave de API deste provedor",
+      "ru": "API-ключ этого провайдера",
+      "id": "Kunci API untuk penyedia ini",
+      "cs": "API klíč pro tohoto poskytovatele"
     },
     "API key missing. Open settings.": {
       "zh-Hans": "缺少 API 密钥。请打开设置。",
@@ -481,6 +529,18 @@
       "id": "Pemakaian paket Claude",
       "cs": "Využití plánu Claude"
     },
+    "Close (Esc)": {
+      "zh-Hans": "关闭 (Esc)",
+      "hi": "बंद करें (Esc)",
+      "es": "Cerrar (Esc)",
+      "ar": "إغلاق (Esc)",
+      "fr": "Fermer (Échap)",
+      "bn": "বন্ধ করুন (Esc)",
+      "pt-BR": "Fechar (Esc)",
+      "ru": "Закрыть (Esc)",
+      "id": "Tutup (Esc)",
+      "cs": "Zavřít (Esc)"
+    },
     "Close the island": {
       "zh-Hans": "关闭岛",
       "hi": "आइलैंड बंद करें",
@@ -853,6 +913,18 @@
       "id": "Selesai. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code.",
       "cs": "Hotovo. Čísla se objeví po příští odpovědi relace Claude Code."
     },
+    "Drag to turn · scroll to zoom · Esc to close": {
+      "zh-Hans": "拖动旋转 · 滚轮缩放 · Esc 关闭",
+      "hi": "घुमाने के लिए ड्रैग करें · ज़ूम के लिए स्क्रॉल करें · बंद करने के लिए Esc",
+      "es": "Arrastra para girar · rueda para acercar · Esc para cerrar",
+      "ar": "اسحب للتدوير · مرّر للتقريب · Esc للإغلاق",
+      "fr": "Glissez pour tourner · molette pour zoomer · Échap pour fermer",
+      "bn": "ঘোরাতে টেনে আনুন · জুম করতে স্ক্রল করুন · বন্ধ করতে Esc",
+      "pt-BR": "Arraste para girar · role para zoom · Esc para fechar",
+      "ru": "Тяните, чтобы повернуть · колесо — масштаб · Esc — закрыть",
+      "id": "Seret untuk memutar · gulir untuk zoom · Esc untuk menutup",
+      "cs": "Táhněte pro otáčení · kolečko pro přiblížení · Esc pro zavření"
+    },
     "Drop": {
       "zh-Hans": "拖放",
       "hi": "छोड़ें",
@@ -864,6 +936,30 @@
       "ru": "Перетащить",
       "id": "Letakkan",
       "cs": "Přetáhnout"
+    },
+    "Drop a picture on the island, then send (or make an image first).": {
+      "zh-Hans": "把图片拖到小岛上再发送（或先生成一张图）。",
+      "hi": "चित्र को आइलैंड पर छोड़ें, फिर भेजें (या पहले एक चित्र बनाएँ)।",
+      "es": "Suelta una imagen en la isla y luego envía (o crea una imagen primero).",
+      "ar": "أسقط صورة على الجزيرة ثم أرسل (أو أنشئ صورة أولاً).",
+      "fr": "Déposez une image sur l'îlot, puis envoyez (ou créez d'abord une image).",
+      "bn": "আইল্যান্ডে একটি ছবি ছাড়ুন, তারপর পাঠান (অথবা আগে একটি ছবি তৈরি করুন)।",
+      "pt-BR": "Solte uma imagem na ilha e depois envie (ou crie uma imagem primeiro).",
+      "ru": "Перетащите картинку на остров и отправьте (или сначала создайте изображение).",
+      "id": "Jatuhkan gambar ke island, lalu kirim (atau buat gambar dulu).",
+      "cs": "Přetáhněte obrázek na ostrůvek a pošlete (nebo nejdřív obrázek vytvořte)."
+    },
+    "Enter the provider's https address and a model id.": {
+      "zh-Hans": "输入提供商的 https 地址和模型 id。",
+      "hi": "प्रदाता का https पता और मॉडल id दर्ज करें।",
+      "es": "Escribe la dirección https del proveedor y un id de modelo.",
+      "ar": "أدخل عنوان https الخاص بالمزوّد ومعرّف النموذج.",
+      "fr": "Entrez l'adresse https du fournisseur et un id de modèle.",
+      "bn": "প্রদানকারীর https ঠিকানা এবং একটি মডেল id লিখুন।",
+      "pt-BR": "Digite o endereço https do provedor e um id de modelo.",
+      "ru": "Введите https-адрес провайдера и id модели.",
+      "id": "Masukkan alamat https penyedia dan id model.",
+      "cs": "Zadejte https adresu poskytovatele a id modelu."
     },
     "Enter the server address first.": {
       "zh-Hans": "请先输入服务器地址。",
@@ -973,6 +1069,18 @@
       "id": "Sembunyikan nama proyek",
       "cs": "Skrývat názvy projektů"
     },
+    "High detail": {
+      "zh-Hans": "高细节",
+      "hi": "उच्च विवरण",
+      "es": "Detalle alto",
+      "ar": "تفاصيل عالية",
+      "fr": "Détail élevé",
+      "bn": "উচ্চ বিস্তারিত",
+      "pt-BR": "Detalhe alto",
+      "ru": "Много деталей",
+      "id": "Detail tinggi",
+      "cs": "Hodně detailů"
+    },
     "History cleared.": {
       "zh-Hans": "历史记录已清除。",
       "hi": "इतिहास साफ़ कर दिया गया।",
@@ -996,6 +1104,30 @@
       "ru": "Удерживайте вместе с ней Ctrl, Alt или клавишу Windows.",
       "id": "Tahan Ctrl, Alt, atau tombol Windows bersamaan.",
       "cs": "Podržte přitom Ctrl, Alt nebo klávesu Windows."
+    },
+    "I couldn't see the screen": {
+      "zh-Hans": "我看不到屏幕",
+      "hi": "मुझे स्क्रीन दिखाई नहीं दी",
+      "es": "No pude ver la pantalla",
+      "ar": "لم أتمكن من رؤية الشاشة",
+      "fr": "Je n'ai pas pu voir l'écran",
+      "bn": "আমি স্ক্রিন দেখতে পাইনি",
+      "pt-BR": "Não consegui ver a tela",
+      "ru": "Я не смог увидеть экран",
+      "id": "Saya tidak bisa melihat layar",
+      "cs": "Nepodařilo se mi zachytit obrazovku"
+    },
+    "Image, video, speech and 3D models turn your message into a file instead of answering; pick them on \"Create\" above the chat box. A speech-to-text model turns the chat's Send button into a mic while the field is empty. Keys go to the Credential Manager, one per provider.": {
+      "zh-Hans": "图像、视频、语音和 3D 模型会把你的消息变成文件而不是回答；在输入框上方的“Create”中选择它们。语音转文字模型在输入框为空时会把聊天的“发送”按钮变成麦克风。密钥存入凭据管理器，每个提供商一个。",
+      "hi": "इमेज, वीडियो, स्पीच और 3D मॉडल आपके संदेश को उत्तर के बजाय फ़ाइल में बदल देते हैं; उन्हें चैट बॉक्स के ऊपर \"Create\" पर चुनें। स्पीच-टू-टेक्स्ट मॉडल फ़ील्ड खाली होने पर चैट का Send बटन माइक में बदल देता है। कुंजियाँ Credential Manager में जाती हैं, प्रत्येक प्रदाता के लिए एक।",
+      "es": "Los modelos de imagen, vídeo, voz y 3D convierten tu mensaje en un archivo en vez de responder; elígelos en «Create» sobre el cuadro de chat. Un modelo de voz a texto convierte el botón Enviar del chat en un micrófono mientras el campo está vacío. Las claves van al Administrador de credenciales, una por proveedor.",
+      "ar": "تحوّل نماذج الصور والفيديو والكلام وثلاثي الأبعاد رسالتك إلى ملف بدلاً من الإجابة؛ اخترها من «Create» فوق مربع الدردشة. يحوّل نموذج تحويل الكلام إلى نص زر «إرسال» في الدردشة إلى ميكروفون عندما يكون الحقل فارغاً. تُحفظ المفاتيح في Credential Manager، مفتاح لكل مزوّد.",
+      "fr": "Les modèles image, vidéo, voix et 3D transforment votre message en fichier au lieu de répondre ; choisissez-les sur « Create » au-dessus du champ du chat. Un modèle voix-vers-texte transforme le bouton Envoyer du chat en micro quand le champ est vide. Les clés vont dans le Gestionnaire d'identification, une par fournisseur.",
+      "bn": "ইমেজ, ভিডিও, স্পিচ ও 3D মডেল আপনার বার্তাকে উত্তরের বদলে ফাইলে বদলে দেয়; চ্যাট বক্সের উপরে \"Create\"-এ সেগুলি বেছে নিন। স্পিচ-টু-টেক্সট মডেল ফিল্ড খালি থাকলে চ্যাটের Send বোতামকে মাইকে বদলে দেয়। কীগুলি Credential Manager-এ যায়, প্রতিটি প্রদানকারীর জন্য একটি।",
+      "pt-BR": "Modelos de imagem, vídeo, voz e 3D transformam sua mensagem em um arquivo em vez de responder; escolha-os em \"Create\" acima da caixa de chat. Um modelo de fala-para-texto transforma o botão Enviar do chat em um microfone enquanto o campo está vazio. As chaves vão para o Gerenciador de Credenciais, uma por provedor.",
+      "ru": "Модели изображений, видео, речи и 3D превращают ваше сообщение в файл вместо ответа; выбирайте их в «Create» над полем чата. Модель распознавания речи превращает кнопку «Отправить» в микрофон, пока поле пустое. Ключи хранятся в Credential Manager — по одному на провайдера.",
+      "id": "Model gambar, video, ucapan, dan 3D mengubah pesan Anda menjadi berkas alih-alih menjawab; pilih di \"Create\" di atas kotak chat. Model ucapan-ke-teks mengubah tombol Kirim chat menjadi mikrofon saat kolom kosong. Kunci masuk ke Credential Manager, satu per penyedia.",
+      "cs": "Modely obrázků, videa, řeči a 3D promění vaši zprávu v soubor místo odpovědi; vyberete je na „Create“ nad polem chatu. Model řeči na text změní tlačítko Odeslat v chatu na mikrofon, když je pole prázdné. Klíče jdou do Správce přihlašovacích údajů, jeden na poskytovatele."
     },
     "Images": {
       "zh-Hans": "图片",
@@ -1177,6 +1309,18 @@
       "id": "Biarkan pulau tetap terbuka",
       "cs": "Nechat ostrůvek otevřený"
     },
+    "Keep the mic on": {
+      "zh-Hans": "保持麦克风开启",
+      "hi": "माइक चालू रखें",
+      "es": "Mantener el micro encendido",
+      "ar": "إبقاء الميكروفون يعمل",
+      "fr": "Garder le micro actif",
+      "bn": "মাইক চালু রাখুন",
+      "pt-BR": "Manter o microfone ligado",
+      "ru": "Не выключать микрофон",
+      "id": "Biarkan mikrofon menyala",
+      "cs": "Nechat mikrofon zapnutý"
+    },
     "Key configured": {
       "zh-Hans": "密钥已配置",
       "hi": "कुंजी सेट है",
@@ -1273,6 +1417,18 @@
       "id": "Jangan sertakan nama pengguna dan kata sandi di alamat.",
       "cs": "Vynechte z adresy uživatelské jméno a heslo."
     },
+    "Low detail": {
+      "zh-Hans": "低细节",
+      "hi": "कम विवरण",
+      "es": "Detalle bajo",
+      "ar": "تفاصيل منخفضة",
+      "fr": "Détail faible",
+      "bn": "কম বিস্তারিত",
+      "pt-BR": "Detalhe baixo",
+      "ru": "Мало деталей",
+      "id": "Detail rendah",
+      "cs": "Málo detailů"
+    },
     "Main display": {
       "zh-Hans": "主显示器",
       "hi": "मुख्य डिस्प्ले",
@@ -1297,6 +1453,42 @@
       "id": "Alat utama",
       "cs": "Hlavní nástroj"
     },
+    "Makes": {
+      "zh-Hans": "生成内容",
+      "hi": "बनाता है",
+      "es": "Genera",
+      "ar": "يولّد",
+      "fr": "Produit",
+      "bn": "তৈরি করে",
+      "pt-BR": "Gera",
+      "ru": "Создаёт",
+      "id": "Menghasilkan",
+      "cs": "Vytváří"
+    },
+    "Media and voice models": {
+      "zh-Hans": "媒体与语音模型",
+      "hi": "मीडिया और वॉयस मॉडल",
+      "es": "Modelos de medios y voz",
+      "ar": "نماذج الوسائط والصوت",
+      "fr": "Modèles médias et voix",
+      "bn": "মিডিয়া ও ভয়েস মডেল",
+      "pt-BR": "Modelos de mídia e voz",
+      "ru": "Модели медиа и голоса",
+      "id": "Model media dan suara",
+      "cs": "Modely médií a hlasu"
+    },
+    "Medium detail": {
+      "zh-Hans": "中等细节",
+      "hi": "मध्यम विवरण",
+      "es": "Detalle medio",
+      "ar": "تفاصيل متوسطة",
+      "fr": "Détail moyen",
+      "bn": "মাঝারি বিস্তারিত",
+      "pt-BR": "Detalhe médio",
+      "ru": "Средне деталей",
+      "id": "Detail sedang",
+      "cs": "Střední detaily"
+    },
     "Meeting": {
       "zh-Hans": "会议",
       "hi": "मीटिंग",
@@ -1320,6 +1512,18 @@
       "ru": "Понедельник",
       "id": "Senin",
       "cs": "Pondělí"
+    },
+    "More detail takes longer and costs more": {
+      "zh-Hans": "细节越多，耗时越长、费用越高",
+      "hi": "ज़्यादा विवरण में ज़्यादा समय और लागत लगती है",
+      "es": "Más detalle tarda más y cuesta más",
+      "ar": "التفاصيل الأكثر تستغرق وقتاً أطول وتكلف أكثر",
+      "fr": "Plus de détails prend plus de temps et coûte plus cher",
+      "bn": "বেশি বিস্তারিতে বেশি সময় ও খরচ লাগে",
+      "pt-BR": "Mais detalhes demora mais e custa mais",
+      "ru": "Больше деталей — дольше и дороже",
+      "id": "Detail lebih tinggi butuh lebih lama dan lebih mahal",
+      "cs": "Více detailů trvá déle a stojí víc"
     },
     "Mute": {
       "zh-Hans": "静音",
@@ -1776,6 +1980,18 @@
       "ru": "Предыдущая вкладка",
       "id": "Tab sebelumnya",
       "cs": "Předchozí pilulka"
+    },
+    "Provider": {
+      "zh-Hans": "提供商",
+      "hi": "प्रदाता",
+      "es": "Proveedor",
+      "ar": "المزوّد",
+      "fr": "Fournisseur",
+      "bn": "প্রদানকারী",
+      "pt-BR": "Provedor",
+      "ru": "Провайдер",
+      "id": "Penyedia",
+      "cs": "Poskytovatel"
     },
     "Pumpkin": {
       "zh-Hans": "南瓜",
@@ -2329,6 +2545,18 @@
       "id": "Alamat harus diawali http:// atau https://.",
       "cs": "Adresa musí začínat http:// nebo https://."
     },
+    "The chat's mic uses this to turn your voice into text as you speak.": {
+      "zh-Hans": "聊天的麦克风用它在你说话时把语音转成文字。",
+      "hi": "चैट का माइक बोलते समय आपकी आवाज़ को टेक्स्ट में बदलने के लिए इसका उपयोग करता है।",
+      "es": "El micrófono del chat lo usa para convertir tu voz en texto mientras hablas.",
+      "ar": "يستخدم ميكروفون الدردشة هذا لتحويل صوتك إلى نص أثناء تحدثك.",
+      "fr": "Le micro du chat s'en sert pour transcrire votre voix en texte pendant que vous parlez.",
+      "bn": "চ্যাটের মাইক কথা বলার সময় আপনার কণ্ঠ লেখায় রূপান্তর করতে এটি ব্যবহার করে।",
+      "pt-BR": "O microfone do chat usa isso para transformar sua voz em texto enquanto você fala.",
+      "ru": "Микрофон чата использует его, чтобы превращать вашу речь в текст, пока вы говорите.",
+      "id": "Mikrofon chat menggunakannya untuk mengubah suara Anda menjadi teks saat Anda berbicara.",
+      "cs": "Mikrofon chatu s ním převádí váš hlas na text, když mluvíte."
+    },
     "The file is removed.": {
       "zh-Hans": "该文件将被删除。",
       "hi": "फ़ाइल हटा दी जाती है।",
@@ -2737,6 +2965,18 @@
       "id": "Dipakai dua kali",
       "cs": "Použito dvakrát"
     },
+    "Voice, e.g. alloy": {
+      "zh-Hans": "语音，例如 alloy",
+      "hi": "आवाज़, जैसे alloy",
+      "es": "Voz, p. ej. alloy",
+      "ar": "الصوت، مثل alloy",
+      "fr": "Voix, p. ex. alloy",
+      "bn": "ভয়েস, যেমন alloy",
+      "pt-BR": "Voz, p. ex. alloy",
+      "ru": "Голос, напр. alloy",
+      "id": "Suara, mis. alloy",
+      "cs": "Hlas, např. alloy"
+    },
     "Wardrobe…": {
       "zh-Hans": "衣橱…",
       "hi": "अलमारी…",
@@ -2772,6 +3012,18 @@
       "ru": "Среда",
       "id": "Rabu",
       "cs": "Středa"
+    },
+    "What this model makes": {
+      "zh-Hans": "此模型生成的内容",
+      "hi": "यह मॉडल क्या बनाता है",
+      "es": "Lo que genera este modelo",
+      "ar": "ما ينشئه هذا النموذج",
+      "fr": "Ce que ce modèle produit",
+      "bn": "এই মডেল কী তৈরি করে",
+      "pt-BR": "O que este modelo gera",
+      "ru": "Что создаёт эта модель",
+      "id": "Yang dihasilkan model ini",
+      "cs": "Co tento model vytváří"
     },
     "Where you code": {
       "zh-Hans": "编程环境",

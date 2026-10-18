@@ -25,6 +25,7 @@ import { COMPACT_W, botPosition } from "../core/layout";
 import type { BotStateName } from "../core/layout";
 import type { RoamLook } from "../core/bridge";
 import type { Settings } from "../core/state";
+import { resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
 // The same window flies the AirPods and shows generated media full screen
 // between roams.
 import "./pods";
@@ -280,7 +281,7 @@ async function snap() {
     setTimeout(() => Sound.play("question"), 650);
   } else {
     engine.setState("error", true);
-    bubble = { text: "I couldn't see the screen", at: performance.now() + 200 };
+    bubble = { text: t("I couldn't see the screen"), at: performance.now() + 200 };
   }
   setPhase("peer");
 }
@@ -895,6 +896,7 @@ function drawBubble(text: string) {
 
 // Same sound settings as the island.
 function applySettings(s: Settings) {
+  setLanguage(resolveLanguage(s.language, systemLanguages()));
   Sound.setEnabled(s.soundEnabled);
   Sound.setVolume(s.soundVolume);
   quick = s.quickScan === true;

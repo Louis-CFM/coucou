@@ -2,11 +2,24 @@
 
 ## Unreleased
 
-- **Fish Audio voice** *(Windows and Linux)* - « OK Coucou » can now answer out loud in a Fish Audio voice, next to the system voice and ElevenLabs. Pick it in Notch → OK Coucou → Answers, paste your Fish Audio key (kept in the Windows Credential Manager or the Linux Secret Service) and, if you like, the ID of a voice from fish.audio. Only the text of the answers is sent to Fish Audio, never audio. If Fish Audio can't be reached, the system voice speaks
+- **The island goes where you want it** *(Windows and Linux)* — drag it anywhere on the display; dropped near an edge it docks to it and takes its shape — top, bottom, left or right, the wake strip follows. Settings → General still slides it along the top edge and Reset puts it back centred
+- **Font and text size** *(Windows and Linux)* — Settings → General → Font picks any installed font for the island and the settings window; Text size scales every text from 85 % to 130 %. The defaults leave the look exactly as it shipped
+- **A clock in the compact island** *(Windows and Linux)* — Settings → General shows the time and the date in the middle of the compact island, which then stays up instead of hiding
+- **All your pills, alerts first** *(Windows and Linux)* — the four-pill limit is gone; in the open grid and in the compact row, the pills waiting on you or still working come first
+- **Quiet during calls** *(Windows and Linux)* — while another app holds your camera, your microphone or a screen share, the island stays away and silent; a card that waits for an answer keeps a folded island on screen. Settings → General → Calls decides which of the three count (PipeWire on Linux)
+- **Always allow** *(Windows and Linux)* — when Claude Code offers a rule to remember, its permission card has a third button that applies it, like the terminal's "Yes, and don't ask again" (the A key works too)
+- **Cards that follow the terminal** *(Windows and Linux)* — a permission answered in the terminal drops off the island at once; a new prompt no longer hides the finished card, and a task notification no longer shows as the session's prompt. The relay stays connected until Coucou hangs up, so Open terminal finds the session's window, and `claude -p` headless runs stay off the island entirely
+- **The chat makes media** *(Windows and Linux)* — a "Create" provider generates images, video, speech and 3D models from the chat over any OpenAI-compatible endpoint, one key per provider in the Windows Credential Manager or the Linux Secret Service. Results open full screen and 3D models turn around under the pointer. The chat also takes dropped files (a code file shows as a code card), types what you say through a speech-to-text model (hands-free with Keep the mic on), asks before sending a picture to a text-only model, and answers through Claude Code when the Claude API key is missing or out of credit
+- **A git push, watched** *(Windows and Linux)* — Claude Code's `git push` shows on the GitHub card, running then done
+- **Your Mochis, your look** *(Windows and Linux)* — name Mochi and each coloured Mochi; every Mochi wears its own look from the wardrobe: seven full skins (frog, bee, pumpkin, robot, ladybug, panda, ghost), seven hats drawn from SVG, five body shapes — and a mood it acts out from each chat reply. Left alone they doze off; a sound, the mic or the camera wakes them, and ten pokes in a row annoys them
+- **Mochi roams the screen** *(Windows and Linux)* — Ctrl+drag him out of the island and he takes a screenshot where you drop him (an area with Shift held), then flies home with it attached to the chat, off unless you turn on "Quick screenshot" in Settings. When music plays, his head opens like an AirPods case and the buds fly to the screen's edge
+- **VoiceStudio, your voice on your computer** *(Windows and Linux)* — a local OpenAI-compatible voice for « OK Coucou »'s answers, next to the system voice: Notch → OK Coucou → Answers → VoiceStudio, with the server's address and a voice id
+- **Parallel as the voice's web search** *(Windows and Linux)* — OK Coucou → Web search can now be Parallel instead of Anthropic: anonymous (a random conversation id, never your key or the history), free, with rate limits. Off disables search
+- **Fish Audio voice** *(Windows and Linux)* — « OK Coucou » can now answer out loud in a Fish Audio voice, next to the system voice and ElevenLabs. Pick it in Notch → OK Coucou → Answers, paste your Fish Audio key (kept in the Windows Credential Manager or the Linux Secret Service) and, if you like, the ID of a voice from fish.audio. Only the text of the answers is sent to Fish Audio, never audio. If Fish Audio can't be reached, the system voice speaks
+- **« OK Coucou » with a Spanish accent** *(Windows and Linux)* — the wake word also hears "coco", "gogo", "co co" and "go go"; "Okay, Google" still does not wake it
+- Session pills take the session's name (`/rename` shows it); a click in the open island takes the keyboard so Escape closes it; the delay before the compact island hides follows Settings again; a file dropped on an island that was not open yet no longer waits at 0 % for ever; on Linux a sound no longer freezes the island for seconds
 
 ## Windows and Linux 0.5.0 — October 15, 2026
-
-
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
 

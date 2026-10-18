@@ -8,6 +8,7 @@ import { Bridge } from "../core/bridge";
 import type { MediaFile } from "../core/state";
 import { ICONS } from "../views/icons";
 import { h, svg } from "../views/dom";
+import { t } from "../i18n/i18n";
 
 const root = h("div", { class: "preview", hidden: true });
 document.body.append(root);
@@ -29,14 +30,14 @@ function close() {
 void listen<MediaFile>("preview-open", async (e) => {
   const file = e.payload;
   if (url) URL.revokeObjectURL(url);
-  const shut = h("button", { class: "preview-close", title: "Close (Esc)" }, svg(ICONS.xmark, 16));
+  const shut = h("button", { class: "preview-close", title: t("Close (Esc)") }, svg(ICONS.xmark, 16));
   shut.addEventListener("click", close);
   root.replaceChildren(shut);
   root.hidden = false;
   if (file.kind === "3d") {
     // Drag to turn, scroll to zoom; a click outside the stage closes.
     const stagebox = h("div", { class: "preview-3d" });
-    root.append(stagebox, h("div", { class: "preview-hint", text: "Drag to turn \u00b7 scroll to zoom \u00b7 Esc to close" }));
+    root.append(stagebox, h("div", { class: "preview-hint", text: t("Drag to turn \u00b7 scroll to zoom \u00b7 Esc to close") }));
     const bytes = await Bridge.mediaBytes(file.name);
     if (!bytes || root.hidden) return close();
     const { mountViewer } = await import("../views/model3d");

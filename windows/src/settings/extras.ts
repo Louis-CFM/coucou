@@ -126,10 +126,10 @@ export function mochiSection(ctx: ExtrasContext): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, h("span", { text: "Mochi" })),
+    h("h2", {}, h("span", { text: t("Mochi") })),
     h("div", { class: "row" },
       h("label", { text: t("Mochi's name") }),
-      nameInput(ctx.settings().mochiName ?? "", "Mochi", (v) => { ctx.settings().mochiName = v; }, ctx.save),
+      nameInput(ctx.settings().mochiName ?? "", t("Mochi"), (v) => { ctx.settings().mochiName = v; }, ctx.save),
     ),
     h("div", { class: "hint", text: t("What the chat calls itself, and the main Mochi's pill when nothing runs. Each coloured Mochi's name is under Integrations.") }),
     h("div", { class: "row" }, h("label", { text: t("Wardrobe") }), mode),
@@ -181,7 +181,7 @@ function providerName(endpoint: string): string {
 }
 
 function outputSelect(value: string): HTMLSelectElement {
-  const select = h("select", { title: "What this model makes" }) as HTMLSelectElement;
+  const select = h("select", { title: t("What this model makes") }) as HTMLSelectElement;
   for (const [v, text] of OUTPUTS) select.append(h("option", { value: v, text: t(text) }));
   select.value = value || "image";
   return select;
@@ -192,7 +192,7 @@ function voiceInput(m: ModelEntry, save: () => void): HTMLElement {
   const orpheus = /orpheus/i.test(m.model);
   const el = orpheus
     ? (h("select", {}, ...ORPHEUS_VOICES.map((v) => h("option", { value: v, text: v[0].toUpperCase() + v.slice(1) }))) as HTMLSelectElement)
-    : (h("input", { type: "text", placeholder: "Voice, e.g. alloy", value: m.voice ?? "", spellcheck: "false" }) as HTMLInputElement);
+    : (h("input", { type: "text", placeholder: t("Voice, e.g. alloy"), value: m.voice ?? "", spellcheck: "false" }) as HTMLInputElement);
   if (orpheus) el.value = ORPHEUS_VOICES.includes(m.voice ?? "") ? m.voice : "troy";
   el.addEventListener("change", () => {
     m.voice = el.value.trim();
@@ -203,8 +203,8 @@ function voiceInput(m: ModelEntry, save: () => void): HTMLElement {
 
 /** TRELLIS 2's output detail (Pollinations: low 512³, medium 1024³, high 1536³). */
 function detailInput(m: ModelEntry, save: () => void): HTMLSelectElement {
-  const el = h("select", { title: "More detail takes longer and costs more" }) as HTMLSelectElement;
-  for (const [v, text] of [["low", "Low detail"], ["medium", "Medium detail"], ["high", "High detail"]]) {
+  const el = h("select", { title: t("More detail takes longer and costs more") }) as HTMLSelectElement;
+  for (const [v, text] of [["low", t("Low detail")], ["medium", t("Medium detail")], ["high", t("High detail")]]) {
     el.append(h("option", { value: v, text }));
   }
   el.value = ["low", "medium", "high"].includes(m.detail ?? "") ? m.detail : "low";
@@ -270,7 +270,7 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
       });
       const keyName = await Bridge.endpointKey(m.endpoint);
       const keyDot = statusDot(!!keyName && !!(await Bridge.secretPresent(keyName)));
-      keyDot.title = "API key for this provider";
+      keyDot.title = t("API key for this provider");
       const named = m.label && m.label !== m.model && m.label !== m.model.split("/").pop();
       const provider = providerName(m.endpoint);
       rows.push(h("div", { class: "model" },
@@ -280,12 +280,12 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
           ? h("div", { class: "row" }, h("span", { class: "hint", text: t("Voice") }), voiceInput(m, ctx.save))
           : null,
         m.output === "stt"
-          ? h("div", { class: "hint", text: "The chat's mic uses this to turn your voice into text as you speak." })
+          ? h("div", { class: "hint", text: t("The chat's mic uses this to turn your voice into text as you speak.") })
           : null,
         m.output === "3d"
           ? h("div", { class: "row" },
               /trellis/i.test(m.model) ? detailInput(m, ctx.save) : null,
-              h("span", { class: "hint", text: "Drop a picture on the island, then send (or make an image first)." }))
+              h("span", { class: "hint", text: t("Drop a picture on the island, then send (or make an image first).") }))
           : null,
       ));
     }
@@ -310,14 +310,14 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
     const guess = (await Bridge.guessOutput(modelId.value)) ?? "image";
     if (OUTPUTS.some(([v]) => v === guess)) makes.value = guess;
   });
-  const key = input("API key for this provider", "password");
-  const add = h("button", { class: "primary", text: "Add model" });
+  const key = input(t("API key for this provider"), "password");
+  const add = h("button", { class: "primary", text: t("Add model") });
   const feedback = h("div", {});
 
   const syncProvider = async () => {
     endpoint.style.display = provider.value === "" ? "" : "none";
     const name = await Bridge.endpointKey(endpoint.value);
-    key.placeholder = name && (await Bridge.secretPresent(name)) ? `••••••  ${t("(stored)")}` : "API key for this provider";
+    key.placeholder = name && (await Bridge.secretPresent(name)) ? `••••••  ${t("(stored)")}` : t("API key for this provider");
   };
   provider.addEventListener("change", () => {
     endpoint.value = provider.value;
@@ -330,7 +330,7 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
     const id = modelId.value.trim();
     const url = endpoint.value.trim();
     if (!id || !/^https:\/\//i.test(url)) {
-      feedback.append(h("div", { class: "notice err", text: "Enter the provider's https address and a model id." }));
+      feedback.append(h("div", { class: "notice err", text: t("Enter the provider's https address and a model id.") }));
       return;
     }
     if (key.value.trim()) {
@@ -370,27 +370,27 @@ export function mediaModelsSection(ctx: ExtrasContext): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, h("span", { text: "Media and voice models" })),
+    h("h2", {}, h("span", { text: t("Media and voice models") })),
     h("div", {
       class: "hint",
-      text: "Image, video, speech and 3D models turn your message into a file instead of answering; pick them on \"Create\" above the chat box. A speech-to-text model turns the chat's Send button into a mic while the field is empty. Keys go to the Credential Manager, one per provider.",
+      text: t("Image, video, speech and 3D models turn your message into a file instead of answering; pick them on \"Create\" above the chat box. A speech-to-text model turns the chat's Send button into a mic while the field is empty. Keys go to the Credential Manager, one per provider."),
     }),
     list,
-    h("div", { class: "subhead", text: "Add a model" }),
-    h("div", { class: "row" }, h("label", { text: "Provider" }), provider, endpoint),
+    h("div", { class: "subhead", text: t("Add a model") }),
+    h("div", { class: "row" }, h("label", { text: t("Provider") }), provider, endpoint),
     h("div", { class: "row" }, h("label", { text: t("Model") }), modelId),
-    h("div", { class: "row" }, h("label", { text: "Makes" }), makes),
+    h("div", { class: "row" }, h("label", { text: t("Makes") }), makes),
     h("div", { class: "row" }, h("label", { text: t("Name") }), label),
     h("div", { class: "row" }, h("label", { text: t("API key") }), key),
     h("div", { class: "row" }, add),
     feedback,
     h("div", { class: "row" },
-      h("label", { text: "Keep the mic on" }),
+      h("label", { text: t("Keep the mic on") }),
       ctx.toggle(ctx.settings().keepMicOn ?? false, (v) => {
         ctx.settings().keepMicOn = v;
         ctx.save();
       }),
     ),
-    h("div", { class: "hint", text: "After a spoken question, the mic listens again once the reply is in." }),
+    h("div", { class: "hint", text: t("After a spoken question, the mic listens again once the reply is in.") }),
   );
 }
