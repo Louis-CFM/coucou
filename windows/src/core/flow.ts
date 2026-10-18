@@ -219,7 +219,7 @@ export const FlowBridge = {
   pillHover: (inside: boolean) => call<void>("pill_hover", { inside }),
   pillAction: (action: string, id?: number) => call<void>("pill_action", { action, id: id ?? null }),
   /** The pill has said what « OK Coucou » answered. */
-  voiceDone: (id: number) => call<void>("voice_done", { id, text: null }),
+  voiceDone: (id: number, played?: boolean) => call<void>("voice_done", { id, text: null, played: played ?? null }),
   /** speech-dispatcher or espeak-ng, where the webview has no voice. */
   sayNative: (text: string, lang: string | null) => call<boolean>("voice_say_native", { text, lang }),
 };

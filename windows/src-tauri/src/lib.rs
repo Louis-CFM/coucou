@@ -730,6 +730,11 @@ pub fn run() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if argv.iter().any(|arg| arg == "--voice-preview") {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { voice::voice_preview(app, None).await; });
+                return;
+            }
             if voice_request(&argv) { voice::session::toggle(app); return; }
             // `coucou --shortcut <action>`: what a desktop's own keyboard
             // settings run where we can't listen for keys ourselves (Wayland).
@@ -946,15 +951,18 @@ pub fn run() {
                 let _ = handle.autolaunch().enable();
             }
             let open_window = flow::get(&handle).map(|f| f.store.lock().unwrap().prefs.open_at_launch).unwrap_or(true);
-            let voice_requested = voice_request(&std::env::args().collect::<Vec<_>>());
-            if voice_requested {
+            let arguments = std::env::args().collect::<Vec<_>>();
+            let voice_requested = voice_request(&arguments);
+            let preview_requested = arguments.iter().any(|arg| arg == "--voice-preview");
+            if voice_requested || preview_requested {
                 let voice_app = handle.clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-                    voice::session::toggle(&voice_app);
+                    if preview_requested { voice::voice_preview(voice_app, None).await; }
+                    else { voice::session::toggle(&voice_app); }
                 });
             }
-            if open_window && !launched_at_login() && !voice_requested {
+            if open_window && !launched_at_login() && !voice_requested && !preview_requested {
                 show_hub(&handle, None);
             }
             Ok(())
@@ -981,6 +989,7 @@ mod tests {
         assert!(!super::voice_request(&args(&["coucou", "--shortcut", "voiceTalk"])));
         assert!(!super::voice_request(&args(&["coucou", "--shortcut", "openChat"])));
         assert!(!super::voice_request(&args(&["coucou", "voiceTalk"])));
+        assert!(!super::voice_request(&args(&["coucou", "--voice-preview"])));
     }
 
     #[test]

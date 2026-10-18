@@ -6,6 +6,7 @@ import { SPOTIFY_ID } from "../core/spotify";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { CompanionWorld, PET_EVENTS, PET_SIZE, type CompanionsSnapshot, type PetLife } from "../mochi/companions";
 import { resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
+import { registerVoiceSpeech } from "../pill/voice-speech";
 
 interface PetView { button: HTMLButtonElement; canvas: HTMLCanvasElement; label: HTMLSpanElement; engine: BotEngine; sleepKey?: string }
 const world = new CompanionWorld();
@@ -332,6 +333,7 @@ function frame() {
 }
 
 async function start() {
+  await registerVoiceSpeech();
   await onEvent<PetNotice>("companions-notice", n=>{noticeQueue.push(n);showNextNotice();});
   await onEvent<VoiceView | null>("companions-voice", view => { voiceActive = !!view; voiceBubble(view); });
   await onEvent<PillState>("companions-flow", state => {

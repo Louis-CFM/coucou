@@ -10,8 +10,16 @@ export class VoiceAudio {
 
   async play(source: string): Promise<boolean> {
     this.cancel();
+    let url: string | null = null;
     try {
-      const audio = this.create(source.startsWith("data:audio/") ? source : `data:audio/mpeg;base64,${source}`);
+      const match = /^data:(audio\/[\w.+-]+);base64,([\s\S]*)$/.exec(source);
+      const encoded = match?.[2] ?? source;
+      if (encoded.length > 12 * 1024 * 1024) return false;
+      const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+      // The app deliberately permits blob: media and blocks data: media.
+      // Decode inside this document instead of weakening its content policy.
+      url = URL.createObjectURL(new Blob([bytes], { type: match?.[1] ?? "audio/mpeg" }));
+      const audio = this.create(url);
       return await new Promise<boolean>((resolve) => {
         let finished = false;
         const clip = { audio, cancel: () => { audio.pause(); done(true); audio.src = ""; } };
@@ -20,6 +28,7 @@ export class VoiceAudio {
           finished = true;
           if (this.current === clip) this.current = null;
           audio.onended = audio.onerror = null;
+          if (url) { URL.revokeObjectURL(url); url = null; }
           resolve(success);
         };
         this.current = clip;
@@ -30,6 +39,7 @@ export class VoiceAudio {
         void audio.play().then(() => { if (finished) audio.pause(); }, () => done(false));
       });
     } catch {
+      if (url) URL.revokeObjectURL(url);
       this.current = null;
       return false;
     }

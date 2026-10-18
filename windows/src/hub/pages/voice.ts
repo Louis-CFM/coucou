@@ -83,6 +83,9 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
       divider(),
       row(t("Inactivity timeout (seconds)"), t("The microphone closes after silence, or when you press Super again."), timeout),
     ));
+    const codexModel = h("input", { class: "hub-input", value: settings.voiceModels.codex ?? "gpt-6-luna", style: "width:240px" }) as HTMLInputElement;
+    codexModel.addEventListener("change", () => { settings.voiceModels.codex = codexModel.value.trim() || "gpt-6-luna"; void save(); });
+    page.append(card(row(`Codex · ${t("Model")}`, null, codexModel)));
     const aliases = card(h("div", { class: "hub-note", text: t("Learn names locally. Recordings are discarded.") }));
     for (const [provider, name] of [["codex", "Codex"], ["antigravity", "Gravity"], ["claude-cli", "Claude"], ["gemini-cli", "Gemini"], ["ollama", "Ollama"]]) {
       const input = h("input", { class: "hub-input", value: (settings.voicePetAliases[provider] ?? []).join(", "), placeholder: name, style: "width:170px" }) as HTMLInputElement;

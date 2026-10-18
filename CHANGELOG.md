@@ -1,5 +1,11 @@
 # Changelog
 
+## Linux fork 0.5.1-mochi.3 — October 18, 2026
+
+- Play spoken replies in the visible companion surface instead of the suspended hidden pill. Share playback/cancellation between surfaces and confirm playback completion without logging conversation text.
+- Use GPT-6 Luna by default for Codex voice conversations, with separate voice model preferences that preserve written chat model choices.
+- Add a microphone-free native voice preview for validating the installed audio path.
+
 ## Linux fork 0.5.1-mochi.2 — October 18, 2026
 
 - Continuous voice conversations using the native Codex and Gravity CLI accounts, with separate pet contexts and their original tools and permission prompts.

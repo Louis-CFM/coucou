@@ -123,9 +123,7 @@ impl Brain {
     pub fn respond_as(&mut self, app: &AppHandle, transcript: &str, provider: &str, stop: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>) -> Option<Reply> {
         self.last = Instant::now();
         let settings = app.try_state::<crate::Shared>().map(|s| {
-            let mut settings = s.settings.lock().unwrap().clone();
-            settings.chat_provider = if matches!(provider, "gemini-cli" | "claude-cli") { "antigravity" } else { provider }.into();
-            settings
+            crate::cli_chat::voice_settings(&s.settings.lock().unwrap(), provider)
         });
         if let Some(settings) = settings.as_ref().filter(|s| s.chat_provider == "ollama") {
             self.messages.clear();
@@ -136,7 +134,8 @@ impl Brain {
         if let Some(mut settings) = settings.clone().filter(|s| matches!(s.chat_provider.as_str(), "codex" | "antigravity")) {
             if matches!(provider, "gemini-cli" | "claude-cli") {
                 let family = if provider == "gemini-cli" { "gemini" } else { "claude" };
-                let configured = settings.chat_models.get(provider).filter(|m| !m.is_empty()).cloned()
+                let configured = settings.voice_models.get(provider).filter(|m| !m.is_empty()).cloned()
+                    .or_else(|| settings.chat_models.get(provider).filter(|m| !m.is_empty()).cloned())
                     .or_else(|| settings.chat_models.get("antigravity").filter(|m| m.to_lowercase().contains(family)).cloned());
                 let model = configured.or_else(|| self.family_model.clone()).or_else(|| {
                     let offered = tauri::async_runtime::block_on(super::until_stopped(crate::gravity_chat::models(), stop.as_deref()))?.ok()?;

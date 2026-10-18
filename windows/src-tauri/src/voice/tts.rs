@@ -43,7 +43,10 @@ pub fn generate(
                 "Raquel is unavailable. Check the internet connection and voice runtime. The reply remains as text."
             ), None, 7);
         }
-        return result.map(|mp3| format!("data:audio/mpeg;base64,{}", super::base64(&mp3)));
+        return result.map(|mp3| {
+            crate::log::line(format!("voice: Raquel synthesis ready ({} bytes)", mp3.len()));
+            format!("data:audio/mpeg;base64,{}", super::base64(&mp3))
+        });
     }
     let configured = provider
         .and_then(|p| settings.local_voice_dirs.get(p))

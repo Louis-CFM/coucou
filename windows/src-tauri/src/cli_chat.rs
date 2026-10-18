@@ -17,6 +17,23 @@ fn pending() -> &'static Mutex<HashMap<String, mpsc::Sender<Value>>> {
     PENDING.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+#[cfg(test)]
+mod voice_model_tests {
+    #[test]
+    fn spoken_codex_uses_luna_without_replacing_text_or_other_pet_models() {
+        let mut original = crate::settings::Settings::default();
+        original.chat_provider = "ollama".into();
+        original.chat_models.insert("codex".into(), "gpt-6.1-sol".into());
+        original.chat_models.insert("antigravity".into(), "gemini-example".into());
+        let voice = super::voice_settings(&original, "codex");
+        assert_eq!(voice.chat_provider, "codex");
+        assert_eq!(voice.chat_models["codex"], "gpt-6-luna");
+        assert_eq!(original.chat_models["codex"], "gpt-6.1-sol");
+        assert_eq!(original.chat_provider, "ollama");
+        assert_eq!(super::voice_settings(&original, "antigravity").chat_models["antigravity"], "gemini-example");
+    }
+}
+
 #[tauri::command]
 pub fn cli_agent_answer(id: String, answer: Value) {
     if let Some(tx) = pending().lock().unwrap().remove(&id) {
@@ -52,6 +69,16 @@ must be represented in Git in {}/sysworkspace: first read {}/.codex/context/sysw
 preserve other sessions' changes, retain hooks and YubiKey signing, and finish with a focused commit. \
 Project code, dependencies, environments and generated data stay in their own project, outside sysworkspace. \
 Never copy credentials into source control.", home.display(), home.display())
+}
+
+/// Voice model choices belong to that dialogue, without changing text chat.
+pub fn voice_settings(source: &crate::settings::Settings, provider: &str) -> crate::settings::Settings {
+    let mut settings = source.clone();
+    settings.chat_provider = if matches!(provider, "gemini-cli" | "claude-cli") { "antigravity" } else { provider }.into();
+    if let Some(model) = settings.voice_models.get(provider).filter(|model| !model.trim().is_empty()).cloned() {
+        settings.chat_models.insert(settings.chat_provider.clone(), model);
+    }
+    settings
 }
 
 pub async fn send(

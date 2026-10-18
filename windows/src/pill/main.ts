@@ -12,7 +12,7 @@ import type { Settings } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
 import { HUB_ICONS, keyLabel } from "../hub/ui";
-import { VoiceAudio } from "./voice-audio";
+import { registerVoiceSpeech } from "./voice-speech";
 
 const RESTING_LENGTH = 44;
 const RESTING_THICKNESS = 8;
@@ -414,84 +414,12 @@ function wake() {
 
 // ── « OK Coucou » speaks ──────────────────────────────────────────────────────
 
-interface Say {
-  id: number;
-  text: string;
-  lang: string | null;
-  /** Audio data URI, or legacy raw MP3 base64. */
-  audio: string | null;
-  gender: "female" | "male";
-  allowSystemFallback?: boolean;
-}
-
 let speaking = false;
-
-/** The system's voice in the answer's language, a woman's or a man's when the system says. */
-function systemVoice(lang: string | null, gender: string): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis?.getVoices() ?? [];
-  const want = (lang ?? navigator.language).toLowerCase();
-  const short = want.split("-")[0];
-  const inLang = voices.filter((v) => v.lang.toLowerCase() === want).concat(voices.filter((v) => v.lang.toLowerCase().split(/[-_]/)[0] === short && v.lang.toLowerCase() !== want));
-  const female = /(female|woman|zira|hortense|julie|denise|aria|jenny|samantha|amelie|eloise)/i;
-  const male = /(male|man\b|david|paul|guy|henri|claude|mark|thomas)/i;
-  const pick = inLang.find((v) => (gender === "male" ? male.test(v.name) && !female.test(v.name) : female.test(v.name)));
-  return pick ?? inLang[0] ?? null;
-}
-
-async function sayWithSystem(text: string, lang: string | null, gender: string): Promise<void> {
-  const epoch = voiceEpoch;
-  const synth = window.speechSynthesis;
-  if (synth && synth.getVoices().length === 0) {
-    await new Promise<void>((r) => {
-      synth.addEventListener("voiceschanged", () => r(), { once: true });
-      setTimeout(r, 600);
-    });
-  }
-  if (epoch !== voiceEpoch) return;
-  if (synth && synth.getVoices().length > 0) {
-    await new Promise<void>((resolve) => {
-      cancelPlayback = resolve;
-      const u = new SpeechSynthesisUtterance(text);
-      const voice = systemVoice(lang, gender);
-      if (voice) u.voice = voice;
-      u.lang = voice?.lang ?? lang ?? navigator.language;
-      u.onend = () => resolve();
-      u.onerror = () => resolve();
-      synth.cancel();
-      synth.speak(u);
-    });
-    return;
-  }
-  await FlowBridge.sayNative(text, lang);
-}
-
-const voiceAudio = new VoiceAudio();
-let cancelPlayback: (() => void) | null = null;
-let voiceEpoch = 0;
-function cancelVoice() {
-  voiceEpoch++;
-  window.speechSynthesis?.cancel();
-  voiceAudio.cancel();
-  cancelPlayback?.();
-  cancelPlayback = null;
-  speaking = false;
-}
-
-async function say(s: Say) {
-  const epoch = voiceEpoch;
-  speaking = true;
-  wake();
-  try {
-    if (!(s.audio && (await voiceAudio.play(s.audio))) && epoch === voiceEpoch && s.allowSystemFallback !== false) await sayWithSystem(s.text, s.lang, s.gender);
-  } finally {
-    if (epoch === voiceEpoch) { cancelPlayback = null; speaking = false; }
-    void FlowBridge.voiceDone(s.id);
-  }
-}
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 async function main() {
+  await registerVoiceSpeech(value => { speaking = value; wake(); });
   const boot = await Bridge.boot();
   setLanguage(resolveLanguage(boot?.settings.language, systemLanguages()));
   const status = await FlowBridge.status();
@@ -520,8 +448,6 @@ async function main() {
   void onEvent<boolean>("pill-pointer", (inside) => {
     if (!inside) setHovered(false);
   });
-  void onEvent<Say>("voice-say", (s) => void say(s));
-  void onEvent("voice-cancel", cancelVoice);
   void onEvent<Settings>("settings-changed", (s) => {
     setLanguage(resolveLanguage(s.language, systemLanguages()));
     render();

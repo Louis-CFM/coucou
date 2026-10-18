@@ -15,7 +15,7 @@ function fixture() {
 
 test("Super can cancel a reply before the browser has started playback", async () => {
   const { voice, clips } = fixture();
-  const done = voice.play("data:audio/mpeg;base64,reply");
+  const done = voice.play("data:audio/mpeg;base64,cmVwbHk=");
   voice.cancel();
   assert.equal(await done, true); // consumed; never trigger a fallback voice
   assert.equal(clips[0].src, "");
@@ -26,22 +26,26 @@ test("Super can cancel a reply before the browser has started playback", async (
 
 test("a new preview stops the previous reply; its late completion cannot stop the new voice", async () => {
   const { voice, clips } = fixture();
-  const first = voice.play("legacy-mp3");
-  const second = voice.play("data:audio/wav;base64,local");
+  const first = voice.play("bGVnYWN5");
+  const second = voice.play("data:audio/wav;base64,bG9jYWw=");
   assert.equal(await first, true);
-  assert.equal(clips[1].src, "data:audio/wav;base64,local");
+  assert.match(clips[1].src, /^blob:/);
+  const url = clips[1].src;
+  assert.equal(await fetch(url).then(r => r.text()), "local");
   clips[0].start();
   clips[1].start();
   await Promise.resolve();
   assert.equal(clips[1].pauses, 0);
   clips[1].onended();
   assert.equal(await second, true);
+  await assert.rejects(fetch(url)); // object URLs are released after playback
 });
 
 test("playback failure is reported, and legacy MP3 stays supported", async () => {
   const { voice, clips } = fixture();
-  const done = voice.play("legacy");
-  assert.equal(clips[0].src, "data:audio/mpeg;base64,legacy");
+  const done = voice.play("bGVnYWN5");
+  assert.match(clips[0].src, /^blob:/);
+  assert.equal(await fetch(clips[0].src).then(r => r.text()), "legacy");
   clips[0].fail(new Error("audio device unavailable"));
   assert.equal(await done, false);
 });

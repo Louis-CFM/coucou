@@ -297,6 +297,7 @@ async fn until_stopped<T>(future: impl std::future::Future<Output = T>, stop: Op
 
 fn cancel_speech(app: &AppHandle) {
     let _ = app.emit_to(pill::LABEL, "voice-cancel", ());
+    let _ = app.emit_to(crate::companions::LABEL, "voice-cancel", ());
     for (_, tx) in pending().lock().unwrap().drain() { let _ = tx.send(String::new()); }
     tts::cancel_native();
 }
@@ -330,7 +331,11 @@ fn speak_with_language(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, p
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     pending().lock().unwrap().insert(id, tx);
-    let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: language.or_else(|| wake::speech_lang(text)).map(str::to_string), audio, gender, allow_system_fallback: output != "edge" });
+    // WebKit can suspend the hidden pill. The visible pet surface owns audio
+    // while companions are enabled, just as it owns the conversation bubble.
+    let target = if crate::companions::enabled(app) { crate::companions::LABEL } else { pill::LABEL };
+    crate::log::line(format!("voice: playback request id={id}, output={output}, window={target}, audio={}", audio.is_some()));
+    let _ = app.emit_to(target, "voice-say", Say { id, text: text.into(), lang: language.or_else(|| wake::speech_lang(text)).map(str::to_string), audio, gender, allow_system_fallback: output != "edge" });
     let words = crate::flow::text::word_count(text) as u64;
     let until = Instant::now() + Duration::from_millis(4000 + words.min(200) * 600);
     while Instant::now() < until {
@@ -342,7 +347,8 @@ fn speak_with_language(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, p
 
 /// The pill says it has finished speaking (`id`), or the island answers a question.
 #[tauri::command]
-pub fn voice_done(id: u64, text: Option<String>) {
+pub fn voice_done(id: u64, text: Option<String>, played: Option<bool>) {
+    if let Some(played) = played { crate::log::line(format!("voice: playback complete id={id}, played={played}")); }
     if let Some(tx) = pending().lock().unwrap().remove(&id) {
         let _ = tx.send(text.unwrap_or_default());
     }

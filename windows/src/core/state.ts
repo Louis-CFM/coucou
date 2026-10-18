@@ -135,6 +135,7 @@ export interface Settings {
   voicePetAliases: Record<string, string[]>;
   localVoiceDirs: Record<string, string>;
   edgeVoicePython: string;
+  voiceModels: Record<string, string>;
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -204,6 +205,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voicePetAliases: {},
   localVoiceDirs: {},
   edgeVoicePython: "",
+  voiceModels: { codex: "gpt-6-luna" },
   chatModels: {},
   ollamaUrl: "",
   lmstudioUrl: "",
