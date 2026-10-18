@@ -531,6 +531,7 @@ const CLOUD: CloudDef[] = [
 function chatProvidersSection(
   present: Record<string, boolean>,
   keyChanged: (key: string, on: boolean) => void,
+  claudeCode: boolean,
 ): HTMLElement {
   const list = h("div", { style: "display:flex;flex-direction:column;gap:8px" });
   for (const def of CLOUD) {
@@ -588,6 +589,7 @@ function chatProvidersSection(
       h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: t("Key from {site}", { site: def.where }) }),
     );
   }
+  list.append(...claudeCodeRows(claudeCode));
   return h(
     "section",
     {},
@@ -595,6 +597,41 @@ function chatProvidersSection(
     h("div", { class: "hint", text: CHAT_STRINGS.providersHint }),
     list,
   );
+}
+
+/**
+ * The user's Claude Code CLI as a chat provider (claude_code.rs): no key to
+ * enter, only whether it is installed, and a button to chat with it.
+ */
+function claudeCodeRows(found: boolean): HTMLElement[] {
+  const p = providerDef("claude-code");
+  const use = h("button", {}) as HTMLButtonElement;
+  const draw = () => {
+    const inUse = settings.chatProvider === p.id;
+    use.className = inUse ? "" : "primary";
+    use.textContent = inUse ? CHAT_STRINGS.inUse : CHAT_STRINGS.useInChat;
+    use.disabled = inUse || !found;
+  };
+  use.addEventListener("click", () => {
+    settings.chatProvider = p.id;
+    void save().then(draw);
+  });
+  draw();
+  return [
+    h("div", { class: "row" },
+      h("label", {},
+        h("i", { class: "dot", style: `background:${p.accent};margin-right:8px` }),
+        h("span", { text: p.name }),
+      ),
+      h("span", { class: "spacer" }),
+      use, statusDot(found),
+    ),
+    h("div", {
+      class: "hint",
+      style: "margin:-4px 0 0 144px",
+      text: found ? t("Uses your Claude Code subscription, no API key.") : t("Claude Code isn't installed."),
+    }),
+  ];
 }
 
 // ── Local models section ──────────────────────────────────────────────────────
@@ -1349,6 +1386,7 @@ async function render() {
     chatKeys[key] = (await Bridge.secretPresent(key)) ?? false;
   }
   const customKey = (await Bridge.secretPresent(CUSTOM_SERVER_KEY)) ?? false;
+  const claudeCode = (await Bridge.claudeCodeFound()) ?? false;
 
   declaredViews.length = 0;
   localRedraw = null;
@@ -1358,7 +1396,7 @@ async function render() {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged, claudeCode), localSection(customKey)],
     integrations: () => [integrationsSection(present)],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

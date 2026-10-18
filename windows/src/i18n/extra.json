@@ -4350,6 +4350,50 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Uses your Claude Code subscription, no API key.": {
+   "zh-Hans": "使用你的 Claude Code 订阅，无需 API 密钥。",
+   "hi": "आपकी Claude Code सदस्यता का उपयोग करता है, कोई API कुंजी नहीं।",
+   "es": "Usa tu suscripción de Claude Code, sin clave de API.",
+   "ar": "يستخدم اشتراكك في Claude Code، بلا مفتاح API.",
+   "fr": "Utilise ton abonnement Claude Code, sans clé d'API.",
+   "bn": "আপনার Claude Code সাবস্ক্রিপশন ব্যবহার করে, কোনো API কী লাগে না।",
+   "pt-BR": "Usa sua assinatura do Claude Code, sem chave de API.",
+   "ru": "Работает по вашей подписке Claude Code, без API-ключа.",
+   "id": "Memakai langganan Claude Code Anda, tanpa kunci API."
+  },
+  "Claude Code isn't installed.": {
+   "zh-Hans": "未安装 Claude Code。",
+   "hi": "Claude Code इंस्टॉल नहीं है।",
+   "es": "Claude Code no está instalado.",
+   "ar": "Claude Code غير مثبّت.",
+   "fr": "Claude Code n'est pas installé.",
+   "bn": "Claude Code ইনস্টল করা নেই।",
+   "pt-BR": "O Claude Code não está instalado.",
+   "ru": "Claude Code не установлен.",
+   "id": "Claude Code belum terpasang."
+  },
+  "Claude Code took too long to answer.": {
+   "zh-Hans": "Claude Code 回答超时。",
+   "hi": "Claude Code ने जवाब देने में बहुत देर लगाई।",
+   "es": "Claude Code tardó demasiado en responder.",
+   "ar": "استغرق Claude Code وقتًا طويلًا للرد.",
+   "fr": "Claude Code a mis trop de temps à répondre.",
+   "bn": "Claude Code উত্তর দিতে খুব বেশি সময় নিয়েছে।",
+   "pt-BR": "O Claude Code demorou demais para responder.",
+   "ru": "Claude Code слишком долго не отвечал.",
+   "id": "Claude Code terlalu lama menjawab."
+  },
+  "Answered by Claude Code: the Claude API key is missing or out of credit.": {
+   "zh-Hans": "由 Claude Code 回答：Claude API 密钥缺失或额度已用完。",
+   "hi": "Claude Code ने जवाब दिया: Claude API कुंजी नहीं है या उसका क्रेडिट खत्म हो गया है।",
+   "es": "Respondido por Claude Code: falta la clave de la API de Claude o no le queda crédito.",
+   "ar": "أجاب Claude Code: مفتاح Claude API مفقود أو نفد رصيده.",
+   "fr": "Réponse de Claude Code : la clé de l'API Claude est absente ou n'a plus de crédit.",
+   "bn": "Claude Code উত্তর দিয়েছে: Claude API কী নেই বা এর ক্রেডিট শেষ।",
+   "pt-BR": "Respondido pelo Claude Code: a chave da API do Claude está ausente ou sem crédito.",
+   "ru": "Ответил Claude Code: ключа Claude API нет или на нём закончились средства.",
+   "id": "Dijawab oleh Claude Code: kunci API Claude tidak ada atau kreditnya habis."
   }
  }
 }

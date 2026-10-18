@@ -4,6 +4,7 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod claude_code;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -515,6 +516,12 @@ fn local_set_key(url: String, key: String) -> Result<(), String> {
     local_chat::set_custom_key(&url, &key)
 }
 
+/// Settings → Chat providers: is the Claude Code CLI on this computer?
+#[tauri::command]
+fn claude_code_found() -> bool {
+    claude_code::find().is_some()
+}
+
 #[tauri::command]
 fn chat_reset(chat: State<Chat>) {
     chat.reset();
@@ -765,6 +772,7 @@ pub fn run() {
             local_connect,
             local_set_key,
             chat_reset,
+            claude_code_found,
             ingest_file,
             secret_present,
             secret_set,

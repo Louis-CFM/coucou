@@ -256,6 +256,14 @@ mid-conversation carries the conversation over as plain text, so nothing in one
 provider's format is ever sent to another. These providers get no web search
 and no tools — they answer, they never act on your PC.
 
+**Claude Code** is a provider too, with no key: each turn runs your own `claude`
+CLI headless (`claude -p`) on your Claude subscription, in an empty temporary
+folder, with web search and web fetch as its only tools, safe mode (no hooks,
+plugins, MCP servers or CLAUDE.md) and no saved session; it is stopped after
+180 s or when the chat is reset. When Claude is picked but has no key, or the
+API says the key is out of credit, the turn is answered through Claude Code
+instead (if it is installed) and the reply says so.
+
 **Local models**: **Settings… → Local models** connects **Ollama** or **LM
 Studio** (leave the address empty for the usual one on this PC; Ollama's
 `OLLAMA_HOST` is honoured) or any server that speaks the OpenAI API (vLLM,
