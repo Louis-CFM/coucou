@@ -43,30 +43,31 @@ jobs:
         working-directory: windows
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      # webkit2gtk, gtk-layer-shell and appindicator to build against; patchelf
-      # and the GStreamer plugins for the AppImage, which carries its own
-      # GStreamer so the sounds play (WAV needs wavparse, in -good).
+      # webkit2gtk, gtk-layer-shell and appindicator to build against, ALSA for
+      # the microphone (Flow dictation, the Notetaker); patchelf and the
+      # GStreamer plugins for the AppImage, which carries its own GStreamer so
+      # the sounds play (WAV needs wavparse, in -good).
       - name: Install system libraries
         working-directory: .
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libgtk-layer-shell-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libdbus-1-dev patchelf \
+            librsvg2-dev libssl-dev libdbus-1-dev libasound2-dev patchelf \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: windows/package-lock.json
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -121,7 +122,7 @@ jobs:
       # Upload only on a manual run or when publishing a release, as on Windows.
       # The repo is public, so artifacts are downloadable by any signed-in GitHub
       # user; retention-days: 3 limits exposure.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.publish == 'true'
         with:
           name: Coucou-Linux
@@ -141,9 +142,9 @@ jobs:
 
     steps:
       # Only for the linux-latest tag below; nothing from the repo is run.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: Coucou-Linux
           path: release

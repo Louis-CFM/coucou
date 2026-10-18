@@ -157,6 +157,17 @@ export interface Settings {
    * else English), or one of src/i18n's ten codes ("fr", "pt-BR", "zh-Hans"…).
    */
   language: string;
+  /**
+   * The phone link for Coucou for Android is on. Rust owns it (only the switch in
+   * Settings → Android phone turns it on): whatever the page sends back is ignored.
+   */
+  phoneLink?: boolean;
+  /** The phone may chat through this computer's API keys. Rust owns it too. */
+  phoneChat?: boolean;
+  /** The phone may see session details (steps, last line, folder name, colour). Rust owns it too. */
+  phoneDetails?: boolean;
+  /** Which models the phone may use, "provider/model". Rust owns it too. */
+  phoneChatModels?: string[];
   /** Mochi on the desktop. Rust owns it: whatever the page sends back is ignored. */
   desktopMochi?: {
     onDesktop: boolean;
@@ -333,11 +344,12 @@ class AppState {
     // Same request re-shown (queue metadata refreshed, card promoted back):
     // the card updates in place without pulling the front away from a pill
     // the user picked while it was up.
-    const isNew = this.pendingApproval?.id !== info.id;
+    const isNew = this.pendingApproval == null || this.pendingApproval.id !== info.id;
     this.pendingApproval = info;
     this.isPinned = true;
     if (this.focusBeforeApproval == null) this.focusBeforeApproval = this.focusId;
     if (isNew) this.setFocus(info.pillId);
+    else this.notify();
   }
 
   /**

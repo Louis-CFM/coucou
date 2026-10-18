@@ -13,6 +13,14 @@ options:
 # Production CloudKit environment, so the iPhone joins it with the
 # CoucouPhoneProduction scheme. Release also compiles PHONE_LINK (the sync
 # stays off until turned on in Settings); Debug stays unsigned without it.
+# FluidAudio (Apache-2.0): Parakeet speech-to-text and speaker diarization on the Mac's
+# Neural Engine, for Flow dictation and the Notetaker (GitHub build only). Its models are
+# downloaded from Hugging Face only when the user clicks Download in Coucou Flow → Settings.
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio
+    exactVersion: 0.17.7
+
 configs:
   Debug: debug
   DebugCloud: debug
@@ -129,14 +137,15 @@ targets:
         CFBundleName: Coucou
         CFBundleDisplayName: Coucou
         CFBundleIdentifier: fr.louisraille.NotchBuddy
-        CFBundleVersion: "15"
-        CFBundleShortVersionString: "0.3.0"
+        CFBundleVersion: "16"
+        CFBundleShortVersionString: "0.4.0"
         CFBundlePackageType: APPL
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
         NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify."
-        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate a message in the chat."
+        NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate, and to note your calls when you ask it to."
+        NSAudioCaptureUsageDescription: "Coucou records what your Mac plays only while you note a call, to write down what the other people say."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
         NSAccessibilityUsageDescription: "Pour lire le titre de la fenêtre active et l'attacher comme contexte."
         NSContactsUsageDescription: "Coucou looks up an email address when you ask it, by voice, to prepare an email."
@@ -178,6 +187,8 @@ targets:
           CODE_SIGN_ENTITLEMENTS: Resources/CoucouReleaseCloud.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: PHONE_LINK
           PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
+    dependencies:
+      - package: FluidAudio
     postBuildScripts:
       - name: "Write Git Hash to Info.plist"
         script: |

@@ -1,0 +1,160 @@
+name: Phone link
+
+# Checks for the Android phone link (windows/src-tauri/src/phone_link):
+# the desktop tests on Windows, and the Kotlin client against the real Rust
+# server on Linux. Builds nothing that is published and uploads no artifact.
+
+on:
+  pull_request:
+    paths:
+      - 'windows/src-tauri/src/phone_link/**'
+      - 'android/app/src/**'
+      - 'docs/ANDROID_LINK.md'
+      - '.github/workflows/phone-link.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'windows/src-tauri/src/phone_link/**'
+      - 'android/app/src/**'
+      - 'docs/ANDROID_LINK.md'
+      - 'docs/RELAY_LINK.md'
+      - '.github/workflows/phone-link.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults: { run: { working-directory: windows } }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: npm, cache-dependency-path: windows/package-lock.json }
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: phone-link-win-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: phone-link-win-
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: cargo build --release -p coucou-hook
+      - run: cargo test --workspace --locked
+
+  interop:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: System libraries the Tauri app compiles against
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libgtk-layer-shell-dev libsoup-3.0-dev libssl-dev libxdo-dev libasound2-dev
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: phone-link-linux-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: phone-link-linux-
+      - name: Rust tests (Linux)
+        working-directory: windows
+        run: |
+          cargo build --release -p coucou-hook
+          cargo test --workspace --locked
+      - uses: actions/setup-java@v6
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Kotlin client against the Rust desktop
+        working-directory: android
+        env:
+          COUCOU_RUST_INTEROP: '1'
+        run: ./gradlew testDebugUnitTest --tests '*RustDesktopInteropTest' --console=plain
+
+  relay:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: android/relay } }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: npm, cache-dependency-path: android/relay/package-lock.json }
+      - run: npm ci
+      - name: Types
+        run: npm run typecheck
+      - name: Relay behaviour (workerd and the Node twin), guards
+        run: npm test
+      - name: Test vectors are up to date
+        run: npm run vectors
+      - name: A deploy builds (nothing is uploaded)
+        env: { WRANGLER_SEND_METRICS: "false" }
+        run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/relay-build"
+
+  relay-e2e:
+    # The Rust computer and the Kotlin phone, end to end, through the real Cloudflare Worker running locally under
+    # `wrangler dev` (workerd), then through the Node twin. Nothing is deployed; the relay listens on 127.0.0.1 only.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - name: System libraries the Tauri app compiles against
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libgtk-layer-shell-dev libsoup-3.0-dev libssl-dev libxdo-dev libasound2-dev
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            windows/target
+          key: phone-link-linux-${{ hashFiles('windows/Cargo.lock') }}
+          restore-keys: phone-link-linux-
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: npm, cache-dependency-path: android/relay/package-lock.json }
+      - run: npm ci
+        working-directory: android/relay
+      - uses: actions/setup-java@v6
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v5
+      - name: The hook binary the Tauri build expects (a cold cache does not have it)
+        working-directory: windows
+        run: cargo build --release -p coucou-hook
+      - name: End to end through the Worker (workerd)
+        env: { WRANGLER_SEND_METRICS: "false" }
+        run: android/relay/tools/e2e.sh worker
+      - name: End to end through the Node twin
+        run: android/relay/tools/e2e.sh node
+
+  android:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: android } }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-java@v6
+        with: { distribution: temurin, java-version: '17' }
+      - uses: actions/setup-node@v7
+        with: { node-version: '22' }
+      - uses: gradle/actions/setup-gradle@v5
+      - name: English strings are up to date
+        run: node scripts/gen-strings.mjs --check
+      - name: Relay test vectors are up to date
+        run: node relay/tools/gen-vectors.mjs --check
+      - name: Relay dependencies (the Node twin that the Kotlin WebSocket tests talk to)
+        working-directory: android/relay
+        run: npm ci
+      - name: Tests, debug build, lint
+        env:
+          COUCOU_NODE_RELAY: '1'
+        run: ./gradlew test assembleDebug lint --console=plain
+      - name: No ads, billing or analytics (condition of the author's permission)
+        run: "! grep -rEi 'admob|play-services|billingclient|firebase|crashlytics|com.google.android.gms|mlkit' app/build.gradle.kts"

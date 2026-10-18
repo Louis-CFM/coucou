@@ -22,6 +22,17 @@ import { N_, t } from "../i18n/i18n";
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
 
+/** Takes the approval or question card down and gives the island back. */
+export function dropPendingCard(island: Island): void {
+  if (!State.pendingApproval) return;
+  State.endApproval();
+  island.dropPin();
+  if (State.view === "approval" || State.view === "question") {
+    island.setView(State.defaultView());
+  }
+  State.notify();
+}
+
 /** The return to idle that Stop arms, per pill, so the next turn can cancel it. */
 const stopTimers = new Map<string, number>();
 

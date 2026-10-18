@@ -95,6 +95,10 @@ export function generate(catalog) {
       const value = readLocalization(locs[lang], names);
       if (value !== undefined) out[lang] = value;
     }
+    // Only a string translated in every language comes across. Xcode keeps every literal it finds in the catalog,
+    // brand names and placeholders like " +%@" too, with no translation; and a string still being translated on
+    // the Mac shows in English there. Either way Windows has nothing to add, and the tests below would flag it.
+    if (LANGUAGES.some((lang) => lang !== "en" && out[lang] === undefined)) continue;
     // The English plural forms are needed to pick "one" in English too.
     if (typeof en !== "string") out.en = en;
     strings[key] = out;
