@@ -124,6 +124,10 @@ targets:
           - "Phone/**"
           - "Widgets/**"
           - "NotificationContent/**"
+      - path: Components/ChromeNowPlaying/Sources
+        type: group
+      - path: Components/ChromeNowPlaying/Resources/bridge.pl
+        buildPhase: resources
       - path: Assets.xcassets
         buildPhase: resources
       - path: Resources/sounds
@@ -143,7 +147,7 @@ targets:
         LSUIElement: YES
         NSHighResolutionCapable: YES
         NSSupportsAutomaticGraphicsSwitching: YES
-        NSAppleEventsUsageDescription: "Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify."
+        NSAppleEventsUsageDescription: "Coucou needs permission to show what is playing and control Music or Spotify, open your terminal, and prepare emails when you ask."
         NSMicrophoneUsageDescription: "Coucou uses the microphone when you dictate, and to note your calls when you ask it to."
         NSAudioCaptureUsageDescription: "Coucou records what your Mac plays only while you note a call, to write down what the other people say."
         NSSpeechRecognitionUsageDescription: "Coucou turns your voice into the text of a chat message."
@@ -190,6 +194,11 @@ targets:
           PROVISIONING_PROFILE_SPECIFIER: "Coucou Developer ID"
     dependencies:
       - package: FluidAudio
+    preBuildScripts:
+      - name: Build own Chrome Now Playing bridge
+        script: /bin/bash "$SRCROOT/Components/ChromeNowPlaying/scripts/build-bridge.sh" "$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+        basedOnDependencyAnalysis: false
+        showEnvVars: false
     postBuildScripts:
       - name: "Write Git Hash to Info.plist"
         script: |

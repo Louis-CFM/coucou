@@ -69,6 +69,21 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(recapHideProjects, forKey: "recapHideProjects") }
     }
 
+    // nil follows integrations; a stored hex keeps the main mascot's color fixed.
+    @Published var lockedMochiColor: String? = UserDefaults.standard.string(forKey: "mochi.lockedColor") {
+        didSet { UserDefaults.standard.set(lockedMochiColor, forKey: "mochi.lockedColor") }
+    }
+
+    func toggleMochiColorLock() {
+        if lockedMochiColor != nil {
+            lockedMochiColor = nil
+        } else if let configured = pillColors[mainPillId] {
+            lockedMochiColor = configured
+        } else {
+            lockedMochiColor = "#E6E9EE"
+        }
+    }
+
     // Mochi outfit selection — persisted
     @Published var mochiOutfitSelection: Outfit = .auto {
         didSet { Outfit.stored = mochiOutfitSelection }
@@ -553,9 +568,21 @@ final class AppState: ObservableObject {
            let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
+        // Replace the experimental browser-script integration with system Now Playing.
+        if activeIntegrations.remove("integration_youtube") != nil {
+            activeIntegrations.insert("integration_chrome")
+        }
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
            PillCatalog.available.contains(where: { $0.id == v && $0.category == .workspace && !$0.comingSoon }) {
             mainPillId = v
+        }
+        // Repair locks created from a workspace brand color by the first implementation.
+        if ud.integer(forKey: "mochi.personalColorLockVersion") < 2 {
+            if lockedMochiColor != nil {
+                lockedMochiColor = pillColors[mainPillId] ?? "#E6E9EE"
+                ud.set(lockedMochiColor, forKey: "mochi.lockedColor")
+            }
+            ud.set(2, forKey: "mochi.personalColorLockVersion")
         }
         if let d = ud.data(forKey: "claudePlanUsage"),
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }

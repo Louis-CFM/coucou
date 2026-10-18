@@ -56,133 +56,201 @@ struct OverviewView: View {
     @State private var showingN8nDetail = false
     @State private var activeDiffId: Int? = nil
 
+    @State private var musicExpansion: CGFloat = 0
+    @State private var musicDragOrigin: CGFloat?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var agent: AgentTask? { state.focusTask }
 
-    var body: some View {
-        HStack(spacing: 10) {
-            // Left card: title row + ticker below + ↗ button overlay
-            ZStack(alignment: .topLeading) {
-                CardBackground(wash: nil)
+    private var musicFocus: Bool {
+        #if !APPSTORE
+        return ["integration_music", "integration_spotify", "integration_chrome"].contains(state.focusId ?? "")
+        #else
+        return false
+        #endif
+    }
 
-                // Title row + ticker stacked (or integration card)
-                if let agent = agent {
-                    if agent.isIntegration {
-                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
-                            withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
-                        })
-                    } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(Color(hex: agent.color))
-                                    .frame(width: 7, height: 7)
-                                Text(agent.name)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Color(hex: "#F5F6F8"))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .layoutPriority(1)
-                                Text({ () -> String in
-                                    switch agent.source {
-                                    case .claudeCode: return "Claude Code"
-                                    case .agent:      return "Agent"
-                                    case .n8n:        return "n8n"
-                                    }
-                                }())
+    var body: some View {
+        GeometryReader { geometry in
+            // Redistribute the existing island width: keep the panel and screen bounds intact.
+            let normalWidth = min(CGFloat(322), max(0, geometry.size.width - 52))
+            let expandedWidth = max(normalWidth, geometry.size.width - 52)
+            let fraction = musicFocus ? musicExpansion : 0
+            let cardWidth = normalWidth + (expandedWidth - normalWidth) * fraction
+            HStack(spacing: 10) {
+                // Left card: title row + ticker below + ↗ button overlay
+                ZStack(alignment: .topLeading) {
+                    CardBackground(wash: nil)
+
+                    // Title row + ticker stacked (or integration card)
+                    if let agent = agent {
+                        if agent.isIntegration {
+                            IntegrationCardView(
+                                task: agent, showingDetail: $showingN8nDetail,
+                                onDiffTap: { diffIdx in
+                                    withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                                }
+                            )
+                            #if !APPSTORE
+                            .environment(\.musicCardExpansion, fraction)
+                            .environment(\.musicCardWidth, cardWidth)
+                            #endif
+                        } else {
+                            VStack(alignment: .leading, spacing: 0) {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(hex: agent.color))
+                                        .frame(width: 7, height: 7)
+                                    Text(agent.name)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Color(hex: "#F5F6F8"))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                        .layoutPriority(1)
+                                    Text(
+                                        { () -> String in
+                                            switch agent.source {
+                                            case .claudeCode: return "Claude Code"
+                                            case .agent: return "Agent"
+                                            case .n8n: return "n8n"
+                                            }
+                                        }()
+                                    )
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "#8E939C"))
                                     .lineLimit(1)
                                     .truncationMode(.tail)
-                                Spacer(minLength: 2)
-                                if agent.steps.count > 1 {
-                                    Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(Color(hex: "#6B7079"))
-                                        .fixedSize()
+                                    Spacer(minLength: 2)
+                                    if agent.steps.count > 1 {
+                                        Text("\(min(agent.stepIndex + 1, agent.steps.count))/\(agent.steps.count)")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(Color(hex: "#6B7079"))
+                                            .fixedSize()
+                                    }
                                 }
-                            }
-                            .padding(.top, 6)
-                            .padding(.leading, 108)
-                            .padding(.trailing, 36)
+                                .padding(.top, 6)
+                                .padding(.leading, 108)
+                                .padding(.trailing, 36)
 
-                            TickerView(task: agent, onDiffTap: { diffIdx in
-                                withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
-                            })
+                                TickerView(
+                                    task: agent,
+                                    onDiffTap: { diffIdx in
+                                        withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
+                                    }
+                                )
                                 .frame(height: 44)
                                 .padding(.top, 6)
                                 .padding(.leading, 108)
                                 .padding(.trailing, 12)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.top, 4)
-                    }
-                }
-
-                // Plan detail overlays on top of normal content (GitHub build, home view only)
-                #if !APPSTORE
-                if state.showingPlanDetail {
-                    CardBackground(wash: nil)
-                    Group {
-                        if state.planDetailIsCodex {
-                            CodexPlanCardView(usage: state.codexPlanUsage)
-                        } else {
-                            // Claude and Codex both on: the header shows only the Claude pill,
-                            // Codex is a third row here that opens its own card.
-                            let bothPlans = state.showPlanInNotch && state.planRelayInstalled
-                                && state.showCodexPlanInNotch
-                            ClaudePlanCardView(usage: state.claudePlanUsage,
-                                               codexRow: bothPlans,
-                                               codexUsage: state.codexPlanUsage,
-                                               onCodex: {
-                                                   withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                                       state.planDetailIsCodex = true
-                                                   }
-                                                   state.refreshCodexPlanUsage()
-                                               })
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(.top, 4)
                         }
                     }
-                    .transition(.opacity)
-                }
-                #endif
 
-                // Diff overlay — replaces ticker when a diff step is tapped
-                if let diffId = activeDiffId,
-                   let task = agent,
-                   let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId }) {
-                    CardBackground(wash: nil)
-                    DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
+                    // Plan detail overlays on top of normal content (GitHub build, home view only)
+                    #if !APPSTORE
+                    if state.showingPlanDetail {
+                        CardBackground(wash: nil)
+                        Group {
+                            if state.planDetailIsCodex {
+                                CodexPlanCardView(usage: state.codexPlanUsage)
+                            } else {
+                                // Claude and Codex both on: the header shows only the Claude pill,
+                                // Codex is a third row here that opens its own card.
+                                let bothPlans =
+                                    state.showPlanInNotch && state.planRelayInstalled
+                                    && state.showCodexPlanInNotch
+                                ClaudePlanCardView(
+                                    usage: state.claudePlanUsage,
+                                    codexRow: bothPlans,
+                                    codexUsage: state.codexPlanUsage,
+                                    onCodex: {
+                                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                            state.planDetailIsCodex = true
+                                        }
+                                        state.refreshCodexPlanUsage()
+                                    })
+                            }
+                        }
                         .transition(.opacity)
-                }
-
-                // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                #if !APPSTORE
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
-                #else
-                let hideJumpButton = showingN8nDetail || activeDiffId != nil
-                #endif
-                if !hideJumpButton {
-                    Button(action: { openAgentTarget(agent) }) {
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundColor(Color(hex: "#5F646D"))
-                            .frame(width: 16, height: 16)
-                            .background(Color.white.opacity(0.07))
-                            .clipShape(Circle())
                     }
-                    .buttonStyle(.plain)
-                    .padding(.top, 8)
-                    .padding(.trailing, 10)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    #endif
+
+                    // Diff overlay — replaces ticker when a diff step is tapped
+                    if let diffId = activeDiffId,
+                        let task = agent,
+                        let diff = state.sessionDiffs[task.id]?.first(where: { $0.id == diffId })
+                    {
+                        CardBackground(wash: nil)
+                        DiffCardView(diff: diff, onDismiss: { activeDiffId = nil })
+                            .transition(.opacity)
+                    }
+
+                    // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
+                    #if !APPSTORE
+                    let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                    #else
+                    let hideJumpButton = showingN8nDetail || activeDiffId != nil
+                    #endif
+                    if !hideJumpButton {
+                        Button(action: { openAgentTarget(agent) }) {
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(Color(hex: "#5F646D"))
+                                .frame(width: 16, height: 16)
+                                .background(Color.white.opacity(0.07))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 8)
+                        .padding(.trailing, 10 + (musicFocus ? 67 * fraction : 0))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+                .frame(width: cardWidth)
+                .overlay(alignment: .trailing) {
+                    #if !APPSTORE
+                    if musicFocus && !hideMusicResize {
+                        MusicCardResizeHandle(
+                            expanded: musicExpansion > 0.5, onToggle: toggleMusicExpansion,
+                            onDrag: { translation in
+                                if musicDragOrigin == nil { musicDragOrigin = musicExpansion }
+                                let travel = max(1, expandedWidth - normalWidth)
+                                musicExpansion = min(1, max(0, (musicDragOrigin ?? 0) + translation / travel))
+                                state.lastActivity = .now
+                            },
+                            onEnd: {
+                                musicDragOrigin = nil
+                                withAnimation(resizeAnimation) { musicExpansion = musicExpansion > 0.5 ? 1 : 0 }
+                            }
+                        )
+                        .padding(.trailing, 1)
+                    }
+                    #endif
+                }
+
+                // Right card: agent pills
+                CardBackground(wash: nil) {
+                    #if !APPSTORE
+                    if musicFocus && musicExpansion > 0.15 {
+                        MusicHeadColumn(state: state)
+                    } else {
+                        AgentPillsView(state: state)
+                    }
+                    #else
+                    AgentPillsView(state: state)
+                    #endif
                 }
             }
-            .frame(width: 322)
-
-            // Right card: agent pills
-            CardBackground(wash: nil) {
-                AgentPillsView(state: state)
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .coordinateSpace(name: "musicCardResize")
         }
         .onChange(of: state.focusId) { _, new in
+            if !musicFocus {
+                musicExpansion = 0
+                musicDragOrigin = nil
+            }
             showingN8nDetail = false
             activeDiffId = nil
             #if !APPSTORE
@@ -192,12 +260,18 @@ struct OverviewView: View {
         }
         #if !APPSTORE
         .onChange(of: state.view) { _, v in
-            if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
+            if v != .overview {
+                state.showingPlanDetail = false
+                activeDiffId = nil
+            }
         }
         #endif
         .onChange(of: state.mode) { _, m in
             #if !APPSTORE
-            if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
+            if m != .expanded {
+                state.showingPlanDetail = false
+                activeDiffId = nil
+            }
             #endif
             if m == .expanded && state.focusId == "integration_github" {
                 GithubPoller.shared.refreshIfStale()
@@ -208,10 +282,28 @@ struct OverviewView: View {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = nil }
                 _ = id
             } else if let task = state.focusTask,
-                      let last = state.sessionDiffs[task.id]?.last {
+                let last = state.sessionDiffs[task.id]?.last
+            {
                 withAnimation(.easeIn(duration: 0.16)) { activeDiffId = last.id }
             }
         }
+    }
+
+    private var hideMusicResize: Bool {
+        #if !APPSTORE
+        return showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+        #else
+        return true
+        #endif
+    }
+
+    private var resizeAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.22)
+    }
+
+    private func toggleMusicExpansion() {
+        state.lastActivity = .now
+        withAnimation(resizeAnimation) { musicExpansion = musicExpansion > 0.5 ? 0 : 1 }
     }
 
     private func openAgentTarget(_ task: AgentTask?) {
@@ -220,7 +312,8 @@ struct OverviewView: View {
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
+            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId })
+            {
                 app.activate(options: .activateIgnoringOtherApps)
             } else {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
@@ -240,11 +333,12 @@ struct OverviewView: View {
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
-               let url = exchange.tradeURL(exchange.pair(first, CryptoSettings.currency)) {
+                let url = exchange.tradeURL(exchange.pair(first, CryptoSettings.currency))
+            {
                 NSWorkspace.shared.open(url)
             }
         case "integration_portfolio":
-            break   // no global URL; individual holdings open their exchange pages
+            break  // no global URL; individual holdings open their exchange pages
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
@@ -262,21 +356,23 @@ struct OverviewView: View {
         case "agent_cursor":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
+                withBundleIdentifier: "com.todesktop.230313mzl4w4u92")
+            {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
         case "agent_codex":
             #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: "com.openai.codex") {
+                withBundleIdentifier: "com.openai.codex")
+            {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
             #endif
         case "agent_claude-desktop":
             openClaudeDesktopApp()
         case "agent_gemini", "agent_antigravity",
-             "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
+            "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
             #if !APPSTORE
             TerminalTarget.activate(sessionBundleId: nil)
             #endif
@@ -293,6 +389,10 @@ struct OverviewView: View {
         case "integration_music":
             #if !APPSTORE
             MusicController.shared.openMusic()
+            #endif
+        case "integration_chrome":
+            #if !APPSTORE
+            ChromeController.shared.openPlayer()
             #endif
         case "integration_spotify":
             #if !APPSTORE
@@ -2218,6 +2318,10 @@ struct IntegrationCardView: View {
             MailCardView()
                 .transition(.opacity)
             #endif
+        } else if task.id == "integration_chrome" {
+            #if !APPSTORE
+            ChromeCardView()
+            #endif
         } else if isSpotify {
             #if !APPSTORE
             SpotifyCardView()
@@ -4097,6 +4201,13 @@ struct AgentPillsView: View {
                             SoundEngine.shared.play("blip")
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                         }
+                    } else if task.id == "integration_chrome" {
+                        ChromePill(task: task, swapping: $swapping) {
+                            swapping = true
+                            state.setFocus(task.id)
+                            SoundEngine.shared.play("blip")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
+                        }
                     } else if task.id == "integration_spotify" {
                         SpotifyPill(task: task, swapping: $swapping) {
                             swapping = true
@@ -4297,100 +4408,223 @@ struct MusicControlButton: View {
         }
     }
 }
+struct MusicCardView: View {
+    @Environment(\.musicCardExpansion) private var expansion
+    @ObservedObject private var controller = MusicController.shared
+
+    @ObservedObject private var appState = AppState.shared
+    private let accent = Color(hex: "#FA2D48")
+
+    var body: some View {
+        Group {
+            if appState.musicAutomationDenied {
+                deniedView
+            } else if !controller.automationGranted {
+                permissionView
+            } else if controller.trackTitle != nil {
+                nowPlaying
+            } else {
+                idleView
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 4)
+        // Reading here never triggers the first permission prompt.
+        .onAppear { controller.refresh() }
+    }
+
+    // The card is 98 pt tall: artwork row, progress row, controls row.
+    private var nowPlaying: some View {
+        let subtitle = [controller.artist ?? "", controller.album ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 9) {
+                NowPlayingArtwork(image: controller.artwork, accent: accent)
+                    .modifier(MusicArtworkExpansion(fraction: expansion))
+                    .onTapGesture { controller.openMusic() }
+                    .help(String(localized: "Open Music"))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Circle().fill(accent).frame(width: 6, height: 6)
+                        Text(controller.trackTitle ?? "")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "#F5F6F8"))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "#8E939C"))
+                            .lineLimit(1).truncationMode(.tail)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.trailing, 24 + 67 * expansion)  // reserve the trailing cover
+            .padding(.top, 6)
+
+            // Position runs on its own clock only while playing and on screen
+            TimelineView(.animation(minimumInterval: 0.5, paused: !controller.isPlaying)) { context in
+                NowPlayingProgress(
+                    position: controller.position(at: context.date),
+                    duration: controller.duration,
+                    accent: accent,
+                    canSeek: controller.duration > 0,
+                    onSeek: { controller.seek(to: $0) }
+                )
+            }
+            .padding(.top, 7)
+            .padding(.trailing, 67 * expansion)
+
+            controls
+                .padding(.top, 4)
+                .padding(.trailing, 67 * expansion)
+        }
+        .padding(.leading, 108)
+        .padding(.trailing, 12)
+    }
+
+    private var controls: some View {
+        MusicTransportLayout(fraction: expansion) {
+            HStack(spacing: 6) {
+                NowPlayingIconButton(
+                    icon: "shuffle", size: 10,
+                    tint: controller.shuffling ? accent : Color(hex: "#6B7079"),
+                    help: controller.shuffling ? "Shuffle on" : "Shuffle off"
+                ) {
+                    controller.setShuffling(!controller.shuffling)
+                }
+                NowPlayingIconButton(icon: "backward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Previous") {
+                    controller.previousTrack()
+                }
+                Button(action: { controller.playPause() }) {
+                    ZStack {
+                        Circle().fill(Color(hex: "#F5F6F8"))
+                        Image(systemName: controller.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 8.5, weight: .bold))
+                            .foregroundColor(Color(hex: "#0E0F11"))
+                            .offset(x: controller.isPlaying ? 0 : 1)
+                    }
+                    .frame(width: 20, height: 20)
+                }
+                .buttonStyle(NowPlayingPressStyle())
+                .help(controller.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
+                NowPlayingIconButton(icon: "forward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Next") {
+                    controller.nextTrack()
+                }
+                NowPlayingIconButton(
+                    icon: controller.repeatMode == "one" ? "repeat.1" : "repeat", size: 10,
+                    tint: controller.repeating ? accent : Color(hex: "#6B7079"),
+                    help: controller.repeatMode == "one"
+                        ? "Repeat one" : (controller.repeating ? "Repeat all" : "Repeat off")
+                ) {
+                    controller.cycleRepeat()
+                }
+            }
+            NowPlayingVolume(volume: controller.volume, accent: accent) { controller.setVolume($0) }
+        }
+    }
+
+    // MARK: Idle / not installed / denied (same layout as the other idle cards)
+
+    private var idleView: some View {
+        return VStack(alignment: .leading, spacing: 6) {
+            header(dot: accent)
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color(hex: "#22C55E"))
+                    .frame(width: 5, height: 5)
+                Text(String(localized: "Not playing"))
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "#6B7079"))
+            }
+            .padding(.leading, 108)
+            .padding(.top, 2)
+
+            Button(String(localized: "Open Music")) { controller.openMusic() }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(accent.opacity(0.85))
+                .buttonStyle(.plain)
+                .padding(.leading, 108)
+                .padding(.top, 2)
+        }
+    }
+
+    private var permissionView: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Apple Music").font(.system(size: 12, weight: .semibold))
+            Text("Connect Apple Music to show artwork and control playback. macOS will ask for permission.")
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8E939C"))
+                .fixedSize(horizontal: false, vertical: true)
+            Button(
+                controller.isRequestingAccess
+                    ? String(localized: "Connecting…") : String(localized: "Connect Apple Music")
+            ) {
+                controller.requestAccess()
+            }
+            .disabled(controller.isRequestingAccess)
+            .buttonStyle(.plain)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(accent)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            if controller.connectionFailed {
+                Text("Could not connect. Open Music and try again.")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#8E939C"))
+            }
+        }
+        .padding(.leading, 108)
+        .padding(.trailing, 12)
+    }
+
+    private var deniedView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            header(dot: Color(hex: "#F4505E"))
+            Text("Allow Coucou to control Apple Music")
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8E939C"))
+                .padding(.leading, 108)
+                .padding(.trailing, 12)
+            Button("Open Settings…") { controller.openAutomationSettings() }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(accent.opacity(0.85))
+                .buttonStyle(.plain)
+                .padding(.leading, 108)
+                .padding(.top, 2)
+            Button("Check permission") { controller.requestAccess() }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(accent.opacity(0.85))
+                .buttonStyle(.plain)
+                .disabled(controller.isRequestingAccess)
+                .padding(.leading, 108)
+        }
+    }
+
+    private func header(dot: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(dot).frame(width: 7, height: 7)
+            Text("Apple Music")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color(hex: "#F5F6F8"))
+            Text(PillCatalog.definition(for: "integration_music")?.subtitle ?? "Integration")
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "#8E939C"))
+            Spacer(minLength: 2)
+        }
+        .padding(.top, 6)
+        .padding(.leading, 108)
+        .padding(.trailing, 36)
+    }
+}
+
 #endif
 
 // MARK: - Music Card View (GitHub build only)
 
 #if !APPSTORE
-struct MusicCardView: View {
-    @ObservedObject private var controller = MusicController.shared
-    @ObservedObject private var appState = AppState.shared
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if appState.musicAutomationDenied {
-                // Automation denied — prompt user to fix
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color(hex: "#F4505E"))
-                        .frame(width: 7, height: 7)
-                    Text("Apple Music")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(hex: "#F5F6F8"))
-                    Spacer(minLength: 2)
-                }
-                .padding(.top, 6)
-                .padding(.leading, 108)
-                .padding(.trailing, 36)
-
-                Text("Allow Coucou to control Music")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(hex: "#8E939C"))
-                    .padding(.leading, 108)
-                    .padding(.trailing, 12)
-
-                Button("Open Settings…") { MusicController.shared.openAutomationSettings() }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(hex: "#FA2D48").opacity(0.85))
-                    .buttonStyle(.plain)
-                    .padding(.leading, 108)
-                    .padding(.top, 2)
-            } else {
-                // Line 1: dot + title
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color(hex: "#FA2D48"))
-                        .frame(width: 7, height: 7)
-                    if let title = controller.trackTitle {
-                        Text(title)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "#F5F6F8"))
-                            .lineLimit(1).truncationMode(.tail)
-                            .frame(maxWidth: 150, alignment: .leading)
-                    }
-                }
-                .padding(.top, 6)
-                .padding(.leading, 108)
-
-                // Line 2: artist
-                if let artist = controller.artist {
-                    Text(artist)
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#8E939C"))
-                        .lineLimit(1).truncationMode(.tail)
-                        .frame(maxWidth: 150, alignment: .leading)
-                        .padding(.leading, 108)
-                }
-
-                // Line 3: controls
-                HStack(spacing: 8) {
-                    Button(action: { MusicController.shared.previousTrack() }) {
-                        Image(systemName: "backward.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                    }
-                    .buttonStyle(.plain)
-                    Button(action: { MusicController.shared.playPause() }) {
-                        Image(systemName: appState.musicPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#FA2D48"))
-                    }
-                    .buttonStyle(.plain)
-                    Button(action: { MusicController.shared.nextTrack() }) {
-                        Image(systemName: "forward.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.leading, 108)
-                .padding(.top, 6)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.top, 4)
-    }
-}
 #endif
 
 struct PillBadgeView: View {
@@ -5164,3 +5398,59 @@ extension Color {
         )
     }
 }
+
+#if !APPSTORE
+/// A dedicated grip leaves playback buttons and the mascot's own drag gesture untouched.
+private struct MusicCardResizeHandle: View {
+    let expanded: Bool
+    let onToggle: () -> Void
+    let onDrag: (CGFloat) -> Void
+    let onEnd: () -> Void
+
+    var body: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.35))
+            .frame(width: 3, height: 24)
+            .frame(width: 14, height: 48)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onToggle)
+            .gesture(
+                DragGesture(minimumDistance: 4, coordinateSpace: .named("musicCardResize"))
+                    .onChanged { onDrag($0.translation.width) }
+                    .onEnded { _ in onEnd() }
+            )
+            .accessibilityElement()
+            .accessibilityLabel(expanded ? "Reducir tarjeta musical" : "Ampliar tarjeta musical")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { onToggle() }
+            .help("Arrastra a la derecha para ampliar, a la izquierda para reducir. También puedes pulsar.")
+    }
+}
+
+/// Same four tasks, same animated mascot and routing; only their arrangement changes.
+private struct MusicHeadColumn: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        VStack(spacing: 2) {
+            ForEach(Array(state.tasks.filter { $0.id != state.focusId }.prefix(4))) { task in
+                Button {
+                    state.setFocus(task.id)
+                    state.lastActivity = .now
+                    SoundEngine.shared.play("blip")
+                } label: {
+                    MiniBotCanvasView(task: task)
+                        .frame(width: 18 / 0.6, height: 18 / 0.6)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(task.name)
+                .help(task.name)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        .padding(.trailing, 10)
+    }
+}
+#endif

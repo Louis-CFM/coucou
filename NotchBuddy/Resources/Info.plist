@@ -43,7 +43,7 @@
 		<true/>
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify.</string>
+	<string>Coucou needs permission to show what is playing and control Music or Spotify, open your terminal, and prepare emails when you ask.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Coucou records what your Mac plays only while you note a call, to write down what the other people say.</string>
 	<key>NSContactsUsageDescription</key>
