@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit
  * every call is POST {worker}/v1/phone/{action} with {id, secret, ...}; the box
  * only ever keeps sha256(secret). The phone actions are claim / fetch /
  * decide / chat / select / unpair — pair and take belong to the PC.
+ *
+ * `secret` sent to the relay is HKDF of the pairing master (BoxCrypto), never
+ * the master itself; card text, chat lines and decisions travel as encrypted
+ * blobs the box cannot read.
  */
 object Relay {
     private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -102,9 +106,20 @@ object Relay {
         }
     }
 
+    /** The pair stored on this phone: p.secret is the master, what the relay
+     * sees is only its derived bearer. */
     private fun auth(p: Prefs.Pairing) = JSONObject()
         .put("id", p.id)
-        .put("secret", p.secret)
+        .put("secret", BoxCrypto.authBearer(p.secret, p.id) ?: p.secret)
+
+    /** A stored blob decrypted back to its JSON object, or the object itself
+     * when it arrived as plaintext (a state pushed by a pre-E2E PC build). */
+    private fun unseal(ctx: BoxCrypto.CipherCtx, o: JSONObject?): JSONObject? {
+        if (o == null) return null
+        if (!o.has("enc")) return o
+        val plain = BoxCrypto.open(ctx, o) ?: return null
+        return runCatching { JSONObject(String(plain, Charsets.UTF_8)) }.getOrNull()
+    }
 
     fun claim(p: Prefs.Pairing, fcmToken: String) {
         val body = auth(p).put("token", fcmToken).put("name", p.deviceName)
@@ -114,38 +129,58 @@ object Relay {
 
     fun fetch(p: Prefs.Pairing): Fetch {
         val r = post(p.worker, "fetch", auth(p))
-        return Fetch(
+        val h2p = BoxCrypto.ciphers(p.secret, p.id)?.second ?: return Fetch(
             paired = r.optBoolean("paired"),
             device = r.optString("device").ifBlank { null },
             state = r.optJSONObject("state")?.let(::parseState),
             card = r.optJSONObject("card")?.let(::parseCard),
         )
+        return Fetch(
+            paired = r.optBoolean("paired"),
+            device = r.optString("device").ifBlank { null },
+            state = unseal(h2p, r.optJSONObject("state"))?.let(::parseState),
+            card = unseal(h2p, r.optJSONObject("card"))?.let(::parseCard),
+        )
+    }
+
+    /** One phone → PC message, sealed. `inner` gets the type and the write time. */
+    private fun sendSealed(p: Prefs.Pairing, action: String, inner: JSONObject) {
+        val (p2h, _) = BoxCrypto.ciphers(p.secret, p.id) ?: throw Forbidden()
+        inner.put("at", System.currentTimeMillis())
+        val blob = BoxCrypto.seal(p2h, inner.toString().toByteArray(Charsets.UTF_8))
+        val body = auth(p)
+            .put("n", blob.getString("n"))
+            .put("ct", blob.getString("ct"))
+        post(p.worker, action, body)
     }
 
     fun decide(p: Prefs.Pairing, requestId: String, decision: String, answers: Map<String, Any>?) {
-        val body = auth(p).put("requestId", requestId).put("decision", decision)
+        val inner = JSONObject()
+            .put("type", "decision")
+            .put("requestId", requestId)
+            .put("decision", decision)
         if (answers != null) {
-            body.put("answers", JSONObject().apply {
+            inner.put("answers", JSONObject().apply {
                 answers.forEach { (k, v) -> put(k, if (v is List<*>) JSONArray(v) else v) }
             })
         }
-        post(p.worker, "decide", body)
+        sendSealed(p, "decide", inner)
     }
 
     fun chat(p: Prefs.Pairing, text: String, sessionId: String? = null, agent: String? = null) {
-        val body = auth(p).put("text", text)
+        val inner = JSONObject().put("type", "chat").put("text", text)
         if (!sessionId.isNullOrBlank()) {
-            body.put("sessionId", sessionId)
-            if (!agent.isNullOrBlank()) body.put("agent", agent)
+            inner.put("sessionId", sessionId)
+            if (!agent.isNullOrBlank()) inner.put("agent", agent)
         }
-        post(p.worker, "chat", body)
+        sendSealed(p, "chat", inner)
     }
 
     /** Tells the PC which CLI session's transcript to push ("" = island chat). */
     fun select(p: Prefs.Pairing, sessionId: String, agent: String? = null) {
-        val body = auth(p).put("sessionId", sessionId)
-        if (!agent.isNullOrBlank()) body.put("agent", agent)
-        post(p.worker, "select", body)
+        val inner = JSONObject().put("type", "chat_sel").put("sessionId", sessionId)
+        if (!agent.isNullOrBlank()) inner.put("agent", agent)
+        sendSealed(p, "select", inner)
     }
 
     fun unpair(p: Prefs.Pairing) {
