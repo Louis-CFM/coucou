@@ -39,7 +39,7 @@ pub fn workspace(settings: &crate::settings::Settings) -> Result<PathBuf, String
 
 pub fn system_prompt(voice: bool) -> String {
     let style = if voice {
-        "Your answer is read aloud. Respond in the user's language in one or two short sentences, without Markdown. Use your tools to carry out requested work before answering."
+        "Your answer is read aloud. Respond in the user's language in one or two short sentences, without Markdown. When speaking Portuguese, use European Portuguese from Portugal, including its vocabulary and phrasing. Use your tools to carry out requested work before answering."
     } else {
         "Respond in the user's language. Use light Markdown suited to a small chat window. Use your CLI tools to carry out requested work before answering."
     };
@@ -82,6 +82,7 @@ pub async fn send(
             context.as_ref(),
             false,
             &[],
+            None,
             |text| {
                 if last.elapsed() >= Duration::from_millis(65) {
                     let _ = app.emit_to(crate::island::WINDOW_LABEL, "chat-delta", text);
@@ -105,9 +106,11 @@ pub fn run(
     context: Option<&ChatContext>,
     voice: bool,
     tools: &[Value],
+    cancel: Option<std::sync::Arc<AtomicBool>>,
     on_delta: impl FnMut(String),
 ) -> Result<(String, bool), String> {
-    let turn = chat.begin(provider);
+    let turn = chat.begin_with_cancel(provider, cancel.unwrap_or_default());
+    if turn.cancel.load(Ordering::Relaxed) { return Err("Voice session stopped.".into()); }
     let user_text = crate::local_chat::user_text(turn.first, context, query);
     let cwd = workspace(settings)?;
     let cwd_text = cwd.to_string_lossy().to_string();

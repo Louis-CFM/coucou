@@ -14,6 +14,9 @@
 
 pub mod brain;
 pub mod wake;
+pub mod dialogue;
+pub mod session;
+mod tts;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -45,6 +48,20 @@ struct Running {
 }
 
 static RUNNING: Mutex<Option<Running>> = Mutex::new(None);
+static CAPTURE_OWNER: Mutex<()> = Mutex::new(());
+
+/// Wait for the previous voice capture to close instead of guessing how long
+/// its ASR or tool cancellation takes. A second Super also cancels this wait.
+fn capture_lease(stop: &AtomicBool) -> Option<std::sync::MutexGuard<'static, ()>> {
+    loop {
+        if stop.load(Ordering::Relaxed) { return None; }
+        match CAPTURE_OWNER.try_lock() {
+            Ok(lease) => return Some(lease),
+            Err(std::sync::TryLockError::Poisoned(error)) => return Some(error.into_inner()),
+            Err(std::sync::TryLockError::WouldBlock) => std::thread::sleep(Duration::from_millis(50)),
+        }
+    }
+}
 
 /// Rust waits on these for the island's answers and the end of speech.
 fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
@@ -68,8 +85,9 @@ pub fn requirements_met(app: &AppHandle) -> bool {
 /// Starts or stops listening to follow the preference.
 pub fn sync(app: &AppHandle) {
     let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.voice);
+    let explicit = session::active();
     let mut running = RUNNING.lock().unwrap();
-    match (wanted && requirements_met(app), running.is_some()) {
+    match (wanted && !session::suspend_hotword() && requirements_met(app), running.is_some()) {
         (true, false) => {
             let stop = Arc::new(AtomicBool::new(false));
             let app2 = app.clone();
@@ -84,7 +102,7 @@ pub fn sync(app: &AppHandle) {
                 r.stop.store(true, Ordering::Relaxed);
             }
             let dictation = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.enabled);
-            if !dictation && !crate::notes::is_recording(app) {
+            if !dictation && !explicit && !crate::notes::is_recording(app) {
                 speech::unload();
             }
             crate::log::line("voice: « OK Coucou » off");
@@ -95,7 +113,7 @@ pub fn sync(app: &AppHandle) {
 
 /// « OK Coucou » is listening (the voice model stays loaded).
 pub fn is_listening() -> bool {
-    RUNNING.lock().unwrap().is_some()
+    session::active() || RUNNING.lock().unwrap().is_some()
 }
 
 /// Starts again on another microphone.
@@ -120,6 +138,7 @@ enum Mode {
 }
 
 fn run(app: AppHandle, stop: Arc<AtomicBool>) {
+    let Some(_lease) = capture_lease(&stop) else { return };
     let mic = crate::flow::get(&app).map(|f| f.store.lock().unwrap().prefs.mic.clone()).unwrap_or_default();
     let (tx, rx) = mpsc::channel::<Vec<f32>>();
     let capture = audio::Capture::start(audio::Source::Mic(if mic.is_empty() { None } else { Some(mic) }), move |s| {
@@ -198,7 +217,10 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
             mode = Mode::Wake;
             vad.hangover = 25;
             show(&app, Some(VoiceView { phase: "thinking".into(), heard: question.clone(), answer: String::new() }));
-            let reply = brain.respond(&app, &question);
+            let provider = app.try_state::<crate::Shared>().map(|s| s.settings.lock().unwrap().chat_provider.clone()).unwrap_or_default();
+            brain.forget_if_idle();
+            let reply = brain.respond_as(&app, &question, &provider, Some(stop.clone()));
+            if stop.load(Ordering::Relaxed) { break; }
             let answer = reply.as_ref().map(|r| r.text.clone()).unwrap_or_default();
             if answer.is_empty() {
                 let done = reply.is_some_and(|r| r.acted);
@@ -211,7 +233,7 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
                 continue;
             }
             show(&app, Some(VoiceView { phase: "speaking".into(), heard: question.clone(), answer: answer.clone() }));
-            speak(&app, &answer);
+            speak_stoppable(&app, &answer, Some(&stop), None);
             vad.reset();
             // Drop what the microphone heard of Coucou's own voice.
             while rx.try_recv().is_ok() {}
@@ -236,13 +258,32 @@ struct Say {
     id: u64,
     text: String,
     lang: Option<&'static str>,
-    /// ElevenLabs' MP3, base64.
+    /// Audio data URI (local WAV or ElevenLabs MP3).
     audio: Option<String>,
     gender: String,
+    allow_system_fallback: bool,
 }
 
 /// Says `text` and returns once it is said (or after a sensible time).
-fn speak(app: &AppHandle, text: &str) {
+async fn until_stopped<T>(future: impl std::future::Future<Output = T>, stop: Option<&AtomicBool>) -> Option<T> {
+    tokio::pin!(future);
+    loop {
+        if stop.is_some_and(|s| s.load(Ordering::Relaxed)) { return None; }
+        tokio::select! {
+            result = &mut future => return Some(result),
+            _ = tokio::time::sleep(Duration::from_millis(50)), if stop.is_some() => {}
+        }
+    }
+}
+
+fn cancel_speech(app: &AppHandle) {
+    let _ = app.emit_to(pill::LABEL, "voice-cancel", ());
+    for (_, tx) in pending().lock().unwrap().drain() { let _ = tx.send(String::new()); }
+    tts::cancel_native();
+}
+
+fn speak_stoppable(app: &AppHandle, text: &str, stop: Option<&AtomicBool>, provider: Option<&str>) {
+    let epoch = tts::epoch();
     let (output, gender) = crate::flow::get(app)
         .map(|f| {
             let p = &f.store.lock().unwrap().prefs;
@@ -250,16 +291,24 @@ fn speak(app: &AppHandle, text: &str) {
         })
         .unwrap_or_else(|| ("system".into(), "female".into()));
     if output == "off" {
-        std::thread::sleep(Duration::from_millis(1500));
         return;
     }
-    let audio = if output == "elevenlabs" { elevenlabs(text, &gender).map(|mp3| base64(&mp3)) } else { None };
+    let audio = if output == "elevenlabs" { elevenlabs(text, &gender).map(|mp3| format!("data:audio/mpeg;base64,{}", base64(&mp3))) }
+        else { tts::generate(app, &output, provider, text, stop) };
+    if stop.is_some_and(|s| s.load(Ordering::Relaxed)) || tts::epoch() != epoch { return; }
+    // An unavailable online voice keeps the written answer. Never silently
+    // switch to the voices the user rejected or to a paid speech API.
+    if output == "edge" && audio.is_none() { return; }
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
     pending().lock().unwrap().insert(id, tx);
-    let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: wake::speech_lang(text), audio, gender });
+    let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: wake::speech_lang(text), audio, gender, allow_system_fallback: output != "edge" });
     let words = crate::flow::text::word_count(text) as u64;
-    let _ = rx.recv_timeout(Duration::from_millis(4000 + words * 600));
+    let until = Instant::now() + Duration::from_millis(4000 + words * 600);
+    while Instant::now() < until {
+        if stop.is_some_and(|s| s.load(Ordering::Relaxed)) { cancel_speech(app); break; }
+        if rx.recv_timeout(Duration::from_millis(50)).is_ok() { break; }
+    }
     pending().lock().unwrap().remove(&id);
 }
 
@@ -276,35 +325,22 @@ pub fn voice_done(id: u64, text: Option<String>) {
 #[tauri::command]
 pub async fn voice_say_native(text: String, lang: Option<String>) -> bool {
     tauri::async_runtime::spawn_blocking(move || {
-        #[cfg(target_os = "linux")]
-        {
-            let lang = lang.unwrap_or_default();
-            let short = lang.split('-').next().unwrap_or("").to_string();
-            if let Some(spd) = crate::platform::find_on_path("spd-say") {
-                let mut cmd = std::process::Command::new(spd);
-                cmd.arg("-w");
-                if !short.is_empty() {
-                    cmd.args(["-l", &short]);
-                }
-                return cmd.arg(&text).status().is_ok_and(|s| s.success());
-            }
-            if let Some(espeak) = crate::platform::find_on_path("espeak-ng") {
-                let mut cmd = std::process::Command::new(espeak);
-                if !short.is_empty() {
-                    cmd.args(["-v", &short]);
-                }
-                return cmd.arg(&text).status().is_ok_and(|s| s.success());
-            }
-            false
-        }
-        #[cfg(windows)]
-        {
-            let _ = (text, lang);
-            false
-        }
+        tts::say_native(&text, lang.as_deref())
     })
     .await
     .unwrap_or(false)
+}
+
+#[tauri::command]
+pub async fn voice_preview(app: AppHandle, provider: Option<String>) {
+    if session::active() || pill::dictating(&app) || crate::notes::is_recording(&app) { return; }
+    cancel_speech(&app);
+    tauri::async_runtime::spawn_blocking(move || {
+        let raquel = crate::flow::get(&app).is_some_and(|f| f.store.lock().unwrap().prefs.voice_output == "edge");
+        let sample = if raquel { "Olá! Esta é a minha voz para as nossas conversas.".into() }
+            else { crate::i18n::t("Hello! This is my voice for our conversations.") };
+        speak_stoppable(&app, &sample, None, provider.as_deref());
+    }).await.ok();
 }
 
 /// ElevenLabs' MP3 for `text`, with the user's key; None and the system voice speaks.
@@ -522,6 +558,20 @@ fn find_app(wanted: &str) -> Option<(String, Box<dyn FnOnce()>)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stopping_does_not_wait_for_the_previous_microphone_owner() {
+        let previous = CAPTURE_OWNER.lock().unwrap();
+        let stop = AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            let waiting = scope.spawn(|| capture_lease(&stop).is_none());
+            std::thread::sleep(Duration::from_millis(20));
+            stop.store(true, Ordering::Relaxed);
+            assert!(waiting.join().unwrap());
+        });
+        drop(previous);
+        assert!(capture_lease(&AtomicBool::new(false)).is_some());
+    }
 
     #[test]
     fn base64_matches_the_standard() {

@@ -8,6 +8,8 @@
 // ~/.local/share/coucou/Models (Linux). From then on everything runs offline.
 
 pub mod audio;
+pub mod local_tts;
+pub mod edge_tts;
 
 use std::io::Write;
 use std::path::PathBuf;

@@ -78,6 +78,11 @@ pub fn get(app: &AppHandle) -> Option<Arc<Flow>> {
     app.try_state::<Arc<Flow>>().map(|s| s.inner().clone())
 }
 
+/// Voice routing hands off only after its capture is closed.
+pub fn voice_dictation(app: &AppHandle, start: bool) {
+    if let Some(flow) = get(app) { flow.send(if start { KeyEvent::HandsFree } else { KeyEvent::Cancel }); }
+}
+
 /// A program's name as people know it: "outlook" → "Outlook".
 pub fn display_name(stem: &str) -> String {
     let id = stem.to_lowercase();
@@ -498,6 +503,7 @@ pub fn flow_set_prefs(app: AppHandle, flow: State<Arc<Flow>>, prefs: Prefs) {
     if prefs.enabled && (!before.enabled || restart) {
         enable(&app, &flow);
     }
+    if before.voice != prefs.voice { crate::voice::session::allow_hotword(); }
     if before.voice != prefs.voice || before.mic != prefs.mic {
         if before.mic != prefs.mic {
             crate::voice::restart(&app);

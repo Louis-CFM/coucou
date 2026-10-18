@@ -705,6 +705,10 @@ fn open_settings_window(app: AppHandle, page: Option<String>) {
     show_hub(&app, Some(page.as_deref().unwrap_or("general")));
 }
 
+fn voice_request(args: &[String]) -> bool {
+    args.iter().any(|arg| arg == "--voice-session") || args.windows(2).any(|pair| pair[0] == "--shortcut" && pair[1] == "voiceTalk")
+}
+
 pub fn run() {
     platform::prepare_environment();
     let loaded = settings::load();
@@ -713,6 +717,7 @@ pub fn run() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if voice_request(&argv) { voice::session::toggle(app); return; }
             // `coucou --shortcut <action>`: what a desktop's own keyboard
             // settings run where we can't listen for keys ourselves (Wayland).
             match shortcuts::from_args(&argv) {
@@ -871,6 +876,9 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            voice::voice_preview,
+            voice::session::voice_session_toggle,
+            voice::session::voice_learn_alias,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -919,7 +927,15 @@ pub fn run() {
                 let _ = handle.autolaunch().enable();
             }
             let open_window = flow::get(&handle).map(|f| f.store.lock().unwrap().prefs.open_at_launch).unwrap_or(true);
-            if open_window && !launched_at_login() {
+            let voice_requested = voice_request(&std::env::args().collect::<Vec<_>>());
+            if voice_requested {
+                let voice_app = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                    voice::session::toggle(&voice_app);
+                });
+            }
+            if open_window && !launched_at_login() && !voice_requested {
                 show_hub(&handle, None);
             }
             Ok(())
@@ -938,6 +954,15 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+
+    #[test]
+    fn voice_cli_routes_only_explicit_requests() {
+        let args = |words: &[&str]| words.iter().map(|word| word.to_string()).collect::<Vec<_>>();
+        assert!(super::voice_request(&args(&["coucou", "--voice-session"])));
+        assert!(super::voice_request(&args(&["coucou", "--shortcut", "voiceTalk"])));
+        assert!(!super::voice_request(&args(&["coucou", "--shortcut", "openChat"])));
+        assert!(!super::voice_request(&args(&["coucou", "voiceTalk"])));
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {

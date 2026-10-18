@@ -12,6 +12,7 @@ import type { Settings } from "../core/state";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { resolveLanguage, setLanguage, systemLanguages, t } from "../i18n/i18n";
 import { HUB_ICONS, keyLabel } from "../hub/ui";
+import { VoiceAudio } from "./voice-audio";
 
 const RESTING_LENGTH = 44;
 const RESTING_THICKNESS = 8;
@@ -417,9 +418,10 @@ interface Say {
   id: number;
   text: string;
   lang: string | null;
-  /** ElevenLabs' MP3, base64. */
+  /** Audio data URI, or legacy raw MP3 base64. */
   audio: string | null;
   gender: "female" | "male";
+  allowSystemFallback?: boolean;
 }
 
 let speaking = false;
@@ -437,6 +439,7 @@ function systemVoice(lang: string | null, gender: string): SpeechSynthesisVoice 
 }
 
 async function sayWithSystem(text: string, lang: string | null, gender: string): Promise<void> {
+  const epoch = voiceEpoch;
   const synth = window.speechSynthesis;
   if (synth && synth.getVoices().length === 0) {
     await new Promise<void>((r) => {
@@ -444,8 +447,10 @@ async function sayWithSystem(text: string, lang: string | null, gender: string):
       setTimeout(r, 600);
     });
   }
+  if (epoch !== voiceEpoch) return;
   if (synth && synth.getVoices().length > 0) {
     await new Promise<void>((resolve) => {
+      cancelPlayback = resolve;
       const u = new SpeechSynthesisUtterance(text);
       const voice = systemVoice(lang, gender);
       if (voice) u.voice = voice;
@@ -460,27 +465,26 @@ async function sayWithSystem(text: string, lang: string | null, gender: string):
   await FlowBridge.sayNative(text, lang);
 }
 
-async function sayMp3(base64: string): Promise<boolean> {
-  try {
-    const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
-    await audio.play();
-    await new Promise<void>((resolve) => {
-      audio.onended = () => resolve();
-      audio.onerror = () => resolve();
-    });
-    return true;
-  } catch {
-    return false;
-  }
+const voiceAudio = new VoiceAudio();
+let cancelPlayback: (() => void) | null = null;
+let voiceEpoch = 0;
+function cancelVoice() {
+  voiceEpoch++;
+  window.speechSynthesis?.cancel();
+  voiceAudio.cancel();
+  cancelPlayback?.();
+  cancelPlayback = null;
+  speaking = false;
 }
 
 async function say(s: Say) {
+  const epoch = voiceEpoch;
   speaking = true;
   wake();
   try {
-    if (!(s.audio && (await sayMp3(s.audio)))) await sayWithSystem(s.text, s.lang, s.gender);
+    if (!(s.audio && (await voiceAudio.play(s.audio))) && epoch === voiceEpoch && s.allowSystemFallback !== false) await sayWithSystem(s.text, s.lang, s.gender);
   } finally {
-    speaking = false;
+    if (epoch === voiceEpoch) { cancelPlayback = null; speaking = false; }
     void FlowBridge.voiceDone(s.id);
   }
 }
@@ -517,6 +521,7 @@ async function main() {
     if (!inside) setHovered(false);
   });
   void onEvent<Say>("voice-say", (s) => void say(s));
+  void onEvent("voice-cancel", cancelVoice);
   void onEvent<Settings>("settings-changed", (s) => {
     setLanguage(resolveLanguage(s.language, systemLanguages()));
     render();

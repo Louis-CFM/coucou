@@ -91,9 +91,16 @@ impl Chat {
     /// Starts a turn with `provider`, converting the history if another
     /// provider answered the previous turns.
     pub fn begin(&self, provider: &str) -> Turn {
+        self.begin_with_cancel(provider, Arc::new(AtomicBool::new(false)))
+    }
+
+    /// Voice sessions share their stop signal with the native CLI turn, including
+    /// a stop that arrived just before the CLI was started.
+    pub fn begin_with_cancel(&self, provider: &str, cancel: Arc<AtomicBool>) -> Turn {
         let mut c = self.inner.lock().unwrap();
-        let cancel = Arc::new(AtomicBool::new(false));
-        if let Some(previous) = c.active.replace(cancel.clone()) { previous.store(true, Ordering::Relaxed); }
+        if let Some(previous) = c.active.replace(cancel.clone()) {
+            if !Arc::ptr_eq(&previous, &cancel) { previous.store(true, Ordering::Relaxed); }
+        }
         if c.owner.as_deref() != Some(provider) {
             c.native = c.plain.clone();
             c.owner = Some(provider.to_string());
@@ -300,6 +307,21 @@ pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn consecutive_voice_turns_share_stop_without_cancelling_the_dialogue() {
+        let chat = Chat::default();
+        let stop = Arc::new(AtomicBool::new(false));
+        let first = chat.begin_with_cancel("codex", stop.clone());
+        chat.commit(&first, json!({"role":"user","content":"Olá"}), json!({"role":"assistant","content":"Olá"}), "Olá", "Olá");
+        let second = chat.begin_with_cancel("codex", stop.clone());
+        assert!(!second.first);
+        assert!(!stop.load(Ordering::Relaxed));
+        assert_eq!(second.history.len(), 2);
+        stop.store(true, Ordering::Relaxed);
+        assert!(!chat.is_current(&second));
+        assert!(chat.begin_with_cancel("codex", stop).cancel.load(Ordering::Relaxed));
+    }
 
     fn turn_texts(history: &[Value]) -> Vec<(String, Value)> {
         history

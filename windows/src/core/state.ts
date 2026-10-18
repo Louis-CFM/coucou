@@ -126,6 +126,10 @@ export interface Settings {
   chatModels: Record<string, string>;
   cliWorkspace: string;
   cliFullAccess: boolean;
+  voiceIdleSeconds: number;
+  voicePetAliases: Record<string, string[]>;
+  localVoiceDirs: Record<string, string>;
+  edgeVoicePython: string;
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -186,6 +190,10 @@ export const DEFAULT_SETTINGS: Settings = {
   chatProvider: "anthropic",
   cliWorkspace: "",
   cliFullAccess: false,
+  voiceIdleSeconds: 60,
+  voicePetAliases: {},
+  localVoiceDirs: {},
+  edgeVoicePython: "",
   chatModels: {},
   ollamaUrl: "",
   lmstudioUrl: "",

@@ -115,7 +115,6 @@ impl Default for Vad {
 }
 
 impl Vad {
-    #[cfg(test)]
     pub fn in_speech(&self) -> bool {
         self.in_speech
     }
@@ -180,10 +179,13 @@ impl Vad {
     }
 }
 
-/// "fr-FR" for a French answer, else None (the system's language).
+/// European Portuguese or French when recognized; otherwise the system language.
 pub fn speech_lang(text: &str) -> Option<&'static str> {
     let n = normalize(text);
     let words: Vec<&str> = n.split(' ').collect();
+    let portuguese = ["ola", "nao", "obrigado", "obrigada", "ficheiros", "pasta", "teu", "tua", "posso", "estou", "esta", "sim", "conversa", "computador", "portugal"];
+    let pt_count = words.iter().filter(|w| portuguese.contains(w)).count();
+    if pt_count >= 2 && pt_count * 8 >= words.len().max(1) { return Some("pt-PT"); }
     let french = ["le", "la", "les", "est", "tu", "vous", "je", "un", "une", "des", "pour", "pas", "c", "et", "sur", "avec", "ton", "ta"];
     let count = words.iter().filter(|w| french.contains(w)).count();
     (count * 6 >= words.len().max(1) && count >= 1).then_some("fr-FR")
@@ -225,5 +227,6 @@ mod tests {
     fn french_answers_are_spoken_in_french() {
         assert_eq!(speech_lang("C'est fait, j'ai ajouté Stripe pour toi."), Some("fr-FR"));
         assert_eq!(speech_lang("Done, Stripe is in the island."), None);
+        assert_eq!(speech_lang("Olá! Posso abrir a tua pasta de ficheiros."), Some("pt-PT"));
     }
 }

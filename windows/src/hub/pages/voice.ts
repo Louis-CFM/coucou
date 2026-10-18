@@ -4,6 +4,7 @@
 import { h, clear } from "../../views/dom";
 import { t } from "../../i18n/i18n";
 import { Bridge } from "../../core/bridge";
+import { invoke } from "@tauri-apps/api/core";
 import type { VoiceOutput } from "../../core/flow";
 import type { HubContext } from "../shell";
 import { button, card, divider, label, row, segmented, toggle } from "../ui";
@@ -76,11 +77,71 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
   }
   page.append(main);
 
+  if (boot) {
+    const settings = boot.settings;
+    const save = () => Bridge.saveSettings(settings);
+    const timeout = h("input", { class: "hub-input", type: "number", min: "15", max: "600", value: String(settings.voiceIdleSeconds), style: "width:90px" }) as HTMLInputElement;
+    timeout.addEventListener("change", () => {
+      settings.voiceIdleSeconds = Math.min(600, Math.max(15, Number(timeout.value) || 60));
+      timeout.value = String(settings.voiceIdleSeconds);
+      void save();
+    });
+    page.append(card(
+      row(t("Voice session"), t("Say a pet name to choose who answers."),
+        button(t("Start / stop"), () => void invoke("voice_session_toggle"))),
+      divider(),
+      row(t("Inactivity timeout (seconds)"), t("The microphone closes after silence, or when you press Super again."), timeout),
+    ));
+    const aliases = card(h("div", { class: "hub-note", text: t("Learn names locally. Recordings are discarded.") }));
+    for (const [provider, name] of [["codex", "Codex"], ["antigravity", "Gravity"], ["claude-cli", "Claude"], ["gemini-cli", "Gemini"]]) {
+      const input = h("input", { class: "hub-input", value: (settings.voicePetAliases[provider] ?? []).join(", "), placeholder: name, style: "width:170px" }) as HTMLInputElement;
+      input.addEventListener("change", () => {
+        settings.voicePetAliases[provider] = input.value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20);
+        void save();
+      });
+      const note = h("span", { class: "hub-note" });
+      const learn = button(t("Learn pronunciation"), async () => {
+        learn.disabled = true;
+        note.textContent = t("Say only this pet's name.");
+        try {
+          const spelling = await invoke<string>("voice_learn_alias", { provider });
+          // Reload the current settings so a learned alias never overwrites
+          // preferences changed elsewhere while the microphone was open.
+          const current = await Bridge.boot();
+          if (current) Object.assign(settings, current.settings);
+          input.value = (settings.voicePetAliases[provider] ?? [spelling]).join(", ");
+          note.textContent = spelling;
+        } catch (error) { note.textContent = String(error); }
+        finally { learn.disabled = false; }
+      });
+      aliases.append(divider(), row(name, null, h("div", { style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" }, input, learn, note)));
+    }
+    page.append(aliases);
+  }
+
   page.append(label(t("Answers")));
-  const outputs: [VoiceOutput, string][] = [["system", t("System voice")], ["elevenlabs", "ElevenLabs"], ["off", t("Text only")]];
+  const outputs: [VoiceOutput, string][] = [["edge", "Raquel · pt-PT"], ["system", t("System voice")], ["local", t("Local voice (pt-PT)")], ["elevenlabs", "ElevenLabs"], ["off", t("Text only")]];
   const answers = card(
     row(t("Coucou answers out loud"), null, segmented(outputs, prefs.voiceOutput, (v) => void ctx.setPrefs((p) => (p.voiceOutput = v)).then(() => ctx.navigate("voice")))),
   );
+  if (boot && prefs.voiceOutput === "edge") {
+    const settings = boot.settings;
+    const runtime = h("input", { class: "hub-input", value: settings.edgeVoicePython, style: "width:240px" }) as HTMLInputElement;
+    runtime.addEventListener("change", () => { settings.edgeVoicePython = runtime.value.trim(); void Bridge.saveSettings(settings); });
+    answers.append(divider(), h("div", { class: "hub-note", text: t("Raquel reads replies online with Microsoft Read Aloud. No API key is needed. This unofficial service requires internet and may become unavailable.") }),
+      divider(), row(t("Voice runtime (Python)"), null, runtime),
+      divider(), button(t("Listen"), () => void invoke("voice_preview", { provider: null })));
+  }
+  if (boot && prefs.voiceOutput === "local") {
+    const settings = boot.settings;
+    answers.append(divider(), h("div", { class: "hub-note", text: t("Local pt-PT speech runs without a speech API.") }));
+    for (const [provider, name] of [["default", t("Default")], ["codex", "Codex"], ["antigravity", "Gravity"], ["gemini-cli", "Gemini"]]) {
+      const input = h("input", { class: "hub-input", value: settings.localVoiceDirs[provider] ?? "", style: "width:240px" }) as HTMLInputElement;
+      input.addEventListener("change", () => { settings.localVoiceDirs[provider] = input.value.trim(); void Bridge.saveSettings(settings); });
+      answers.append(divider(), row(name, null, h("div", { style: "display:flex;gap:8px" }, input,
+        button(t("Listen"), () => void invoke("voice_preview", { provider: provider === "default" ? null : provider })))));
+    }
+  }
   if (prefs.voiceOutput === "elevenlabs") {
     answers.append(
       divider(),
@@ -97,6 +158,7 @@ export async function voicePage(page: HTMLElement, ctx: HubContext) {
       ? t("Parakeet transcribes your voice locally. Your transcript and requested tool results go through the selected CLI account. Replies also go to ElevenLabs if you selected it.")
       : t("Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.") }),
   );
+  if (prefs.voiceOutput === "edge") privacy.append(divider(), h("div", { class: "hub-note", text: t("Reply text is sent to Microsoft to generate Raquel's voice. Microphone audio stays on this computer.") }));
   if (!cli) privacy.append(divider(), h("div", { class: "hub-note", text: t("An email is never sent by Coucou: your mail app opens with it written, and you send it.") }));
   page.append(privacy);
 }

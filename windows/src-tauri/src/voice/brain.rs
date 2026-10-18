@@ -16,11 +16,12 @@ pub struct Brain {
     messages: Vec<Value>,
     cli_chat: crate::chat::Chat,
     last: Instant,
+    family_model: Option<String>,
 }
 
 impl Default for Brain {
     fn default() -> Self {
-        Self { messages: Vec::new(), cli_chat: Default::default(), last: Instant::now() }
+        Self { messages: Vec::new(), cli_chat: Default::default(), last: Instant::now(), family_model: None }
     }
 }
 
@@ -104,16 +105,39 @@ Pills: {pills}",
 }
 
 impl Brain {
-    pub fn respond(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
+    /// The legacy hotword conversation keeps its original retention policy.
+    /// Explicit pet sessions retain context until their session ends.
+    pub fn forget_if_idle(&mut self) {
         if self.last.elapsed() > FORGET_AFTER {
             self.messages.clear();
             self.cli_chat.reset();
         }
+    }
+
+    /// The spoken pet belongs to this dialogue, independent of the text chat's
+    /// provider. Each pet has its own Brain and native conversation.
+    pub fn respond_as(&mut self, app: &AppHandle, transcript: &str, provider: &str, stop: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>) -> Option<Reply> {
         self.last = Instant::now();
-        let settings = app.try_state::<crate::Shared>().map(|s| s.settings.lock().unwrap().clone());
-        if let Some(settings) = settings.filter(|s| matches!(s.chat_provider.as_str(), "codex" | "antigravity")) {
+        let settings = app.try_state::<crate::Shared>().map(|s| {
+            let mut settings = s.settings.lock().unwrap().clone();
+            settings.chat_provider = if matches!(provider, "gemini-cli" | "claude-cli") { "antigravity" } else { provider }.into();
+            settings
+        });
+        if let Some(mut settings) = settings.clone().filter(|s| matches!(s.chat_provider.as_str(), "codex" | "antigravity")) {
+            if matches!(provider, "gemini-cli" | "claude-cli") {
+                let family = if provider == "gemini-cli" { "gemini" } else { "claude" };
+                let configured = settings.chat_models.get(provider).filter(|m| !m.is_empty()).cloned()
+                    .or_else(|| settings.chat_models.get("antigravity").filter(|m| m.to_lowercase().contains(family)).cloned());
+                let model = configured.or_else(|| self.family_model.clone()).or_else(|| {
+                    let offered = tauri::async_runtime::block_on(super::until_stopped(crate::gravity_chat::models(), stop.as_deref()))?.ok()?;
+                    offered.into_iter().find(|m| m.id.to_lowercase().contains(family)).map(|m| m.id)
+                });
+                let Some(model) = model else { return Some(Reply { text: crate::i18n::t("Connect this pet in Settings → Chat first."), acted: false }); };
+                self.family_model = Some(model.clone());
+                settings.chat_models.insert("antigravity".into(), model);
+            }
             let model = crate::chat::model_for(&settings, &settings.chat_provider);
-            return match crate::cli_chat::run(app, &self.cli_chat, &settings, &settings.chat_provider, &model, transcript, None, true, &tools(), |_| {}) {
+            return match crate::cli_chat::run(app, &self.cli_chat, &settings, &settings.chat_provider, &model, transcript, None, true, &tools(), stop, |_| {}) {
                 Ok((text, acted)) => {
                     Some(Reply { text: spoken_text(&text), acted })
                 }
@@ -135,7 +159,7 @@ impl Brain {
         let mut acted = false;
         let mut spoken = String::new();
         for _ in 0..5 {
-            let turn = tauri::async_runtime::block_on(async {
+            let turn = tauri::async_runtime::block_on(super::until_stopped(async {
                 match crate::claude::voice_turn(FAST_MODEL, &system, &self.messages, &tools).await {
                     Ok(v) => Ok(v),
                     Err(err) if !chat_model.is_empty() => {
@@ -144,7 +168,7 @@ impl Brain {
                     }
                     Err(err) => Err(err),
                 }
-            });
+            }, stop.as_deref()))?;
             let turn = match turn {
                 Ok(t) => t,
                 Err(err) => {
@@ -161,16 +185,17 @@ impl Brain {
             if !text.trim().is_empty() {
                 spoken = text;
             }
-            let stop = turn["stop_reason"].as_str().unwrap_or("end_turn");
-            if stop == "pause_turn" {
+            let reason = turn["stop_reason"].as_str().unwrap_or("end_turn");
+            if reason == "pause_turn" {
                 continue;
             }
             let uses: Vec<&Value> = content.iter().filter(|b| b["type"] == "tool_use").collect();
-            if stop != "tool_use" || uses.is_empty() {
+            if reason != "tool_use" || uses.is_empty() {
                 break;
             }
             let mut results = Vec::new();
             for u in uses {
+                if stop.as_ref().is_some_and(|s| s.load(std::sync::atomic::Ordering::Relaxed)) { self.repair(); return None; }
                 let (result, did) = super::run_tool(app, u["name"].as_str().unwrap_or(""), &u["input"]);
                 acted |= did;
                 results.push(json!({ "type": "tool_result", "tool_use_id": u["id"], "content": result }));

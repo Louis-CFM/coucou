@@ -111,6 +111,13 @@ function info(): string {
 
 export function registerVoiceHandlers() {
   if (!IS_TAURI) return;
+  void onEvent<string>("voice-pet", (provider) => {
+    const pill = provider === "codex" ? "agent_codex" : provider === "antigravity" ? "agent_antigravity" : provider === "claude-cli" ? "integration_claude" : provider === "gemini-cli" ? "agent_gemini" : null;
+    if (!pill) return;
+    const definition = pillDefinition(pill);
+    if (definition) State.upsertExternalAgent(pill, definition.name, definition.color);
+    State.setFocus(pill);
+  });
   void onEvent<Ask>("voice-ask", (ask) => {
     let text: string;
     try {

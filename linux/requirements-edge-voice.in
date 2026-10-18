@@ -1,0 +1,2 @@
+# Project-owned Read Aloud bridge, not a global account tool.
+edge-tts==7.3.1

@@ -180,7 +180,7 @@ export interface VoiceView {
   answer: string;
 }
 
-export type VoiceOutput = "system" | "elevenlabs" | "off";
+export type VoiceOutput = "system" | "elevenlabs" | "local" | "edge" | "off";
 
 export const FlowBridge = {
   status: () => call<FlowStatus>("flow_status"),
