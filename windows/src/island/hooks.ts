@@ -52,6 +52,9 @@ interface HookPayload {
   request_id?: string;
   session_id?: string;
   cwd?: string;
+  /** The session's own name (Claude Code's /rename) and the home folder, from the hook. */
+  session_name?: string;
+  home?: string;
   message?: string;
   /** UserPromptSubmit carries `prompt`; `message` belongs to Notification/Stop. */
   prompt?: string;
@@ -249,8 +252,8 @@ function handleHook(island: Island, payload: HookPayload) {
 
   const name = payload.hook_event_name ?? "";
   const cwd = payload.cwd ?? "";
-  const raw = lastPathComponent(cwd);
-  const projectName = aliasProjectName(raw || "Session");
+  const raw = cwd && cwd === payload.home ? "~" : lastPathComponent(cwd);
+  const projectName = payload.session_name || aliasProjectName(raw || "Session");
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
