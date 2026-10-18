@@ -15,7 +15,15 @@ pub const MODEL: &str = "claude-haiku-4-5";
 /// Past this, the words are pasted as heard rather than keeping you waiting.
 const TIMEOUT: Duration = Duration::from_secs(4);
 
+/// Claude can answer: with the API key, or through Claude Code. A call's
+/// summary uses either.
 pub fn has_key() -> bool {
+    has_api_key() || crate::claude_cli::find()
+}
+
+/// The API key itself: the clean-up of each dictation needs it (a fresh
+/// `claude -p` run takes longer than a paste may wait).
+pub fn has_api_key() -> bool {
     crate::secrets::present(crate::claude::KEY)
 }
 

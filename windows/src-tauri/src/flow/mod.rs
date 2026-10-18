@@ -386,7 +386,9 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
         (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key)
     };
     let mut written = prepared.text.clone();
-    if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
+    // The clean-up of each dictation only with an API key: Claude Code takes
+    // too long to start for something you wait on before every paste.
+    if cleanup && style != store::Style::Verbatim && cleanup::has_api_key() {
         let app_name = front.map(|(_, n)| n.clone());
         let cleaned = tauri::async_runtime::block_on(cleanup::clean(&prepared.text, style, app_name.as_deref(), &words));
         if text::keeps_marks(&cleaned, &prepared.snippets) {

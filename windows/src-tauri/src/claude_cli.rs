@@ -11,6 +11,7 @@
 // our own instead of any project.
 
 use std::process::Stdio;
+use std::time::Duration;
 
 use serde_json::Value;
 use tokio::io::AsyncWriteExt;
@@ -105,6 +106,45 @@ fn parse_result(stdout: &[u8], stderr: &[u8], ok: bool) -> Result<(String, Optio
     }
     let session = reply.get("session_id").and_then(Value::as_str).map(str::to_string);
     Ok((text.to_string(), session))
+}
+
+/// The longest a one-shot run for Flow may live (a call's summary, OK Coucou):
+/// the CLI is ended after this, whatever it was doing.
+pub const ONE_SHOT_MAX: Duration = Duration::from_secs(30);
+
+/// Whether the CLI is installed — the Flow paths fall back to it when there is
+/// no Claude API key.
+pub fn find() -> bool {
+    cli_path().is_some()
+}
+
+/// One question without a chat or a session, for Flow when there is no Claude
+/// API key: the user's Claude Code subscription answers on Haiku, with no
+/// tools unless `web` (web search and fetch only), and the run ended after
+/// `timeout` (at most ONE_SHOT_MAX).
+pub async fn complete(system: &str, user: &str, timeout: Duration, web: bool) -> Result<String, String> {
+    let cli = cli_path().ok_or("Claude Code isn't installed.")?;
+    let tools = if web { "WebSearch,WebFetch" } else { "" };
+    let mut cmd = cli_chat::command(&cli);
+    cmd.current_dir(cli_chat::workdir("claude-chat")?)
+        .args(["-p", "--output-format", "json", "--setting-sources", "project"])
+        .args(["--tools", tools, "--allowedTools", tools])
+        .args(["--append-system-prompt", system])
+        .args(["--model", "haiku"]);
+    cmd.stdin(Stdio::piped());
+    let mut child = cmd.spawn().map_err(|e| format!("Could not start Claude Code: {e}"))?;
+    child
+        .stdin
+        .take()
+        .expect("stdin is piped")
+        .write_all(user.as_bytes())
+        .await
+        .map_err(|e| e.to_string())?;
+    let out = match tokio::time::timeout(timeout.min(ONE_SHOT_MAX), child.wait_with_output()).await {
+        Ok(out) => out.map_err(|e| e.to_string())?,
+        Err(_) => return Err("Claude Code took too long to answer.".into()),
+    };
+    parse_result(&out.stdout, &out.stderr, out.status.success()).map(|(text, _)| text)
 }
 
 /// Whether the CLI is installed and signed in, for the settings window.
