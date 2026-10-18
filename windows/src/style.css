@@ -705,9 +705,6 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* The mini Mochi takes the first 31px (7px margin + 24px body): the label is
-     centred in the space after it, so a long name ("Claude Desktop") no longer
-     slides under the icon and loses its first letter. */
   padding: 0 8px 0 34px;
   pointer-events: none;
 }
