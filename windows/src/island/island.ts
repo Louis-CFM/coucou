@@ -85,6 +85,10 @@ export class Island {
   private collapsed = false;
   private collapseTimer: number | null = null;
   private wasInIsland = false;
+  /** The pointer is over the island: what it shows must not move under it. */
+  get pointerOnIsland(): boolean {
+    return this.wasInIsland;
+  }
   /** Last shape handed to Rust for the click-through test. */
   private pushedRect = { x: -1, y: -1, w: -1, h: -1 };
 

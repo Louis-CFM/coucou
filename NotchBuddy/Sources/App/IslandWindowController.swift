@@ -471,6 +471,7 @@ final class IslandWindowController: NSWindowController {
         // (a hover-opened island must not start its close timer while the pointer is on it).
         let previouslyInIsland = wasInIsland
         wasInIsland = inIsland
+        state.pointerInIsland = inIsland
         if inIsland && !previouslyInIsland {
             guard !inAttachDrag else { return }
             // If in coucou: tell greeting to stay open (tc → infinity)

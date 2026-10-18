@@ -43,7 +43,7 @@ const stopTimers = new Map<string, number>();
  */
 function followActivity(island: Island, id: string) {
   const s = State.settings;
-  if (!s.followActivity || State.paused || State.pendingApproval) return;
+  if (!s.followActivity || State.paused || State.pendingApproval || island.pointerOnIsland) return;
   if (!State.tasks.some((t) => t.id === id)) return;
   if (State.mode === "expanded" && State.view !== "overview") return;
   if (State.focusId !== id) State.setFocus(id);

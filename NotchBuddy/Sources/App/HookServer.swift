@@ -628,7 +628,7 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func followActivity(pill id: String) {
         let state = AppState.shared
-        guard state.followActivity, state.isPresent, state.pendingApproval == nil, state.pendingQuestion == nil,
+        guard state.followActivity, state.isPresent, !state.pointerInIsland, state.pendingApproval == nil, state.pendingQuestion == nil,
               state.tasks.contains(where: { $0.id == id }) else { return }
         if state.mode == .expanded && state.view != .overview { return }
         if state.focusId != id {

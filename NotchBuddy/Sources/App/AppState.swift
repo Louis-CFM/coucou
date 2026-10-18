@@ -275,6 +275,8 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(openOnHover, forKey: "openOnHover") }
     }
     // The card follows the agent that did something last; with expandOnActivity the island opens on it — persisted, off by default
+    /// The pointer is over the island: following leaves the card under it alone.
+    var pointerInIsland = false
     @Published var followActivity: Bool = false {
         didSet { UserDefaults.standard.set(followActivity, forKey: "followActivity") }
     }
