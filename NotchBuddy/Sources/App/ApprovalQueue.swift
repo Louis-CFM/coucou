@@ -21,6 +21,8 @@ struct QueuedApproval: Equatable, Sendable {
     /// Host app / bundle id of the session, so the card's pill keeps showing where it runs.
     var hostApp: String? = nil
     var bundleId: String = ""
+    /// When the request arrived (for the log: how long it waited).
+    var received = Date()
 }
 
 struct ApprovalQueue: Sendable {

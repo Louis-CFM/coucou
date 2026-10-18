@@ -79,6 +79,17 @@
    "ru": "7 дней",
    "id": "7 hari"
   },
+  "A few replies a minute at most: wait a moment.": {
+   "zh-Hans": "每分钟最多回复几条：请稍等。",
+   "hi": "एक मिनट में कुछ ही जवाब: थोड़ा रुकें।",
+   "es": "Unas pocas respuestas por minuto como máximo: espera un momento.",
+   "ar": "بضعة ردود في الدقيقة كحد أقصى: انتظر قليلًا.",
+   "fr": "Quelques réponses par minute au maximum : attends un instant.",
+   "bn": "মিনিটে সর্বোচ্চ কয়েকটি উত্তর: একটু অপেক্ষা করুন।",
+   "pt-BR": "No máximo algumas respostas por minuto: espere um pouco.",
+   "ru": "Не больше нескольких ответов в минуту: подождите немного.",
+   "id": "Paling banyak beberapa balasan per menit: tunggu sebentar."
+  },
   "A wrong word, or the wrong person? Fix it from the line's ⋯ menu. Words you correct are remembered for your next calls.": {
    "zh-Hans": "词听错了，或说话人不对？在该行的 ⋯ 菜单里修改。你改正的词会被记住，用于之后的通话。",
    "hi": "कोई शब्द गलत है, या व्यक्ति गलत? पंक्ति के ⋯ मेनू से ठीक करें। आप जो शब्द सुधारते हैं, वे अगली कॉल के लिए याद रखे जाते हैं।",
@@ -89,6 +100,17 @@
    "pt-BR": "Uma palavra errada ou a pessoa errada? Corrija pelo menu ⋯ da linha. As palavras que você corrige ficam guardadas para as próximas chamadas.",
    "ru": "Неверное слово или не тот человек? Исправьте через меню ⋯ строки. Исправленные слова запоминаются для следующих звонков.",
    "id": "Kata yang salah, atau orang yang salah? Perbaiki dari menu ⋯ di baris itu. Kata yang kamu perbaiki diingat untuk panggilan berikutnya."
+  },
+  "API key  (owa_k1_…)": {
+   "zh-Hans": "API 密钥（owa_k1_…）",
+   "hi": "API कुंजी  (owa_k1_…)",
+   "es": "Clave API  (owa_k1_…)",
+   "ar": "مفتاح API  (owa_k1_…)",
+   "fr": "Clé API  (owa_k1_…)",
+   "bn": "API কী  (owa_k1_…)",
+   "pt-BR": "Chave de API  (owa_k1_…)",
+   "ru": "API-ключ  (owa_k1_…)",
+   "id": "Kunci API  (owa_k1_…)"
   },
   "API key (AI Studio)": {
    "zh-Hans": "API 密钥 (AI Studio)",
@@ -232,6 +254,17 @@
    "pt-BR": "Primeiro adicione sua chave de API da Anthropic em Ajustes → Chat.",
    "ru": "Сначала добавь ключ Anthropic API в Настройки → Чат.",
    "id": "Tambahkan dulu kunci API Anthropic-mu di Pengaturan → Chat."
+  },
+  "Advanced: your own gateway": {
+   "zh-Hans": "高级：你自己的网关",
+   "hi": "एडवांस्ड: अपना गेटवे",
+   "es": "Avanzado: tu propia pasarela",
+   "ar": "متقدم: بوابتك الخاصة",
+   "fr": "Avancé : ta propre passerelle",
+   "bn": "অ্যাডভান্সড: নিজের গেটওয়ে",
+   "pt-BR": "Avançado: seu próprio gateway",
+   "ru": "Дополнительно: свой шлюз",
+   "id": "Lanjutan: gateway sendiri"
   },
   "Advertisement": {
    "zh-Hans": "广告",
@@ -607,6 +640,17 @@
    "ru": "Автоматизация не разрешена",
    "id": "Otomatisasi tidak diizinkan"
   },
+  "Basic auth  (user:password, if set)": {
+   "zh-Hans": "基本认证（用户:密码，如已设置）",
+   "hi": "बेसिक ऑथ  (user:password, अगर सेट हो)",
+   "es": "Auth básica  (usuario:contraseña, si la hay)",
+   "ar": "مصادقة أساسية  (مستخدم:كلمة مرور، إن وُجدت)",
+   "fr": "Auth basique  (utilisateur:mot de passe, si activée)",
+   "bn": "বেসিক অথ  (user:password, থাকলে)",
+   "pt-BR": "Auth básica  (usuário:senha, se houver)",
+   "ru": "Basic auth  (пользователь:пароль, если задан)",
+   "id": "Basic auth  (pengguna:sandi, jika ada)"
+  },
   "Battery {0} %": {
    "zh-Hans": "电量 {0}%",
    "hi": "बैटरी {0} %",
@@ -783,6 +827,28 @@
    "ru": "Чат — другие провайдеры",
    "id": "Chat — penyedia lain"
   },
+  "Checking for new messages every 20 s.": {
+   "zh-Hans": "每 20 秒检查一次新消息。",
+   "hi": "हर 20 सेकंड में नए संदेश जाँचे जा रहे हैं।",
+   "es": "Comprobando mensajes nuevos cada 20 s.",
+   "ar": "التحقق من الرسائل الجديدة كل 20 ث.",
+   "fr": "Vérification des nouveaux messages toutes les 20 s.",
+   "bn": "প্রতি ২০ সেকেন্ডে নতুন বার্তা দেখা হচ্ছে।",
+   "pt-BR": "Verificando novas mensagens a cada 20 s.",
+   "ru": "Проверка новых сообщений каждые 20 с.",
+   "id": "Memeriksa pesan baru setiap 20 dtk."
+  },
+  "Checking the download…": {
+   "zh-Hans": "正在校验下载内容…",
+   "hi": "डाउनलोड जाँचा जा रहा है…",
+   "es": "Comprobando la descarga…",
+   "ar": "جارٍ التحقق من التنزيل…",
+   "fr": "Vérification du téléchargement…",
+   "bn": "ডাউনলোড যাচাই হচ্ছে…",
+   "pt-BR": "Verificando o download…",
+   "ru": "Проверка загрузки…",
+   "id": "Memeriksa unduhan…"
+  },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
    "hi": "वे टूल चुनें जो आप उपयोग करते हैं। Coucou केवल वही दिखाता है जो आप यहाँ घोषित करते हैं।",
@@ -793,6 +859,17 @@
    "pt-BR": "Escolha as ferramentas que você usa. O Coucou mostra apenas o que você declarar aqui.",
    "ru": "Выбери инструменты, которые ты используешь. Coucou показывает только то, что ты здесь объявишь.",
    "id": "Pilih alat yang Anda gunakan. Coucou hanya menampilkan yang Anda deklarasikan di sini."
+  },
+  "Choose…": {
+   "zh-Hans": "选择…",
+   "hi": "चुनें…",
+   "es": "Elegir…",
+   "ar": "اختيار…",
+   "fr": "Choisir…",
+   "bn": "বেছে নাও…",
+   "pt-BR": "Escolher…",
+   "ru": "Выбрать…",
+   "id": "Pilih…"
   },
   "City": {
    "zh-Hans": "城市",
@@ -1146,6 +1223,28 @@
    "ru": "Подключено",
    "id": "Terhubung"
   },
+  "Connected as {0}": {
+   "zh-Hans": "已连接：{0}",
+   "hi": "{0} के रूप में कनेक्टेड",
+   "es": "Conectado como {0}",
+   "ar": "متصل باسم {0}",
+   "fr": "Connecté en tant que {0}",
+   "bn": "{0} হিসেবে সংযুক্ত",
+   "pt-BR": "Conectado como {0}",
+   "ru": "Подключено как {0}",
+   "id": "Terhubung sebagai {0}"
+  },
+  "Connected as {0}.": {
+   "zh-Hans": "已连接：{0}。",
+   "hi": "{0} के रूप में कनेक्टेड।",
+   "es": "Conectado como {0}.",
+   "ar": "متصل باسم {0}.",
+   "fr": "Connecté en tant que {0}.",
+   "bn": "{0} হিসেবে সংযুক্ত।",
+   "pt-BR": "Conectado como {0}.",
+   "ru": "Подключено как {0}.",
+   "id": "Terhubung sebagai {0}."
+  },
   "Connected · loading…": {
    "zh-Hans": "已连接 · 加载中…",
    "hi": "जुड़ा है · लोड हो रहा है…",
@@ -1168,6 +1267,17 @@
    "ru": "Подключено · {detail}",
    "id": "Terhubung · {detail}"
   },
+  "Connecting to the gateway…": {
+   "zh-Hans": "正在连接网关…",
+   "hi": "गेटवे से जुड़ रहा है…",
+   "es": "Conectando con la pasarela…",
+   "ar": "جارٍ الاتصال بالبوابة…",
+   "fr": "Connexion à la passerelle…",
+   "bn": "গেটওয়েতে সংযুক্ত হচ্ছে…",
+   "pt-BR": "Conectando ao gateway…",
+   "ru": "Подключение к шлюзу…",
+   "id": "Menghubungkan ke gateway…"
+  },
   "Connecting…": {
    "zh-Hans": "正在连接…",
    "hi": "कनेक्ट हो रहा है…",
@@ -1178,6 +1288,17 @@
    "pt-BR": "Conectando…",
    "ru": "Подключение…",
    "id": "Menghubungkan…"
+  },
+  "Contact": {
+   "zh-Hans": "联系人",
+   "hi": "संपर्क",
+   "es": "Contacto",
+   "ar": "جهة اتصال",
+   "fr": "Contact",
+   "bn": "পরিচিতি",
+   "pt-BR": "Contato",
+   "ru": "Контакт",
+   "id": "Kontak"
   },
   "Continue…": {
    "zh-Hans": "继续…",
@@ -1311,6 +1432,17 @@
    "ru": "Coucou не смог вставить: слова скопированы. Нажмите ⌘V и разрешите Универсальный доступ, чтобы он вставлял сам.",
    "id": "Coucou tidak bisa menempel: kata-katamu sudah disalin. Tekan ⌘V, dan izinkan Aksesibilitas agar ia menempel sendiri."
   },
+  "Coucou downloads GOWA, the open-source gateway, from its GitHub page (about 15 MB, once), checks it and starts it. Then scan the QR code with your phone. No Terminal needed.": {
+   "zh-Hans": "Coucou 会从 GitHub 页面下载开源网关 GOWA（约 15 MB，仅一次），校验后启动。然后用手机扫描二维码即可。无需终端。",
+   "hi": "Coucou ओपन-सोर्स गेटवे GOWA को उसके GitHub पेज से डाउनलोड करता है (लगभग 15 MB, सिर्फ़ एक बार), जाँचता है और चालू करता है। फिर फ़ोन से QR कोड स्कैन करें। टर्मिनल की ज़रूरत नहीं।",
+   "es": "Coucou descarga GOWA, la pasarela de código abierto, desde su página de GitHub (unos 15 MB, una sola vez), la comprueba y la inicia. Luego escanea el código QR con tu teléfono. Sin Terminal.",
+   "ar": "يُنزّل Coucou بوابة GOWA مفتوحة المصدر من صفحتها على GitHub (نحو 15 ميغابايت، مرة واحدة)، ويتحقق منها ويشغّلها. ثم امسح رمز QR بهاتفك. لا حاجة إلى الطرفية.",
+   "fr": "Coucou télécharge GOWA, la passerelle open source, depuis sa page GitHub (environ 15 Mo, une seule fois), la vérifie et la lance. Ensuite, scanne le QR code avec ton téléphone. Pas besoin du Terminal.",
+   "bn": "Coucou ওপেন-সোর্স গেটওয়ে GOWA তার GitHub পেজ থেকে ডাউনলোড করে (প্রায় ১৫ MB, একবারই), যাচাই করে চালু করে। তারপর ফোন দিয়ে QR কোড স্ক্যান করুন। টার্মিনাল লাগবে না।",
+   "pt-BR": "O Coucou baixa o GOWA, o gateway de código aberto, da página dele no GitHub (cerca de 15 MB, uma única vez), verifica e inicia. Depois, escaneie o QR code com o celular. Sem Terminal.",
+   "ru": "Coucou скачивает GOWA, шлюз с открытым кодом, с его страницы на GitHub (около 15 МБ, один раз), проверяет и запускает. Затем отсканируйте QR-код телефоном. Терминал не нужен.",
+   "id": "Coucou mengunduh GOWA, gateway open source, dari halaman GitHub-nya (sekitar 15 MB, sekali saja), memeriksanya lalu menjalankannya. Lalu pindai kode QR dengan ponselmu. Tanpa Terminal."
+  },
   "Coucou is writing the transcript, person by person…": {
    "zh-Hans": "Coucou 正在按人逐句写转写…",
    "hi": "Coucou हर व्यक्ति के हिसाब से ट्रांसक्रिप्ट लिख रहा है…",
@@ -1321,6 +1453,17 @@
    "pt-BR": "O Coucou está escrevendo a transcrição, pessoa por pessoa…",
    "ru": "Coucou составляет расшифровку по участникам…",
    "id": "Coucou sedang menulis transkrip, per orang…"
+  },
+  "Coucou only talks to the gateway on this Mac. Messages stay in memory, are never logged or saved, and are forgotten when Coucou quits. No photo or media is ever downloaded.": {
+   "zh-Hans": "Coucou 只与这台 Mac 上的网关通信。消息只保存在内存中，从不记录或保存，退出 Coucou 时即被清除。从不下载任何照片或媒体。",
+   "hi": "Coucou सिर्फ़ इस Mac पर चल रहे गेटवे से बात करता है। संदेश मेमोरी में रहते हैं, कभी लॉग या सेव नहीं होते, और Coucou बंद होने पर भुला दिए जाते हैं। कोई फ़ोटो या मीडिया डाउनलोड नहीं होता।",
+   "es": "Coucou solo habla con la pasarela de este Mac. Los mensajes se quedan en memoria, nunca se registran ni se guardan, y se olvidan al cerrar Coucou. Nunca se descarga ninguna foto ni archivo.",
+   "ar": "يتواصل Coucou فقط مع البوابة على هذا الـMac. تبقى الرسائل في الذاكرة، ولا تُسجَّل ولا تُحفَظ أبدًا، وتُنسى عند إغلاق Coucou. لا تُنزَّل أي صورة أو وسائط.",
+   "fr": "Coucou ne parle qu’à la passerelle sur ce Mac. Les messages restent en mémoire, ne sont jamais journalisés ni enregistrés, et sont oubliés quand Coucou quitte. Aucune photo ni aucun média n’est téléchargé.",
+   "bn": "Coucou শুধু এই Mac-এর গেটওয়ের সঙ্গে কথা বলে। বার্তা মেমরিতে থাকে, কখনও লগ বা সেভ হয় না, এবং Coucou বন্ধ হলে মুছে যায়। কোনো ছবি বা মিডিয়া ডাউনলোড হয় না।",
+   "pt-BR": "O Coucou só fala com o gateway neste Mac. As mensagens ficam na memória, nunca são registradas nem salvas e são esquecidas quando o Coucou fecha. Nenhuma foto ou mídia é baixada.",
+   "ru": "Coucou общается только со шлюзом на этом Mac. Сообщения хранятся в памяти, никогда не пишутся в журнал и не сохраняются, и забываются при выходе из Coucou. Фото и медиа не загружаются.",
+   "id": "Coucou hanya berbicara dengan gateway di Mac ini. Pesan tetap di memori, tidak pernah dicatat atau disimpan, dan dilupakan saat Coucou ditutup. Tidak ada foto atau media yang diunduh."
   },
   "Coucou reads back results in the spoken language, using a synthesized voice. 100% on-device.": {
    "zh-Hans": "Coucou 用语音语言朗读结果。完全在设备上处理。",
@@ -1344,6 +1487,17 @@
    "ru": "Coucou отвечает вслух",
    "id": "Coucou merespons dengan suara"
   },
+  "Coucou runs it on this Mac only (127.0.0.1, the URL’s port), without downloading media, and stops it when Coucou quits. Its WhatsApp session stays in ~/Library/Application Support/Coucou/GOWA.": {
+   "zh-Hans": "Coucou 仅在这台 Mac 上运行它（127.0.0.1，使用地址中的端口），不下载媒体，并在 Coucou 退出时停止它。其 WhatsApp 会话保存在 ~/Library/Application Support/Coucou/GOWA。",
+   "hi": "Coucou इसे सिर्फ़ इस Mac पर चलाता है (127.0.0.1, URL का पोर्ट), मीडिया डाउनलोड किए बिना, और Coucou बंद होने पर रोक देता है। इसका WhatsApp सेशन ~/Library/Application Support/Coucou/GOWA में रहता है।",
+   "es": "Coucou lo ejecuta solo en este Mac (127.0.0.1, el puerto de la URL), sin descargar archivos, y lo detiene al cerrar Coucou. Su sesión de WhatsApp queda en ~/Library/Application Support/Coucou/GOWA.",
+   "ar": "يشغّله Coucou على هذا الـMac فقط (127.0.0.1، منفذ العنوان)، دون تنزيل الوسائط، ويوقفه عند إغلاق Coucou. تبقى جلسة واتساب في ‎~/Library/Application Support/Coucou/GOWA.",
+   "fr": "Coucou le lance sur ce Mac uniquement (127.0.0.1, le port de l’URL), sans télécharger les médias, et l’arrête quand Coucou quitte. Sa session WhatsApp reste dans ~/Library/Application Support/Coucou/GOWA.",
+   "bn": "Coucou এটি শুধু এই Mac-এ চালায় (127.0.0.1, URL-এর পোর্ট), মিডিয়া ডাউনলোড ছাড়াই, এবং Coucou বন্ধ হলে থামিয়ে দেয়। এর WhatsApp সেশন থাকে ~/Library/Application Support/Coucou/GOWA-তে।",
+   "pt-BR": "O Coucou o executa só neste Mac (127.0.0.1, a porta da URL), sem baixar mídias, e o encerra quando o Coucou fecha. A sessão do WhatsApp fica em ~/Library/Application Support/Coucou/GOWA.",
+   "ru": "Coucou запускает его только на этом Mac (127.0.0.1, порт из адреса), без загрузки медиа, и останавливает при выходе. Сессия WhatsApp хранится в ~/Library/Application Support/Coucou/GOWA.",
+   "id": "Coucou menjalankannya hanya di Mac ini (127.0.0.1, port dari URL), tanpa mengunduh media, dan menghentikannya saat Coucou ditutup. Sesi WhatsApp-nya ada di ~/Library/Application Support/Coucou/GOWA."
+  },
   "Coucou writes your calls on your Mac with Parakeet, and tells the voices apart with a second small model. Both are downloaded once (about 650 MB), then everything works offline.": {
    "zh-Hans": "Coucou 用 Parakeet 在你的 Mac 上转写通话，并用第二个小模型区分说话人。两者只需下载一次（约 650 MB），之后一切离线运行。",
    "hi": "Coucou आपकी कॉल Parakeet से आपके Mac पर ही लिखता है, और एक दूसरे छोटे मॉडल से आवाज़ें पहचानता है। दोनों एक बार डाउनलोड होते हैं (लगभग 650 MB), फिर सब ऑफ़लाइन चलता है।",
@@ -1354,6 +1508,17 @@
    "pt-BR": "O Coucou transcreve suas chamadas no seu Mac com o Parakeet e distingue as vozes com um segundo modelo pequeno. Os dois são baixados uma vez (cerca de 650 MB) e depois tudo funciona offline.",
    "ru": "Coucou записывает звонки текстом прямо на Mac с помощью Parakeet и различает голоса второй небольшой моделью. Обе скачиваются один раз (около 650 МБ), дальше всё работает без сети.",
    "id": "Coucou menulis panggilanmu di Mac dengan Parakeet, dan membedakan suara dengan model kecil kedua. Keduanya diunduh sekali (sekitar 650 MB), lalu semuanya bekerja luring."
+  },
+  "Coucou’s webhook port": {
+   "zh-Hans": "Coucou 的 Webhook 端口",
+   "hi": "Coucou का वेबहुक पोर्ट",
+   "es": "Puerto del webhook de Coucou",
+   "ar": "منفذ webhook في Coucou",
+   "fr": "Port du webhook de Coucou",
+   "bn": "Coucou-র ওয়েবহুক পোর্ট",
+   "pt-BR": "Porta do webhook do Coucou",
+   "ru": "Порт вебхука Coucou",
+   "id": "Port webhook Coucou"
   },
   "Counted on your Mac, never sent anywhere.": {
    "zh-Hans": "在你的 Mac 上统计，从不发送。",
@@ -1586,6 +1751,17 @@
    "ru": "Отключить",
    "id": "Putuskan"
   },
+  "Document": {
+   "zh-Hans": "文档",
+   "hi": "दस्तावेज़",
+   "es": "Documento",
+   "ar": "مستند",
+   "fr": "Document",
+   "bn": "ডকুমেন্ট",
+   "pt-BR": "Documento",
+   "ru": "Документ",
+   "id": "Dokumen"
+  },
   "Don't keep": {
    "zh-Hans": "不保留",
    "hi": "न रखें",
@@ -1640,6 +1816,17 @@
    "pt-BR": "Primeiro baixe os modelos em Coucou Flow → Ajustes.",
    "ru": "Сначала скачайте модели в Coucou Flow → Настройки.",
    "id": "Unduh dulu modelnya di Coucou Flow → Pengaturan."
+  },
+  "Downloading ({0} MB)…": {
+   "zh-Hans": "正在下载（{0} MB）…",
+   "hi": "डाउनलोड हो रहा है ({0} MB)…",
+   "es": "Descargando ({0} MB)…",
+   "ar": "جارٍ التنزيل ({0} ميغابايت)…",
+   "fr": "Téléchargement ({0} Mo)…",
+   "bn": "ডাউনলোড হচ্ছে ({0} MB)…",
+   "pt-BR": "Baixando ({0} MB)…",
+   "ru": "Загрузка ({0} МБ)…",
+   "id": "Mengunduh ({0} MB)…"
   },
   "Draft": {
    "zh-Hans": "草稿",
@@ -1970,6 +2157,39 @@
    "pt-BR": "Frases completas e parágrafos, para e-mails.",
    "ru": "Полные предложения и абзацы — для писем.",
    "id": "Kalimat lengkap dan paragraf, untuk email."
+  },
+  "GOWA's release has no checksum to check the download against: nothing was installed.": {
+   "zh-Hans": "GOWA 版本没有可用于校验的校验和：未安装任何内容。",
+   "hi": "GOWA रिलीज़ में डाउनलोड जाँचने के लिए चेकसम नहीं है: कुछ इंस्टॉल नहीं हुआ।",
+   "es": "La versión de GOWA no tiene suma de comprobación para verificar la descarga: no se instaló nada.",
+   "ar": "لا يحتوي إصدار GOWA على بصمة للتحقق من التنزيل: لم يُثبَّت شيء.",
+   "fr": "La version de GOWA n'a pas d'empreinte pour vérifier le téléchargement : rien n'a été installé.",
+   "bn": "GOWA রিলিজে ডাউনলোড যাচাইয়ের চেকসাম নেই: কিছু ইনস্টল হয়নি।",
+   "pt-BR": "A versão do GOWA não tem checksum para verificar o download: nada foi instalado.",
+   "ru": "У выпуска GOWA нет контрольной суммы для проверки: ничего не установлено.",
+   "id": "Rilis GOWA tidak punya checksum untuk memeriksa unduhan: tidak ada yang dipasang."
+  },
+  "Gateway": {
+   "zh-Hans": "网关",
+   "hi": "गेटवे",
+   "es": "Pasarela",
+   "ar": "البوابة",
+   "fr": "Passerelle",
+   "bn": "গেটওয়ে",
+   "pt-BR": "Gateway",
+   "ru": "Шлюз",
+   "id": "Gateway"
+  },
+  "Gateway GOWA {0} installed, started by Coucou": {
+   "zh-Hans": "GOWA {0} 网关已安装，由 Coucou 启动",
+   "hi": "GOWA {0} गेटवे इंस्टॉल है, Coucou इसे चलाता है",
+   "es": "Pasarela GOWA {0} instalada, iniciada por Coucou",
+   "ar": "بوابة GOWA {0} مثبّتة ويشغّلها Coucou",
+   "fr": "Passerelle GOWA {0} installée, lancée par Coucou",
+   "bn": "GOWA {0} গেটওয়ে ইনস্টল, Coucou চালায়",
+   "pt-BR": "Gateway GOWA {0} instalado, iniciado pelo Coucou",
+   "ru": "Шлюз GOWA {0} установлен, запускается Coucou",
+   "id": "Gateway GOWA {0} terpasang, dijalankan oleh Coucou"
   },
   "Gemini CLI hooks": {
    "zh-Hans": "Gemini CLI 钩子",
@@ -2389,6 +2609,28 @@
    "ru": "Наведение открывает остров; он сворачивается вскоре после того, как указатель уходит. Щёлкните внутри, чтобы он остался открытым.",
    "id": "Mengarahkan kursor ke pulau akan membukanya; pulau menutup lagi sesaat setelah kursor pergi. Klik di dalamnya agar tetap terbuka."
   },
+  "Ignore this chat": {
+   "zh-Hans": "忽略此聊天",
+   "hi": "इस चैट को अनदेखा करें",
+   "es": "Ignorar este chat",
+   "ar": "تجاهل هذه الدردشة",
+   "fr": "Ignorer ce chat",
+   "bn": "এই চ্যাট উপেক্ষা করো",
+   "pt-BR": "Ignorar esta conversa",
+   "ru": "Игнорировать этот чат",
+   "id": "Abaikan chat ini"
+  },
+  "Ignored chats": {
+   "zh-Hans": "已忽略的聊天",
+   "hi": "अनदेखी चैट",
+   "es": "Chats ignorados",
+   "ar": "الدردشات المتجاهَلة",
+   "fr": "Chats ignorés",
+   "bn": "উপেক্ষিত চ্যাট",
+   "pt-BR": "Conversas ignoradas",
+   "ru": "Игнорируемые чаты",
+   "id": "Chat yang diabaikan"
+  },
   "Inbox": {
    "zh-Hans": "收件箱",
    "hi": "इनबॉक्स",
@@ -2421,6 +2663,17 @@
    "pt-BR": "Instalar os hooks do Coucou em ~/.claude?",
    "ru": "Установить хуки Coucou в ~/.claude?",
    "id": "Pasang hooks Coucou di ~/.claude?"
+  },
+  "Install WhatsApp": {
+   "zh-Hans": "安装 WhatsApp",
+   "hi": "WhatsApp इंस्टॉल करें",
+   "es": "Instalar WhatsApp",
+   "ar": "تثبيت واتساب",
+   "fr": "Installer WhatsApp",
+   "bn": "WhatsApp ইনস্টল করো",
+   "pt-BR": "Instalar o WhatsApp",
+   "ru": "Установить WhatsApp",
+   "id": "Pasang WhatsApp"
   },
   "Install hooks": {
    "zh-Hans": "安装 Hooks",
@@ -2465,6 +2718,17 @@
    "pt-BR": "Instalado",
    "ru": "Установлен",
    "id": "Terpasang"
+  },
+  "Installing and starting…": {
+   "zh-Hans": "正在安装并启动…",
+   "hi": "इंस्टॉल और चालू हो रहा है…",
+   "es": "Instalando e iniciando…",
+   "ar": "جارٍ التثبيت والتشغيل…",
+   "fr": "Installation et démarrage…",
+   "bn": "ইনস্টল ও চালু হচ্ছে…",
+   "pt-BR": "Instalando e iniciando…",
+   "ru": "Установка и запуск…",
+   "id": "Memasang dan menjalankan…"
   },
   "Integrations": {
    "zh-Hans": "集成",
@@ -2675,6 +2939,17 @@
    "ru": "В реальном времени",
    "id": "Langsung"
   },
+  "Live: new messages arrive at once.": {
+   "zh-Hans": "实时：新消息会立即送达。",
+   "hi": "लाइव: नए संदेश तुरंत आते हैं।",
+   "es": "En directo: los mensajes nuevos llegan al instante.",
+   "ar": "مباشر: تصل الرسائل الجديدة فورًا.",
+   "fr": "En direct : les nouveaux messages arrivent tout de suite.",
+   "bn": "লাইভ: নতুন বার্তা সঙ্গে সঙ্গে আসে।",
+   "pt-BR": "Ao vivo: as novas mensagens chegam na hora.",
+   "ru": "В реальном времени: новые сообщения приходят сразу.",
+   "id": "Langsung: pesan baru datang seketika."
+  },
   "Loading models…": {
    "zh-Hans": "正在加载模型…",
    "hi": "मॉडल लोड हो रहे हैं…",
@@ -2752,6 +3027,17 @@
    "ru": "Локальные модели",
    "id": "Model lokal"
   },
+  "Location": {
+   "zh-Hans": "位置",
+   "hi": "लोकेशन",
+   "es": "Ubicación",
+   "ar": "موقع",
+   "fr": "Position",
+   "bn": "লোকেশন",
+   "pt-BR": "Localização",
+   "ru": "Местоположение",
+   "id": "Lokasi"
+  },
   "Longest session": {
    "zh-Hans": "最长会话",
    "hi": "सबसे लंबा सेशन",
@@ -2762,6 +3048,17 @@
    "pt-BR": "Sessão mais longa",
    "ru": "Самая долгая сессия",
    "id": "Sesi terpanjang"
+  },
+  "Looking for the latest GOWA…": {
+   "zh-Hans": "正在查找最新版 GOWA…",
+   "hi": "GOWA का नया वर्शन ढूँढ रहा है…",
+   "es": "Buscando la última versión de GOWA…",
+   "ar": "البحث عن أحدث إصدار من GOWA…",
+   "fr": "Recherche de la dernière version de GOWA…",
+   "bn": "GOWA-র সর্বশেষ সংস্করণ খোঁজা হচ্ছে…",
+   "pt-BR": "Procurando a versão mais recente do GOWA…",
+   "ru": "Поиск последней версии GOWA…",
+   "id": "Mencari versi GOWA terbaru…"
   },
   "Mac voice": {
    "zh-Hans": "Mac 语音",
@@ -2818,6 +3115,17 @@
    "ru": "Главный: {0}",
    "id": "Utama: {0}"
   },
+  "Make room in Active pills to show the WhatsApp pill (4 at most).": {
+   "zh-Hans": "请在“活跃胶囊”中腾出位置以显示 WhatsApp（最多 4 个）。",
+   "hi": "WhatsApp पिल दिखाने के लिए सक्रिय पिल्स में जगह बनाएँ (अधिकतम 4)।",
+   "es": "Libera un hueco en Píldoras activas para mostrar la de WhatsApp (4 como máximo).",
+   "ar": "أفرغ مكانًا في الحبوب النشطة لعرض حبة واتساب (4 كحد أقصى).",
+   "fr": "Libère une place dans Pills actives pour afficher la pill WhatsApp (4 au maximum).",
+   "bn": "WhatsApp পিল দেখাতে সক্রিয় পিলে জায়গা খালি করুন (সর্বোচ্চ ৪টি)।",
+   "pt-BR": "Libere um espaço em Pílulas ativas para mostrar a do WhatsApp (no máximo 4).",
+   "ru": "Освободите место в активных пилюлях для WhatsApp (не больше 4).",
+   "id": "Kosongkan tempat di Pil aktif untuk menampilkan pil WhatsApp (maksimal 4)."
+  },
   "Man": {
    "zh-Hans": "男声",
    "hi": "पुरुष",
@@ -2839,6 +3147,17 @@
    "pt-BR": "Marcar como lido",
    "ru": "Отметить как прочитанное",
    "id": "Tandai sudah dibaca"
+  },
+  "Mark as read when I open a conversation": {
+   "zh-Hans": "打开对话时标记为已读",
+   "hi": "बातचीत खोलने पर पढ़ा हुआ मार्क करें",
+   "es": "Marcar como leído al abrir una conversación",
+   "ar": "تعليم كمقروء عند فتح محادثة",
+   "fr": "Marquer comme lu quand j’ouvre une conversation",
+   "bn": "কথোপকথন খুললে পড়া হিসেবে চিহ্নিত করো",
+   "pt-BR": "Marcar como lida ao abrir uma conversa",
+   "ru": "Отмечать прочитанным при открытии беседы",
+   "id": "Tandai dibaca saat saya membuka percakapan"
   },
   "Me": {
    "zh-Hans": "我",
@@ -2872,6 +3191,17 @@
    "pt-BR": "Pouca memória",
    "ru": "Мало памяти",
    "id": "Memori menipis"
+  },
+  "Message": {
+   "zh-Hans": "消息",
+   "hi": "संदेश",
+   "es": "Mensaje",
+   "ar": "رسالة",
+   "fr": "Message",
+   "bn": "বার্তা",
+   "pt-BR": "Mensagem",
+   "ru": "Сообщение",
+   "id": "Pesan"
   },
   "Microphone unavailable": {
    "zh-Hans": "麦克风不可用",
@@ -3016,6 +3346,17 @@
    "ru": "Выключить / включить звук",
    "id": "Bisukan / aktifkan suara"
   },
+  "Mute groups (unless I’m mentioned)": {
+   "zh-Hans": "群组静音（除非提到我）",
+   "hi": "ग्रुप म्यूट करें (जब तक मेरा ज़िक्र न हो)",
+   "es": "Silenciar grupos (salvo si me mencionan)",
+   "ar": "كتم المجموعات (إلا إذا أُشير إليّ)",
+   "fr": "Groupes muets (sauf si on me mentionne)",
+   "bn": "গ্রুপ মিউট (আমাকে উল্লেখ না করলে)",
+   "pt-BR": "Silenciar grupos (exceto quando me mencionam)",
+   "ru": "Без звука в группах (если меня не упомянули)",
+   "id": "Bisukan grup (kecuali saya disebut)"
+  },
   "My PRs": {
    "zh-Hans": "我的 PR",
    "hi": "मेरे PR",
@@ -3159,6 +3500,17 @@
    "ru": "Следующий трек",
    "id": "Lagu berikutnya"
   },
+  "No GOWA build for this Mac was found on GitHub. Try again later, or set your own gateway under Advanced.": {
+   "zh-Hans": "GitHub 上没有适用于此 Mac 的 GOWA 版本。请稍后重试，或在“高级”中设置你自己的网关。",
+   "hi": "GitHub पर इस Mac के लिए GOWA नहीं मिला। बाद में फिर कोशिश करें, या एडवांस्ड में अपना गेटवे सेट करें।",
+   "es": "No hay ninguna versión de GOWA para este Mac en GitHub. Inténtalo más tarde o configura tu propia pasarela en Avanzado.",
+   "ar": "لا يوجد إصدار من GOWA لهذا الـMac على GitHub. أعد المحاولة لاحقًا أو اضبط بوابتك في «متقدم».",
+   "fr": "Aucune version de GOWA pour ce Mac sur GitHub. Réessaie plus tard, ou configure ta propre passerelle dans Avancé.",
+   "bn": "GitHub-এ এই Mac-এর জন্য GOWA পাওয়া যায়নি। পরে আবার চেষ্টা করুন, বা অ্যাডভান্সডে নিজের গেটওয়ে সেট করুন।",
+   "pt-BR": "Nenhuma versão do GOWA para este Mac no GitHub. Tente mais tarde ou configure seu próprio gateway em Avançado.",
+   "ru": "На GitHub нет сборки GOWA для этого Mac. Попробуйте позже или укажите свой шлюз в разделе «Дополнительно».",
+   "id": "Tidak ada versi GOWA untuk Mac ini di GitHub. Coba lagi nanti, atau atur gateway sendiri di Lanjutan."
+  },
   "No activity last week": {
    "zh-Hans": "上周无活动",
    "hi": "पिछले सप्ताह कोई गतिविधि नहीं",
@@ -3268,6 +3620,17 @@
    "pt-BR": "Nenhum app de música",
    "ru": "Нет музыкального приложения",
    "id": "Tidak ada app musik"
+  },
+  "No new messages": {
+   "zh-Hans": "没有新消息",
+   "hi": "कोई नया संदेश नहीं",
+   "es": "No hay mensajes nuevos",
+   "ar": "لا رسائل جديدة",
+   "fr": "Aucun nouveau message",
+   "bn": "নতুন বার্তা নেই",
+   "pt-BR": "Nenhuma mensagem nova",
+   "ru": "Нет новых сообщений",
+   "id": "Tidak ada pesan baru"
   },
   "No other open app": {
    "zh-Hans": "没有其他打开的 App",
@@ -3555,6 +3918,17 @@
    "ru": "Хорошо, оставляю как есть",
    "id": "Baik, biarkan seperti itu"
   },
+  "Off: marked read only when you reply. Never when a message just arrives.": {
+   "zh-Hans": "关闭时：仅在你回复时标记为已读。收到消息时从不标记。",
+   "hi": "बंद: सिर्फ़ जवाब देने पर पढ़ा हुआ। संदेश आने भर से कभी नहीं।",
+   "es": "Desactivado: se marca como leído solo al responder. Nunca solo por recibirlo.",
+   "ar": "عند الإيقاف: تُعلَّم كمقروءة فقط عند الرد. لا تُعلَّم أبدًا لمجرد الوصول.",
+   "fr": "Désactivé : marqué comme lu seulement quand tu réponds. Jamais à la simple réception.",
+   "bn": "বন্ধ: শুধু উত্তর দিলে পড়া হিসেবে চিহ্নিত। বার্তা এলেই কখনও নয়।",
+   "pt-BR": "Desativado: marcada como lida só quando você responde. Nunca só por chegar.",
+   "ru": "Выключено: прочитанным отмечается только при ответе. Никогда при простом получении.",
+   "id": "Mati: ditandai dibaca hanya saat kamu membalas. Tidak pernah hanya karena pesan masuk."
+  },
   "Ollama disconnected.": {
    "zh-Hans": "Ollama 已断开连接。",
    "hi": "Ollama डिस्कनेक्ट हो गया।",
@@ -3565,6 +3939,17 @@
    "pt-BR": "Ollama desconectado.",
    "ru": "Ollama отключён.",
    "id": "Ollama terputus."
+  },
+  "On your phone: WhatsApp › Settings › Linked devices › Link a device, then scan this code.": {
+   "zh-Hans": "在手机上：WhatsApp › 设置 › 已关联的设备 › 关联新设备，然后扫描此二维码。",
+   "hi": "फ़ोन पर: WhatsApp › सेटिंग्स › लिंक किए गए डिवाइस › डिवाइस लिंक करें, फिर यह कोड स्कैन करें।",
+   "es": "En tu teléfono: WhatsApp › Ajustes › Dispositivos vinculados › Vincular un dispositivo, y escanea este código.",
+   "ar": "على هاتفك: واتساب › الإعدادات › الأجهزة المرتبطة › ربط جهاز، ثم امسح هذا الرمز.",
+   "fr": "Sur ton téléphone : WhatsApp › Réglages › Appareils connectés › Connecter un appareil, puis scanne ce code.",
+   "bn": "ফোনে: WhatsApp › সেটিংস › লিঙ্ক করা ডিভাইস › ডিভাইস লিঙ্ক করুন, তারপর এই কোডটি স্ক্যান করুন।",
+   "pt-BR": "No celular: WhatsApp › Configurações › Dispositivos conectados › Conectar dispositivo, e escaneie este código.",
+   "ru": "На телефоне: WhatsApp › Настройки › Связанные устройства › Привязка устройства, затем отсканируйте этот код.",
+   "id": "Di ponsel: WhatsApp › Setelan › Perangkat tertaut › Tautkan perangkat, lalu pindai kode ini."
   },
   "On-device when your Mac supports it, nothing to download.": {
    "zh-Hans": "Mac 支持时在设备上完成，无需下载。",
@@ -4061,6 +4446,17 @@
    "ru": "Вставить · или нажмите {0}",
    "id": "Tempel · atau tekan {0}"
   },
+  "Path to the GOWA binary (whatsapp)": {
+   "zh-Hans": "GOWA 程序路径（whatsapp）",
+   "hi": "GOWA बाइनरी का पाथ (whatsapp)",
+   "es": "Ruta del binario de GOWA (whatsapp)",
+   "ar": "مسار ملف GOWA التنفيذي (whatsapp)",
+   "fr": "Chemin du binaire GOWA (whatsapp)",
+   "bn": "GOWA বাইনারির পাথ (whatsapp)",
+   "pt-BR": "Caminho do binário do GOWA (whatsapp)",
+   "ru": "Путь к бинарнику GOWA (whatsapp)",
+   "id": "Jalur biner GOWA (whatsapp)"
+  },
   "Pause": {
    "zh-Hans": "暂停",
    "hi": "रोकें",
@@ -4126,6 +4522,28 @@
    "pt-BR": "Pessoa {0}",
    "ru": "Участник {0}",
    "id": "Orang {0}"
+  },
+  "Phone number or chat id to ignore": {
+   "zh-Hans": "要忽略的号码或聊天 ID",
+   "hi": "अनदेखा करने के लिए नंबर या चैट id",
+   "es": "Número o id de chat que ignorar",
+   "ar": "رقم أو معرّف دردشة لتجاهله",
+   "fr": "Numéro ou identifiant de chat à ignorer",
+   "bn": "উপেক্ষা করার নম্বর বা চ্যাট id",
+   "pt-BR": "Número ou id da conversa a ignorar",
+   "ru": "Номер или id чата для игнорирования",
+   "id": "Nomor atau id chat yang diabaikan"
+  },
+  "Photo": {
+   "zh-Hans": "照片",
+   "hi": "फ़ोटो",
+   "es": "Foto",
+   "ar": "صورة",
+   "fr": "Photo",
+   "bn": "ছবি",
+   "pt-BR": "Foto",
+   "ru": "Фото",
+   "id": "Foto"
   },
   "Pin / unpin notch": {
    "zh-Hans": "固定/取消固定岛",
@@ -4236,6 +4654,17 @@
    "pt-BR": "Caprichado",
    "ru": "Аккуратный",
    "id": "Rapi"
+  },
+  "Port {0} is taken: pick another one. Checking every 20 s meanwhile.": {
+   "zh-Hans": "端口 {0} 已被占用：请换一个。在此期间每 20 秒检查一次。",
+   "hi": "पोर्ट {0} पहले से इस्तेमाल में है: कोई और चुनें। तब तक हर 20 सेकंड में जाँच।",
+   "es": "El puerto {0} está ocupado: elige otro. Mientras tanto, se comprueba cada 20 s.",
+   "ar": "المنفذ {0} مستخدم: اختر منفذًا آخر. في الأثناء يتم التحقق كل 20 ث.",
+   "fr": "Le port {0} est déjà pris : choisis-en un autre. Vérification toutes les 20 s en attendant.",
+   "bn": "পোর্ট {0} ব্যস্ত: অন্যটি বেছে নিন। ততক্ষণ প্রতি ২০ সেকেন্ডে দেখা হচ্ছে।",
+   "pt-BR": "A porta {0} está ocupada: escolha outra. Enquanto isso, verificando a cada 20 s.",
+   "ru": "Порт {0} занят: выберите другой. Пока проверка каждые 20 с.",
+   "id": "Port {0} sudah dipakai: pilih yang lain. Sementara itu diperiksa setiap 20 dtk."
   },
   "Previous": {
    "zh-Hans": "上一首",
@@ -4457,6 +4886,17 @@
    "ru": "Перезагрузить звуки",
    "id": "Muat ulang suara"
   },
+  "Remove": {
+   "zh-Hans": "移除",
+   "hi": "हटाएँ",
+   "es": "Quitar",
+   "ar": "إزالة",
+   "fr": "Retirer",
+   "bn": "সরান",
+   "pt-BR": "Remover",
+   "ru": "Удалить",
+   "id": "Hapus"
+  },
   "Remove from favorites": {
    "zh-Hans": "取消收藏",
    "hi": "पसंदीदा से हटाएँ",
@@ -4566,6 +5006,17 @@
    "pt-BR": "Responder no terminal",
    "ru": "Ответить в терминале",
    "id": "Balas di terminal"
+  },
+  "Reply…  (⇧↩ new line)": {
+   "zh-Hans": "回复…（⇧↩ 换行）",
+   "hi": "जवाब दें…  (⇧↩ नई लाइन)",
+   "es": "Responder…  (⇧↩ nueva línea)",
+   "ar": "رد…  (⇧↩ سطر جديد)",
+   "fr": "Répondre…  (⇧↩ nouvelle ligne)",
+   "bn": "উত্তর দিন…  (⇧↩ নতুন লাইন)",
+   "pt-BR": "Responder…  (⇧↩ nova linha)",
+   "ru": "Ответить…  (⇧↩ новая строка)",
+   "id": "Balas…  (⇧↩ baris baru)"
   },
   "Request permissions": {
    "zh-Hans": "请求权限",
@@ -4721,6 +5172,17 @@
    "ru": "Сохранить",
    "id": "Simpan"
   },
+  "Save WhatsApp": {
+   "zh-Hans": "保存 WhatsApp",
+   "hi": "WhatsApp सेव करें",
+   "es": "Guardar WhatsApp",
+   "ar": "حفظ واتساب",
+   "fr": "Enregistrer WhatsApp",
+   "bn": "WhatsApp সেভ করো",
+   "pt-BR": "Salvar WhatsApp",
+   "ru": "Сохранить WhatsApp",
+   "id": "Simpan WhatsApp"
+  },
   "Save integrations": {
    "zh-Hans": "保存集成",
    "hi": "इंटीग्रेशन सहेजें",
@@ -4775,6 +5237,17 @@
    "pt-BR": "Fale sua ideia do jeito que vier: ela é colada como um prompt claro (objetivo, contexto, etapas, restrições, pronto quando), pronto para Claude Code, Cursor ou ChatGPT.",
    "ru": "Говорите идею как получится: она вставится как чёткий промпт (цель, контекст, шаги, ограничения, критерии готовности) для Claude Code, Cursor или ChatGPT.",
    "id": "Ucapkan idemu sesukamu: hasilnya ditempel sebagai prompt yang jelas (tujuan, konteks, langkah, batasan, selesai jika), siap untuk Claude Code, Cursor, atau ChatGPT."
+  },
+  "Scan the QR code in Settings": {
+   "zh-Hans": "请在设置中扫描二维码",
+   "hi": "सेटिंग्स में QR कोड स्कैन करें",
+   "es": "Escanea el código QR en Ajustes",
+   "ar": "امسح رمز QR في الإعدادات",
+   "fr": "Scanne le QR code dans les réglages",
+   "bn": "সেটিংসে QR কোড স্ক্যান করুন",
+   "pt-BR": "Escaneie o QR code nos Ajustes",
+   "ru": "Отсканируйте QR-код в настройках",
+   "id": "Pindai kode QR di Pengaturan"
   },
   "Schedule": {
    "zh-Hans": "日程",
@@ -5040,6 +5513,17 @@
    "ru": "Показывать остров горячей клавишей",
    "id": "Tampilkan island dengan pintasan"
   },
+  "Show my WhatsApp messages": {
+   "zh-Hans": "显示我的 WhatsApp 消息",
+   "hi": "मेरे WhatsApp संदेश दिखाएँ",
+   "es": "Mostrar mis mensajes de WhatsApp",
+   "ar": "عرض رسائل واتساب",
+   "fr": "Afficher mes messages WhatsApp",
+   "bn": "আমার WhatsApp বার্তা দেখাও",
+   "pt-BR": "Mostrar minhas mensagens do WhatsApp",
+   "ru": "Показывать мои сообщения WhatsApp",
+   "id": "Tampilkan pesan WhatsApp saya"
+  },
   "Show my agent sessions on my iPhone": {
    "zh-Hans": "在我的 iPhone 上显示我的 Agent 会话",
    "hi": "मेरे iPhone पर मेरे एजेंट सेशन दिखाएं",
@@ -5161,6 +5645,17 @@
    "ru": "Spotify не установлен",
    "id": "Spotify belum terpasang"
   },
+  "Start GOWA automatically": {
+   "zh-Hans": "自动启动 GOWA",
+   "hi": "GOWA अपने-आप शुरू करें",
+   "es": "Iniciar GOWA automáticamente",
+   "ar": "تشغيل GOWA تلقائيًا",
+   "fr": "Lancer GOWA automatiquement",
+   "bn": "GOWA স্বয়ংক্রিয়ভাবে চালু করো",
+   "pt-BR": "Iniciar o GOWA automaticamente",
+   "ru": "Запускать GOWA автоматически",
+   "id": "Jalankan GOWA otomatis"
+  },
   "Startup": {
    "zh-Hans": "启动",
    "hi": "स्टार्टअप",
@@ -5182,6 +5677,28 @@
    "pt-BR": "Estatísticas",
    "ru": "Статистика",
    "id": "Statistik"
+  },
+  "Stay quiet during a Focus": {
+   "zh-Hans": "专注模式期间保持安静",
+   "hi": "फ़ोकस के दौरान शांत रहें",
+   "es": "No molestar durante un modo Concentración",
+   "ar": "التزام الهدوء أثناء التركيز",
+   "fr": "Rester discret pendant une Concentration",
+   "bn": "ফোকাসের সময় চুপ থাকো",
+   "pt-BR": "Ficar quieto durante um Foco",
+   "ru": "Не беспокоить в режиме фокусирования",
+   "id": "Tetap tenang saat mode Fokus"
+  },
+  "Sticker": {
+   "zh-Hans": "贴纸",
+   "hi": "स्टिकर",
+   "es": "Sticker",
+   "ar": "ملصق",
+   "fr": "Sticker",
+   "bn": "স্টিকার",
+   "pt-BR": "Figurinha",
+   "ru": "Стикер",
+   "id": "Stiker"
   },
   "Stop": {
    "zh-Hans": "停止",
@@ -5370,6 +5887,17 @@
    "ru": "Задачи",
    "id": "Tugas"
   },
+  "Test connection": {
+   "zh-Hans": "测试连接",
+   "hi": "कनेक्शन जाँचें",
+   "es": "Probar la conexión",
+   "ar": "اختبار الاتصال",
+   "fr": "Tester la connexion",
+   "bn": "সংযোগ পরীক্ষা",
+   "pt-BR": "Testar a conexão",
+   "ru": "Проверить подключение",
+   "id": "Uji koneksi"
+  },
   "Test the voice": {
    "zh-Hans": "试听声音",
    "hi": "आवाज़ आज़माएँ",
@@ -5446,6 +5974,105 @@
    "pt-BR": "A limpeza usa sua chave do Claude. Adicione-a em Ajustes → Chat.",
    "ru": "Для чистки нужен ваш ключ Claude. Добавьте его в Настройки → Чат.",
    "id": "Perapian memakai kunci Claude-mu. Tambahkan di Pengaturan → Obrolan."
+  },
+  "The download couldn't be unzipped. Try again.": {
+   "zh-Hans": "无法解压下载内容。请重试。",
+   "hi": "डाउनलोड अनज़िप नहीं हो सका। फिर कोशिश करें।",
+   "es": "No se pudo descomprimir la descarga. Inténtalo de nuevo.",
+   "ar": "تعذّر فك ضغط التنزيل. أعد المحاولة.",
+   "fr": "Le téléchargement n'a pas pu être décompressé. Réessaie.",
+   "bn": "ডাউনলোড আনজিপ করা যায়নি। আবার চেষ্টা করুন।",
+   "pt-BR": "Não foi possível descompactar o download. Tente de novo.",
+   "ru": "Не удалось распаковать загрузку. Попробуйте снова.",
+   "id": "Unduhan tidak bisa diekstrak. Coba lagi."
+  },
+  "The download didn't go through. Check your connection and try again.": {
+   "zh-Hans": "下载未完成。请检查网络后重试。",
+   "hi": "डाउनलोड पूरा नहीं हुआ। कनेक्शन जाँचकर फिर कोशिश करें।",
+   "es": "La descarga no se completó. Revisa tu conexión e inténtalo de nuevo.",
+   "ar": "لم يكتمل التنزيل. تحقق من اتصالك وأعد المحاولة.",
+   "fr": "Le téléchargement n'a pas abouti. Vérifie ta connexion et réessaie.",
+   "bn": "ডাউনলোড সম্পূর্ণ হয়নি। সংযোগ দেখে আবার চেষ্টা করুন।",
+   "pt-BR": "O download não foi concluído. Verifique sua conexão e tente de novo.",
+   "ru": "Загрузка не удалась. Проверьте подключение и попробуйте снова.",
+   "id": "Unduhan gagal. Periksa koneksimu lalu coba lagi."
+  },
+  "The download doesn't match the file GOWA published: it was deleted, nothing was installed.": {
+   "zh-Hans": "下载内容与 GOWA 发布的文件不符：已删除，未安装任何内容。",
+   "hi": "डाउनलोड GOWA की फ़ाइल से मेल नहीं खाता: हटा दिया गया, कुछ इंस्टॉल नहीं हुआ।",
+   "es": "La descarga no coincide con el archivo publicado por GOWA: se eliminó y no se instaló nada.",
+   "ar": "التنزيل لا يطابق الملف الذي نشره GOWA: حُذف ولم يُثبَّت شيء.",
+   "fr": "Le téléchargement ne correspond pas au fichier publié par GOWA : il a été supprimé, rien n'a été installé.",
+   "bn": "ডাউনলোড GOWA-র প্রকাশিত ফাইলের সঙ্গে মেলে না: মুছে ফেলা হয়েছে, কিছু ইনস্টল হয়নি।",
+   "pt-BR": "O download não corresponde ao arquivo publicado pelo GOWA: foi apagado, nada foi instalado.",
+   "ru": "Загрузка не совпадает с файлом, опубликованным GOWA: она удалена, ничего не установлено.",
+   "id": "Unduhan tidak cocok dengan file dari GOWA: sudah dihapus, tidak ada yang dipasang."
+  },
+  "The gateway URL isn’t valid (http://…)": {
+   "zh-Hans": "网关地址无效（http://…）",
+   "hi": "गेटवे URL मान्य नहीं है (http://…)",
+   "es": "La URL de la pasarela no es válida (http://…)",
+   "ar": "عنوان البوابة غير صالح (http://…)",
+   "fr": "L’URL de la passerelle n’est pas valide (http://…)",
+   "bn": "গেটওয়ের URL সঠিক নয় (http://…)",
+   "pt-BR": "A URL do gateway não é válida (http://…)",
+   "ru": "Неверный адрес шлюза (http://…)",
+   "id": "URL gateway tidak valid (http://…)"
+  },
+  "The gateway answers and is connecting to WhatsApp…": {
+   "zh-Hans": "网关有响应，正在连接 WhatsApp…",
+   "hi": "गेटवे जवाब दे रहा है और WhatsApp से जुड़ रहा है…",
+   "es": "La pasarela responde y se está conectando a WhatsApp…",
+   "ar": "البوابة تستجيب وتتصل بواتساب…",
+   "fr": "La passerelle répond et se connecte à WhatsApp…",
+   "bn": "গেটওয়ে সাড়া দিচ্ছে এবং WhatsApp-এ সংযুক্ত হচ্ছে…",
+   "pt-BR": "O gateway responde e está se conectando ao WhatsApp…",
+   "ru": "Шлюз отвечает и подключается к WhatsApp…",
+   "id": "Gateway merespons dan sedang terhubung ke WhatsApp…"
+  },
+  "The gateway answers. Scan the QR code below with your phone.": {
+   "zh-Hans": "网关有响应。请用手机扫描下面的二维码。",
+   "hi": "गेटवे जवाब दे रहा है। नीचे दिया QR कोड फ़ोन से स्कैन करें।",
+   "es": "La pasarela responde. Escanea el código QR de abajo con tu teléfono.",
+   "ar": "البوابة تستجيب. امسح رمز QR أدناه بهاتفك.",
+   "fr": "La passerelle répond. Scanne le QR code ci-dessous avec ton téléphone.",
+   "bn": "গেটওয়ে সাড়া দিচ্ছে। নিচের QR কোডটি ফোনে স্ক্যান করুন।",
+   "pt-BR": "O gateway responde. Escaneie o QR code abaixo com o celular.",
+   "ru": "Шлюз отвечает. Отсканируйте QR-код ниже телефоном.",
+   "id": "Gateway merespons. Pindai kode QR di bawah dengan ponselmu."
+  },
+  "The gateway doesn’t answer: is it running?": {
+   "zh-Hans": "网关没有响应：它在运行吗？",
+   "hi": "गेटवे जवाब नहीं दे रहा: क्या वह चल रहा है?",
+   "es": "La pasarela no responde: ¿está en marcha?",
+   "ar": "البوابة لا تستجيب: هل هي قيد التشغيل؟",
+   "fr": "La passerelle ne répond pas : est-elle lancée ?",
+   "bn": "গেটওয়ে সাড়া দিচ্ছে না: এটি চালু আছে?",
+   "pt-BR": "O gateway não responde: ele está rodando?",
+   "ru": "Шлюз не отвечает: он запущен?",
+   "id": "Gateway tidak merespons: apakah sedang berjalan?"
+  },
+  "The gateway refused Coucou’s address ({0}). Checking every 20 s instead.": {
+   "zh-Hans": "网关拒绝了 Coucou 的地址（{0}）。改为每 20 秒检查一次。",
+   "hi": "गेटवे ने Coucou का पता अस्वीकार किया ({0})। इसके बजाय हर 20 सेकंड में जाँच।",
+   "es": "La pasarela rechazó la dirección de Coucou ({0}). Se comprueba cada 20 s en su lugar.",
+   "ar": "رفضت البوابة عنوان Coucou ‏({0}). يتم التحقق كل 20 ث بدلًا من ذلك.",
+   "fr": "La passerelle a refusé l’adresse de Coucou ({0}). Vérification toutes les 20 s à la place.",
+   "bn": "গেটওয়ে Coucou-র ঠিকানা প্রত্যাখ্যান করেছে ({0})। এর বদলে প্রতি ২০ সেকেন্ডে দেখা হচ্ছে।",
+   "pt-BR": "O gateway recusou o endereço do Coucou ({0}). Verificando a cada 20 s no lugar.",
+   "ru": "Шлюз отклонил адрес Coucou ({0}). Вместо этого проверка каждые 20 с.",
+   "id": "Gateway menolak alamat Coucou ({0}). Sebagai gantinya diperiksa setiap 20 dtk."
+  },
+  "The gateway refuses the credentials": {
+   "zh-Hans": "网关拒绝了凭据",
+   "hi": "गेटवे ने क्रेडेंशियल अस्वीकार किए",
+   "es": "La pasarela rechaza las credenciales",
+   "ar": "البوابة ترفض بيانات الاعتماد",
+   "fr": "La passerelle refuse les identifiants",
+   "bn": "গেটওয়ে পরিচয়পত্র প্রত্যাখ্যান করছে",
+   "pt-BR": "O gateway recusa as credenciais",
+   "ru": "Шлюз отклоняет учётные данные",
+   "id": "Gateway menolak kredensial"
   },
   "The history is off. Turn it on in Settings → Privacy.": {
    "zh-Hans": "历史记录已关闭。请在“设置”→“隐私”中打开。",
@@ -5645,6 +6272,17 @@
    "ru": "Сегодня",
    "id": "Hari ini"
   },
+  "Too long for one message (4,096 characters at most).": {
+   "zh-Hans": "单条消息过长（最多 4096 个字符）。",
+   "hi": "एक संदेश के लिए बहुत लंबा (अधिकतम 4,096 अक्षर)।",
+   "es": "Demasiado largo para un mensaje (4096 caracteres como máximo).",
+   "ar": "طويل جدًا لرسالة واحدة (4096 حرفًا كحد أقصى).",
+   "fr": "Trop long pour un seul message (4 096 caractères au maximum).",
+   "bn": "একটি বার্তার জন্য খুব লম্বা (সর্বোচ্চ ৪০৯৬ অক্ষর)।",
+   "pt-BR": "Longo demais para uma mensagem (no máximo 4.096 caracteres).",
+   "ru": "Слишком длинно для одного сообщения (не больше 4096 символов).",
+   "id": "Terlalu panjang untuk satu pesan (maksimal 4.096 karakter)."
+  },
   "Too many hits at once.": {
    "zh-Hans": "一次点击太多次了。",
    "hi": "एक बार में बहुत ज़्यादा टैप।",
@@ -5722,6 +6360,17 @@
    "ru": "Включить диктовку",
    "id": "Aktifkan dikte"
   },
+  "Turned off in Settings": {
+   "zh-Hans": "已在设置中关闭",
+   "hi": "सेटिंग्स में बंद है",
+   "es": "Desactivado en Ajustes",
+   "ar": "متوقف في الإعدادات",
+   "fr": "Désactivé dans les réglages",
+   "bn": "সেটিংসে বন্ধ",
+   "pt-BR": "Desativado nos Ajustes",
+   "ru": "Выключено в настройках",
+   "id": "Dimatikan di Pengaturan"
+  },
   "Uninstall": {
    "zh-Hans": "卸载",
    "hi": "अनइंस्टॉल करें",
@@ -5766,6 +6415,17 @@
    "ru": "Без ограничений и бесплатно",
    "id": "Tanpa batas dan gratis"
   },
+  "Unofficial integration: it goes through a gateway you run on this Mac. Use it on your own account only. WhatsApp may restrict accounts that abuse it.": {
+   "zh-Hans": "非官方集成：通过你在这台 Mac 上运行的网关工作。仅限用于你自己的账号。滥用时 WhatsApp 可能会限制账号。",
+   "hi": "अनौपचारिक इंटीग्रेशन: यह इस Mac पर चल रहे गेटवे से होकर काम करता है। सिर्फ़ अपने अकाउंट पर इस्तेमाल करें। दुरुपयोग पर WhatsApp अकाउंट सीमित कर सकता है।",
+   "es": "Integración no oficial: pasa por una pasarela que ejecutas en este Mac. Úsala solo con tu propia cuenta. WhatsApp puede restringir las cuentas que abusen.",
+   "ar": "تكامل غير رسمي: يمرّ عبر بوابة تشغّلها على هذا الـMac. استخدمه على حسابك فقط. قد يقيّد واتساب الحسابات عند إساءة الاستخدام.",
+   "fr": "Intégration non officielle : elle passe par une passerelle que tu lances sur ce Mac. À utiliser sur ton propre compte uniquement. WhatsApp peut restreindre un compte en cas d’abus.",
+   "bn": "অনানুষ্ঠানিক ইন্টিগ্রেশন: এটি এই Mac-এ চালানো একটি গেটওয়ে দিয়ে কাজ করে। শুধু নিজের অ্যাকাউন্টে ব্যবহার করুন। অপব্যবহারে WhatsApp অ্যাকাউন্ট সীমিত করতে পারে।",
+   "pt-BR": "Integração não oficial: passa por um gateway que você executa neste Mac. Use só na sua própria conta. O WhatsApp pode restringir contas em caso de abuso.",
+   "ru": "Неофициальная интеграция: работает через шлюз, запущенный на этом Mac. Используйте только со своим аккаунтом. WhatsApp может ограничить аккаунт при злоупотреблении.",
+   "id": "Integrasi tidak resmi: berjalan lewat gateway yang kamu jalankan di Mac ini. Gunakan hanya di akunmu sendiri. WhatsApp bisa membatasi akun yang menyalahgunakannya."
+  },
   "Until Parakeet is downloaded, Coucou uses your Mac's speech recognition.": {
    "zh-Hans": "在下载 Parakeet 之前，Coucou 使用 Mac 的语音识别。",
    "hi": "जब तक Parakeet डाउनलोड नहीं होता, Coucou Mac की वाक् पहचान इस्तेमाल करता है।",
@@ -5776,6 +6436,17 @@
    "pt-BR": "Até o Parakeet ser baixado, o Coucou usa o reconhecimento de fala do Mac.",
    "ru": "Пока Parakeet не скачан, Coucou использует распознавание речи Mac.",
    "id": "Sampai Parakeet diunduh, Coucou memakai pengenalan suara Mac."
+  },
+  "Update": {
+   "zh-Hans": "更新",
+   "hi": "अपडेट करें",
+   "es": "Actualizar",
+   "ar": "تحديث",
+   "fr": "Mettre à jour",
+   "bn": "আপডেট করো",
+   "pt-BR": "Atualizar",
+   "ru": "Обновить",
+   "id": "Perbarui"
   },
   "Update hooks": {
    "zh-Hans": "更新 Hooks",
@@ -5810,6 +6481,17 @@
    "ru": "Используется чатом. Список берётся из твоего аккаунта Anthropic.",
    "id": "Digunakan oleh chat. Daftar berasal dari akun Anthropic Anda."
   },
+  "Video": {
+   "zh-Hans": "视频",
+   "hi": "वीडियो",
+   "es": "Vídeo",
+   "ar": "فيديو",
+   "fr": "Vidéo",
+   "bn": "ভিডিও",
+   "pt-BR": "Vídeo",
+   "ru": "Видео",
+   "id": "Video"
+  },
   "Voice": {
    "zh-Hans": "声音",
    "hi": "आवाज़",
@@ -5831,6 +6513,17 @@
    "pt-BR": "Voz em uso: {0}",
    "ru": "Используется голос: {0}",
    "id": "Suara yang dipakai: {0}"
+  },
+  "Voice message": {
+   "zh-Hans": "语音消息",
+   "hi": "वॉइस संदेश",
+   "es": "Audio",
+   "ar": "رسالة صوتية",
+   "fr": "Vocal",
+   "bn": "ভয়েস বার্তা",
+   "pt-BR": "Áudio",
+   "ru": "Голосовое",
+   "id": "Pesan suara"
   },
   "Voice type": {
    "zh-Hans": "声音类型",
@@ -6007,6 +6700,17 @@
    "pt-BR": "Fale o que falar, é colado em {0}.",
    "ru": "На каком бы языке вы ни говорили, вставится на: {0}.",
    "id": "Apa pun bahasamu, ditempel dalam {0}."
+  },
+  "WhatsApp (experimental)": {
+   "zh-Hans": "WhatsApp（实验性）",
+   "hi": "WhatsApp (प्रायोगिक)",
+   "es": "WhatsApp (experimental)",
+   "ar": "واتساب (تجريبي)",
+   "fr": "WhatsApp (expérimental)",
+   "bn": "WhatsApp (পরীক্ষামূলক)",
+   "pt-BR": "WhatsApp (experimental)",
+   "ru": "WhatsApp (экспериментально)",
+   "id": "WhatsApp (eksperimental)"
   },
   "When Coucou hears the words on the left, it writes the ones on the right.": {
    "zh-Hans": "Coucou 听到左边的词时，会写成右边的词。",
@@ -6283,6 +6987,17 @@
    "ru": "Вчера",
    "id": "Kemarin"
   },
+  "You": {
+   "zh-Hans": "你",
+   "hi": "आप",
+   "es": "Tú",
+   "ar": "أنت",
+   "fr": "Toi",
+   "bn": "আপনি",
+   "pt-BR": "Você",
+   "ru": "Вы",
+   "id": "Kamu"
+  },
   "You say": {
    "zh-Hans": "你说",
    "hi": "आप बोलते हैं",
@@ -6304,6 +7019,17 @@
    "pt-BR": "Você fala",
    "ru": "Ты говоришь",
    "id": "Kamu berbicara"
+  },
+  "Your GOWA gateway is set up": {
+   "zh-Hans": "你的 GOWA 网关已设置",
+   "hi": "आपका GOWA गेटवे सेट है",
+   "es": "Tu pasarela GOWA está configurada",
+   "ar": "بوابة GOWA الخاصة بك مُعدّة",
+   "fr": "Ta passerelle GOWA est configurée",
+   "bn": "আপনার GOWA গেটওয়ে সেট করা আছে",
+   "pt-BR": "Seu gateway GOWA está configurado",
+   "ru": "Ваш шлюз GOWA настроен",
+   "id": "Gateway GOWA-mu sudah diatur"
   },
   "Your Mac is hot": {
    "zh-Hans": "你的 Mac 很热",
@@ -6502,6 +7228,17 @@
    "pt-BR": "agora há pouco",
    "ru": "только что",
    "id": "baru saja"
+  },
+  "macOS doesn’t let this build of Coucou read the Focus state yet: messages still arrive, Mochi keeps reacting.": {
+   "zh-Hans": "macOS 暂不允许此版本的 Coucou 读取专注状态：消息仍会到达，Mochi 仍会做出反应。",
+   "hi": "macOS अभी Coucou के इस बिल्ड को फ़ोकस की स्थिति पढ़ने नहीं देता: संदेश आते रहेंगे, Mochi प्रतिक्रिया देता रहेगा।",
+   "es": "macOS aún no deja a esta versión de Coucou leer el estado de Concentración: los mensajes siguen llegando y Mochi sigue reaccionando.",
+   "ar": "لا يسمح macOS بعد لهذا الإصدار من Coucou بقراءة حالة التركيز: تستمر الرسائل في الوصول ويستمر Mochi في التفاعل.",
+   "fr": "macOS ne laisse pas encore cette version de Coucou lire l’état Concentration : les messages arrivent quand même, Mochi continue de réagir.",
+   "bn": "macOS এখনও Coucou-র এই বিল্ডকে ফোকাসের অবস্থা পড়তে দেয় না: বার্তা আসতে থাকবে, Mochi সাড়া দিতে থাকবে।",
+   "pt-BR": "O macOS ainda não deixa esta versão do Coucou ler o estado do Foco: as mensagens continuam chegando e o Mochi continua reagindo.",
+   "ru": "macOS пока не даёт этой сборке Coucou читать состояние фокусирования: сообщения приходят, Mochi реагирует.",
+   "id": "macOS belum mengizinkan build Coucou ini membaca status Fokus: pesan tetap masuk, Mochi tetap bereaksi."
   },
   "min without movement": {
    "zh-Hans": "分钟无动作",
