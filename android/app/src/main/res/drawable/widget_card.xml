@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The card of every Widget: 24dp corners and a thin lighter border so it stands out on a dark wallpaper. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/widget_card" />
-    <stroke android:width="@dimen/widget_border_width" android:color="@color/widget_border" />
-    <corners android:radius="@dimen/widget_radius" />
-</shape>
