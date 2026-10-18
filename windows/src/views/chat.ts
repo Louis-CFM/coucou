@@ -41,7 +41,16 @@ function bubble(message: ChatMessage): HTMLElement {
   }
   const reply = h("div", { class: "reply" });
   renderMarkdown(reply, message.content);
-  return h("div", { class: "chat-row" }, reply);
+  return h(
+    "div",
+    { class: "chat-row" },
+    h(
+      "div",
+      { class: "answer" },
+      message.notice ? h("div", { class: "reply-note", text: message.notice }) : null,
+      reply,
+    ),
+  );
 }
 
 function typingDots(): HTMLElement {
@@ -61,6 +70,15 @@ function contextChip(label: string): HTMLElement {
 
 function saveSettings() {
   void Bridge.saveSettings(State.settings);
+}
+
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp)$/i;
+/** The error chat_send reports when a model refuses an image (chat.rs). */
+const IMAGES_UNSUPPORTED = "IMAGES_UNSUPPORTED";
+
+/** "provider/model": how chat.rs remembers a model that refused an image. */
+function modelKey(): string {
+  return `${State.settings.chatProvider}/${activeModel(State.settings)}`;
 }
 
 // ── Model picker ──────────────────────────────────────────────────────────────
@@ -224,12 +242,21 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   );
   const modelRow = h("div", { class: "model-row" }, modelBtn);
 
+  // "This model can't see images": asked instead of failing.
+  let askImage = false;
+  let pendingQuery = "";
+  const askText = h("span", {});
+  const sendTextOnly = h("button", { class: "btn primary small", text: "Send without the image" });
+  const switchModel = h("button", { class: "btn secondary small", text: "Switch model" });
+  const cancelAsk = h("button", { class: "btn secondary small", text: t("Cancel") });
+  const ask = h("div", { class: "image-ask" }, askText, h("div", { class: "image-ask-btns" }, sendTextOnly, switchModel, cancelAsk));
+
   const body = h("div", { class: "chat-body" });
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
   });
-  body.append(chipRow, log, picker.el, modelRow, bar);
+  body.append(chipRow, log, ask, picker.el, modelRow, bar);
 
   const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
@@ -253,6 +280,25 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     else picker.open();
   });
 
+  sendTextOnly.addEventListener("click", () => {
+    askImage = false;
+    input.value = pendingQuery;
+    void submit(true);
+  });
+  switchModel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    askImage = false;
+    input.value = pendingQuery;
+    picker.open();
+    State.notify();
+  });
+  cancelAsk.addEventListener("click", () => {
+    askImage = false;
+    input.value = pendingQuery;
+    State.notify();
+    onHeightChange();
+  });
+
   void onEvent<string>("chat-delta", (text) => {
     if (!sending || !text) return; // nothing visible yet: the dots stay
     if (!live) {
@@ -264,12 +310,23 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     log.scrollTop = log.scrollHeight;
   });
 
-  async function submit() {
+  async function submit(textOnly = false) {
     const query = input.value.trim();
     if (!query || sending) return;
     if (picker.isOpen) picker.close();
+    const file = State.droppedFile;
+    const withImage = State.chatHistory.length === 0 && !!file?.path && IMAGE_FILE.test(file.path) && !textOnly;
+    // A model known to read text only: ask before the image is sent, not after.
+    if (withImage && (State.settings.textOnlyModels ?? []).includes(modelKey())) {
+      pendingQuery = query;
+      askImage = true;
+      State.notify();
+      onHeightChange();
+      return;
+    }
     input.value = "";
     sending = true;
+    askImage = false;
     drawModelButton();
     Sound.play("send");
 
@@ -278,20 +335,28 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
-    const file = State.droppedFile;
     const context: ChatContext | null =
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      const reply = await Bridge.chatSend(query, context, textOnly);
+      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text, notice: reply.notice ?? null });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
-      State.view = "note";
-      Sound.play("error");
+      const message = String(err).replace(/^Error:\s*/, "");
+      if (message === IMAGES_UNSUPPORTED) {
+        // The model turned the image down: take the question back and ask.
+        State.chatHistory.pop();
+        pendingQuery = query;
+        askImage = true;
+        Sound.play("blip");
+      } else {
+        State.noteMessage = message;
+        State.view = "note";
+        Sound.play("error");
+      }
     } finally {
       sending = false;
       live = null;
@@ -343,6 +408,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
       input.placeholder = t(State.chatHistory.length === 0 ? STRINGS.placeholderFirst : STRINGS.placeholderNext);
       input.disabled = sending;
+
+      ask.classList.toggle("open", askImage);
+      askText.textContent = `${activeModel(State.settings) || t(STRINGS.noModel)} can't see images.`;
     },
     focus() {
       input.focus();

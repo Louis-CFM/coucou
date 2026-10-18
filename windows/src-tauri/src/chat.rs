@@ -24,10 +24,34 @@ pub enum ChatContext {
     Window { app_name: String, title: String, url: Option<String> },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatReply {
     pub text: String,
+    /// Something to know about how the answer was made (the image was left
+    /// out), shown above it.
+    pub notice: Option<String>,
+}
+
+impl ChatReply {
+    pub fn text(text: String) -> Self {
+        Self { text, ..Default::default() }
+    }
+}
+
+/// The error a model's refusal of an image is reported as, so the island can
+/// ask whether to send without it instead of failing.
+pub const IMAGES_UNSUPPORTED: &str = "IMAGES_UNSUPPORTED";
+
+/// A 4xx to a message that carried an image: the model reads text only. Many
+/// do (most of Groq's, many of OpenRouter's free ones) and say so this way.
+pub fn refused_image(status: u16, sent_image: bool) -> bool {
+    sent_image && matches!(status, 400 | 415 | 422)
+}
+
+/// True when an OpenAI-shaped user message carries an image part.
+pub fn has_image(user: &Value) -> bool {
+    user["content"].as_array().is_some_and(|parts| parts.iter().any(|p| p["type"] == "image_url"))
 }
 
 /// A model a provider offers, for the picker in the chat view.
@@ -135,6 +159,11 @@ Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inl
     )
 }
 
+pub fn is_image(path: &str) -> bool {
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp")
+}
+
 /// The window context line, as ClaudeService.chat() writes it.
 pub fn window_line(app_name: &str, title: &str, url: Option<&str>) -> String {
     let mut text = format!("Context — App: {app_name}, Window: {title}");
@@ -196,27 +225,39 @@ fn is_inside(dir: &std::path::Path, path: &std::path::Path) -> bool {
         && std::fs::symlink_metadata(&file).map(|m| m.is_file()).unwrap_or(false)
 }
 
-/// One chat turn with the provider chosen in the settings.
+/// One chat turn with the provider chosen in the settings. `text_only` sends a
+/// dropped picture by name only (the user chose to, for a model that reads no
+/// images).
 pub async fn send(
     app: &AppHandle,
     chat: &Chat,
     settings: &Settings,
     query: String,
     context: Option<ChatContext>,
+    text_only: bool,
 ) -> Result<ChatReply, String> {
-    let context = context.map(checked_context).transpose()?;
+    let mut context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
+    let mut query = query;
+    let mut notice = None;
+    if let Some(ChatContext::File { name, path }) = context.as_ref().filter(|_| text_only) {
+        if is_image(path) {
+            query = format!("[An image ({name}) was attached, but the user chose to send text only.]\n\n{query}");
+            notice = Some("Sent without the image.".to_string());
+            context = None;
+        }
+    }
     let model = model_for(settings, provider);
-    if provider == ANTHROPIC || provider.is_empty() {
-        return claude::send(chat, &model, query, context).await;
-    }
-    if let Some(p) = openai_compat::provider(provider) {
-        return openai_compat::send(chat, p, &model, query, context).await;
-    }
-    if let Some(server) = local_chat::server(settings, provider) {
-        return local_chat::send(app, chat, &server, &model, query, context).await;
-    }
-    Err(format!("Unknown chat provider: {provider}"))
+    let reply = if provider == ANTHROPIC || provider.is_empty() {
+        claude::send(chat, &model, query, context).await
+    } else if let Some(p) = openai_compat::provider(provider) {
+        openai_compat::send(chat, p, &model, query, context).await
+    } else if let Some(server) = local_chat::server(settings, provider) {
+        local_chat::send(app, chat, &server, &model, query, context).await
+    } else {
+        Err(format!("Unknown chat provider: {provider}"))
+    }?;
+    Ok(ChatReply { notice: notice.or(reply.notice), ..reply })
 }
 
 /// One turn of the phone's conversation (phone_link/chat_backend.rs): the same providers as
@@ -386,5 +427,14 @@ mod tests {
             assert!(!is_inside(&inbox, &inbox.join("link.txt")));
         }
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn an_image_refused_with_a_4xx_means_a_text_only_model() {
+        assert!(refused_image(400, true) && refused_image(415, true) && refused_image(422, true));
+        assert!(!refused_image(400, false));
+        assert!(!refused_image(401, true) && !refused_image(500, true));
+        assert!(has_image(&json!({"role":"user","content":[{"type":"image_url","image_url":{"url":"data:x"}},{"type":"text","text":"q"}]})));
+        assert!(!has_image(&json!({"role":"user","content":"q"})));
     }
 }
