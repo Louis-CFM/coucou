@@ -163,6 +163,9 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                 answeredId = null
                 answeredDecision = null
             }
+            // A card answered on the PC or past its time leaves no dead
+            // Allow/Deny notification — the push path does the same.
+            if (f.pending == null) Notifier.cancelCard(getApplication())
             announce(f)
             box = f
             lineError = null
