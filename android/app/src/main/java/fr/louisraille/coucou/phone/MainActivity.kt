@@ -9,10 +9,14 @@ import androidx.fragment.app.FragmentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 
 class MainActivity : FragmentActivity() {
 
@@ -35,9 +39,20 @@ class MainActivity : FragmentActivity() {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when (vm.screen) {
                         CoucouViewModel.Screen.PAIR -> PairScreen(vm)
-                        CoucouViewModel.Screen.HOME -> HomeScreen(vm)
                         CoucouViewModel.Screen.PICKER -> PickerScreen(vm)
-                        CoucouViewModel.Screen.CHAT -> ChatScreen(vm)
+                        else -> Scaffold(
+                            containerColor = Color.Black,
+                            bottomBar = { CoucouNavBar(vm) },
+                        ) { inner ->
+                            Box(Modifier.padding(inner)) {
+                                when (vm.screen) {
+                                    CoucouViewModel.Screen.HOME -> HomeScreen(vm)
+                                    CoucouViewModel.Screen.CHAT -> ChatScreen(vm)
+                                    CoucouViewModel.Screen.SETTINGS -> SettingsScreen(vm)
+                                    else -> {}
+                                }
+                            }
+                        }
                     }
                 }
             }

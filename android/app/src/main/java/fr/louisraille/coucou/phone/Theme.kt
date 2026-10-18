@@ -14,11 +14,14 @@ import androidx.compose.ui.unit.dp
  */
 object Coucou {
     // Fills
-    val Card = Color(0xFF1C1C1E)          // white 0.11
+    val Card = Color(0xFF141518)          // the upstream panel — flat, dark
+    val Panel2 = Color(0xFF1D1F23)        // rows, chips, the selected tab
     val Pill = Color(0xFF29292B)          // white 0.16
     val CardSoft = Color(0xFF171718)      // white 0.09 — the island header
+    val Hero = Color(0xFF0E0F12)          // the hero panel — nearly black
     val Field = Color(0x14FFFFFF)         // white 0.08 — inputs, code blocks
     val Hairline = Color(0x1FFFFFFF)      // white 0.12 — island border
+    val Line = Color(0xFF26282D)          // the 1 dp panel border
     val CardStroke = Color(0x12FFFFFF)    // white 0.07 — subtle card border
 
     // Text
@@ -42,10 +45,11 @@ object Coucou {
     val DenyBg = Color(0x33F4505E)
     val DenyInk = Color(0xFFFF9EA6)
 
-    // Shape — iOS uses 22/26/28
+    // Shape — iOS uses 22/26/28; the hero's bottom corners are rounder (upstream 30)
     val CornerCard = 22.dp
     val CornerIsland = 28.dp
     val CornerTile = 11.dp
+    val CornerHero = 30.dp
 
     /** The color a session's status text takes, by state name. */
     fun accentFor(state: String): Color = when (state) {

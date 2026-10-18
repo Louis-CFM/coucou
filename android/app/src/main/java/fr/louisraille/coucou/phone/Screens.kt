@@ -13,13 +13,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -29,11 +33,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -151,24 +158,22 @@ fun HomeScreen(vm: CoucouViewModel) {
     val card = box?.pending?.takeUnless { vm.isAnswered(it.requestId) }
     val sent = box?.pending?.let { vm.sentDecision(it.requestId) }
     val sessions = box?.state?.sessions.orEmpty()
+    val lead = remember(box, card) {
+        if (card != null) null else sessions.maxByOrNull { urgencyOf(it.state) }
+    }
+    val running = sessions.count { it.state == "working" || it.state == "thinking" || it.state == "searching" }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .padding(horizontal = 16.dp),
-    ) {
-        // Top bar — wordmark + chat entry, quiet like iOS' navigationTitle row.
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Coucou", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Coucou.Ink)
-            Spacer(Modifier.weight(1f))
-        }
-
+    // The hero hangs from the top edge and takes the status bar inset itself.
+    Column(Modifier.fillMaxSize()) {
+        HeroCard(
+            box = box,
+            pending = card,
+            sent = sent,
+            lead = lead,
+            running = running,
+            lineError = vm.lineError,
+            outfit = Wardrobe.resolve(vm.outfitSel, LocalDate.now()),
+        )
         PullToRefreshBox(
             isRefreshing = vm.refreshing,
             onRefresh = { vm.refreshNow() },
@@ -176,49 +181,22 @@ fun HomeScreen(vm: CoucouViewModel) {
         ) {
             LazyColumn(
                 Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
             ) {
-                // The island — lead Mochi + what needs you, card grows under it.
-                item {
-                    IslandHeader(
-                        box = box,
-                        pending = card,
-                        sent = sent,
-                        lineError = vm.lineError,
-                        outfit = Wardrobe.resolve(vm.outfitSel, LocalDate.now()),
-                    )
-                }
-
                 if (card != null || sent != null) {
                     item { PendingPanel(card = card, sent = sent, vm = vm) }
                 }
 
-                // What's on the PC right now — the island chat sits first,
-                // the live agents card right under it.
-                item {
-                    ChatEntryCard(
-                        tail = box?.state?.chatTail.orEmpty(),
-                        onOpen = { vm.navigate(CoucouViewModel.Screen.CHAT) },
-                    )
-                }
-
-                if (sessions.isNotEmpty()) {
-                    // The iOS grouped list: one card, rows split by hairlines.
+                // The other agents — the hero carries the lead.
+                val others = sessions.filter { it.pillId != lead?.pillId }
+                if (others.isNotEmpty()) {
                     item {
                         CoucouCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
-                                sessions.forEachIndexed { i, s ->
-                                    SessionRow(s)
-                                    if (i < sessions.size - 1) {
-                                        Box(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .height(0.5.dp)
-                                                .padding(start = 52.dp)
-                                                .background(Coucou.Hairline),
-                                        )
-                                    }
+                            Column {
+                                others.forEachIndexed { i, s ->
+                                    AgentRow(s)
+                                    if (i < others.size - 1) RowDivider()
                                 }
                             }
                         }
@@ -240,161 +218,125 @@ fun HomeScreen(vm: CoucouViewModel) {
                         )
                     }
                 }
-
-                if (sessions.isEmpty() && card == null) {
-                    item { EmptyCard(box != null) }
-                }
-
-                item {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            vm.worker,
-                            fontSize = 12.sp,
-                            color = Coucou.Tertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        WardrobeMenu(vm)
-                        Text(
-                            "Unpair",
-                            color = Coucou.Error.copy(alpha = 0.8f),
-                            fontSize = 13.sp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { vm.unpair() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                        )
-                    }
-                }
             }
         }
     }
 }
 
-/** Mochi's wardrobe: "auto" dresses him for the season, or a fixed outfit. */
+/**
+ * The hero of Home — the upstream island grown to full width and hanging from
+ * the top edge: the connection line, the lead session's big Mochi in its state
+ * colour's glow, its name and one plain sentence. Buttons live in the pending
+ * card below, so the hero stays a read-out, not a control.
+ */
 @Composable
-private fun WardrobeMenu(vm: CoucouViewModel) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            Modifier
-                .clip(CircleShape)
-                .clickable { open = true }
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                Wardrobe.LABELS[vm.outfitSel] ?: vm.outfitSel,
-                color = Coucou.Secondary,
-                fontSize = 13.sp,
-            )
-            Icon(
-                Icons.Filled.ArrowDropDown,
-                contentDescription = "Dress Mochi",
-                tint = Coucou.Tertiary,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        DropdownMenu(
-            expanded = open,
-            onDismissRequest = { open = false },
-            containerColor = Coucou.Card,
-        ) {
-            Wardrobe.SELECTIONS.forEach { sel ->
-                val item = Wardrobe.resolve(sel, LocalDate.now())
-                DropdownMenuItem(
-                    leadingIcon = {
-                        Mochi(MochiSpec.State.Idle, Modifier.size(26.dp), seed = sel, outfit = item)
-                    },
-                    text = {
-                        Text(
-                            Wardrobe.LABELS[sel] ?: sel,
-                            color = if (sel == vm.outfitSel) Coucou.Ink else Coucou.Secondary,
-                            fontWeight = if (sel == vm.outfitSel) FontWeight.SemiBold else FontWeight.Normal,
-                        )
-                    },
-                    onClick = {
-                        vm.setOutfit(sel)
-                        open = false
-                    },
-                )
-            }
-        }
-    }
-}
-
-/** The black island: the lead session's Mochi, a headline, what's going on. */
-@Composable
-private fun IslandHeader(
+private fun HeroCard(
     box: Relay.Fetch?,
     pending: Relay.Card?,
     sent: String?,
+    lead: Relay.Session?,
+    running: Int,
     lineError: String?,
     outfit: Outfit = Outfit.NONE,
 ) {
-    val lead = remember(box) {
-        box?.state?.sessions.orEmpty().maxByOrNull { urgencyOf(it.state) }
-    }
-    val leadState = when {
-        pending != null -> if (pending.isQuestion) MochiSpec.State.Question else MochiSpec.State.Approval
-        lead != null -> MochiSpec.State.of(lead.state)
-        else -> MochiSpec.State.Sleeping
-    }
-    val headline = when {
-        lineError != null -> "Can't reach the relay"
-        sent != null -> if (sent == "allow") "Allowed" else "Sent"
-        pending != null -> "${pending.agent} needs you"
-        sessionsSummary(box) != null -> sessionsSummary(box)!!
-        box == null -> "Waiting for your PC…"
-        else -> "All quiet"
-    }
-    val detail = when {
-        lineError != null -> lineError
-        pending != null -> pending.title.ifBlank { null }
-        lead != null -> "${lead.agent} · ${lead.statusText.ifBlank { lead.state }}"
+    val connected = box != null && lineError == null
+    val wash = when {
+        pending != null -> if (pending.isQuestion) Coucou.Question else Coucou.Approval
+        lead != null -> Coucou.accentFor(lead.state)
         else -> null
     }
-
-    CoucouCard(cornerRadius = Coucou.CornerIsland, modifier = Modifier.fillMaxWidth()) {
-        Box(
+    HeroPanel(wash = wash) {
+        Column(
             Modifier
-                .fillMaxWidth()
-                .background(Coucou.CardSoft)
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // ● Connected · N running — the one status line of the screen.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Mochi(leadState, Modifier.size(52.dp), seed = pending?.requestId ?: lead?.pillId ?: "idle", outfit = outfit)
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(headline, color = Coucou.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    if (detail != null) {
+                StateDot(
+                    if (connected) Coucou.Done
+                    else if (lineError != null) Coucou.Error
+                    else Coucou.Sleeping,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (connected) "Connected" else if (lineError != null) "Offline" else "Connecting…",
+                    color = Coucou.Secondary,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (running > 0) Text("$running running", color = Coucou.Secondary, fontSize = 13.sp)
+            }
+
+            if (pending == null && lead == null) {
+                // Empty: the big quiet Mochi, centred, says it all.
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Mochi(MochiSpec.State.Sleeping, Modifier.size(112.dp), seed = "empty", outfit = outfit)
+                    Text(
+                        if (lineError != null) "Can't reach the relay"
+                        else if (box == null) "Waiting for your PC…"
+                        else "All quiet",
+                        color = Coucou.Ink,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        lineError
+                            ?: "Sessions show up here when an agent runs on your PC.",
+                        color = if (lineError != null) Coucou.Error else Coucou.Secondary,
+                        fontSize = 13.sp,
+                        maxLines = 3,
+                    )
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    val state = when {
+                        pending != null -> if (pending.isQuestion) MochiSpec.State.Question else MochiSpec.State.Approval
+                        else -> MochiSpec.State.of(lead!!.state)
+                    }
+                    Mochi(state, Modifier.size(108.dp), seed = pending?.requestId ?: lead!!.pillId, outfit = outfit)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            detail,
-                            color = if (lineError != null) Coucou.Error else Coucou.Secondary,
-                            fontSize = 14.sp,
-                            maxLines = 1,
+                            if (pending != null) agentTitle(pending.agent) else agentTitle(lead!!.agent),
+                            color = Coucou.Ink,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                        )
+                        if (pending != null) {
+                            Text(
+                                if (pending.isQuestion) "needs an answer" else "waiting for your OK",
+                                color = if (pending.isQuestion) Coucou.Question else Coucou.Approval,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        Text(
+                            when {
+                                pending != null -> pending.title
+                                sent != null -> if (sent == "allow") "Allowed — sent to your PC" else "Sent to your PC"
+                                lead!!.statusText.isNotBlank() -> lead.statusText
+                                else -> lead.state
+                            },
+                            color = Coucou.Ink,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
             }
         }
-    }
-}
-
-private fun sessionsSummary(box: Relay.Fetch?): String? {
-    val sessions = box?.state?.sessions.orEmpty()
-    if (sessions.isEmpty()) return null
-    val working = sessions.count { it.state == "working" || it.state == "thinking" }
-    return when {
-        working > 0 -> if (sessions.size == 1) "${sessions[0].agent} is working" else "$working agents working"
-        else -> "${sessions.size} session${if (sessions.size > 1) "s" else ""}"
     }
 }
 
@@ -443,45 +385,6 @@ private fun ago(at: Long): String {
         s < 3600 -> "${s / 60}m"
         s < 86400 -> "${s / 3600}h"
         else -> "${s / 86400}d"
-    }
-}
-
-/** The island's own chat — first card under the island header. */
-@Composable
-private fun ChatEntryCard(tail: List<Relay.ChatLine>, onOpen: () -> Unit) {
-    val preview = tail.lastOrNull()?.text.orEmpty()
-    CoucouCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Coucou.CornerCard))
-            .clickable(onClick = onOpen),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(Coucou.CornerTile))
-                    .background(MochiSpec.tile(Color(0xFF4A4A4C))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Mochi(MochiSpec.State.Idle, Modifier.size(34.dp), seed = "coucou-chat")
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Chat", color = Coucou.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    preview.ifBlank { "The chat living on your PC" },
-                    color = Coucou.Secondary,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text("›", color = Coucou.Tertiary, fontSize = 22.sp)
-        }
     }
 }
 
@@ -556,14 +459,7 @@ private fun AgentSection(
                 }
                 sessions.take(3).forEachIndexed { i, s ->
                     CliSessionRow(s, onClick = { onPick(s) })
-                    if (i < sessions.take(3).size - 1) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(0.5.dp)
-                                .background(Coucou.Hairline),
-                        )
-                    }
+                    if (i < sessions.take(3).size - 1) RowDivider()
                 }
             }
         }
@@ -777,15 +673,17 @@ private fun SentCard(decision: String) {
     }
 }
 
+/** One live agent row — small Mochi in the agent's colour, name, one line, state dot. */
 @Composable
-private fun SessionRow(s: Relay.Session) {
+private fun AgentRow(s: Relay.Session) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .heightIn(min = 64.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // The Mochi tile — white bot on the agent's colour, like iOS.
         Box(
             Modifier
                 .size(40.dp)
@@ -795,62 +693,27 @@ private fun SessionRow(s: Relay.Session) {
         ) {
             Mochi(MochiSpec.State.of(s.state), Modifier.size(34.dp), seed = s.pillId)
         }
-        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                s.agent,
+                agentTitle(s.agent),
                 color = Coucou.Ink,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (s.statusText.isNotBlank() && s.statusText != s.state) {
-                Text(
-                    s.statusText,
-                    color = Coucou.Secondary,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.End) {
             Text(
-                s.state,
-                color = Coucou.accentFor(s.state),
-                fontSize = 14.sp,
-                fontWeight = if (urgencyOf(s.state) >= 4) FontWeight.SemiBold else FontWeight.Normal,
-            )
-            if (s.stepCount > 0) {
-                Text(
-                    "step ${s.stepIndex}/${s.stepCount}",
-                    color = Coucou.Tertiary,
-                    fontSize = 11.sp,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyCard(connected: Boolean) {
-    CoucouCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Mochi(MochiSpec.State.Sleeping, Modifier.size(56.dp), seed = "empty")
-            Spacer(Modifier.height(12.dp))
-            Text(
-                if (connected) "Nothing is running on your PC" else "Waiting for the PC's first update…",
+                buildString {
+                    append(s.statusText.ifBlank { s.state })
+                    if (s.stepCount > 0) append(" · step ${s.stepIndex}/${s.stepCount}")
+                },
                 color = Coucou.Secondary,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
+        StateDot(Coucou.accentFor(s.state))
     }
 }
 
@@ -876,24 +739,16 @@ fun ChatScreen(vm: CoucouViewModel) {
             .fillMaxSize()
             .safeDrawingPadding(),
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = { vm.navigate(CoucouViewModel.Screen.HOME) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Coucou.Ink)
-            }
-            Text(
-                selected?.title?.ifBlank { "${agentTitle(selected.agent)} session" } ?: "Chat",
-                color = Coucou.Ink,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        // A tab now — no back arrow; the bar switches sections.
+        Text(
+            selected?.title?.ifBlank { "${agentTitle(selected.agent)} session" } ?: "Chat",
+            color = Coucou.Ink,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+        )
         if (sessions.isNotEmpty()) {
             LazyRow(
                 Modifier.fillMaxWidth(),
@@ -1018,6 +873,10 @@ fun ChatScreen(vm: CoucouViewModel) {
                             Modifier
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(if (line.isUser) Color.White else Coucou.Card)
+                                .then(
+                                    if (line.isUser) Modifier
+                                    else Modifier.border(1.dp, Coucou.Line, RoundedCornerShape(18.dp))
+                                )
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                         ) {
                             Text(
@@ -1041,7 +900,8 @@ fun ChatScreen(vm: CoucouViewModel) {
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Coucou.Pill)
+                            .background(Coucou.Panel2)
+                            .border(1.dp, Coucou.Line, RoundedCornerShape(16.dp))
                             .clickable { vm.sendChat(action) }
                             .padding(horizontal = 12.dp, vertical = 7.dp),
                     ) {
@@ -1068,7 +928,7 @@ fun ChatScreen(vm: CoucouViewModel) {
                 Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(if (draft.isBlank()) Coucou.Pill else Color.White)
+                    .background(if (draft.isBlank()) Coucou.Panel2 else Color.White)
                     .clickable(enabled = draft.isNotBlank()) {
                         vm.sendChat(draft)
                         draft = ""
@@ -1179,12 +1039,7 @@ fun PickerScreen(vm: CoucouViewModel) {
                         vm.navigate(CoucouViewModel.Screen.CHAT)
                     },
                 )
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .background(Coucou.Hairline),
-                )
+                RowDivider()
             }
         }
     }
@@ -1196,7 +1051,7 @@ private fun SessionChip(label: String, active: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (active) Color.White else Coucou.Pill)
+            .background(if (active) Color.White else Coucou.Panel2)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
@@ -1210,3 +1065,232 @@ private fun SessionChip(label: String, active: Boolean, onClick: () -> Unit) {
         )
     }
 }
+
+// MARK: - Bottom navigation
+
+/**
+ * The upstream floating bar: a black pill hanging over the screen's bottom
+ * edge, icons + labels always shown, the open tab lit with a lighter pill,
+ * an amber dot on Home while a request waits for you.
+ */
+@Composable
+fun CoucouNavBar(vm: CoucouViewModel) {
+    data class Tab(val screen: CoucouViewModel.Screen, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+    val tabs = listOf(
+        Tab(CoucouViewModel.Screen.HOME, "Home", Icons.Filled.Home),
+        Tab(CoucouViewModel.Screen.CHAT, "Chat", Icons.AutoMirrored.Filled.Send),
+        Tab(CoucouViewModel.Screen.SETTINGS, "Settings", Icons.Filled.Settings),
+    )
+    val alert = vm.box?.pending?.takeUnless { vm.isAnswered(it.requestId) } != null
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .heightIn(min = 64.dp)
+            .clip(CircleShape)
+            .background(Coucou.Card)
+            .border(1.dp, Coucou.Line, CircleShape)
+            .padding(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        tabs.forEach { tab ->
+            val on = vm.screen == tab.screen
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 52.dp)
+                    .clip(CircleShape)
+                    .background(if (on) Coucou.Panel2 else Color.Transparent)
+                    .clickable(role = Role.Tab) { vm.navigate(tab.screen) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        tab.icon,
+                        contentDescription = tab.label,
+                        tint = if (on) Coucou.Ink else Coucou.Tertiary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        tab.label,
+                        color = if (on) Coucou.Ink else Coucou.Tertiary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+                if (alert && tab.screen == CoucouViewModel.Screen.HOME) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(start = 26.dp, top = 2.dp)
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(Coucou.Approval)
+                            .border(2.dp, Coucou.Card, CircleShape),
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Settings
+
+/** Pairing, Mochi's wardrobe and the phone's own info — what used to crowd Home's footer. */
+@Composable
+fun SettingsScreen(vm: CoucouViewModel) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+    ) {
+        Text(
+            "Settings",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Coucou.Ink,
+            modifier = Modifier.padding(top = 12.dp, bottom = 14.dp, start = 4.dp),
+        )
+
+        // Mochi — the wardrobe, with a live preview of the current pick.
+        SectionLabel("Mochi")
+        CoucouCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Coucou.Field),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Mochi(
+                            MochiSpec.State.Idle,
+                            Modifier.size(52.dp),
+                            seed = "settings",
+                            outfit = Wardrobe.resolve(vm.outfitSel, LocalDate.now()),
+                        )
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text("Wardrobe", color = Coucou.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            Wardrobe.LABELS[vm.outfitSel] ?: vm.outfitSel,
+                            color = Coucou.Secondary,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Wardrobe.SELECTIONS.chunked(4).forEach { row ->
+                    Row(Modifier.fillMaxWidth()) {
+                        row.forEach { sel ->
+                            val on = sel == vm.outfitSel
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { vm.setOutfit(sel) }
+                                    .padding(vertical = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (on) Coucou.Panel2 else Color.Transparent)
+                                        .then(
+                                            if (on) Modifier.border(1.dp, Coucou.Line, RoundedCornerShape(12.dp))
+                                            else Modifier
+                                        )
+                                        .padding(4.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Mochi(
+                                        MochiSpec.State.Idle,
+                                        Modifier.size(36.dp),
+                                        seed = sel,
+                                        outfit = Wardrobe.resolve(sel, LocalDate.now()),
+                                    )
+                                }
+                                Text(
+                                    Wardrobe.LABELS[sel] ?: sel,
+                                    color = if (on) Coucou.Ink else Coucou.Tertiary,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+
+        // This phone — the relay it talks to and the name it gave the PC.
+        SectionLabel("This phone")
+        CoucouCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 14.dp)) {
+                SettingsRow("Relay", vm.worker.ifBlank { "—" })
+                Hairline()
+                SettingsRow("Name", Prefs.load(LocalContext.current)?.deviceName ?: Build.MODEL)
+            }
+        }
+
+        // Danger zone.
+        Spacer(Modifier.height(18.dp))
+        CoucouCard(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "Unpair this phone",
+                color = Coucou.Error,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(Coucou.CornerCard))
+                    .clickable { vm.unpair() }
+                    .padding(16.dp),
+            )
+        }
+        Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        color = Coucou.Tertiary,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(start = 4.dp, top = 14.dp, bottom = 8.dp),
+    )
+}
+
+@Composable
+private fun SettingsRow(label: String, value: String) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = Coucou.Secondary, fontSize = 15.sp)
+        Spacer(Modifier.weight(1f))
+        Text(
+            value,
+            color = Coucou.Tertiary,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 16.dp),
+        )
+    }
+}
+
+@Composable
+private fun Hairline() = RowDivider()

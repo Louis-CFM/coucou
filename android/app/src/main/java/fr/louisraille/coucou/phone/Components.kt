@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -79,7 +80,7 @@ fun CoucouCard(
                 if (wash && tint != null) Modifier.drawBehind { drawWash(tint, 0.5f) }
                 else Modifier
             )
-            .border(1.dp, (tint?.copy(alpha = 0.35f) ?: Coucou.CardStroke), shape)
+            .border(1.dp, (tint?.copy(alpha = 0.35f) ?: Coucou.Line), shape)
     ) { content() }
 }
 
@@ -91,6 +92,36 @@ private fun DrawScope.drawWash(color: Color, alpha: Float) {
             center = Offset(size.width / 2f, size.height * 1.3f), radius = size.width * 0.85f,
         ),
     )
+}
+
+/**
+ * The upstream hero: a nearly-black panel hanging from the screen's top edge,
+ * rounded only at the bottom. [wash] glows in the lead session's state colour.
+ * The status bar's inset is taken inside, so the panel reaches the glass.
+ */
+@Composable
+fun HeroPanel(wash: Color? = null, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(bottomStart = Coucou.CornerHero, bottomEnd = Coucou.CornerHero)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Coucou.Hero)
+            .border(1.dp, Color.White.copy(alpha = 0.06f), shape)
+            .then(if (wash != null) Modifier.drawBehind { drawWash(wash, 0.5f) } else Modifier)
+    ) { content() }
+}
+
+/** The coloured dot of an agent's state or the connection — upstream's StateDot. */
+@Composable
+fun StateDot(color: Color, modifier: Modifier = Modifier) {
+    Box(modifier.size(8.dp).clip(CircleShape).background(color))
+}
+
+/** The thin line between two rows of one panel. */
+@Composable
+fun RowDivider() {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Coucou.Line))
 }
 
 /**

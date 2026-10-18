@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 
 class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : AndroidViewModel(app) {
 
-    enum class Screen { PAIR, HOME, PICKER, CHAT }
+    enum class Screen { PAIR, HOME, PICKER, CHAT, SETTINGS }
 
     var screen by mutableStateOf(initialScreen(app))
         private set
