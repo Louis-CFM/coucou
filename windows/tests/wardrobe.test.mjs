@@ -4,9 +4,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  OUTFIT_SELECTIONS, OUTFIT_LABELS, SeasonCache, easterDate, parseOutfit, resolveOutfit,
-  seasonalOutfit, wardrobeHeader,
+  MAIN_MOCHI, OUTFIT_SELECTIONS, OUTFIT_LABELS, SHAPE_KEYS, SeasonCache, easterDate, lookOf, mochiKey,
+  parseOutfit, parseWardrobeMode, resolveOutfit, seasonalOutfit, setLook, wardrobeHeader,
 } from "../src/mochi/wardrobe.ts";
+import { SHAPES, halfWidthAt, shapeOf } from "../src/mochi/shapes.ts";
 import { DEFAULT_SETTINGS } from "../src/core/state.ts";
 
 /** A local calendar day, at noon so no time zone can push it into the next one. */
@@ -128,4 +129,75 @@ test("the per-frame season lookup follows the calendar day", () => {
   assert.equal(cache.get("auto", new Date(2026, 9, 1, 0, 0, 1)), "witchHat");
   assert.equal(cache.get("bow", day(2026, 10, 1)), "bow");
   assert.equal(cache.get("auto", day(2026, 12, 2)), "santaHat");
+});
+
+test("body shapes: unknown means the classic Mochi, which is upstream's body", () => {
+  assert.equal(DEFAULT_SETTINGS.mochiShape, "");
+  for (const raw of ["", "nope", undefined, 3]) assert.equal(shapeOf(raw), SHAPES[0]);
+  assert.equal(shapeOf("onigiri").id, "onigiri");
+  assert.deepEqual([SHAPES[0].rx, SHAPES[0].ry, SHAPES[0].n], [1.14, 0.88, 2.7]);
+  for (const shape of SHAPES) assert.ok(SHAPE_KEYS[shape.id], `${shape.id} has a name`);
+  // The onigiri's top is narrower than its bottom; the others are symmetric.
+  assert.ok(halfWidthAt(shapeOf("onigiri"), -0.8) < halfWidthAt(shapeOf("onigiri"), 0.8));
+  assert.equal(halfWidthAt(SHAPES[0], -0.5), halfWidthAt(SHAPES[0], 0.5));
+});
+
+// ── Each Mochi's own look ─────────────────────────────────────────────────────
+
+const looks = (mode) => ({
+  ...DEFAULT_SETTINGS,
+  wardrobeMode: mode,
+  mochiOutfit: "crown",
+  mochiShape: "tofu",
+  mochiLooks: {
+    [MAIN_MOCHI]: { outfit: "beanie", shape: "" },
+    integration_github: { outfit: "witchHat", shape: "bean" },
+  },
+});
+
+test("each Mochi wears its own look, or all wear the shared one", () => {
+  assert.equal(DEFAULT_SETTINGS.wardrobeMode, "perMochi");
+  for (const raw of [undefined, "", "perMochi", "nope"]) assert.equal(parseWardrobeMode(raw), "perMochi");
+  assert.equal(parseWardrobeMode("all"), "all");
+
+  const own = looks("perMochi");
+  assert.deepEqual(lookOf(own, MAIN_MOCHI), { outfit: "beanie", shape: "" });
+  assert.deepEqual(lookOf(own, "integration_github"), { outfit: "witchHat", shape: "bean" });
+  // A Mochi never dressed dresses for the seasons, in the classic body.
+  assert.deepEqual(lookOf(own, "integration_n8n"), { outfit: "auto", shape: "" });
+  assert.deepEqual(lookOf({ ...own, mochiLooks: undefined }, MAIN_MOCHI), { outfit: "auto", shape: "" });
+
+  const shared = looks("all");
+  for (const key of [MAIN_MOCHI, "integration_github", "integration_n8n"]) {
+    assert.deepEqual(lookOf(shared, key), { outfit: "crown", shape: "tofu" });
+  }
+});
+
+test("a pill shows its own coloured Mochi; the main pill and sessions show the main one", () => {
+  const main = "integration_claude";
+  assert.equal(mochiKey({ id: "integration_github", isIntegration: true }, main), "integration_github");
+  assert.equal(mochiKey({ id: main, isIntegration: true }, main), MAIN_MOCHI);
+  assert.equal(mochiKey({ id: "gemini-session-1", isIntegration: false }, main), MAIN_MOCHI);
+  assert.equal(mochiKey(null, main), MAIN_MOCHI);
+});
+
+test("switching modes back and forth keeps both sets of looks", () => {
+  const s = looks("perMochi");
+  setLook(s, "integration_github", { outfit: "bow" });
+  setLook(s, "integration_n8n", { shape: "onigiri" });
+  const own = structuredClone(s.mochiLooks);
+  assert.deepEqual(own.integration_github, { outfit: "bow", shape: "bean" });
+  assert.deepEqual(own.integration_n8n, { outfit: "auto", shape: "onigiri" });
+  assert.equal(s.mochiOutfit, "crown"); // the shared look is not touched
+
+  s.wardrobeMode = "all";
+  setLook(s, "integration_github", { outfit: "scarf" });
+  assert.deepEqual(lookOf(s, MAIN_MOCHI), { outfit: "scarf", shape: "tofu" });
+  assert.deepEqual(s.mochiLooks, own); // each Mochi's own look waits
+
+  s.wardrobeMode = "perMochi";
+  assert.deepEqual(lookOf(s, "integration_github"), { outfit: "bow", shape: "bean" });
+  assert.deepEqual(lookOf(s, MAIN_MOCHI), { outfit: "beanie", shape: "" });
+  s.wardrobeMode = "all";
+  assert.deepEqual(lookOf(s, "integration_n8n"), { outfit: "scarf", shape: "tofu" });
 });

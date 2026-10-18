@@ -1,7 +1,9 @@
 // Mochi's wardrobe — the pure logic, port of NotchBuddy/Sources/CoucouKit/MochiWardrobe.swift.
-// What Mochi wears is picked in the wardrobe view (right-click on Mochi, or the
-// tray menu) and stored in the preferences as `mochiOutfit`. The drawing lives
-// in ./outfits.ts.
+// What Mochi wears is picked in the wardrobe view (right-click on Mochi, the
+// tray menu, or Settings). Each Mochi has its own look (`mochiLooks`, which
+// Rust keeps in wardrobe-looks.json), unless `wardrobeMode` is "all": then
+// every Mochi wears `mochiOutfit` and `mochiShape`. The drawing lives in
+// ./outfits.ts.
 
 import { N_, labels, t } from "../i18n/i18n";
 
@@ -46,6 +48,17 @@ export const WARDROBE_STRINGS = {
   get autoBadge() { return t("AUTO"); },
   autoNow: (current: string) => t("Auto · {outfit}", { outfit: current }),
   autoHover: (current: string) => t("Auto · follows the seasons (now: {outfit})", { outfit: current }),
+};
+
+// ── Body shapes (their geometry is in ./shapes.ts) ────────────────────────────
+
+/** The shapes' English names, the keys of their translations. */
+export const SHAPE_KEYS: Record<string, string> = {
+  mochi: N_("Mochi"),
+  daifuku: N_("Daifuku"),
+  bean: N_("Bean"),
+  tofu: N_("Tofu"),
+  onigiri: N_("Onigiri"),
 };
 
 // ── Logic ─────────────────────────────────────────────────────────────────────
@@ -124,6 +137,65 @@ export function wardrobeHeader(
   const season = OUTFIT_LABELS[seasonalOutfit(date)];
   if (hovered) return hovered === "auto" ? WARDROBE_STRINGS.autoHover(season) : OUTFIT_LABELS[hovered];
   return selection === "auto" ? WARDROBE_STRINGS.autoNow(season) : OUTFIT_LABELS[selection];
+}
+
+// ── Whose look ───────────────────────────────────────────────────────────────
+
+/** The main Mochi's key in `mochiLooks`; a coloured Mochi's is its pill id. */
+export const MAIN_MOCHI = "main";
+
+/** "perMochi": each Mochi wears its own look. "all": they all wear the same. */
+export type WardrobeMode = "perMochi" | "all";
+
+/** One Mochi's look as stored: raw values, read through lookOf. */
+export interface MochiLook {
+  outfit: string;
+  shape: string;
+}
+
+/** The settings the wardrobe reads and writes. */
+export interface LookSettings {
+  wardrobeMode?: string;
+  mochiOutfit: string;
+  mochiShape: string;
+  mochiLooks?: Record<string, MochiLook>;
+}
+
+/** Anything but "all" (missing, from an older build) is one look per Mochi. */
+export function parseWardrobeMode(raw: unknown): WardrobeMode {
+  return raw === "all" ? "all" : "perMochi";
+}
+
+/**
+ * Which Mochi a pill shows: a coloured Mochi is its pill's, the main pill and
+ * any session pill show the main Mochi (the island draws them in his colours).
+ */
+export function mochiKey(task: { id: string; isIntegration: boolean } | null | undefined, mainPillId: string): string {
+  return task?.isIntegration && task.id !== mainPillId ? task.id : MAIN_MOCHI;
+}
+
+/**
+ * What the Mochi `key` wears: in "all" mode the shared look, else its own. A
+ * Mochi never dressed yet dresses for the seasons, in the classic body.
+ */
+export function lookOf(s: LookSettings, key: string): { outfit: OutfitSelection; shape: string } {
+  const raw = parseWardrobeMode(s.wardrobeMode) === "all"
+    ? { outfit: s.mochiOutfit, shape: s.mochiShape }
+    : s.mochiLooks?.[key];
+  return { outfit: parseOutfit(raw?.outfit), shape: typeof raw?.shape === "string" ? raw.shape : "" };
+}
+
+/**
+ * A wardrobe pick for the Mochi `key`, kept where the current mode reads it.
+ * The other mode's looks are left as they are, so switching back finds them.
+ */
+export function setLook(s: LookSettings, key: string, change: Partial<MochiLook>): void {
+  if (parseWardrobeMode(s.wardrobeMode) === "all") {
+    if (change.outfit != null) s.mochiOutfit = change.outfit;
+    if (change.shape != null) s.mochiShape = change.shape;
+    return;
+  }
+  s.mochiLooks = { ...s.mochiLooks, [key]: { ...lookOf(s, key), ...change } };
 }
 
 /** Same as resolveOutfit, remembered for the day — it is asked every frame. */

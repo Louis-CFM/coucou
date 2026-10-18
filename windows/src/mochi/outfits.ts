@@ -13,6 +13,7 @@
 
 import { Ease } from "../core/anim";
 import type { Outfit, OutfitSelection } from "./wardrobe";
+import { SHAPES, shapePoint, taperAt, type ShapeDef } from "./shapes";
 import { SCRIPT_FONTS } from "../core/fonts";
 
 const EXP = 2.7;
@@ -40,10 +41,25 @@ export interface Head {
   pitch: number;
   physDx: number;
   physDy: number;
+  /** The body shape picked in the wardrobe: the outfits scale to its rx and ry. */
+  shape: ShapeDef;
 }
 
-export function makeHead(R: number, yaw = 0, pitch = 0, physDx = 0, physDy = 0): Head {
-  return { R, rx: R * 1.14, ry: R * 0.88, yaw, pitch, physDx, physDy };
+export function makeHead(R: number, yaw = 0, pitch = 0, physDx = 0, physDy = 0, shape = SHAPES[0]): Head {
+  return { R, rx: R * shape.rx, ry: R * shape.ry, yaw, pitch, physDx, physDy, shape };
+}
+
+/** The body's outline in `shape` (the engine's, without the mailbox morph). */
+export function shapeOutline(shape: ShapeDef, R: number): Path2D {
+  const p = new Path2D();
+  for (let i = 0; i <= 72; i++) {
+    const a = (i / 72) * Math.PI * 2;
+    const q = shapePoint(shape, Math.cos(a), Math.sin(a));
+    if (i === 0) p.moveTo(q.x * R, q.y * R);
+    else p.lineTo(q.x * R, q.y * R);
+  }
+  p.closePath();
+  return p;
 }
 
 // ── 3D helpers ────────────────────────────────────────────────────────────────
@@ -210,7 +226,8 @@ export function eyeFrames(H: Head): EyeFrame[] {
     return {
       sd,
       visible: Math.cos(eyeYaw) * cp > 0.04,
-      x: Math.sin(eyeYaw) * cp * H.rx,
+      // The onigiri's narrow top pulls the eyes inward, as in the engine.
+      x: Math.sin(eyeYaw) * cp * H.rx * taperAt(H.shape, -Math.sin(eyePitch)),
       y: -Math.sin(eyePitch) * H.ry,
       fx: Math.max(0.18, Math.cos(eyeYaw)),
       fy: Math.max(0.18, cp),
@@ -1015,7 +1032,7 @@ export function drawOutfitBehind(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSt
   const alpha = layerAlpha(st);
   if (alpha <= 0.005) return;
   const simple = H.R < SIMPLIFY_BELOW_R;
-  const body = bodyOutline(H.rx, H.ry);
+  const body = shapeOutline(H.shape, H.R);
 
   if (ON_FACE.has(outfit)) {
     if (faceTurnedAway(H)) withLayer(ctx, alpha, (l) => drawFace(l, outfit, H, body, simple));
@@ -1041,7 +1058,7 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
   const alpha = layerAlpha(st);
   if (alpha <= 0.005) return;
   const simple = H.R < SIMPLIFY_BELOW_R;
-  const body = bodyOutline(H.rx, H.ry);
+  const body = shapeOutline(H.shape, H.R);
   const p = st.presence;
   const posP = Ease.back(p);
 
@@ -1071,21 +1088,65 @@ export function drawOutfitFront(ctx: Ctx, outfit: Outfit, H: Head, st: OutfitSta
   ctx.restore();
 }
 
+// ── Room for an outfit (the minis wear their outfits too) ─────────────────────
+
+const reachCache = new Map<string, number>();
+
+/**
+ * How far above the body centre `outfit` reaches on `shape`, at rest, in R.
+ * Measured once per outfit and shape by drawing it and finding its top row.
+ */
+export function outfitReach(outfit: Outfit, shape: ShapeDef): number {
+  const key = `${outfit}/${shape.id}`;
+  let reach = reachCache.get(key);
+  if (reach == null) {
+    const R = 40;
+    const S = R * 8;
+    const H = makeHead(R, 0, 0, 0, 0, shape);
+    reach = shape.ry;
+    const c = document.createElement("canvas");
+    c.width = S;
+    c.height = S;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    if (ctx) {
+      ctx.translate(S / 2, S / 2);
+      const st = { presence: 1, morph: 0 };
+      drawOutfitBehind(ctx, outfit, H, st);
+      drawOutfitFront(ctx, outfit, H, st);
+      const px = ctx.getImageData(0, 0, S, S / 2).data;
+      const top = px.findIndex((v, i) => i % 4 === 3 && v > 8);
+      if (top >= 0) reach = Math.max(reach, (S / 2 - Math.floor(top / 4 / S)) / R);
+    }
+    reachCache.set(key, reach);
+  }
+  return reach;
+}
+
+/**
+ * The scale (about the top of the head) that keeps an outfit reaching `reach`
+ * within `room`, both above the body centre in R; `headTop` is the shape's ry.
+ * 1 when it already fits: only a Mochi with no room above it shrinks its hat.
+ */
+export function outfitFit(reach: number, headTop: number, room: number): number {
+  if (reach <= room) return 1;
+  return Math.min(1, Math.max(0, (room - headTop) / (reach - headTop)));
+}
+
 // ── Wardrobe icons ────────────────────────────────────────────────────────────
 
 const INK = "rgb(26,20,18)";
 
 /** A little Mochi wearing `outfit`, centred in a `size`×`size` icon. */
-function iconMochi(ctx: Ctx, size: number, outfit: Outfit) {
+function iconMochi(ctx: Ctx, size: number, outfit: Outfit, shape = SHAPES[0]) {
   const R = 10;
-  const H = makeHead(R);
+  const H = makeHead(R, 0, 0, 0, 0, shape);
   const cx = size / 2;
   const cy = size / 2 + R * 0.62;
   const st: OutfitState = { presence: 1, morph: 0 };
   ctx.save();
   ctx.translate(cx, cy);
   drawOutfitBehind(ctx, outfit, H, st);
-  const body = bodyOutline(H.rx, H.ry);
+  const body = shapeOutline(H.shape, H.R);
   const [top, bottom] = outfit === "pumpkin" ? PUMPKIN_BODY : ["rgb(237,237,239)", "rgb(196,197,202)"];
   ctx.fillStyle = lin(ctx, H.rx * 0.7, -H.ry * 0.85, -H.rx * 0.8, H.ry * 0.9, [[0, top], [1, bottom]]);
   ctx.fill(body);
@@ -1155,4 +1216,10 @@ export function drawWardrobeIcon(ctx: Ctx, size: number, selection: OutfitSelect
   ctx.textBaseline = "middle";
   ctx.fillText(autoLabel, 0, 0.2);
   ctx.restore();
+}
+
+/** A wardrobe button's picture for a body shape: a plain Mochi in that shape. */
+export function drawShapeIcon(ctx: Ctx, size: number, shape: ShapeDef) {
+  ctx.clearRect(0, 0, size, size);
+  iconMochi(ctx, size, "none", shape);
 }

@@ -7,8 +7,9 @@
 import { Ease, lerp, type EaseFn } from "../core/anim";
 import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
-import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
+import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead, outfitFit, outfitReach } from "./outfits";
 import type { Outfit } from "./wardrobe";
+import { shapeOf, shapePoint, taperAt, type ShapeDef } from "./shapes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -204,12 +205,16 @@ export class BotEngine {
   sx = 1; sy = 1; oy = 0; ox = 0;
   tint = 0; morph = 0; hands = 0; blush = 0; es = 1; badgeS = 0;
 
-  // Outfit (the main Mochi only — minis never wear one). `outfit` is what is
+  // Outfit (upstream: the main Mochi only; here, the pills' minis wear their
+  // own Mochi's look too, wardrobe.ts lookOf). `outfit` is what is
   // drawn; it changes only once the previous one has left.
   outfit: Outfit = "none";
   /** 0 = gone, 1 = fully on. */
   outfitPresence = 0;
   private outfitTarget: Outfit = "none";
+  /** How far above the body centre (in R, at rest) the outfit may reach; a
+   *  taller one shrinks to fit. Only the minis set it (minibots.ts). */
+  outfitRoom = Number.POSITIVE_INFINITY;
 
   // Spring lag of the soft parts (pompoms, hat tips, scarf end), −1…1.
   physDx = 0;
@@ -229,6 +234,9 @@ export class BotEngine {
   /** Dancing to music; `dancingLevel` follows it, 0→1 in 0.3 s, 1→0 in 0.5 s. */
   isDancing = false;
   dancingLevel = 0;
+
+  /** Body shape id from the wardrobe (shapes.ts SHAPES); "" = the classic Mochi. */
+  shape = "";
 
   // Mouth spring (fraction of R)
   slotH = 0; slotHTarget = 0; slotHVel = 0; isChewing = false;
@@ -532,9 +540,14 @@ export class BotEngine {
     }
   }
 
+  /** The outfit is drawn: any Mochi, dressed (the minis too). */
+  private get wearsOutfit(): boolean {
+    return this.outfit !== "none";
+  }
+
   /** Wearing something visible: the body then turns as one piece when it rolls. */
   private get rigidRoll(): boolean {
-    return !this.isMini && this.outfit !== "none" && this.outfitPresence > 0.05;
+    return this.wearsOutfit && this.outfitPresence > 0.05;
   }
 
   /** True while anything is still moving — lets the island stop its RAF loop. */
@@ -772,8 +785,9 @@ export class BotEngine {
    */
   draw(x: CanvasRenderingContext2D, W: number, H: number) {
     const R = W * 0.3;
-    const rx = R * 1.14;
-    const ry = R * 0.88;
+    const shape = shapeOf(this.shape);
+    const rx = R * shape.rx;
+    const ry = R * shape.ry;
     const cx = W / 2 + this.ox * R;
     const cy = H / 2 + this.particleOverhang / 2 + this.oy * R + R * 0.06;
 
@@ -793,12 +807,29 @@ export class BotEngine {
     if (this.tilt !== 0) x.rotate(this.tilt);
     x.scale(this.sx, this.sy);
 
-    const dressed = !this.isMini && this.outfit !== "none";
-    const head = dressed ? makeHead(R, this.yaw, this.pitch, this.physDx, this.physDy) : null;
+    // A mini with too little room above it (the compact grid's top row, under
+    // the screen's edge) wears a smaller hat, scaled about the top of its head.
+    const fit = this.wearsOutfit && Number.isFinite(this.outfitRoom)
+      ? outfitFit(outfitReach(this.outfit, shape), shape.ry, this.outfitRoom)
+      : 1;
+    const head = this.wearsOutfit && fit > 0.05
+      ? makeHead(R, this.yaw, this.pitch, this.physDx, this.physDy, shape)
+      : null;
     const outfitState = { presence: this.outfitPresence, morph: this.morph };
-    if (head) drawOutfitBehind(x, this.outfit, head, outfitState);
+    const dress = (part: typeof drawOutfitFront) => {
+      if (!head) return;
+      x.save();
+      if (fit < 1) {
+        x.translate(0, -ry);
+        x.scale(fit, fit);
+        x.translate(0, ry);
+      }
+      part(x, this.outfit, head, outfitState);
+      x.restore();
+    };
+    dress(drawOutfitBehind);
 
-    const body = this.bodyPath(rx, ry, R);
+    const body = this.bodyPath(R, shape);
     this.drawBody(x, body, R, rx, ry);
 
     const blushVal = Math.max(this.blush, this.tint * 0.5) * (1 - this.morph);
@@ -807,18 +838,19 @@ export class BotEngine {
       x.clip(body);
       const yOffset = Math.sin(this.yaw) * rx * 0.8;
       x.fillStyle = `rgba(255,120,150,${0.5 * blushVal})`;
+      const cheekX = rx * 0.55 * taperAt(shape, 0.23);
       for (const sd of [-1, 1]) {
         x.beginPath();
-        x.ellipse(sd * rx * 0.55 + yOffset, ry * 0.2, R * 0.17, R * 0.1, 0, 0, Math.PI * 2);
+        x.ellipse(sd * cheekX + yOffset, ry * 0.2, R * 0.17, R * 0.1, 0, 0, Math.PI * 2);
         x.fill();
       }
       x.restore();
     }
 
-    this.drawEyes(x, body, R, rx, ry);
+    this.drawEyes(x, body, R, rx, ry, shape);
     if (this.morph > 0.05) this.drawMouth(x, body, R);
 
-    if (head) drawOutfitFront(x, this.outfit, head, outfitState);
+    dress(drawOutfitFront);
 
     x.restore();
     x.restore();
@@ -829,9 +861,8 @@ export class BotEngine {
     this.drawParticles(x, R, cx, cy);
   }
 
-  private bodyPath(rx: number, ry: number, R: number): Path2D {
+  private bodyPath(R: number, shape: ShapeDef): Path2D {
     const n = 72;
-    const expN = 2.0 / 2.7;
     const tw = R * 1.0;
     const th = R * 0.94;
     const tr = R * 0.42;
@@ -841,8 +872,9 @@ export class BotEngine {
       const a = (i / n) * Math.PI * 2;
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const px0 = rx * (ca >= 0 ? Math.pow(ca, expN) : -Math.pow(-ca, expN));
-      const py0 = ry * (sa >= 0 ? Math.pow(sa, expN) : -Math.pow(-sa, expN));
+      const sp = shapePoint(shape, ca, sa);
+      const px0 = sp.x * R;
+      const py0 = sp.y * R;
       let px = px0;
       let py = py0;
       if (m >= 0.005) {
@@ -859,7 +891,7 @@ export class BotEngine {
 
   /** How much of the pumpkin's orange shows on the body (it comes and goes with the outfit). */
   private get pumpkinAlpha(): number {
-    if (this.isMini || this.outfit !== "pumpkin") return 0;
+    if (this.outfit !== "pumpkin") return 0;
     return Math.min(1, this.outfitPresence * 2.5) * (1 - this.morph);
   }
 
@@ -913,7 +945,7 @@ export class BotEngine {
     x.restore();
   }
 
-  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {
+  private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number, form: ShapeDef) {
     let shape: EyeShape = this.eyeOverride ?? this.cfg.eye;
     // Dancing: happy eyes in the calm states.
     if (this.isDancing && this.dancingLevel > 0.15 && !this.isMini && (this.state === "idle" || this.state === "finished")) {
@@ -938,8 +970,9 @@ export class BotEngine {
       const cp = Math.cos(eyePitch);
       if (Math.cos(eyeYaw) * cp <= 0.04) continue;
 
-      const ex = Math.sin(eyeYaw) * cp * rx;
       const ey = -Math.sin(eyePitch) * ry + (this.morph > 0 ? ry * 0.14 * this.morph : 0);
+      // The onigiri's narrow top pulls eyes inward as they rise.
+      const ex = Math.sin(eyeYaw) * cp * rx * taperAt(form, ey / ry);
       const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
       const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
       const eyeMult = this.isMini ? 1.9 : 1.0;
