@@ -17,6 +17,7 @@ const island = {
   setView: (view) => asked.push(`setView:${view}`),
   reveal: () => asked.push("reveal"),
   dropPin: () => asked.push("dropPin"),
+  collapse: () => asked.push("collapse"),
 };
 registerHookHandlers(island);
 
@@ -694,4 +695,25 @@ test("a declined permission request leaves the stop timer running", () => {
   afterStop(() => ask("r2"));
   assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }, { requestId: "r2" }]);
   assert.equal(task().state, "idle");
+});
+
+
+test("companion permission requests open the original decision card owned by that pet", () => {
+ State.settings={...DEFAULT_SETTINGS,companionMode:true,mainPill:"agent_codex",activeIntegrations:["ai_ollama"]};
+ State.loadIntegrationTasks();State.focusId="ai_ollama";State.mode="expanded";
+ hook({hook_event_name:"PermissionRequest",coucou_agent:"codex",request_id:"pet-permission",session_id:"own-session",tool_name:"Bash",tool_input:{command:"git status"}});
+ assert.equal(State.focusId,"agent_codex");
+ assert.equal(State.pendingApproval.command,"Bash · git status");
+ assert.equal(State.pendingApproval.pillId,"agent_codex");
+ assert.ok(asked.includes("alert:approval"));
+ assert.deepEqual(sent("approval_decision"),[]);
+ assert.deepEqual(sent("approval_ack"),[{requestId:"pet-permission"}]);
+});
+test("a completed agent opens its complete result card without taking another pending decision", () => {
+ State.settings={...DEFAULT_SETTINGS,companionMode:true,mainPill:"agent_codex",activeIntegrations:["ai_ollama"]};
+ State.loadIntegrationTasks();State.focusId="ai_ollama";
+ hook({hook_event_name:"Stop",coucou_agent:"codex",session_id:"own-session",last_assistant_message:"The requested change is ready."});
+ assert.equal(State.focusId,"agent_codex");
+ assert.equal(task("agent_codex").finalLine,"The requested change is ready.");
+ assert.ok(asked.includes("alert:finished"));
 });

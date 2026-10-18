@@ -42,6 +42,29 @@ export const IDLE_SPOTIFY: SpotifyState = {
 };
 
 /** The page's copy of the player, and the cover of the track that has one. */
+export function spotifyItemUri(query: string): string | null {
+  const text=query.trim();
+  if(/^spotify:(track|album|playlist|episode):[A-Za-z0-9]{22}$/.test(text))return text;
+  try {
+    const url=new URL(text);
+    if(url.protocol!=="https:" || url.hostname!=="open.spotify.com" || url.username || url.password || url.port)return null;
+    const m=url.pathname.match(/^\/(?:intl-[a-z]+\/)?(track|album|playlist|episode)\/([A-Za-z0-9]{22})\/?$/);
+    return m ? `spotify:${m[1]}:${m[2]}` : null;
+  } catch { return null; }
+}
+export class RecentMusic {
+  private tracks: SpotifyTrack[]=[];
+  observe(track: SpotifyTrack | null) {
+    if(!track || !spotifyItemUri(track.id) || isAd(track))return;
+    this.tracks=[{...track},...this.tracks.filter(t=>t.id!==track.id)].slice(0,50);
+  }
+  search(query:string): SpotifyTrack[] {
+    const terms=query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    return this.tracks.filter(t=>terms.every(q=>`${t.title} ${t.artist} ${t.album}`.toLocaleLowerCase().includes(q))).slice(0,5);
+  }
+}
+export const recentMusic=new RecentMusic();
+
 export const Spotify = {
   state: { ...IDLE_SPOTIFY } as SpotifyState,
   artwork: null as { artUrl: string; dataUrl: string } | null,

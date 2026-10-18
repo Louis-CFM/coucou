@@ -458,6 +458,21 @@ pub async fn spotify_control(app: AppHandle, action: String, value: Option<f64>)
     }
 }
 
+/// An explicit item selected by the user or the voice tool. Never arbitrary URLs.
+fn valid_item_uri(uri: &str) -> bool {
+    let parts: Vec<_> = uri.split(':').collect();
+    parts.len()==3 && parts[0]=="spotify" && ["track","album","playlist","episode"].contains(&parts[1]) &&
+        parts[2].len()==22 && parts[2].bytes().all(|b| b.is_ascii_alphanumeric())
+}
+#[tauri::command]
+pub async fn spotify_play_item(app: AppHandle, uri: String) -> bool {
+    if !valid_item_uri(&uri) { return false; }
+    #[cfg(target_os="linux")]
+    { return tauri::async_runtime::spawn_blocking(move || linux::play_item(&linux::Out::App(app),&uri)).await.unwrap_or(false); }
+    #[cfg(not(target_os="linux"))]
+    { let _=app; false }
+}
+
 /// "Open Spotify": brings it forward, or starts it. Without Spotify, its
 /// download page. True when Spotify was reached or started.
 #[tauri::command]
@@ -906,14 +921,19 @@ mod linux {
             let s = SHARED.lock().unwrap();
             (s.active && s.owner.is_some(), s.state.clone())
         };
+        // Playback is explicit; opening the pet's card never starts or raises
+        // Spotify. A desktop integration may launch it on a hidden workspace.
+        let mut action = action;
         if !active {
-            return false;
+            if !matches!(action, "play" | "playPause") || !start_background(out) { return false; }
+            action = "play";
         }
         let v = value.unwrap_or(0.0);
         let now = now_ms();
         let done = with_control(|c| {
             let p = c.with_proxy(BUS, PATH, CALL);
             match action {
+                "play" => p.method_call(PLAYER, "Play", ()),
                 "playPause" => p.method_call(PLAYER, "PlayPause", ()),
                 "next" => p.method_call(PLAYER, "Next", ()),
                 "previous" => p.method_call(PLAYER, "Previous", ()),
@@ -959,7 +979,46 @@ mod linux {
             };
             out.state(&state);
         }
+        // A successful D-Bus call is not proof that music is playing.
+        // Read the player again; never manufacture an optimistic playing state.
+        if matches!(action, "play" | "playPause") { let _ = refresh(out); }
         true
+    }
+
+    pub fn play_item(out: &Out, uri: &str) -> bool {
+        if !super::valid_item_uri(uri) { return false; }
+        if !with_control(|c| Ok(name_owner(c).is_some())).unwrap_or(false) && !start_background(out) { return false; }
+        let done = with_control(|conn| {
+            let p=conn.with_proxy(BUS, PATH, CALL);
+            p.method_call::<(),_,_,_>(PLAYER,"OpenUri",(uri,))
+        }).is_some();
+        if done { let _=refresh(out); }
+        done
+    }
+
+    fn start_background(out: &Out) -> bool {
+        static STARTING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let Ok(_guard) = STARTING.try_lock() else { return false };
+        if with_control(|c| Ok(name_owner(c).is_some())).unwrap_or(false) { return true; }
+        let Some(helper) = crate::platform::find_on_path("coucou-spotify-background") else { return false };
+        let Ok(mut child) = Command::new(helper).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() else { return false };
+        let deadline = std::time::Instant::now() + Duration::from_secs(12);
+        let mut exited = false;
+        while std::time::Instant::now() < deadline {
+            if !exited {
+                match child.try_wait() {
+                    Ok(Some(status)) => { if !status.success() { return false; } exited = true; }
+                    Ok(None) => {},
+                    Err(_) => break,
+                }
+            }
+            if exited && with_control(|c| Ok(name_owner(c).is_some())).unwrap_or(false) {
+                let _ = refresh(out); return true;
+            }
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        if !exited { let _ = child.kill(); let _ = child.wait(); }
+        false
     }
 
     // ── Launching ─────────────────────────────────────────────────────────────
@@ -1816,6 +1875,7 @@ mod win {
         }
         let seek_to = state.track.as_ref().map(|t| v.clamp(0.0, (t.duration - 1.0).max(0.0)));
         let done = match action {
+            "play" => asked!(session.TryPlayAsync()),
             "playPause" => asked!(session.TryTogglePlayPauseAsync()),
             "next" => asked!(session.TrySkipNextAsync()),
             "previous" => asked!(session.TrySkipPreviousAsync()),

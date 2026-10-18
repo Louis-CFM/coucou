@@ -203,7 +203,7 @@ pub fn input_devices() -> Vec<InputDevice> {
     if let Ok(devices) = host.input_devices() {
         for d in devices {
             let name = device_name(&d);
-            if name.is_empty() || is_monitor(&d) || out.iter().any(|x: &InputDevice| x.name == name) {
+            if name.is_empty() || is_monitor(&d) || is_default_alias(&d) || out.iter().any(|x: &InputDevice| x.name == name) {
                 continue;
             }
             out.push(InputDevice { default: Some(&name) == default.as_ref(), name });
@@ -213,7 +213,23 @@ pub fn input_devices() -> Vec<InputDevice> {
     out
 }
 
+fn is_default_alias(d: &cpal::Device) -> bool {
+    // The picker already has "System default". PipeWire exposes a virtual
+    // default device as well as the real microphones; do not list it twice.
+    #[cfg(target_os = "linux")]
+    if let Ok(id) = d.id() {
+        return id.host() == cpal::HostId::PipeWire && id.id() == "input_default";
+    }
+    false
+}
+
 fn is_monitor(d: &cpal::Device) -> bool {
+    // PipeWire exposes sinks as duplex devices for capture, rather than as
+    // PulseAudio's separately named .monitor sources.
+    #[cfg(target_os = "linux")]
+    if d.id().is_ok_and(|id| id.host() == cpal::HostId::PipeWire) {
+        return d.supports_output();
+    }
     let id = device_id(d).to_lowercase();
     let name = device_name(d).to_lowercase();
     id.ends_with(".monitor") || name.starts_with("monitor of")
@@ -225,7 +241,7 @@ fn open_device(source: &Source) -> Option<cpal::Device> {
         Source::Mic(Some(name)) => host
             .input_devices()
             .ok()
-            .and_then(|mut it| it.find(|d| device_name(d) == *name))
+            .and_then(|mut it| it.find(|d| !is_monitor(d) && device_name(d) == *name))
             .or_else(|| host.default_input_device()),
         Source::Mic(None) => host.default_input_device(),
         Source::System => system_device(&host),
@@ -240,6 +256,12 @@ fn system_device(host: &cpal::Host) -> Option<cpal::Device> {
 
 #[cfg(not(windows))]
 fn system_device(host: &cpal::Host) -> Option<cpal::Device> {
+    #[cfg(target_os = "linux")]
+    if host.id() == cpal::HostId::PipeWire {
+        // CPAL's virtual sink captures the default output and follows
+        // WirePlumber's default changes, including Bluetooth reconnects.
+        return host.devices().ok()?.find(|d| d.id().is_ok_and(|id| id.id() == "sink_default"));
+    }
     let sink = host.default_output_device()?;
     let sink_id = device_id(&sink);
     let wanted = format!("{}.monitor", sink_id.rsplit(':').next().unwrap_or(&sink_id));
@@ -344,25 +366,25 @@ fn build_stream(source: &Source, mut sink: impl FnMut(&[f32]) + Send + 'static) 
             config,
             move |data: &[f32], _| push(&mut data.iter().copied()),
             err_fn,
-            None,
+            Some(Duration::from_secs(2)),
         ),
         cpal::SampleFormat::I16 => device.build_input_stream::<i16, _, _>(
             config,
             move |data: &[i16], _| push(&mut data.iter().map(|&s| s as f32 / 32768.0)),
             err_fn,
-            None,
+            Some(Duration::from_secs(2)),
         ),
         cpal::SampleFormat::I32 => device.build_input_stream::<i32, _, _>(
             config,
             move |data: &[i32], _| push(&mut data.iter().map(|&s| s as f32 / 2_147_483_648.0)),
             err_fn,
-            None,
+            Some(Duration::from_secs(2)),
         ),
         cpal::SampleFormat::U16 => device.build_input_stream::<u16, _, _>(
             config,
             move |data: &[u16], _| push(&mut data.iter().map(|&s| (s as f32 - 32768.0) / 32768.0)),
             err_fn,
-            None,
+            Some(Duration::from_secs(2)),
         ),
         other => return Err(format!("unsupported sample format {other:?}")),
     };
@@ -552,4 +574,43 @@ mod tests {
         let bytes = std::fs::read(&path).unwrap();
         assert_eq!(u32::from_le_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]), 8);
     }
+}
+
+/// Opt-in device checks: discarded samples only, never a recording or a model
+/// call. Run on a desktop with `cargo test capture_probe -- --ignored --nocapture`.
+#[cfg(all(test, target_os = "linux"))]
+mod capture_probe {
+    use super::*;
+    use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+    use std::time::Instant;
+
+    fn probe(source: Source) {
+        for run in 0..20 {
+            let samples = Arc::new(AtomicUsize::new(0));
+            let counter = samples.clone();
+            let before = Instant::now();
+            let mut capture = Capture::start(source.clone(), move |data| {
+                counter.fetch_add(data.len(), Ordering::Relaxed);
+            }).expect("capture starts");
+            let started = before.elapsed();
+            std::thread::sleep(Duration::from_millis(400));
+            let stopping = Instant::now();
+            capture.stop();
+            let stopped = stopping.elapsed();
+            let count = samples.load(Ordering::Relaxed);
+            eprintln!("capture {source:?} run={run} start_ms={:.2} stop_ms={:.2} samples={count}",
+                started.as_secs_f64()*1000.0, stopped.as_secs_f64()*1000.0);
+            assert!(count > 0, "audio frames arrive");
+            assert!(started < Duration::from_secs(3), "bounded start");
+            assert!(stopped < Duration::from_secs(1), "prompt stop");
+        }
+    }
+
+    #[test]
+    #[ignore = "requires the user's microphone and PipeWire session"]
+    fn microphone() { probe(Source::Mic(None)); }
+
+    #[test]
+    #[ignore = "requires the user's PipeWire session and active playback"]
+    fn system_sound() { probe(Source::System); }
 }

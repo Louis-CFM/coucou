@@ -13,6 +13,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    pub spotify_quiet_ads: bool,
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub auto_close_interval: f64,
@@ -25,6 +26,11 @@ pub struct Settings {
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
+    /// Desktop companion with a nearby popup, instead of a permanent top island.
+    pub companion_mode: bool,
+    pub companion_motion: bool,
+    pub companion_bar_mode: bool,
+    pub companion_top_clearance: f64,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
@@ -45,6 +51,10 @@ pub struct Settings {
     /// The model picked for each provider other than Anthropic (whose model is
     /// `model`), by provider id.
     pub chat_models: BTreeMap<String, String>,
+    /// Working folder for Mochi's CLI agents; empty means the user's home.
+    pub cli_workspace: String,
+    /// Explicit opt-in to unattended execution for Mochi's CLI sessions only.
+    pub cli_full_access: bool,
     /// Addresses of the model servers once connected; empty means not connected.
     pub ollama_url: String,
     pub lmstudio_url: String,
@@ -123,6 +133,7 @@ fn default_model() -> String {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            spotify_quiet_ads: false,
             sound_enabled: true,
             sound_volume: 0.12,
             auto_close_interval: 15.0,
@@ -136,6 +147,10 @@ impl Default for Settings {
             ],
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
+            companion_mode: false,
+            companion_motion: true,
+            companion_bar_mode: false,
+            companion_top_clearance: 64.0,
             autostart: false,
             hooks_installed: false,
             model: default_model(),
@@ -144,6 +159,8 @@ impl Default for Settings {
             show_codex_plan_in_notch: false,
             chat_provider: crate::chat::ANTHROPIC.into(),
             chat_models: BTreeMap::new(),
+            cli_workspace: String::new(),
+            cli_full_access: false,
             ollama_url: String::new(),
             lmstudio_url: String::new(),
             custom_url: String::new(),
@@ -415,6 +432,7 @@ mod tests {
     /// A settings.json in which no value is the default one.
     // Two #: the colours in it are written "#RRGGBB".
     const CUSTOM: &str = r##"{
+  "spotifyQuietAds": true,
   "soundEnabled": false,
   "soundVolume": 0.5,
   "autoCloseInterval": 30.0,
@@ -423,6 +441,10 @@ mod tests {
   "activeIntegrations": ["integration_notion"],
   "mainPill": "agent_cursor",
   "screen": "cursor",
+  "companionMode": true,
+  "companionMotion": false,
+  "companionBarMode": false,
+  "companionTopClearance": 80.0,
   "autostart": true,
   "hooksInstalled": true,
   "model": "some-model",
@@ -431,6 +453,8 @@ mod tests {
   "showCodexPlanInNotch": true,
   "chatProvider": "ollama",
   "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "cliWorkspace": "/tmp/my-project",
+  "cliFullAccess": true,
   "ollamaUrl": "http://127.0.0.1:11434",
   "lmstudioUrl": "http://127.0.0.1:1234",
   "customUrl": "https://llm.example.com",
@@ -544,6 +568,18 @@ mod tests {
         assert_eq!(loaded.mochi_outfit, "auto");
         assert_eq!(loaded.model, "some-model");
         assert!(!loaded.sound_enabled);
+    }
+
+    #[test]
+    fn older_settings_never_enable_unattended_cli_execution() {
+        let mut old = custom();
+        old.as_object_mut().unwrap().remove("cliWorkspace");
+        old.as_object_mut().unwrap().remove("cliFullAccess");
+        let loaded = parse(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert!(!loaded.cli_full_access);
+        assert!(loaded.cli_workspace.is_empty());
+        assert_eq!(loaded.chat_provider, "ollama");
+        assert!(!parse(&custom_with("cliFullAccess", Some(json!("true")))).unwrap().cli_full_access);
     }
 
     #[test]
@@ -922,6 +958,7 @@ mod tests {
         assert_eq!(
             keys,
             [
+                "spotifyQuietAds",
                 "soundEnabled",
                 "soundVolume",
                 "autoCloseInterval",
@@ -930,6 +967,10 @@ mod tests {
                 "activeIntegrations",
                 "mainPill",
                 "screen",
+                "companionMode",
+                "companionMotion",
+                "companionBarMode",
+                "companionTopClearance",
                 "autostart",
                 "hooksInstalled",
                 "model",
@@ -938,6 +979,8 @@ mod tests {
                 "showCodexPlanInNotch",
                 "chatProvider",
                 "chatModels",
+                "cliWorkspace",
+                "cliFullAccess",
                 "ollamaUrl",
                 "lmstudioUrl",
                 "customUrl",

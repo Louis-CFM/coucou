@@ -5,6 +5,7 @@
 // the last turn. Port of ClaudeVoiceBrain.swift.
 
 use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
@@ -15,24 +16,26 @@ const FORGET_AFTER: Duration = Duration::from_secs(90);
 pub struct Brain {
     messages: Vec<Value>,
     last: Instant,
+    local: super::local::Brain,
 }
 
 impl Default for Brain {
     fn default() -> Self {
-        Self { messages: Vec::new(), last: Instant::now() }
+        Self { messages: Vec::new(), last: Instant::now(), local: super::local::Brain::default() }
     }
 }
 
 pub struct Reply {
     pub text: String,
     pub acted: bool,
+    pub language: Option<String>,
 }
 
-fn tools() -> Vec<Value> {
+pub(super) fn tools() -> Vec<Value> {
     vec![
         json!({
             "name": "pills",
-            "description": "Add, remove, set as main or list the pills shown in the island at the top of the screen. At most 4 pills besides the main one: remove one first if needed.",
+            "description": "Add, remove, set as main or list the pills shown in the island at the top of the screen. At most 6 pills besides the main one: remove one first if needed.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -103,7 +106,17 @@ Pills: {pills}",
 }
 
 impl Brain {
-    pub fn respond(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
+    pub fn respond(&mut self, app: &AppHandle, transcript: &str, stop: &AtomicBool) -> Option<Reply> {
+        let settings = app.try_state::<crate::Shared>()?.settings.lock().unwrap().clone();
+        if settings.chat_provider == "ollama" {
+            self.messages.clear();
+            return self.local.respond(app, &settings, transcript, stop);
+        }
+        self.local.clear();
+        // Never silently send the selected local provider's voice to a cloud key.
+        if !matches!(settings.chat_provider.as_str(), "" | "anthropic") {
+            return None;
+        }
         if self.last.elapsed() > FORGET_AFTER {
             self.messages.clear();
         }
@@ -120,6 +133,7 @@ impl Brain {
         let mut acted = false;
         let mut spoken = String::new();
         for _ in 0..5 {
+            if stop.load(Ordering::Relaxed) { return None; }
             let turn = tauri::async_runtime::block_on(async {
                 match crate::claude::voice_turn(FAST_MODEL, &system, &self.messages, &tools).await {
                     Ok(v) => Ok(v),
@@ -137,7 +151,7 @@ impl Brain {
                     if self.messages.last().is_some_and(|m| m["content"].is_string()) {
                         self.messages.pop();
                     }
-                    return acted.then(|| Reply { text: String::new(), acted });
+                    return acted.then(|| Reply { text: String::new(), acted, language: None });
                 }
             };
             let content = turn["content"].as_array().cloned().unwrap_or_default();
@@ -146,16 +160,17 @@ impl Brain {
             if !text.trim().is_empty() {
                 spoken = text;
             }
-            let stop = turn["stop_reason"].as_str().unwrap_or("end_turn");
-            if stop == "pause_turn" {
+            let stop_reason = turn["stop_reason"].as_str().unwrap_or("end_turn");
+            if stop_reason == "pause_turn" {
                 continue;
             }
             let uses: Vec<&Value> = content.iter().filter(|b| b["type"] == "tool_use").collect();
-            if stop != "tool_use" || uses.is_empty() {
+            if stop_reason != "tool_use" || uses.is_empty() {
                 break;
             }
             let mut results = Vec::new();
             for u in uses {
+                if stop.load(Ordering::Relaxed) { return None; }
                 let (result, did) = super::run_tool(app, u["name"].as_str().unwrap_or(""), &u["input"]);
                 acted |= did;
                 results.push(json!({ "type": "tool_result", "tool_use_id": u["id"], "content": result }));
@@ -164,7 +179,7 @@ impl Brain {
             spoken.clear();
         }
         self.repair();
-        Some(Reply { text: spoken_text(&spoken), acted })
+        Some(Reply { text: spoken_text(&spoken), acted, language: None })
     }
 
     /// Keeps the last exchanges, never cutting between a tool call and its result.

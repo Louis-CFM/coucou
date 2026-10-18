@@ -233,11 +233,17 @@ test("the card reads the player again each time it comes on screen", () => {
 
 // ── Views ─────────────────────────────────────────────────────────────────────
 
-test("the idle card: not playing, or not installed with a way to get it", () => {
+test("the idle card: playback is separate from opening the application", async () => {
   const card = buildSpotifyCard();
   Spotify.state = { ...IDLE_SPOTIFY, installed: true };
   card.sync();
   assert.match(card.el.textContent, /Spotify.*Integration.*Not playing.*Open Spotify/);
+  const opened = sent("spotify_open").length;
+  card.el.find("BUTTON")[0].fire("click");
+  assert.equal(sent("spotify_open").length,opened);
+  assert.equal(sent("spotify_control").at(-1).action,"play");
+  assert.equal(Spotify.state.playing,false);
+  await new Promise(setImmediate);
   Spotify.state = { ...IDLE_SPOTIFY };
   card.sync();
   assert.match(card.el.textContent, /Spotify not installed.*Get Spotify/);
@@ -249,7 +255,7 @@ test("the idle card: not playing, or not installed with a way to get it", () => 
   assert.ok(card.el.textContent.includes(lookup("Get Spotify", "fr")));
 });
 
-test("the playing card: title, artist · album, times, and the controls", () => {
+test("the playing card: title, artist · album, times, and the controls", async () => {
   const card = buildSpotifyCard();
   Spotify.state = playing({ playing: false, shuffle: true });
   card.sync();
@@ -278,14 +284,17 @@ test("the playing card: title, artist · album, times, and the controls", () => 
   // The page shows the clicks at once.
   assert.equal(Spotify.state.shuffle, false);
   assert.equal(Spotify.state.repeat, true);
-  assert.equal(Spotify.state.playing, true);
+  assert.equal(Spotify.state.playing, false, "a click is not confirmation from the player");
+  await new Promise(setImmediate);
+  emit("spotify",playing());
+  assert.equal(Spotify.state.playing,true);
 
   Spotify.state = playing({ track: track({ id: "spotify:ad:9", title: "x", artist: "", album: "" }) });
   card.sync();
   assert.ok(card.el.textContent.includes("Advertisement"));
 });
 
-test("the pill shows play/pause and next on hover, only with a track", () => {
+test("the pill shows play/pause and next on hover, only with a track", async () => {
   const task = spotifyTask();
   const pill = buildSpotifyPill(task, () => {});
   pill.el.fire("mouseenter");
@@ -298,7 +307,10 @@ test("the pill shows play/pause and next on hover, only with a track", () => {
   const before = sent("spotify_control").length;
   playBtn.fire("click");
   assert.deepEqual(sent("spotify_control").slice(before), [{ action: "playPause", value: null }]);
-  assert.equal(Spotify.state.playing, false);
+  assert.equal(Spotify.state.playing, true, "wait for actual player status");
+  await new Promise(setImmediate);
+  emit("spotify",playing({playing:false}));
+  assert.equal(Spotify.state.playing,false);
   pill.el.fire("mouseleave");
   assert.ok(!pill.el.classList.contains("controls"));
 });

@@ -423,6 +423,8 @@ interface Say {
 }
 
 let speaking = false;
+let speechEpoch = 0;
+let voiceAudio: HTMLAudioElement | null = null;
 
 /** The system's voice in the answer's language, a woman's or a man's when the system says. */
 function systemVoice(lang: string | null, gender: string): SpeechSynthesisVoice | null {
@@ -436,7 +438,7 @@ function systemVoice(lang: string | null, gender: string): SpeechSynthesisVoice 
   return pick ?? inLang[0] ?? null;
 }
 
-async function sayWithSystem(text: string, lang: string | null, gender: string): Promise<void> {
+async function sayWithSystem(text: string, lang: string | null, gender: string, epoch: number): Promise<void> {
   const synth = window.speechSynthesis;
   if (synth && synth.getVoices().length === 0) {
     await new Promise<void>((r) => {
@@ -444,6 +446,7 @@ async function sayWithSystem(text: string, lang: string | null, gender: string):
       setTimeout(r, 600);
     });
   }
+  if (epoch !== speechEpoch) return;
   if (synth && synth.getVoices().length > 0) {
     await new Promise<void>((resolve) => {
       const u = new SpeechSynthesisUtterance(text);
@@ -463,6 +466,7 @@ async function sayWithSystem(text: string, lang: string | null, gender: string):
 async function sayMp3(base64: string): Promise<boolean> {
   try {
     const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+    voiceAudio = audio;
     await audio.play();
     await new Promise<void>((resolve) => {
       audio.onended = () => resolve();
@@ -475,12 +479,13 @@ async function sayMp3(base64: string): Promise<boolean> {
 }
 
 async function say(s: Say) {
+  const epoch = ++speechEpoch;
   speaking = true;
   wake();
   try {
-    if (!(s.audio && (await sayMp3(s.audio)))) await sayWithSystem(s.text, s.lang, s.gender);
+    if (!(s.audio && (await sayMp3(s.audio))) && epoch === speechEpoch) await sayWithSystem(s.text, s.lang, s.gender, epoch);
   } finally {
-    speaking = false;
+    if (epoch === speechEpoch) speaking = false;
     void FlowBridge.voiceDone(s.id);
   }
 }
@@ -517,6 +522,13 @@ async function main() {
     if (!inside) setHovered(false);
   });
   void onEvent<Say>("voice-say", (s) => void say(s));
+  void onEvent("voice-cancel", () => {
+    speechEpoch++;
+    window.speechSynthesis?.cancel();
+    if (voiceAudio) { voiceAudio.pause(); voiceAudio.onended?.(new Event("ended")); voiceAudio = null; }
+    speaking = false;
+    wake();
+  });
   void onEvent<Settings>("settings-changed", (s) => {
     setLanguage(resolveLanguage(s.language, systemLanguages()));
     render();

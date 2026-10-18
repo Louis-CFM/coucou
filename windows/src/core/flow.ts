@@ -34,7 +34,7 @@ export interface FlowPrefs {
   defaultStyle: Style;
   summaryEngine: "claude" | "off";
   openAtLaunch: boolean;
-  /** « OK Coucou »: listen for it and answer with Claude. */
+  /** « OK Coucou »: listen and answer with Claude or the selected Codex account. */
   voice: boolean;
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
@@ -57,6 +57,7 @@ export interface FlowStatus {
   /** "ok", or why the key can't be watched ("wayland", "no-display"). */
   keys: string;
   hasClaudeKey: boolean;
+  voiceProviderReady: boolean;
   mics: { name: string; default: boolean }[];
   platform: "windows" | "linux";
   autostarted: boolean;

@@ -1,0 +1,6 @@
+FROM registry.fedoraproject.org/fedora:44
+RUN dnf install -y cargo rust gcc gcc-c++ make pkgconf-pkg-config \
+    gtk3-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel \
+    openssl-devel alsa-lib-devel gtk-layer-shell-devel dbus-devel \
+    pipewire-devel clang cmake nodejs npm rpm-build patchelf && dnf clean all
+WORKDIR /work/windows

@@ -1,5 +1,15 @@
 # Changelog
 
+## Linux fork 0.5.1-mochi.1 — October 18, 2026
+
+- One companion per integration, positioned in the free areas of a compatible desktop bar. Unused pets park and sleep; active pets wander and greet without covering bar controls.
+- Cards, permissions and voice feedback belong to their pet. Fix unstable hover targets, overlapping click areas and stale popup wake behavior.
+- Native PipeWire capture and cancellable local Ollama voice turns; close the microphone before inference and keep stereo between turns. Load ASR on demand and evict its cache after idle use.
+- Spotify playback controls do not raise the application; optional desktop helper starts it out of the way. Confirm playback from the actual player.
+- Stop dormant rendering, suspend hidden settings animations and preserve the trusted upstream hook relay.
+
+This is a Linux-only fork build. The macOS bundle and its Info.plist retain the upstream version. See docs/COMPANIONS.md for validation and platform limits.
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.

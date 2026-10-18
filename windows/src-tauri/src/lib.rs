@@ -4,12 +4,16 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod codex_chat;
+mod cli_chat;
 mod codex_plan;
 mod config_file;
+mod companions;
 mod desktop;
 mod files;
 mod flow;
 mod github;
+mod gravity_chat;
 mod hooks;
 mod i18n;
 mod identity;
@@ -91,7 +95,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     let (screen_changed, autostart_changed, shortcuts_changed) = {
         let mut current = shared.settings.lock().unwrap();
-        let screen_changed = current.screen != settings.screen;
+        let screen_changed = current.screen != settings.screen || current.companion_mode != settings.companion_mode;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
@@ -135,6 +139,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         language_changed(&app);
     }
     // Keep the other window in step (island ⇄ settings window).
+    voice::sync(&app);
     let _ = app.emit("settings-changed", settings);
 }
 
@@ -162,7 +167,11 @@ fn language_changed(app: &AppHandle) {
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
     let pref = shared.settings.lock().unwrap().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
+    let companion = shared.settings.lock().unwrap().companion_mode;
+    // This webview owns background event handlers. Hiding the GTK window
+    // suspends WebKit and would prevent a pet from opening its card again.
     island::apply_geometry(&app, &pref, collapsed);
+    if companion { if let Some(win) = island::window(&app) { let _ = win.show(); } }
     // The wake strip must always take the mouse, and a resize invalidates the flag.
     island::refresh_click_through(&app, &shared.gate);
     shared.gate.set_active(!collapsed);
@@ -190,6 +199,7 @@ fn focus_window(app: AppHandle, focused: bool) {
 
 #[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
+    if shared.gate.collapsed.load(Ordering::Relaxed) && shared.settings.lock().unwrap().companion_mode { return; }
     let pref = shared.settings.lock().unwrap().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
@@ -489,8 +499,13 @@ async fn chat_send(
     chat: State<'_, Chat>,
     query: String,
     context: Option<ChatContext>,
+    provider: Option<String>,
 ) -> Result<ChatReply, String> {
-    let settings = shared.settings.lock().unwrap().clone();
+    let mut settings = shared.settings.lock().unwrap().clone();
+    if let Some(provider) = provider {
+        if !["anthropic","openai","google","openrouter","codex","antigravity","ollama","lmstudio","custom"].contains(&provider.as_str()) { return Err("Unknown chat provider".into()); }
+        settings.chat_provider = provider;
+    }
     chat::send(&app, &chat, &settings, query, context).await
 }
 
@@ -516,9 +531,12 @@ fn local_set_key(url: String, key: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn chat_reset(chat: State<Chat>) {
-    chat.reset();
+fn chat_reset(chat: State<Chat>, provider: Option<String>) {
+    if let Some(provider) = provider { chat.reset_provider(&provider); } else { chat.reset(); }
 }
+
+#[tauri::command]
+fn chat_cancel(chat: State<Chat>) { chat.cancel(); }
 
 /// Copies a dropped file into the inbox and reports its name back.
 #[tauri::command]
@@ -658,6 +676,7 @@ fn create_settings_window(app: &AppHandle) {
             win.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
+                    let _ = hidden.emit("hub-visible", false);
                     let _ = hidden.hide();
                 }
             });
@@ -682,6 +701,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     }
     let _ = win.unminimize();
     let _ = win.show();
+    let _ = win.emit("hub-visible", true);
     let _ = win.set_focus();
 }
 
@@ -762,9 +782,11 @@ pub fn run() {
             log_line,
             chat_send,
             chat_models,
+            cli_chat::cli_agent_answer,
             local_connect,
             local_set_key,
             chat_reset,
+            chat_cancel,
             ingest_file,
             secret_present,
             secret_set,
@@ -810,6 +832,10 @@ pub fn run() {
             recap::recap_clear,
             recap::recap_save_png,
             recap::recap_reveal_saved,
+            companions::companions_configure,
+            companions::companions_input,
+            companions::companions_open,
+            companions::companions_anchor,
             desktop::desktop_mochi_info,
             desktop::desktop_mochi_pick_up,
             desktop::desktop_mochi_carry,
@@ -826,6 +852,7 @@ pub fn run() {
             sounds::reload_sounds,
             spotify::spotify_refresh,
             spotify::spotify_control,
+            spotify::spotify_play_item,
             spotify::spotify_open,
             spotify::spotify_installed,
             flow::flow_status,
@@ -871,6 +898,7 @@ pub fn run() {
             create_settings_window(&handle);
             // Same rule for Mochi's desktop window and the dictation pill.
             desktop::setup(&handle);
+            companions::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
 

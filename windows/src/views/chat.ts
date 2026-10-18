@@ -9,9 +9,9 @@
 import { h, svg, clear } from "./dom";
 import { ICONS } from "./icons";
 import { renderMarkdown } from "./markdown";
-import { Bridge, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
+import { Bridge, emitToWindow, onEvent, type ChatContext, type ModelInfo } from "../core/bridge";
 import {
-  activeModel, pickModel, providerDef, visibleProviders, withModel, type ProviderDef,
+  activeModel, pickModel, providerDef, providerForPill, visibleProviders, withModel, type ProviderDef,
 } from "../core/providers";
 import { Sound } from "../core/sound";
 import { State, type ChatMessage } from "../core/state";
@@ -85,8 +85,8 @@ function buildPicker(onChange: () => void): Picker {
 
   function drawChips() {
     clear(chips);
-    for (const p of visibleProviders(State.settings)) {
-      const on = p.id === State.settings.chatProvider;
+    for (const p of visibleProviders(State.settings).filter(p => !State.settings.companionMode || p.id === providerForPill(State.focusId ?? undefined))) {
+      const on = p.id === State.chatProvider;
       const chip = h(
         "button",
         { class: on ? "picker-chip on" : "picker-chip", style: `--accent:${p.accent}` },
@@ -94,9 +94,10 @@ function buildPicker(onChange: () => void): Picker {
         h("span", { text: t(p.name) }),
       );
       chip.addEventListener("click", () => {
-        if (p.id === State.settings.chatProvider) return;
+        if (p.id === State.chatProvider) return;
         State.settings = { ...State.settings, chatProvider: p.id };
         saveSettings();
+        State.notify();
         Sound.play("pop");
         drawChips();
         void loadModels();
@@ -123,7 +124,7 @@ function buildPicker(onChange: () => void): Picker {
 
   function drawModels(p: ProviderDef, models: ModelInfo[]) {
     clear(list);
-    const current = activeModel(State.settings);
+    const current = activeModel({ ...State.settings, chatProvider: State.chatProvider });
     for (const m of models) {
       const on = m.id === current;
       const row = h(
@@ -133,7 +134,7 @@ function buildPicker(onChange: () => void): Picker {
         on ? svg(ICONS.check, 11, { stroke: 2.2 }) : null,
       );
       row.addEventListener("click", () => {
-        State.settings = withModel(State.settings, p.id, m.id);
+        State.settings = { ...withModel(State.settings, p.id, m.id), chatProvider: State.settings.chatProvider };
         saveSettings();
         Sound.play("blip");
         close();
@@ -144,7 +145,7 @@ function buildPicker(onChange: () => void): Picker {
   }
 
   async function loadModels() {
-    const p = providerDef(State.settings.chatProvider);
+    const p = providerDef(State.chatProvider);
     const ticket = ++request;
     const cached = p.urlField ? undefined : cache.get(p.id);
     if (cached) {
@@ -162,9 +163,9 @@ function buildPicker(onChange: () => void): Picker {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
       if (!p.urlField) cache.set(p.id, models);
-      const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
-      if (keep && keep !== activeModel(State.settings)) {
-        State.settings = withModel(State.settings, p.id, keep);
+      const keep = pickModel(p, models.map((m) => m.id), activeModel({ ...State.settings, chatProvider: State.chatProvider }));
+      if (keep && keep !== activeModel({ ...State.settings, chatProvider: State.chatProvider })) {
+        State.settings = { ...withModel(State.settings, p.id, keep), chatProvider: State.settings.chatProvider };
         saveSettings();
         onChange();
       }
@@ -225,36 +226,83 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   const modelRow = h("div", { class: "model-row" }, modelBtn);
 
   const body = h("div", { class: "chat-body" });
+  const requests = h("div", { class: "cli-requests", style: "max-height:190px;overflow:auto" });
   const picker = buildPicker(() => {
     body.classList.toggle("picking", picker.isOpen);
     drawModelButton();
   });
-  body.append(chipRow, log, picker.el, modelRow, bar);
+  body.append(chipRow, log, requests, picker.el, modelRow, bar);
+
+  const requestCards = new Map<string, HTMLElement>();
+  void onEvent<{ id: string; provider: string; kind: string; detail: string;
+    questions?: { id: string; question: string; isSecret?: boolean; options?: { label: string }[] }[] | null
+  }>("agent-request", (request) => {
+    if (requestCards.has(request.id)) return;
+    const card = h("div", { class: "cli-request", style: "padding:10px;border:1px solid #F5A524;border-radius:10px;margin:6px 0" },
+      h("strong", { text: t("{provider} needs your answer", { provider: request.provider }) }));
+    const fields = new Map<string, HTMLInputElement>();
+    if (request.kind === "question") {
+      for (const question of request.questions ?? []) {
+        const input = h("input", { class: "chat-input", type: question.isSecret ? "password" : "text", autocomplete: "off" }) as HTMLInputElement;
+        fields.set(question.id, input);
+        card.append(h("label", { text: question.question }), input);
+        for (const option of question.options ?? []) {
+          card.append(h("button", { text: option.label, onclick: () => { input.value = option.label; } }));
+        }
+      }
+    } else { card.append(h("pre", { text: request.detail, style: "white-space:pre-wrap;max-height:80px;overflow:auto" })); }
+    const reply = (allow: boolean) => {
+      const answers = Object.fromEntries([...fields].map(([id, input]) => [id, allow ? [input.value] : []]));
+      void Bridge.cliAgentAnswer(request.id, { allow, answers }).then(() => {
+        card.remove(); requestCards.delete(request.id);
+      });
+    };
+    card.append(
+      h("button", { class: "cli-allow", text: request.kind === "question" ? t("Send") : t("Allow once"), onclick: () => reply(true) }),
+      h("button", { class: "cli-deny", text: t("Deny"), onclick: () => reply(false) }),
+    );
+    requestCards.set(request.id, card);
+    card.dataset.provider = request.provider.toLowerCase();
+    card.hidden = card.dataset.provider !== State.chatProvider;
+    requests.append(card);
+    onHeightChange();
+  });
+  void onEvent<{ id: string }>("agent-request-ended", ({ id }) => {
+    requestCards.get(id)?.remove(); requestCards.delete(id);
+  });
 
   const el = h("div", { class: "view" }, h("div", { class: "card wash chat-card" }, body));
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
   let renderedCount = -1;
+  let renderedProvider = "";
+  const drafts = new Map<string, string>();
+  let sendingProvider = "";
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
 
   function drawModelButton() {
-    const p = providerDef(State.settings.chatProvider);
+    const p = providerDef(State.chatProvider);
     modelDot.style.background = p.accent;
-    modelName.textContent = activeModel(State.settings) || t(STRINGS.noModel);
+    modelName.textContent = activeModel({ ...State.settings, chatProvider: State.chatProvider }) || (["codex", "antigravity"].includes(p.id) ? p.name : t(STRINGS.noModel));
     modelBtn.classList.toggle("open", picker.isOpen);
-    modelBtn.disabled = sending;
+    const busyHere = sending && sendingProvider === State.chatProvider;
+    modelBtn.disabled = busyHere;
+    const cli = ["codex", "antigravity"].includes(State.chatProvider);
+    send.title = busyHere && cli ? t("Stop") : t(STRINGS.send);
+    send.disabled = sending && (!busyHere || !cli);
+    send.textContent = busyHere && cli ? "■" : "↑";
   }
 
   modelBtn.addEventListener("click", () => {
-    if (sending) return;
+    if (sending && sendingProvider === State.chatProvider) return;
     if (picker.isOpen) picker.close();
     else picker.open();
   });
 
   void onEvent<string>("chat-delta", (text) => {
-    if (!sending || !text) return; // nothing visible yet: the dots stay
+    if (!sending || !text || sendingProvider !== State.chatProvider) return; // nothing visible yet: the dots stay
     if (!live) {
       live = h("div", { class: "reply" });
       log.querySelector(".typing")?.parentElement?.remove();
@@ -270,10 +318,17 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     if (picker.isOpen) picker.close();
     input.value = "";
     sending = true;
+    sendingProvider = State.chatProvider;
+    State.chatBusyProvider = sendingProvider;
+    const owner = State.tasks.find(t => providerForPill(t.id) === sendingProvider)?.id;
+    const notifyReply = (text: string) => {
+      if(owner && State.settings.companionMode && (State.mode !== "expanded" || State.focusId !== owner)) void emitToWindow("companions","companions-notice",{key:`chat:${sendingProvider}:${nextId}`,pet:owner,text,urgent:false,view:"prompt"});
+    };
+    const history = State.chatHistory;
     drawModelButton();
     Sound.play("send");
 
-    State.chatHistory.push({ id: nextId++, role: "user", content: query });
+    history.push({ id: nextId++, role: "user", content: query });
     State.stateOverride = "thinking";
     State.notify();
     onHeightChange();
@@ -283,27 +338,37 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
       State.chatHistory.length === 1 && file ? { kind: "file", name: file.name, path: file.path } : null;
 
     try {
-      const reply = await Bridge.chatSend(query, context);
-      State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
+      const reply = await Bridge.chatSend(query, context, sendingProvider);
+      history.push({ id: nextId++, role: "assistant", content: reply.text });
+      if(history.length>100)history.splice(0,history.length-100);
+      notifyReply("Your answer is ready.");
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
       State.stateOverride = null;
-      State.noteMessage = String(err).replace(/^Error:\s*/, "");
-      State.view = "note";
-      Sound.play("error");
+      const message = String(err).replace(/^Error:\s*/, "");
+      if (message !== "The CLI request was cancelled.") {
+        history.push({id:nextId++,role:"assistant",content:message});
+        if(State.chatProvider === sendingProvider) { State.noteMessage = message; State.view = "note"; }
+        notifyReply("The chat could not finish. Open it to see the error.");
+        Sound.play("error");
+      }
     } finally {
       sending = false;
+      State.chatBusyProvider = null;
       live = null;
       renderedCount = -1; // the finished answer replaces the streamed one
       drawModelButton();
       State.notify();
       onHeightChange();
-      input.focus();
+      if(State.mode === "expanded" && State.view === "prompt" && State.chatProvider === sendingProvider) input.focus();
     }
   }
 
-  send.addEventListener("click", () => void submit());
+  send.addEventListener("click", () => {
+    if (sending && sendingProvider === State.chatProvider) void Bridge.chatCancel();
+    else if (!sending) void submit();
+  });
   input.addEventListener("keydown", (e) => {
     const key = (e as KeyboardEvent).key;
     if (key === "Enter") {
@@ -319,6 +384,13 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   return {
     el,
     sync() {
+      if (renderedProvider !== State.chatProvider) {
+        if (renderedProvider) drafts.set(renderedProvider, input.value);
+        input.value = drafts.get(State.chatProvider) ?? "";
+        if (State.settings.companionMode && picker.isOpen) picker.close();
+        renderedProvider = State.chatProvider; renderedCount = -1; live = null;
+      }
+      for (const card of requestCards.values()) card.hidden = card.dataset.provider !== State.chatProvider;
       const file = State.droppedFile;
       const wantChip = file?.name ?? "";
       if (chipRow.dataset.label !== wantChip) {
@@ -327,7 +399,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
         if (wantChip) chipRow.append(contextChip(wantChip));
       }
 
-      const thinking = State.stateOverride === "thinking";
+      const thinking = sending && sendingProvider === State.chatProvider;
       const count = State.chatHistory.length + (thinking ? 0.5 : 0);
       if (count !== renderedCount && !live) {
         renderedCount = count;

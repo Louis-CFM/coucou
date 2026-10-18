@@ -437,6 +437,19 @@ pub fn make_non_activating(win: &WebviewWindow) {
     crate::log::line("island is a layer-shell overlay");
 }
 
+/// In companion mode the panel is a popup near Mochi, not a top-edge notch.
+pub fn place_island(win: &WebviewWindow, origin: Option<(f64, f64)>) {
+    if !LAYER_SURFACE.load(Ordering::Relaxed) { return; }
+    let Ok(gw) = win.gtk_window() else { return };
+    let ptr = gtk_window_ptr(&gw);
+    let (x, y) = origin.unwrap_or((0.0, 0.0));
+    unsafe {
+        layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, origin.is_some() as i32);
+        layer::gtk_layer_set_margin(ptr, layer::EDGE_LEFT, x.round() as i32);
+        layer::gtk_layer_set_margin(ptr, layer::EDGE_TOP, y.round() as i32);
+    }
+}
+
 thread_local! {
     /// The island's GTK window, for the pointer watch (GTK main thread only).
     static ISLAND_GTK: std::cell::RefCell<Option<gtk::ApplicationWindow>> =
@@ -936,4 +949,55 @@ fn apply_rects(gw: &impl IsA<gtk::Widget>, rects: &[(f64, f64, f64, f64)]) {
         ));
     }
     gdk_window.input_shape_combine_region(&region, 0, 0);
+}
+
+// The companions habitat has its own shape; never share the microphone pill's
+// region or the single desktop Mochi's region with this surface.
+static COMPANIONS_SHAPE: Mutex<Vec<(f64, f64, f64, f64)>> = Mutex::new(Vec::new());
+
+pub fn prepare_companions_window(win: &WebviewWindow, mode: super::DesktopMode) -> bool {
+    use tauri::Emitter;
+    let Ok(gw) = win.gtk_window() else { return false };
+    gw.set_accept_focus(false);
+    if mode == super::DesktopMode::Layer {
+        if gw.is_realized() { return false; }
+        gw.set_titlebar(None::<&gtk::Widget>);
+        let ptr = gtk_window_ptr(&gw);
+        unsafe {
+            layer::gtk_layer_init_for_window(ptr);
+            layer::gtk_layer_set_namespace(ptr, c"coucou-companions".as_ptr());
+            // Fullscreen applications stay above the pets.
+            layer::gtk_layer_set_layer(ptr, layer::LAYER_TOP);
+            layer::gtk_layer_set_anchor(ptr, layer::EDGE_TOP, 1);
+            layer::gtk_layer_set_anchor(ptr, layer::EDGE_LEFT, 1);
+            layer::gtk_layer_set_exclusive_zone(ptr, -1);
+            layer::gtk_layer_set_keyboard_mode(ptr, layer::KEYBOARD_NONE);
+        }
+    } else if mode == super::DesktopMode::Window {
+        gw.set_type_hint(gtk::gdk::WindowTypeHint::Dock);
+        gw.set_keep_above(true);
+    } else { return false; }
+    let hidden = win.clone();
+    gw.connect_hide(move |_| { let _ = hidden.emit("companions-visible", false); });
+    let shown = win.clone();
+    gw.connect_show(move |_| { let _ = shown.emit("companions-visible", true); });
+    let remapped = std::cell::Cell::new(false);
+    gw.connect_map_event(move |w, _| {
+        apply_rects(w, &COMPANIONS_SHAPE.lock().unwrap());
+        if !remapped.replace(true) {
+            let w = w.clone();
+            gtk::glib::idle_add_local_once(move || {
+                w.hide();
+                w.show_all();
+                apply_rects(&w, &COMPANIONS_SHAPE.lock().unwrap());
+            });
+        }
+        gtk::glib::Propagation::Proceed
+    });
+    true
+}
+
+pub fn set_companions_input(win: &WebviewWindow, rects: Vec<(f64, f64, f64, f64)>) {
+    *COMPANIONS_SHAPE.lock().unwrap() = rects.clone();
+    if let Ok(gw) = win.gtk_window() { apply_rects(&gw, &rects); }
 }

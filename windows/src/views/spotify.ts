@@ -12,8 +12,8 @@ import { ICONS } from "./icons";
 import { Bridge } from "../core/bridge";
 import { State, type AgentTask } from "../core/state";
 import {
-  SPOTIFY_GREEN, SPOTIFY_ID, Spotify, currentArtwork, formatTime, isAd, spotifyPosition, volumeLevel, withPlaying,
-  type SpotifyTrack,
+  SPOTIFY_GREEN, SPOTIFY_ID, Spotify, currentArtwork, formatTime, isAd, spotifyPosition, volumeLevel,
+  type SpotifyTrack, recentMusic, spotifyItemUri,
 } from "../core/spotify";
 import { createMiniBot } from "../mochi/minibots";
 import { pillDefinition } from "../core/pills";
@@ -28,13 +28,17 @@ function lighter(hex: string, amount: number): string {
 
 // ── Controls (shared by the pill and the card) ───────────────────────────────
 
-/** Play/pause, at once on the page, then in Spotify (SpotifyController.playPause). */
-export function togglePlay() {
-  const s = Spotify.state;
-  if (!s.running) return;
-  Spotify.state = withPlaying(s, !s.playing, Date.now());
+/** Controls never raise the app and wait for the actual MPRIS state. */
+let playPending = false;
+export async function togglePlay() {
+  if (playPending) return;
+  playPending = true;
   State.notify();
-  void Bridge.spotifyControl("playPause");
+  try {
+    await Bridge.spotifyControl(Spotify.state.running ? "playPause" : "play");
+    const latest = await Bridge.spotifyRefresh();
+    if (latest) Spotify.state = latest;
+  } finally { playPending = false; State.notify(); }
 }
 
 function seek(seconds: number) {
@@ -311,14 +315,37 @@ export function buildSpotifyCard(): SpotifyCardHost {
   const idleDot = dot("#22C55E", 5);
   const idleText = h("span");
   const idleAction = h("button", { class: "link-btn", style: `color:${green}d9` });
-  idleAction.addEventListener("click", () => void Bridge.spotifyOpen());
+  idleAction.addEventListener("click", () => void (Spotify.state.installed ? togglePlay() : Bridge.spotifyOpen()));
+  const openApp = h("button", {class:"link-btn",text:t("Open Spotify"),onclick:()=>void Bridge.spotifyOpen()});
   const idleSub = h("span");
   const idleEl = h("div", { class: "int-card" },
     h("div", { class: "int-head" }, dot(green, 7), h("b", { text: "Spotify" }), idleSub),
     h("div", { class: "int-status" }, idleDot, idleText),
-    h("div", { class: "int-actions" }, idleAction),
+    h("div", { class: "int-actions" }, idleAction, openApp),
   );
 
+  const searchInput=h("input",{type:"search",class:"chat-input",placeholder:t("Recent music or Spotify link"),"aria-label":t("Recent music or Spotify link")}) as HTMLInputElement;
+  const matches=h("div",{class:"np-search-results",style:"display:grid;gap:4px;margin:6px 0;max-height:100px;overflow:auto"});
+  let searching=false;
+  const playItem=async (uri:string)=>{
+    if(searching)return;searching=true;
+    try { const ok=await Bridge.spotifyPlayItem(uri);matches.textContent=ok?t("Sent to Spotify"):t("Spotify could not play this item."); }
+    finally {searching=false;}
+  };
+  const searchRecent=()=>{
+    clear(matches);const text=searchInput.value.trim();if(!text)return;
+    const uri=spotifyItemUri(text);
+    if(uri){matches.append(h("button",{class:"link-btn",text:t("Play this link"),onclick:()=>void playItem(uri)}));return;}
+    const tracks=recentMusic.search(text);
+    for(const track of tracks)matches.append(h("button",{class:"link-btn",text:`${track.title} · ${track.artist}`,onclick:()=>void playItem(track.id)}));
+    if(!tracks.length)matches.append(h("span",{text:t("No matches in recent music.")}));
+    matches.append(h("button",{class:"link-btn",text:t("Search catalog in Spotify ↗"),onclick:()=>void Bridge.openUrl(`https://open.spotify.com/search/${encodeURIComponent(text)}`)}));
+  };
+  searchInput.addEventListener("input",searchRecent);
+  searchInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchRecent();}e.stopPropagation();});
+  const quiet = h("input",{type:"checkbox"}) as HTMLInputElement;
+  quiet.addEventListener("change",()=>{State.settings={...State.settings,spotifyQuietAds:quiet.checked};void Bridge.saveSettings(State.settings);State.notify();});
+  const extras=h("div",{class:"np-options",style:"margin-top:10px;font-size:12px"},searchInput,matches,h("label",{},quiet,h("span",{text:" Lower the volume during identified ads"})));
   const el = h("div", { class: "np-root" });
   let showing: "playing" | "idle" | null = null;
   let shownTrack: SpotifyTrack | null = null;
@@ -408,19 +435,22 @@ export function buildSpotifyCard(): SpotifyCardHost {
     const installed = Spotify.state.installed || Spotify.state.running;
     idleDot.style.background = installed ? "#22C55E" : "#F4505E";
     idleText.textContent = installed ? t("Not playing") : t("Spotify not installed");
-    idleAction.textContent = installed ? t("Open Spotify") : t("Get Spotify");
+    idleAction.textContent = installed ? t("Play") : t("Get Spotify");
+    if (playPending) idleAction.setAttribute("disabled",""); else idleAction.removeAttribute("disabled");
+    openApp.hidden = !installed;
     idleSub.textContent = t(pillDefinition(SPOTIFY_ID)?.subtitle ?? N_("Integration"));
   }
 
   return {
     el,
     sync() {
+      quiet.checked=State.settings.spotifyQuietAds;
       const track = Spotify.state.track;
       const want = track ? "playing" : "idle";
       if (want !== showing) {
         showing = want;
         clear(el);
-        el.append(want === "playing" ? playingEl : idleEl);
+        el.append(want === "playing" ? playingEl : idleEl,extras);
         shownTrack = null;
       }
       if (track) syncPlaying(track);

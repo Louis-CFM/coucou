@@ -275,7 +275,7 @@ class DesktopMochi {
     document.addEventListener("dblclick", (e) => {
       if (!isOverBody(this.local(e))) return;
       this.cancelPoke();
-      void emitToWindow(ISLAND, DESKTOP_EVENTS.home);
+      void emitToWindow(ISLAND, this.snap.companionMode ? DESKTOP_EVENTS.open : DESKTOP_EVENTS.home);
     });
 
     document.addEventListener("contextmenu", (e) => {

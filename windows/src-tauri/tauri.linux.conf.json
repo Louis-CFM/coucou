@@ -17,13 +17,15 @@
       "deb": {
         "depends": [
           "libgtk-layer-shell0 (>= 0.6)",
-          "libasound2t64 | libasound2"
+          "libasound2t64 | libasound2",
+          "libpipewire-0.3-0"
         ]
       },
       "rpm": {
         "depends": [
           "gtk-layer-shell",
-          "alsa-lib"
+          "alsa-lib",
+          "pipewire-libs"
         ]
       }
     }

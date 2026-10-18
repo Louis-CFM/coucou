@@ -267,6 +267,25 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)
 }
 
+/// Companion's centre in logical pixels on the island's monitor. Never read
+/// another application's title, contents or focus to position the popup.
+pub fn companion_center(app: &AppHandle, monitor: &tauri::Monitor) -> Option<(f64, f64)> {
+    if let Some(center) = crate::companions::center(app) { return Some(center); }
+    let d = app.try_state::<Arc<Desktop>>()?;
+    let i = d.inner.lock().unwrap();
+    if !i.shown { return None; }
+    match d.mode {
+        DesktopMode::Layer => Some((i.pos.0 + SIZE / 2.0, i.pos.1 + SIZE / 2.0)),
+        DesktopMode::Window | DesktopMode::Poll => {
+            let scale = monitor.scale_factor();
+            let origin = monitor.position();
+            Some(((i.pos.0 - origin.x as f64) / scale + SIZE / 2.0,
+                  (i.pos.1 - origin.y as f64) / scale + SIZE / 2.0))
+        }
+        DesktopMode::Off => None,
+    }
+}
+
 fn body_disc() -> MouseShape {
     MouseShape::Disc { cx: SIZE / 2.0, cy: SIZE / 2.0, r: SIZE * logic::BODY_RADIUS_FRACTION }
 }
@@ -373,8 +392,11 @@ fn displays(app: &AppHandle, d: &Desktop) -> Vec<Display> {
 /// The island's top-centre point and the scale there, in the mode's space.
 fn island_anchor(app: &AppHandle, d: &Desktop) -> Option<(f64, f64, f64)> {
     if d.mode == DesktopMode::Layer {
-        let (w, _) = d.inner.lock().unwrap().display?;
-        return Some((w / 2.0, 0.0, 1.0));
+        let win = island::window(app)?;
+        let scale = win.scale_factor().ok()?;
+        let width = win.inner_size().ok()?.width as f64 / scale;
+        let (x, y) = island::local_origin();
+        return Some((x + width / 2.0, y, 1.0));
     }
     let win = island::window(app)?;
     let pos = win.outer_position().ok()?;
@@ -414,10 +436,8 @@ fn from_island_client(app: &AppHandle, d: &Desktop, x: f64, y: f64) -> Option<(f
     match d.mode {
         DesktopMode::Layer => {
             // The island is anchored to the top edge and centred.
-            let (dw, _) = d.inner.lock().unwrap().display?;
-            let scale = island.scale_factor().unwrap_or(1.0);
-            let iw = island.inner_size().ok()?.width as f64 / scale;
-            Some(((dw - iw) / 2.0 + x, y))
+            let (ox, oy) = island::local_origin();
+            Some((ox + x, oy + y))
         }
         DesktopMode::Window => {
             let pos = island.outer_position().ok()?;
@@ -578,7 +598,11 @@ fn target_spot(app: &AppHandle, d: &Desktop, anywhere: bool) -> Option<(f64, f64
     let corner = || {
         let (cx, top, _) = island_anchor(app, d)?;
         let home = logic::display_near((cx, top + 1.0), &all)?;
-        Some(logic::default_spot(&home, SIZE, MARGIN))
+        let companion = app.try_state::<crate::Shared>()
+            .is_some_and(|s| s.settings.lock().unwrap().companion_mode);
+        let mut pos = logic::default_spot(&home, SIZE, MARGIN);
+        if companion { pos.1 = home.work.y + home.work.h * 0.65 - SIZE * home.scale / 2.0; }
+        Some(pos)
     };
     match saved {
         Some(spot) if spot.space == d.mode.space() => {

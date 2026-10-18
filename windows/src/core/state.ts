@@ -7,7 +7,7 @@ import {
   toggleDeclared, type HostOs, type PillDefinition,
 } from "./pills";
 import type { CodexPlanUsage, PlanUsage } from "./plan";
-import type { ProviderId } from "./providers";
+import { providerForPill, type ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
@@ -98,18 +98,23 @@ export interface IntegrationInfo {
 }
 
 export interface Settings {
+  spotifyQuietAds: boolean;
   soundEnabled: boolean;
   soundVolume: number;
   autoCloseInterval: number;
   /** Hovering the island opens it all the way (off: hovering only peeks). */
   openOnHover: boolean;
   absenceInterval: number;
-  /** Declared pills next to the main one (at most 4), in the order they were added. */
+  /** Declared pills next to the main one (at most 6), in the order they were added. */
   activeIntegrations: string[];
   /** The always-on workspace pill: VS Code, Cursor, Codex or Antigravity. */
   mainPill: string;
   /** "primary", "cursor", or `at:<x>,<y>` for one display (logical origin). */
   screen: string;
+  companionMode: boolean;
+  companionMotion: boolean;
+  companionBarMode: boolean;
+  companionTopClearance: number;
   autostart: boolean;
   hooksInstalled: boolean;
   /** Claude model used by the chat. */
@@ -124,6 +129,8 @@ export interface Settings {
   chatProvider: ProviderId;
   /** The model picked for each provider other than Anthropic, by provider id. */
   chatModels: Record<string, string>;
+  cliWorkspace: string;
+  cliFullAccess: boolean;
   /** Model server addresses once connected; empty means not connected. */
   ollamaUrl: string;
   lmstudioUrl: string;
@@ -165,6 +172,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  spotifyQuietAds: false,
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,
@@ -175,6 +183,10 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   mainPill: DEFAULT_MAIN_PILL,
   screen: "primary",
+  companionMode: false,
+  companionMotion: true,
+  companionBarMode: false,
+  companionTopClearance: 64,
   autostart: false,
   hooksInstalled: false,
   model: "claude-opus-5",
@@ -182,6 +194,8 @@ export const DEFAULT_SETTINGS: Settings = {
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
   chatProvider: "anthropic",
+  cliWorkspace: "",
+  cliFullAccess: false,
   chatModels: {},
   ollamaUrl: "",
   lmstudioUrl: "",
@@ -224,7 +238,15 @@ class AppState {
   droppedFile: { name: string; path: string } | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
-  chatHistory: ChatMessage[] = [];
+  get chatProvider(): ProviderId { return (this.settings.companionMode ? providerForPill(this.focusId ?? undefined) : null) ?? this.settings.chatProvider; }
+  chatBusyProvider: string | null = null;
+  private chatThreads = new Map<string, ChatMessage[]>();
+  get chatHistory(): ChatMessage[] {
+    const id = this.chatProvider;
+    if (!this.chatThreads.has(id)) this.chatThreads.set(id, []);
+    return this.chatThreads.get(id)!;
+  }
+  set chatHistory(messages: ChatMessage[]) { this.chatThreads.set(this.chatProvider, messages); }
   pendingApproval: ApprovalInfo | null = null;
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;

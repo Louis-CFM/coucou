@@ -168,7 +168,7 @@ export function runIslandKey(host: ShortcutHost, action: IslandKeyAction) {
       State.chatHistory = [];
       State.droppedFile = null;
       State.promptContext = null;
-      void Bridge.chatReset();
+      void Bridge.chatReset(State.chatProvider);
       Sound.play("blip");
       host.setView("prompt");
       break;
