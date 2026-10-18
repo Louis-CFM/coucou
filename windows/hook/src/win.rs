@@ -93,7 +93,8 @@ unsafe fn token_sid(process: HANDLE) -> Option<String> {
         let _ = CloseHandle(token);
         return None;
     }
-    let mut buf = vec![0u8; needed as usize];
+    // TOKEN_USER must be pointer-aligned; a u8 buffer is UB on paper.
+    let mut buf = vec![0u64; needed.div_ceil(8) as usize];
     let ok = GetTokenInformation(
         token,
         TokenUser,

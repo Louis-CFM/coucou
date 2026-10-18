@@ -40,6 +40,13 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_millis(500);
 /// Longest wait for the agent to finish writing the event on stdin.
 pub const STDIN_BUDGET: Duration = Duration::from_secs(2);
+/// Stdin is agent-controlled: buffer no more than this. Legit payloads are
+/// kilobytes; the rest would only ever be truncated away anyway.
+const MAX_STDIN: u64 = 16 * 1024 * 1024;
+/// The serialized event must stay under the app's 1 MiB pipe read. Truncation
+/// bounds string *values*; this bounds the whole line (keys, field count) and
+/// falls back to a minimal event rather than a line the app cuts mid-JSON.
+const MAX_LINE: usize = 900 * 1024;
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
 /// How often a waiting relay checks that the process that ran it is still there.
@@ -81,13 +88,15 @@ struct Args {
     event: String,
 }
 
-/// All of `input`, read on a helper thread; `None` if it is still open after
-/// `budget` (an agent that never closes our stdin must not hold its own turn).
-pub fn read_all_within(mut input: impl Read + Send + 'static, budget: Duration) -> Option<Vec<u8>> {
+/// All of `input`, read on a helper thread, at most `cap` bytes; `None` if it
+/// is still open after `budget` (an agent that never closes our stdin must not
+/// hold its own turn, and an agent that never stops writing must not grow this
+/// buffer without bound).
+pub fn read_all_within(input: impl Read + Send + 'static, cap: u64, budget: Duration) -> Option<Vec<u8>> {
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let mut raw = Vec::new();
-        let _ = input.read_to_end(&mut raw);
+        let _ = input.take(cap).read_to_end(&mut raw);
         let _ = tx.send(raw);
     });
     rx.recv_timeout(budget).ok()
@@ -136,7 +145,7 @@ fn main() {
         statusline::run();
     }
     let args = args();
-    let raw = read_all_within(std::io::stdin(), STDIN_BUDGET).unwrap_or_default();
+    let raw = read_all_within(std::io::stdin(), MAX_STDIN, STDIN_BUDGET).unwrap_or_default();
     let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
@@ -283,6 +292,19 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     truncate_payload(&mut payload, &name);
 
     let mut line = payload.to_string();
+    if line.len() > MAX_LINE {
+        // Keys and field count escape truncate_payload, so the line can still
+        // be too long. Send what the island needs rather than bytes the app
+        // would cut mid-line and drop as invalid JSON.
+        let mut minimal = Map::new();
+        for key in ["hook_event_name", "session_id", "tool_name", "coucou_agent", "cwd"] {
+            if let Some(v) = payload.get(key) {
+                minimal.insert(key.into(), v.clone());
+            }
+        }
+        minimal.insert("coucou_truncated".into(), Value::Bool(true));
+        line = Value::Object(minimal).to_string();
+    }
     line.push('\n');
     Some(Event { line, name, question, opted_in, suggestions })
 }
@@ -467,7 +489,9 @@ fn talk(payload: &str, waits_for_answer: bool) -> Option<String> {
             Ok(0) => break,
             Ok(n) => {
                 buf.extend_from_slice(&chunk[..n]);
-                if buf.contains(&b'\n') {
+                // The biggest legit answer is an {"answers":{…}} line — a peer
+                // that keeps streaming is not one we wait on.
+                if buf.contains(&b'\n') || buf.len() > 64 * 1024 {
                     break;
                 }
             }
@@ -627,9 +651,28 @@ mod tests {
     fn an_agent_that_never_closes_stdin_does_not_hold_the_relay() {
         let (reader, writer) = std::io::pipe().unwrap();
         let started = std::time::Instant::now();
-        assert!(read_all_within(reader, Duration::from_millis(200)).is_none());
+        assert!(read_all_within(reader, MAX_STDIN, Duration::from_millis(200)).is_none());
         assert!(started.elapsed() < Duration::from_secs(1));
         drop(writer);
+    }
+
+    #[test]
+    fn a_line_that_is_still_too_long_becomes_a_minimal_event() {
+        // Keys escape truncate_payload: a giant key name still forwards —
+        // as a minimal, well-formed event rather than a line the app drops.
+        let mut payload = Map::new();
+        payload.insert("hook_event_name".into(), serde_json::json!("PermissionRequest"));
+        payload.insert("session_id".into(), serde_json::json!("s1"));
+        payload.insert("tool_name".into(), serde_json::json!("Bash"));
+        payload.insert("k".repeat(MAX_LINE).into(), serde_json::json!("v"));
+        let raw = serde_json::to_vec(&payload).unwrap();
+        let args = Args { agent: String::new(), event: String::new() };
+        let ev = prepare(&raw, &args, &|_| None, "/tmp", 1234, &|_| None).expect("forwarded");
+        assert!(ev.line.len() < MAX_LINE);
+        let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+        assert_eq!(v["hook_event_name"], "PermissionRequest");
+        assert_eq!(v["tool_name"], "Bash");
+        assert_eq!(v["coucou_truncated"], true);
     }
 
     #[test]
@@ -637,7 +680,7 @@ mod tests {
         let (reader, mut writer) = std::io::pipe().unwrap();
         writer.write_all(br#"{"a":1}"#).unwrap();
         drop(writer);
-        assert_eq!(read_all_within(reader, Duration::from_secs(2)).unwrap(), br#"{"a":1}"#);
+        assert_eq!(read_all_within(reader, MAX_STDIN, Duration::from_secs(2)).unwrap(), br#"{"a":1}"#);
     }
 
     #[test]
