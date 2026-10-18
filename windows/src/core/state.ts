@@ -66,7 +66,7 @@ export interface ApprovalInfo {
    * the "Always allow" button's words. The rules themselves stay with the
    * relay, which applies exactly what Claude Code offered.
    */
-  always?: { label: string; detail: string } | null; (feat(windows): Always allow on Claude Code's permission card)
+  always?: { label: string; detail: string } | null;
 }
 
 /** One question of an AskUserQuestion call. */

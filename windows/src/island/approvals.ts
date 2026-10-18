@@ -70,6 +70,7 @@ function showApprovalCard(island: Island, entry: QueuedApproval, alert: boolean)
     ...(entry.description ? { description: entry.description } : {}),
     ...(entry.questions ? { questions: entry.questions } : {}),
     inputKey: entry.inputKey,
+    ...(entry.always ? { always: entry.always } : {}),
     position: queue.position(entry.id) || 1,
     total: queue.count,
     ...(queue.hasMixedSources ? { sourceLabel: sourceLabel(entry.pillId) } : {}),

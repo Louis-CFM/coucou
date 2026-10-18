@@ -25,7 +25,7 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH}; (feat(windows): drop a permission card answered in the terminal)
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
@@ -128,7 +128,7 @@ struct Event {
     opted_in: bool,
     /// Claude Code's PermissionRequest `permission_suggestions`, as sent: the
     /// rules an island "Always allow" applies (never one the app makes up).
-    suggestions: Option<Value>, (feat(windows): Always allow on Claude Code's permission card)
+    suggestions: Option<Value>,
 }
 
 fn main() {
@@ -479,7 +479,7 @@ mod tests {
     fn headless_runs_are_not_forwarded_unless_watched() {
         let raw = br#"{"hook_event_name":"Stop","session_id":"s"}"#;
         let args = Args { agent: String::new(), event: String::new() };
-        let run = |vars: &'static [(&'static str, &'static str)]| prepare(raw, &args, &env_of(vars), "/p").is_some();
+        let run = |vars: &'static [(&'static str, &'static str)]| prepare(raw, &args, &env_of(vars), "/p", 0).is_some();
         assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli")]));
         assert!(!run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-py")]));
         assert!(run(&[("CLAUDE_CODE_ENTRYPOINT", "sdk-cli"), ("COUCOU_WATCHED", "1")]));

@@ -281,7 +281,7 @@ export const Bridge = {
   cliLogin: (provider: string) => callOrThrow<void>("cli_login", { provider }),
 
   /** "always" carries no rule: the relay applies the ones Claude Code offered. */
-  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always") => (feat(windows): Always allow on Claude Code's permission card)
+  approvalDecision: (requestId: string, decision: "allow" | "deny" | "always") =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),

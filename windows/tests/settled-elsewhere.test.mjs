@@ -1,14 +1,13 @@
 // A pending permission card goes the moment it is settled somewhere else
-// (src/island/hooks.ts): the relay hanging up, or the very tool call it asked
-// about running, means it was answered in the terminal or the Claude app.
+// (src/island/hooks.ts, src/island/approvals.ts): the relay hanging up, or
+// the very tool call it asked about running, means it was answered in the
+// terminal or the Claude app.
 
 import { afterEach, beforeEach, mock, test } from "node:test";
 import assert from "node:assert/strict";
 import { calls, emit, sent } from "./tauri.mjs";
-import { registerHookHandlers, settledElsewhere } from "../src/island/hooks.ts";
+import { registerHookHandlers } from "../src/island/hooks.ts";
 import { DEFAULT_SETTINGS, State } from "../src/core/state.ts";
-
-const CLAUDE = "integration_claude";
 
 let asked;
 const island = {
@@ -55,15 +54,14 @@ const ask = (id, extra = {}) =>
 test("the relay hanging up takes the card down at once, with nobody left to release", () => {
   ask("r1");
   assert.equal(State.pendingApproval?.requestId, "r1");
-  emit("hook-resolved", "r1");
+  emit("approval-released", { requestId: "r1" });
   assert.equal(State.pendingApproval, null);
   assert.deepEqual(sent("approval_decline"), []);
-  assert.ok(asked.includes("dropPin"));
 });
 
 test("a hang-up for another request leaves the card alone", () => {
   ask("r1");
-  emit("hook-resolved", "r0");
+  emit("approval-released", { requestId: "r0" });
   assert.equal(State.pendingApproval?.requestId, "r1");
 });
 
@@ -85,17 +83,22 @@ test("another call's result (a subagent alongside) or another session's never co
   assert.deepEqual(sent("approval_decline"), []);
 });
 
-test("settledElsewhere: the turn ending, or the same call's result or failure", () => {
-  const pending = { requestId: "r", sessionId: "s", pillId: CLAUDE, tool: "Bash", command: "Bash · rm -rf build" };
-  const input = { command: "rm -rf build" };
+test("a turn ending makes the request moot in the terminal", () => {
   for (const name of ["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]) {
-    assert.ok(settledElsewhere(pending, name, CLAUDE, "s", undefined, undefined), name);
+    asked = [];
+    calls.length = 0;
+    State.pendingApproval = null;
+    ask("r1");
+    assert.equal(State.pendingApproval?.requestId, "r1", name);
+    hook({ hook_event_name: name, session_id: "s1", cwd: "C:\\p\\proj" });
+    assert.equal(State.pendingApproval, null, name);
+    assert.deepEqual(sent("approval_decline"), [{ requestId: "r1" }], name);
   }
-  assert.ok(settledElsewhere(pending, "PostToolUse", CLAUDE, "s", "Bash", input));
-  assert.ok(settledElsewhere(pending, "PostToolUseFailure", CLAUDE, "s", "Bash", input));
-  assert.ok(!settledElsewhere(pending, "PostToolUse", CLAUDE, "s", "Bash", { command: "ls" }));
-  assert.ok(!settledElsewhere(pending, "PreToolUse", CLAUDE, "s", "Bash", input));
-  assert.ok(!settledElsewhere(pending, "Notification", CLAUDE, "s", undefined, undefined));
-  assert.ok(!settledElsewhere(pending, "Stop", "agent_codex", "s", undefined, undefined));
-  assert.ok(!settledElsewhere(pending, "Stop", CLAUDE, "other", undefined, undefined));
+});
+
+test("another session's or agent's turn ending never counts", () => {
+  ask("r1");
+  hook({ hook_event_name: "Stop", session_id: "s2", cwd: "C:\\p\\proj" });
+  assert.equal(State.pendingApproval?.requestId, "r1");
+  assert.deepEqual(sent("approval_decline"), []);
 });

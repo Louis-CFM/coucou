@@ -87,7 +87,7 @@ test("a request with suggestions gets Always allow, one without is upstream's ca
   ask("r1", { permission_suggestions: RULE });
   assert.equal(State.pendingApproval.always.label, "Always allow Bash(npm test:*)");
   // Without suggestions the card is exactly upstream's.
-  State.pendingApproval = null;
+  emit("approval-released", { requestId: "r1" });
   ask("r2");
   assert.ok(!("always" in State.pendingApproval));
 });

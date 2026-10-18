@@ -49,7 +49,7 @@ export interface ViewActions {
    * Answers the question Claude Code asked: question text → chosen label, or
    * the words typed under "Other…" for the questions listed in `other`.
    */
-  answer(answers: Record<string, string | string[]>, other: string[]): void; (feat(windows): Always allow on Claude Code's permission card)
+  answer(answers: Record<string, string | string[]>, other: string[]): void;
   /** Hands the pending request back to the terminal. */
   answerInTerminal(): void;
   toggleSound(): void;
@@ -535,11 +535,11 @@ function buildApproval(actions: ViewActions): ViewHost {
   let shownFor: string | null = null;
   let shownAt = 0;
   const decide = (d: "allow" | "deny" | "always") => {
-    if (!State.pendingApproval || State.pendingApproval.requestId !== shownFor) return; (feat(windows): Always allow on Claude Code's permission card)
+    if (!State.pendingApproval || State.pendingApproval.requestId !== shownFor) return;
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
-  const guarded = (d: "allow" | "deny") => () => decide(d);
+  const guarded = (d: "allow" | "deny" | "always") => () => decide(d);
 
   // Y / N only ever reach the page while the island itself has keyboard focus —
   // there is no global shortcut, so typing "y" in another window can never
@@ -550,6 +550,11 @@ function buildApproval(actions: ViewActions): ViewHost {
     const target = e.target as { tagName?: string; isContentEditable?: boolean } | null;
     if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
     const key = e.key.toLowerCase();
+    if (key === "a" && State.pendingApproval.always) {
+      e.preventDefault();
+      decide("always");
+      return;
+    }
     if (key !== "y" && key !== "n") return;
     e.preventDefault();
     decide(key === "y" ? "allow" : "deny");
@@ -589,7 +594,7 @@ function buildApproval(actions: ViewActions): ViewHost {
       const always = State.pendingApproval?.always ?? null;
       const key = `${req}~${always?.label ?? ""}`;
       if (rowKey === key) return;
-      rowKey = key; (feat(windows): Always allow on Claude Code's permission card)
+      rowKey = key;
       clear(row);
       row.append(
         btn(tl("Deny"), "secondary", guarded("deny"), "N"),

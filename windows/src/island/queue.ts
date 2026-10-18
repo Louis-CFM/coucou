@@ -20,6 +20,8 @@ export interface QueuedApproval {
   questions?: AskedQuestion[];
   /** tool_input serialized with sorted keys, "" if absent — matches PostToolUse. */
   inputKey: string;
+  /** Claude Code offered to remember this permission: the "Always allow" words. */
+  always?: { label: string; detail: string } | null;
 }
 
 export class ApprovalQueue {
