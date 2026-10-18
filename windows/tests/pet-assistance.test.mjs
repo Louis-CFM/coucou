@@ -61,6 +61,29 @@ test("each pet sees only its own provider history and does not change the voice 
  assert.equal(State.settings.chatProvider,"ollama");
 });
 
+test("answering a Codex permission keeps the Codex card instead of restoring Gravity",()=>{
+ State.settings={...DEFAULT_SETTINGS,companionMode:true};
+ State.tasks=[{...task,id:"agent_codex"},{...task,id:"agent_antigravity"}];
+ State.focusId="agent_antigravity";State.focusBeforeApproval=null;
+ State.beginApproval({requestId:"codex-only",sessionId:"s",pillId:"agent_codex",tool:"test",command:"synthetic"});
+ assert.equal(State.chatProvider,"codex");
+ State.endApproval();
+ assert.equal(State.focusId,"agent_codex");assert.equal(State.chatProvider,"codex");
+ assert.equal(State.pendingApproval,null);assert.equal(State.focusBeforeApproval,null);
+ assert.equal(State.tasks[0].state,"working");
+});
+
+test("finishing a permission preserves a manual pet switch and the singleton's old focus policy",()=>{
+ State.settings={...DEFAULT_SETTINGS,companionMode:true};
+ State.tasks=[{...task,id:"agent_codex"},{...task,id:"agent_antigravity"},{...task,id:"ai_ollama"}];
+ State.focusId="agent_antigravity";State.focusBeforeApproval=null;
+ State.beginApproval({requestId:"one",sessionId:"s",pillId:"agent_codex",tool:"test",command:"synthetic"});
+ State.setFocus("ai_ollama");State.endApproval();assert.equal(State.focusId,"ai_ollama");
+ State.settings={...DEFAULT_SETTINGS,companionMode:false};State.focusId="agent_antigravity";
+ State.beginApproval({requestId:"two",sessionId:"s",pillId:"agent_codex",tool:"test",command:"synthetic"});
+ State.endApproval();assert.equal(State.focusId,"agent_antigravity");
+});
+
 
 import {RecentMusic,spotifyItemUri} from "../src/core/spotify.ts";
 test("recent music search is bounded, tokenized, and rejects ads and foreign URLs",()=>{
