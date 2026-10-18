@@ -49,6 +49,9 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["stati
 # The microphone, and the computer's own sound for the Notetaker (WASAPI
 # loopback on Windows, a PulseAudio/PipeWire monitor on Linux). Apache-2.0.
 cpal = "0.18"
+# Already in the tree through Tauri: Linux crops a picked screenshot area out of
+# the desktop tool's PNG.
+png = "0.17"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
@@ -68,6 +71,9 @@ windows = { version = "0.61", features = [
   "Win32_System_Com",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Variant",
+  # The screenshot roam: GDI grabs the screen, WIC scales and writes the PNG.
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Imaging",
   "Win32_Security",
   "Win32_Security_Authorization",
   "Win32_System_Com",

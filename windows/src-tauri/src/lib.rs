@@ -26,10 +26,13 @@ mod platform;
 #[cfg(target_os = "linux")]
 mod portal;
 mod recap;
+#[cfg_attr(not(windows), path = "roam_linux.rs")]
+mod roam;
 mod secrets;
 mod session_window;
 mod settings;
 mod shortcuts;
+mod shot;
 mod sounds;
 mod speech;
 mod spotify;
@@ -618,18 +621,31 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
 /// for the *same* arguments as the island (see `additionalBrowserArgs` in
 /// tauri.conf.json) — a mismatch makes the second window come up blank, with no
 /// error anywhere.
-pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+///
+/// `--renderer-process-limit=1`: the island, settings, desktop Mochi,
+/// dictation and screen overlay windows share one renderer process instead of
+/// one each.
+///
+/// `CalculateNativeWinOcclusion` off: Chromium's guess at whether a window is
+/// covered. It marks every window occluded when the display turns off or the
+/// session locks, and only re-checks on a few system events; an occluded page
+/// still runs its scripts and plays sounds but gets no animation frames and
+/// paints nothing. The island sat as its 6 px wake strip through a long idle,
+/// was never re-checked, and a session coming back played Mochi's sound over
+/// an island that never drew (port notes, "Island silent after a long idle").
+/// Coucou shows and hides its windows itself, so the guess has nothing to add.
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --autoplay-policy=no-user-gesture-required --renderer-process-limit=1";
 
-/// In a dev build the pages are served by Vite, so the second window needs the
-/// absolute dev URL; a bundled build resolves it inside the app bundle.
-fn settings_page_url(app: &AppHandle) -> WebviewUrl {
+/// In a dev build the pages are served by Vite, so the extra windows need the
+/// absolute dev URL; a bundled build resolves them inside the app bundle.
+fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
+        base.set_path(&format!("/{page}"));
         return WebviewUrl::External(base);
     }
     let _ = app;
-    WebviewUrl::App("settings.html".into())
+    WebviewUrl::App(page.into())
 }
 
 /// The Coucou window (Flow dictation, the Notetaker and every setting of the
@@ -641,7 +657,7 @@ pub const HUB_LABEL: &str = "settings";
 /// not — silently comes up blank in this app, so the window that works is the
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
-    let url = settings_page_url(app);
+    let url = page_url(app, "settings.html");
     match WebviewWindowBuilder::new(app, HUB_LABEL, url)
         .additional_browser_args(BROWSER_ARGS)
         .title("Coucou")
@@ -653,12 +669,14 @@ fn create_settings_window(app: &AppHandle) {
         .build()
     {
         Ok(win) => {
+            platform::set_memory_low(&win, true);
             // Closing it must only hide it, or it could never be reopened.
             let hidden = win.clone();
             win.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = hidden.hide();
+                    platform::set_memory_low(&hidden, true);
                 }
             });
         }
@@ -677,6 +695,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
         log::line("Coucou window missing");
         return;
     };
+    platform::set_memory_low(&win, false);
     if let Some(page) = page {
         let _ = win.emit("hub-page", page.to_string());
     }
@@ -862,6 +881,10 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            roam::roam_start,
+            roam::roam_capture,
+            roam::roam_pointer,
+            roam::roam_end,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -869,10 +892,12 @@ pub fn run() {
             tray::build(&handle)?;
             // Before the island: see create_settings_window.
             create_settings_window(&handle);
-            // Same rule for Mochi's desktop window and the dictation pill.
+            // Same rule for Mochi's desktop window, the dictation pill and the
+            // screen overlay.
             desktop::setup(&handle);
             flow::setup(&handle);
             notes::setup(&handle);
+            roam::create_window(&handle, page_url(&handle, "roam.html"), BROWSER_ARGS);
 
             if let Some(win) = island::window(&handle) {
                 // Where Tauri takes the drop itself (Linux), its paths are the
@@ -929,6 +954,18 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::diff_file;
+
+    #[test]
+    fn every_window_asks_for_the_islands_browser_args() {
+        // A mismatch brings the extra windows up blank; occlusion left on lets a
+        // long idle leave the island silent and unpainted.
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let island = &conf["app"]["windows"][0];
+        assert_eq!(island["label"], "island");
+        assert_eq!(island["additionalBrowserArgs"], super::BROWSER_ARGS);
+        assert!(super::BROWSER_ARGS.contains("CalculateNativeWinOcclusion"));
+        assert_eq!(super::BROWSER_ARGS.matches("--disable-features=").count(), 1);
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {

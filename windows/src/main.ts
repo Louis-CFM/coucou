@@ -117,6 +117,8 @@ async function main() {
       e.preventDefault();
     }
   });
+  // The screenshot roam is over: Mochi is back, with the screenshot if it took one.
+  await onEvent<string | null>("roam-end", (path) => island.onRoamEnd(path));
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.
   await onEvent<null>("sounds-changed", () => {
@@ -153,6 +155,10 @@ async function main() {
   await onEvent<null>("recap-check", checkRecap);
 
   island.launch();
+
+  // The island never hides its own page, so a "hidden" here means WebView2
+  // stopped giving it frames: it would play sounds but draw nothing.
+  document.addEventListener("visibilitychange", () => void Bridge.log(`island page ${document.visibilityState}`));
 
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.
