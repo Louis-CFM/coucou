@@ -310,9 +310,9 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     Text("Volume")
                         .frame(width: 56, alignment: .leading)
-                    Slider(value: $state.soundVolume, in: 0...0.2)
+                    Slider(value: $state.soundVolume, in: 0...AppState.soundVolumeMax)
                         .disabled(!state.soundEnabled)
-                    Text("\(Int(state.soundVolume / 0.2 * 100)) %")
+                    Text("\(Int(state.soundVolume / AppState.soundVolumeMax * 100)) %")
                         .frame(width: 36, alignment: .trailing)
                         .monospacedDigit()
                 }

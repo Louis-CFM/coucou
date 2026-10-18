@@ -5069,7 +5069,7 @@ struct SettingsIslandView: View {
                     Text("Sound")
                         .font(.system(size: 12.5))
                         .foregroundColor(Color(hex: "#C5C8CD"))
-                    Slider(value: $state.soundVolume, in: 0...0.2)
+                    Slider(value: $state.soundVolume, in: 0...AppState.soundVolumeMax)
                         .frame(width: 72)
                         .opacity(state.soundEnabled ? 1 : 0.4)
                 }
