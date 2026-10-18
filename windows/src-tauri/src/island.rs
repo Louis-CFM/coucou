@@ -13,6 +13,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
 use crate::platform::{self, cursor_physical, left_button_down};
+use crate::mutex::MutexExt;
 
 /// Logical size of the full window — the largest island view, like the macOS panel.
 pub const PANEL_W: f64 = 720.0;
@@ -78,7 +79,7 @@ impl PollGate {
     }
 
     pub fn set_rect(&self, rect: IslandRect) {
-        *self.rect.lock().unwrap() = rect;
+        *self.rect.lock_recover() = rect;
     }
 
     /// Forces the next poll tick to re-apply the flag (after a window resize).
@@ -87,13 +88,13 @@ impl PollGate {
     }
 
     pub fn set_active(&self, on: bool) {
-        let mut guard = self.active.lock().unwrap();
+        let mut guard = self.active.lock_recover();
         *guard = on;
         self.cv.notify_all();
     }
 
     pub(crate) fn wait_until_active(&self) {
-        let mut guard = self.active.lock().unwrap();
+        let mut guard = self.active.lock_recover();
         while !*guard {
             guard = self.cv.wait(guard).unwrap();
         }
@@ -102,14 +103,14 @@ impl PollGate {
     /// Blocks while the island is open (the cursor poll is active): what only
     /// matters to a hidden island waits here at no cost.
     pub(crate) fn wait_until_inactive(&self) {
-        let mut guard = self.active.lock().unwrap();
+        let mut guard = self.active.lock_recover();
         while *guard {
             guard = self.cv.wait(guard).unwrap();
         }
     }
 
     pub(crate) fn is_active(&self) -> bool {
-        *self.active.lock().unwrap()
+        *self.active.lock_recover()
     }
 }
 
@@ -487,7 +488,7 @@ pub fn spawn_drop_zone_watch(app: AppHandle, gate: Arc<PollGate>) {
             }
             let pref = app
                 .try_state::<crate::Shared>()
-                .map(|s| s.settings.lock().unwrap().screen.clone())
+                .map(|s| s.settings.lock_recover().screen.clone())
                 .unwrap_or_else(|| "primary".into());
 
             if down && !was_down {
@@ -815,7 +816,7 @@ mod placement_tests {
 fn current_screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     let pref = app
         .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().screen.clone())
+        .map(|s| s.settings.lock_recover().screen.clone())
         .unwrap_or_else(|| "primary".into());
     let m = target_monitor(app, &pref)?;
     let p = m.position();
@@ -909,7 +910,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 // Click-through: the window only takes the mouse over the island
                 // shape. A small entry margin means the flag is already off by the
                 // time a moving cursor reaches a button.
-                let r = *gate.rect.lock().unwrap();
+                let r = *gate.rect.lock_recover();
                 let on_island = r.w > 0.0
                     && x >= r.x - HIT_MARGIN
                     && x <= r.x + r.w + HIT_MARGIN
@@ -975,7 +976,7 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
         // meant for whatever sits under the top of the screen.
         Some((0.0, 0.0, STRIP_W, STRIP_H))
     } else {
-        let r = *gate.rect.lock().unwrap();
+        let r = *gate.rect.lock_recover();
         if r.w <= 0.0 {
             // Nothing drawn yet: nothing takes the mouse.
             Some((0.0, 0.0, 0.0, 0.0))

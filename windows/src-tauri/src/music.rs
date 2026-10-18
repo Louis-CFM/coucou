@@ -166,6 +166,7 @@ mod imp {
 
     use super::{app_name, cover_color, is_music, NowPlaying};
     use crate::log;
+    use crate::mutex::MutexExt;
 
     /// How long a player may go quiet before the Music pill says nothing plays.
     const GRACE: Duration = Duration::from_secs(3);
@@ -340,7 +341,7 @@ mod imp {
                 // A skip leaves the player without a title, or without a session,
                 // for a moment: the last track stays on show rather than flash
                 // "Nothing playing", and a timer looks again once GRACE is up.
-                if picked.is_none() && LAST.lock().unwrap().is_some() {
+                if picked.is_none() && LAST.lock_recover().is_some() {
                     let since = *quiet_since.get_or_insert_with(|| {
                         let tx = tx.clone();
                         std::thread::spawn(move || {
@@ -355,11 +356,11 @@ mod imp {
                 }
                 quiet_since = None;
                 if let Some((s, np)) = picked.as_mut() {
-                    cover(s, np, LAST.lock().unwrap().as_ref());
+                    cover(s, np, LAST.lock_recover().as_ref());
                 }
                 let now = picked.as_ref().map(|(_, np)| np.clone());
-                *TARGET.lock().unwrap() = picked.map(|(s, _)| s);
-                let mut last = LAST.lock().unwrap();
+                *TARGET.lock_recover() = picked.map(|(s, _)| s);
+                let mut last = LAST.lock_recover();
                 if *last != now {
                     log::line(match &now {
                         Some(np) => format!(
@@ -381,11 +382,11 @@ mod imp {
     }
 
     pub fn now() -> Option<NowPlaying> {
-        LAST.lock().unwrap().clone()
+        LAST.lock_recover().clone()
     }
 
     pub fn control(action: &str) -> Result<(), String> {
-        let session = TARGET.lock().unwrap().clone().ok_or("Nothing is playing.")?;
+        let session = TARGET.lock_recover().clone().ok_or("Nothing is playing.")?;
         let op = match action {
             "toggle" => session.TryTogglePlayPauseAsync(),
             "next" => session.TrySkipNextAsync(),

@@ -1,5 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+use crate::mutex::MutexExt;
+
 mod agent_hooks;
 mod awake;
 mod agents;
@@ -33,6 +35,7 @@ mod log;
 mod mail_crypto;
 mod media;
 mod music;
+mod mutex;
 mod net;
 mod notes;
 mod openai_compat;
@@ -98,7 +101,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     // and is what a later save keeps (Settings::from_webview).
     let hooks_status = hooks::status();
     let settings = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         current.hooks_installed = hooks_status.installed;
         current.plan_relay_installed = hooks_status.plan_relay_installed;
         current.clone()
@@ -116,7 +119,7 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     let (settings, screen_changed, autostart_changed, shortcuts_changed) = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         // What only Rust changes (the phone pairing and link, the hooks state,
         // Mochi's desktop spot) is not a webview's to say: its copy may be stale.
         let next = current.from_webview(settings);
@@ -177,7 +180,7 @@ fn language_changed(app: &AppHandle) {
 /// cursor poll; anything else → full panel and 60 Hz polling.
 #[tauri::command]
 fn set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let pref = shared.settings.lock_recover().screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
     // Stop the cursor poll first so no in-flight tick can undo what follows.
@@ -208,7 +211,7 @@ fn focus_window(app: AppHandle, focused: bool) {
 
 #[tauri::command]
 fn reposition(app: AppHandle, shared: State<Shared>) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
+    let pref = shared.settings.lock_recover().screen.clone();
     let collapsed = shared.gate.collapsed.load(Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
 }
@@ -221,7 +224,7 @@ fn fit_zoom(app: AppHandle, dpr: f64) -> bool {
     let Some(win) = island::window(&app) else { return false };
     let scale = win.scale_factor().unwrap_or(1.0);
     static ZOOM: std::sync::Mutex<f64> = std::sync::Mutex::new(1.0);
-    let mut zoom = ZOOM.lock().unwrap();
+    let mut zoom = ZOOM.lock_recover();
     if let Some(new_zoom) = island::calculate_zoom_correction(*zoom, scale, dpr) {
         *zoom = new_zoom;
         log::line(format!("webview dpr {dpr} != window scale {scale} — setting zoom {new_zoom:.3}"));
@@ -249,11 +252,11 @@ fn nudge_island(app: AppHandle, dx: f64, dy: f64) {
 /// then it is placed again by the rules, which keeps it on the screen.
 #[tauri::command]
 fn island_dropped(app: AppHandle, shared: State<Shared>) {
-    let pref = shared.settings.lock().unwrap().screen.clone();
-    let island = *shared.gate.rect.lock().unwrap();
+    let pref = shared.settings.lock_recover().screen.clone();
+    let island = *shared.gate.rect.lock_recover();
     let Some(landing) = island::landing(&app, &pref, island) else { return };
     let settings = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         current.island_dock = landing.dock.name().to_string();
         current.island_shift = landing.shift;
         current.island_drop = landing.drop;
@@ -327,7 +330,7 @@ fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
             return false;
         }
     }
-    let custom = shared.settings.lock().unwrap().editor.clone();
+    let custom = shared.settings.lock_recover().editor.clone();
     if let Some(editor) = resolve_editor(custom.as_deref()) {
         let mut cmd = Command::new(editor);
         if let Some(p) = path.as_deref() {
@@ -348,7 +351,7 @@ fn open_in_vscode(shared: State<Shared>, path: Option<String>) -> bool {
 /// folder in the editor, as before.
 #[tauri::command]
 fn open_session(shared: State<Shared>, session_id: Option<String>, path: Option<String>) -> bool {
-    let custom = shared.settings.lock().unwrap().editor.clone();
+    let custom = shared.settings.lock_recover().editor.clone();
     let open_editor = move |path: Option<String>| {
         if let Some(editor) = resolve_editor(custom.as_deref()) {
             let mut cmd = Command::new(editor);
@@ -408,7 +411,7 @@ fn diff_file(path: &str) -> Option<&std::path::Path> {
 #[tauri::command]
 fn open_file_in_vscode(shared: State<Shared>, path: String) -> bool {
     let Some(file) = diff_file(&path) else { return false };
-    let custom = shared.settings.lock().unwrap().editor.clone();
+    let custom = shared.settings.lock_recover().editor.clone();
     if let Some(editor) = resolve_editor(custom.as_deref()) {
         let mut cmd = Command::new(editor);
         cmd.arg(file);
@@ -465,7 +468,7 @@ fn hooks_apply(
     // settings.json that changed in between is refused rather than overwritten.
     let backup = hooks::write(install, &fingerprint)?;
     let updated = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         current.hooks_installed = install;
         if let Err(err) = settings::save(&current) {
             log::line(format!("could not save settings: {err}"));
@@ -518,7 +521,7 @@ fn status_line_apply(
 ) -> Result<String, String> {
     let backup = hooks::status_line_write(install, &fingerprint)?;
     let updated = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.lock_recover();
         current.plan_relay_installed = install;
         // As on the Mac: taking the relay out turns the pill off with it.
         if !install {
@@ -599,7 +602,7 @@ fn approval_decline(window: tauri::WebviewWindow, app: AppHandle, request_id: St
 /// What the settings window shows: enabled, paired, which phone, which relay.
 #[tauri::command]
 fn phone_status(shared: State<'_, Shared>) -> serde_json::Value {
-    let s = shared.settings.lock().unwrap();
+    let s = shared.settings.lock_recover();
     json!({
         "enabled": s.phone_enabled,
         "paired": s.phone_paired,
@@ -747,14 +750,14 @@ async fn chat_send(
     context: Option<ChatContext>,
     text_only: Option<bool>,
 ) -> Result<ChatReply, String> {
-    let settings = shared.settings.lock().unwrap().clone();
+    let settings = shared.settings.lock_recover().clone();
     let result = chat::send(&app, &chat, &settings, query, context, text_only.unwrap_or(false)).await;
     // A model that refused a picture reads text only: remembered, so the island
     // asks first next time instead of spending a request.
     if matches!(&result, Err(e) if e == chat::IMAGES_UNSUPPORTED) {
         let who = format!("{}/{}", settings.chat_provider, chat::model_for(&settings, &settings.chat_provider));
         let updated = {
-            let mut s = shared.settings.lock().unwrap();
+            let mut s = shared.settings.lock_recover();
             (!s.text_only_models.contains(&who)).then(|| {
                 s.text_only_models.push(who);
                 s.clone()
@@ -786,7 +789,7 @@ fn read_attachment(path: String) -> Option<serde_json::Value> {
 /// once the user picked that provider, and only with its key or address.
 #[tauri::command]
 async fn chat_models(shared: State<'_, Shared>, provider: String) -> Result<Vec<ModelInfo>, String> {
-    let settings = shared.settings.lock().unwrap().clone();
+    let settings = shared.settings.lock_recover().clone();
     chat::models(&settings, &provider).await
 }
 
@@ -820,7 +823,7 @@ async fn transcribe_audio(shared: State<'_, Shared>, request: tauri::ipc::Reques
     };
     let audio = bytes.clone();
     let mime = request.headers().get("x-mime").and_then(|v| v.to_str().ok()).unwrap_or("audio/webm").to_string();
-    let settings = shared.settings.lock().unwrap().clone();
+    let settings = shared.settings.lock_recover().clone();
     media::transcribe_with(&settings, audio, &mime).await
 }
 
@@ -963,7 +966,7 @@ fn shortcuts_suspend(app: AppHandle, shared: State<Shared>, suspended: bool) {
     if suspended {
         shortcuts::suspend(&app);
     } else {
-        let stored = shared.settings.lock().unwrap().shortcuts.clone();
+        let stored = shared.settings.lock_recover().shortcuts.clone();
         shortcuts::apply(&app, &stored);
     }
 }
@@ -1340,7 +1343,7 @@ pub fn run() {
                 // writing it again adds it, so the window stays hidden at login.
                 let _ = handle.autolaunch().enable();
             }
-            let open_window = flow::get(&handle).map(|f| f.store.lock().unwrap().prefs.open_at_launch).unwrap_or(true);
+            let open_window = flow::get(&handle).map(|f| f.store.lock_recover().prefs.open_at_launch).unwrap_or(true);
             if open_window && !launched_at_login() {
                 show_hub(&handle, None);
             }

@@ -35,6 +35,7 @@ use super::admission::{Admission, Ticket};
 use super::chat::ChatLink;
 use super::hub::{constant_eq, Hub, Out};
 use super::pairing::Identity;
+use crate::mutex::MutexExt;
 
 pub const PROTOCOL: u64 = 1;
 pub const MAX_LINE: usize = 64 * 1024;
@@ -258,7 +259,7 @@ where
         return;
     }
     let sent_token = hello["token"].as_str().unwrap_or("").to_string();
-    let expected = shared.token.lock().unwrap().clone();
+    let expected = shared.token.lock_recover().clone();
     let good = hello["v"].as_u64() == Some(PROTOCOL) && constant_eq(sent_token.as_bytes(), expected.as_bytes());
     if !good {
         tokio::time::sleep(AUTH_PENALTY).await;

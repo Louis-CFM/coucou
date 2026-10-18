@@ -36,6 +36,7 @@ use tokio::sync::mpsc;
 use crate::island::WINDOW_LABEL;
 use crate::log;
 use crate::session_window;
+use crate::mutex::MutexExt;
 
 /// Slightly under coucou-hook's own 110 s wait, so we always answer first.
 const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
@@ -45,6 +46,9 @@ const DECISION_TIMEOUT: Duration = Duration::from_secs(108);
 /// see for nearly two minutes.
 const ACK_TIMEOUT: Duration = Duration::from_millis(800);
 const MAX_PAYLOAD: usize = 1 << 20;
+/// Each entry parks a 108-second waiter task; a flood that no human could
+/// click through is refused instead of queued.
+const MAX_PENDING: usize = 64;
 
 /// What the island can say about a permission request.
 pub enum Reply {
@@ -59,6 +63,20 @@ pub enum Reply {
 /// Permission requests the island has been told about.
 #[derive(Default)]
 pub struct Pending(pub Mutex<HashMap<String, mpsc::Sender<Reply>>>);
+
+impl Pending {
+    /// Registers a waiter, or reports that the map is already full. A caller
+    /// getting `false` must not show a card — the request falls back to the
+    /// terminal as if Coucou had not answered.
+    fn register(&self, id: &str, tx: mpsc::Sender<Reply>) -> bool {
+        let mut map = self.0.lock_recover();
+        if map.len() >= MAX_PENDING {
+            return false;
+        }
+        map.insert(id.to_string(), tx);
+        true
+    }
+}
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -278,9 +296,10 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 
     let id = next_request_id();
     let (tx, mut rx) = mpsc::channel::<Reply>(4);
-    {
-        let pending = app.state::<Pending>();
-        pending.0.lock().unwrap().insert(id.clone(), tx);
+    if !app.state::<Pending>().register(&id, tx) {
+        log::line("too many pending permission requests — refused a new one");
+        pipe.finish();
+        return;
     }
     crate::recap::note_request(&app, &id, &payload);
     payload["request_id"] = json!(id);
@@ -289,7 +308,7 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     remember_session_window(relay_pid, session, &event);
 
     let outcome = wait_for_decision(&id, &mut rx, peer_closed(&mut pipe)).await;
-    app.state::<Pending>().0.lock().unwrap().remove(&id);
+    app.state::<Pending>().0.lock_recover().remove(&id);
 
     match outcome {
         // What we write is a bare word or the answers line; coucou-hook turns it into the agent's JSON.
@@ -428,7 +447,7 @@ fn loggable(decision: &str) -> &str {
 fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
     let sender = {
         let pending = app.state::<Pending>();
-        let mut map = pending.0.lock().unwrap();
+        let mut map = pending.0.lock_recover();
         if keep { map.get(request_id).cloned() } else { map.remove(request_id) }
     };
     match sender {
@@ -491,6 +510,21 @@ mod tests {
 
     fn block_on<T>(f: impl std::future::Future<Output = T>) -> T {
         tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    #[test]
+    fn the_pending_map_refuses_to_grow_without_bound() {
+        let pending = Pending::default();
+        for i in 0..MAX_PENDING {
+            let (tx, _rx) = mpsc::channel::<Reply>(1);
+            assert!(pending.register(&format!("r{i}"), tx));
+        }
+        let (tx, _rx) = mpsc::channel::<Reply>(1);
+        assert!(!pending.register("overflow", tx));
+        // A slot freed by a finished request is usable again.
+        pending.0.lock_recover().remove("r0");
+        let (tx, _rx) = mpsc::channel::<Reply>(1);
+        assert!(pending.register("refilled", tx));
     }
 
     #[test]

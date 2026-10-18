@@ -21,6 +21,7 @@ use gtk::prelude::*;
 use tauri::{AppHandle, WebviewWindow};
 
 use super::{home_dir, LocalTime};
+use crate::mutex::MutexExt;
 
 /// File name of the Claude Code relay.
 pub const HOOK_EXE: &str = "coucou-hook";
@@ -435,13 +436,13 @@ pub fn make_non_activating(win: &WebviewWindow) {
     // right after the first map, gets it drawing for good.
     let remapped = std::cell::Cell::new(false);
     gw.connect_map_event(move |w, _| {
-        apply_input_region(w, *INPUT_REGION.lock().unwrap());
+        apply_input_region(w, *INPUT_REGION.lock_recover());
         if !remapped.replace(true) {
             let w = w.clone();
             gtk::glib::idle_add_local_once(move || {
                 w.hide();
                 w.show_all();
-                apply_input_region(&w, *INPUT_REGION.lock().unwrap());
+                apply_input_region(&w, *INPUT_REGION.lock_recover());
             });
         }
         gtk::glib::Propagation::Proceed
@@ -567,7 +568,7 @@ pub fn allow_microphone(_win: &WebviewWindow) {}
 /// Only this rectangle (window-logical pixels) takes the mouse; `None` means
 /// the whole window does. Everything outside goes to the window underneath.
 pub fn set_input_region(win: &WebviewWindow, rect: Region) {
-    *INPUT_REGION.lock().unwrap() = rect;
+    *INPUT_REGION.lock_recover() = rect;
     let Ok(gw) = win.gtk_window() else { return };
     apply_input_region(&gw, rect);
 }
@@ -673,13 +674,13 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
             // Same first-frame problem as the island (see make_non_activating).
             let remapped = std::cell::Cell::new(false);
             gw.connect_map_event(move |w, _| {
-                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                apply_mouse_shape(w, *MOCHI_SHAPE.lock_recover());
                 if !remapped.replace(true) {
                     let w = w.clone();
                     gtk::glib::idle_add_local_once(move || {
                         w.hide();
                         w.show_all();
-                        apply_mouse_shape(&w, *MOCHI_SHAPE.lock().unwrap());
+                        apply_mouse_shape(&w, *MOCHI_SHAPE.lock_recover());
                     });
                 }
                 gtk::glib::Propagation::Proceed
@@ -688,7 +689,7 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
         }
         super::DesktopMode::Window => {
             gw.connect_map_event(|w, _| {
-                apply_mouse_shape(w, *MOCHI_SHAPE.lock().unwrap());
+                apply_mouse_shape(w, *MOCHI_SHAPE.lock_recover());
                 gtk::glib::Propagation::Proceed
             });
             true
@@ -699,7 +700,7 @@ pub fn prepare_desktop_window(win: &WebviewWindow, mode: super::DesktopMode) -> 
 
 /// Which part of the desktop Mochi takes the mouse. Main thread.
 pub fn set_desktop_shape(win: &WebviewWindow, shape: super::MouseShape) {
-    *MOCHI_SHAPE.lock().unwrap() = shape;
+    *MOCHI_SHAPE.lock_recover() = shape;
     let Ok(gw) = win.gtk_window() else { return };
     apply_mouse_shape(&gw, shape);
 }
@@ -1064,7 +1065,7 @@ static PILL_SHAPE: Mutex<Vec<(f64, f64, f64, f64)>> = Mutex::new(Vec::new());
 pub fn prepare_pill_window(win: &WebviewWindow, mode: super::DesktopMode) -> bool {
     let Ok(gw) = win.gtk_window() else { return false };
     gw.set_accept_focus(false);
-    let reapply = |w: &gtk::ApplicationWindow| apply_rects(w, &PILL_SHAPE.lock().unwrap());
+    let reapply = |w: &gtk::ApplicationWindow| apply_rects(w, &PILL_SHAPE.lock_recover());
     match mode {
         super::DesktopMode::Layer => {
             if gw.is_realized() {
@@ -1088,7 +1089,7 @@ pub fn prepare_pill_window(win: &WebviewWindow, mode: super::DesktopMode) -> boo
                     gtk::glib::idle_add_local_once(move || {
                         w.hide();
                         w.show_all();
-                        apply_rects(&w, &PILL_SHAPE.lock().unwrap());
+                        apply_rects(&w, &PILL_SHAPE.lock_recover());
                     });
                 }
                 gtk::glib::Propagation::Proceed
@@ -1124,7 +1125,7 @@ pub fn set_pill_edge(win: &WebviewWindow, edge: &str) {
 
 /// The parts of the pill's window that take the mouse. Main thread.
 pub fn set_pill_input(win: &WebviewWindow, rects: Vec<(f64, f64, f64, f64)>) {
-    *PILL_SHAPE.lock().unwrap() = rects.clone();
+    *PILL_SHAPE.lock_recover() = rects.clone();
     let Ok(gw) = win.gtk_window() else { return };
     apply_rects(&gw, &rects);
 }

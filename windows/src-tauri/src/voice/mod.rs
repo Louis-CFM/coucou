@@ -12,6 +12,8 @@
 // It stops listening while you dictate, while a call is recorded and while it
 // speaks itself.
 
+use crate::mutex::MutexExt;
+
 pub mod brain;
 pub mod search;
 pub mod wake;
@@ -61,8 +63,8 @@ pub fn requirements_met() -> bool {
 
 /// Starts or stops listening to follow the preference.
 pub fn sync(app: &AppHandle) {
-    let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.voice);
-    let mut running = RUNNING.lock().unwrap();
+    let wanted = crate::flow::get(app).is_some_and(|f| f.store.lock_recover().prefs.voice);
+    let mut running = RUNNING.lock_recover();
     match (wanted && requirements_met(), running.is_some()) {
         (true, false) => {
             let stop = Arc::new(AtomicBool::new(false));
@@ -78,7 +80,7 @@ pub fn sync(app: &AppHandle) {
             if let Some(r) = running.take() {
                 r.stop.store(true, Ordering::Relaxed);
             }
-            let dictation = crate::flow::get(app).is_some_and(|f| f.store.lock().unwrap().prefs.enabled);
+            let dictation = crate::flow::get(app).is_some_and(|f| f.store.lock_recover().prefs.enabled);
             if !dictation && !crate::notes::is_recording(app) {
                 speech::unload();
             }
@@ -90,12 +92,12 @@ pub fn sync(app: &AppHandle) {
 
 /// « OK Coucou » is listening (the voice model stays loaded).
 pub fn is_listening() -> bool {
-    RUNNING.lock().unwrap().is_some()
+    RUNNING.lock_recover().is_some()
 }
 
 /// Starts again on another microphone.
 pub fn restart(app: &AppHandle) {
-    if let Some(r) = RUNNING.lock().unwrap().take() {
+    if let Some(r) = RUNNING.lock_recover().take() {
         r.stop.store(true, Ordering::Relaxed);
     }
     sync(app);
@@ -115,7 +117,7 @@ enum Mode {
 }
 
 fn run(app: AppHandle, stop: Arc<AtomicBool>) {
-    let mic = crate::flow::get(&app).map(|f| f.store.lock().unwrap().prefs.mic.clone()).unwrap_or_default();
+    let mic = crate::flow::get(&app).map(|f| f.store.lock_recover().prefs.mic.clone()).unwrap_or_default();
     let (tx, rx) = mpsc::channel::<Vec<f32>>();
     let capture = audio::Capture::start(audio::Source::Mic(if mic.is_empty() { None } else { Some(mic) }), move |s| {
         let _ = tx.send(s.to_vec());
@@ -124,7 +126,7 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
         Ok(c) => c,
         Err(err) => {
             crate::log::line(format!("voice: microphone: {err}"));
-            *RUNNING.lock().unwrap() = None;
+            *RUNNING.lock_recover() = None;
             return;
         }
     };
@@ -240,7 +242,7 @@ struct Say {
 fn speak(app: &AppHandle, text: &str) {
     let (output, gender, studio, fish_voice) = crate::flow::get(app)
         .map(|f| {
-            let p = &f.store.lock().unwrap().prefs;
+            let p = &f.store.lock_recover().prefs;
             (
                 p.voice_output.clone(),
                 p.voice_gender.clone(),
@@ -262,17 +264,17 @@ fn speak(app: &AppHandle, text: &str) {
     .map(|mp3| base64(&mp3));
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
-    pending().lock().unwrap().insert(id, tx);
+    pending().lock_recover().insert(id, tx);
     let _ = app.emit_to(pill::LABEL, "voice-say", Say { id, text: text.into(), lang: wake::speech_lang(text), audio, gender });
     let words = crate::flow::text::word_count(text) as u64;
     let _ = rx.recv_timeout(Duration::from_millis(4000 + words * 600));
-    pending().lock().unwrap().remove(&id);
+    pending().lock_recover().remove(&id);
 }
 
 /// The pill says it has finished speaking (`id`), or the island answers a question.
 #[tauri::command]
 pub fn voice_done(id: u64, text: Option<String>) {
-    if let Some(tx) = pending().lock().unwrap().remove(&id) {
+    if let Some(tx) = pending().lock_recover().remove(&id) {
         let _ = tx.send(text.unwrap_or_default());
     }
 }
@@ -384,7 +386,7 @@ pub fn warm_up(app: &AppHandle) {
 /// The VoiceStudio address and voice while « OK Coucou » answers with it.
 fn studio_prefs(app: &AppHandle) -> Option<(String, String)> {
     let flow = crate::flow::get(app)?;
-    let p = &flow.store.lock().unwrap().prefs;
+    let p = &flow.store.lock_recover().prefs;
     (p.voice && p.voice_output == "voicestudio").then(|| (p.voicestudio_url.clone(), p.voicestudio_voice.clone()))
 }
 
@@ -475,10 +477,10 @@ fn base64(bytes: &[u8]) -> String {
 pub fn ask_island(app: &AppHandle, kind: &str, input: Value) -> Option<String> {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let (tx, rx) = mpsc::channel();
-    pending().lock().unwrap().insert(id, tx);
+    pending().lock_recover().insert(id, tx);
     let _ = app.emit_to(crate::island::WINDOW_LABEL, "voice-ask", json!({ "id": id, "kind": kind, "input": input }));
     let answer = rx.recv_timeout(Duration::from_secs(5)).ok();
-    pending().lock().unwrap().remove(&id);
+    pending().lock_recover().remove(&id);
     answer
 }
 

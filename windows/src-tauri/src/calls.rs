@@ -10,6 +10,7 @@ use std::sync::Mutex;
 use tauri::AppHandle;
 #[cfg(target_os = "linux")]
 use tauri::Emitter;
+use crate::mutex::MutexExt;
 
 #[cfg(target_os = "linux")]
 pub const EVENT: &str = "call-sensors";
@@ -19,7 +20,7 @@ static HELD: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 #[tauri::command]
 pub fn call_sensors() -> Vec<String> {
-    HELD.lock().unwrap().clone()
+    HELD.lock_recover().clone()
 }
 
 /// Folds one `pw-dump` batch into the objects seen so far: `info: null` removes one.
@@ -139,7 +140,7 @@ fn watch(app: &AppHandle, own: &str) {
             let Ok(batch) = batch else { break };
             apply(&mut objects, &batch);
             let now: Vec<String> = held(&objects, own).into_iter().map(str::to_string).collect();
-            let mut last = HELD.lock().unwrap();
+            let mut last = HELD.lock_recover();
             if *last != now {
                 crate::log::line(format!("calls: {now:?}"));
                 *last = now.clone();
@@ -148,7 +149,7 @@ fn watch(app: &AppHandle, own: &str) {
         }
         let _ = child.wait();
         // PipeWire restarted: nothing is held until it says otherwise.
-        *HELD.lock().unwrap() = Vec::new();
+        *HELD.lock_recover() = Vec::new();
         let _ = app.emit_to(crate::island::WINDOW_LABEL, EVENT, Vec::<String>::new());
         std::thread::sleep(std::time::Duration::from_secs(5));
     }

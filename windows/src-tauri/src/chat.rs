@@ -14,6 +14,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
+use crate::mutex::MutexExt;
 use crate::{
     claude, claude_cli, codex_chat, cursor_chat, devin_chat, kiro_chat, local_chat, openai_compat,
     secrets,
@@ -130,7 +131,7 @@ pub struct Turn {
 impl Chat {
     /// Mochi's instructions, with the name the user gave him.
     pub fn system_prompt(&self, web_search: bool) -> String {
-        let name = self.persona.lock().unwrap().clone();
+        let name = self.persona.lock_recover().clone();
         system_prompt_for(crate::identity::first_name(), web_search, &name)
     }
 
@@ -163,7 +164,7 @@ impl Chat {
 
     /// `provider` listed `model`, then answered that it has no such model.
     pub fn refuse(&self, provider: &str, model: &str) {
-        let mut refused = self.refused.lock().unwrap();
+        let mut refused = self.refused.lock_recover();
         if refused.iter().any(|(p, m)| p == provider && m == model) {
             return;
         }
@@ -176,7 +177,7 @@ impl Chat {
     /// `model` answered: what was held against it no longer is. Called for
     /// every answer, so the file is only touched when a mark really goes.
     pub fn accept(&self, provider: &str, model: &str) {
-        let mut refused = self.refused.lock().unwrap();
+        let mut refused = self.refused.lock_recover();
         let before = refused.len();
         refused.retain(|(p, m)| !(p == provider && m == model));
         if refused.len() != before {
@@ -186,12 +187,12 @@ impl Chat {
 
     /// The models of `provider` the picker marks as not available.
     pub fn refused_models(&self, provider: &str) -> Vec<String> {
-        let refused = self.refused.lock().unwrap();
+        let refused = self.refused.lock_recover();
         refused.iter().filter(|(p, _)| p == provider).map(|(_, m)| m.clone()).collect()
     }
 
     pub fn reset(&self) {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         let epoch = c.epoch + 1;
         *c = Conversation { epoch, ..Default::default() };
         crate::media::forget_last_image();
@@ -200,7 +201,7 @@ impl Chat {
     /// Starts a turn with `provider`, converting the history if another
     /// provider answered the previous turns.
     pub fn begin(&self, provider: &str) -> Turn {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         if c.owner.as_deref() != Some(provider) {
             c.native = c.plain.clone();
             c.owner = Some(provider.to_string());
@@ -217,7 +218,7 @@ impl Chat {
     /// provider's format, and their plain text. Only a successful turn is
     /// recorded, so the history always matches what the model saw.
     pub fn commit(&self, turn: &Turn, user: Value, assistant: Value, user_text: &str, answer: &str) {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
             return;
         }
@@ -230,13 +231,13 @@ impl Chat {
     /// The token a CLI provider resumes with — its own conversation in its own
     /// binary — or None until its first answer.
     pub fn cli_session(&self, provider: &str) -> Option<String> {
-        self.inner.lock().unwrap().cli_sessions.get(provider).cloned()
+        self.inner.lock_recover().cli_sessions.get(provider).cloned()
     }
 
     /// Stores the token, guarded like commit: an answer that lands after a
     /// reset or a switch cannot write one.
     pub fn set_cli_session(&self, turn: &Turn, session: String) {
-        let mut c = self.inner.lock().unwrap();
+        let mut c = self.inner.lock_recover();
         if c.epoch != turn.epoch || c.owner.as_deref() != Some(turn.provider.as_str()) {
             return;
         }
@@ -467,7 +468,7 @@ pub async fn send(
 ) -> Result<ChatReply, String> {
     let mut context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
-    *chat.persona.lock().unwrap() = settings.mochi_name.clone();
+    *chat.persona.lock_recover() = settings.mochi_name.clone();
     let mut query = query;
     let mut notice = None;
     if provider == crate::media::PROVIDER {

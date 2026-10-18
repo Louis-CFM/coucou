@@ -25,6 +25,7 @@ use tokio::task::AbortHandle;
 
 use super::hub::Out;
 use super::server::MAX_LINE;
+use crate::mutex::MutexExt;
 
 pub const MAX_TEXT_CHARS: usize = 4000;
 pub const MAX_SENDS: usize = 12;
@@ -200,7 +201,7 @@ struct Slot {
 
 impl Drop for Slot {
     fn drop(&mut self) {
-        let mut g = self.link.gate.lock().unwrap();
+        let mut g = self.link.gate.lock_recover();
         if g.running.as_ref().is_some_and(|r| r.token == self.token) {
             g.running = None;
         }
@@ -229,7 +230,7 @@ impl ChatLink {
     }
 
     fn cancel_where(&self, which: impl Fn(&Run) -> bool) -> Option<Run> {
-        let mut g = self.gate.lock().unwrap();
+        let mut g = self.gate.lock_recover();
         if g.running.as_ref().is_some_and(which) {
             let run = g.running.take()?;
             run.abort.abort();
@@ -297,7 +298,7 @@ impl ChatLink {
             return refuse("not_allowed");
         }
 
-        let mut g = self.gate.lock().unwrap();
+        let mut g = self.gate.lock_recover();
         if g.running.is_some() {
             drop(g);
             return refuse("busy");

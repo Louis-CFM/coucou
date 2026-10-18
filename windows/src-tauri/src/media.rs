@@ -812,13 +812,14 @@ fn hide_overlay(win: &tauri::WebviewWindow) {
 
 #[cfg(test)]
 mod tests {
+    use crate::mutex::MutexExt;
     use super::*;
 
     #[test]
     fn a_new_chat_forgets_the_last_image() {
-        *LAST_IMAGE.lock().unwrap() = Some("old.png".into());
+        *LAST_IMAGE.lock_recover() = Some("old.png".into());
         forget_last_image();
-        assert!(LAST_IMAGE.lock().unwrap().is_none());
+        assert!(LAST_IMAGE.lock_recover().is_none());
     }
 
     #[test]

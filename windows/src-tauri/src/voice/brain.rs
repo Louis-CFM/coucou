@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 use super::search::{self, SearchProvider};
+use crate::mutex::MutexExt;
 
 const FAST_MODEL: &str = "claude-haiku-4-5";
 const FORGET_AFTER: Duration = Duration::from_secs(90);
@@ -126,7 +127,7 @@ impl Brain {
         let tools = tools(provider);
         let chat_model = app
             .try_state::<crate::Shared>()
-            .map(|s| s.settings.lock().unwrap().model.clone())
+            .map(|s| s.settings.lock_recover().model.clone())
             .unwrap_or_default();
         let mut acted = false;
         let mut spoken = String::new();
@@ -242,7 +243,7 @@ fn search_session() -> String {
 
 fn search_config(app: &AppHandle) -> (bool, SearchProvider) {
     crate::flow::get(app).map(|f| {
-        let store = f.store.lock().unwrap();
+        let store = f.store.lock_recover();
         (store.prefs.voice, store.prefs.voice_search)
     }).unwrap_or((false, SearchProvider::Off))
 }

@@ -190,6 +190,7 @@ mod tests {
 
 #[cfg(test)]
 mod drop_tests {
+    use crate::mutex::MutexExt;
     use super::*;
 
     #[test]
@@ -208,7 +209,7 @@ mod drop_tests {
         assert!(!take_dropped(&p), "good once");
 
         allow_dropped((0..200).map(|i| format!("/tmp/bounded-{i}")));
-        assert!(DROPPED.lock().unwrap().len() <= DROP_MAX_PENDING);
+        assert!(DROPPED.lock_recover().len() <= DROP_MAX_PENDING);
         assert!(take_dropped("/tmp/bounded-199"));
         assert!(!take_dropped("/tmp/bounded-0"));
     }

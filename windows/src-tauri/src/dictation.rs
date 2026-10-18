@@ -14,6 +14,7 @@ use tauri::{Emitter, Manager};
 
 #[cfg(windows)]
 use crate::island::WINDOW_LABEL;
+use crate::mutex::MutexExt;
 
 #[derive(Default)]
 pub struct Dictation {
@@ -52,7 +53,7 @@ pub fn dictation_supported() -> bool {
 /// Starts listening; a second tap stops it, as does the session's own end.
 #[tauri::command]
 pub async fn dictation_start(app: AppHandle, d: tauri::State<'_, Dictation>) -> Result<(), String> {
-    if d.live.lock().unwrap().is_some() {
+    if d.live.lock_recover().is_some() {
         return Ok(());
     }
     #[cfg(windows)]
@@ -61,7 +62,7 @@ pub async fn dictation_start(app: AppHandle, d: tauri::State<'_, Dictation>) -> 
             crate::log::line(format!("dictation: {e}"));
             "dictation"
         })?;
-        *d.live.lock().unwrap() = Some(live);
+        *d.live.lock_recover() = Some(live);
     }
     #[cfg(not(windows))]
     {
@@ -75,7 +76,7 @@ pub async fn dictation_start(app: AppHandle, d: tauri::State<'_, Dictation>) -> 
 #[tauri::command]
 pub async fn dictation_stop(d: tauri::State<'_, Dictation>) -> Result<(), String> {
     #[cfg(windows)]
-    if let Some(live) = d.live.lock().unwrap().take() {
+    if let Some(live) = d.live.lock_recover().take() {
         let _ = live.session.StopAsync().and_then(|a| a.get());
     }
     #[cfg(not(windows))]
@@ -120,7 +121,7 @@ fn start(app: &AppHandle) -> windows::core::Result<Live> {
     session.Completed(&TypedEventHandler::new(
         move |_, _args: windows::core::Ref<'_, SpeechContinuousRecognitionCompletedEventArgs>| {
             let _ = for_done.emit_to(WINDOW_LABEL, "dictation-end", ());
-            for_done.state::<Dictation>().live.lock().unwrap().take();
+            for_done.state::<Dictation>().live.lock_recover().take();
             Ok(())
         },
     ))?;

@@ -26,6 +26,7 @@ use tokio::sync::Notify;
 use crate::i18n::t;
 use crate::island::WINDOW_LABEL;
 use crate::mail_crypto;
+use crate::mutex::MutexExt;
 
 /// How often the outbox is read while something is going on: a card up, or
 /// the phone having just said something.
@@ -104,7 +105,7 @@ struct BoxRef {
 fn current_box(app: &AppHandle) -> Option<BoxRef> {
     let (worker, id) = {
         let shared = app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.lock_recover();
         (s.phone_worker.clone(), s.phone_pc_id.clone())
     };
     Some(BoxRef { worker: nonempty(worker)?, id: nonempty(id)?, secret: secret()? })
@@ -118,7 +119,7 @@ pub async fn finish_pair(app: &AppHandle, pair: &Pairing) -> Result<(), String> 
     let old = current_box(app);
     crate::secrets::set("phone-secret", &bearer)?;
     crate::secrets::set("phone-key", &pair.master)?;
-    *PAIRING_SINCE.lock().unwrap() = Some(Instant::now());
+    *PAIRING_SINCE.lock_recover() = Some(Instant::now());
     update_settings(app, |s| {
         s.phone_worker = pair.worker.clone();
         s.phone_pc_id = pair.pc_id.clone();
@@ -156,7 +157,7 @@ fn nonempty(s: String) -> Option<String> {
 fn update_settings(app: &AppHandle, change: impl FnOnce(&mut crate::settings::Settings)) {
     let snapshot = {
         let shared = app.state::<crate::Shared>();
-        let mut s = shared.settings.lock().unwrap();
+        let mut s = shared.settings.lock_recover();
         change(&mut s);
         s.clone()
     };
@@ -188,7 +189,7 @@ fn wake() {
 }
 
 fn since(at: &Mutex<Option<Instant>>) -> Option<Duration> {
-    at.lock().unwrap().map(|t| t.elapsed())
+    at.lock_recover().map(|t| t.elapsed())
 }
 
 fn take_interval(card_up: bool, since_phone: Option<Duration>) -> Duration {
@@ -207,7 +208,7 @@ static RUNNING: Mutex<bool> = Mutex::new(false);
 
 pub fn spawn(app: AppHandle) {
     {
-        let mut running = RUNNING.lock().unwrap();
+        let mut running = RUNNING.lock_recover();
         if *running {
             return;
         }
@@ -216,9 +217,9 @@ pub fn spawn(app: AppHandle) {
     // A pairing the last run left half-way is watched for a while again.
     {
         let shared = app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.lock_recover();
         if s.phone_enabled && !s.phone_paired && !s.phone_pc_id.is_empty() {
-            *PAIRING_SINCE.lock().unwrap() = Some(Instant::now());
+            *PAIRING_SINCE.lock_recover() = Some(Instant::now());
         }
     }
     tauri::async_runtime::spawn(async move {
@@ -226,7 +227,7 @@ pub fn spawn(app: AppHandle) {
         loop {
             let (enabled, paired, worker, id) = {
                 let shared = app.state::<crate::Shared>();
-                let s = shared.settings.lock().unwrap();
+                let s = shared.settings.lock_recover();
                 (s.phone_enabled, s.phone_paired, s.phone_worker.clone(), s.phone_pc_id.clone())
             };
             // Nothing to do until the settings change: no timer, no keychain read.
@@ -272,7 +273,7 @@ async fn claimed(app: &AppHandle, worker: &str, id: &str, sec: &str) -> Result<(
             .and_then(Value::as_str)
             .unwrap_or("Android")
             .to_string();
-        *PAIRING_SINCE.lock().unwrap() = None;
+        *PAIRING_SINCE.lock_recover() = None;
         update_settings(app, |s| {
             s.phone_paired = true;
             s.phone_device = device.clone();
@@ -329,8 +330,12 @@ fn decode_outbox(mail: Option<&Mail>, items: Vec<Value>, now_ms: u64) -> Vec<Val
             out.push(inner);
         } else if mail.is_none() {
             // Legacy pairing, before encryption existed: no master on either
-            // side, so plaintext is the honest contract.
-            out.push(item);
+            // side, so plaintext is the honest contract. Only the three item
+            // kinds the island knows ever leave this function.
+            match item.get("type").and_then(Value::as_str) {
+                Some("decision") | Some("chat") | Some("chat_sel") => out.push(item),
+                _ => crate::log::line("phone: dropped a plaintext outbox item of unknown type"),
+            }
         } else {
             crate::log::line("phone: dropped a plaintext outbox item on an encrypted box");
         }
@@ -339,7 +344,7 @@ fn decode_outbox(mail: Option<&Mail>, items: Vec<Value>, now_ms: u64) -> Vec<Val
 }
 
 fn seen_insert(ct: String) -> bool {
-    let mut seen = SEEN.lock().unwrap();
+    let mut seen = SEEN.lock_recover();
     if seen.len() > 1024 {
         seen.clear();
     }
@@ -362,7 +367,7 @@ async fn take(app: &AppHandle, worker: &str, id: &str, sec: &str) -> Result<(), 
     if out.is_empty() {
         return Ok(());
     }
-    *PHONE_SPOKE.lock().unwrap() = Some(Instant::now());
+    *PHONE_SPOKE.lock_recover() = Some(Instant::now());
     crate::log::line(format!("phone: {} message(s) from the phone", out.len()));
     let _ = app.emit_to(WINDOW_LABEL, "phone-remote", Value::Array(out));
     Ok(())
@@ -406,7 +411,7 @@ pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<
 
     let now = Instant::now();
     let wait = {
-        let mut out = OUTGOING.lock().unwrap();
+        let mut out = OUTGOING.lock_recover();
         match plan(out.last, now, alert) {
             Plan::Now => {
                 out.last = Some(now);
@@ -428,7 +433,7 @@ pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(wait).await;
         let held = {
-            let mut out = OUTGOING.lock().unwrap();
+            let mut out = OUTGOING.lock_recover();
             out.flush_scheduled = false;
             out.last = Some(Instant::now());
             out.held.take()
@@ -443,7 +448,7 @@ pub async fn push_state(app: &AppHandle, payload: Value, alert: bool) -> Result<
 async fn send_state(app: &AppHandle, payload: Value, alert: bool) -> Result<(), String> {
     let (worker, id) = {
         let shared = app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.lock_recover();
         if !s.phone_enabled || !s.phone_paired {
             return Ok(());
         }
@@ -481,7 +486,7 @@ async fn send_state(app: &AppHandle, payload: Value, alert: bool) -> Result<(), 
 /// TLS handshake every poll.
 fn client_for(worker: &str) -> Result<reqwest::Client, String> {
     static CLIENT: Mutex<Option<(String, reqwest::Client)>> = Mutex::new(None);
-    let mut slot = CLIENT.lock().unwrap();
+    let mut slot = CLIENT.lock_recover();
     if let Some((addr, client)) = slot.as_ref() {
         if addr == worker {
             return Ok(client.clone());
@@ -595,6 +600,18 @@ mod tests {
         let out = decode_outbox(None, vec![item], 1_800_000_000_000);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0]["text"], "hi");
+    }
+
+    #[test]
+    fn even_a_legacy_pairing_drops_unknown_types() {
+        let items = vec![
+            json!({"type":"chat","text":"hi"}),
+            json!({"type":"cmd","run":"rm -rf"}),
+            json!({"text":"no type at all"}),
+        ];
+        let out = decode_outbox(None, items, 1_800_000_000_000);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0]["type"], "chat");
     }
 
     #[test]

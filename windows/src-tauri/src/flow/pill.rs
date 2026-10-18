@@ -16,6 +16,7 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Webview
 
 use super::store::Edge;
 use crate::platform::{self, DesktopMode};
+use crate::mutex::MutexExt;
 
 pub const LABEL: &str = "pill";
 
@@ -72,7 +73,7 @@ pub struct Pill {
 
 impl Pill {
     pub fn state(&self) -> PillState {
-        self.state.lock().unwrap().clone()
+        self.state.lock_recover().clone()
     }
 }
 
@@ -145,7 +146,7 @@ pub fn setup(app: &AppHandle) {
 
 /// A dictation is under way: the microphone is Flow's.
 pub fn dictating(app: &AppHandle) -> bool {
-    get(app).is_some_and(|p| matches!(p.state.lock().unwrap().phase.as_str(), "listening" | "locked" | "thinking"))
+    get(app).is_some_and(|p| matches!(p.state.lock_recover().phase.as_str(), "listening" | "locked" | "thinking"))
 }
 
 pub fn get(app: &AppHandle) -> Option<Arc<Pill>> {
@@ -176,7 +177,7 @@ pub fn edge_name(edge: Edge) -> &'static str {
 pub fn update(app: &AppHandle, change: impl FnOnce(&mut PillState)) {
     let Some(pill) = get(app) else { return };
     let (state, edge_changed) = {
-        let mut s = pill.state.lock().unwrap();
+        let mut s = pill.state.lock_recover();
         let edge_before = s.edge.clone();
         change(&mut s);
         (s.clone(), s.edge != edge_before)
@@ -200,7 +201,7 @@ fn show(app: &AppHandle, pill: &Pill, visible: bool) {
                 let _ = win.set_position(PhysicalPosition::new(PARKED.0, PARKED.1));
             }
             let (lock, cv) = &pill.poll;
-            *lock.lock().unwrap() = visible;
+            *lock.lock_recover() = visible;
             cv.notify_all();
         }
         DesktopMode::Window | DesktopMode::Layer => {
@@ -273,7 +274,7 @@ fn place(app: &AppHandle, pill: &Pill, edge: &str, on_cursor: bool) {
 /// The page tells where the pill and its bubble are, in window-logical pixels.
 pub fn set_hot(app: &AppHandle, rects: Vec<(f64, f64, f64, f64)>) {
     let Some(pill) = get(app) else { return };
-    *pill.hot.lock().unwrap() = rects.clone();
+    *pill.hot.lock_recover() = rects.clone();
     if pill.mode != DesktopMode::Poll {
         if let Some(win) = window(app) {
             let _ = app.run_on_main_thread(move || platform::set_pill_input(&win, rects));
@@ -289,7 +290,7 @@ fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
         loop {
             {
                 let (lock, cv) = &pill.poll;
-                let mut on = lock.lock().unwrap();
+                let mut on = lock.lock_recover();
                 while !*on {
                     ignoring = None;
                     on = cv.wait(on).unwrap();
@@ -300,7 +301,7 @@ fn spawn_poll(app: AppHandle, pill: Arc<Pill>) {
             let (Ok(origin), Some((cx, cy))) = (win.outer_position(), platform::cursor_physical()) else { continue };
             let scale = win.scale_factor().unwrap_or(1.0);
             let (x, y) = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
-            let over = pill.hot.lock().unwrap().iter().any(|&(rx, ry, rw, rh)| x >= rx && x <= rx + rw && y >= ry && y <= ry + rh);
+            let over = pill.hot.lock_recover().iter().any(|&(rx, ry, rw, rh)| x >= rx && x <= rx + rw && y >= ry && y <= ry + rh);
             if ignoring != Some(!over) {
                 ignoring = Some(!over);
                 let _ = win.set_ignore_cursor_events(!over);

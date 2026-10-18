@@ -21,6 +21,7 @@ use crate::github::{self, GitHubActivity, GitHubPulse};
 use crate::island::WINDOW_LABEL;
 use crate::log;
 use crate::secrets;
+use crate::mutex::MutexExt;
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -85,7 +86,7 @@ pub fn start(app: AppHandle) {
 fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
-            let settings = shared.settings.lock().unwrap();
+            let settings = shared.settings.lock_recover();
             settings.active_integrations.iter().any(|x| x == id)
         })
         .unwrap_or(false)
@@ -140,7 +141,7 @@ static SEEN: std::sync::LazyLock<Seen> =
 /// Returns true the first time a given id is seen (and false on the very first
 /// load, which only fills the card).
 fn is_new(key: &'static str, id: &str) -> bool {
-    let mut map = SEEN.0.lock().unwrap();
+    let mut map = SEEN.0.lock_recover();
     match map.insert(key, id.to_string()) {
         Some(previous) => previous != id,
         None => false, // first poll: populate silently, like the Swift pollers
@@ -331,7 +332,7 @@ async fn poll_github(app: AppHandle) {
         _ => 0,
     };
 
-    GITHUB.cache.lock().unwrap().stats = Some((public + private, stars));
+    GITHUB.cache.lock_recover().stats = Some((public + private, stars));
     emit_github(&app);
 }
 
@@ -400,7 +401,7 @@ fn github_card_data(cache: &GitHubCache) -> Value {
 }
 
 fn emit_github(app: &AppHandle) {
-    let data = github_card_data(&GITHUB.cache.lock().unwrap());
+    let data = github_card_data(&GITHUB.cache.lock_recover());
     emit(app, IntegrationUpdate { id: GITHUB_ID, data, error: None, event: None });
 }
 
@@ -467,7 +468,7 @@ async fn run_github_pulse(app: &AppHandle) -> bool {
     let pending = pulse.has_pending();
 
     let events = {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         // The token changed while this was in flight: it answers for someone else.
         if GITHUB.generation.load(Ordering::SeqCst) != generation {
             return pending;
@@ -494,7 +495,7 @@ async fn run_github_activity(app: &AppHandle) {
     GITHUB.activity_busy.store(false, Ordering::SeqCst);
     let Some(activity) = root.and_then(|r| GitHubActivity::parse(&r, now_ms())) else { return };
     {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         if GITHUB.generation.load(Ordering::SeqCst) != generation {
             return;
         }
@@ -514,7 +515,7 @@ fn wake_github_pulse() {
 /// request is already in flight.
 pub fn github_refresh_if_stale(section: &str) {
     let now = now_ms();
-    let cache = GITHUB.cache.lock().unwrap();
+    let cache = GITHUB.cache.lock_recover();
     match section {
         "pulse" => {
             let fetched = cache.pulse.as_ref().map(|p| p.fetched_at);
@@ -538,7 +539,7 @@ pub fn github_token_changed(app: &AppHandle) {
     GITHUB.generation.fetch_add(1, Ordering::SeqCst);
     let has_token = secrets::get("github-token").is_some();
     {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         cache.pulse = None;
         cache.activity = None;
         if !has_token {
@@ -560,7 +561,7 @@ pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
         return;
     }
     let had_data = {
-        let mut cache = GITHUB.cache.lock().unwrap();
+        let mut cache = GITHUB.cache.lock_recover();
         let had = cache.pulse.is_some() || cache.activity.is_some();
         cache.pulse = None;
         cache.activity = None;

@@ -21,6 +21,7 @@ use ring::digest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::mpsc;
+use crate::mutex::MutexExt;
 
 /// The desktop dismisses a request after this long (the phone offers it for 120 s).
 pub const APPROVAL_TTL_MS: u64 = 115_000;
@@ -480,7 +481,7 @@ impl Hub {
 
     /// The island's current picture. Sends the phones only what changed.
     pub fn publish(&self, sessions: Vec<SessionIn>, approval: Option<ApprovalIn>, now: u64) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
 
         // Sessions: stamp `updatedAt` where something changed.
         let next: Vec<Session> = sessions
@@ -558,7 +559,7 @@ impl Hub {
     /// Like [`subscribe`], for a phone that may also have been offered `answers` and `prefs`.
     pub fn subscribe_with(&self, tx: mpsc::Sender<Out>, now: u64, caps: Caps) -> (u64, Arc<AtomicBool>) {
         let Caps { details, answers, prefs, diffs, usage, relay, services } = caps;
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
         expire(&mut inner, now);
         let id = inner.next_sub;
         inner.next_sub += 1;
@@ -593,7 +594,7 @@ impl Hub {
     }
 
     pub fn unsubscribe(&self, id: u64) {
-        self.inner.lock().unwrap().subs.retain(|s| s.id != id);
+        self.inner.lock_recover().subs.retain(|s| s.id != id);
     }
 
     /// The access key was rotated: phones that negotiated `relay` are told the new one, inside the authenticated
@@ -601,7 +602,7 @@ impl Hub {
     pub fn send_relay_access(&self, access: &str) -> usize {
         let line: Arc<str> = json!({ "type": "relayAccess", "access": access }).to_string().into();
         let mut told = 0;
-        self.inner.lock().unwrap().subs.retain(|s| {
+        self.inner.lock_recover().subs.retain(|s| {
             if !s.relay {
                 return true;
             }
@@ -618,14 +619,14 @@ impl Hub {
 
     /// Unpaired or switched off: every connection is told and closed.
     pub fn kick_all(&self, code: &'static str, message: &'static str) {
-        let subs = std::mem::take(&mut self.inner.lock().unwrap().subs);
+        let subs = std::mem::take(&mut self.inner.lock_recover().subs);
         for s in subs {
             let _ = s.tx.try_send(Out::Close { code, message });
         }
     }
 
     pub fn clients(&self) -> usize {
-        self.inner.lock().unwrap().subs.len()
+        self.inner.lock_recover().subs.len()
     }
 
     /// A phone's answer. Applied only for the request that is still pending.
@@ -636,7 +637,7 @@ impl Hub {
             _ => return Outcome::Invalid,
         };
         let request_id = {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock_recover();
             let late = match &inner.approval {
                 Some(a) if constant_eq(a.fingerprint.as_bytes(), fingerprint.as_bytes()) => {
                     // A command the phone could not show in full is never allowed from the phone, whatever the phone says.
@@ -667,7 +668,7 @@ impl Hub {
     /// whose own cards did not change is sent nothing.
     pub fn publish_services(&self, cards: Vec<ServiceIn>) {
         let cleaned = clean_services(cards);
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
         if cleaned == inner.services {
             return;
         }
@@ -696,7 +697,7 @@ impl Hub {
     /// hear of it, and a new one at once; two identical pictures are sent once.
     pub fn publish_usage(&self, usage: UsageIn) {
         let line = usage_line(&usage);
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
         if inner.usage.as_deref() == line.as_deref() {
             return;
         }
@@ -717,7 +718,7 @@ impl Hub {
     /// A phone asked for a file's diff. Passed on to the island only if the phone has `diffs` and is not asking too often.
     pub fn request_diff(&self, sub_id: u64, pill_id: &str, file_id: u64, now: u64) {
         {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock_recover();
             let Some(sub) = inner.subs.iter_mut().find(|s| s.id == sub_id && s.diffs) else { return };
             sub.diff_asks.retain(|t| now.saturating_sub(*t) < 10_000);
             if sub.diff_asks.len() >= DIFF_ASKS_PER_10S {
@@ -732,7 +733,7 @@ impl Hub {
     /// The island's answer to [`request_diff`]: sent to that phone only (and only if it still has `diffs`), cut to
     /// the limits whatever the island sent, in parts that each fit a line.
     pub fn send_diff(&self, sub_id: u64, diff: DiffIn) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
         let Some(sub) = inner.subs.iter().find(|s| s.id == sub_id && s.diffs) else { return };
         let truncated = diff.lines.len() > MAX_DIFF_LINES;
         let rows: Vec<serde_json::Value> = diff
@@ -770,7 +771,7 @@ impl Hub {
     /// Only phones that have `prefs` hear of it, and a new one at once.
     pub fn publish_outfit(&self, outfit: &str) {
         let Some(choice) = OUTFIT_CHOICES.iter().find(|c| **c == outfit) else { return };
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
         if inner.outfit == Some(*choice) {
             return;
         }
@@ -791,7 +792,7 @@ impl Hub {
     /// The question waiting on the island (None: none). Only phones that have `answers` hear of it. One that
     /// does not fit the limits, or whose options cannot be told apart, stays on the island.
     pub fn publish_question(&self, question: Option<QuestionIn>, now: u64) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock_recover();
         let usable = question.filter(|q| !q.request_id.is_empty() && fits_the_limits(&q.questions));
         let same = match (&inner.question, &usable) {
             (Some(a), Some(b)) => a.request_id == b.request_id,
@@ -825,7 +826,7 @@ impl Hub {
     /// at least one (each at most once) for a multiple choice; anything else changes nothing.
     pub fn answer(&self, fingerprint: &str, picks: &[Vec<String>], now: u64) -> Outcome {
         let (request_id, answers) = {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock_recover();
             let (late, answers) = match &inner.question {
                 Some(q) if constant_eq(q.fingerprint.as_bytes(), fingerprint.as_bytes()) => {
                     let Some(answers) = build_answers(&q.items, picks) else { return Outcome::Invalid };
@@ -1100,10 +1101,10 @@ mod tests {
     struct Recorder(StdMutex<Vec<(String, bool)>>, StdMutex<Vec<(u64, String, u64)>>);
     impl Host for Recorder {
         fn decide(&self, request_id: &str, allow: bool) {
-            self.0.lock().unwrap().push((request_id.to_string(), allow));
+            self.0.lock_recover().push((request_id.to_string(), allow));
         }
         fn get_diff(&self, sub_id: u64, pill_id: &str, file_id: u64) {
-            self.1.lock().unwrap().push((sub_id, pill_id.to_string(), file_id));
+            self.1.lock_recover().push((sub_id, pill_id.to_string(), file_id));
         }
     }
 
@@ -1137,7 +1138,7 @@ mod tests {
     }
 
     fn fp_of(hub: &Hub) -> String {
-        hub.inner.lock().unwrap().approval.as_ref().unwrap().fingerprint.clone()
+        hub.inner.lock_recover().approval.as_ref().unwrap().fingerprint.clone()
     }
 
     // ── session details (cap `details`) ─────────────────────────────────────────────
@@ -1319,11 +1320,11 @@ mod tests {
             let fp = fp_of(&hub);
             // Allow is refused, whatever the phone says; nothing reaches the agent and the request stays pending.
             assert_eq!(hub.decide(&fp, "allow", 2_000), Outcome::TooLong);
-            assert!(rec.0.lock().unwrap().is_empty());
+            assert!(rec.0.lock_recover().is_empty());
             assert_eq!(fp_of(&hub), fp);
             // Deny is always possible, and so is answering on the computer.
             assert_eq!(hub.decide(&fp, "deny", 2_100), Outcome::Applied);
-            assert_eq!(*rec.0.lock().unwrap(), vec![("r1".to_string(), false)]);
+            assert_eq!(*rec.0.lock_recover(), vec![("r1".to_string(), false)]);
         }
     }
 
@@ -1338,7 +1339,7 @@ mod tests {
             let line = drain(&mut rx).into_iter().find(|l| l["type"] == "approval").unwrap();
             assert_eq!(line["truncated"], false, "{len} characters");
             assert_eq!(hub.decide(&fp_of(&hub), "allow", 2_000), Outcome::Applied);
-            assert_eq!(rec.0.lock().unwrap().len(), 1);
+            assert_eq!(rec.0.lock_recover().len(), 1);
         }
     }
 
@@ -1358,10 +1359,10 @@ mod tests {
         hub.publish(vec![], Some(approval("r1", "npm test")), 1_000);
         let fp = fp_of(&hub);
         assert_eq!(hub.decide(&fp, "allow", 2_000), Outcome::Applied);
-        assert_eq!(*rec.0.lock().unwrap(), vec![("r1".to_string(), true)]);
+        assert_eq!(*rec.0.lock_recover(), vec![("r1".to_string(), true)]);
         // The second answer, from the same or another phone, finds nothing pending.
         assert_eq!(hub.decide(&fp, "deny", 2_001), Outcome::NoMatch);
-        assert_eq!(rec.0.lock().unwrap().len(), 1);
+        assert_eq!(rec.0.lock_recover().len(), 1);
     }
 
     #[test]
@@ -1373,7 +1374,7 @@ mod tests {
         assert_eq!(hub.decide(&other, "allow", 1_500), Outcome::NoMatch);
         assert_eq!(hub.decide("", "allow", 1_500), Outcome::NoMatch);
         assert_eq!(hub.decide(&"0".repeat(64), "allow", 1_500), Outcome::NoMatch);
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
         // The real one is still pending afterwards.
         assert_eq!(hub.decide(&fp_of(&hub), "deny", 1_600), Outcome::Applied);
     }
@@ -1385,7 +1386,7 @@ mod tests {
         let first = fp_of(&hub);
         hub.publish(vec![], Some(approval("r2", "ls")), 2_000);
         assert_eq!(hub.decide(&first, "allow", 2_100), Outcome::NoMatch);
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
     }
 
     #[test]
@@ -1396,7 +1397,7 @@ mod tests {
         // Answered on the desktop: the island publishes no request any more.
         hub.publish(vec![], None, 3_000);
         assert_eq!(hub.decide(&fp, "allow", 3_500), Outcome::NoMatch);
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
     }
 
     #[test]
@@ -1405,7 +1406,7 @@ mod tests {
         hub.publish(vec![], Some(approval("r1", "npm test")), 1_000);
         let fp = fp_of(&hub);
         assert_eq!(hub.decide(&fp, "allow", 1_000 + APPROVAL_TTL_MS + 1), Outcome::Late);
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
         assert_eq!(hub.decide(&fp, "allow", 1_000 + APPROVAL_TTL_MS + 2), Outcome::NoMatch);
     }
 
@@ -1414,7 +1415,7 @@ mod tests {
         let (hub, rec) = hub();
         hub.publish(vec![], Some(approval("r1", "npm test")), 1_000);
         assert_eq!(hub.decide(&fp_of(&hub), "allow", 1_000 + APPROVAL_TTL_MS), Outcome::Applied);
-        assert_eq!(rec.0.lock().unwrap().len(), 1);
+        assert_eq!(rec.0.lock_recover().len(), 1);
     }
 
     #[test]
@@ -1425,10 +1426,10 @@ mod tests {
         for odd in ["always", "ALLOW", "", "allow ", "yes"] {
             assert_eq!(hub.decide(&fp, odd, 1_100), Outcome::Invalid, "{odd:?}");
         }
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
         // Still pending after the refused attempts.
         assert_eq!(hub.decide(&fp, "deny", 1_200), Outcome::Applied);
-        assert_eq!(rec.0.lock().unwrap()[0], ("r1".to_string(), false));
+        assert_eq!(rec.0.lock_recover()[0], ("r1".to_string(), false));
     }
 
     #[test]
@@ -1558,7 +1559,7 @@ mod tests {
     impl Host for AnswerRecorder {
         fn decide(&self, _: &str, _: bool) {}
         fn answer(&self, request_id: &str, answers: &serde_json::Map<String, serde_json::Value>) {
-            self.0.lock().unwrap().push((request_id.to_string(), serde_json::Value::Object(answers.clone())));
+            self.0.lock_recover().push((request_id.to_string(), serde_json::Value::Object(answers.clone())));
         }
     }
 
@@ -1584,7 +1585,7 @@ mod tests {
     }
 
     fn qfp(hub: &Hub) -> String {
-        hub.inner.lock().unwrap().question.as_ref().unwrap().fingerprint.clone()
+        hub.inner.lock_recover().question.as_ref().unwrap().fingerprint.clone()
     }
 
     #[test]
@@ -1593,7 +1594,7 @@ mod tests {
         hub.publish_question(Some(ask("r1")), 1_000);
         let fp = qfp(&hub);
         assert_eq!(hub.answer(&fp, &[vec!["A".into()]], 1_000 + APPROVAL_TTL_MS + 1), Outcome::Late);
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
         let lines = drain(&mut rx);
         assert_eq!(lines.last().unwrap()["type"], "approvalResolved");
     }
@@ -1610,7 +1611,7 @@ mod tests {
         assert_eq!(hub.answer(&first, &[vec!["A".into()]], 1_003), Outcome::NoMatch, "the old one cannot be answered any more");
         hub.publish_question(None, 1_004);
         assert_eq!(hub.answer(&second, &[vec!["A".into()]], 1_005), Outcome::NoMatch);
-        assert!(rec.0.lock().unwrap().is_empty());
+        assert!(rec.0.lock_recover().is_empty());
         let types: Vec<String> = drain(&mut rx).iter().map(|l| l["type"].as_str().unwrap().to_string()).collect();
         assert_eq!(types.iter().filter(|t| *t == "question").count(), 2);
         assert_eq!(types.iter().filter(|t| *t == "approvalResolved").count(), 2);
@@ -1621,11 +1622,11 @@ mod tests {
         let (hub, rec, _rx) = qhub();
         hub.publish(vec![], Some(approval("p1", "ls")), 1_000);
         hub.publish_question(Some(ask("r1")), 1_000);
-        assert!(hub.inner.lock().unwrap().approval.is_some());
+        assert!(hub.inner.lock_recover().approval.is_some());
         let fp = qfp(&hub);
         assert_eq!(hub.answer(&fp, &[vec!["B".into()]], 1_001), Outcome::Applied);
-        assert!(hub.inner.lock().unwrap().approval.is_some(), "the permission request is untouched");
-        assert_eq!(rec.0.lock().unwrap()[0], ("r1".to_string(), json!({ "Which?": "B" })));
+        assert!(hub.inner.lock_recover().approval.is_some(), "the permission request is untouched");
+        assert_eq!(rec.0.lock_recover()[0], ("r1".to_string(), json!({ "Which?": "B" })));
     }
 
     #[test]
@@ -1826,7 +1827,7 @@ mod tests {
         let (id, mut rx) = sub_with(&hub, Caps { details: true, answers: true, prefs: true, ..Caps::default() });
         drain(&mut rx);
         hub.request_diff(id, "integration_claude", 3, 1_000);
-        assert!(host.1.lock().unwrap().is_empty());
+        assert!(host.1.lock_recover().is_empty());
         hub.send_diff(id, diff_in(lines(3)));
         assert!(drain(&mut rx).is_empty());
     }
@@ -1838,10 +1839,10 @@ mod tests {
         for _ in 0..30 {
             hub.request_diff(id, "integration_claude", 3, 5_000);
         }
-        assert_eq!(host.1.lock().unwrap().len(), DIFF_ASKS_PER_10S);
-        assert_eq!(host.1.lock().unwrap()[0], (id, "integration_claude".to_string(), 3));
+        assert_eq!(host.1.lock_recover().len(), DIFF_ASKS_PER_10S);
+        assert_eq!(host.1.lock_recover()[0], (id, "integration_claude".to_string(), 3));
         hub.request_diff(id, "integration_claude", 3, 16_000); // ten seconds later: asking is allowed again
-        assert_eq!(host.1.lock().unwrap().len(), DIFF_ASKS_PER_10S + 1);
+        assert_eq!(host.1.lock_recover().len(), DIFF_ASKS_PER_10S + 1);
     }
 
     #[test]
@@ -1988,7 +1989,7 @@ mod tests {
         assert!(v["reason"].as_str().unwrap().chars().count() <= 80 && !v["reason"].as_str().unwrap().contains('\n'));
         assert_eq!(v["items"].as_array().unwrap().len(), 3);
         assert_eq!(drain(&mut rx).len(), 0);
-        assert!(!hub.inner.lock().unwrap().services.iter().any(|s| s.id == "integration_evil"));
+        assert!(!hub.inner.lock_recover().services.iter().any(|s| s.id == "integration_evil"));
     }
 
     #[test]

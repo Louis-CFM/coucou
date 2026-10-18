@@ -6,13 +6,14 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use arboard::Clipboard;
+use crate::mutex::MutexExt;
 
 /// One clipboard for the app's whole life: on X11 the text stays served only
 /// while its owner lives.
 static CLIPBOARD: Mutex<Option<Clipboard>> = Mutex::new(None);
 
 fn with_clipboard<T>(f: impl FnOnce(&mut Clipboard) -> T) -> Option<T> {
-    let mut slot = CLIPBOARD.lock().unwrap();
+    let mut slot = CLIPBOARD.lock_recover();
     if slot.is_none() {
         *slot = Clipboard::new().ok();
     }
