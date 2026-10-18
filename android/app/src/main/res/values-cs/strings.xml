@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_alerts">Karty agentů</string>
+    <string name="channel_updates">Aktualizace</string>
+    <string name="channel_updates_desc">Agent dokončil práci, selhal nebo má otázku</string>
+
+    <!-- Actions -->
+    <string name="allow">Povolit</string>
+    <string name="deny">Zamítnout</string>
+    <string name="answer">Odpovědět</string>
+    <string name="cancel">Zrušit</string>
+    <string name="connect">Připojit</string>
+    <string name="unpair">Odpárovat</string>
+    <string name="back">Zpět</string>
+    <string name="send">Odeslat</string>
+    <string name="switch_agent">Přepnout agenta</string>
+
+    <!-- Notifications -->
+    <string name="notif_unlock">Odemkni pro zobrazení požadavku</string>
+    <string name="notif_finished">Dokončeno</string>
+    <string name="notif_error">Zastaveno na chybě</string>
+    <string name="notif_question">Má otázku</string>
+    <string name="notif_ratelimit">Narazil na limit využití</string>
+
+    <!-- Pairing -->
+    <string name="pair_tagline">Schvaluj karty agentů ze svého PC přímo odsud.</string>
+    <string name="pair_code_hint">Párovací kód — id|secret|worker</string>
+    <string name="pair_relay_hint">URL relaye — https://….workers.dev</string>
+    <string name="pair_name_hint">Jméno tohoto telefonu</string>
+    <string name="pair_error_no_url">Vlož URL relaye — nebo celý kód, který ji obsahuje.</string>
+    <string name="pair_error_https">URL relaye musí být https:// — kód obsahuje tvůj párovací klíč.</string>
+    <string name="pair_error_code">Kód má vypadat jako id|secret|worker.</string>
+    <string name="pair_error_secret">Klíč v tomto kódu nemá 64 hexadecimálních znaků.</string>
+    <string name="pair_error_refused">Relay tento box odmítl (403) — zobrazuje PC pořád tento kód?</string>
+    <string name="pair_error_failed">Nepodařilo se spárovat — %1$s</string>
+    <string name="pair_error_check">zkontroluj URL a kód</string>
+
+    <!-- Home status -->
+    <string name="status_connected">Připojeno</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_connecting">Připojování…</string>
+    <string name="status_running">%1$d běží</string>
+    <string name="home_waiting_pc">Čekání na tvůj PC…</string>
+    <string name="home_all_quiet">Vše v klidu</string>
+    <string name="home_sessions_hint">Když na tvém PC běží agent, sezení se ukážou tady.</string>
+
+    <!-- Pending card -->
+    <string name="card_needs_answer">potřebuje odpověď</string>
+    <string name="card_waiting_ok">čeká na tvé OK</string>
+    <string name="card_reply_terminal">Odpovědět v terminálu</string>
+    <string name="option_other">Jiné…</string>
+    <string name="type_answer_hint">Napiš svou odpověď…</string>
+
+    <!-- Decision sent -->
+    <string name="sent_allowed">Povoleno — odesláno do PC</string>
+    <string name="sent_generic">Odesláno do PC</string>
+    <string name="sent_always">Vždy povoleno — odesláno do PC</string>
+    <string name="sent_denied">Zamítnuto — odesláno do PC</string>
+    <string name="sent_declined">Agent se zeptá v terminálu</string>
+    <string name="sent_answered">Zodpovězeno — odesláno do PC</string>
+
+    <!-- Agent rows / sections -->
+    <string name="sessions_all">Všechny %1$d ›</string>
+    <string name="no_agent_chats">Žádné chaty %1$s na tomto PC</string>
+    <string name="agent_step">" · krok %1$d/%2$d"</string>
+    <string name="agent_session">Sezení %1$s</string>
+    <string name="ago_now">teď</string>
+    <string name="ago_minutes">%1$d min</string>
+    <string name="ago_hours">%1$d hod</string>
+    <string name="ago_days">%1$d d</string>
+
+    <!-- Chat -->
+    <string name="chat_empty_transcript">Transkript tohoto sezení je prázdný — řekni ahoj.</string>
+    <string name="chat_empty">Zatím žádný chat — poslední řádky z PC se ukážou tady.</string>
+    <string name="chat_action_continue">Pokračuj</string>
+    <string name="chat_action_tests">Spusť testy</string>
+    <string name="chat_action_fix">Oprav chyby</string>
+    <string name="chat_action_commit">Udělej commit</string>
+    <string name="chat_hint_session">Pokračovat v sezení %1$s…</string>
+    <string name="chat_hint">Zpráva pro PC…</string>
+
+    <!-- Picker -->
+    <string name="picker_empty">Zatím žádné chaty — nejdřív spusť %1$s na svém PC.</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Domů</string>
+    <string name="nav_chat">Chat</string>
+    <string name="nav_settings">Nastavení</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Nastavení</string>
+    <string name="wardrobe">Šatník</string>
+    <string name="settings_this_phone">Tento telefon</string>
+    <string name="settings_relay">Relay</string>
+    <string name="settings_name">Jméno</string>
+    <string name="unpair_phone">Odpárovat tento telefon</string>
+    <string name="unpair_confirm_title">Odpárovat tento telefon?</string>
+    <string name="unpair_confirm_body">PC na tento telefon zapomene a kód přestane fungovat — nové párování musí začít na PC.</string>
+
+    <!-- Wardrobe items -->
+    <string name="wardrobe_auto">Auto (roční období)</string>
+    <string name="wardrobe_none">Nic</string>
+    <string name="wardrobe_party_hat">Party čepice</string>
+    <string name="wardrobe_beanie">Kulich</string>
+    <string name="wardrobe_crown">Koruna</string>
+    <string name="wardrobe_sunglasses">Sluneční brýle</string>
+    <string name="wardrobe_round_glasses">Kulaté brýle</string>
+    <string name="wardrobe_bow">Mašle</string>
+    <string name="wardrobe_scarf">Šála</string>
+    <string name="wardrobe_witch_hat">Čarodějnický klobouk</string>
+    <string name="wardrobe_pumpkin">Dýně</string>
+    <string name="wardrobe_santa_hat">Vánoční čepice</string>
+    <string name="wardrobe_bunny_ears">Zaječí ouška</string>
+
+    <!-- Biometric gate -->
+    <string name="bio_title">Potvrď, že jsi to ty</string>
+    <string name="bio_subtitle">Schval tento požadavek na svém PC</string>
+
+    <!-- Errors -->
+    <string name="error_relay_unreachable">Relay je nedostupný</string>
+    <string name="error_relay">Nelze se připojit k relayi — %1$s</string>
+    <string name="error_box_taken">Jiný telefon převzal tento box — spáruj znovu z PC.</string>
+    <string name="error_box_unknown">Tento box už telefon nezná — spáruj znovu.</string>
+    <string name="error_decision">Rozhodnutí se nepodařilo odeslat — %1$s</string>
+    <string name="error_session">Sezení se nepodařilo otevřít — %1$s</string>
+    <string name="error_chat">Chat se neodeslal — %1$s</string>
+    <string name="error_try_again">zkus to znovu</string>
+</resources>

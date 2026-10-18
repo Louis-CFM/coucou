@@ -85,6 +85,10 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         const val K_AGENT = "pickerAgent"
     }
 
+    /** User-facing line/pair errors live in resources — the app may be localized. */
+    private fun str(id: Int, vararg args: Any): String =
+        getApplication<Application>().getString(id, *args)
+
     fun navigate(to: Screen) {
         show(to)
     }
@@ -132,7 +136,7 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                 withContext(Dispatchers.IO) { Relay.claim(p, token) }
                 Prefs.setClaimedToken(getApplication(), token)
             } catch (e: Relay.Http) {
-                if (e.code == 409) lineError = "Another phone has taken this box over — pair again from the PC."
+                if (e.code == 409) lineError = str(R.string.error_box_taken)
             } catch (_: Exception) {
                 // Offline or no Play services: tried again next time the app comes forward.
             }
@@ -179,10 +183,10 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
             Prefs.clear(getApplication())
             box = null
             pollJob?.cancel()
-            pairError = "This box no longer knows the phone — pair again."
+            pairError = str(R.string.error_box_unknown)
             show(Screen.PAIR)
         } catch (e: Exception) {
-            lineError = "Can't reach the relay — ${e.message ?: e.javaClass.simpleName}"
+            lineError = str(R.string.error_relay, e.message ?: e.javaClass.simpleName)
             return false
         }
         return true
@@ -223,16 +227,16 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
         val secret = parts.getOrNull(1) ?: ""
         val name = nameIn.ifBlank { Build.MODEL }
         when {
-            workerUrl.isBlank() -> pairError = "Paste the relay URL — or the full code that includes it."
+            workerUrl.isBlank() -> pairError = str(R.string.pair_error_no_url)
             // Every request carries the pairing secret — it must not fly over
             // plain HTTP (except local development).
             !workerUrl.lowercase().let {
                 it.startsWith("https://") || it.startsWith("http://127.0.0.1") || it.startsWith("http://localhost")
-            } -> pairError = "The relay URL must be https:// — the code carries your pairing secret."
+            } -> pairError = str(R.string.pair_error_https)
             parts.size < 2 || !id.matches(Regex("[0-9a-fA-F]{24,48}")) ->
-                pairError = "The code should look like id|secret|worker."
+                pairError = str(R.string.pair_error_code)
             !secret.matches(Regex("[0-9a-fA-F]{64}")) ->
-                pairError = "The secret in that code isn't 64 hex chars."
+                pairError = str(R.string.pair_error_secret)
             else -> {
                 busy = true
                 pairError = null
@@ -253,10 +257,10 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                         onForeground()
                     } catch (e: Relay.Forbidden) {
                         busy = false
-                        pairError = "The relay refused this box (403) — is the PC still showing this code?"
+                        pairError = str(R.string.pair_error_refused)
                     } catch (e: Exception) {
                         busy = false
-                        pairError = "Couldn't pair — ${e.message ?: "check the URL and the code"}"
+                        pairError = str(R.string.pair_error_failed, e.message ?: str(R.string.pair_error_check))
                     }
                 }
             }
@@ -281,7 +285,7 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
             } catch (e: Exception) {
                 answeredId = null
                 answeredDecision = null
-                lineError = "Couldn't send the decision — ${e.message ?: "try again"}"
+                lineError = str(R.string.error_decision, e.message ?: str(R.string.error_try_again))
             }
         }
     }
@@ -300,7 +304,7 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                 }
                 refresh()
             } catch (e: Exception) {
-                lineError = "Couldn't open the session — ${e.message ?: "try again"}"
+                lineError = str(R.string.error_session, e.message ?: str(R.string.error_try_again))
             }
         }
     }
@@ -315,7 +319,7 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                 withContext(Dispatchers.IO) { Relay.chat(p, t, session?.id, session?.agent) }
                 refresh()
             } catch (e: Exception) {
-                lineError = "Chat not sent — ${e.message ?: "try again"}"
+                lineError = str(R.string.error_chat, e.message ?: str(R.string.error_try_again))
             }
         }
     }

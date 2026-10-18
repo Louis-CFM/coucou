@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -96,9 +97,9 @@ fun PairScreen(vm: CoucouViewModel) {
         Spacer(Modifier.height(56.dp))
         Mochi(MochiSpec.State.Idle, Modifier.size(96.dp), seed = "pair")
         Spacer(Modifier.height(20.dp))
-        Text("Coucou", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Coucou.Ink)
+        Text(stringResource(R.string.app_name), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Coucou.Ink)
         Text(
-            "Approve your PC's agent cards from here.",
+            stringResource(R.string.pair_tagline),
             color = Coucou.Secondary,
             fontSize = 15.sp,
             modifier = Modifier.padding(top = 6.dp),
@@ -112,14 +113,14 @@ fun PairScreen(vm: CoucouViewModel) {
                 val parts = it.trim().split('|')
                 if (worker.isBlank() && parts.size >= 3) worker = parts[2].trim()
             },
-            hint = "Pairing code — id|secret|worker",
+            hint = stringResource(R.string.pair_code_hint),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(10.dp))
         CoucouField(
             value = worker,
             onValueChange = { worker = it },
-            hint = "Relay URL — https://….workers.dev",
+            hint = stringResource(R.string.pair_relay_hint),
             keyboardType = KeyboardType.Uri,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -127,7 +128,7 @@ fun PairScreen(vm: CoucouViewModel) {
         CoucouField(
             value = name,
             onValueChange = { name = it },
-            hint = "This phone's name",
+            hint = stringResource(R.string.pair_name_hint),
             modifier = Modifier.fillMaxWidth(),
         )
         if (vm.pairError != null) {
@@ -142,7 +143,7 @@ fun PairScreen(vm: CoucouViewModel) {
         }
         Spacer(Modifier.height(24.dp))
         PillButton(
-            text = if (vm.busy) "Connecting…" else "Connect",
+            text = stringResource(if (vm.busy) R.string.status_connecting else R.string.connect),
             onClick = { vm.pair(worker, code, name) },
             filled = true,
             enabled = !vm.busy && code.isNotBlank(),
@@ -264,14 +265,18 @@ private fun HeroCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (connected) "Connected" else if (lineError != null) "Offline" else "Connecting…",
+                    stringResource(
+                        if (connected) R.string.status_connected
+                        else if (lineError != null) R.string.status_offline
+                        else R.string.status_connecting,
+                    ),
                     color = Coucou.Secondary,
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                if (running > 0) Text("$running running", color = Coucou.Secondary, fontSize = 13.sp)
+                if (running > 0) Text(stringResource(R.string.status_running, running), color = Coucou.Secondary, fontSize = 13.sp)
             }
 
             if (pending == null && lead == null) {
@@ -283,16 +288,18 @@ private fun HeroCard(
                 ) {
                     Mochi(MochiSpec.State.Sleeping, Modifier.size(112.dp), seed = "empty", outfit = outfit)
                     Text(
-                        if (lineError != null) "Can't reach the relay"
-                        else if (box == null) "Waiting for your PC…"
-                        else "All quiet",
+                        stringResource(
+                            if (lineError != null) R.string.error_relay_unreachable
+                            else if (box == null) R.string.home_waiting_pc
+                            else R.string.home_all_quiet,
+                        ),
                         color = Coucou.Ink,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         lineError
-                            ?: "Sessions show up here when an agent runs on your PC.",
+                            ?: stringResource(R.string.home_sessions_hint),
                         color = if (lineError != null) Coucou.Error else Coucou.Secondary,
                         fontSize = 13.sp,
                         maxLines = 3,
@@ -316,7 +323,7 @@ private fun HeroCard(
                         )
                         if (pending != null) {
                             Text(
-                                if (pending.isQuestion) "needs an answer" else "waiting for your OK",
+                                stringResource(if (pending.isQuestion) R.string.card_needs_answer else R.string.card_waiting_ok),
                                 color = if (pending.isQuestion) Coucou.Question else Coucou.Approval,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -325,7 +332,7 @@ private fun HeroCard(
                         Text(
                             when {
                                 pending != null -> pending.title
-                                sent != null -> if (sent == "allow") "Allowed — sent to your PC" else "Sent to your PC"
+                                sent != null -> stringResource(if (sent == "allow") R.string.sent_allowed else R.string.sent_generic)
                                 lead!!.statusText.isNotBlank() -> lead.statusText
                                 else -> lead.state
                             },
@@ -380,15 +387,38 @@ private fun toolColor(name: String): Color {
 }
 
 /** "now" / "12m" / "3h" / "4d" — the picker rows' right-hand time. */
+@Composable
 private fun ago(at: Long): String {
     if (at <= 0) return ""
     val s = System.currentTimeMillis() / 1000 - at
     return when {
-        s < 60 -> "now"
-        s < 3600 -> "${s / 60}m"
-        s < 86400 -> "${s / 3600}h"
-        else -> "${s / 86400}d"
+        s < 60 -> stringResource(R.string.ago_now)
+        s < 3600 -> stringResource(R.string.ago_minutes, s / 60)
+        s < 86400 -> stringResource(R.string.ago_hours, s / 3600)
+        else -> stringResource(R.string.ago_days, s / 86400)
     }
+}
+
+/** The wardrobe pick's display name — the PC's outfit ids to local labels. */
+@Composable
+private fun wardrobeLabel(sel: String): String {
+    val res = when (sel) {
+        "auto" -> R.string.wardrobe_auto
+        "none" -> R.string.wardrobe_none
+        "partyHat" -> R.string.wardrobe_party_hat
+        "beanie" -> R.string.wardrobe_beanie
+        "crown" -> R.string.wardrobe_crown
+        "sunglasses" -> R.string.wardrobe_sunglasses
+        "roundGlasses" -> R.string.wardrobe_round_glasses
+        "bow" -> R.string.wardrobe_bow
+        "scarf" -> R.string.wardrobe_scarf
+        "witchHat" -> R.string.wardrobe_witch_hat
+        "pumpkin" -> R.string.wardrobe_pumpkin
+        "santaHat" -> R.string.wardrobe_santa_hat
+        "bunnyEars" -> R.string.wardrobe_bunny_ears
+        else -> return sel
+    }
+    return stringResource(res)
 }
 
 /** One agent's section on Home: ▾-switchable header + its three newest sessions. */
@@ -441,7 +471,7 @@ private fun AgentSection(
             }
             Spacer(Modifier.weight(1f))
             Text(
-                "All ${sessions.size} ›",
+                stringResource(R.string.sessions_all, sessions.size),
                 color = Coucou.Tertiary,
                 fontSize = 13.sp,
                 modifier = Modifier
@@ -454,7 +484,7 @@ private fun AgentSection(
             Column(Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
                 if (sessions.isEmpty()) {
                     Text(
-                        "No ${agentTitle(agent)} chats on this PC",
+                        stringResource(R.string.no_agent_chats, agentTitle(agent)),
                         color = Coucou.Tertiary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(vertical = 14.dp),
@@ -556,7 +586,7 @@ private fun PendingPanel(card: Relay.Card?, sent: String?, vm: CoucouViewModel) 
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        if (card.isQuestion) "needs an answer" else "waiting for your OK",
+                        stringResource(if (card.isQuestion) R.string.card_needs_answer else R.string.card_waiting_ok),
                         color = tint,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -596,7 +626,7 @@ private fun ApprovalButtons(card: Relay.Card, vm: CoucouViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PillButton(
-                "Deny",
+                stringResource(R.string.deny),
                 onClick = { vm.decide(card, "deny") },
                 container = Coucou.DenyBg,
                 ink = Coucou.DenyInk,
@@ -604,7 +634,7 @@ private fun ApprovalButtons(card: Relay.Card, vm: CoucouViewModel) {
             )
             // iOS' "Allow asks for Face ID" — Deny stays a plain tap.
             PillButton(
-                "Allow",
+                stringResource(R.string.allow),
                 onClick = { gateWithBiometrics(context) { vm.decide(card, "allow") } },
                 container = Coucou.Allow,
                 ink = Color.Black,
@@ -626,7 +656,7 @@ private fun ApprovalButtons(card: Relay.Card, vm: CoucouViewModel) {
         }
         // "Reply in terminal" — nobody acts here, the agent asks there.
         Text(
-            "Reply in terminal",
+            stringResource(R.string.card_reply_terminal),
             color = Coucou.Tertiary,
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
@@ -663,7 +693,7 @@ private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
                 }
                 // "Other…" — the row opens a field; the words are the answer.
                 OptionRow(
-                    label = "Other…",
+                    label = stringResource(R.string.option_other),
                     selected = !other[q.q].isNullOrBlank(),
                     onClick = {
                         if (other.containsKey(q.q)) other.remove(q.q) else other[q.q] = ""
@@ -675,14 +705,14 @@ private fun QuestionOptions(card: Relay.Card, vm: CoucouViewModel) {
                     CoucouField(
                         value = other[q.q].orEmpty(),
                         onValueChange = { other[q.q] = it },
-                        hint = "Type your answer…",
+                        hint = stringResource(R.string.type_answer_hint),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
         }
         PillButton(
-            "Answer",
+            stringResource(R.string.answer),
             onClick = {
                 vm.decide(
                     card, "answer",
@@ -718,13 +748,15 @@ private fun SentCard(decision: String) {
             }
             Spacer(Modifier.width(12.dp))
             Text(
-                when (decision) {
-                    "allow" -> "Allowed — sent to your PC"
-                    "always" -> "Always allowed — sent to your PC"
-                    "deny" -> "Denied — sent to your PC"
-                    "decline" -> "The agent asks in the terminal"
-                    else -> "Answered — sent to your PC"
-                },
+                stringResource(
+                    when (decision) {
+                        "allow" -> R.string.sent_allowed
+                        "always" -> R.string.sent_always
+                        "deny" -> R.string.sent_denied
+                        "decline" -> R.string.sent_declined
+                        else -> R.string.sent_answered
+                    },
+                ),
                 color = if (decision == "deny") Coucou.Error else Coucou.Done,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -765,7 +797,7 @@ private fun AgentRow(s: Relay.Session) {
             Text(
                 buildString {
                     append(s.statusText.ifBlank { s.state })
-                    if (s.stepCount > 0) append(" · step ${s.stepIndex}/${s.stepCount}")
+                    if (s.stepCount > 0) append(stringResource(R.string.agent_step, s.stepIndex, s.stepCount))
                 },
                 color = Coucou.Secondary,
                 fontSize = 13.sp,
@@ -801,7 +833,8 @@ fun ChatScreen(vm: CoucouViewModel) {
     ) {
         // A tab now — no back arrow; the bar switches sections.
         Text(
-            selected?.title?.ifBlank { "${agentTitle(selected.agent)} session" } ?: "Chat",
+            selected?.title?.ifBlank { stringResource(R.string.agent_session, agentTitle(selected.agent)) }
+                ?: stringResource(R.string.nav_chat),
             color = Coucou.Ink,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
@@ -816,7 +849,7 @@ fun ChatScreen(vm: CoucouViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
-                    SessionChip("Coucou", selected == null) { vm.selectSession(null) }
+                    SessionChip(stringResource(R.string.app_name), selected == null) { vm.selectSession(null) }
                 }
                 items(sessions, key = { it.id }) { s ->
                     SessionChip(s.title.ifBlank { s.id }, s.id == selected?.id) { vm.selectSession(s) }
@@ -843,7 +876,7 @@ fun ChatScreen(vm: CoucouViewModel) {
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            selected.title.ifBlank { "${agentTitle(selected.agent)} session" },
+                            selected.title.ifBlank { stringResource(R.string.agent_session, agentTitle(selected.agent)) },
                             color = Coucou.Ink,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -883,8 +916,10 @@ fun ChatScreen(vm: CoucouViewModel) {
                         Mochi(MochiSpec.State.Idle, Modifier.size(56.dp), seed = "chat")
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            if (selected != null) "This session's transcript is empty — say hi."
-                            else "No chat yet — the PC's last lines appear here.",
+                            stringResource(
+                                if (selected != null) R.string.chat_empty_transcript
+                                else R.string.chat_empty,
+                            ),
                             color = Coucou.Secondary,
                             fontSize = 14.sp,
                         )
@@ -951,12 +986,18 @@ fun ChatScreen(vm: CoucouViewModel) {
         }
         // The iOS quick bar: canned follow-ups straight into the session.
         if (selected != null) {
+            val actions = listOf(
+                stringResource(R.string.chat_action_continue),
+                stringResource(R.string.chat_action_tests),
+                stringResource(R.string.chat_action_fix),
+                stringResource(R.string.chat_action_commit),
+            )
             LazyRow(
                 Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(listOf("Continue", "Run the tests", "Fix the errors", "Commit")) { action ->
+                items(actions) { action ->
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(16.dp))
@@ -979,8 +1020,8 @@ fun ChatScreen(vm: CoucouViewModel) {
             CoucouField(
                 value = draft,
                 onValueChange = { draft = it },
-                hint = if (selected != null) "Continue this ${agentTitle(selected.agent)} session…"
-                else "Message the PC…",
+                hint = if (selected != null) stringResource(R.string.chat_hint_session, agentTitle(selected.agent))
+                else stringResource(R.string.chat_hint),
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(10.dp))
@@ -997,7 +1038,7 @@ fun ChatScreen(vm: CoucouViewModel) {
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
+                    contentDescription = stringResource(R.string.send),
                     tint = if (draft.isBlank()) Coucou.Tertiary else Color.Black,
                     modifier = Modifier.size(18.dp),
                 )
@@ -1028,7 +1069,7 @@ fun PickerScreen(vm: CoucouViewModel) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = { vm.navigate(CoucouViewModel.Screen.HOME) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Coucou.Ink)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Coucou.Ink)
             }
             Box {
                 Row(
@@ -1046,7 +1087,7 @@ fun PickerScreen(vm: CoucouViewModel) {
                     )
                     Icon(
                         Icons.Filled.ArrowDropDown,
-                        contentDescription = "Switch agent",
+                        contentDescription = stringResource(R.string.switch_agent),
                         tint = Coucou.Secondary,
                     )
                 }
@@ -1082,9 +1123,10 @@ fun PickerScreen(vm: CoucouViewModel) {
             if (sessions.isEmpty()) {
                 item {
                     Text(
-                        "No chats yet — run ${
-                            if (vm.pickerAgent == "claude") "claude" else vm.pickerAgent
-                        } on your PC first.",
+                        stringResource(
+                            R.string.picker_empty,
+                            if (vm.pickerAgent == "claude") "claude" else vm.pickerAgent,
+                        ),
                         color = Coucou.Secondary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(vertical = 24.dp),
@@ -1137,9 +1179,9 @@ private fun SessionChip(label: String, active: Boolean, onClick: () -> Unit) {
 fun CoucouNavBar(vm: CoucouViewModel) {
     data class Tab(val screen: CoucouViewModel.Screen, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
     val tabs = listOf(
-        Tab(CoucouViewModel.Screen.HOME, "Home", Icons.Filled.Home),
-        Tab(CoucouViewModel.Screen.CHAT, "Chat", Icons.AutoMirrored.Filled.Send),
-        Tab(CoucouViewModel.Screen.SETTINGS, "Settings", Icons.Filled.Settings),
+        Tab(CoucouViewModel.Screen.HOME, stringResource(R.string.nav_home), Icons.Filled.Home),
+        Tab(CoucouViewModel.Screen.CHAT, stringResource(R.string.nav_chat), Icons.AutoMirrored.Filled.Send),
+        Tab(CoucouViewModel.Screen.SETTINGS, stringResource(R.string.nav_settings), Icons.Filled.Settings),
     )
     val alert = vm.box?.pending?.takeUnless { vm.isAnswered(it.requestId) } != null
     Row(
@@ -1209,7 +1251,7 @@ fun SettingsScreen(vm: CoucouViewModel) {
             .padding(horizontal = 16.dp),
     ) {
         Text(
-            "Settings",
+            stringResource(R.string.settings_title),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = Coucou.Ink,
@@ -1237,9 +1279,9 @@ fun SettingsScreen(vm: CoucouViewModel) {
                     }
                     Spacer(Modifier.width(14.dp))
                     Column {
-                        Text("Wardrobe", color = Coucou.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.wardrobe), color = Coucou.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         Text(
-                            Wardrobe.LABELS[vm.outfitSel] ?: vm.outfitSel,
+                            wardrobeLabel(vm.outfitSel),
                             color = Coucou.Secondary,
                             fontSize = 14.sp,
                         )
@@ -1278,7 +1320,7 @@ fun SettingsScreen(vm: CoucouViewModel) {
                                     )
                                 }
                                 Text(
-                                    Wardrobe.LABELS[sel] ?: sel,
+                                    wardrobeLabel(sel),
                                     color = if (on) Coucou.Ink else Coucou.Tertiary,
                                     fontSize = 10.sp,
                                     maxLines = 1,
@@ -1293,12 +1335,12 @@ fun SettingsScreen(vm: CoucouViewModel) {
         }
 
         // This phone — the relay it talks to and the name it gave the PC.
-        SectionLabel("This phone")
+        SectionLabel(stringResource(R.string.settings_this_phone))
         CoucouCard(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(horizontal = 14.dp)) {
-                SettingsRow("Relay", vm.worker.ifBlank { "—" })
+                SettingsRow(stringResource(R.string.settings_relay), vm.worker.ifBlank { "—" })
                 Hairline()
-                SettingsRow("Name", Prefs.load(LocalContext.current)?.deviceName ?: Build.MODEL)
+                SettingsRow(stringResource(R.string.settings_name), Prefs.load(LocalContext.current)?.deviceName ?: Build.MODEL)
             }
         }
 
@@ -1308,7 +1350,7 @@ fun SettingsScreen(vm: CoucouViewModel) {
         Spacer(Modifier.height(18.dp))
         CoucouCard(modifier = Modifier.fillMaxWidth()) {
             Text(
-                "Unpair this phone",
+                stringResource(R.string.unpair_phone),
                 color = Coucou.Error,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
@@ -1323,11 +1365,10 @@ fun SettingsScreen(vm: CoucouViewModel) {
             AlertDialog(
                 onDismissRequest = { confirmUnpair = false },
                 containerColor = Coucou.Card,
-                title = { Text("Unpair this phone?", color = Coucou.Ink) },
+                title = { Text(stringResource(R.string.unpair_confirm_title), color = Coucou.Ink) },
                 text = {
                     Text(
-                        "The PC forgets this phone and the code stops working — " +
-                            "a new pair has to start on the PC.",
+                        stringResource(R.string.unpair_confirm_body),
                         color = Coucou.Secondary,
                     )
                 },
@@ -1335,11 +1376,11 @@ fun SettingsScreen(vm: CoucouViewModel) {
                     TextButton(onClick = {
                         confirmUnpair = false
                         vm.unpair()
-                    }) { Text("Unpair", color = Coucou.Error) }
+                    }) { Text(stringResource(R.string.unpair), color = Coucou.Error) }
                 },
                 dismissButton = {
                     TextButton(onClick = { confirmUnpair = false }) {
-                        Text("Cancel", color = Coucou.Secondary)
+                        Text(stringResource(R.string.cancel), color = Coucou.Secondary)
                     }
                 },
             )

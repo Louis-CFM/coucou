@@ -1,0 +1,41 @@
+name: Android CI
+
+# Unit-tests the Android companion on every pull request that touches it.
+# Nothing is signed and nothing is published: releases stay in
+# android-release.yml, which only runs on tags.
+
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # ubuntu-latest already carries the Android SDK; the wrapper downloads
+      # Gradle and the libraries on its own.
+      - name: Unit tests
+        run: ./gradlew test

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Your Android phone, anywhere** *(Windows and Linux → Android)* — the companion no longer needs your Wi-Fi: the phone and the computer meet in a private mailbox on a Cloudflare Worker you deploy yourself (free tier). Pair once from a QR code and approvals, questions and chat reach the phone wherever it is
+- **A mailbox nobody else can read** *(Windows and Linux → Android)* — everything between the phone and the computer is sealed end-to-end with a key from the pairing code: the relay — even your own Worker — only ever moves opaque blobs. Pairing codes made before this version do not carry the key: pair again once and the padlock is on
+- **Answer for real from the phone** *(Android)* — question cards take a free "Other…" answer, approvals show Always allow when the agent offers it, and "Reply in terminal" hands a request back to the computer's screen. Allow and Always allow ask for your fingerprint; Deny stays a tap
+- **A kinder phone link** *(Android)* — polling slows down when the relay cannot be reached instead of hammering it, unpairing asks first, and a phone that paired long ago no longer sees ghost sessions
+- **The phone knows its agents** *(Android)* — sessions group per agent with a picker: Devin, Claude Code, Codex, OpenCode and friends each get their history
+- **Safer island** *(Windows and Linux)* — permission requests are only trusted from the hook Coucou itself installed, request ids are no longer predictable, approval answers only land from the island window, a permission flood is capped so Claude Code never hangs on an endless queue, and a poisoned lock no longer cascades panics
+- **Mac and iPhone housekeeping** — push tokens of phones gone for a month stop getting Live Activity starts, the sync cursor survives restarts so iCloud is not replayed whole, a phone decision can no longer spend a card meant for another request, approval banners on a locked iPhone no longer show the command, and widgets redraw once instead of per record
+- **Reduced Motion** *(macOS and iOS)* — the island springs become a short fade, Mochi drops to two stills a second instead of bouncing, the ambient glow stops drifting, and music no longer makes him dance
 - **The island goes where you want it** *(Windows and Linux)* — drag it anywhere on the display; dropped near an edge it docks to it and takes its shape — top, bottom, left or right, the wake strip follows. Settings → General still slides it along the top edge and Reset puts it back centred
 - **Font and text size** *(Windows and Linux)* — Settings → General → Font picks any installed font for the island and the settings window; Text size scales every text from 85 % to 130 %. The defaults leave the look exactly as it shipped
 - **A clock in the compact island** *(Windows and Linux)* — Settings → General shows the time and the date in the middle of the compact island, which then stays up instead of hiding

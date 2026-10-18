@@ -272,8 +272,8 @@ fun gateWithBiometrics(context: android.content.Context, run: () -> Unit) {
     )
     prompt.authenticate(
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Confirm it's you")
-            .setSubtitle("Approve this request on your PC")
+            .setTitle(context.getString(R.string.bio_title))
+            .setSubtitle(context.getString(R.string.bio_subtitle))
             .setAllowedAuthenticators(kinds)
             .build(),
     )

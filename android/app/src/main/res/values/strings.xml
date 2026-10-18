@@ -4,11 +4,126 @@
     <string name="channel_alerts">Agent cards</string>
     <string name="channel_updates">Updates</string>
     <string name="channel_updates_desc">An agent finished, failed or has a question</string>
+
+    <!-- Actions -->
     <string name="allow">Allow</string>
     <string name="deny">Deny</string>
+    <string name="answer">Answer</string>
+    <string name="cancel">Cancel</string>
+    <string name="connect">Connect</string>
+    <string name="unpair">Unpair</string>
+    <string name="back">Back</string>
+    <string name="send">Send</string>
+    <string name="switch_agent">Switch agent</string>
+
+    <!-- Notifications -->
     <string name="notif_unlock">Unlock to see the request</string>
     <string name="notif_finished">Finished</string>
     <string name="notif_error">Stopped on an error</string>
     <string name="notif_question">Has a question</string>
     <string name="notif_ratelimit">Hit a usage limit</string>
+
+    <!-- Pairing -->
+    <string name="pair_tagline">Approve your PC\'s agent cards from here.</string>
+    <string name="pair_code_hint">Pairing code — id|secret|worker</string>
+    <string name="pair_relay_hint">Relay URL — https://….workers.dev</string>
+    <string name="pair_name_hint">This phone\'s name</string>
+    <string name="pair_error_no_url">Paste the relay URL — or the full code that includes it.</string>
+    <string name="pair_error_https">The relay URL must be https:// — the code carries your pairing secret.</string>
+    <string name="pair_error_code">The code should look like id|secret|worker.</string>
+    <string name="pair_error_secret">The secret in that code isn\'t 64 hex chars.</string>
+    <string name="pair_error_refused">The relay refused this box (403) — is the PC still showing this code?</string>
+    <string name="pair_error_failed">Couldn\'t pair — %1$s</string>
+    <string name="pair_error_check">check the URL and the code</string>
+
+    <!-- Home status -->
+    <string name="status_connected">Connected</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_running">%1$d running</string>
+    <string name="home_waiting_pc">Waiting for your PC…</string>
+    <string name="home_all_quiet">All quiet</string>
+    <string name="home_sessions_hint">Sessions show up here when an agent runs on your PC.</string>
+
+    <!-- Pending card -->
+    <string name="card_needs_answer">needs an answer</string>
+    <string name="card_waiting_ok">waiting for your OK</string>
+    <string name="card_reply_terminal">Reply in terminal</string>
+    <string name="option_other">Other…</string>
+    <string name="type_answer_hint">Type your answer…</string>
+
+    <!-- Decision sent -->
+    <string name="sent_allowed">Allowed — sent to your PC</string>
+    <string name="sent_generic">Sent to your PC</string>
+    <string name="sent_always">Always allowed — sent to your PC</string>
+    <string name="sent_denied">Denied — sent to your PC</string>
+    <string name="sent_declined">The agent asks in the terminal</string>
+    <string name="sent_answered">Answered — sent to your PC</string>
+
+    <!-- Agent rows / sections -->
+    <string name="sessions_all">All %1$d ›</string>
+    <string name="no_agent_chats">No %1$s chats on this PC</string>
+    <string name="agent_step">" · step %1$d/%2$d"</string>
+    <string name="agent_session">%1$s session</string>
+    <string name="ago_now">now</string>
+    <string name="ago_minutes">%1$dm</string>
+    <string name="ago_hours">%1$dh</string>
+    <string name="ago_days">%1$dd</string>
+
+    <!-- Chat -->
+    <string name="chat_empty_transcript">This session\'s transcript is empty — say hi.</string>
+    <string name="chat_empty">No chat yet — the PC\'s last lines appear here.</string>
+    <string name="chat_action_continue">Continue</string>
+    <string name="chat_action_tests">Run the tests</string>
+    <string name="chat_action_fix">Fix the errors</string>
+    <string name="chat_action_commit">Commit</string>
+    <string name="chat_hint_session">Continue this %1$s session…</string>
+    <string name="chat_hint">Message the PC…</string>
+
+    <!-- Picker -->
+    <string name="picker_empty">No chats yet — run %1$s on your PC first.</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_chat">Chat</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="wardrobe">Wardrobe</string>
+    <string name="settings_this_phone">This phone</string>
+    <string name="settings_relay">Relay</string>
+    <string name="settings_name">Name</string>
+    <string name="unpair_phone">Unpair this phone</string>
+    <string name="unpair_confirm_title">Unpair this phone?</string>
+    <string name="unpair_confirm_body">The PC forgets this phone and the code stops working — a new pair has to start on the PC.</string>
+
+    <!-- Wardrobe items -->
+    <string name="wardrobe_auto">Auto (seasons)</string>
+    <string name="wardrobe_none">None</string>
+    <string name="wardrobe_party_hat">Party hat</string>
+    <string name="wardrobe_beanie">Beanie</string>
+    <string name="wardrobe_crown">Crown</string>
+    <string name="wardrobe_sunglasses">Sunglasses</string>
+    <string name="wardrobe_round_glasses">Round glasses</string>
+    <string name="wardrobe_bow">Bow</string>
+    <string name="wardrobe_scarf">Scarf</string>
+    <string name="wardrobe_witch_hat">Witch hat</string>
+    <string name="wardrobe_pumpkin">Pumpkin</string>
+    <string name="wardrobe_santa_hat">Santa hat</string>
+    <string name="wardrobe_bunny_ears">Bunny ears</string>
+
+    <!-- Biometric gate -->
+    <string name="bio_title">Confirm it\'s you</string>
+    <string name="bio_subtitle">Approve this request on your PC</string>
+
+    <!-- Errors -->
+    <string name="error_relay_unreachable">Can\'t reach the relay</string>
+    <string name="error_relay">Can\'t reach the relay — %1$s</string>
+    <string name="error_box_taken">Another phone has taken this box over — pair again from the PC.</string>
+    <string name="error_box_unknown">This box no longer knows the phone — pair again.</string>
+    <string name="error_decision">Couldn\'t send the decision — %1$s</string>
+    <string name="error_session">Couldn\'t open the session — %1$s</string>
+    <string name="error_chat">Chat not sent — %1$s</string>
+    <string name="error_try_again">try again</string>
 </resources>

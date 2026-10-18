@@ -1,0 +1,29 @@
+version: 2
+# Keep CI actions and app dependencies on fresh majors. Actions are pinned to
+# major tags (not SHAs): the trust decision was to follow the vendor's tag,
+# and Dependabot surfaces the bumps as PRs to review.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /windows
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /relay
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: cargo
+    directory: /windows/src-tauri
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5

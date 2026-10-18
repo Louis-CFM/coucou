@@ -24,13 +24,6 @@ object Wardrobe {
     /** What is worn, as a selection: the phone's own choice, or the computer's when the phone follows it. */
     fun choose(local: String, computer: String): String = if (local == FOLLOW) parse(computer) else parseLocal(local)
 
-    /** The names shown to the user (the PC's English names). */
-    val LABELS: Map<String, String> = mapOf(
-        "auto" to "Auto (seasons)", "none" to "None", "partyHat" to "Party hat", "beanie" to "Beanie", "crown" to "Crown",
-        "sunglasses" to "Sunglasses", "roundGlasses" to "Round glasses", "bow" to "Bow", "scarf" to "Scarf",
-        "witchHat" to "Witch hat", "pumpkin" to "Pumpkin", "santaHat" to "Santa hat", "bunnyEars" to "Bunny ears",
-    )
-
     /** A stored value, or one received from the computer, to a selection; anything unknown means "auto" (like the Mac). */
     fun parse(raw: String?): String = if (raw != null && raw in SELECTIONS) raw else DEFAULT
 
