@@ -126,4 +126,22 @@
     <string name="error_session">Couldn\'t open the session — %1$s</string>
     <string name="error_chat">Chat not sent — %1$s</string>
     <string name="error_try_again">try again</string>
+
+    <!-- Live status (persistent notification) -->
+    <string name="channel_live">Status</string>
+    <string name="channel_live_desc">The always-there line: which agents are busy or waiting on you</string>
+    <string name="live_quiet">All quiet</string>
+    <plurals name="live_needs">
+        <item quantity="one">%1$d request needs you</item>
+        <item quantity="other">%1$d requests need you</item>
+    </plurals>
+    <plurals name="live_running">
+        <item quantity="one">%1$d agent working</item>
+        <item quantity="other">%1$d agents working</item>
+    </plurals>
+
+    <!-- Home widget -->
+    <string name="widget_name">Coucou — agents</string>
+    <string name="widget_desc">Live sessions from your computer</string>
+    <string name="widget_more">+%1$d more</string>
 </resources>

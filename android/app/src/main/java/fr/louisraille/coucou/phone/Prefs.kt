@@ -17,6 +17,7 @@ object Prefs {
     private const val K_DEVICE_ID = "device_id"
     private const val K_CLAIMED_TOKEN = "claimed_token"
     private const val K_OUTFIT = "mochi_outfit"
+    private const val K_WIDGET = "widget_snapshot"
 
     class Pairing(
         val worker: String,
@@ -63,6 +64,18 @@ object Prefs {
 
     fun setOutfit(ctx: Context, selection: String) {
         sp(ctx).edit().putString(K_OUTFIT, selection).apply()
+    }
+
+    /**
+     * The last sessions the app fetched, as a tiny JSON array for the home
+     * widget — no secrets in it, just what the widget draws.
+     */
+    fun widgetSnapshot(ctx: Context): String? = sp(ctx).getString(K_WIDGET, null)
+
+    fun setWidgetSnapshot(ctx: Context, json: String?) {
+        sp(ctx).edit().apply {
+            if (json == null) remove(K_WIDGET) else putString(K_WIDGET, json)
+        }.apply()
     }
 
     fun clear(ctx: Context) = sp(ctx).edit().clear().apply()

@@ -3,6 +3,8 @@ package fr.louisraille.coucou.phone
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import fr.louisraille.coucou.phone.widget.CoucouWidget
+import kotlinx.coroutines.runBlocking
 
 /**
  * Pushes are data-only {k, t} — kind + timestamp, never content — so every
@@ -28,8 +30,15 @@ class CoucouMessagingService : FirebaseMessagingService() {
         // early (a Thread{}) let the system freeze the app mid-fetch.
         val p = Prefs.load(this) ?: return
         try {
-            val card = Relay.fetch(p).pending
+            val f = Relay.fetch(p)
+            val card = f.pending
             if (card != null) Notifier.showCard(this, card) else Notifier.cancelCard(this)
+            // The persistent status line and the home widget follow what the
+            // push just showed.
+            f.state?.sessions?.let { s ->
+                Notifier.updateLive(this, s)
+                runBlocking { CoucouWidget.push(this@CoucouMessagingService, s) }
+            }
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) Log.w("CoucouPush", "fetch failed", e)
         }

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.net.Uri
+import android.os.Build
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -23,8 +24,11 @@ object Notifier {
     /** v2 carries Mochi's approval sound + a short buzz; channel options are immutable, so it got a new id. */
     const val CHANNEL = "coucou-alerts-v2"
     const val CHANNEL_UPDATES = "coucou-updates"
+    /** The persistent status line — silent, sits at the bottom of the shade. */
+    const val CHANNEL_LIVE = "coucou-live"
     const val CARD_ID = 7001
     private const val STATUS_ID = 8001
+    private const val LIVE_ID = 8002
 
     /** The PC holds a card for 108 s (pipe.rs DECISION_TIMEOUT); after that its buttons do nothing. */
     private const val CARD_TTL_MS = 108_000L
@@ -48,6 +52,12 @@ object Notifier {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_UPDATES, ctx.getString(R.string.channel_updates), NotificationManager.IMPORTANCE_LOW).apply {
                 description = ctx.getString(R.string.channel_updates_desc)
+                setShowBadge(false)
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_LIVE, ctx.getString(R.string.channel_live), NotificationManager.IMPORTANCE_MIN).apply {
+                description = ctx.getString(R.string.channel_live_desc)
                 setShowBadge(false)
             },
         )
@@ -158,6 +168,57 @@ object Notifier {
             .setAutoCancel(true)
             .build()
         runCatching { NotificationManagerCompat.from(ctx).notify(session.pillId, STATUS_ID, n) }
+    }
+
+    /**
+     * The always-there line: which agents are busy and how many are waiting.
+     * Silent (IMPORTANCE_MIN), ongoing, and on Android 16+ promoted so it shows
+     * as the Live Update chip in the status bar. Nothing private in it — the
+     * command text never leaves the loud card.
+     */
+    fun updateLive(ctx: Context, sessions: List<Relay.Session>) {
+        if (sessions.isEmpty()) {
+            cancelLive(ctx)
+            return
+        }
+        ensureChannel(ctx)
+        val needs = sessions.count { it.state == "approval" || it.state == "question" }
+        val running = sessions.count { it.state == "working" || it.state == "thinking" || it.state == "searching" }
+        val text = when {
+            needs > 0 -> ctx.resources.getQuantityString(R.plurals.live_needs, needs, needs)
+            running > 0 -> ctx.resources.getQuantityString(R.plurals.live_running, running, running)
+            else -> ctx.getString(R.string.live_quiet)
+        }
+        val style = NotificationCompat.InboxStyle()
+        sessions.sortedByDescending { urgencyOf(it.state) }.take(5).forEach { s ->
+            style.addLine("${s.agent} · ${s.statusText.ifBlank { s.state }}")
+        }
+        val open = PendingIntent.getActivity(
+            ctx, 0,
+            ctx.packageManager.getLaunchIntentForPackage(ctx.packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(ctx, CHANNEL_LIVE)
+            .setSmallIcon(R.drawable.ic_stat_coucou)
+            .setContentTitle(ctx.getString(R.string.app_name))
+            .setContentText(text)
+            .setStyle(style)
+            .setContentIntent(open)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+        // Live Update chip on the status bar (API 36+); harmless flag elsewhere.
+        if (Build.VERSION.SDK_INT >= 36) {
+            @Suppress("WrongConstant")
+            n.flags = n.flags or Notification.FLAG_PROMOTED_ONGOING
+        }
+        runCatching { NotificationManagerCompat.from(ctx).notify(LIVE_ID, n) }
+    }
+
+    fun cancelLive(ctx: Context) {
+        runCatching { NotificationManagerCompat.from(ctx).cancel(LIVE_ID) }
     }
 
     fun cancelCard(ctx: Context) = cancelAllCards(ctx)

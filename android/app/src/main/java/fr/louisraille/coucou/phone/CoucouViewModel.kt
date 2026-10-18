@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
 import fr.louisraille.coucou.phone.outfit.Wardrobe
+import fr.louisraille.coucou.phone.widget.CoucouWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -175,12 +176,15 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
             // Allow/Deny notification — the push path does the same.
             if (f.pending == null) Notifier.cancelCard(getApplication())
             announce(f)
+            Notifier.updateLive(getApplication(), f.state?.sessions.orEmpty())
+            CoucouWidget.push(getApplication(), f.state?.sessions.orEmpty())
             box = f
             lineError = null
             return true
         } catch (e: Relay.Forbidden) {
             // The box wiped us — drop the pairing and go back to the code screen.
             Prefs.clear(getApplication())
+            Notifier.cancelLive(getApplication())
             box = null
             pollJob?.cancel()
             pairError = str(R.string.error_box_unknown)
@@ -334,6 +338,9 @@ class CoucouViewModel(app: Application, private val saved: SavedStateHandle) : A
                 } catch (_: Exception) { /* the box may already be gone — local reset wins */ }
             }
             Prefs.clear(getApplication())
+            Notifier.cancelLive(getApplication())
+            Notifier.cancelAllCards(getApplication())
+            CoucouWidget.clear(getApplication())
             box = null
             worker = ""
             show(Screen.PAIR)

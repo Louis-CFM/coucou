@@ -125,4 +125,26 @@
     <string name="error_session">Sezení se nepodařilo otevřít — %1$s</string>
     <string name="error_chat">Chat se neodeslal — %1$s</string>
     <string name="error_try_again">zkus to znovu</string>
+
+    <!-- Live status (trvalá notifikace) -->
+    <string name="channel_live">Stav</string>
+    <string name="channel_live_desc">Trvalý řádek: kteří agenti pracují nebo čekají na tebe</string>
+    <string name="live_quiet">Vše v klidu</string>
+    <plurals name="live_needs">
+        <item quantity="one">%1$d požadavek čeká na tebe</item>
+        <item quantity="few">%1$d požadavky čekají na tebe</item>
+        <item quantity="many">%1$d požadavků čeká na tebe</item>
+        <item quantity="other">%1$d požadavků čeká na tebe</item>
+    </plurals>
+    <plurals name="live_running">
+        <item quantity="one">%1$d agent pracuje</item>
+        <item quantity="few">%1$d agenti pracují</item>
+        <item quantity="many">%1$d agentů pracuje</item>
+        <item quantity="other">%1$d agentů pracuje</item>
+    </plurals>
+
+    <!-- Widget na ploše -->
+    <string name="widget_name">Coucou — agenti</string>
+    <string name="widget_desc">Živá sezení z tvého počítače</string>
+    <string name="widget_more">+%1$d dalších</string>
 </resources>
