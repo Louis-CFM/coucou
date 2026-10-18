@@ -410,6 +410,11 @@ final class AppState: ObservableObject {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
 
+    // The session the last finished or error card belongs to
+    var sessionCard: SessionCard? = nil
+    // The session that asked the question on the card, for "jump to terminal"
+    var questionLink: SessionLink? = nil
+
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]
@@ -576,6 +581,28 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    /// The session the card on screen belongs to, nil outside the approval, question, finished and error cards.
+    var cardLink: SessionLink? {
+        switch view {
+        case .approval: pendingApproval?.link
+        case .question: questionLink
+        case .finished, .error: cardTask(for: view)?.sessionLink
+        default:        nil
+        }
+    }
+
+    /// The focused pill as the finished or error card shows it: named after, and linked to,
+    /// the session the card belongs to. The pill itself, if the card is not about it.
+    func cardTask(for view: IslandView) -> AgentTask? {
+        guard var task = focusTask else { return nil }
+        if let card = sessionCard, card.view == view, card.pillId == task.id {
+            task.name = card.name
+            task.finalLine = card.finalLine
+            task.sessionLink = card.link
+        }
+        return task
     }
 
     var effectiveState: BotState {

@@ -18,8 +18,9 @@ struct QueuedApproval: Equatable, Sendable {
     let command: String
     /// tool_input serialized with sortedKeys, "" if absent. Used to match PostToolUse.
     let inputKey: String
-    /// Host app / bundle id of the session, so the card's pill keeps showing where it runs.
-    var hostApp: String? = nil
+    /// Host app of the session and link back to it inside its host (a Conductor chat),
+    /// for "jump to terminal".
+    var link = SessionLink()
     var bundleId: String = ""
     /// When the request arrived (for the log: how long it waited).
     var received = Date()

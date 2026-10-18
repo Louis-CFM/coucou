@@ -59,6 +59,18 @@ struct ApprovalInfo: Sendable {
     var queueCount: Int = 1
     /// Project of the session that asks (several sessions can share one pill).
     var projectName: String = ""
+    /// Where "jump to terminal" goes while this card is up: the session that asked.
+    var link: SessionLink? = nil
+}
+
+/// The session a finished or error card belongs to. Several sessions share a pill, which
+/// shows only one of them: the card keeps its own name, conclusion and link.
+struct SessionCard: Equatable, Sendable {
+    var pillId: String
+    var view: IslandView        // .finished or .error
+    var name: String
+    var finalLine: String?
+    var link: SessionLink
 }
 
 // MARK: - Pill badge (shown on pill edge when non-focused task has an alert)
@@ -82,7 +94,7 @@ struct AgentTask: Identifiable, Equatable {
     var sessionCwd: String?  = nil  // last known working directory (Claude Code sessions)
     var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
-    var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
+    var sessionLink = SessionLink() // terminal running a Claude Code session (nil = VS Code) and link back to it
 }
 
 enum AgentSource: Equatable {

@@ -103,7 +103,8 @@ final class HookServer: @unchecked Sendable {
                                               command: head.command, inputKey: head.inputKey,
                                               pillId: head.pillId, id: head.id,
                                               queueCount: approvals.count,
-                                              projectName: head.projectName)
+                                              projectName: head.projectName,
+                                              link: head.link)
         state.isPinned = true
         // Approval always forces the island open — the user must be able to respond.
         // Save the focus once, so it comes back when the last request is gone.
@@ -452,6 +453,7 @@ final class HookServer: @unchecked Sendable {
         if isCodexEvent {
             agentId = "agent_codex"
             isExternalAgent = false
+            hostApp = ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)?.bundleId
         } else if let agent = validAgent {
             agentId = "agent_\(agent)"
             isExternalAgent = true
@@ -478,7 +480,8 @@ final class HookServer: @unchecked Sendable {
             session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, bundleId: bundleId)
+            link: SessionLink(hostApp: hostApp, sessionURL: conductorLink(payload, bundleId: bundleId)),
+            bundleId: bundleId)
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -529,7 +532,10 @@ final class HookServer: @unchecked Sendable {
 
         case "UserPromptSubmit":
             activeSessionId = sessionId
+            // A new prompt in a Conductor workspace brings its session onto the pill, even next
+            // to an older one. Other sessions keep the oldest one on it, so its name stays put.
             upsertTask(pill: agentId, display: display, working: true,
+                       claiming: ClaudeHost.isConductor(hostApp),
                        externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.updateTask(id: agentId, state: .thinking)
@@ -596,23 +602,42 @@ final class HookServer: @unchecked Sendable {
             RecapStore.shared.stop(sessionId: recapSessionId)
             // Another session is still mid-turn behind this pill: the finished state, the
             // sound and the idle reset below would land on its work. Its own Stop comes later.
-            guard scope == .pill else {
+            // Conductor runs workspaces side by side, so each of its sessions gets its card.
+            if scope == .sessionOnly {
                 nbLog("Stop \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
-                break
+                guard ClaudeHost.isConductor(hostApp) else { break }
+            }
+            // Coucou started mid-turn: the pill shows up (it stays its owner's otherwise)
+            if !isExternalAgent {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, link: display.link,
+                                    bundleId: bundleId, session: sessionId)
             }
             state.updateTask(id: agentId, state: .finished)
-            if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+            // Another session still works behind the pill: the conclusion is the card's, not the pill's
+            if scope == .pill, !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
             }
             SoundEngine.shared.play("finish")
             if focused {
+                // The card shows the session that finished (its name, conclusion and link), whichever
+                // session owns the pill. Only here: a pill in the background gets a badge, not the card.
+                if !isExternalAgent {
+                    state.sessionCard = SessionCard(pillId: agentId, view: .finished, name: projectName,
+                                                    finalLine: finalText.isEmpty ? nil : finalText,
+                                                    link: display.link)
+                }
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
-                // A session (this one or a sibling) may have started a new turn meanwhile.
-                guard self.sessions.workingCount(pill: agentId) == 0 else { return }
+                // A session (this one or a sibling) is mid-turn: the pill goes back to work.
+                guard self.sessions.workingCount(pill: agentId) == 0 else {
+                    if AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .finished {
+                        AppState.shared.updateTask(id: agentId, state: .working)
+                    }
+                    return
+                }
                 if isExternalAgent {
                     AppState.shared.removeTask(id: agentId)
                 } else {
@@ -623,18 +648,41 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
+            // Like Stop: while another session is mid-turn behind this pill, only a Conductor
+            // session gets its error card and sound, and the card shows the session that failed.
+            let scope = sessions.endTurn(pill: agentId, session: sessionId)
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
+            if scope == .sessionOnly {
+                nbLog("StopFailure \(sessionId.prefix(8)) — \(sessions.workingCount(pill: agentId)) session(s) still working on \(agentId)")
+                guard ClaudeHost.isConductor(hostApp) else { break }
+            }
+            if !isExternalAgent {
+                upsertWorkspaceTask(id: agentId, projectName: projectName, cwd: cwd, link: display.link,
+                                    bundleId: bundleId, session: sessionId)
+            }
             state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
-            if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
-                state.tasks[idx].finalLine = Self.stopFailureDetail(payload)
+            // Another session still works behind the pill: the error is the card's, not the pill's.
+            let detail = Self.stopFailureDetail(payload)
+            if scope == .pill, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
+                state.tasks[idx].finalLine = detail
             }
             SoundEngine.shared.play("error")
             if focused {
+                if !isExternalAgent {
+                    state.sessionCard = SessionCard(pillId: agentId, view: .error, name: projectName,
+                                                    finalLine: detail,
+                                                    link: display.link)
+                }
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) {
+                // A session (this one or a sibling) is mid-turn: the pill goes back to work.
+                guard self.sessions.workingCount(pill: agentId) > 0,
+                      AppState.shared.tasks.first(where: { $0.id == agentId })?.state == .error else { return }
+                AppState.shared.updateTask(id: agentId, state: .working)
             }
 
         case "Interrupt":
@@ -815,6 +863,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let sessionURL = conductorLink(payload, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCopilotRequest || isMuseRequest || isHermesRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -847,7 +896,8 @@ final class HookServer: @unchecked Sendable {
         let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
                                    projectName: projectName, cwd: cwd, tool: tool,
                                    command: command, inputKey: inputKey,
-                                   hostApp: terminalHost?.bundleId, bundleId: bundleId)
+                                   link: SessionLink(hostApp: terminalHost?.bundleId, sessionURL: sessionURL),
+                                   bundleId: bundleId)
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
@@ -860,7 +910,9 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
-                                                        cwd: cwd, hostApp: terminalHost?.bundleId,
+                                                        cwd: cwd,
+                                                        link: SessionLink(hostApp: terminalHost?.bundleId,
+                                                                          sessionURL: sessionURL),
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .approval)
@@ -966,6 +1018,7 @@ final class HookServer: @unchecked Sendable {
         // Terminal sessions: only when turned on in Settings, else the terminal asks itself.
         let terminalHost = isCursorEditor || isVSCodeEditor ? nil
             : ClaudeHost.terminal(termProgram: termProgram, bundleId: bundleId)
+        let sessionURL = conductorLink(payload, bundleId: bundleId)
         let isTerminal = terminalHost != nil && ClaudeHost.terminalCardsEnabled
         guard isCodexRequest || isCursorEditor || isVSCodeEditor || isTerminal else {
             Task.detached { [weak self] in
@@ -994,11 +1047,14 @@ final class HookServer: @unchecked Sendable {
 
         upsertTask(pill: pillId,
                    display: PillSessionRegistry.Display(session: sessionId, projectName: projectName,
-                                                        cwd: cwd, hostApp: terminalHost?.bundleId,
+                                                        cwd: cwd,
+                                                        link: SessionLink(hostApp: terminalHost?.bundleId,
+                                                                          sessionURL: sessionURL),
                                                         bundleId: bundleId),
                    working: true, externalAgent: nil)
         state.updateTask(id: pillId, state: .question)
         state.pendingQuestion = parsed
+        state.questionLink = SessionLink(hostApp: terminalHost?.bundleId, sessionURL: sessionURL)
         state.isPinned = true
         SoundEngine.shared.play("approval")
 
@@ -1034,7 +1090,7 @@ final class HookServer: @unchecked Sendable {
     /// "VS Code", "Warp"… — where the Claude Code pill's current session runs.
     @MainActor
     private var claudeHostName: String {
-        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.hostApp)
+        ClaudeHost.name(for: AppState.shared.tasks.first { $0.id == "integration_claude" }?.sessionLink.hostApp)
     }
 
     /// Records the session an event came from, then refreshes its card.
@@ -1042,14 +1098,13 @@ final class HookServer: @unchecked Sendable {
     /// nil for a workspace pill.
     @MainActor
     private func upsertTask(pill: String, display: PillSessionRegistry.Display,
-                            working: Bool, externalAgent: String?) {
-        sessions.note(pill: pill, display: display, working: working)
+                            working: Bool, claiming: Bool = false, externalAgent: String?) {
+        sessions.note(pill: pill, display: display, working: working, claiming: claiming)
         if let externalAgent {
             upsertExternalAgent(id: pill, name: externalAgent)
         } else {
             upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
-                                hostApp: display.hostApp, bundleId: display.bundleId,
-                                session: display.session)
+                                link: display.link, bundleId: display.bundleId, session: display.session)
         }
     }
 
@@ -1063,24 +1118,25 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
         if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
+        if ClaudeHost.keepsSessionLink(pillId: pill) { state.tasks[idx].sessionLink = owner.link }
         if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
     /// Updates or transiently creates a workspace pill (VS Code or Cursor) task.
     /// If the task already exists (persistent), just updates name/cwd.
     /// If missing (transient), creates it and inserts after the main pill.
-    /// Name, cwd and terminal belong to the session that owns the pill (the oldest one
-    /// still running), so a second session under the same client cannot rename the card,
-    /// or send "Open terminal" elsewhere, out from under the first.
+    /// Name, cwd and terminal belong to the session that owns the pill (the one that last
+    /// got a prompt), so another session's tool calls cannot rename the card, or send
+    /// "Open terminal" elsewhere, out from under it. The finished and error cards keep their
+    /// own session (AppState.sessionCard).
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", link: SessionLink = SessionLink(), bundleId: String = "", session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if ClaudeHost.keepsSessionLink(pillId: id) { state.tasks[idx].sessionLink = link }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1090,7 +1146,7 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if ClaudeHost.keepsSessionLink(pillId: id) { task.sessionLink = link }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)
@@ -1260,6 +1316,13 @@ final class HookServer: @unchecked Sendable {
     }
 
     // MARK: - Logging
+
+    /// The Conductor link of the session that sent `payload`, from the ids the relay adds.
+    private func conductorLink(_ payload: [String: Any], bundleId: String) -> URL? {
+        ClaudeHost.sessionURL(bundleId: bundleId,
+                              workspaceId: payload["conductor_workspace_id"] as? String,
+                              sessionId: payload["conductor_session_id"] as? String)
+    }
 
     private func nbLog(_ message: String) {
         appendAppLog("nb.log", message)
@@ -3248,6 +3311,71 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Terminal and Conductor context, so the app can bring the user back to the session
+def enrich(payload, env):
+    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
+    if 'cwd' not in payload or not payload['cwd']:
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
+# A Claude or Codex started by another agent (a `claude -p` from the Bash tool, a script an
+# agent runs) inherits its terminal and Conductor ids, so it would take over that session's
+# pill. Walk up the process tree: past the agent running this hook, a second agent means the
+# session is nested. Unknown or slow: not nested, so the hook behaves as before.
+AGENT_NAMES = ('claude', 'codex', 'gemini')
+AGENT_SCRIPTS = ('/claude-code/', '/@openai/codex/', '/gemini-cli/')
+
+def ps_fields(pid, *fields):
+    import subprocess
+    out = subprocess.run(['/bin/ps', '-o', ','.join(f + '=' for f in fields), '-p', str(pid)],
+                         capture_output=True, timeout=0.5).stdout
+    return out.decode('utf-8', 'replace').strip()
+
+def is_agent(pid, comm):
+    name = os.path.basename(comm)
+    if name in AGENT_NAMES or '/claude/versions/' in comm:
+        return True
+    if name in ('node', 'bun'):
+        args = ps_fields(pid, 'args')
+        return any(script in args for script in AGENT_SCRIPTS)
+    return False
+
+def is_nested():
+    try:
+        pid = os.getppid()
+        agents = 0
+        in_agent = False
+        for _ in range(32):
+            if pid <= 1:
+                return False
+            parts = ps_fields(pid, 'ppid', 'comm').split(None, 1)
+            if len(parts) != 2 or not parts[0].isdigit():
+                return False
+            ppid, comm = int(parts[0]), parts[1]
+            # The app hosting the terminal (or Conductor): the top of the session
+            if '/Contents/MacOS/' in comm:
+                return False
+            agent = is_agent(pid, comm)
+            # A launcher and the agent it runs (node codex.js -> codex) count once
+            if agent and not in_agent:
+                agents += 1
+                if agents == 2:
+                    return True
+            in_agent = agent
+            pid = ppid
+    except Exception:
+        pass
+    return False
+
 def main():
     raw = b''
     payload = {}
@@ -3298,23 +3426,17 @@ def main():
                 pass
         return
 
+    # A nested session stays out of the notch: no pill, no card, no permission
+    if is_nested():
+        return
+
     # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
     if '--ask' in sys.argv[1:]:
         tool = payload.get('tool_name', '')
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
+        enrich(payload, os.environ)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3370,18 +3492,7 @@ def main():
     if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
         payload['coucou_agent'] = 'claude-desktop'
 
-    # Enrich with terminal context
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
+    enrich(payload, os.environ)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
@@ -3555,6 +3666,71 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+# Terminal and Conductor context, so the app can bring the user back to the session
+def enrich(payload, env):
+    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
+    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
+    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
+    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
+    # Conductor: the workspace and chat, so "Open Conductor" goes back to them
+    payload.setdefault('conductor_workspace_id', env.get('CONDUCTOR_WORKSPACE_ID', ''))
+    payload.setdefault('conductor_session_id', env.get('CONDUCTOR_SESSION_ID', ''))
+    if 'cwd' not in payload or not payload['cwd']:
+        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
+        if isinstance(paths, list) and paths:
+            payload['cwd'] = paths[0]
+        else:
+            payload['cwd'] = os.getcwd()
+
+# A Claude or Codex started by another agent (a `claude -p` from the Bash tool, a script an
+# agent runs) inherits its terminal and Conductor ids, so it would take over that session's
+# pill. Walk up the process tree: past the agent running this hook, a second agent means the
+# session is nested. Unknown or slow: not nested, so the hook behaves as before.
+AGENT_NAMES = ('claude', 'codex', 'gemini')
+AGENT_SCRIPTS = ('/claude-code/', '/@openai/codex/', '/gemini-cli/')
+
+def ps_fields(pid, *fields):
+    import subprocess
+    out = subprocess.run(['/bin/ps', '-o', ','.join(f + '=' for f in fields), '-p', str(pid)],
+                         capture_output=True, timeout=0.5).stdout
+    return out.decode('utf-8', 'replace').strip()
+
+def is_agent(pid, comm):
+    name = os.path.basename(comm)
+    if name in AGENT_NAMES or '/claude/versions/' in comm:
+        return True
+    if name in ('node', 'bun'):
+        args = ps_fields(pid, 'args')
+        return any(script in args for script in AGENT_SCRIPTS)
+    return False
+
+def is_nested():
+    try:
+        pid = os.getppid()
+        agents = 0
+        in_agent = False
+        for _ in range(32):
+            if pid <= 1:
+                return False
+            parts = ps_fields(pid, 'ppid', 'comm').split(None, 1)
+            if len(parts) != 2 or not parts[0].isdigit():
+                return False
+            ppid, comm = int(parts[0]), parts[1]
+            # The app hosting the terminal (or Conductor): the top of the session
+            if '/Contents/MacOS/' in comm:
+                return False
+            agent = is_agent(pid, comm)
+            # A launcher and the agent it runs (node codex.js -> codex) count once
+            if agent and not in_agent:
+                agents += 1
+                if agents == 2:
+                    return True
+            in_agent = agent
+            pid = ppid
+    except Exception:
+        pass
+    return False
+
 def main():
     raw = b''
     payload = {}
@@ -3605,23 +3781,17 @@ def main():
                 pass
         return
 
+    # A nested session stays out of the notch: no pill, no card, no permission
+    if is_nested():
+        return
+
     # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
     if '--ask' in sys.argv[1:]:
         tool = payload.get('tool_name', '')
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
         payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
+        enrich(payload, os.environ)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3677,17 +3847,7 @@ def main():
     if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
         payload['coucou_agent'] = 'claude-desktop'
 
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
+    enrich(payload, os.environ)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:

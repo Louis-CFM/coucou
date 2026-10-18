@@ -218,7 +218,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
-            if ClaudeHost.activate(task.hostApp) { return }
+            if ClaudeHost.activate(task.sessionLink) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
                 app.activate(options: .activateIgnoringOtherApps)
@@ -268,6 +268,7 @@ struct OverviewView: View {
             #endif
         case "agent_codex":
             #if !APPSTORE
+            if ClaudeHost.activate(task.sessionLink) { return }
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.openai.codex") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
@@ -625,7 +626,7 @@ struct QuestionView: View {
 struct ErrorView: View {
     @ObservedObject var state: AppState
 
-    private var task: AgentTask? { state.focusTask }
+    private var task: AgentTask? { state.cardTask(for: .error) }
 
     /// The kind next to the name ("Claude Code", "n8n", "Agent"): agentWho already shows the name.
     private var kind: String {
@@ -698,7 +699,7 @@ struct ErrorView: View {
 #if !APPSTORE
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
 private func openSessionApp(_ task: AgentTask?) {
-    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+    if !(ClaudeHost.keepsSessionLink(pillId: task?.id) && ClaudeHost.activate(task?.sessionLink ?? SessionLink())),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }
@@ -719,21 +720,23 @@ private func openClaudeDesktopApp() {
 struct FinishedView: View {
     @ObservedObject var state: AppState
 
+    private var task: AgentTask? { state.cardTask(for: .finished) }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .green)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "Claude Code finished")
+                AgentWho(task: task, label: "Claude Code finished")
                 Text({
-                    if let fl = state.focusTask?.finalLine { return fl }
-                    if let s = state.focusTask?.steps.last(where: { !$0.isDiffStep }) { return s }
+                    if let fl = task?.finalLine { return fl }
+                    if let s = task?.steps.last(where: { !$0.isDiffStep }) { return s }
                     return String(localized: "Session finished")
                 }())
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    if state.focusTask?.id == "agent_claude-desktop" {
+                    if task?.id == "agent_claude-desktop" {
                         // Sessions from the Claude desktop app live there, not in a terminal.
                         PrimaryButton("Open Claude") {
                             openClaudeDesktopApp()
@@ -742,7 +745,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            openSessionApp(state.focusTask)
+                            openSessionApp(task)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif
@@ -2266,7 +2269,7 @@ struct IntegrationCardView: View {
                     Circle()
                         .fill(Color(hex: task.color))
                         .frame(width: 7, height: 7)
-                    Text(task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp)
+                    Text(task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.sessionLink.hostApp)
                                                          : PillCatalog.definition(for: task.id)?.name ?? task.name)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#F5F6F8"))
@@ -2289,8 +2292,8 @@ struct IntegrationCardView: View {
                 .padding(.top, 2)
 
                 HStack(spacing: 8) {
-                    if task.id == "integration_claude", task.hostApp != nil {
-                        Button("Open \(ClaudeHost.name(for: task.hostApp))") { ClaudeHost.activate(task.hostApp) }
+                    if task.id == "integration_claude", task.sessionLink.hostApp != nil {
+                        Button("Open \(ClaudeHost.name(for: task.sessionLink.hostApp))") { ClaudeHost.activate(task.sessionLink) }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
@@ -4140,7 +4143,7 @@ struct AgentPill: View {
 
     // The Claude pill shows "VS Code" (or "Claude Code" for a terminal session) regardless of project name
     private var displayName: String {
-        task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.hostApp) : task.name
+        task.id == "integration_claude" ? ClaudeHost.pillName(hostApp: task.sessionLink.hostApp) : task.name
     }
 
     var body: some View {
