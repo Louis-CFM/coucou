@@ -4350,6 +4350,17 @@
    "pt-BR": "O Coucou não conseguiu responder: verifique sua chave do Claude em Notch → Chat.",
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan."
+  },
+  "Play an emote": {
+   "zh-Hans": "播放表情",
+   "hi": "इमोट चलाएँ",
+   "es": "Reproducir un emote",
+   "ar": "تشغيل تعبير",
+   "fr": "Jouer une émote",
+   "bn": "ইমোট চালান",
+   "pt-BR": "Tocar um emote",
+   "ru": "Показать эмоцию",
+   "id": "Putar emote"
   }
  }
 }
