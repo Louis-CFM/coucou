@@ -140,20 +140,26 @@ enum LocalChat {
         return try await streamChat(baseURL: baseURL, encodedBody: bodyData, model: model, onToken: onToken)
     }
 
+    /// - Parameters:
+    ///   - apiKey: A cloud provider's key (DeepSeek, Qwen, Moonshot); nil for a local server.
+    ///     A cloud base URL already ends with its version (`https://api.deepseek.com/v1`),
+    ///     a local server's address does not, so `/v1` is added for it only.
     static func streamChat(
         baseURL: String,
         encodedBody: Data,
         model: String,
+        apiKey: String? = nil,
         onToken: @MainActor @escaping (String) -> Void
     ) async throws -> String {
-        guard let url = URL(string: "\(baseURL)/v1/chat/completions") else {
+        let path = apiKey == nil ? "/v1/chat/completions" : "/chat/completions"
+        guard let url = URL(string: "\(baseURL)\(path)") else {
             throw LocalChatError.serverUnreachable(baseURL)
         }
 
         var req = URLRequest(url: url, timeoutInterval: 300)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer ollama", forHTTPHeaderField: "Authorization")
+        req.setValue("Bearer \(apiKey ?? "ollama")", forHTTPHeaderField: "Authorization")
         req.httpBody = encodedBody
 
         let bytes: URLSession.AsyncBytes
