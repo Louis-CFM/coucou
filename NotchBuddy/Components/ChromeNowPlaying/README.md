@@ -10,9 +10,12 @@ En la versión de GitHub para macOS, activa la etiqueta «Ahora suena» y pulsa 
 
 La vista compacta muestra portada, ondas decorativas y tiempo restante. Las ondas varían suavemente con el volumen del sistema; no capturan audio ni siguen el ritmo real. En la vista ampliada, arrastra el tirador del borde derecho de la tarjeta para darle más espacio. Las otras cuatro etiquetas pasan a una columna de cabecitas animadas. Apple Music, Spotify y Ahora suena comparten esta presentación. La portada ampliada queda a la derecha y los controles se alinean con la barra de progreso; la tarjeta pequeña conserva su disposición.
 
+El control de volumen de Ahora suena ajusta **la salida general del Mac**, no el volumen de la pestaña. Usa CoreAudio, sigue cambios externos de volumen y de dispositivo mediante eventos y no abre un flujo de audio. Se desactiva cuando la salida no admite ajuste por software. Subirlo también quita el silencio del dispositivo. Apple Music y Spotify conservan su volumen propio.
+
 ## Estructura
 
 - `Sources/BridgeProtocol.swift`: validación y decodificación del protocolo, identidad de reproducción y confirmación de navegación.
+- `Sources/SystemOutputVolume.swift`: volumen general de la salida predeterminada, capacidades y observación durante la presentación de la tarjeta.
 - `Sources/SystemNowPlaying.swift`: ciclo de vida del auxiliar, estado, portadas y solicitudes de control.
 - `Native/NowPlayingBridge.m`: acceso aislado a MediaRemote, suscripción a eventos y validación del destino de las órdenes.
 - `Resources/bridge.pl`: carga el auxiliar propio dentro de Perl del sistema.

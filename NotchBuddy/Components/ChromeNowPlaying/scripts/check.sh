@@ -13,3 +13,7 @@ xcrun clang -fobjc-arc -O2 -Wall -Wextra -Wno-unused-parameter \
   -o "$CHECK_DIR/capability-tests"
 "$CHECK_DIR/capability-tests"
 python3 "$BRIDGE_ROOT/Tests/HelperSmoke.py" "$CHECK_DIR/NowPlayingBridge.dylib"
+xcrun swiftc -swift-version 6 -module-cache-path "$CHECK_DIR/module-cache" \
+  "$BRIDGE_ROOT/Sources/SystemOutputVolume.swift" "$BRIDGE_ROOT/Tests/OutputVolumeSmoke.swift" \
+  -o "$CHECK_DIR/output-volume-smoke"
+"$CHECK_DIR/output-volume-smoke"

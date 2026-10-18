@@ -31,3 +31,10 @@ Spotify no estaba instalado y su prueba real queda pendiente. No se afirma que t
 ## Trabajo posterior
 
 Extraer el lector de Ahora suena como proyecto independiente y reutilizable en GitHub, con ejemplo y pruebas, después de publicar esta actualización de Coucou. No forma parte de los cambios de comportamiento de esta publicación.
+
+
+## Mejora posterior: volumen general del Mac
+
+Se añadió SystemOutputVolume y se reutilizó NowPlayingVolume únicamente en la tarjeta de Ahora suena. El control usa CoreAudio público y observadores retirables para volumen, silencio y cambio de salida; no sondeo, captura de audio ni control específico del navegador. Salidas sin volumen modificable muestran el control desactivado. Las demás integraciones no cambian.
+
+La fuente nueva pasó typecheck en Swift 6 sin diagnósticos. La compilación Debug completa terminó sin errores, manteniendo 42 advertencias y sin diagnósticos en SystemOutputVolume. Las pruebas existentes del auxiliar siguen pasando. La prueba de ciclo de vida verifica inicio repetido, parada, reinicio y que una escritura con el modelo detenido no se ejecute; no modifica el volumen. El proceso de terminal no pudo leer un dispositivo de salida, por lo que esa prueba no acredita escritura real ni cambio físico de dispositivo. Dentro de Coucou se observó «Volumen general del Mac: 19%», y el usuario confirmó que el deslizador se ejecuta correctamente. No se ha verificado cambio de dispositivo físico ni todos los drivers de audio.

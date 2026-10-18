@@ -85,6 +85,7 @@ struct ChromePill: View {
 struct ChromeCardView: View {
     @Environment(\.musicCardExpansion) private var expansion
     @ObservedObject private var controller = ChromeController.shared
+    @StateObject private var outputVolume = SystemOutputVolume()
     private let accent = Color(hex: ChromeController.accentHex)
 
     var body: some View {
@@ -93,6 +94,8 @@ struct ChromeCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(.top, 4)
+        .onAppear { outputVolume.start() }
+        .onDisappear { outputVolume.stop() }
     }
 
     private func nowPlaying(_ track: PlaybackSnapshot) -> some View {
@@ -156,10 +159,22 @@ struct ChromeCardView: View {
                     .disabled(!track.canNext || controller.controlsBusy)
                     .opacity(track.canNext && !controller.controlsBusy ? 1 : 0.35)
                 }
-                NowPlayingIconButton(
-                    icon: "power", size: 10, tint: Color(hex: "#6B7079"),
-                    help: "Desconectar Ahora suena"
-                ) { controller.disconnect() }
+                HStack(spacing: 8) {
+                    NowPlayingVolume(volume: outputVolume.volume, accent: accent) { outputVolume.setVolume($0) }
+                        .disabled(!outputVolume.available)
+                        .allowsHitTesting(outputVolume.available)
+                        .opacity(outputVolume.available ? 1 : 0.35)
+                        .accessibilityLabel("Volumen del Mac")
+                        .help(
+                            outputVolume.notice
+                                ?? (outputVolume.available
+                                    ? "Volumen general del Mac: \(outputVolume.volume)%"
+                                    : "Esta salida de audio no permite ajustar el volumen desde el Mac."))
+                    NowPlayingIconButton(
+                        icon: "power", size: 10, tint: Color(hex: "#6B7079"),
+                        help: "Desconectar Ahora suena"
+                    ) { controller.disconnect() }
+                }
             }
             .padding(.top, 4)
             .padding(.trailing, 67 * expansion)

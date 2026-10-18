@@ -31,3 +31,7 @@ Esto limita trabajo y exposición, pero no demuestra consumo mínimo ni ausencia
 Las pruebas automáticas de fase uno cubren exclusiones de Spotify y Apple Music, fuentes alternativas y cambio de identidad de aplicación. La admisión del protocolo no garantiza compatibilidad real de cada reproductor.
 
 La fase uno se probó además con YouTube en Safari: metadatos, portada, progreso y pausa/reanudación correctos en el laboratorio; el origen publicado fue Safari Graphics and Media. No se ha validado navegación Anterior/Siguiente en Safari.
+
+## Control de volumen general del Mac
+
+La tarjeta Ahora suena incluye un control explícito del volumen de salida del sistema mediante CoreAudio público. No cambia el volumen de una pestaña ni utiliza MediaRemote para ello. Lee volumen/silencio y sigue el dispositivo de salida predeterminado; las escrituras solo ocurren al interactuar con el control. Si el dispositivo no expone controles de volumen modificables, se desactiva. Al subir desde silencio se desactiva el mute de esa salida. No se abre un flujo de audio ni se solicita grabación, micrófono o Automatización. Los observadores se retiran cuando la tarjeta deja de mostrarse; no se añade sondeo periódico.
