@@ -231,6 +231,12 @@ struct OverviewView: View {
             #if !APPSTORE
             MailController.shared.openMail()
             #endif
+        case "integration_whatsapp":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "net.whatsapp.WhatsApp") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
@@ -1936,6 +1942,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_whatsapp":
+            #if !APPSTORE
+            return WhatsAppSettings.enabled
+            #else
+            return false
+            #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
         case "integration_portfolio":
@@ -2195,6 +2207,12 @@ struct IntegrationCardView: View {
         } else if task.id == "integration_portfolio" {
             PortfolioCardView()
                 .transition(.opacity)
+        } else if task.id == "integration_whatsapp" {
+            // Its own card in every state (not linked, no message, conversations).
+            #if !APPSTORE
+            WhatsAppCardView()
+                .transition(.opacity)
+            #endif
         } else if mailHasData {
             #if !APPSTORE
             MailCardView()
