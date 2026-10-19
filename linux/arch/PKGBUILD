@@ -4,7 +4,7 @@
 
 pkgname=coucou-git
 _pkgname=coucou
-pkgver=0.4.0
+pkgver=0.5.0
 pkgrel=1
 pkgdesc="Mochi lives at the top of your screen and keeps an eye on your Claude Code sessions"
 arch=('x86_64' 'aarch64')
@@ -18,12 +18,15 @@ depends=(
   'gst-plugins-base'
   'gst-plugins-good'
   'dbus'
+  'alsa-lib'
   'xdg-utils'
   'hicolor-icon-theme'
 )
 optdepends=(
   'gnome-keyring: store API keys (or any other Secret Service provider)'
   'kwallet: store API keys (or any other Secret Service provider)'
+  'speech-dispatcher: « OK Coucou » answers out loud where the webview has no voice'
+  'espeak-ng: « OK Coucou » answers out loud where the webview has no voice'
 )
 makedepends=('git' 'cargo' 'nodejs' 'npm')
 provides=("$_pkgname")

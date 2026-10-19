@@ -90,6 +90,9 @@ struct FlowKeyLogic: Equatable {
         return .cancel
     }
 
+    /// Hands-free straight away (the pill's microphone button).
+    mutating func lock() { phase = .locked }
+
     /// The listen ended on its own (no microphone, nothing heard…).
     mutating func reset() { phase = .idle }
 }
