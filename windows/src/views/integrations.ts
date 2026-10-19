@@ -95,7 +95,7 @@ function idleCard(task: AgentTask, openSettings: () => void): HTMLElement {
         class: "link-btn",
         style: `color:${task.color}b3`,
         text: t("Open Visual Studio Code"),
-        onclick: () => void Bridge.openInVSCode(task.sessionCwd ?? null),
+        onclick: () => void Bridge.openInEditor(task.sessionCwd ?? null, "vscode"),
       }),
     );
   } else if (task.id === "agent_claude-desktop") {

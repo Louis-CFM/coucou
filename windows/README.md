@@ -58,7 +58,7 @@ You can also [build it yourself](#build-it-yourself).
 | Drag Mochi out of the island | He moves onto your desktop and hangs out there, in his outfit, watching your cursor. Drop him back on the island to bring him home |
 | On the desktop: click / right-click / double-click Mochi | Poke him / the wardrobe / he flies home. Drag him to move him |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
-| Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in VS Code, ‹ or `Esc` goes back |
+| Click a file in the session ticker | Its diff opens in the island; ↗ opens the file in your code editor (VS Code, or PhpStorm on the first changed line — Settings → Active pills → Code editor), ‹ or `Esc` goes back |
 | `Esc` | Closes the island |
 | Put a file named like one of Mochi's sounds (`finish.wav`, `approval.mp3`, `greet.m4a`…) in the sounds folder | It replaces that sound after **Settings → General → Reload sounds**. **Open sounds folder** shows the folder: `~/.config/coucou/sounds` on Linux, `%APPDATA%\Coucou\sounds` on Windows |
 | Tray icon | Open, Weekly recap, Wardrobe…, Settings…, Pause, Quit |
@@ -153,7 +153,7 @@ ElevenLabs with yours.
 ## Your pills
 
 **Settings… → Active pills** lists the tools you use, from the same catalog as
-the Mac app. Pick your **main tool** — VS Code, Cursor, Codex or Antigravity —
+the Mac app. Pick your **main tool** — VS Code, Cursor, PhpStorm, Codex or Antigravity —
 which is always there and doesn't take a slot, then declare up to four more:
 agents (Gemini CLI, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude
 Desktop), the chat providers (Anthropic, Google AI, OpenAI, Ollama, LM Studio),
@@ -178,6 +178,58 @@ never blocked or slowed down by Coucou.** If nobody answers a permission request
 in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+
+### Claude Code in WSL
+
+A session that runs inside a WSL distro is Linux: it reads the distro's own
+`~/.claude/settings.json` and cannot see the island's named pipe. What it can
+do is start a Windows program, and `coucou-hook.exe` is one, so the hooks of
+such a session run it through WSL. It reads the event on its standard input,
+talks to the island, and prints its answer, so **Allow and Deny clicked in the
+island reach the session in WSL** like any other. A call costs about 60 ms, nearly
+all of it WSL starting a Windows process.
+
+Open **Settings… → Claude Code in WSL**. The section only appears when WSL has
+distros. Each running distro lists the Linux users who have a `~/.claude`, with
+**Install hooks…** and **Uninstall hooks…**, which show the diff and take a
+dated backup exactly as above (the file is reached as
+`\\wsl.localhost\<distro>\home\<user>\.claude\settings.json`). A distro that
+isn't running is listed but left alone: reading its files would start it.
+
+The command written is the relay's path as the distro sees it
+(`/mnt/c/Users/…/coucou-hook.exe`, from the distro's own automount root in
+`/etc/wsl.conf`), guarded so that a session never reports a failing hook:
+`[ -x '<relay>' ] && '<relay>' <Event> || true`. If Windows interop is turned off
+in the distro, the hooks do nothing. Your own hooks stay as they are.
+
+"Open terminal" works for these sessions too, down to the tab (see below).
+
+**Paths.** A session in WSL reports Linux paths (`/home/me/proj`). For a diff's ↗
+and for "Open terminal"'s fallback, Coucou looks the path up in the running
+distros and turns it into its place on the distro's share
+(`\\wsl.localhost\<distro>\home\me\proj`), which is what Explorer and `code`
+understand. With VS Code's **Remote - WSL** extension installed, the file or
+folder opens in a window that runs in the distro (`code --remote wsl+<distro>
+<path>`); without it, VS Code opens the network path. A distro that isn't running
+isn't looked in (it would start), and a path that exists in two running distros
+goes to the first. The path still has to be an existing file or folder, given in
+full.
+
+**Plan usage.** Under each user, **Plan usage → Install relay…** puts the relay in
+as the distro's status line, with the same diff and backup. Claude Code hands the
+status line the session's JSON, so the command reads it once, gives it to the
+relay in the background (`coucou-hook --statusline --no-previous`, which only
+sends the plan limits and never delays the line) and to **your own status line**,
+which is run in the distro as before, so it keeps working. The one you had is
+saved beside `settings.json` (`coucou-statusline-previous.json`) and put back
+when you uninstall.
+
+**Stale hooks.** If Coucou moved or was reinstalled somewhere else, the commands
+written in a distro start a relay that is no longer there and do nothing, without
+an error. Settings checks that the relay in each command is the current one and
+says so (the dot goes red and a note asks to reinstall); the Claude Code pill is
+only "connected" when the hooks in WSL would actually run. A Coucou for Linux
+installed inside the distro is its own install and is never called stale.
 
 ### Plan usage
 
@@ -449,7 +501,15 @@ own window.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
-  process to the terminal or editor that runs it. A session in a classic
+  process to the terminal or editor that runs it. The relay takes that chain
+  itself, while it is alive, and sends it with the session's first events, so it
+  also works for events that don't wait for an answer, and for sessions in WSL
+  (the chain goes through `wsl.exe` up to the terminal). In **Windows Terminal**
+  a window holds many tabs: when a prompt is submitted, the window in front is
+  the session's terminal, so Coucou remembers its selected tab (through UI
+  Automation) and "Open terminal" brings that window forward with that tab
+  selected, found by its runtime ID or, failing that, by a title that is its
+  alone. Elsewhere, only the window comes forward. A session in a classic
   console window (`cmd.exe` or PowerShell without Windows Terminal) has no such
   ancestor — conhost owns that window — so its folder opens in VS Code instead,
   as it does when `code` is on your `PATH` and nothing was found. Linux walks
@@ -478,6 +538,20 @@ own window.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
+- The PhpStorm pill (Windows and Linux only, the Mac has none) carries Claude
+  Code running in a JetBrains terminal, told apart by `TERMINAL_EMULATOR=JetBrains-JediTerm`.
+  Every JetBrains IDE sets it, so a WebStorm or IntelliJ terminal lands there too.
+- **Code editor** (Settings → Active pills) is the editor "Open terminal"'s fallback
+  and the diff's ↗ open things in: VS Code by default, or PhpStorm, which is
+  looked for on `PATH` (`phpstorm`, `phpstorm.sh`, `pstorm`), in the JetBrains
+  Toolbox's scripts and in `/snap/bin`, and opens the file on its first changed
+  line (`phpstorm --line N <file>`) in the window of the open project that holds
+  it. On Linux (X11), "Open terminal" brings forward the PhpStorm window of the
+  session's project, found through the Claude Code plugin's lock files in
+  `~/.claude/ide` and the `CLAUDE_CODE_SSE_PORT` of the session (the relay sends
+  it as `ide_port`); without them, by the project's root and the window's title.
+  The terminal's tab is not selected: PhpStorm cannot be asked to. It is your pick and is never detected. A
+  session in WSL opens in PhpStorm through its `\\wsl.localhost\…` share.
 - Hermes: Coucou writes the plugin but does not run the `hermes` CLI, so it is
   turned on once by hand. Hermes runs natively on Linux; on Windows it is
   untested.
