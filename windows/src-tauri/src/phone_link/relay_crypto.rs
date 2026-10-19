@@ -363,7 +363,7 @@ fn pad(line: &[u8]) -> Vec<u8> {
 }
 
 fn unpad(plain: &[u8]) -> Result<Vec<u8>, ChannelError> {
-    if plain.len() < BLOCK || plain.len() % BLOCK != 0 {
+    if plain.len() < BLOCK || !plain.len().is_multiple_of(BLOCK) {
         return Err(ChannelError::BadPadding);
     }
     let n = u32::from_be_bytes(plain[..4].try_into().unwrap()) as usize;

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Checks what the CI would check, on what is being committed. Turn it on with `make hooks`;
+# skip it once with `SKIP_HOOKS=1 git commit ...` (or `git commit --no-verify`).
+set -euo pipefail
+[ -n "${SKIP_HOOKS:-}" ] && exit 0
+cd "$(git rev-parse --show-toplevel)"
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+ts=$(grep -E '^windows/(src|tests)/.*\.(ts|mjs|json)$|^windows/(package|tsconfig|vite\.config)' <<<"$staged" || true)
+rs=$(grep -E '^windows/.*\.(rs|toml)$|^windows/Cargo\.lock$' <<<"$staged" || true)
+
+if [ -n "$ts" ]; then
+    if node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 22 ? 1 : 0)' 2>/dev/null; then
+        echo "pre-commit: types and island tests"
+        (cd windows && npx tsc --noEmit && npm test --silent)
+    else
+        echo "pre-commit: Node 22+ needed for the TypeScript checks, skipped (nvm use)" >&2
+    fi
+fi
+
+if [ -n "$rs" ]; then
+    echo "pre-commit: clippy"
+    (cd windows && node scripts/build-hook.mjs --fast >/dev/null && cargo clippy --workspace --all-targets --locked -- -D warnings)
+fi

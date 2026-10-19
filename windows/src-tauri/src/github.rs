@@ -114,6 +114,12 @@ pub enum GitHubEvent {
         #[serde(rename = "prId")]
         pr_id: String,
     },
+    /// GitLab only: a discussion thread waits for my answer (gitlab_dash.rs).
+    #[serde(rename = "commentPending")]
+    CommentPending {
+        #[serde(rename = "threadId")]
+        thread_id: String,
+    },
 }
 
 fn str_at<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
@@ -131,7 +137,7 @@ fn pr_basics(node: &Value) -> Option<(String, String, String, String, i64, bool)
     Some((format!("{repo}#{number}"), title, url, repo, number, is_draft))
 }
 
-fn nodes<'a>(parent: Option<&'a Value>) -> &'a [Value] {
+fn nodes(parent: Option<&Value>) -> &[Value] {
     parent
         .and_then(|p| p.get("nodes"))
         .and_then(Value::as_array)

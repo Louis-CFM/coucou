@@ -77,6 +77,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // Claude Code in Cursor's terminal: the same hooks as Claude Code.
   { id: "agent_cursor", name: "Cursor", color: "#C0C4CC", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
+  // Claude Code in a JetBrains terminal (the relay tags it `phpstorm`): the
+  // same hooks as Claude Code, so there is nothing more to install.
+  { id: "agent_phpstorm", name: "PhpStorm", color: "#B345F1", category: "workspace",
+    subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_antigravity", name: "Antigravity", color: "#E879F9", category: "workspace",
     subtitle: N_("Integration"), source: "agent", support: "yes", connect: hooks },
   { id: "agent_codex", name: "Codex", color: "#2DD4BF", category: "workspace",
@@ -122,6 +126,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("vercel-token") },
   { id: "integration_github", name: "GitHub", color: "#F4505E", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("github-token") },
+  { id: "integration_gitlab", name: "GitLab", color: "#FC6D26", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("gitlab-token") },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("notion-api-key") },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A", category: "service",
@@ -178,6 +184,7 @@ export function sessionSubtitle(id: string): string {
   switch (id) {
     case "integration_claude": return "Claude Code";
     case "agent_cursor": return "Cursor";
+    case "agent_phpstorm": return "PhpStorm";
     case "agent_codex": return "Codex";
     case "agent_hermes": return "Hermes";
     case "agent_claude-desktop": return "Claude Desktop";

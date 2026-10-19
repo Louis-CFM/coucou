@@ -26,6 +26,10 @@ export const ICONS = {
   chevronUp: "M5.5 15 12 8.5 18.5 15",
   // checkmark
   check: "M5 12.5 9.5 17 19 7.5",
+  // sidebar.right (stroke): a window with a panel on its right, the GitLab card's ⤢
+  panel: "M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-11zM14.5 5v14",
+  // arrows.inward (stroke): fold the panel into its slim bar
+  collapse: "M10 4v6H4M14 4v6h6M10 20v-6H4M14 20v-6h6",
   // arrow.up (send)
   arrowUp: "M12 4.5 5.5 11l1.5 1.5 4-4V19.5h2V8.5l4 4L18.5 11 12 4.5z",
   // exclamationmark
