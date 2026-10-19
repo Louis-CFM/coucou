@@ -120,6 +120,8 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil) {
         guard let entry = approvals.remove(id: id) else { return }
+        let age = Int(Date().timeIntervalSince(entry.received))
+        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? "dropped")")
         let source = approvalSources.removeValue(forKey: id)
         if let json {
             let fd = entry.fd
@@ -3818,8 +3820,14 @@ extension HookServer {
         case "max_output_tokens":     return String(localized: "The answer was too long and was cut.")
         case "model_not_found":       return String(localized: "This model is not available.")
         default:
-            // A readable error is shown as it is; a bare status code ("500") says nothing.
-            return kind.count > 3 && Int(kind) == nil ? kind : nil
+            // Claude Code often sends only `error: "unknown"`: its last message then usually
+            // carries the API's own words ("API Error: 529 Overloaded…").
+            if let last = payload["last_assistant_message"] as? String,
+               last.range(of: "error", options: .caseInsensitive) != nil {
+                return DiffEngine.toOneLine(last)
+            }
+            // A readable error is shown as it is; "unknown" or a bare status code says nothing.
+            return kind.count > 3 && Int(kind) == nil && kind != "unknown" ? kind : nil
         }
     }
 }
