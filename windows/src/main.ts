@@ -1,5 +1,6 @@
 // Entry point: boot the bridge, wire the island, start the greeting.
 
+import type { VitalsReport } from "./core/vitals";
 import "./style.css";
 import { Bridge, IS_TAURI, onEvent } from "./core/bridge";
 import { Sound } from "./core/sound";
@@ -59,6 +60,7 @@ async function main() {
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
   await onEvent<null>("wake-hover", () => island.wakeFromEdge());
+  await onEvent<VitalsReport>("vitals", (r) => island.setVitals(r));
   await onEvent<boolean>("browser-foreground", (on) => island.setBrowserForeground(on));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */

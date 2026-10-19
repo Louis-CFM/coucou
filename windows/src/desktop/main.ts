@@ -7,6 +7,7 @@
 // like the Mac, and a few frames a second asleep — with no cursor polling at
 // all while he sleeps.
 
+import { moodOf, type VitalsReport } from "../core/vitals";
 import { Bridge, emitToWindow, onEvent, type DesktopMode } from "../core/bridge";
 import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
@@ -86,6 +87,11 @@ class DesktopMochi {
       this.schedule();
     });
     await onEvent<Point>(DESKTOP_EVENTS.cursor, (p) => this.notePointer(p));
+    // Mochi feels the computer out here too (vitals.rs).
+    await onEvent<VitalsReport>("vitals", (r) => {
+      this.engine.moodTarget = moodOf(r);
+      this.schedule();
+    });
     await onEvent<boolean>(DESKTOP_EVENTS.visible, (on) => this.setVisible(on));
     await onEvent<string>(DESKTOP_EVENTS.flight, (kind) => {
       // He fades in on the way out of the island (alphaValue 0 → 1 on macOS).

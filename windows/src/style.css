@@ -70,6 +70,38 @@ body {
 
 /* ── Island ─────────────────────────────────────────────────────────────── */
 
+/* How the computer is doing, under the island while the pointer is on Mochi
+   (VitalsHoverLine.swift). */
+#vitals-line {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -4px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font: 600 11px var(--font);
+  color: #e1e3e6;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+}
+
+#vitals-line.on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+#vitals-line i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
 #island {
   position: absolute;
   top: 0;

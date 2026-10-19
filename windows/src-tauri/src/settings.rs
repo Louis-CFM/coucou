@@ -97,6 +97,10 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// Mochi reacts to the computer: sweat at full processor load, a flush when
+    /// it is warm, puffed up when memory is short, sleepy on a low battery
+    /// (vitals.rs, the Mac's "Mochi and your Mac"). On by default, as there.
+    pub mochi_feels_computer: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -162,6 +166,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            mochi_feels_computer: true,
         }
     }
 }
@@ -448,7 +453,8 @@ mod tests {
   "phoneUsage": true,
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
-  "phoneRelayUrl": "wss://relay.example.workers.dev"
+  "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "mochiFeelsComputer": false
 }"##;
 
     fn custom() -> Value {
@@ -956,6 +962,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "mochiFeelsComputer",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

@@ -9,6 +9,10 @@ import { Sound } from "../core/sound";
 import type { BotEmoteName, BotStateName } from "../core/layout";
 import { PUMPKIN_BODY, drawOutfitBehind, drawOutfitFront, makeHead } from "./outfits";
 import type { Outfit } from "./wardrobe";
+import {
+  CALM, drawMoodExtras, drawMoodTint, moodAnimating, restingHop, undoMoodOffsets, updateMood,
+  type MochiMood, type MoodDrop, type MoodHop,
+} from "./mood";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -250,14 +254,24 @@ export class BotEngine {
   private badgeToken = 0;
 
   private tweens = new Map<PropKey, Tween>();
-  private locks = new Set<PropKey>();
+  locks = new Set<PropKey>();
   private particles: Particle[] = [];
 
   lookX = 0;
   lookY = 0;
 
   lastTime = now();
-  private t0 = now() - Math.random() * 5;
+  t0 = now() - Math.random() * 5;
+
+  // The computer's mood (mood.ts, MochiMood.swift): targets from Rust, eased levels, animation state.
+  moodTarget: MochiMood = CALM;
+  moodBusy = 0; moodHot = 0; moodFull = 0; moodTired = 0;
+  nextMoodDrop = 0; nextMoodYawn = 0;
+  moodDrops: MoodDrop[] = [];
+  hop: MoodHop = restingHop();
+  moodShiftApplied = 0; moodLiftApplied = 0;
+  stressLook = { x: 0, y: 0 }; nextStressLook = 0;
+  stressTremble = { x: 0, y: 0 }; nextNervousBlink = 0;
   private nextBlink = now() + 1.5 + Math.random() * 2;
   waveUntil = 0;
   waveStart = 0;
@@ -544,6 +558,7 @@ export class BotEngine {
       this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
       this.isMini ||
+      moodAnimating(this) ||
       this.isDancing || this.dancingLevel > 0.001 ||
       Math.abs(this.tgYaw - this.yaw) > 0.002 ||
       Math.abs(this.tgPitch - this.pitch) > 0.002 ||
@@ -573,6 +588,8 @@ export class BotEngine {
   update(dt: number) {
     const n = now();
     const nowMs = performance.now();
+    // The stressed hop of the last frame comes off first (mood.ts).
+    undoMoodOffsets(this);
 
     for (const tw of [...this.tweens.values()]) {
       const k = tw.keys[tw.index];
@@ -644,6 +661,9 @@ export class BotEngine {
     }
 
     if (this.isMini && n > this.miniNextBehavior) this.doMiniBehaviorLoop();
+
+    // The computer's mood (sweat, puffed up, tired) adjusts the targets above.
+    updateMood(this, dt, n);
 
     const kLook = 1 - Math.pow(0.0025, dt);
     if (!this.locks.has("yaw")) this.yaw += (this.tgYaw - this.yaw) * kLook;
@@ -800,8 +820,10 @@ export class BotEngine {
 
     const body = this.bodyPath(rx, ry, R);
     this.drawBody(x, body, R, rx, ry);
+    // A warm computer flushes him (mood.ts).
+    drawMoodTint(this, x, body, ry);
 
-    const blushVal = Math.max(this.blush, this.tint * 0.5) * (1 - this.morph);
+    const blushVal = Math.max(this.blush, this.tint * 0.5, this.moodHot * 0.85) * (1 - this.morph);
     if (blushVal > 0.01) {
       x.save();
       x.clip(body);
@@ -827,6 +849,7 @@ export class BotEngine {
       this.drawBadge(x, this.badge, R, cx, cy);
     }
     this.drawParticles(x, R, cx, cy);
+    drawMoodExtras(this, x, R, ry, cx, cy, now());
   }
 
   private bodyPath(rx: number, ry: number, R: number): Path2D {
@@ -943,11 +966,13 @@ export class BotEngine {
       const fx = lerp(Math.max(0.18, Math.cos(eyeYaw)), 1, this.morph * 0.7);
       const fy = lerp(Math.max(0.18, cp), 1, this.morph * 0.7);
       const eyeMult = this.isMini ? 1.9 : 1.0;
-      const ew = R * EYE_W * this.es * eyeMult;
-      const eh = R * EYE_H * this.es * eyeMult;
+      // Stressed (mood.ts): a little smaller, like pupils tightening with fear, and trembling.
+      const fear = this.isMini ? 0 : Math.min(1, this.moodBusy * 1.3);
+      const ew = R * EYE_W * this.es * eyeMult * (1 - 0.2 * fear);
+      const eh = R * EYE_H * this.es * eyeMult * (1 - 0.1 * fear);
 
       x.save();
-      x.translate(ex, ey);
+      x.translate(ex + this.stressTremble.x * R, ey + this.stressTremble.y * R);
       x.scale(fx, fy);
       this.drawEyeShape(x, shape, ew, eh, sd, ink);
       x.restore();

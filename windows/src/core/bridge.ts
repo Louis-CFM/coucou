@@ -358,6 +358,8 @@ export const Bridge = {
 
   /** Tray → Pause. Stops the integration pollers, not just the island. */
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
+  /** Reads the computer for Mochi's mood while he is on screen (vitals.rs). */
+  vitalsSetActive: (on: boolean) => call<void>("vitals_set_active", { on }),
 
   // ── Global shortcuts ──────────────────────────────────────────────────────
   /** How each global shortcut went when Rust last registered them. */

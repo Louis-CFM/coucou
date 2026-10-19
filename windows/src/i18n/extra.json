@@ -4372,6 +4372,50 @@
    "pt-BR": "Todos os {max} espaços de pílulas estão em uso. Desative uma para adicionar {name}.",
    "ru": "Все {max} места для пилюль заняты. Отключите одну, чтобы добавить {name}.",
    "id": "Semua {max} slot pil sedang dipakai. Matikan satu untuk menambahkan {name}."
+  },
+  "Mochi and your computer": {
+   "zh-Hans": "Mochi 与你的电脑",
+   "hi": "Mochi और आपका कंप्यूटर",
+   "es": "Mochi y tu ordenador",
+   "ar": "Mochi وحاسوبك",
+   "fr": "Mochi et ton ordinateur",
+   "bn": "Mochi ও আপনার কম্পিউটার",
+   "pt-BR": "Mochi e seu computador",
+   "ru": "Mochi и ваш компьютер",
+   "id": "Mochi dan komputermu"
+  },
+  "He sweats when the processor is at full load, flushes when the computer is hot, puffs up when memory is short and gets sleepy when the battery is low. Point at Mochi to see why. Read only while Mochi is on screen; nothing leaves your computer.": {
+   "zh-Hans": "处理器满载时他会出汗，电脑发热时他会脸红，内存不足时他会鼓起来，电量低时他会犯困。把鼠标指向 Mochi 即可查看原因。仅在 Mochi 显示在屏幕上时读取；任何数据都不会离开你的电脑。",
+   "hi": "प्रोसेसर पूरे लोड पर होने पर वह पसीने से भर जाता है, कंप्यूटर गर्म होने पर लाल हो जाता है, मेमोरी कम होने पर फूल जाता है और बैटरी कम होने पर उसे नींद आने लगती है। कारण देखने के लिए Mochi पर पॉइंटर ले जाएँ। केवल तभी पढ़ा जाता है जब Mochi स्क्रीन पर हो; कुछ भी आपके कंप्यूटर से बाहर नहीं जाता।",
+   "es": "Suda cuando el procesador está al máximo, se sonroja cuando el ordenador está caliente, se hincha cuando falta memoria y le entra sueño cuando la batería está baja. Señala a Mochi para ver por qué. Solo se lee mientras Mochi está en pantalla; nada sale de tu ordenador.",
+   "ar": "يتعرّق عندما يعمل المعالج بكامل طاقته، ويحمرّ عندما يسخن الحاسوب، وينتفخ عندما تنقص الذاكرة، ويشعر بالنعاس عندما تنخفض البطارية. أشر إلى Mochi لترى السبب. لا تتم القراءة إلا عندما يكون Mochi على الشاشة؛ ولا يغادر شيء حاسوبك.",
+   "fr": "Il transpire quand le processeur est à fond, rougit quand l'ordinateur chauffe, gonfle quand la mémoire manque et a sommeil quand la batterie est faible. Pointe Mochi pour savoir pourquoi. Lu seulement quand Mochi est à l'écran ; rien ne quitte ton ordinateur.",
+   "bn": "প্রসেসর পুরো লোডে থাকলে সে ঘামে, কম্পিউটার গরম হলে লাল হয়ে যায়, মেমরি কম থাকলে ফুলে ওঠে আর ব্যাটারি কম থাকলে ঘুম পায়। কারণ জানতে Mochi-র দিকে পয়েন্টার নিন। কেবল Mochi স্ক্রিনে থাকলেই পড়া হয়; কিছুই আপনার কম্পিউটার ছেড়ে যায় না।",
+   "pt-BR": "Ele sua quando o processador está no máximo, fica vermelho quando o computador esquenta, incha quando falta memória e fica com sono quando a bateria está baixa. Aponte para o Mochi para ver por quê. Só é lido enquanto o Mochi está na tela; nada sai do seu computador.",
+   "ru": "Он потеет, когда процессор загружен полностью, краснеет, когда компьютер нагревается, раздувается, когда не хватает памяти, и засыпает, когда садится батарея. Наведите на Mochi, чтобы узнать причину. Данные читаются только пока Mochi на экране; ничего не покидает ваш компьютер.",
+   "id": "Ia berkeringat saat prosesor bekerja penuh, memerah saat komputer panas, menggembung saat memori kurang, dan mengantuk saat baterai lemah. Arahkan ke Mochi untuk melihat alasannya. Hanya dibaca saat Mochi ada di layar; tidak ada yang keluar dari komputermu."
+  },
+  "Your computer is hot": {
+   "zh-Hans": "你的电脑很烫",
+   "hi": "आपका कंप्यूटर गर्म है",
+   "es": "Tu ordenador está caliente",
+   "ar": "حاسوبك ساخن",
+   "fr": "Ton ordinateur est chaud",
+   "bn": "আপনার কম্পিউটার গরম",
+   "pt-BR": "Seu computador está quente",
+   "ru": "Компьютер перегрет",
+   "id": "Komputermu panas"
+  },
+  "Your computer is warm": {
+   "zh-Hans": "你的电脑有点热",
+   "hi": "आपका कंप्यूटर थोड़ा गर्म है",
+   "es": "Tu ordenador está templado",
+   "ar": "حاسوبك دافئ",
+   "fr": "Ton ordinateur chauffe",
+   "bn": "আপনার কম্পিউটার কিছুটা গরম",
+   "pt-BR": "Seu computador está morno",
+   "ru": "Компьютер нагревается",
+   "id": "Komputermu hangat"
   }
  }
 }

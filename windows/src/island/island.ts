@@ -27,6 +27,7 @@ import { refreshHookPills } from "./integrations";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
+import { describeVitals, moodOf, vitalsDot, type VitalsReport } from "../core/vitals";
 
 const BOT_OVERHANG = 40;
 const CLAUDE_DESKTOP_ID = "agent_claude-desktop";
@@ -129,6 +130,7 @@ export class Island {
       this.onGreetingDone?.();
     };
     State.subscribe(() => {
+      this.syncVitalsReader();
       this.dirty = true;
       this.ensureRunning();
     });
@@ -302,7 +304,8 @@ export class Island {
     this.greetingCanvas.style.width = `${EXPANDED_W}px`;
     this.greetingCanvas.style.height = "150px";
 
-    this.root.append(this.wakeStrip, this.islandEl);
+    this.vitalsLine = h("div", { id: "vitals-line" });
+    this.root.append(this.wakeStrip, this.islandEl, this.vitalsLine);
     this.applyGeometry();
   }
 
@@ -431,6 +434,51 @@ export class Island {
    */
   minimize() {
     this.fsm.minimize();
+  }
+
+  // ── Mochi feels the computer (core/vitals.ts, src-tauri/src/vitals.rs) ─────
+
+  private vitalsLine!: HTMLElement;
+  private vitals: VitalsReport | null = null;
+  private vitalsReading = false;
+  private overMochi = false;
+
+  /** Reads the computer only while Mochi is on screen and the setting is on. */
+  private syncVitalsReader() {
+    const want = State.settings.mochiFeelsComputer !== false &&
+      (State.mode !== "hidden" || State.mochiOnDesktop);
+    if (want === this.vitalsReading) return;
+    this.vitalsReading = want;
+    void Bridge.vitalsSetActive(want);
+  }
+
+  /** A reading from Rust: Mochi's mood, and the line that explains it. */
+  setVitals(report: VitalsReport | null) {
+    this.vitals = report;
+    this.engine.moodTarget = moodOf(report);
+    if (report?.woke) {
+      // Plugged in while tired: he wakes up.
+      this.engine.triggerEmote("happy");
+      Sound.play("pop");
+    }
+    this.showVitalsLine();
+    this.ensureRunning();
+  }
+
+  private showVitalsLine() {
+    const el = this.vitalsLine;
+    if (!el) return;
+    const text = this.overMochi ? describeVitals(this.vitals) : null;
+    if (!text || !this.vitals) {
+      el.classList.remove("on");
+      return;
+    }
+    if (el.dataset.text !== text) {
+      el.dataset.text = text;
+      el.replaceChildren(h("i", { style: `background:${vitalsDot(this.vitals)}` }), h("span", { text }));
+    }
+    el.style.top = `${this.height.value + 10}px`;
+    el.classList.add("on");
   }
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
@@ -903,6 +951,9 @@ export class Island {
     if (overBot && !this.botHovering) this.botHoverIn(x, y);
     if (!overBot && this.botHovering) this.cancelBotHover();
     this.botHovering = overBot;
+    // How the computer is doing, under the island while the pointer is on Mochi.
+    this.overMochi = State.mode !== "hidden" && State.stateOverride == null && this.isBotHit(x, y);
+    this.showVitalsLine();
     if (this.botHovering) {
       const d = Math.hypot(x - this.botHoverStart.x, y - this.botHoverStart.y);
       if (d > 40) {

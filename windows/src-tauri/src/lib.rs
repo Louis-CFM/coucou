@@ -35,6 +35,7 @@ mod sounds;
 mod speech;
 mod spotify;
 mod tray;
+mod vitals;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
@@ -829,6 +830,7 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            vitals::vitals_set_active,
             flow::flow_status,
             flow::flow_set_prefs,
             flow::flow_history,
