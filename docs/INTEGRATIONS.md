@@ -202,6 +202,45 @@ Priorité : failure > review demandée > success. Un seul badge/son par cycle.
 
 ---
 
+## 1quinquies. GitLab (pulse)
+
+**Plateforme** : macOS (build GitHub et App Store), Windows et Linux. Pill `integration_gitlab`, indépendante de GitHub : on peut activer l'une, l'autre ou les deux.
+
+**Token** : token d'accès personnel avec le scope `read_api`, stocké dans le Trousseau (`gitlab-token`). **Instance** : URL dans le Trousseau (`gitlab-url`), `https://gitlab.com` si vide, ou une instance auto-hébergée. `https` obligatoire (`http` accepté seulement pour `localhost`) ; seuls les liens vers cet hôte s'ouvrent. Un seul compte GitLab pour l'instant.
+
+### Données récupérées
+
+API REST v4 de l'instance, en-tête `PRIVATE-TOKEN` (`GitLabPoller.swift`, parsing pur dans `GitLabPulse.swift`) :
+- **Mes MR ouvertes** (20 dernières) : `GET /merge_requests?scope=created_by_me&state=opened`, puis `GET /projects/:id/merge_requests/:iid` pour le `head_pipeline.status` (la liste n'en porte pas).
+- **MR à relire** : celles où je suis relecteur (`reviewer_username`) puis celles qui me sont assignées (`scope=assigned_to_me`), sans les miennes ni les doublons.
+- **Pipelines des branches par défaut** : `GET /projects?owned=true&archived=false&order_by=last_activity_at` (10 projets), puis `GET /projects/:id/pipelines?ref=<défaut>&per_page=1`.
+- **Stats** : nombre de projets et d'étoiles (`GET /projects?owned=true`).
+- **Activité** : GitLab n'a pas de calendrier de contributions dans son API ; la grille compte les événements de l'utilisateur (`GET /events?after=…`, 10 pages de 100 au plus) par jour sur 53 semaines, niveaux 0 à 4 relatifs au jour le plus chargé. Proche du calendrier GitLab, pas identique.
+
+Les réponses sont converties dans les types de GitHub (`GitHubPulse`, `GitHubPR`, `GitHubRepoCI`, `GitHubActivity`) : mêmes vues (`GitProvider` donne le nom, la couleur, « MR » / « Pipelines » et l'hôte autorisé), mêmes règles d'alertes que ci-dessus, mêmes cadences (stats 5 min, pulse 5 min ou 60 s si un pipeline tourne, activité 30 min). Données en mémoire (`AppState.gitlabPulse`, `gitlabActivity`, `gitlabStats`), remises à nil si le token ou l'URL change, ou si la pill est désactivée.
+
+| Statut de pipeline GitLab | `CIState` |
+|---------------------------|-----------|
+| `created`, `waiting_for_resource`, `preparing`, `pending`, `running`, `scheduled` | `.pending` |
+| `success`, `success_with_warnings` | `.success` |
+| `failed` | `.failure` |
+| `canceled`, `skipped`, `manual`, autre ou absent | `.unknown` |
+
+### Panneau des merge requests
+
+Un bouton dans l'en-tête de la carte GitLab (`GitLabPanelController.toggle()`) ouvre un petit panneau, version épurée du dashboard de merge requests interprojet de GitLab (tous les projets visibles par le token). Même comportement que sur Windows et Linux ; données et règles dans `GitLabDash.swift` (pur, testé par `tests/GitLabDashTests.swift`), lecture dans `GitLabPanelService.swift`, fenêtre et vues dans `GitLabPanel.swift`.
+
+- **Fenêtre** : `NSPanel` sans cadre, transparent, au niveau `.statusBar`, collé contre le bord droit de l'écran de l'île (`IslandWindowController.islandScreen()`), 80 pt sous le haut de la zone visible ; coins gauches arrondis, côté droit plat. Elle n'est pas déplaçable. Elle s'ouvre repliée : une fine barre de 52 pt (logo + 4 pastilles). Le survol (150 ms, par une zone de suivi `NSTrackingArea` car `onHover` reste muet quand l'app n'est pas active) ou un clic sur une pastille la déplie en carte de 340 pt, vers la gauche ; elle se replie quand le curseur est parti depuis `AppState.autoCloseInterval` (le délai de l'île), jamais pendant la rédaction d'une réponse. Fermée avec ✕ ou le bouton de la carte, et quand la pill est désactivée ou le token retiré.
+- **Quatre sections repliables** : Commentaires en attente, À relire, Mes MR (approbations, fils ouverts), Approuvées. Compte, badge « +N » pour le nouveau depuis la dernière ouverture (mémorisé dans `UserDefaults`, `gitlabPanelState`), couleur d'attente pour les deux premières, pulsation de la pastille « Commentaires » quand un commentaire arrive pendant que la barre est repliée (la barre ne se déplie jamais seule).
+- **Commentaires en attente** : fil résoluble non résolu dont le dernier message n'est pas le mien, sur une MR dont je suis l'auteur ou où j'ai écrit dans le fil ; commentaire simple (non résoluble) dont le dernier message n'est pas le mien et plus récent que tout ce que j'ai écrit sur la MR. Les notes système, celles des comptes automatiques (bots, jetons de projet) et le rapport « Quality Gate » de SonarQube (reconnu par son texte, car il vient souvent d'un compte ordinaire) sont écartés ; un fil qui n'en contient que de telles notes n'est ni affiché ni compté.
+- **Un fil ouvert** : messages (Markdown via `ChatMarkdownView`), extrait de code (3 lignes autour, lu dans le fichier au commit du commentaire), bouton « Ouvrir dans GitLab ». On peut **répondre** (⌘↩), **résoudre** et **rouvrir** ; l'approbation reste dans GitLab. Après une réponse le fil quitte la liste ; en cas d'échec, le brouillon est gardé avec un message.
+- **Token** : `read_api` suffit pour tout lire ; répondre et résoudre demandent le scope `api` (le même token, droits augmentés), détecté par `GET /personal_access_tokens/self`.
+- **Périmètre lu** : mes MR ouvertes, celles où je suis relecteur ou assigné, celles que j'ai approuvées (événements `approved` des 60 derniers jours) et celles où j'ai commenté (14 jours), 30 MR au plus ; pour chacune le détail (pipeline), les approbations quand elles comptent et les discussions. Seul ce qui a bougé est relu (`updated_at`, ou pipeline en cours). Cadence : 5 min, 60 s panneau ouvert, tout de suite après une action. Un nouveau commentaire en attente met un badge sur la pill et joue le son « question » (`GitHubEvent.commentPending`).
+
+**Pas encore** : synchro iPhone, widgets, voix.
+
+---
+
 ## 2. n8n (workflows de Louis)
 
 - Réglages : URL de l'instance (probablement `https://n8nlouis.dcsys.tech`, **à confirmer avec Louis**) et clé API n8n (Trousseau). La clé se crée dans n8n : Settings → n8n API.

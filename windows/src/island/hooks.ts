@@ -18,6 +18,7 @@ import { N_, t } from "../i18n/i18n";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
+const PHPSTORM_ID = "agent_phpstorm";
 
 /** Clears the approval card if no decision was made before the hook gave up. */
 let pendingTimeout: number | null = null;
@@ -65,7 +66,7 @@ interface HookPayload {
   coucou_agent?: string;
   /** Hermes: where the session runs (telegram, discord…; "cli" in a terminal). */
   platform?: string;
-  /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
+  /** "cursor" or "phpstorm" when Claude Code runs in that editor's terminal (set by the relay). */
   term_editor?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
@@ -185,6 +186,20 @@ function upsert(id: string, projectName: string, cwd: string, sessionId: string)
   if (t && sessionId) t.sessionId = sessionId;
 }
 
+/** The pill now stands for `sessionId`, in `cwd`: what "Open terminal" opens. */
+function followSession(id: string, sessionId: string, cwd: string) {
+  const t = State.tasks.find((x) => x.id === id);
+  if (!t || !sessionId) return;
+  t.sessionId = sessionId;
+  if (cwd) t.sessionCwd = cwd;
+}
+
+/** The pill stands for a session other than `sessionId`, which has not ended. */
+function followsAnother(id: string, sessionId: string): boolean {
+  const followed = State.tasks.find((x) => x.id === id)?.sessionId;
+  return !!followed && !!sessionId && followed !== sessionId;
+}
+
 /** The session is over: the pill goes back as it was, or away if it was only there for it. */
 function clearSession(id: string) {
   const t = State.tasks.find((x) => x.id === id);
@@ -254,9 +269,11 @@ function handleHook(island: Island, payload: HookPayload) {
 
   // Route to the right pill. Valid coucou_agent → dynamic "agent_<name>" pill.
   // "claude" is reserved; absent or invalid → Claude Code's own pill: Cursor's
-  // when it runs in Cursor's terminal (Mac #120), VS Code's otherwise.
+  // when it runs in Cursor's terminal (Mac #120), PhpStorm's in a JetBrains one,
+  // VS Code's otherwise.
   const validAgent = validateAgent(payload.coucou_agent);
-  const workspaceId = payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+  const workspaceId =
+    payload.term_editor === "cursor" ? CURSOR_ID : payload.term_editor === "phpstorm" ? PHPSTORM_ID : CLAUDE_ID;
   const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
@@ -312,6 +329,12 @@ function handleHook(island: Island, payload: HookPayload) {
   // Read after the card above is dropped: its pill may have handed the front
   // back to the pill you were on.
   const focused = State.focusId === agentId;
+
+  // Several sessions share one pill. It follows the one that spoke last, whatever
+  // it said, so "Open terminal" goes to the window of the session on the card —
+  // a turn that ends with a Stop or a PostToolUse names its session too, not only
+  // the events that create or rename the pill.
+  if (name !== "SessionEnd") followSession(agentId, sessionId, cwd);
 
   switch (name) {
     case "SessionStart":
@@ -386,6 +409,7 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
+      ensurePill();
       State.updateTask(agentId, "finished");
       // Claude Code puts the turn's answer in the Stop payload itself, so there is
       // no transcript to read (the relay does not even forward its path). Other
@@ -425,6 +449,7 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "StopFailure":
+      ensurePill();
       supersedeStop();
       State.updateTask(agentId, "error");
       Sound.play("error");
@@ -433,6 +458,8 @@ function handleHook(island: Island, payload: HookPayload) {
       break;
 
     case "SessionEnd":
+      // Another session is the one on the pill: this one ending is not its end.
+      if (followsAnother(agentId, sessionId)) break;
       // Nothing left for the timer to do, and it must not outlive the session: a
       // pill recreated within 5.2 s would be removed by it.
       cancelStopTimer(agentId);

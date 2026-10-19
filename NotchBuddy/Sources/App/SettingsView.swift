@@ -1,6 +1,7 @@
 import SwiftUI
 import ServiceManagement
 import AppKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
@@ -103,6 +104,8 @@ struct SettingsView: View {
     @State private var n8nKey: String       = KeychainStore.shared.get("n8n-api-key")     ?? ""
     @State private var vercelToken: String  = KeychainStore.shared.get("vercel-token")    ?? ""
     @State private var githubToken: String  = KeychainStore.shared.get("github-token")    ?? ""
+    @State private var gitlabUrl: String    = KeychainStore.shared.get("gitlab-url")      ?? ""
+    @State private var gitlabToken: String  = KeychainStore.shared.get("gitlab-token")    ?? ""
     @State private var stripeKey: String    = KeychainStore.shared.get("stripe-api-key")  ?? ""
     @State private var calcomKey: String    = KeychainStore.shared.get("calcom-api-key")  ?? ""
     @State private var notionKey: String    = KeychainStore.shared.get("notion-api-key")  ?? ""
@@ -150,6 +153,21 @@ struct SettingsView: View {
     #endif
     @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
     @State private var customSoundCount = SoundEngine.shared.customized.count
+    @State private var pickedSound = "approval"
+
+    private func chooseSoundFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.audio]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if SoundEngine.shared.setCustom(pickedSound, from: url) {
+            customSoundCount = SoundEngine.shared.customized.count
+            SoundEngine.shared.play(pickedSound)
+        } else {
+            NSSound.beep()
+        }
+    }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -328,6 +346,19 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
+                }
+                .disabled(!state.soundEnabled)
+                HStack(spacing: 8) {
+                    Picker("Sound", selection: $pickedSound) {
+                        ForEach(SoundEngine.soundNames, id: \.self) { Text($0).tag($0) }
+                    }
+                    .frame(maxWidth: 200)
+                    Button("Choose file…") { chooseSoundFile() }
+                    Button("Reset") {
+                        SoundEngine.shared.removeCustom(pickedSound)
+                        customSoundCount = SoundEngine.shared.customized.count
+                    }
+                    .disabled(!SoundEngine.shared.customized.contains(pickedSound))
                 }
                 .disabled(!state.soundEnabled)
                 Text("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.")
@@ -1289,6 +1320,21 @@ struct SettingsView: View {
                         .foregroundColor(Color(hex: "#8E939C"))
                 }
 
+                // GitLab
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "#FC6D26")).frame(width: 8, height: 8)
+                        Text("GitLab").font(.system(size: 12, weight: .semibold))
+                    }
+                    TextField("https://gitlab.com", text: $gitlabUrl)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Personal Access Token", text: $gitlabToken)
+                        .textFieldStyle(.roundedBorder)
+                    Text(String(localized: "integrations.gitlab.token-hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+
                 // Stripe
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
@@ -2084,6 +2130,16 @@ struct SettingsView: View {
                 GithubPoller.shared.triggerPulseNow()
                 GithubPoller.shared.refreshActivityIfStale()
             }
+        }
+
+        // Same for GitLab: the token or the instance URL changing resets its data
+        let prevGitlab = [KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token")]
+        saveKey("gitlab-url",   value: gitlabUrl)
+        saveKey("gitlab-token", value: gitlabToken)
+        let nextGitlab = [KeychainStore.shared.get("gitlab-url"), KeychainStore.shared.get("gitlab-token")]
+        if nextGitlab != prevGitlab {
+            GitLabPoller.shared.credentialsChanged()
+            GitLabPanelService.shared.credentialsChanged()
         }
 
         saveKey("stripe-api-key",  value: stripeKey)

@@ -18,6 +18,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Notify;
 
 use crate::github::{self, GitHubActivity, GitHubPulse};
+use crate::gitlab;
 use crate::island::WINDOW_LABEL;
 use crate::log;
 use crate::secrets;
@@ -47,7 +48,7 @@ fn emit(app: &AppHandle, update: IntegrationUpdate) {
     let _ = app.emit_to(WINDOW_LABEL, "integration", update);
 }
 
-fn client() -> reqwest::Client {
+pub(crate) fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()
@@ -70,12 +71,14 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_resend", 6, 60, poll_resend);
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
+    spawn(app.clone(), GITLAB_ID, 8, 300, poll_gitlab);
+    spawn_gitlab_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
 /// True when the user has this integration switched on in settings.
-fn enabled(app: &AppHandle, id: &str) -> bool {
+pub(crate) fn enabled(app: &AppHandle, id: &str) -> bool {
     app.try_state::<crate::Shared>()
         .map(|shared| {
             let settings = shared.settings.lock().unwrap();
@@ -114,6 +117,11 @@ pub async fn poll_once(app: AppHandle, id: &str) {
             wake_github_pulse();
             github_refresh_if_stale("activity");
             poll_github(app).await
+        }
+        GITLAB_ID => {
+            wake_gitlab_pulse();
+            gitlab_refresh_if_stale("activity");
+            poll_gitlab(app).await
         }
         "integration_vercel" => poll_vercel(app).await,
         "integration_n8n" => poll_n8n(app).await,
@@ -369,7 +377,7 @@ static GITHUB: std::sync::LazyLock<GitHubLoops> = std::sync::LazyLock::new(|| Gi
     activity_busy: AtomicBool::new(false),
 });
 
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -549,6 +557,19 @@ pub fn github_token_changed(app: &AppHandle) {
 /// Switching the pill off forgets the pulse, so switching it back on starts
 /// silent instead of alerting on everything that changed in between.
 pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
+    if !active_integrations.iter().any(|id| id == GITLAB_ID) {
+        crate::gitlab_panel::pill_off(app);
+        let had_data = {
+            let mut cache = GITLAB.cache.lock().unwrap();
+            let had = cache.pulse.is_some() || cache.activity.is_some();
+            cache.pulse = None;
+            cache.activity = None;
+            had
+        };
+        if had_data {
+            emit_gitlab(app);
+        }
+    }
     if active_integrations.iter().any(|id| id == GITHUB_ID) {
         return;
     }
@@ -561,6 +582,341 @@ pub fn settings_saved(app: &AppHandle, active_integrations: &[String]) {
     };
     if had_data {
         emit_github(app);
+    }
+}
+
+// ── GitLab (next to GitHub, same cadence) ────────────────────────────────────
+//
+// Same three loops as GitHub: the stats every 5 min, the pulse (my merge
+// requests and their pipeline, reviews waiting for me, default-branch
+// pipelines) every 60 s while some pipeline runs and every 5 min otherwise, and
+// the activity grid every 30 min. The REST v4 API of the instance the user
+// configured (gitlab.com unless `gitlab-url` says otherwise); nothing is
+// requested while the pill is off, the token is missing or Coucou is paused.
+// The cache and loop state are GitHub's own types: same shape, one code path.
+
+pub(crate) const GITLAB_ID: &str = "integration_gitlab";
+
+static GITLAB: std::sync::LazyLock<GitHubLoops> = std::sync::LazyLock::new(|| GitHubLoops {
+    cache: Mutex::new(GitHubCache::default()),
+    generation: AtomicU64::new(0),
+    pulse_wake: Notify::new(),
+    activity_wake: Notify::new(),
+    pulse_busy: AtomicBool::new(false),
+    activity_busy: AtomicBool::new(false),
+});
+
+/// The instance to talk to; None when the stored URL is not acceptable.
+pub(crate) fn gitlab_base() -> Option<String> {
+    gitlab::normalize_base(secrets::get("gitlab-url").as_deref())
+}
+
+fn emit_gitlab(app: &AppHandle) {
+    let mut data = github_card_data(&GITLAB.cache.lock().unwrap());
+    if let (Some(map), Some(base)) = (data.as_object_mut(), gitlab_base()) {
+        // The island opens only links that point at this host.
+        map.insert("baseUrl".into(), json!(base));
+    }
+    emit(app, IntegrationUpdate { id: GITLAB_ID, data, error: None, event: None });
+}
+
+/// One authenticated GET on the REST API. Err carries the HTTP status, or 0
+/// when nothing came back or the body was not JSON. The token is never logged.
+pub(crate) async fn gitlab_get(
+    http: &reqwest::Client,
+    base: &str,
+    token: &str,
+    path: &str,
+    query: &[(&str, &str)],
+) -> Result<Value, u16> {
+    let response = http
+        .get(gitlab::api_url(base, path))
+        .query(query)
+        .header("PRIVATE-TOKEN", token)
+        .header("Accept", "application/json")
+        .header("User-Agent", "Coucou")
+        .send()
+        .await
+        .map_err(|_| {
+            log::line(format!("gitlab {path}: no connection"));
+            0u16
+        })?;
+    let status = response.status().as_u16();
+    if !response.status().is_success() {
+        log::line(format!("gitlab {path} HTTP {status}"));
+        return Err(status);
+    }
+    response.json::<Value>().await.map_err(|_| 0u16)
+}
+
+async fn poll_gitlab(app: AppHandle) {
+    let Some(token) = secrets::get("gitlab-token") else { return };
+    let Some(base) = gitlab_base() else {
+        emit(&app, IntegrationUpdate {
+            id: GITLAB_ID,
+            data: json!({}),
+            error: Some(crate::i18n::t("Invalid GitLab URL")),
+            event: None,
+        });
+        return;
+    };
+    let http = client();
+    if let Err(code) = gitlab_get(&http, &base, &token, "user", &[]).await {
+        if code != 0 {
+            emit(&app, IntegrationUpdate {
+                id: GITLAB_ID,
+                data: json!({}),
+                error: Some(status_error(code, &crate::i18n::t("Token lacks the needed scope"))),
+                event: None,
+            });
+        }
+        return;
+    }
+    let projects = gitlab_get(&http, &base, &token, "projects", &[("owned", "true"), ("per_page", "100")])
+        .await
+        .map(|v| gitlab::parse_stats(&v))
+        .unwrap_or((0, 0));
+    GITLAB.cache.lock().unwrap().stats = Some(projects);
+    emit_gitlab(&app);
+}
+
+fn spawn_gitlab_loops(app: AppHandle) {
+    let pulse_app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut wait = Duration::from_secs(10);
+        loop {
+            let _ = tokio::time::timeout(wait, GITLAB.pulse_wake.notified()).await;
+            let pending = run_gitlab_pulse(&pulse_app).await;
+            wait = Duration::from_secs(if pending { 60 } else { 300 });
+        }
+    });
+    tauri::async_runtime::spawn(async move {
+        let mut wait = Duration::from_secs(15);
+        loop {
+            let _ = tokio::time::timeout(wait, GITLAB.activity_wake.notified()).await;
+            run_gitlab_activity(&app).await;
+            wait = Duration::from_secs(1800);
+        }
+    });
+}
+
+/// (key, path, query) of one GET for `gitlab_get_many`.
+type GitLabJob<K> = (K, String, Vec<(String, String)>);
+
+/// Fetches `jobs` concurrently (GETs of `path`), keyed by whatever the caller
+/// numbered them with. A failed one is simply missing from the map.
+async fn gitlab_get_many<K: Send + 'static + std::hash::Hash + Eq>(
+    http: &reqwest::Client,
+    base: &str,
+    token: &str,
+    jobs: Vec<GitLabJob<K>>,
+) -> std::collections::HashMap<K, Value> {
+    let mut set = tokio::task::JoinSet::new();
+    for (key, path, query) in jobs {
+        let (http, base, token) = (http.clone(), base.to_string(), token.to_string());
+        set.spawn(async move {
+            let query: Vec<(&str, &str)> = query.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+            (key, gitlab_get(&http, &base, &token, &path, &query).await.ok())
+        });
+    }
+    let mut out = std::collections::HashMap::new();
+    while let Some(Ok((key, value))) = set.join_next().await {
+        if let Some(value) = value {
+            out.insert(key, value);
+        }
+    }
+    out
+}
+
+async fn fetch_gitlab_pulse(base: &str, token: &str) -> Option<GitHubPulse> {
+    let http = client();
+    let user = gitlab_get(&http, base, token, "user", &[]).await.ok()?;
+    let me = user.get("username").and_then(Value::as_str)?.to_string();
+
+    let mine_q = [("scope", "created_by_me"), ("state", "opened"), ("order_by", "updated_at"), ("per_page", "20")];
+    let reviewer_q = [("scope", "all"), ("state", "opened"), ("reviewer_username", me.as_str()), ("per_page", "20")];
+    let assigned_q = [("scope", "assigned_to_me"), ("state", "opened"), ("per_page", "20")];
+    let projects_q = [
+        ("owned", "true"), ("archived", "false"), ("order_by", "last_activity_at"), ("per_page", "10"),
+    ];
+    let (mine, reviewer, assigned, projects) = tokio::join!(
+        gitlab_get(&http, base, token, "merge_requests", &mine_q),
+        gitlab_get(&http, base, token, "merge_requests", &reviewer_q),
+        gitlab_get(&http, base, token, "merge_requests", &assigned_q),
+        gitlab_get(&http, base, token, "projects", &projects_q),
+    );
+    // Without the first list there is nothing to show; the others may be empty.
+    let mine = mine.ok()?;
+    let empty = json!([]);
+
+    // The list has no pipeline: one call per merge request, and per project.
+    let mr_jobs = mine
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|item| {
+            let key = gitlab::mr_key(item)?;
+            let (pid, iid) = key.split_once('!')?;
+            Some((key.clone(), format!("projects/{pid}/merge_requests/{iid}"), Vec::new()))
+        })
+        .collect::<Vec<_>>();
+    let details = gitlab_get_many(&http, base, token, mr_jobs).await;
+    let statuses = details
+        .iter()
+        .filter_map(|(k, v)| Some((k.clone(), gitlab::head_pipeline_status(v)?)))
+        .collect::<std::collections::HashMap<_, _>>();
+
+    let project_list = projects.unwrap_or_else(|_| empty.clone());
+    let project_items = project_list.as_array().cloned().unwrap_or_default();
+    let pipeline_jobs = project_items
+        .iter()
+        .enumerate()
+        .filter_map(|(i, p)| {
+            let id = p.get("id")?.as_i64()?;
+            let branch = p.get("default_branch")?.as_str()?;
+            Some((
+                i,
+                format!("projects/{id}/pipelines"),
+                vec![("ref".to_string(), branch.to_string()), ("per_page".to_string(), "1".to_string())],
+            ))
+        })
+        .collect::<Vec<_>>();
+    let pipelines = gitlab_get_many(&http, base, token, pipeline_jobs).await;
+    let main_ci = project_items
+        .iter()
+        .enumerate()
+        .filter_map(|(i, p)| gitlab::parse_repo_ci(p, pipelines.get(&i).and_then(|l| l.get(0))))
+        .collect();
+
+    Some(gitlab::build_pulse(
+        &me,
+        gitlab::parse_my_mrs(&mine, &statuses),
+        gitlab::parse_to_review(&reviewer.unwrap_or_else(|_| empty.clone()), &assigned.unwrap_or(empty), &me),
+        main_ci,
+        now_ms(),
+    ))
+}
+
+/// Returns whether some pipeline is still running, which sets the next interval.
+async fn run_gitlab_pulse(app: &AppHandle) -> bool {
+    if PAUSED.load(Ordering::Relaxed) || !enabled(app, GITLAB_ID) {
+        return false;
+    }
+    let (Some(token), Some(base)) = (secrets::get("gitlab-token"), gitlab_base()) else { return false };
+    let generation = GITLAB.generation.load(Ordering::SeqCst);
+    GITLAB.pulse_busy.store(true, Ordering::SeqCst);
+    let pulse = fetch_gitlab_pulse(&base, &token).await;
+    GITLAB.pulse_busy.store(false, Ordering::SeqCst);
+    let Some(pulse) = pulse else { return false };
+    let pending = pulse.has_pending();
+
+    let events = {
+        let mut cache = GITLAB.cache.lock().unwrap();
+        // The token or the instance changed while this was in flight.
+        if GITLAB.generation.load(Ordering::SeqCst) != generation {
+            return pending;
+        }
+        let events = GitHubPulse::events(cache.pulse.as_ref(), &pulse);
+        cache.pulse = Some(pulse);
+        events
+    };
+    emit_gitlab(app);
+    if !events.is_empty() {
+        let _ = app.emit_to(WINDOW_LABEL, "gitlab-alerts", &events);
+    }
+    pending
+}
+
+/// Pages of the user's events over the past year, up to 1000 events.
+async fn fetch_gitlab_activity(base: &str, token: &str) -> Option<GitHubActivity> {
+    let http = client();
+    let after = gitlab::events_after(now_ms());
+    let mut events: Vec<Value> = Vec::new();
+    for page in 1..=10 {
+        let page_s = page.to_string();
+        let q = [("after", after.as_str()), ("per_page", "100"), ("page", page_s.as_str())];
+        let batch = gitlab_get(&http, base, token, "events", &q).await;
+        let Ok(Value::Array(batch)) = batch else {
+            if page == 1 {
+                return None;
+            }
+            break;
+        };
+        let full = batch.len() >= 100;
+        events.extend(batch);
+        if !full {
+            break;
+        }
+    }
+    Some(gitlab::parse_activity(&events, now_ms()))
+}
+
+async fn run_gitlab_activity(app: &AppHandle) {
+    if PAUSED.load(Ordering::Relaxed) || !enabled(app, GITLAB_ID) {
+        return;
+    }
+    let (Some(token), Some(base)) = (secrets::get("gitlab-token"), gitlab_base()) else { return };
+    let generation = GITLAB.generation.load(Ordering::SeqCst);
+    GITLAB.activity_busy.store(true, Ordering::SeqCst);
+    let activity = fetch_gitlab_activity(&base, &token).await;
+    GITLAB.activity_busy.store(false, Ordering::SeqCst);
+    let Some(activity) = activity else { return };
+    {
+        let mut cache = GITLAB.cache.lock().unwrap();
+        if GITLAB.generation.load(Ordering::SeqCst) != generation {
+            return;
+        }
+        cache.activity = Some(activity);
+    }
+    emit_gitlab(app);
+}
+
+fn wake_gitlab_pulse() {
+    if !GITLAB.pulse_busy.load(Ordering::SeqCst) {
+        GITLAB.pulse_wake.notify_one();
+    }
+}
+
+/// The GitLab card was opened: fetch now if what it shows is stale (1 min for
+/// the pulse, 5 min for the activity grid). No-op while a request is in flight.
+pub fn gitlab_refresh_if_stale(section: &str) {
+    let now = now_ms();
+    let cache = GITLAB.cache.lock().unwrap();
+    match section {
+        "pulse" => {
+            let fetched = cache.pulse.as_ref().map(|p| p.fetched_at);
+            if !GITLAB.pulse_busy.load(Ordering::SeqCst) && github::is_stale(fetched, now, 60) {
+                GITLAB.pulse_wake.notify_one();
+            }
+        }
+        "activity" => {
+            let fetched = cache.activity.as_ref().map(|a| a.fetched_at);
+            if !GITLAB.activity_busy.load(Ordering::SeqCst) && github::is_stale(fetched, now, 300) {
+                GITLAB.activity_wake.notify_one();
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The GitLab token or instance URL was saved or removed: forget what the old
+/// one fetched, drop its requests still in flight, and fetch again right away.
+pub fn gitlab_credentials_changed(app: &AppHandle) {
+    GITLAB.generation.fetch_add(1, Ordering::SeqCst);
+    crate::gitlab_panel::credentials_changed(app);
+    let has_token = secrets::get("gitlab-token").is_some();
+    {
+        let mut cache = GITLAB.cache.lock().unwrap();
+        cache.pulse = None;
+        cache.activity = None;
+        cache.stats = None;
+    }
+    emit_gitlab(app);
+    GITLAB.pulse_wake.notify_one();
+    GITLAB.activity_wake.notify_one();
+    if has_token && !PAUSED.load(Ordering::Relaxed) && enabled(app, GITLAB_ID) {
+        tauri::async_runtime::spawn(poll_gitlab(app.clone()));
     }
 }
 
