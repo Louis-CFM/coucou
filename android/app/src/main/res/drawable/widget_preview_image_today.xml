@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The picture the Widget picker shows on Android 11 (no previewLayout there): the card, its gradient and Mochi in the state of the sample. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/widget_card_done" />
+    <item
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="1dp"
+        android:drawable="@drawable/widget_tint_done" />
+    <item
+        android:width="84dp"
+        android:height="84dp"
+        android:left="0dp"
+        android:top="0dp"
+        android:gravity="center"
+        android:drawable="@drawable/preview_mochi_done" />
+</layer-list>

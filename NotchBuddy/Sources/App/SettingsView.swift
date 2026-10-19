@@ -140,6 +140,10 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    /// Shown inside the Coucou Flow window (GitHub build): one section, without this window's
+    /// sidebar, as the window has its own.
+    private var embeddedSection: String? = nil
+    private var section: String { embeddedSection ?? selectedSection }
     // Active pills: the pill whose colour palette is open, if any
     @State private var colorPalettePill: String? = nil
     #if PHONE_LINK
@@ -158,6 +162,7 @@ struct SettingsView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            if embeddedSection == nil {
             // Sidebar — 200 pt, sidebar visual effect background
             ZStack(alignment: .topLeading) {
                 SidebarBackground()
@@ -200,21 +205,26 @@ struct SettingsView: View {
             .frame(width: 200)
 
             Divider()
+            }
 
             // Detail panel
             VStack(alignment: .leading, spacing: 0) {
-                Text(sectionTitle)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
+                if embeddedSection == nil {
+                    Text(sectionTitle)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 12)
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         sectionContent
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, embeddedSection == nil ? 20 : 28)
+                    .padding(.top, embeddedSection == nil ? 0 : 20)
                     .padding(.bottom, 16)
+                    .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
                 }
                 if !statusMessage.isEmpty {
                     Divider()
@@ -253,7 +263,7 @@ struct SettingsView: View {
     // MARK: - Section routing
 
     private var sectionTitle: String {
-        switch selectedSection {
+        switch section {
         case "general":      return String(localized: "General")
         case "activepills":  return String(localized: "Active pills")
         case "agents":       return String(localized: "Agents")
@@ -266,7 +276,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var sectionContent: some View {
-        switch selectedSection {
+        switch section {
         case "activepills":  activePillsSection
         case "agents":       agentsSection
         case "chat":         chatSection
@@ -415,6 +425,19 @@ struct SettingsView: View {
                 for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 refreshConnectedScreens()
             }
+        }
+
+        GroupBox(String(localized: "vitals.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "vitals.toggle"), isOn: Binding(
+                    get: { MachineVitals.shared.enabled },
+                    set: { MachineVitals.shared.enabled = $0 }))
+                Text("vitals.about")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
         }
 
         GroupBox("Hotkey") {
@@ -1373,6 +1396,12 @@ struct SettingsView: View {
                 PortfolioSettingsSection()
                     .padding(.top, 4)
 
+                #if !APPSTORE
+                // WhatsApp through a local gateway: its own fields, saved by its own button.
+                WhatsAppSettingsSection()
+                    .padding(.top, 4)
+                #endif
+
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()
                     CryptoController.shared.settingsChanged()
@@ -1406,6 +1435,9 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var voiceSection: some View {
+        // Flow dictation: hold a key anywhere, speak, the words are pasted where you type.
+        FlowSettingsBox()
+
         // Claude is Coucou's brain: no model, language or feature switches any more,
         // only the wake word, the Anthropic key it needs, and Coucou's voice.
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
@@ -2442,5 +2474,13 @@ struct ShortcutRecorderButton: View {
             34:"I", 37:"L", 38:"J", 40:"K", 45:"N", 46:"M", 49:"Space", 50:"`", 27:"-"
         ]
         return map[c] ?? "·"
+    }
+}
+
+extension SettingsView {
+    /// One section of Settings, for the Coucou Flow window.
+    init(embeddedSection: String) {
+        self.init()
+        self.embeddedSection = embeddedSection
     }
 }

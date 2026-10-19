@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Preview of Solo: Claude Code waiting for your approval, an orange glow and a "1" badge.
+     A still picture for the Widget picker (android:previewLayout): sample text and numbers, no ids, nothing from the app, no runtime bitmap.
+     It uses the same card, border, gradient, type scale and state colours as the real Widget, so the picker shows what you will get. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_card_attention">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="1dp"
+        android:background="@drawable/widget_tint_attention" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            android:src="@drawable/preview_mochi_waiting" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="@dimen/widget_dot"
+                android:layout_height="@dimen/widget_dot"
+                android:importantForAccessibility="no"
+                android:src="@drawable/widget_dot"
+                android:tint="@color/widget_tone_attention" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_sample_claude"
+                android:textColor="@color/widget_text"
+                android:textSize="@dimen/widget_text_name"
+                android:textStyle="bold"
+                android:layout_marginStart="6dp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="@string/widget_sample_approval"
+            android:textColor="@color/widget_text_secondary"
+            android:textSize="@dimen/widget_text_state" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="10dp"
+        android:background="@drawable/widget_badge_bg"
+        android:gravity="center"
+        android:minWidth="22dp"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:text="@string/widget_sample_one"
+        android:textColor="@color/widget_on_tone"
+        android:textSize="@dimen/widget_text_secondary"
+        android:textStyle="bold" />
+</FrameLayout>
