@@ -9,6 +9,7 @@
 // and are pasted. The thread sleeps on its channel while nothing happens.
 
 pub mod cleanup;
+pub mod languages;
 pub mod logic;
 pub mod paste;
 pub mod pill;
@@ -380,13 +381,24 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
         pill::update(app, |s| s.phase = "idle".into());
         return Ok(());
     }
-    let (prepared, style, cleanup, words, key) = {
+    let (prepared, style, cleanup, words, key, prompt_mode, translate_to) = {
         let store = flow.store.lock().unwrap();
         let app_id = front.map(|(id, _)| id.as_str());
-        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key)
+        (store.prepare(&raw), store.style_for(app_id), store.prefs.cleanup, store.words.words.clone(), store.prefs.key,
+         store.prefs.prompt_mode, store.prefs.translate_to.clone())
     };
     let mut written = prepared.text.clone();
-    if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
+    // Prompt mode or translation: one call to Claude does the clean-up too (FlowDictation.swift).
+    let language = languages::find(&translate_to);
+    if (prompt_mode || language.is_some()) && !prepared.text.is_empty() {
+        let app_name = front.map(|(_, n)| n.clone());
+        let shaped = tauri::async_runtime::block_on(cleanup::transform(
+            &prepared.text, prompt_mode, language, style, app_name.as_deref(), &words,
+        ));
+        if text::keeps_marks(&shaped, &prepared.snippets) {
+            written = shaped;
+        }
+    } else if cleanup && style != store::Style::Verbatim && cleanup::has_key() {
         let app_name = front.map(|(_, n)| n.clone());
         let cleaned = tauri::async_runtime::block_on(cleanup::clean(&prepared.text, style, app_name.as_deref(), &words));
         if text::keeps_marks(&cleaned, &prepared.snippets) {
@@ -447,6 +459,8 @@ pub struct FlowStatus {
     /// "ok", or why the key can't be watched here ("wayland", "no-display").
     keys: String,
     has_claude_key: bool,
+    /// The languages Flow can translate into, by code (the page names them).
+    languages: Vec<&'static str>,
     mics: Vec<audio::InputDevice>,
     platform: &'static str,
     /// Coucou started with the computer.
@@ -465,6 +479,7 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
             Err(why) => why.into(),
         },
         has_claude_key: cleanup::has_key(),
+        languages: languages::codes(),
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },
         autostarted: crate::launched_at_login(),

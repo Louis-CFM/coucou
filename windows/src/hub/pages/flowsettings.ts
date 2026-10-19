@@ -3,7 +3,7 @@
 // FlowHubSettings.swift.
 
 import { h, clear } from "../../views/dom";
-import { t } from "../../i18n/i18n";
+import { language, t } from "../../i18n/i18n";
 import { onEvent } from "../../core/bridge";
 import { FlowBridge, type Edge, type FlowKey, type ModelsStatus } from "../../core/flow";
 import type { HubContext } from "../shell";
@@ -94,6 +94,35 @@ export async function flowSettingsPage(page: HTMLElement, ctx: HubContext) {
     keysCard.append(h("div", { class: "hub-warn", text: t("Coucou can't watch the keyboard here: use the pill's microphone to dictate.") }));
   }
   page.append(keysCard);
+
+  // ── Prompt and translation (FlowHubSettings.swift) ──
+  const display = (() => {
+    try {
+      return new Intl.DisplayNames([language()], { type: "language" });
+    } catch {
+      return new Intl.DisplayNames(["en"], { type: "language" });
+    }
+  })();
+  const nameOf = (code: string) => display.of(code) ?? code;
+  const languages: [string, string][] = (status.languages ?? [])
+    .map((code): [string, string] => [code, nameOf(code)])
+    .sort((a, b) => a[1].localeCompare(b[1], language()));
+  const noKey = !status.hasClaudeKey;
+  const promptToggle = toggle(prefs.promptMode, (on) => void ctx.setPrefs((p) => (p.promptMode = on)));
+  if (noKey && !prefs.promptMode) promptToggle.classList.add("dimmed");
+  const translate = select([["", t("As spoken")], ...languages], prefs.translateTo ?? "",
+    (code) => void ctx.setPrefs((p) => (p.translateTo = code)).then(() => ctx.navigate("flowsettings")));
+  if (noKey && !prefs.translateTo) translate.disabled = true;
+  page.append(label(t("Prompt and translation")));
+  page.append(card(
+    row(t("Prompt mode"), t("Say your idea any old way: it's pasted as a clear prompt (goal, context, steps, constraints, done when), ready for Claude Code, Cursor or ChatGPT."), promptToggle),
+    divider(),
+    row(t("Translate into"),
+      prefs.translateTo ? t("Whatever you speak, it's pasted in {0}.", { 0: nameOf(prefs.translateTo) })
+        : t("Speak in any language: your words are pasted in the one you pick."),
+      translate),
+    noKey ? h("div", { class: "hub-warn", text: t("The clean-up uses your Claude key. Add it in Settings → Chat.") }) : null,
+  ));
 
   // ── Microphone ──
   page.append(label(t("Microphone")));

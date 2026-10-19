@@ -107,6 +107,10 @@ pub struct Prefs {
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
+    /// Paste what was said as a structured prompt for an agent (needs the Claude key).
+    pub prompt_mode: bool,
+    /// Paste the words in this language (a code of flow/languages.rs); empty = as spoken.
+    pub translate_to: String,
 }
 
 impl Default for Prefs {
@@ -124,6 +128,8 @@ impl Default for Prefs {
             voice: false,
             voice_output: "system".into(),
             voice_gender: "female".into(),
+            prompt_mode: false,
+            translate_to: String::new(),
         }
     }
 }
