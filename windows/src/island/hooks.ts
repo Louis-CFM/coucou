@@ -399,8 +399,15 @@ function handleHook(island: Island, payload: HookPayload) {
         if (t) t.finalLine = finalText;
       }
       Sound.play("finish");
+      // Claude Code in Claude's desktop app gets its own pill, never the one
+      // in front, so its end was only a badge where the same session in a
+      // terminal shows its card. With nothing going on in front, it takes the
+      // front. Other agents keep to their badge.
+      const front = State.focusTask;
+      const quiet = !front || front.state === "idle" || front.state === "finished" || front.state === "sleeping";
+      if (!focused && validAgent === "claude-desktop" && quiet && !State.pendingApproval) State.setFocus(agentId);
       // A card waiting for an answer is never covered by another alert.
-      if (focused && !State.pendingApproval) surface("finished", true);
+      if (State.focusId === agentId && !State.pendingApproval) surface("finished", true);
       else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
