@@ -175,6 +175,9 @@ struct MailDetailView: View {
                     .foregroundColor(Color(hex: "#6B7079"))
                     .fixedSize()
             }
+            // The card's ↗ button sits in the top-right corner: keep the header clear of it
+            // (36 pt from the edge, like every card header).
+            .padding(.trailing, 24)
 
             Text(message.subject.isEmpty ? " " : message.subject)
                 .font(.system(size: 11, weight: .medium))

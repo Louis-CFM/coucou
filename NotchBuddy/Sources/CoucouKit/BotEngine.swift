@@ -276,6 +276,25 @@ final class BotEngine: ObservableObject {
     var isDancing: Bool = false
     var dancingLevel: CGFloat = 0   // 0→1 over 0.3s, 1→0 over 0.5s
 
+    // How the Mac feels (MochiMood.swift): the target is set every frame on the Mac, the
+    // levels ease towards it.
+    var moodTarget = MochiMood.calm
+    var moodBusy: CGFloat = 0
+    var moodHot: CGFloat = 0
+    var moodFull: CGFloat = 0
+    var moodTired: CGFloat = 0
+    var nextMoodDrop: Double = 0
+    var moodDrops: [MoodDrop] = []
+    var hop = MoodHop()
+    var moodShiftApplied: CGFloat = 0
+    // Stressed eyes: where they dart, when next, their tremble, the next nervous blink.
+    var stressLook = CGPoint.zero
+    var nextStressLook: Double = 0
+    var stressTremble = CGPoint.zero
+    var nextNervousBlink: Double = 0
+    var moodLiftApplied: CGFloat = 0
+    var nextMoodYawn: Double = 0
+
     // Mini wandering look (random, ignores mouse)
     var miniLookTarget: CGPoint = .zero
     var miniLookNextTime: Double = 0
@@ -855,6 +874,8 @@ final class BotEngine: ObservableObject {
     func update(dt: Double) {
         let now = CACurrentMediaTime()
         let dtCG = CGFloat(dt)
+        // The stressed hop of the last frame comes off first (MochiMood.swift).
+        undoMoodOffsets()
 
         // Process tweens
         for key in tweens.keys {
@@ -989,6 +1010,9 @@ final class BotEngine: ObservableObject {
             doMiniBehaviorLoop()
         }
 
+        // The Mac's mood (sweat, puffed up, tired) adjusts the targets above.
+        updateMood(dt: dt, now: now, t: t)
+
         // Smooth look
         let kLook = CGFloat(1 - pow(0.0025, dt))
         let kGen  = CGFloat(1 - pow(0.0008, dt))
@@ -1109,8 +1133,11 @@ final class BotEngine: ObservableObject {
         drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry,
                  pumpkinColors: outfit == .pumpkin && !isMini)
 
+        // A warm Mac flushes him (MochiMood.swift).
+        drawMoodTint(ctx: &ctx, path: bodyPath, rx: rx, ry: ry)
+
         // Blush — always shows a floor proportional to tint (prototype behaviour)
-        let blushVal = max(blush, tint * 0.5) * (1 - morph)
+        let blushVal = max(blush, tint * 0.5, moodHot * 0.85) * (1 - morph)
         if blushVal > 0.01 {
             drawBlush(ctx: &ctx, path: bodyPath, rx: rx, ry: ry, R: R, blush: blushVal)
         }
@@ -1284,6 +1311,9 @@ final class BotEngine: ObservableObject {
         if let badge = badge, badgeS > 0.01, morph < 0.25 {
             drawBadge(context: context, size: size, badge: badge, R: R, rx: rx, ry: ry, cx: cx, cy: cy)
         }
+
+        // Sweat and heat waves (MochiMood.swift)
+        drawMoodExtras(context: context, R: R, rx: rx, ry: ry, cx: cx, cy: cy)
 
         // Particles
         drawParticles(context: context, size: size, R: R, cx: cx, cy: cy)
@@ -1495,11 +1525,14 @@ final class BotEngine: ObservableObject {
             let fy = lerp(f.fy, 1, morph * 0.7)
 
             let eyeMult: CGFloat = isMini ? 1.9 : 1.0
-            let ew = R * MochiConst.eyeW * es * eyeMult
-            let eh = R * MochiConst.eyeH * es * eyeMult
+            // Stressed (MochiMood.swift): a little smaller, like pupils tightening with fear,
+            // and trembling.
+            let fear = isMini ? 0 : min(1, moodBusy * 1.3)
+            let ew = R * MochiConst.eyeW * es * eyeMult * (1 - 0.2 * fear)
+            let eh = R * MochiConst.eyeH * es * eyeMult * (1 - 0.1 * fear)
 
             var eyeCtx = ctx
-            eyeCtx.translateBy(x: f.x, y: ey)
+            eyeCtx.translateBy(x: f.x + stressTremble.x * R, y: ey + stressTremble.y * R)
             eyeCtx.scaleBy(x: fx, y: fy)
             drawEyeShape(ctx: &eyeCtx, shape: shape, w: ew, h: eh, open: open, sd: f.sd, R: R)
         }

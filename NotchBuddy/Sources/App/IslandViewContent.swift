@@ -39,6 +39,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .capture:
+            #if !APPSTORE
+            CaptureCardView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
@@ -225,12 +231,20 @@ struct OverviewView: View {
             #if !APPSTORE
             MailController.shared.openMail()
             #endif
+        case "integration_whatsapp":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "net.whatsapp.WhatsApp") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
                let url = exchange.tradeURL(exchange.pair(first, CryptoSettings.currency)) {
                 NSWorkspace.shared.open(url)
             }
+        case "integration_portfolio":
+            break   // no global URL; individual holdings open their exchange pages
         case "integration_vercel":
             NSWorkspace.shared.open(URL(string: "https://vercel.com/dashboard")!)
         case "integration_github":
@@ -611,19 +625,66 @@ struct QuestionView: View {
 struct ErrorView: View {
     @ObservedObject var state: AppState
 
+    private var task: AgentTask? { state.focusTask }
+
+    /// The kind next to the name ("Claude Code", "n8n", "Agent"): agentWho already shows the name.
+    private var kind: String {
+        switch task?.source {
+        case .some(.n8n):   return "n8n"
+        case .some(.agent): return "Agent"
+        default:            return "Claude Code"
+        }
+    }
+
+    /// What went wrong: Claude Code's error (StopFailure) or n8n's, else the last step.
+    private var detail: String {
+        if let line = task?.finalLine, !line.isEmpty { return line }
+        if task?.source == .n8n, let steps = task?.steps, steps.count > 1, let last = steps.last { return last }
+        if task?.source != .n8n, let step = task?.steps.last(where: { !$0.isDiffStep }) { return step }
+        return String(localized: "No detail available.")
+    }
+
+    private var n8nURL: URL? {
+        guard task?.source == .n8n, let s = KeychainStore.shared.get("n8n-url") else { return nil }
+        return URL(string: s)
+    }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .red)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "n8n")
-                Text("Workflow stopped.")
+                AgentWho(task: task, label: kind)
+                Text(task?.source == .n8n ? LocalizedStringKey("Workflow stopped.") : LocalizedStringKey("Session stopped on an error."))
                     .font(.system(size: 15, weight: .semibold))
-                Text("Gmail node timed out after 30s. Retry or open n8n.")
+                Text(detail)
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#FF8D97"))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    PrimaryButton("Retry") { /* retry */ }
-                    SecondaryButton("Open in n8n") { /* open */ }
+                    if task?.source == .n8n {
+                        if let url = n8nURL {
+                            PrimaryButton("Open in n8n") {
+                                NSWorkspace.shared.open(url)
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                    } else if task?.id == "agent_claude-desktop" {
+                        PrimaryButton("Open Claude") {
+                            openClaudeDesktopApp()
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                    } else {
+                        #if !APPSTORE
+                        PrimaryButton("Open terminal") {
+                            openSessionApp(task)
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                        #endif
+                    }
+                    SecondaryButton("OK") {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }
                 }
             }
             .padding(.leading, 116)
@@ -633,6 +694,16 @@ struct ErrorView: View {
         }
     }
 }
+
+#if !APPSTORE
+/// The app a session runs in (its terminal, or VS Code), else any known terminal.
+private func openSessionApp(_ task: AgentTask?) {
+    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+       !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+    }
+}
+#endif
 
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
@@ -671,12 +742,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            // The app the session runs in (its terminal, or VS Code), then any known terminal
-                            let task = state.focusTask
-                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
-                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
-                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                            }
+                            openSessionApp(state.focusTask)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif
@@ -1305,7 +1371,12 @@ struct PromptView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(state.chatHistory) { msg in
-                                    ChatBubble(message: msg).id(msg.id)
+                                    ChatBubble(
+                                        message: msg,
+                                        isStreaming: state.stateOverride != nil
+                                            && msg.role == .assistant
+                                            && msg.id == state.chatHistory.last?.id
+                                    ).id(msg.id)
                                 }
                                 if state.stateOverride != nil {
                                     HStack { TypingDotsView(); Spacer(minLength: 32) }
@@ -1592,6 +1663,9 @@ struct ModelPickerView: View {
                             case .openai:    state.openAIChatModel = model.id
                             case .ollama:    state.ollamaChatModel = model.id
                             case .lmstudio:  state.lmstudioChatModel = model.id
+                            case .deepseek:  state.deepseekChatModel = model.id
+                            case .qwen:      state.qwenChatModel = model.id
+                            case .moonshot:  state.moonshotChatModel = model.id
                             }
                             isPresented = false
                             SoundEngine.shared.play("blip")
@@ -1626,6 +1700,7 @@ struct ModelPickerView: View {
 
 struct ChatBubble: View {
     let message: ChatMessage
+    var isStreaming: Bool = false
 
     var body: some View {
         if !message.content.isEmpty {
@@ -1641,7 +1716,22 @@ struct ChatBubble: View {
                         .background(Color.white.opacity(0.13))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {
-                    ChatMarkdownView(markdown: message.content)
+                    Group {
+                        if isStreaming {
+                            TimelineView(.periodic(from: .now, by: 0.5)) { tl in
+                                let show = Int(tl.date.timeIntervalSinceReferenceDate / 0.5).isMultiple(of: 2)
+                                Text(message.content + (show ? "▌" : " "))
+                                    .font(.system(size: 12.5))
+                                    .foregroundColor(Color(hex: "#B0B5BE"))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        } else {
+                            ChatMarkdownView(markdown: message.content)
+                        }
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(Color.white.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     Spacer(minLength: 8)
                 }
             }
@@ -1852,8 +1942,16 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_whatsapp":
+            #if !APPSTORE
+            return WhatsAppSettings.enabled
+            #else
+            return false
+            #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
+        case "integration_portfolio":
+            return PortfolioSettings.hasAnyAccount
         case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
         case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
         case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
@@ -2106,6 +2204,15 @@ struct IntegrationCardView: View {
             // Its own card in every state (loading, no coins, prices).
             CryptoCardView()
                 .transition(.opacity)
+        } else if task.id == "integration_portfolio" {
+            PortfolioCardView()
+                .transition(.opacity)
+        } else if task.id == "integration_whatsapp" {
+            // Its own card in every state (not linked, no message, conversations).
+            #if !APPSTORE
+            WhatsAppCardView()
+                .transition(.opacity)
+            #endif
         } else if mailHasData {
             #if !APPSTORE
             MailCardView()

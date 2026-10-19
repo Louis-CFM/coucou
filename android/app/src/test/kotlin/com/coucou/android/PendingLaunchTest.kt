@@ -1,5 +1,6 @@
 package com.coucou.android
 
+import com.coucou.android.core.LaunchScreen
 import com.coucou.android.core.PendingLaunch
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -79,6 +80,104 @@ class PendingLaunchTest {
     @Test fun everyOtherComponentWithAnIntentFilterIsTheLauncher() {
         val m = manifest()
         val exported = Regex("""android:name="([^"]+)"[^>]*android:exported="true"""").findAll(m).map { it.groupValues[1] }.toSet()
-        assertEquals(setOf(".MainActivity", ".app.GlanceWidget", ".app.GlanceTile"), exported)
+        assertEquals(setOf(
+                ".MainActivity", ".app.GlanceWidget", ".app.GlanceTile", ".app.SoloWidget", ".app.ListWidget", ".app.MochiBigWidget",
+                ".app.StatusPillWidget", ".app.WaitingAlertWidget", ".app.UsageRingWidget", ".app.TodayWidget", ".app.MoodWidget",
+            ), exported)
+    }
+
+    @Test fun aWidgetRowAsksForASessionOnce() {
+        launch.requestSession("agent_codex")
+        assertEquals("agent_codex", launch.takeSession())
+        assertNull("only once", launch.takeSession())
+    }
+
+    @Test fun aStaleOrBadSessionRequestIsDropped() {
+        launch.requestSession("agent_codex")
+        now += PendingLaunch.TTL_MS + 1
+        assertNull(launch.takeSession())
+        launch.requestSession("")
+        assertNull(launch.takeSession())
+        launch.requestSession(null)
+        assertNull(launch.takeSession())
+        launch.requestSession("x".repeat(PendingLaunch.MAX_PILL + 1))
+        assertNull(launch.takeSession())
+    }
+
+    @Test fun theSessionSlotAndTheAllowSlotNeverMeet() {
+        launch.request("fp-1", allow = true)
+        launch.requestSession("agent_codex")
+        assertEquals("agent_codex", launch.takeSession())
+        assertEquals("the Allow is still there", PendingLaunch.Request("fp-1", true), launch.take())
+        launch.requestSession("agent_codex")
+        assertNull("a session request is never an Allow", launch.take())
+        assertEquals("agent_codex", launch.takeSession())
+    }
+
+    @Test fun theExportedActivityOnlyAsksTheModelForTheSessionToOpen() {
+        val src = File(main + "MainActivity.kt").readText()
+        assertTrue(src.contains("model.launch.takeSession()"))
+        assertFalse(src.contains("EXTRA_SESSION"))
+        val callers = File(main).walkTopDown().filter { it.extension == "kt" }
+            .filter { it.readText().contains("launch.requestSession(") }.map { it.name }.toList()
+        assertEquals(listOf("LaunchActivity.kt"), callers)
+    }
+
+    // ── The screen slot (a Widget button) ───────────────────────────────────────────────────────────
+
+    @Test fun aWidgetButtonAsksForAScreenOnce() {
+        launch.requestScreen(LaunchScreen.CHAT)
+        assertEquals(LaunchScreen.CHAT, launch.takeScreen())
+        assertNull("only once, and the slot is cleared", launch.takeScreen())
+    }
+
+    @Test fun nothingAskedMeansNoScreen() = assertNull(launch.takeScreen())
+
+    @Test fun aStaleScreenRequestIsDropped() {
+        launch.requestScreen(LaunchScreen.SETTINGS)
+        now += PendingLaunch.TTL_MS + 1
+        assertNull(launch.takeScreen())
+        launch.requestScreen(LaunchScreen.RECENT)
+        now += PendingLaunch.TTL_MS
+        assertEquals(LaunchScreen.RECENT, launch.takeScreen())
+    }
+
+    @Test fun aNewerScreenRequestReplacesTheOlderOneAndNullClearsIt() {
+        launch.requestScreen(LaunchScreen.HOME)
+        launch.requestScreen(LaunchScreen.PAIR)
+        assertEquals(LaunchScreen.PAIR, launch.takeScreen())
+        launch.requestScreen(LaunchScreen.HOME)
+        launch.requestScreen(null)
+        assertNull(launch.takeScreen())
+    }
+
+    @Test fun theThreeSlotsNeverMeet() {
+        launch.request("fp-1", allow = true)
+        launch.requestSession("agent_codex")
+        launch.requestScreen(LaunchScreen.CHAT)
+        assertEquals(LaunchScreen.CHAT, launch.takeScreen())
+        assertNull("a screen never turns into a session", launch.takeScreen())
+        assertEquals("agent_codex", launch.takeSession())
+        assertEquals("the Allow is still there, untouched", PendingLaunch.Request("fp-1", true), launch.take())
+        launch.requestScreen(LaunchScreen.HOME)
+        assertNull("a screen is never an Allow", launch.take())
+        assertNull("nor a session", launch.takeSession())
+        assertEquals(LaunchScreen.HOME, launch.takeScreen())
+    }
+
+    @Test fun theScreenSlotOnlyHoldsAValueOfTheClosedList() {
+        val src = File("src/main/kotlin/com/coucou/android/core/PendingLaunch.kt").readText()
+        assertTrue(src.contains("fun requestScreen(which: LaunchScreen?)"))
+        assertTrue(src.contains("fun takeScreen(): LaunchScreen?"))
+        assertTrue(src.contains("private var screen: LaunchScreen?"))
+    }
+
+    @Test fun theExportedActivityOnlyAsksTheModelForTheScreenToOpen() {
+        val src = File(main + "MainActivity.kt").readText()
+        assertTrue(src.contains("model.launch.takeScreen()"))
+        for (bad in listOf("EXTRA_SCREEN", "getStringExtra", "getExtras", "intent.extras", "hasExtra")) assertFalse("MainActivity reads $bad", src.contains(bad))
+        val callers = File(main).walkTopDown().filter { it.extension == "kt" }
+            .filter { it.readText().contains("launch.requestScreen(") }.map { it.name }.toList()
+        assertEquals(listOf("LaunchActivity.kt"), callers)
     }
 }

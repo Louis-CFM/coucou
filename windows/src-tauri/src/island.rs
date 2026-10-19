@@ -280,6 +280,58 @@ mod display_tests {
     }
 }
 
+/// Calculates the zoom correction factor so that 1 CSS pixel equals 1 window logical pixel.
+/// If WebView2's devicePixelRatio differs from the window's scale factor (e.g. system text
+/// scaling or multi-monitor DPI mismatch), adjusting the webview zoom ensures the island
+/// canvas (PANEL_W / EXPANDED_W) fits within the window without clipping.
+pub fn calculate_zoom_correction(current_zoom: f64, scale: f64, dpr: f64) -> Option<f64> {
+    if dpr <= 0.0 || !dpr.is_finite() || scale <= 0.0 || !scale.is_finite() {
+        return None;
+    }
+    if (dpr - scale).abs() / scale < 0.02 {
+        return None;
+    }
+    let new_zoom = (current_zoom * (scale / dpr)).clamp(0.25, 4.0);
+    Some(new_zoom)
+}
+
+#[cfg(test)]
+mod zoom_tests {
+    use super::*;
+
+    #[test]
+    fn zoom_correction_is_none_when_dpr_matches_window_scale() {
+        assert_eq!(calculate_zoom_correction(1.0, 1.0, 1.0), None);
+        assert_eq!(calculate_zoom_correction(1.0, 1.25, 1.25), None);
+        // Within 2% threshold
+        assert_eq!(calculate_zoom_correction(1.0, 1.0, 1.01), None);
+    }
+
+    #[test]
+    fn zoom_correction_adjusts_for_dpi_mismatch() {
+        // Issue #346: 100% scale display (scale 1.0) but WebView2 dpr = 1.25
+        let zoom = calculate_zoom_correction(1.0, 1.0, 1.25);
+        assert_eq!(zoom, Some(0.8));
+
+        // 125% display with 125% text scale (dpr 1.5625 vs scale 1.25)
+        let zoom = calculate_zoom_correction(1.0, 1.25, 1.5625);
+        assert_eq!(zoom, Some(0.8));
+
+        // 150% display with 100% webview dpr
+        let zoom = calculate_zoom_correction(1.0, 1.5, 1.0);
+        assert_eq!(zoom, Some(1.5));
+    }
+
+    #[test]
+    fn zoom_correction_handles_invalid_inputs() {
+        assert_eq!(calculate_zoom_correction(1.0, 0.0, 1.0), None);
+        assert_eq!(calculate_zoom_correction(1.0, 1.0, -1.0), None);
+        assert_eq!(calculate_zoom_correction(1.0, f64::NAN, 1.0), None);
+        assert_eq!(calculate_zoom_correction(1.0, 1.0, f64::INFINITY), None);
+    }
+}
+
+
 pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     match target_monitor(app, pref) {
         Some(m) => {
@@ -327,6 +379,19 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+
+    // On Windows, moving across displays or waking from the strip can clamp or lag
+    // the resize. If the physical inner size differs from what was requested, retry once.
+    if let Ok(got) = win.inner_size() {
+        if got.width != pw || got.height != ph {
+            crate::log::line(format!(
+                "window size mismatch: wanted {pw}x{ph}, got {}x{} (scale {scale}, monitor {}x{})",
+                got.width, got.height, ms.width, ms.height
+            ));
+            let _ = win.set_size(PhysicalSize::new(pw, ph));
+            let _ = win.set_position(PhysicalPosition::new(x, y));
+        }
+    }
 }
 
 /// Position, size and scale of the monitor the island lives on. Any change here
