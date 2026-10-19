@@ -29,6 +29,8 @@ export const SHORTCUT_TEXT = {
   muteToggle: N_("Mute or unmute Mochi"),
   desktopToggle: N_("Send Mochi to the desktop"),
   wardrobeToggle: N_("Open the wardrobe"),
+  talkToCoucou: N_("Talk to Coucou"),
+  captureScreen: N_("Capture part of the screen for Claude"),
   island: {
     nextPrev: N_("Next or previous pill"),
     byNumber: N_("Go to pill 1 to 9"),
@@ -56,7 +58,9 @@ export type ShortcutId =
   | "prevPill"
   | "muteToggle"
   | "desktopToggle"
-  | "wardrobeToggle";
+  | "wardrobeToggle"
+  | "talkToCoucou"
+  | "captureScreen";
 
 export interface ShortcutDef {
   id: ShortcutId;
@@ -81,6 +85,9 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   def("muteToggle", "Ctrl+Alt+S", true, true),
   def("desktopToggle", "Ctrl+Alt+D", true, true),
   def("wardrobeToggle", "Ctrl+Alt+G", true, true),
+  // « OK Coucou » without saying it: no key by default, as on the Mac.
+  def("talkToCoucou", "", true, true),
+  def("captureScreen", "Ctrl+Alt+X", true, true),
 ];
 
 export interface Binding {

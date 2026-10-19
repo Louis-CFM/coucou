@@ -2,6 +2,7 @@
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
 import { Tracked, Spring, clamp } from "../core/anim";
+import { t } from "../i18n/i18n";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -131,6 +132,7 @@ export class Island {
     };
     State.subscribe(() => {
       this.syncVitalsReader();
+      this.syncCaptureCard();
       this.dirty = true;
       this.ensureRunning();
     });
@@ -163,6 +165,7 @@ export class Island {
       cancelDrop: () => this.discardDrop(),
       collapse: () => this.collapse(),
       minimize: () => this.minimize(),
+      capture: (what) => this.captureAction(what),
       foldApproval: () => this.foldApproval(),
       setFocus: (id) => {
         State.setFocus(id);
@@ -434,6 +437,82 @@ export class Island {
    */
   minimize() {
     this.fsm.minimize();
+  }
+
+  // ── Screen capture for Claude (ScreenCapture.swift, src-tauri/src/capture.rs) ──
+
+  /** The shortcut was pressed: the island gets out of the picture. */
+  onCaptureBegin() {
+    Sound.play("tick");
+    if (State.mode === "expanded") this.collapse();
+  }
+
+  /** The capture lands on the island: Mochi swallows it. */
+  onCaptureReady(capture: { path: string; dataUrl: string }) {
+    State.capture = capture;
+    this.alert("capture");
+    Sound.play("gulp");
+    window.setTimeout(() => {
+      this.engine.gulp();
+      this.ensureRunning();
+    }, 250);
+  }
+
+  /** A dictation took the capture with its words. */
+  onCaptureUsed() {
+    State.capture = null;
+    if (State.mode === "expanded" && State.view === "capture") this.collapse();
+    State.notify();
+  }
+
+  private captureOnIsland = false;
+
+  /** Rust lets a dictation take the capture only while its card is up. */
+  private syncCaptureCard() {
+    const on = State.mode === "expanded" && State.view === "capture" && State.capture != null;
+    if (on === this.captureOnIsland) return;
+    this.captureOnIsland = on;
+    void Bridge.captureOnIsland(on);
+  }
+
+  private captureAction(what: "paste" | "copy" | "annotate" | "ask") {
+    const capture = State.capture;
+    if (!capture) return;
+    switch (what) {
+      case "paste":
+        this.collapse();
+        void Bridge.capturePaste().then((ok) => {
+          State.capture = null;
+          if (ok) Sound.play("send");
+          else {
+            State.noteMessage = t("The capture is on the clipboard: press Ctrl+V where you want it.");
+            this.alert("note");
+          }
+        });
+        break;
+      case "copy":
+        void Bridge.captureCopy().then(() => {
+          State.capture = null;
+          Sound.play("pop");
+          this.collapse();
+        });
+        break;
+      case "annotate":
+        void Bridge.captureAnnotate();
+        break;
+      case "ask": {
+        // The island's chat, with the capture attached (askClaude).
+        const name = t("Screenshot");
+        State.droppedFile = { name, path: capture.path };
+        State.promptContext = { kind: "file", name, path: capture.path };
+        State.chatHistory = [];
+        void Bridge.chatReset();
+        State.capture = null;
+        void Bridge.captureDismiss();
+        this.setView("prompt");
+        break;
+      }
+    }
   }
 
   // ── Mochi feels the computer (core/vitals.ts, src-tauri/src/vitals.rs) ─────

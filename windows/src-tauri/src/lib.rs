@@ -2,6 +2,7 @@
 
 mod agent_hooks;
 mod agents;
+mod capture;
 mod chat;
 mod claude;
 mod codex_plan;
@@ -831,6 +832,15 @@ pub fn run() {
             spotify::spotify_open,
             spotify::spotify_installed,
             vitals::vitals_set_active,
+            capture::capture_begin,
+            capture::capture_paste,
+            capture::capture_copy,
+            capture::capture_on_island,
+            capture::capture_dismiss,
+            capture::capture_annotate,
+            capture::capture_image,
+            capture::capture_annotated,
+            voice::voice_talk,
             flow::flow_status,
             flow::flow_set_prefs,
             flow::flow_history,

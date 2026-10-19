@@ -32,6 +32,8 @@ export interface ViewActions {
   /** "Cancel" on a dropped file: forgets it and goes back home. */
   cancelDrop(): void;
   collapse(): void;
+  /** The capture card's buttons (CaptureCardView.swift). */
+  capture(what: "paste" | "copy" | "annotate" | "ask"): void;
   /** The – button: off the screen until the pointer reaches the top edge. */
   minimize(): void;
   /** Folds a waiting card to the compact island without answering it. */
@@ -739,6 +741,31 @@ function buildNote(): ViewHost {
   };
 }
 
+// ── Screen capture (CaptureCardView.swift) ────────────────────────────────────
+
+function buildCapture(actions: ViewActions): ViewHost {
+  const thumb = h("img", { class: "capture-thumb", alt: "" }) as HTMLImageElement;
+  const pill = (label: Msg, what: "paste" | "copy" | "annotate" | "ask", primary = false) =>
+    btn(label, primary ? "primary" : "secondary", () => actions.capture(what));
+  const body = h("div", { class: "capture-card" },
+    thumb,
+    h("div", { class: "capture-text" },
+      h("div", { class: "title", text: tl("Captured. Mochi has it.") }),
+      h("div", { class: "hint", text: tl("Paste it into your prompt, annotate it, or ask Claude.") }),
+      h("div", { class: "actions capture-actions" },
+        pill(tl("Paste"), "paste", true), pill(tl("Copy"), "copy"), pill(tl("Annotate"), "annotate"), pill(tl("Ask Claude"), "ask"),
+      ),
+    ),
+  );
+  return {
+    el: h("div", { class: "view" }, card(null, body)),
+    sync() {
+      const src = State.capture?.dataUrl ?? "";
+      if (thumb.src !== src) thumb.src = src;
+    },
+  };
+}
+
 // ── In-island settings ────────────────────────────────────────────────────────
 
 function buildSettings(actions: ViewActions): ViewHost {
@@ -837,6 +864,7 @@ export function buildViews(
   map.set("choose", buildChoose(actions));
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
+  map.set("capture", buildCapture(actions));
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildPlaceholder(tl("Sending by email isn't in this version."), ""));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

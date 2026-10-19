@@ -360,6 +360,13 @@ export const Bridge = {
   setPaused: (paused: boolean) => call<void>("set_paused", { paused }),
   /** Reads the computer for Mochi's mood while he is on screen (vitals.rs). */
   vitalsSetActive: (on: boolean) => call<void>("vitals_set_active", { on }),
+  // Screen capture for Claude (capture.rs).
+  captureBegin: () => call<void>("capture_begin"),
+  capturePaste: () => call<boolean>("capture_paste"),
+  captureCopy: () => call<boolean>("capture_copy"),
+  captureOnIsland: (on: boolean) => call<void>("capture_on_island", { on }),
+  captureDismiss: () => call<void>("capture_dismiss"),
+  captureAnnotate: () => call<void>("capture_annotate"),
 
   // ── Global shortcuts ──────────────────────────────────────────────────────
   /** How each global shortcut went when Rust last registered them. */

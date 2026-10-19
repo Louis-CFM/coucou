@@ -409,6 +409,8 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     crate::log::line(format!("flow: {} words in {:?}", text::word_count(&final_text), started.elapsed()));
 
     os::wait_key_released(key);
+    // A screen capture waiting on the island goes in first, then the words (ScreenCapture.swift).
+    crate::capture::paste_for_dictation(app, front.map(|(id, _)| id.as_str()));
     let terminal = front.is_some_and(|(id, _)| is_terminal(id));
     let outcome = paste::paste(&final_text, terminal);
     let entry = {

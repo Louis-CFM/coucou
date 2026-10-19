@@ -722,6 +722,7 @@ name = "coucou"
 version = "0.5.0"
 dependencies = [
  "arboard",
+ "clipboard-win",
  "cpal",
  "dbus",
  "futures-util",
@@ -729,6 +730,7 @@ dependencies = [
  "keyring",
  "libc",
  "mdns-sd",
+ "png 0.17.16",
  "qrcode",
  "rcgen",
  "reqwest 0.12.28",

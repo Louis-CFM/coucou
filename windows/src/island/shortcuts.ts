@@ -132,7 +132,14 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       host.flyOutOrHome();
       break;
 
-    // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), and
+    // The Mac's ⌃⌥X: a part of the screen for Claude (capture.rs).
+    case "captureScreen":
+      resume();
+      void Bridge.captureBegin();
+      break;
+
+    // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), nor
+    // talkToCoucou (Rust starts listening itself), and
     // attachFrontWindow isn't in this version.
     default:
       break;

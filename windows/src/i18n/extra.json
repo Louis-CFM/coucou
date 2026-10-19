@@ -4416,6 +4416,28 @@
    "pt-BR": "Seu computador está morno",
    "ru": "Компьютер нагревается",
    "id": "Komputermu hangat"
+  },
+  "The capture is on the clipboard: press Ctrl+V where you want it.": {
+   "zh-Hans": "截图已在剪贴板上：在需要的地方按 Ctrl+V。",
+   "hi": "कैप्चर क्लिपबोर्ड पर है: जहाँ चाहिए वहाँ Ctrl+V दबाएँ।",
+   "es": "La captura está en el portapapeles: pulsa Ctrl+V donde la quieras.",
+   "ar": "اللقطة في الحافظة: اضغط Ctrl+V حيث تريدها.",
+   "fr": "La capture est dans le presse-papiers : appuie sur Ctrl+V là où tu la veux.",
+   "bn": "ক্যাপচারটি ক্লিপবোর্ডে আছে: যেখানে চান সেখানে Ctrl+V চাপুন।",
+   "pt-BR": "A captura está na área de transferência: pressione Ctrl+V onde quiser.",
+   "ru": "Снимок в буфере обмена: нажмите Ctrl+V там, где он нужен.",
+   "id": "Tangkapan ada di papan klip: tekan Ctrl+V di tempat yang kamu mau."
+  },
+  "Capture part of the screen for Claude": {
+   "zh-Hans": "截取屏幕的一部分给 Claude",
+   "hi": "Claude के लिए स्क्रीन का एक हिस्सा कैप्चर करें",
+   "es": "Capturar una parte de la pantalla para Claude",
+   "ar": "التقاط جزء من الشاشة لـ Claude",
+   "fr": "Capturer une partie de l'écran pour Claude",
+   "bn": "Claude-এর জন্য স্ক্রিনের একটি অংশ ক্যাপচার করুন",
+   "pt-BR": "Capturar uma parte da tela para o Claude",
+   "ru": "Снять часть экрана для Claude",
+   "id": "Tangkap sebagian layar untuk Claude"
   }
  }
 }

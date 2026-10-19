@@ -61,6 +61,9 @@ async function main() {
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
   await onEvent<null>("wake-hover", () => island.wakeFromEdge());
   await onEvent<VitalsReport>("vitals", (r) => island.setVitals(r));
+  await onEvent<null>("capture-begin", () => island.onCaptureBegin());
+  await onEvent<{ path: string; dataUrl: string }>("capture-ready", (c) => island.onCaptureReady(c));
+  await onEvent<null>("capture-used", () => island.onCaptureUsed());
   await onEvent<boolean>("browser-foreground", (on) => island.setBrowserForeground(on));
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */

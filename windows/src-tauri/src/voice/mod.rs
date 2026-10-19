@@ -46,6 +46,24 @@ struct Running {
 
 static RUNNING: Mutex<Option<Running>> = Mutex::new(None);
 
+/// The talkToCoucou shortcut: the next words are the question, without « OK Coucou ».
+static TALK_NOW: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Starts listening for a question at once, as if « OK Coucou » had just been
+/// heard. Nothing happens while « OK Coucou » is off.
+pub fn talk_now() {
+    if is_listening() {
+        TALK_NOW.store(true, Ordering::Relaxed);
+    } else {
+        crate::log::line("voice: talk shortcut, but « OK Coucou » is off");
+    }
+}
+
+#[tauri::command]
+pub fn voice_talk() {
+    talk_now();
+}
+
 /// Rust waits on these for the island's answers and the end of speech.
 fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
     static P: OnceLock<Mutex<HashMap<u64, mpsc::Sender<String>>>> = OnceLock::new();
@@ -137,6 +155,13 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         };
         let now = Instant::now();
+        if TALK_NOW.swap(false, Ordering::Relaxed) && matches!(mode, Mode::Wake) {
+            crate::log::line("voice: listening without the wake phrase");
+            hide_at = None;
+            show(&app, Some(VoiceView { phase: "listening".into(), heard: String::new(), answer: String::new() }));
+            mode = Mode::FollowUp { until: now + Duration::from_secs(8) };
+            vad.hangover = 40;
+        }
         // The pill's last answer goes away after a while.
         if hide_at.is_some_and(|t| now > t) {
             hide_at = None;

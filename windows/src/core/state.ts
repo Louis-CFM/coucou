@@ -257,6 +257,9 @@ class AppState {
    */
   mochiOnDesktop = false;
 
+  /** The screen capture on the island (capture.rs), until it is used or dismissed. */
+  capture: { path: string; dataUrl: string } | null = null;
+
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
 

@@ -70,6 +70,48 @@ body {
 
 /* ── Island ─────────────────────────────────────────────────────────────── */
 
+/* The screen capture card (CaptureCardView.swift). */
+.capture-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+  padding: 0 16px 0 98px;
+}
+
+.capture-thumb {
+  width: 104px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  flex: 0 0 auto;
+}
+
+.capture-text {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.capture-text .title {
+  font: 600 14px var(--font);
+}
+
+.capture-text .hint {
+  font: 12px var(--font);
+  color: #9398a1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.capture-actions {
+  display: flex;
+  gap: 7px;
+}
+
 /* How the computer is doing, under the island while the pointer is on Mochi
    (VitalsHoverLine.swift). */
 #vitals-line {

@@ -69,6 +69,10 @@ pub const ACTIONS: &[ActionDef] = &[
     action("muteToggle", "Ctrl+Alt+S", true, true),
     action("desktopToggle", "Ctrl+Alt+D", true, true),
     action("wardrobeToggle", "Ctrl+Alt+G", true, true),
+    // « OK Coucou » without saying it. No key by default, as on the Mac.
+    action("talkToCoucou", "", true, true),
+    // The Mac's ⌃⌥X: a part of the screen for Claude (capture.rs).
+    action("captureScreen", "Ctrl+Alt+X", true, true),
 ];
 
 pub fn find(id: &str) -> Option<&'static ActionDef> {
@@ -92,6 +96,8 @@ pub fn description(id: &str) -> &'static str {
         "muteToggle" => n_("Mute or unmute Mochi"),
         "desktopToggle" => n_("Send Mochi to the desktop"),
         "wardrobeToggle" => n_("Open the wardrobe"),
+        "talkToCoucou" => n_("Talk to Coucou"),
+        "captureScreen" => n_("Capture part of the screen for Claude"),
         _ => "Coucou",
     }
 }
@@ -324,6 +330,8 @@ pub fn dispatch<R: Runtime>(app: &AppHandle<R>, action: &str) {
     crate::log::line(format!("shortcut {action}"));
     if action == "wardrobeToggle" {
         let _ = app.emit_to(WINDOW_LABEL, "open-wardrobe", ());
+    } else if action == "talkToCoucou" {
+        crate::voice::talk_now();
     } else {
         let _ = app.emit_to(WINDOW_LABEL, "shortcut", action.to_string());
     }
@@ -688,9 +696,9 @@ mod wayland {
 mod tests {
     use super::*;
 
-    const MAC_IDS: [&str; 10] = [
+    const MAC_IDS: [&str; 12] = [
         "toggleIsland", "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow",
-        "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle",
+        "nextPill", "prevPill", "muteToggle", "desktopToggle", "wardrobeToggle", "talkToCoucou", "captureScreen",
     ];
 
     fn never(_: &Shortcut) -> Option<String> {
@@ -707,7 +715,8 @@ mod tests {
     // testAllDefaultsHaveModifier
     #[test]
     fn every_default_parses_and_has_a_modifier() {
-        for def in ACTIONS {
+        // talkToCoucou has no key by default, as on the Mac.
+        for def in ACTIONS.iter().filter(|d| !d.default_keys.is_empty()) {
             let shortcut = parse(def.default_keys)
                 .unwrap_or_else(|| panic!("{} default does not parse", def.id));
             assert!(is_altgr_like(&shortcut), "{} default is not Ctrl+Alt", def.id);
@@ -718,7 +727,7 @@ mod tests {
     #[test]
     fn no_two_defaults_share_a_combination() {
         let mut seen = HashSet::new();
-        for def in ACTIONS {
+        for def in ACTIONS.iter().filter(|d| !d.default_keys.is_empty()) {
             assert!(seen.insert(parse(def.default_keys).unwrap().id()), "{} duplicates", def.id);
         }
     }
@@ -740,6 +749,8 @@ mod tests {
             match outcome {
                 Ok(_) => assert!(def.ported && def.enabled_by_default, "{}", def.id),
                 Err(s) if reserved => assert_eq!(s.status, Status::NotPorted),
+                // No key by default (talkToCoucou, as on the Mac): off until one is set.
+                Err(s) if def.default_keys.is_empty() => assert_eq!(s.status, Status::Off),
                 Err(s) => assert_eq!((def.id, s.status), ("toggleIsland", Status::Off)),
             }
         }
@@ -798,7 +809,7 @@ mod tests {
         // Same key, other modifiers: not a duplicate.
         stored.insert("jumpToTerminal".into(), Binding { keys: "Ctrl+Shift+A".into(), enabled: true });
         let plan = super::plan(&stored, never);
-        assert!(plan.iter().all(|(d, o)| o.is_ok() || !d.ported || d.id == "toggleIsland"));
+        assert!(plan.iter().all(|(d, o)| o.is_ok() || !d.ported || d.id == "toggleIsland" || d.default_keys.is_empty()));
 
         // A disabled action doesn't hold its keys.
         stored.insert("goToAlert".into(), Binding { keys: "Ctrl+Alt+A".into(), enabled: false });
