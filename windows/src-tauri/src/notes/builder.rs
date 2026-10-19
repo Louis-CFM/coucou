@@ -32,6 +32,9 @@ pub struct Line {
     pub start: f64,
     pub end: f64,
     pub text: String,
+    /// The words as Parakeet heard them, kept when the line was corrected (by Claude or by you).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -112,7 +115,7 @@ pub fn lines(words: &[(String, TimedWord)]) -> Vec<Line> {
                 continue;
             }
         }
-        out.push(Line { id: new_id(), speaker: speaker.clone(), start: word.start, end: word.end, text: word.text.clone() });
+        out.push(Line { id: new_id(), speaker: speaker.clone(), start: word.start, end: word.end, text: word.text.clone(), raw: None });
     }
     out
 }
@@ -238,6 +241,8 @@ pub struct Summary {
 
 pub const SUMMARY_INSTRUCTIONS: &str = "You write the notes of a meeting from its transcript. Each line is \"Name: words\".\n\
 Write in the language of the transcript. Invent nothing that was not said.\n\
+The transcript comes from speech recognition: a word that makes no sense was probably misheard, \
+understand it from the context.\n\
 Reply ONLY with JSON, no code block, in this exact shape:\n\
 {\"title\": \"a short title, 6 words at most\", \"summary\": \"2 to 4 sentences: what was decided and why\", \
 \"key_points\": [\"up to 6 short points\"], \"todos\": [{\"text\": \"the task\", \"owner\": \"the person's name as written in the transcript, or null\", \"due\": \"the deadline as said, or null\"}]}";

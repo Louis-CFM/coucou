@@ -871,6 +871,40 @@ button.hub-icon svg {
   font: 600 12.5px var(--font);
 }
 
+/* A line of a noted call: its ⋯ shows on hover (FlowHubNotes.swift). */
+.hub-line.editable {
+  grid-template-columns: 56px minmax(0, 1fr) 24px;
+}
+
+.hub-line-more {
+  border: 0;
+  background: transparent;
+  color: var(--hub-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  opacity: 0;
+  cursor: pointer;
+  align-self: start;
+}
+
+.hub-line:hover .hub-line-more,
+.hub-line-more:focus-visible {
+  opacity: 1;
+}
+
+.hub-line-more:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hub-line-actions:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .hub-line .said {
   font-size: 14px;
   color: var(--hub-body);
