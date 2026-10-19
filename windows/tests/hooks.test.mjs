@@ -206,6 +206,40 @@ test("a new turn within 5.2 s of a stop is not put back to idle", () => {
 
 // ── Other agents ──────────────────────────────────────────────────────────────
 
+test("the pill follows the session that spoke last, so Open terminal goes to its window", () => {
+  hook({ hook_event_name: "SessionStart", session_id: "aaaa", cwd: "/home/me/one" });
+  hook({ hook_event_name: "PreToolUse", session_id: "aaaa", cwd: "/home/me/one", tool_name: "Read", tool_input: {} });
+  hook({ hook_event_name: "SessionStart", session_id: "bbbb", cwd: "/home/me/two" });
+  hook({ hook_event_name: "PreToolUse", session_id: "bbbb", cwd: "/home/me/two", tool_name: "Read", tool_input: {} });
+  assert.equal(task().sessionId, "bbbb");
+  // A finishes after a PostToolUse, which used to leave B on the pill...
+  hook({ hook_event_name: "PostToolUse", session_id: "aaaa", cwd: "/home/me/one", tool_name: "Read", tool_input: {} });
+  assert.equal(task().sessionId, "aaaa");
+  assert.equal(task().sessionCwd, "/home/me/one");
+  // ...and so does the Stop that ends a turn: the finished card is B's, and so is its window.
+  hook({ hook_event_name: "PostToolUse", session_id: "bbbb", cwd: "/home/me/two", tool_name: "Read", tool_input: {} });
+  hook({ hook_event_name: "Stop", session_id: "bbbb", cwd: "/home/me/two", last_assistant_message: "done" });
+  assert.equal(task().state, "finished");
+  assert.equal(task().sessionId, "bbbb");
+  assert.equal(task().sessionCwd, "/home/me/two");
+  assert.equal(task().name, "two");
+});
+
+test("a session ending does not end the pill of the session that is on it", () => {
+  hook({ hook_event_name: "SessionStart", session_id: "aaaa", cwd: "/home/me/one" });
+  hook({ hook_event_name: "SessionStart", session_id: "bbbb", cwd: "/home/me/two" });
+  hook({ hook_event_name: "PreToolUse", session_id: "bbbb", cwd: "/home/me/two", tool_name: "Read", tool_input: {} });
+  // A, which is not the one on the pill, ends: B's card stays as it is.
+  hook({ hook_event_name: "SessionEnd", session_id: "aaaa" });
+  assert.equal(task().sessionId, "bbbb");
+  assert.equal(task().state, "working");
+  assert.equal(task().name, "two");
+  // B, the one on the pill, ends: now it goes back to idle.
+  hook({ hook_event_name: "SessionEnd", session_id: "bbbb" });
+  assert.equal(task().state, "idle");
+  assert.equal(task().sessionId, null);
+});
+
 test("a tagged agent gets its own pill next to Claude Code's", () => {
   hook({ hook_event_name: "PreToolUse", cwd: "/p/proj", coucou_agent: "gemini", tool_name: "Bash", tool_input: { command: "ls" } });
   assert.equal(State.tasks[0].id, CLAUDE);
@@ -368,6 +402,16 @@ test("Claude Code in Cursor's terminal works on the Cursor pill, made for the se
   assert.equal(task().state, "idle");
   hook({ hook_event_name: "SessionEnd", term_editor: "cursor" });
   assert.equal(task("agent_cursor"), undefined);
+});
+
+test("Claude Code in a JetBrains terminal works on the PhpStorm pill", () => {
+  hook({ hook_event_name: "SessionStart", cwd: "/p/proj", session_id: "s10", term_editor: "phpstorm" });
+  hook({ hook_event_name: "PreToolUse", cwd: "/p/proj", term_editor: "phpstorm", tool_name: "Bash", tool_input: { command: "ls" } });
+  assert.equal(task("agent_phpstorm").state, "working");
+  assert.equal(task("agent_phpstorm").sessionId, "s10");
+  assert.equal(task().state, "idle");
+  hook({ hook_event_name: "SessionEnd", term_editor: "phpstorm" });
+  assert.equal(task("agent_phpstorm"), undefined);
 });
 
 test("with another main tool, Claude Code's pill comes for the session and goes after", () => {

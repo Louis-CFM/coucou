@@ -5,10 +5,11 @@ import { h, svg } from "./dom";
 import { ICONS } from "./icons";
 import { fileName, type DiffKind, type FileDiff } from "../core/diff";
 import { N_, tl } from "../i18n/i18n";
+import { OPEN_IN, editorOf } from "../core/editors";
+import { State } from "../core/state";
 
 const STRINGS = {
   back: N_("Back"),
-  open: N_("Open in VS Code"),
   tooLarge: N_("Diff too large"),
   noChanges: N_("No changes"),
 };
@@ -36,7 +37,7 @@ export function buildDiffCard(diff: FileDiff, hooks: DiffCardHooks): HTMLElement
     diff.removed > 0 ? h("span", { class: "tick-count minus", text: `−${diff.removed}` }) : null,
     h(
       "button",
-      { class: "icon-btn", title: tl(STRINGS.open), onclick: () => hooks.open(diff.path) },
+      { class: "icon-btn", title: tl(OPEN_IN[editorOf(State.settings.editor)]), onclick: () => hooks.open(diff.path) },
       svg(ICONS.arrowUpRight, 8),
     ),
   );

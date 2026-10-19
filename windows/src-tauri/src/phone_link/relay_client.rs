@@ -538,6 +538,7 @@ mod tests {
             loop {
                 let Ok((tcp, _)) = listener.accept().await else { return };
                 let seen = seen2.clone();
+                #[allow(clippy::result_large_err)] // the signature tungstenite's handshake callback requires
                 let callback = move |req: &Request, mut resp: Response| -> Result<Response, ErrorResponse> {
                     let header = |n: &str| req.headers().get(n).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
                     seen.auth.lock().unwrap().push(header("authorization"));

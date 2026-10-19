@@ -46,14 +46,33 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
+  // PhpStorm is Windows and Linux's own (the Mac has no such pill): it is
+  // checked apart below.
   assert.deepEqual(
-    PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
+    PILL_CATALOG.filter((p) => p.id !== "agent_phpstorm").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
   ]);
 });
+
+test("PhpStorm is a workspace pill after Cursor, carried by Claude Code's hooks", () => {
+  const ids = PILL_CATALOG.map((p) => p.id);
+  assert.equal(ids.indexOf("agent_phpstorm"), ids.indexOf("agent_cursor") + 1);
+  const def = pillDefinition("agent_phpstorm");
+  assert.deepEqual(
+    [def.name, def.color, def.category, def.subtitle, def.connect.kind],
+    ["PhpStorm", "#B345F1", "workspace", "Integration", "hooks"],
+  );
+  assert.ok(isHookPill("agent_phpstorm"));
+  assert.equal(sessionSubtitle("agent_phpstorm"), "PhpStorm");
+  // It can be declared, or be the main pill.
+  assert.deepEqual(chooseMainPill({ mainPill: "integration_claude", activeIntegrations: ["agent_phpstorm"] }, "agent_phpstorm", "linux"), {
+    mainPill: "agent_phpstorm", activeIntegrations: [],
+  });
+});
+
 
 test("the shipped pills keep their IDs, colours and sources with current display names", () => {
   const shipped = [
@@ -134,7 +153,7 @@ test("no chat provider that works here says Coming soon", () => {
 
 test("the main pill is a workspace tool that works here", () => {
   assert.deepEqual(mainPillChoices("linux").map((p) => p.id), [
-    "integration_claude", "agent_cursor", "agent_antigravity", "agent_codex",
+    "integration_claude", "agent_cursor", "agent_phpstorm", "agent_antigravity", "agent_codex",
   ]);
   assert.equal(DEFAULT_MAIN_PILL, "integration_claude");
 });

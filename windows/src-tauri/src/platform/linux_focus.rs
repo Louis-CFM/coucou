@@ -159,6 +159,22 @@ pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
     tab || raised
 }
 
+/// Brings forward an editor's window for a project that is open in it, found by
+/// the editor's window class and the folder named in the title, of one editor
+/// process when `pid` says which. X11 only (and XWayland windows); false when
+/// there is none, the caller then launches the editor, which opens the project
+/// in the running instance.
+pub fn focus_editor_window(class_hint: &str, folder: &str, pid: Option<u32>) -> bool {
+    if std::env::var_os("DISPLAY").is_none_or(|d| d.is_empty()) {
+        return false;
+    }
+    let done = x11::activate_project(class_hint, folder, pid);
+    if done {
+        crate::log::line(format!("open terminal: {class_hint} window of {folder:?} raised"));
+    }
+    done
+}
+
 /// Runs a helper with nothing attached and a time limit; true when it exits 0.
 fn run_quietly(cmd: &mut Command, limit: Duration) -> bool {
     let Ok(mut child) = cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() else {
@@ -217,53 +233,105 @@ mod x11 {
             .unwrap_or_default()
     }
 
-    fn try_activate(ancestors: &[u32], folder: &str) -> Fallible<bool> {
+    /// The atoms the window lookups and the raise need.
+    struct Atoms {
+        client_list: u32,
+        wm_pid: u32,
+        wm_class: u32,
+        net_wm_name: u32,
+        utf8: u32,
+        active: u32,
+        wm_desktop: u32,
+        current_desktop: u32,
+    }
+
+    /// Finds a window with `choose` among the window manager's clients and raises
+    /// it: its workspace first, then an activation request.
+    fn raise_chosen(
+        choose: impl FnOnce(&RustConnection, &[Window], &Atoms) -> Option<Window>,
+    ) -> Fallible<bool> {
         let (conn, screen) = x11rb::connect(None)?;
         let root = conn.setup().roots.get(screen).ok_or("no screen")?.root;
-        let client_list = atom(&conn, "_NET_CLIENT_LIST")?;
-        let wm_pid = atom(&conn, "_NET_WM_PID")?;
-        let net_wm_name = atom(&conn, "_NET_WM_NAME")?;
-        let utf8 = atom(&conn, "UTF8_STRING")?;
-        let active = atom(&conn, "_NET_ACTIVE_WINDOW")?;
-        let wm_desktop = atom(&conn, "_NET_WM_DESKTOP")?;
-        let current_desktop = atom(&conn, "_NET_CURRENT_DESKTOP")?;
-
+        let atoms = Atoms {
+            client_list: atom(&conn, "_NET_CLIENT_LIST")?,
+            wm_pid: atom(&conn, "_NET_WM_PID")?,
+            wm_class: AtomEnum::WM_CLASS.into(),
+            net_wm_name: atom(&conn, "_NET_WM_NAME")?,
+            utf8: atom(&conn, "UTF8_STRING")?,
+            active: atom(&conn, "_NET_ACTIVE_WINDOW")?,
+            wm_desktop: atom(&conn, "_NET_WM_DESKTOP")?,
+            current_desktop: atom(&conn, "_NET_CURRENT_DESKTOP")?,
+        };
         let clients: Vec<Window> = conn
-            .get_property(false, root, client_list, AtomEnum::WINDOW, 0, 4096)?
+            .get_property(false, root, atoms.client_list, AtomEnum::WINDOW, 0, 4096)?
             .reply()?
             .value32()
             .map(|v| v.collect())
             .unwrap_or_default();
-        // Every window's process in one round trip; a window gone meanwhile is skipped.
-        let cookies: Vec<_> = clients
-            .iter()
-            .map(|w| conn.get_property(false, *w, wm_pid, AtomEnum::CARDINAL, 0, 1))
-            .collect::<Result<_, _>>()?;
-        let mut windows: Vec<(Window, u32, String)> = Vec::new();
-        for (window, cookie) in clients.iter().zip(cookies) {
-            let Ok(reply) = cookie.reply() else { continue };
-            let pid = reply.value32().and_then(|mut v| v.next());
-            let Some(pid) = pid else { continue };
-            if ancestors.contains(&pid) {
-                windows.push((*window, pid, title(&conn, *window, net_wm_name, utf8)));
-            }
-        }
-        let Some(&target) = session_window::choose_window(ancestors, &windows, folder) else {
+        let Some(target) = choose(&conn, &clients, &atoms) else {
             return Ok(false);
         };
 
         let to_root = EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY;
         // Its workspace first, for the window managers that won't switch on their own.
-        if let Some(desktop) = cardinal(&conn, target, wm_desktop).filter(|d| *d != u32::MAX) {
-            let ev = ClientMessageEvent::new(32, root, current_desktop, [desktop, 0, 0, 0, 0]);
+        if let Some(desktop) = cardinal(&conn, target, atoms.wm_desktop).filter(|d| *d != u32::MAX) {
+            let ev = ClientMessageEvent::new(32, root, atoms.current_desktop, [desktop, 0, 0, 0, 0]);
             conn.send_event(false, root, to_root, ev)?;
         }
         // Source 2: a pager acting for the user, which window managers honour
         // over their focus-stealing prevention. Timestamp 0: "now".
-        let ev = ClientMessageEvent::new(32, target, active, [2, 0, 0, 0, 0]);
+        let ev = ClientMessageEvent::new(32, target, atoms.active, [2, 0, 0, 0, 0]);
         conn.send_event(false, root, to_root, ev)?;
         conn.flush()?;
         Ok(true)
+    }
+
+    fn try_activate(ancestors: &[u32], folder: &str) -> Fallible<bool> {
+        raise_chosen(|conn, clients, atoms| {
+            // Every window's process in one round trip; a window gone meanwhile is skipped.
+            let cookies: Vec<_> = clients
+                .iter()
+                .map(|w| conn.get_property(false, *w, atoms.wm_pid, AtomEnum::CARDINAL, 0, 1))
+                .collect::<Result<_, _>>()
+                .ok()?;
+            let mut windows: Vec<(Window, u32, String)> = Vec::new();
+            for (window, cookie) in clients.iter().zip(cookies) {
+                let Ok(reply) = cookie.reply() else { continue };
+                let Some(pid) = reply.value32().and_then(|mut v| v.next()) else { continue };
+                if ancestors.contains(&pid) {
+                    windows.push((*window, pid, title(conn, *window, atoms.net_wm_name, atoms.utf8)));
+                }
+            }
+            session_window::choose_window(ancestors, &windows, folder).copied()
+        })
+    }
+
+    /// `WM_CLASS` is "instance\0class\0".
+    fn class_of(conn: &RustConnection, window: Window, wm_class: u32) -> String {
+        conn.get_property(false, window, wm_class, AtomEnum::STRING, 0, 256)
+            .ok()
+            .and_then(|c| c.reply().ok())
+            .map(|r| String::from_utf8_lossy(&r.value).replace('\0', " ").to_lowercase())
+            .unwrap_or_default()
+    }
+
+    /// An editor's window for a project, found by its class and a title that
+    /// names the folder, whatever process owns it: one editor process holds a
+    /// window per project. No window is raised for a folder that is not open.
+    pub fn activate_project(class_hint: &str, folder: &str, pid: Option<u32>) -> bool {
+        if folder.is_empty() {
+            return false;
+        }
+        let folder = folder.to_lowercase();
+        let hint = class_hint.to_lowercase();
+        raise_chosen(|conn, clients, atoms| {
+            clients.iter().copied().find(|w| {
+                pid.is_none_or(|pid| cardinal(conn, *w, atoms.wm_pid) == Some(pid))
+                    && class_of(conn, *w, atoms.wm_class).contains(&hint)
+                    && session_window::title_names_folder(&title(conn, *w, atoms.net_wm_name, atoms.utf8), &folder)
+            })
+        })
+        .unwrap_or(false)
     }
 }
 

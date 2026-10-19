@@ -37,6 +37,39 @@ export interface FileDiff {
   isNewFile: boolean;
 }
 
+/** Where a diff's first change is in the file, by the lines around it. */
+export interface LineHint {
+  /** Consecutive lines of the file as the edit left it. */
+  block: string[];
+  /** Index in `block` of the first changed line. */
+  offset: number;
+}
+
+/**
+ * The lines around the first change of a diff, for an editor that opens a file
+ * on a line: a diff of an Edit is of the edited text, so its line numbers are
+ * the text's and the editor's side has to find the place itself (editor.rs).
+ * Null when there is nothing to look for.
+ */
+export function lineHint(diff: FileDiff): LineHint | null {
+  const hunk = diff.hunks[0];
+  if (!hunk || diff.tooLarge) return null;
+  const side: string[] = [];
+  let first = -1;
+  for (const line of hunk.lines) {
+    if (line.kind === "removed") {
+      if (first < 0) first = side.length;
+      continue;
+    }
+    if (line.kind === "added" && first < 0) first = side.length;
+    side.push(line.text);
+  }
+  if (first < 0 || side.length === 0) return null;
+  const offset = Math.min(first, side.length - 1);
+  const from = Math.max(0, offset - 3);
+  return { block: side.slice(from, from + 24), offset: offset - from };
+}
+
 /** FileDiff.maxBytes / maxLines on macOS. */
 export const DIFF_MAX_BYTES = 200 * 1024;
 export const DIFF_MAX_LINES = 4000;
