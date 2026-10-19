@@ -63,9 +63,7 @@ class DesktopMochi {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    const dpr = this.dpr();
-    canvas.width = Math.round(PANEL_SIZE * dpr);
-    canvas.height = Math.round(PANEL_SIZE * dpr);
+    this.fitCanvas();
     this.engine.particleOverhang = 0;
     this.engine.setState("idle", true);
     // Three pokes: dizzy, and the island shows the confused view (as on macOS).
@@ -209,7 +207,7 @@ class DesktopMochi {
     // Dances while Spotify plays, by the compact island's rules.
     engine.setDancing(this.snap.dancing && !this.asleep);
     engine.update(dt);
-    const dpr = this.dpr();
+    const dpr = this.fitCanvas();
     ctx.setTransform(dpr, 0, 0, dpr, SIDE * dpr, 0);
     ctx.clearRect(-SIDE, 0, PANEL_SIZE, PANEL_SIZE);
     ctx.save();
@@ -220,6 +218,17 @@ class DesktopMochi {
 
   private dpr(): number {
     return Math.min(2, window.devicePixelRatio || 1);
+  }
+
+  /** Sizes the canvas's pixels for the display he is on now. Dragged onto a
+   *  display with another scale (#344), a canvas sized at launch is drawn at
+   *  the wrong scale: smaller, off to one corner and cut off. */
+  private fitCanvas(): number {
+    const dpr = this.dpr();
+    const side = Math.round(PANEL_SIZE * dpr);
+    if (this.canvas.width !== side) this.canvas.width = side;
+    if (this.canvas.height !== side) this.canvas.height = side;
+    return dpr;
   }
 
   // ── Input ───────────────────────────────────────────────────────────────────
