@@ -2710,3 +2710,330 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* ── WhatsApp card (WhatsAppViews.swift) ─────────────────────────────────── */
+
+.wa-card {
+  height: 100%;
+}
+
+.wa-list-card {
+  height: 100%;
+  padding-top: 10px;
+  box-sizing: border-box;
+}
+
+.wa-unread {
+  font: 600 10px var(--font) !important;
+  color: #25d366 !important;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.14);
+}
+
+.wa-empty {
+  font: 400 11px var(--font);
+  color: var(--dim-3);
+  padding: 8px 0 0 8px;
+}
+
+.wa-status {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 12px 6px 0;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  scrollbar-width: none;
+}
+
+.wa-rows::-webkit-scrollbar {
+  display: none;
+}
+
+.wa-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: start;
+  min-width: 0;
+  cursor: default;
+}
+
+.wa-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wa-row.unread {
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.wa-row.unread:hover {
+  background: rgba(37, 211, 102, 0.14);
+}
+
+.wa-avatar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(37, 211, 102, 0.22);
+  color: #25d366;
+  font-family: var(--font);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wa-name {
+  font: 400 11px var(--font);
+  color: #9398a1;
+  max-width: 92px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+
+.wa-row.unread .wa-name {
+  font-weight: 600;
+  color: #e8e9ec;
+}
+
+.wa-age {
+  font: 400 10px var(--font);
+  color: var(--dim-3);
+  flex: 0 0 auto;
+}
+
+.wa-preview {
+  font: 400 10px var(--font);
+  color: #4d5159;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.wa-row.unread .wa-preview {
+  color: #8e939c;
+}
+
+.wa-count {
+  font: 700 9px var(--font);
+  color: #0b0c0e;
+  background: #25d366;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+.wa-menu {
+  position: fixed;
+  z-index: 50;
+  padding: 4px;
+  border-radius: 7px;
+  background: #1d1f23;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.wa-menu-item {
+  display: block;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: 400 11.5px var(--font);
+  padding: 4px 10px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wa-menu-item:hover {
+  background: #25d366;
+  color: #0b0c0e;
+}
+
+.wa-conv {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 12px 4px 108px;
+}
+
+.wa-conv-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 24px;
+  min-width: 0;
+}
+
+.wa-back {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--dim-3);
+  display: grid;
+  place-items: center;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.wa-back:hover {
+  color: var(--ink);
+}
+
+.wa-head-name {
+  font: 600 11px var(--font);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  scrollbar-width: none;
+}
+
+.wa-messages::-webkit-scrollbar {
+  display: none;
+}
+
+.wa-line {
+  display: flex;
+  padding-right: 40px;
+}
+
+.wa-line.mine {
+  justify-content: flex-end;
+  padding: 0 0 0 40px;
+}
+
+.wa-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  min-width: 0;
+}
+
+.wa-line.mine .wa-bubble {
+  background: rgba(37, 211, 102, 0.16);
+}
+
+.wa-sender {
+  font: 600 9px var(--font);
+  color: rgba(37, 211, 102, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-media {
+  font: 500 10px var(--font);
+  color: #9398a1;
+}
+
+.wa-text {
+  font: 400 10.5px var(--font);
+  color: #c5c8cd;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.wa-line.mine .wa-text {
+  color: #e8e9ec;
+}
+
+.wa-reply {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wa-draft {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 400 11px var(--font);
+  line-height: 14px;
+  height: 14px;
+  max-height: 44px;
+  padding: 0;
+}
+
+.wa-draft::placeholder {
+  color: var(--dim-3);
+}
+
+.wa-send {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: #25d366;
+  color: #0b0c0e;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  cursor: default;
+}
+
+.wa-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #25d366;
+  animation: wa-spin 0.8s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes wa-spin {
+  to { transform: rotate(360deg); }
+}
+
+.wa-note {
+  font: 400 9.5px var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-dir="rtl"] #views .wa-conv {
+  padding: 4px 108px 4px 12px;
+}

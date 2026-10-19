@@ -134,6 +134,9 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Experimental, through a local gateway (src-tauri/src/whatsapp).
+  { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

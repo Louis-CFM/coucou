@@ -8,6 +8,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { WhatsAppPrefs, WhatsAppState } from "./whatsapp";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -418,6 +419,25 @@ export const Bridge = {
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
+
+  // ── WhatsApp (src-tauri/src/whatsapp) ─────────────────────────────────────
+  whatsappState: () => call<WhatsAppState>("whatsapp_state"),
+  /** `url` / `credential`: null leaves the stored one alone, "" clears it. */
+  whatsappSetPrefs: (prefs: WhatsAppPrefs, url: string | null, credential: string | null) =>
+    call<void>("whatsapp_set_prefs", { prefs, url, credential }),
+  /** "Test connection": what the gateway says, in a sentence. */
+  whatsappTest: () => call<string>("whatsapp_test"),
+  /** Downloads, checks and starts GOWA; progress arrives in the snapshots. */
+  whatsappInstall: () => call<void>("whatsapp_install"),
+  /** A conversation opened in the card (read receipts if Settings says so). */
+  whatsappOpen: (chat: string) => call<void>("whatsapp_open", { chat }),
+  whatsappClose: (chat: string) => call<void>("whatsapp_close", { chat }),
+  /** True when the gateway took it. */
+  whatsappSend: (chat: string, text: string) => call<boolean>("whatsapp_send", { chat, text }),
+  whatsappIgnore: (chat: string) => call<void>("whatsapp_ignore", { chat }),
+  whatsappUnignore: (chat: string) => call<void>("whatsapp_unignore", { chat }),
+  /** WhatsApp's app when installed, WhatsApp Web otherwise. */
+  whatsappOpenApp: () => call<void>("whatsapp_open_app"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

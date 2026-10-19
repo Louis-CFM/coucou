@@ -40,6 +40,7 @@ mod vitals;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
+mod whatsapp;
 
 use std::process::Command;
 use std::sync::atomic::Ordering;
@@ -831,6 +832,16 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            whatsapp::whatsapp_state,
+            whatsapp::whatsapp_set_prefs,
+            whatsapp::whatsapp_test,
+            whatsapp::whatsapp_install,
+            whatsapp::whatsapp_open,
+            whatsapp::whatsapp_close,
+            whatsapp::whatsapp_send,
+            whatsapp::whatsapp_ignore,
+            whatsapp::whatsapp_unignore,
+            whatsapp::whatsapp_open_app,
             vitals::vitals_set_active,
             capture::capture_begin,
             capture::capture_paste,
@@ -922,6 +933,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            whatsapp::start(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
@@ -941,6 +953,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
+                whatsapp::shutdown();
             }
         });
 }

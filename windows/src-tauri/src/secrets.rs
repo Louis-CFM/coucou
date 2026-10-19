@@ -22,6 +22,9 @@ pub const KNOWN_KEYS: &[&str] = &[
     "calcom-api-key",
     // « OK Coucou »'s answers in an ElevenLabs voice.
     "elevenlabs-api-key",
+    // The WhatsApp gateway (GOWA or OpenWA) when it is not the one Coucou runs.
+    "whatsapp-url",
+    "whatsapp-api-key",
 ];
 
 fn entry(key: &str) -> Option<Entry> {
@@ -71,6 +74,8 @@ pub const INTERNAL_KEYS: &[&str] = &[
     "phone-relay-room",
     "phone-relay-key",
     "phone-relay-access",
+    // Signs what the WhatsApp gateway posts to Coucou.
+    "whatsapp-webhook-secret",
 ];
 
 /// Whether the keystore would accept this key through `get_internal` / `set_internal`.

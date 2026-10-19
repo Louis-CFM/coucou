@@ -21,6 +21,7 @@ import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
+import { whatsappSection } from "./whatsapp";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -784,6 +785,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Its own block below (settings/whatsapp.ts): gateway, QR, filters.
+  { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -867,6 +870,9 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_whatsapp") {
+      rows.append(whatsappSection(() => settings.activeIntegrations.includes(def.id)));
+    }
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });

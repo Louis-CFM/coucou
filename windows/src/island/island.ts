@@ -14,6 +14,7 @@ import {
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
+import { WHATSAPP_ID } from "../core/whatsapp";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -198,6 +199,7 @@ export class Island {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
+        else if (task.id === WHATSAPP_ID) void Bridge.whatsappOpenApp();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
@@ -244,6 +246,7 @@ export class Island {
         State.notify();
       },
       openSettingsWindow: () => void Bridge.openSettingsWindow(),
+      setPinned: (on) => this.setPinned(on),
       blip: () => Sound.play("blip"),
       chooseOutfit: (selection) => {
         if (parseOutfit(State.settings.mochiOutfit) === selection) return;

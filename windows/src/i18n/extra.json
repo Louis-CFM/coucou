@@ -4438,6 +4438,83 @@
    "pt-BR": "Capturar uma parte da tela para o Claude",
    "ru": "Снять часть экрана для Claude",
    "id": "Tangkap sebagian layar untuk Claude"
+  },
+  "No GOWA build for this computer was found on GitHub. Try again later, or set your own gateway under Advanced.": {
+   "zh-Hans": "在 GitHub 上没有找到适用于这台电脑的 GOWA 版本。请稍后再试，或在“高级”中设置你自己的网关。",
+   "hi": "GitHub पर इस कंप्यूटर के लिए कोई GOWA बिल्ड नहीं मिला। बाद में फिर कोशिश करें, या उन्नत में अपना गेटवे सेट करें।",
+   "es": "No se encontró en GitHub ninguna versión de GOWA para este ordenador. Inténtalo más tarde o configura tu propia pasarela en Avanzado.",
+   "ar": "لم يُعثر على GitHub على إصدار GOWA لهذا الكمبيوتر. حاول لاحقًا، أو اضبط بوابتك الخاصة في الإعدادات المتقدمة.",
+   "fr": "Aucune version de GOWA pour cet ordinateur n'a été trouvée sur GitHub. Réessaie plus tard, ou règle ta propre passerelle dans Avancé.",
+   "bn": "GitHub-এ এই কম্পিউটারের জন্য কোনো GOWA বিল্ড পাওয়া যায়নি। পরে আবার চেষ্টা করুন, অথবা উন্নত অংশে নিজের গেটওয়ে সেট করুন।",
+   "pt-BR": "Nenhuma versão do GOWA para este computador foi encontrada no GitHub. Tente mais tarde ou configure seu próprio gateway em Avançado.",
+   "ru": "На GitHub не нашлось сборки GOWA для этого компьютера. Попробуйте позже или укажите свой шлюз в разделе «Дополнительно».",
+   "id": "Tidak ada build GOWA untuk komputer ini di GitHub. Coba lagi nanti, atau atur gateway sendiri di Lanjutan."
+  },
+  "Coucou runs it on this computer only (127.0.0.1, the URL’s port), without downloading media, and stops it when Coucou quits. Its WhatsApp session stays in Coucou’s GOWA folder in your local app data.": {
+   "zh-Hans": "Coucou 仅在这台电脑上运行它（127.0.0.1，使用地址中的端口），不下载媒体，并在 Coucou 退出时停止它。其 WhatsApp 会话保存在本地应用数据中 Coucou 的 GOWA 文件夹里。",
+   "hi": "Coucou इसे सिर्फ़ इस कंप्यूटर पर चलाता है (127.0.0.1, URL का पोर्ट), मीडिया डाउनलोड किए बिना, और Coucou बंद होने पर रोक देता है। इसका WhatsApp सेशन आपके लोकल ऐप डेटा में Coucou के GOWA फ़ोल्डर में रहता है।",
+   "es": "Coucou lo ejecuta solo en este ordenador (127.0.0.1, el puerto de la URL), sin descargar archivos, y lo detiene al cerrar Coucou. Su sesión de WhatsApp queda en la carpeta GOWA de Coucou, en los datos locales de aplicaciones.",
+   "ar": "يشغّله Coucou على هذا الكمبيوتر فقط (127.0.0.1، منفذ العنوان)، دون تنزيل الوسائط، ويوقفه عند إغلاق Coucou. تبقى جلسة WhatsApp في مجلد GOWA الخاص بـ Coucou ضمن بيانات التطبيقات المحلية.",
+   "fr": "Coucou le lance sur cet ordinateur uniquement (127.0.0.1, le port de l’URL), sans télécharger les médias, et l’arrête quand Coucou quitte. Sa session WhatsApp reste dans le dossier GOWA de Coucou, dans les données locales des applications.",
+   "bn": "Coucou এটি শুধু এই কম্পিউটারে চালায় (127.0.0.1, URL-এর পোর্ট), মিডিয়া ডাউনলোড ছাড়াই, এবং Coucou বন্ধ হলে থামিয়ে দেয়। এর WhatsApp সেশন থাকে আপনার লোকাল অ্যাপ ডেটায় Coucou-র GOWA ফোল্ডারে।",
+   "pt-BR": "O Coucou o executa só neste computador (127.0.0.1, a porta da URL), sem baixar mídias, e o encerra quando o Coucou fecha. A sessão do WhatsApp fica na pasta GOWA do Coucou, nos dados locais de aplicativos.",
+   "ru": "Coucou запускает его только на этом компьютере (127.0.0.1, порт из адреса), без загрузки медиа, и останавливает при выходе. Сессия WhatsApp хранится в папке GOWA приложения Coucou в локальных данных приложений.",
+   "id": "Coucou menjalankannya hanya di komputer ini (127.0.0.1, port dari URL), tanpa mengunduh media, dan menghentikannya saat Coucou ditutup. Sesi WhatsApp-nya ada di folder GOWA milik Coucou di data aplikasi lokal."
+  },
+  "Windows doesn’t let Coucou read Do not disturb right now: messages still arrive, Mochi keeps reacting.": {
+   "zh-Hans": "Windows 目前不允许 Coucou 读取“请勿打扰”状态：消息仍会到达，Mochi 也会继续反应。",
+   "hi": "Windows अभी Coucou को परेशान न करें की स्थिति पढ़ने नहीं देता: संदेश आते रहेंगे, Mochi प्रतिक्रिया देता रहेगा।",
+   "es": "Windows no deja que Coucou lea No molestar por ahora: los mensajes siguen llegando y Mochi sigue reaccionando.",
+   "ar": "لا يسمح Windows لـ Coucou بقراءة وضع عدم الإزعاج حاليًا: ستظل الرسائل تصل ويواصل Mochi التفاعل.",
+   "fr": "Windows ne laisse pas Coucou lire Ne pas déranger pour l’instant : les messages arrivent quand même, Mochi continue de réagir.",
+   "bn": "Windows এখন Coucou-কে বিরক্ত করবেন না অবস্থা পড়তে দিচ্ছে না: বার্তা আসতে থাকবে, Mochi প্রতিক্রিয়া দিতে থাকবে।",
+   "pt-BR": "O Windows não deixa o Coucou ler o Não incomodar agora: as mensagens continuam chegando e o Mochi continua reagindo.",
+   "ru": "Windows сейчас не даёт Coucou узнать режим «Не беспокоить»: сообщения приходят, Mochi продолжает реагировать.",
+   "id": "Windows belum mengizinkan Coucou membaca Jangan ganggu: pesan tetap masuk, Mochi tetap bereaksi."
+  },
+  "Stay quiet during Do not disturb": {
+   "zh-Hans": "“请勿打扰”期间保持安静",
+   "hi": "परेशान न करें के दौरान शांत रहें",
+   "es": "Silencio durante No molestar",
+   "ar": "الهدوء أثناء وضع عدم الإزعاج",
+   "fr": "Rester discret pendant Ne pas déranger",
+   "bn": "বিরক্ত করবেন না চালু থাকলে চুপ থাকো",
+   "pt-BR": "Ficar em silêncio durante o Não incomodar",
+   "ru": "Молчать в режиме «Не беспокоить»",
+   "id": "Tetap tenang saat Jangan ganggu"
+  },
+  "Coucou only talks to the gateway on this computer. Messages stay in memory, are never logged or saved, and are forgotten when Coucou quits. No photo or media is ever downloaded.": {
+   "zh-Hans": "Coucou 只与这台电脑上的网关通信。消息只保存在内存中，从不记录或保存，Coucou 退出后即被遗忘。从不下载任何照片或媒体。",
+   "hi": "Coucou सिर्फ़ इस कंप्यूटर पर चल रहे गेटवे से बात करता है। संदेश सिर्फ़ मेमोरी में रहते हैं, कभी लॉग या सेव नहीं होते, और Coucou बंद होने पर भुला दिए जाते हैं। कोई फ़ोटो या मीडिया कभी डाउनलोड नहीं होता।",
+   "es": "Coucou solo habla con la pasarela de este ordenador. Los mensajes se quedan en memoria, nunca se registran ni se guardan, y se olvidan al cerrar Coucou. Nunca se descarga ninguna foto ni archivo.",
+   "ar": "لا يتواصل Coucou إلا مع البوابة على هذا الكمبيوتر. تبقى الرسائل في الذاكرة، ولا تُسجَّل أو تُحفظ أبدًا، وتُنسى عند إغلاق Coucou. لا تُنزَّل أي صورة أو وسائط أبدًا.",
+   "fr": "Coucou ne parle qu’à la passerelle de cet ordinateur. Les messages restent en mémoire, ne sont jamais journalisés ni enregistrés, et sont oubliés quand Coucou quitte. Aucune photo ni aucun média n’est jamais téléchargé.",
+   "bn": "Coucou শুধু এই কম্পিউটারের গেটওয়ের সঙ্গে কথা বলে। বার্তা শুধু মেমরিতে থাকে, কখনো লগ বা সেভ হয় না, এবং Coucou বন্ধ হলে ভুলে যাওয়া হয়। কোনো ছবি বা মিডিয়া কখনো ডাউনলোড হয় না।",
+   "pt-BR": "O Coucou só conversa com o gateway deste computador. As mensagens ficam na memória, nunca são registradas nem salvas e são esquecidas quando o Coucou fecha. Nenhuma foto ou mídia é baixada.",
+   "ru": "Coucou общается только со шлюзом на этом компьютере. Сообщения хранятся в памяти, никогда не записываются в журнал и не сохраняются, и забываются при выходе Coucou. Фото и медиа никогда не загружаются.",
+   "id": "Coucou hanya berbicara dengan gateway di komputer ini. Pesan tetap di memori, tidak pernah dicatat atau disimpan, dan dilupakan saat Coucou ditutup. Tidak ada foto atau media yang diunduh."
+  },
+  "Unofficial integration: it goes through a gateway you run on this computer. Use it on your own account only. WhatsApp may restrict accounts that abuse it.": {
+   "zh-Hans": "非官方集成：它通过你在这台电脑上运行的网关工作。请仅用于你自己的账号。WhatsApp 可能会限制滥用它的账号。",
+   "hi": "अनौपचारिक इंटीग्रेशन: यह इस कंप्यूटर पर आपके चलाए गेटवे से होकर जाता है। इसे सिर्फ़ अपने अकाउंट पर इस्तेमाल करें। WhatsApp दुरुपयोग करने वाले अकाउंट सीमित कर सकता है।",
+   "es": "Integración no oficial: pasa por una pasarela que ejecutas en este ordenador. Úsala solo con tu propia cuenta. WhatsApp puede restringir las cuentas que abusen de ella.",
+   "ar": "تكامل غير رسمي: يمر عبر بوابة تشغّلها على هذا الكمبيوتر. استخدمه على حسابك فقط. قد يقيّد WhatsApp الحسابات التي تسيء استخدامه.",
+   "fr": "Intégration non officielle : elle passe par une passerelle que tu lances sur cet ordinateur. Utilise-la uniquement avec ton propre compte. WhatsApp peut restreindre les comptes qui en abusent.",
+   "bn": "অনানুষ্ঠানিক ইন্টিগ্রেশন: এটি এই কম্পিউটারে আপনার চালানো একটি গেটওয়ের মাধ্যমে কাজ করে। শুধু নিজের অ্যাকাউন্টে ব্যবহার করুন। অপব্যবহার করলে WhatsApp অ্যাকাউন্ট সীমিত করতে পারে।",
+   "pt-BR": "Integração não oficial: passa por um gateway que você executa neste computador. Use só na sua própria conta. O WhatsApp pode restringir contas que abusem dela.",
+   "ru": "Неофициальная интеграция: работает через шлюз, запущенный на этом компьютере. Используйте только со своим аккаунтом. WhatsApp может ограничить аккаунты, которые злоупотребляют этим.",
+   "id": "Integrasi tidak resmi: berjalan melalui gateway yang kamu jalankan di komputer ini. Gunakan hanya untuk akunmu sendiri. WhatsApp dapat membatasi akun yang menyalahgunakannya."
+  },
+  "Reply…  (Shift+Enter: new line)": {
+   "zh-Hans": "回复…  （Shift+Enter：换行）",
+   "hi": "जवाब दें…  (Shift+Enter: नई पंक्ति)",
+   "es": "Responder…  (Mayús+Intro: nueva línea)",
+   "ar": "رد…  (Shift+Enter: سطر جديد)",
+   "fr": "Répondre…  (Maj+Entrée : nouvelle ligne)",
+   "bn": "উত্তর দাও…  (Shift+Enter: নতুন লাইন)",
+   "pt-BR": "Responder…  (Shift+Enter: nova linha)",
+   "ru": "Ответить…  (Shift+Enter: новая строка)",
+   "id": "Balas…  (Shift+Enter: baris baru)"
   }
  }
 }

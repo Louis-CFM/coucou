@@ -29,6 +29,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 ring = "0.17"
+# Unpacks the GOWA release for the WhatsApp pill.
+zip = { version = "2", default-features = false, features = ["deflate"] }
 rcgen = { version = "0.13", default-features = false, features = ["ring"] }
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 # The phone finds this computer by itself when its address changes: it is announced on the local network
