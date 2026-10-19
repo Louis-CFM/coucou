@@ -1358,6 +1358,12 @@ struct SettingsView: View {
                 PortfolioSettingsSection()
                     .padding(.top, 4)
 
+                #if !APPSTORE
+                // WhatsApp through a local gateway: its own fields, saved by its own button.
+                WhatsAppSettingsSection()
+                    .padding(.top, 4)
+                #endif
+
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()
                     CryptoController.shared.settingsChanged()

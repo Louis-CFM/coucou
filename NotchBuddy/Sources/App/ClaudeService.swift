@@ -75,6 +75,8 @@ final class KeychainStore: @unchecked Sendable {
         "calcom-api-key",
         "notion-api-key",
         "elevenlabs-api-key",
+        // WhatsApp (local gateway): its address, credentials and the webhook's signing secret
+        "whatsapp-url", "whatsapp-api-key", "whatsapp-webhook-secret",
         // Portfolio exchange credentials
         "portfolio-binance-key",  "portfolio-binance-secret",
         "portfolio-okx-key",      "portfolio-okx-secret",      "portfolio-okx-passphrase",

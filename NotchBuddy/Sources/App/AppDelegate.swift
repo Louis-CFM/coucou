@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
         NoteTaker.shared.shutdown()
+        // The GOWA gateway Coucou started never outlives it.
+        WhatsAppGOWAProcess.shared.stopNow()
         #endif
         DemoEngine.shared.stop()
         HotKeyCenter.shared.unregisterAll()
@@ -292,6 +294,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = MusicController.shared
         _ = SpotifyController.shared
         MailController.shared.start()
+        WhatsAppController.shared.start()
         #endif
         CryptoController.shared.start()
         PortfolioController.shared.start()
