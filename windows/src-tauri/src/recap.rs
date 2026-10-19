@@ -471,7 +471,7 @@ fn text<'a>(payload: &'a Value, key: &str) -> &'a str {
 /// Same routing as hooks.ts, so a turn counts for the pill it showed on: a
 /// valid `coucou_agent` → `agent_<name>` (every agent the relay normalises,
 /// Claude Desktop included); otherwise Claude Code's own pill — Cursor's when
-/// it runs in Cursor's terminal, VS Code's else. "claude" is reserved.
+/// it runs in Cursor's terminal, PhpStorm's in a JetBrains one, VS Code's else. "claude" is reserved.
 fn agent_id(payload: &Value) -> String {
     let raw = text(payload, "coucou_agent");
     let valid = !raw.is_empty()
@@ -482,6 +482,8 @@ fn agent_id(payload: &Value) -> String {
         format!("agent_{raw}")
     } else if text(payload, "term_editor") == "cursor" {
         "agent_cursor".to_string()
+    } else if text(payload, "term_editor") == "phpstorm" {
+        "agent_phpstorm".to_string()
     } else {
         "integration_claude".to_string()
     }
@@ -864,6 +866,7 @@ mod tests {
     fn a_turn_counts_for_the_pill_it_showed_on() {
         // Claude Code in Cursor's terminal is the Cursor pill, as in hooks.ts.
         assert_eq!(agent_id(&json!({ "term_editor": "cursor" })), "agent_cursor");
+        assert_eq!(agent_id(&json!({ "term_editor": "phpstorm" })), "agent_phpstorm");
         // An explicit agent wins over the terminal it runs in.
         assert_eq!(agent_id(&json!({ "coucou_agent": "claude-desktop", "term_editor": "cursor" })), "agent_claude-desktop");
         assert_eq!(agent_id(&json!({ "coucou_agent": "copilot" })), "agent_copilot");
@@ -1035,14 +1038,14 @@ mod tests {
         let missing = dir.join("missing");
         let png = "data:image/png;base64,iVBORw0KGgo=";
         let first = save_png(&[missing.clone(), dir.clone()], png, "2026-10-05").unwrap();
-        let second = save_png(&[dir.clone()], png, "2026-10-05").unwrap();
+        let second = save_png(std::slice::from_ref(&dir), png, "2026-10-05").unwrap();
         assert_eq!(first, dir.join("Coucou weekly recap 2026-10-05.png"));
         assert_eq!(second, dir.join("Coucou weekly recap 2026-10-05 (2).png"));
         // The week is a date or nothing: no path tricks through it.
-        let third = save_png(&[dir.clone()], png, "../../x").unwrap();
+        let third = save_png(std::slice::from_ref(&dir), png, "../../x").unwrap();
         assert_eq!(third, dir.join("Coucou weekly recap.png"));
         // Not a PNG: refused.
-        assert!(save_png(&[dir.clone()], "data:image/png;base64,aGVsbG8=", "").is_err());
+        assert!(save_png(std::slice::from_ref(&dir), "data:image/png;base64,aGVsbG8=", "").is_err());
         assert!(save_png(&[missing], png, "").is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
