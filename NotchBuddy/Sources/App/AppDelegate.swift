@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
     private var demoMenuItem: NSMenuItem?
+    private var volumeMenuItem: NSMenuItem?
 
     func applicationWillTerminate(_ notification: Notification) {
         #if !APPSTORE
@@ -113,6 +114,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(demoItem)
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Open Coucou", comment: ""), action: #selector(openIsland), keyEquivalent: "")
+        #if !APPSTORE
+        let volumeItem = NSMenuItem(title: NSLocalizedString("Volume in the notch", comment: ""), action: #selector(toggleVolumeInNotch), keyEquivalent: "")
+        volumeMenuItem = volumeItem
+        menu.addItem(volumeItem)
+        #endif
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Weekly recap", comment: ""), action: #selector(openWeeklyRecap), keyEquivalent: "")
         #if !APPSTORE
@@ -131,6 +137,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if DemoEngine.shared.isActive { DemoEngine.shared.stop() }
         else { DemoEngine.shared.start() }
     }
+
+    #if !APPSTORE
+    @objc private func toggleVolumeInNotch() {
+        let on = !AppState.shared.volumeInNotch
+        AppState.shared.volumeInNotch = on
+        if on { SystemVolume.shared.requestKeyAccess() }
+    }
+    #endif
 
     @objc private func openIsland() {
         islandController?.fsm.openedExternally()
@@ -295,6 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = SpotifyController.shared
         MailController.shared.start()
         WhatsAppController.shared.start()
+        _ = SystemVolume.shared
         #endif
         CryptoController.shared.start()
         PortfolioController.shared.start()
@@ -308,5 +323,8 @@ extension AppDelegate: NSMenuDelegate {
         demoMenuItem?.title = DemoEngine.shared.isActive
             ? NSLocalizedString("demo.stop", comment: "")
             : NSLocalizedString("Demo mode", comment: "")
+        #if !APPSTORE
+        volumeMenuItem?.state = AppState.shared.volumeInNotch ? .on : .off
+        #endif
     }
 }
