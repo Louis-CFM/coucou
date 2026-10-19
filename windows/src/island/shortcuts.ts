@@ -92,7 +92,7 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
     // terminal": the session's own window when it was found, else its folder
     // in VS Code; the Claude app for a Claude Desktop session.
     case "jumpToTerminal": {
-      const task = State.focusTask;
+      const task = State.terminalTarget;
       if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
       else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
       if (State.mode === "expanded") host.collapse();

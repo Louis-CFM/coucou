@@ -170,7 +170,7 @@ export class Island {
         if (req?.pillId === id) this.setView(req.questions ? "question" : "approval");
       },
       openTerminal: () => {
-        const task = State.focusTask;
+        const task = State.terminalTarget;
         // Sessions from the Claude desktop app live there, not in a terminal.
         if (task?.id === CLAUDE_DESKTOP_ID) void Bridge.openClaudeDesktop();
         else void Bridge.openSession(task?.sessionId ?? null, task?.sessionCwd ?? null);
