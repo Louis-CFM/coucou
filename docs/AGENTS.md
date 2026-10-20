@@ -101,7 +101,7 @@ A catalog pill that is not checked in Settings behaves like any other agent: it 
 
 The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigravity`),
 GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
-Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
+Amp (`agent_amp`), Hermes (`agent_hermes`) and Oh My Pi (`agent_oh-my-pi`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
 the main pill; session support is coming in a future version.
 
@@ -222,6 +222,25 @@ Every event is fire-and-forget: if the app is closed or unreachable, nothing is 
 | `on_session_start` | `SessionStart` |
 | `post_llm_call` | `Stop` |
 | `pre_approval_request` | `PreToolUse` (observer only, shows "⏳ Approval pending in Hermes") |
+
+### Oh My Pi — `omp` (macOS)
+
+Coucou supports Oh My Pi out of the box via **Settings → Oh My Pi → Install hooks**.
+The installer writes a TypeScript hook to `~/.omp/agent/hooks/pre/coucou.ts` — omp
+discovers user hooks there automatically, no trust step needed. The hook talks to
+the socket directly with `coucou_agent: "oh-my-pi"`, so it also works on the
+Windows and Linux sockets with the same file (copy it to
+`%USERPROFILE%\.omp\agent\hooks\pre\` or `~/.omp/agent/hooks/pre/` by hand there).
+
+| omp event | Canonical event |
+|---|---|
+| `session_start` | `SessionStart` |
+| `before_agent_start` | `UserPromptSubmit` |
+| `tool_call` | `PreToolUse` |
+| `tool_result` (ok) | `PostToolUse` |
+| `tool_result` (`isError`) | `PostToolUseFailure` |
+| `agent_end` (not continuing) | `Stop` |
+| `session_shutdown` | `SessionEnd` |
 
 ### Any other tool
 

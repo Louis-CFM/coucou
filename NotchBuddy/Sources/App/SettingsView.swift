@@ -83,6 +83,11 @@ struct SettingsView: View {
     @State private var pendingHermesConfigContent: String = ""
     @AppStorage("hermesApprovalsEnabled") private var hermesApprovalsEnabled: Bool = false
     @State private var hermesSupportsApprovals: Bool = false
+
+    @State private var ompHooksInstalled: Bool = HookServer.ompHooksInstalled()
+    @State private var showOmpDiff: Bool = false
+    @State private var pendingOmpText: String = ""
+    @State private var ompPendingInstall: Bool = true
     #endif
 
     // Multi-provider chat keys
@@ -964,6 +969,39 @@ struct SettingsView: View {
             await MainActor.run { hermesSupportsApprovals = result }
         }
         #endif
+
+        GroupBox(String(localized: "hooks.omp.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(ompHooksInstalled
+                     ? String(localized: "hooks.omp.installed")
+                     : "~/.omp/agent/hooks/pre/coucou.ts")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    Button(String(localized: "hooks.install")) { triggerOmpPreview(install: true) }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "hooks.uninstall")) { triggerOmpPreview(install: false) }
+                        .buttonStyle(.bordered)
+                }
+                if showOmpDiff {
+                    ScrollView {
+                        Text(pendingOmpText)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 140)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmOmpOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showOmpDiff = false; pendingOmpText = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(6)
+        }
 
         GroupBox(String(localized: "plan.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -2032,6 +2070,33 @@ struct SettingsView: View {
         }
     }
 
+    private func triggerOmpPreview(install: Bool) {
+        do {
+            ompPendingInstall = install
+            pendingOmpText = try HookServer.shared.previewOmpHooks(install: install)
+            showOmpDiff = true
+            statusMessage = String(localized: "plugin.review-content")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmOmpOp() {
+        do {
+            try HookServer.shared.writeOmpHooks()
+            showOmpDiff = false
+            pendingOmpText = ""
+            ompHooksInstalled = ompPendingInstall
+            statusMessage = ompPendingInstall
+                ? String(localized: "status.omp-hooks-installed")
+                : String(localized: "status.omp-hooks-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
     private func installStatusLine() {
         do {
             pendingStatusLineJSON = try HookServer.shared.previewStatusLine(install: true)
@@ -2197,6 +2262,7 @@ struct SettingsView: View {
             if def.id == "agent_muse"          && !HookServer.museHooksInstalled()       { return String(localized: "Hooks not installed") }
             if def.id == "agent_opencode"      && !HookServer.openCodePluginInstalled()  { return String(localized: "Plugin not installed") }
             if def.id == "agent_amp"           && !HookServer.ampPluginInstalled()       { return String(localized: "Plugin not installed") }
+            if def.id == "agent_oh-my-pi"      && !HookServer.ompHooksInstalled()        { return String(localized: "Hooks not installed") }
             if def.id == SpotifyController.pillId && !SpotifyController.shared.isInstalled { return String(localized: "Not installed") }
             #endif
             if def.category == .ai {
