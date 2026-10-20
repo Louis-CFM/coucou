@@ -340,14 +340,17 @@ final class ClaudeService {
 
         // Auth header
         let authHeader: String
+        let cloudKey: String?   // the provider's own key, sent when streaming too
         if provider.isLocal {
             authHeader = "Bearer ollama"
+            cloudKey = nil
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
                 await showError(String(format: String(localized: "error.chat.provider-key %@"), provider.displayName), state: state)
                 return
             }
             authHeader = "Bearer \(key)"
+            cloudKey = key
         }
 
         // Build messages
@@ -421,7 +424,8 @@ final class ClaudeService {
                 let final = try await LocalChat.streamChat(
                     baseURL: baseURL,
                     encodedBody: encodedBody,
-                    model: modelCopy
+                    model: modelCopy,
+                    apiKey: cloudKey
                 ) { [state, msgId] visible in
                     if !visible.isEmpty, state.stateOverride == .thinking {
                         state.stateOverride = nil   // hide typing dots on first visible text

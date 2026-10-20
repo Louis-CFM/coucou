@@ -354,6 +354,8 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Open on hover", isOn: $state.openOnHover)
                     .help("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.")
+                Toggle(String(localized: "alerts.all-pills"), isOn: $state.alertsFromAllPills)
+                    .help(String(localized: "alerts.all-pills.help"))
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)
@@ -448,6 +450,10 @@ struct SettingsView: View {
                 .padding(6)
         }
 
+        #if !APPSTORE
+        UpdateSettingsSection()
+        #endif
+
         GroupBox(String(localized: "Weekly recap")) {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(String(localized: "Keep a history of my coding sessions"), isOn: $state.recapEnabled)
@@ -477,6 +483,9 @@ struct SettingsView: View {
                     Text("Português (Brasil)").tag("pt-BR")
                     Text("Русский").tag("ru")
                     Text("Bahasa Indonesia").tag("id")
+                    Text("Deutsch").tag("de")
+                    Text("Türkçe").tag("tr")
+                    Text("ไทย").tag("th")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -664,6 +673,8 @@ struct SettingsView: View {
         }
 
         #if !APPSTORE
+        ClaudeDesktopChatSettingsSection()
+
         GroupBox(String(localized: "hooks.gemini.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 hookCompletion(geminiHooksInstalled)
@@ -1242,7 +1253,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("deepseek-api-key", value: deepseekKey)
-                    statusMessage = "DeepSeek key saved."
+                    statusMessage = String(localized: "status.deepseek-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -1256,7 +1267,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("qwen-api-key", value: qwenKey)
-                    statusMessage = "Qwen key saved."
+                    statusMessage = String(localized: "status.qwen-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -1270,7 +1281,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
-                    statusMessage = "Moonshot key saved."
+                    statusMessage = String(localized: "status.moonshot-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
             }

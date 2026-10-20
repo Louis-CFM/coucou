@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 s = Path('NotchBuddy/Sources/App/HookServer.swift').read_text()
 types = Path('NotchBuddy/Sources/CoucouKit/IslandTypes.swift').read_text()
+session_name = s[s.index('    private func sessionName('):s.index('    private func aliasProjectName(')]
 info = types[types.index('struct ApprovalInfo:'):types.index('// MARK: - Pill badge')]
 props = s[s.index('    private struct NativeRequest {'):s.index('    #endif', s.index('    private struct NativeRequest {'))]
 helpers = s[s.index('    // MARK: - Question fd helpers'):s.index('    /// Returns the tool_input serialized')]
@@ -153,7 +154,7 @@ final class HookServer: @unchecked Sendable {
     @MainActor func upsertExternalAgent(id: String, name: String) {}
     @MainActor func processStatusLine(payload: [String: Any]) { fatalError("Unexpected statusline") }
     @MainActor func processEvent(name: String, payload: [String: Any]) { fatalError("Unexpected event") }
-'''+client+permission+owners+helpers+current+resolve+process+'''
+'''+session_name+client+permission+owners+helpers+current+resolve+process+'''
     static func sockets(reusing fd: Int32? = nil) -> [Int32] {
         var pair: [Int32] = [0, 0]
         assert(socketpair(AF_UNIX, SOCK_STREAM, 0, &pair) == 0)

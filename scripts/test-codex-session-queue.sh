@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 s = Path('NotchBuddy/Sources/App/HookServer.swift').read_text()
 types = Path('NotchBuddy/Sources/CoucouKit/IslandTypes.swift').read_text()
+session_name = s[s.index('    private func sessionName('):s.index('    private func aliasProjectName(')]
 relay = Path('NotchBuddy/Sources/App/PhoneLink/ApprovalRelay.swift').read_text()
 info = types[types.index('struct ApprovalInfo:'):types.index('// MARK: - Pill badge')]
 fingerprint = relay[relay.index('    nonisolated static func fingerprint('):relay.index('\n    func start()')]
@@ -113,6 +114,8 @@ func withAnimation(_ animation: Animation, _ body: () -> Void) { body() }
 }
 enum ClaudeHost {
     struct Host { var bundleId: String }
+    @MainActor static var activated: [String?] = []
+    @MainActor static func activate(_ bundleId: String?) { activated.append(bundleId) }
     static var terminalCardsEnabled: Bool { false }
     static func terminal(termProgram: String, bundleId: String) -> Host? { nil }
 }
@@ -143,7 +146,7 @@ final class HookServer: @unchecked Sendable {
         PillSessionRegistry.Display(session: session, projectName: projectName, cwd: cwd)
     }
     @MainActor func upsertTask(pill: String, display: PillSessionRegistry.Display, working: Bool, externalAgent: String?) {}
-'''+queue+methods+questions+plugin_cleanup+socket_question+owner+'''
+'''+session_name+queue+methods+questions+plugin_cleanup+socket_question+owner+'''
     @MainActor static func check() async {
         let server = shared
         let state = AppState.shared
@@ -303,7 +306,35 @@ final class HookServer: @unchecked Sendable {
         assert(answerCount > 0)
         assert(String(decoding: answerBytes.prefix(answerCount), as: UTF8.self) == #"{"permissionDecision":"allow"}"#)
         assert(server.approvals.isEmpty)
-        print("PASS actual HookServer: display/identity handoff, mixed socket/native FIFO, bounded multiple native approvals, captured UUID/question ID, socket question fallback, stale turn/read-only denial, exact request cleanup, phone fingerprint")
+        assert(HookServer.planTitle("\\n  # Ship the change\\nDetails") == "Ship the change")
+        assert(HookServer.planTitle(nil) == "Plan")
+        let planDecisions: [(String, String, String?)] = [
+            ("plan_auto", "allow", "auto"), ("plan_default", "allow", "default"),
+            ("plan_change", "change_plan", nil),
+        ]
+        for (decision, expected, mode) in planDecisions {
+            let plan = QueuedApproval(id: UUID(), fd: answerPipe[1], sessionId: "plan", pillId: "integration_claude",
+                projectName: "Plan project", cwd: "/plan", tool: "ExitPlanMode", command: "Ship the change",
+                inputKey: "plan", hostApp: "com.apple.Terminal")
+            assert(server.approvals.enqueue(plan) == .accepted)
+            server.showApprovalHead()
+            server.sendApprovalDecision(decision, for: answered.id)
+            assert(server.approvals.head?.id == plan.id)
+            server.sendApprovalDecision(decision, for: plan.id)
+            var count = -1
+            for _ in 0..<100 {
+                count = read(answerPipe[0], &answerBytes, answerBytes.count)
+                if count > 0 { break }
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+            assert(count > 0)
+            let reply = try! JSONSerialization.jsonObject(with: Data(answerBytes.prefix(count))) as! [String: String]
+            assert(reply["permissionDecision"] == expected && reply["mode"] == mode)
+            assert(RecapStore.shared.decisions.last == (decision == "plan_change" ? "deny" : "allow"))
+            assert(server.approvals.isEmpty && state.pendingApproval == nil && server.codexApprovals.isEmpty)
+        }
+        assert(ClaudeHost.activated == ["com.apple.Terminal"])
+        print("PASS actual HookServer: display/identity handoff, mixed socket/native FIFO, bounded multiple native approvals, captured UUID/question ID, socket question fallback, stale turn/read-only denial, exact request cleanup, phone fingerprint, plan card decisions")
     }
 }
 @main enum Check {

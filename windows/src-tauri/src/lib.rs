@@ -34,12 +34,13 @@ mod sounds;
 mod speech;
 mod spotify;
 mod tray;
+mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
 
 use std::process::Command;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
@@ -227,6 +228,47 @@ fn open_url(url: String) {
         return;
     }
     platform::open_url(&url);
+}
+
+/// Opens a GitLab link only when it belongs to the configured instance. This
+/// also covers self-hosted installations without exposing their token.
+#[tauri::command]
+fn open_gitlab_url(url: String) {
+    let base = secrets::get("gitlab-url").unwrap_or_else(|| "https://gitlab.com".into());
+    let (Ok(target), Ok(instance)) = (reqwest::Url::parse(&url), reqwest::Url::parse(base.trim())) else { return };
+    if is_forge_instance_url(&target, &instance) {
+        open_url(url);
+    }
+}
+
+fn is_forge_instance_url(target: &reqwest::Url, instance: &reqwest::Url) -> bool {
+    if !matches!(target.scheme(), "http" | "https")
+        || target.scheme() != instance.scheme()
+        || target.host_str() != instance.host_str()
+        || target.port_or_known_default() != instance.port_or_known_default()
+    {
+        return false;
+    }
+    let base = instance.path().trim_end_matches('/');
+    base.is_empty() || target.path() == base || target.path().starts_with(&format!("{base}/"))
+}
+
+/// The configured Gitea address is a credential-store value, so the island
+/// asks Rust to open it instead of ever receiving it.
+#[tauri::command]
+fn open_gitea() {
+    if let Some(url) = secrets::get("gitea-url") {
+        open_url(url);
+    }
+}
+
+#[tauri::command]
+fn open_gitea_url(url: String) {
+    let (Ok(target), Some(base)) = (reqwest::Url::parse(&url), secrets::get("gitea-url")) else { return };
+    let Ok(instance) = reqwest::Url::parse(&base) else { return };
+    if is_forge_instance_url(&target, &instance) {
+        open_url(url);
+    }
 }
 
 /// "Open terminal" opens the working folder in VS Code when `code` is on PATH,
@@ -548,6 +590,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
             integrations::github_token_changed(&app);
         }
     }
+    if key == "gitea-token" || key == "gitea-url" {
+        integrations::gitea_credentials_changed(&app);
+    }
     Ok(())
 }
 
@@ -560,6 +605,9 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     }
     if had {
         integrations::github_token_changed(&app);
+    }
+    if key == "gitea-token" || key == "gitea-url" {
+        integrations::gitea_credentials_changed(&app);
     }
     Ok(())
 }
@@ -653,17 +701,42 @@ fn create_settings_window(app: &AppHandle) {
         .build()
     {
         Ok(win) => {
-            // Closing it must only hide it, or it could never be reopened.
-            let hidden = win.clone();
-            win.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            let this = win.clone();
+            win.on_window_event(move |event| match event {
+                // Closing it must only hide it, or it could never be reopened.
+                tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
-                    let _ = hidden.hide();
+                    let _ = this.hide();
+                    set_hub_shown(&this, false);
                 }
+                // Minimised (a 0×0 resize on Windows) or back from it.
+                tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
+                    let on = this.is_visible().unwrap_or(false) && !this.is_minimized().unwrap_or(false);
+                    set_hub_shown(&this, on);
+                }
+                _ => {}
             });
         }
         Err(err) => log::line(format!("Coucou window failed: {err}")),
     }
+}
+
+/// Whether the Coucou window is on screen (shown and not minimised). Its page
+/// animates its canvases only then (hub/hero.ts): WebKitGTK can keep
+/// `document.visibilityState` at "visible" for a hidden window, and its
+/// animation loop then kept a core busy with the window closed (#792).
+static HUB_SHOWN: AtomicBool = AtomicBool::new(false);
+
+fn set_hub_shown(win: &tauri::WebviewWindow, shown: bool) {
+    if HUB_SHOWN.swap(shown, Ordering::Relaxed) != shown {
+        let _ = win.emit_to(HUB_LABEL, "hub-visible", shown);
+    }
+}
+
+/// The page asks once at load, in case it missed the event.
+#[tauri::command]
+fn hub_shown() -> bool {
+    HUB_SHOWN.load(Ordering::Relaxed)
 }
 
 pub fn show_settings_window(app: &AppHandle) {
@@ -683,6 +756,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    set_hub_shown(&win, true);
 }
 
 /// The argument the login item starts Coucou with.
@@ -738,8 +812,12 @@ pub fn run() {
             focus_window,
             reposition,
             fit_zoom,
+            hub_shown,
             list_monitors,
             open_url,
+            open_gitlab_url,
+            open_gitea,
+            open_gitea_url,
             open_in_vscode,
             open_session,
             open_claude_desktop,
@@ -862,6 +940,15 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            update::update_status,
+            update::update_set_consent,
+            update::update_check,
+            update::update_shown,
+            update::update_show,
+            update::update_later,
+            update::update_dismiss,
+            update::update_install,
+            update::update_open_page,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -904,6 +991,8 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
+            // New versions: nothing goes to GitHub until the user agrees (update.rs).
+            update::start(handle.clone());
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
                 // writing it again adds it, so the window stays hidden at login.
@@ -928,7 +1017,24 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::diff_file;
+    use super::{diff_file, is_forge_instance_url};
+
+    #[test]
+    fn forge_links_stay_on_the_configured_instance() {
+        let instance = reqwest::Url::parse("https://git.example.com/team/").unwrap();
+        assert!(is_forge_instance_url(
+            &reqwest::Url::parse("https://git.example.com/team/me/project").unwrap(),
+            &instance,
+        ));
+        assert!(!is_forge_instance_url(
+            &reqwest::Url::parse("https://git.example.com/other/project").unwrap(),
+            &instance,
+        ));
+        assert!(!is_forge_instance_url(
+            &reqwest::Url::parse("https://evil.example/team/me/project").unwrap(),
+            &instance,
+        ));
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
