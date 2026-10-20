@@ -43,6 +43,26 @@ export interface AgentTask {
   finalLine?: string | null;
 }
 
+const MAX_WAITING = 6;
+
+/**
+ * A session that is waiting for you: its turn is over, or Claude Code asked
+ * something. They pile up, one per session, so a card for one never hides
+ * another, and "Open terminal" goes to the window of the one it names.
+ */
+export interface WaitingSession {
+  /** Claude Code's session, or the pill's id when the agent names none. */
+  key: string;
+  sessionId: string | null;
+  cwd: string | null;
+  pillId: string;
+  /** What the session is called: its project folder. */
+  name: string;
+  kind: "finished" | "question";
+  /** The final message, or what was asked; empty when there is none. */
+  text: string;
+}
+
 export interface ApprovalInfo {
   requestId: string;
   sessionId: string;
@@ -237,6 +257,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** Sessions waiting for you, oldest first. */
+  waiting: WaitingSession[] = [];
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
 
@@ -341,6 +363,24 @@ class AppState {
       this.focusId = previous;
     }
     this.notify();
+  }
+
+  /** A session waits for you; asking again from the same one replaces its entry. */
+  markWaiting(w: WaitingSession) {
+    this.waiting = [...this.waiting.filter((x) => x.key !== w.key), w].slice(-MAX_WAITING);
+    this.notify();
+  }
+
+  /** The session is working again, or gone. */
+  clearWaiting(key: string) {
+    if (!this.waiting.some((x) => x.key === key)) return;
+    this.waiting = this.waiting.filter((x) => x.key !== key);
+    this.notify();
+  }
+
+  /** The entry a card of `kind` is about: the newest of that kind, else the newest. */
+  primaryWaiting(kind: WaitingSession["kind"]): WaitingSession | null {
+    return [...this.waiting].reverse().find((w) => w.kind === kind) ?? this.waiting[this.waiting.length - 1] ?? null;
   }
 
   updateTask(id: string, state: BotStateName) {

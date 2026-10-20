@@ -35,6 +35,7 @@ beforeEach(() => {
   State.paused = false;
   State.isPinned = false;
   State.pendingApproval = null;
+  State.waiting = [];
   State.settings = { ...DEFAULT_SETTINGS };
   State.loadIntegrationTasks();
 });
@@ -129,12 +130,16 @@ test("a failed tool call and subagents leave their own steps", () => {
   assert.equal(task().state, "working");
 });
 
-test("a notification is a rate limit, a question, or nothing", () => {
-  hook({ hook_event_name: "Notification", message: "Just so you know." });
+test("a notification is a rate limit, a permission handled elsewhere, or a session waiting for you", () => {
+  hook({ hook_event_name: "Notification", message: "Claude needs your permission to use Bash" });
   assert.equal(task().state, "idle");
+  assert.deepEqual(State.waiting, []);
+  hook({ hook_event_name: "Notification", message: "Claude is waiting for your input", session_id: "s1", cwd: "/p/proj" });
+  assert.equal(task().state, "question");
+  assert.deepEqual(asked, ["alert:question"]);
   hook({ hook_event_name: "Notification", message: "Shall I continue?" });
   assert.equal(task().state, "question");
-  assert.deepEqual(task().steps, ["Shall I continue?"]);
+  assert.deepEqual(task().steps, ["Claude is waiting for your input", "Shall I continue?"]);
   hook({ hook_event_name: "Notification", message: "Usage Rate Limit reached" });
   assert.equal(task().state, "ratelimit");
   hook({ hook_event_name: "Notification", message: "Limite d'utilisation atteinte" });
@@ -167,10 +172,10 @@ test("an alert on an island that is already open only switches its view", () => 
   assert.deepEqual(asked, ["setView:finished"]);
 });
 
-test("a session finishing behind another pill only badges its own, for 5.2 s", () => {
+test("a session finishing behind another pill still gets its card, and badges its own pill for 5.2 s", () => {
   State.setFocus("integration_n8n");
   hook({ hook_event_name: "Stop" });
-  assert.deepEqual(asked, []);
+  assert.deepEqual(asked, ["alert:finished"]);
   assert.equal(task().pillBadge, "finished");
   seconds(5.2);
   assert.equal(task().pillBadge, null);
@@ -202,6 +207,39 @@ test("a new turn within 5.2 s of a stop is not put back to idle", () => {
   hook({ hook_event_name: "UserPromptSubmit", prompt: "next" });
   seconds(5);
   assert.equal(task().state, "thinking");
+});
+
+// ── Sessions waiting for you ──────────────────────────────────────────────────
+
+test("sessions waiting for you pile up, one entry each, newest last", () => {
+  hook({ hook_event_name: "Stop", session_id: "aaaa", cwd: "/home/me/one", last_assistant_message: "A done" });
+  hook({ hook_event_name: "Stop", session_id: "bbbb", cwd: "/home/me/two", last_assistant_message: "B done" });
+  assert.deepEqual(
+    State.waiting.map((w) => [w.sessionId, w.cwd, w.name, w.kind, w.text]),
+    [["aaaa", "/home/me/one", "one", "finished", "A done"], ["bbbb", "/home/me/two", "two", "finished", "B done"]],
+  );
+  // The card is about the newest; the other is still there for its own button.
+  assert.equal(State.primaryWaiting("finished").sessionId, "bbbb");
+  // Asking again from A replaces its entry rather than adding one.
+  hook({ hook_event_name: "Notification", session_id: "aaaa", cwd: "/home/me/one", message: "Shall I continue?" });
+  assert.deepEqual(State.waiting.map((w) => [w.sessionId, w.kind]), [["bbbb", "finished"], ["aaaa", "question"]]);
+});
+
+test("a session stops waiting when it works again or ends", () => {
+  hook({ hook_event_name: "Stop", session_id: "aaaa", cwd: "/p/one" });
+  hook({ hook_event_name: "Stop", session_id: "bbbb", cwd: "/p/two" });
+  hook({ hook_event_name: "UserPromptSubmit", session_id: "aaaa", cwd: "/p/one", prompt: "go" });
+  assert.deepEqual(State.waiting.map((w) => w.sessionId), ["bbbb"]);
+  hook({ hook_event_name: "SessionEnd", session_id: "bbbb" });
+  assert.deepEqual(State.waiting, []);
+});
+
+test("a waiting session is not lost behind a permission card, which keeps the front", () => {
+  hook({ hook_event_name: "PermissionRequest", request_id: "r1", session_id: "aaaa", tool_name: "Bash" });
+  asked = [];
+  hook({ hook_event_name: "Notification", session_id: "bbbb", cwd: "/p/two", message: "Claude is waiting for your input" });
+  assert.deepEqual(asked, []);
+  assert.deepEqual(State.waiting.map((w) => w.sessionId), ["bbbb"]);
 });
 
 // ── Other agents ──────────────────────────────────────────────────────────────
@@ -322,9 +360,9 @@ test("an agent's turn ending takes its card down and gives the front back", () =
   hook({ hook_event_name: "Stop", session_id: "s1", coucou_agent: "codex" });
   assert.equal(State.pendingApproval, null);
   assert.equal(State.focusId, "integration_n8n");
-  // The stop no longer has the front: its pill is badged, the view is not taken.
+  // The stop no longer has the front: its pill is badged, and its card still comes up.
   assert.equal(task("agent_codex").pillBadge, "finished");
-  assert.ok(!asked.includes("alert:finished"));
+  assert.ok(asked.includes("alert:finished"));
 });
 
 test("an agent's card comes up at once when its pill has the focus", () => {
@@ -712,7 +750,7 @@ for (const [what, event] of [
   ["a session start", { hook_event_name: "SessionStart", cwd: "/p" }],
   ["a subagent starting", { hook_event_name: "SubagentStart" }],
   ["a subagent finishing", { hook_event_name: "SubagentStop" }],
-  ["a notification that is neither a limit nor a question", { hook_event_name: "Notification", message: "Just so you know." }],
+  ["a permission notification", { hook_event_name: "Notification", message: "Claude needs your permission to use Bash" }],
   ["an unknown event", { hook_event_name: "SomethingNew" }],
 ]) {
   test(`${what} within 5.2 s of a stop still lets the pill go idle`, () => {

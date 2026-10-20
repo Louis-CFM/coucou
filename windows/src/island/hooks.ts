@@ -46,6 +46,8 @@ function cancelStopTimer(id: string): boolean {
 }
 
 /** Events after which a pending permission request of the same session is moot. */
+/** Events that say the session is working again, or over. */
+const RESUMED = new Set(["UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "SessionEnd"]);
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
 
 interface HookPayload {
@@ -277,6 +279,8 @@ function handleHook(island: Island, payload: HookPayload) {
   const agentId = validAgent ? `agent_${validAgent}` : workspaceId;
   const isExternalAgent = validAgent !== null;
   const sessionId = payload.session_id ?? "";
+  /** The key of this session in the waiting list. */
+  const waitKey = sessionId || agentId;
 
   /** Alerts force the island open; work events only reveal the compact island. */
   const surface = (view: Parameters<Island["alert"]>[0], isAlert: boolean) => {
@@ -335,6 +339,9 @@ function handleHook(island: Island, payload: HookPayload) {
   // a turn that ends with a Stop or a PostToolUse names its session too, not only
   // the events that create or rename the pill.
   if (name !== "SessionEnd") followSession(agentId, sessionId, cwd);
+
+  // It works again, or is gone: it no longer waits for you.
+  if (RESUMED.has(name)) State.clearWaiting(waitKey);
 
   switch (name) {
     case "SessionStart":
@@ -400,10 +407,16 @@ function handleHook(island: Island, payload: HookPayload) {
         supersedeStop();
         State.updateTask(agentId, "ratelimit");
         Sound.play("rate");
-      } else if (message.endsWith("?")) {
+      } else if (message && !lower.includes("permission")) {
+        // A question, or Claude Code saying it waits for your input: either way a
+        // session waits for you, and its card comes up whichever pill is in front.
+        // A permission has its own card (PermissionRequest).
         supersedeStop();
         State.updateTask(agentId, "question");
         State.appendStep(agentId, message);
+        State.markWaiting({ key: waitKey, sessionId: sessionId || null, cwd: cwd || null, pillId: agentId, name: projectName, kind: "question", text: message });
+        if (!State.pendingApproval) surface("question", true);
+        else if (!focused) State.setPillBadge(agentId, "approval");
       }
       break;
     }
@@ -422,9 +435,11 @@ function handleHook(island: Island, payload: HookPayload) {
         if (t) t.finalLine = finalText;
       }
       Sound.play("finish");
-      // A card waiting for an answer is never covered by another alert.
-      if (focused && !State.pendingApproval) surface("finished", true);
-      else State.setPillBadge(agentId, "finished");
+      State.markWaiting({ key: waitKey, sessionId: sessionId || null, cwd: cwd || null, pillId: agentId, name: projectName, kind: "finished", text: finalText });
+      // A card waiting for an answer is never covered by another alert. Behind
+      // another pill the card still comes up, for the session that stopped.
+      if (!State.pendingApproval) surface("finished", true);
+      if (!focused) State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
         agentId,
