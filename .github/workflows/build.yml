@@ -104,6 +104,9 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test Yandex Music Now Playing
+        run: bash scripts/test-yandex-music.sh
+
       - name: Test Claude response text
         run: bash scripts/test-claude-response.sh
 

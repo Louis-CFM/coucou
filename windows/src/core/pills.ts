@@ -138,6 +138,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Yandex Music through the Windows system media controls
+  // (src-tauri/src/yandex_music.rs); it has no official Linux client.
+  { id: "integration_yandex_music", name: "Yandex Music", color: "#FFEE00", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "windows", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

@@ -13,6 +13,7 @@ import type { Bindings } from "./shortcuts";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
+import { YandexMusic, yandexMusicPlaying } from "./yandex-music";
 
 export type AgentSource = "claudeCode" | "n8n" | "agent";
 export type PillBadge = "approval" | "finished" | "error";
@@ -290,6 +291,11 @@ class AppState {
   /** Spotify plays on a declared pill: Mochi dances (Linux; never on Windows yet). */
   get spotifyPlaying(): boolean {
     return musicPlaying(Spotify.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
+  }
+
+  /** Yandex Music plays on a declared pill: Mochi dances (Windows only). */
+  get yandexMusicPlaying(): boolean {
+    return yandexMusicPlaying(YandexMusic.state, sanitizeDeclared(this.settings, this.os).activeIntegrations);
   }
 
   get otherTasks(): AgentTask[] {

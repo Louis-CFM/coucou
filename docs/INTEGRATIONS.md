@@ -339,6 +339,16 @@ Pas d'API WhatsApp pour un compte perso : Coucou parle à une **passerelle local
 
 ---
 
+## 6ter. Yandex Music (macOS : build GitHub uniquement ; Windows)
+
+Pill `integration_yandex_music` (#FFEE00), `githubOnly` sur Mac ; le code macOS est sous `#if !APPSTORE`. L'app Yandex Music (`ru.yandex.desktop.music`, Electron) n'a pas de dictionnaire AppleScript mais publie son morceau dans « À l'écoute » de macOS.
+
+- **macOS** : `YandexMusicNowPlaying.swift` (parsing, détection de l'app, scripts) et `YandexMusicController.swift`. Un `/usr/bin/osascript` (JXA) charge `MediaRemote.framework` et lit le morceau en cours (titre, artiste, album, durée, position) ; Coucou ne garde que ce qui vient de Yandex Music, jamais un autre lecteur. Les commandes (lecture/pause, suivant, précédent, avance) passent par le même `osascript`, refusées si l'app à l'écoute n'est pas Yandex Music.
+- **Quand** : seulement tant que la pill est active et que l'app est ouverte, sinon aucun processus. Pas de permission à accorder, pas de compte. Sur Mac, pas de pochette ni de volume.
+- **Windows** : lu depuis les commandes média du système (SMTC), pochette et volume du mélangeur Windows ; **Ouvrir Yandex Music** passe par `yandexmusic://`, sinon **Obtenir Yandex Music** ouvre la page de téléchargement. Linux n'est pas pris en charge (pas de client officiel).
+
+---
+
 ## 7. Permissions macOS demandées (récapitulatif pour Louis)
 
 | Permission | Pourquoi | Quand |
@@ -347,6 +357,7 @@ Pas d'API WhatsApp pour un compte perso : Coucou parle à une **passerelle local
 | Automatisation → Terminal / iTerm / navigateur | sauter au bon onglet, lire l'URL | première utilisation |
 | Automatisation → Musique *(GitHub only)* | contrôler la lecture Apple Music | première commande depuis le notch |
 | Automatisation → Spotify *(GitHub only)* | lire la position, le shuffle, le volume ; piloter la lecture | activation de la pill Spotify, ou première ouverture de sa carte |
+| (aucune) → Yandex Music *(GitHub only)* | lire le morceau en cours depuis « À l'écoute » de macOS | — |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
 | État de Concentration *(GitHub only)* | WhatsApp reste discret pendant une Concentration | activation de WhatsApp, si « Rester discret pendant une Concentration » est coché |

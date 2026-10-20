@@ -797,6 +797,8 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
+  // Nothing to enter: Yandex Music is read from the OS (src-tauri/src/yandex_music.rs).
+  { id: "integration_yandex_music", name: N_("Yandex Music"), color: "#FFEE00", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -872,6 +874,14 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
       rows.append(hint);
       void Bridge.spotifyInstalled().then((ok) => {
+        hint.textContent = ok === false ? t("Not installed") : "";
+      });
+    }
+    if (def.id === "integration_yandex_music") {
+      // Same as Spotify's row: said only when there is no Yandex Music to launch.
+      const hint = h("div", { class: "hint", style: "padding-top:5px" });
+      rows.append(hint);
+      void Bridge.yandexMusicInstalled().then((ok) => {
         hint.textContent = ok === false ? t("Not installed") : "";
       });
     }

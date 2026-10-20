@@ -10,6 +10,8 @@
   - **Quick actions** — launcher shortcuts (Chat, Recent decisions, Pair again), a Team widget, and Share to Coucou (the text lands in the chat box and is never sent).
   - **Weekly recap and history** — last week's counts on Home (optional, off by default, behind its own switch on the computer), search and export of recent decisions as text, and a per-agent mute for finished, failed and limit notices (requests and questions are never muted).
   - Fixes #629: the *Away from home Wi-Fi* section only shows when the pairing carries a relay (#682 by @Rhytam23)
+- **Yandex Music pill** *(macOS, GitHub build)* — title and artist, a progress bar you drag to seek, play/pause and previous/next, read from the system's Now Playing (no permission, no account; no cover or volume), and Mochi dances while it plays
+- **Yandex Music pill** *(Windows)* — the same pill and card, cover included, read from the system media controls; the volume comes from the Windows mixer; **Open Yandex Music** goes through its `yandexmusic:` link, else **Get Yandex Music** opens its download page
 
 ## 0.5.3 — October 22, 2026
 
