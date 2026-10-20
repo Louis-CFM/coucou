@@ -2751,14 +2751,3 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* One button per other session waiting for you, beside "Open terminal". */
-.btn.waiting-other {
-  max-width: 130px;
-}
-
-.btn.waiting-other span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}

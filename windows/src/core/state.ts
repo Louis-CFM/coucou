@@ -44,6 +44,8 @@ export interface AgentTask {
 }
 
 const MAX_WAITING = 6;
+/** A session left waiting this long without a click is forgotten. */
+export const WAITING_TTL_MS = 10 * 60 * 1000;
 
 /**
  * A session that is waiting for you: its turn is over, or Claude Code asked
@@ -61,6 +63,8 @@ export interface WaitingSession {
   kind: "finished" | "question";
   /** The final message, or what was asked; empty when there is none. */
   text: string;
+  /** When it started waiting (Date.now()). */
+  at: number;
 }
 
 export interface ApprovalInfo {
@@ -366,8 +370,8 @@ class AppState {
   }
 
   /** A session waits for you; asking again from the same one replaces its entry. */
-  markWaiting(w: WaitingSession) {
-    this.waiting = [...this.waiting.filter((x) => x.key !== w.key), w].slice(-MAX_WAITING);
+  markWaiting(w: Omit<WaitingSession, "at">) {
+    this.waiting = [...this.waitingNow().filter((x) => x.key !== w.key), { ...w, at: Date.now() }].slice(-MAX_WAITING);
     this.notify();
   }
 
@@ -378,9 +382,15 @@ class AppState {
     this.notify();
   }
 
-  /** The entry a card of `kind` is about: the newest of that kind, else the newest. */
-  primaryWaiting(kind: WaitingSession["kind"]): WaitingSession | null {
-    return [...this.waiting].reverse().find((w) => w.kind === kind) ?? this.waiting[this.waiting.length - 1] ?? null;
+  /** The sessions still waiting: those left unanswered for 10 minutes are forgotten. */
+  waitingNow(): WaitingSession[] {
+    const limit = Date.now() - WAITING_TTL_MS;
+    return this.waiting.filter((w) => w.at > limit);
+  }
+
+  /** The card is about the session that has waited longest; the others queue behind it. */
+  primaryWaiting(): WaitingSession | null {
+    return this.waitingNow()[0] ?? null;
   }
 
   updateTask(id: string, state: BotStateName) {

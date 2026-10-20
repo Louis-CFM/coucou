@@ -218,11 +218,22 @@ test("sessions waiting for you pile up, one entry each, newest last", () => {
     State.waiting.map((w) => [w.sessionId, w.cwd, w.name, w.kind, w.text]),
     [["aaaa", "/home/me/one", "one", "finished", "A done"], ["bbbb", "/home/me/two", "two", "finished", "B done"]],
   );
-  // The card is about the newest; the other is still there for its own button.
-  assert.equal(State.primaryWaiting("finished").sessionId, "bbbb");
-  // Asking again from A replaces its entry rather than adding one.
+  // The card is about the one that has waited longest (1 of 2); the other queues.
+  assert.equal(State.primaryWaiting().sessionId, "aaaa");
+  // A newcomer does not take the card from it.
+  assert.deepEqual(asked, ["alert:finished", "alert:finished"]);
+  // Asking again from A replaces its entry, which goes to the back of the queue.
   hook({ hook_event_name: "Notification", session_id: "aaaa", cwd: "/home/me/one", message: "Shall I continue?" });
   assert.deepEqual(State.waiting.map((w) => [w.sessionId, w.kind]), [["bbbb", "finished"], ["aaaa", "question"]]);
+  assert.equal(State.primaryWaiting().sessionId, "bbbb");
+});
+
+test("a session left waiting for 10 minutes is forgotten", () => {
+  hook({ hook_event_name: "Stop", session_id: "aaaa", cwd: "/p/one" });
+  State.waiting[0].at -= 10 * 60 * 1000 + 1;
+  hook({ hook_event_name: "Stop", session_id: "bbbb", cwd: "/p/two" });
+  assert.deepEqual(State.waiting.map((w) => w.sessionId), ["bbbb"]);
+  assert.equal(State.primaryWaiting().sessionId, "bbbb");
 });
 
 test("a session stops waiting when it works again or ends", () => {

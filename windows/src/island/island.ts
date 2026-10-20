@@ -174,7 +174,7 @@ export class Island {
         if (target) {
           void Bridge.openSession(target.sessionId, target.cwd);
           State.clearWaiting(target.key);
-          const next = State.waiting[State.waiting.length - 1];
+          const next = State.primaryWaiting();
           if (next) this.setView(next.kind === "question" ? "question" : "finished");
           else this.collapse();
           return;
@@ -422,11 +422,11 @@ export class Island {
    * session comes up in its place; the island folds when none is left.
    */
   private dismissWaiting() {
-    const card = State.view === "finished" ? "finished" : State.view === "question" ? "question" : null;
-    const current = card && !State.pendingApproval ? State.primaryWaiting(card) : null;
+    const onCard = State.view === "finished" || State.view === "question";
+    const current = onCard && !State.pendingApproval ? State.primaryWaiting() : null;
     if (current) {
       State.clearWaiting(current.key);
-      const next = State.waiting[State.waiting.length - 1];
+      const next = State.primaryWaiting();
       if (next) {
         this.setView(next.kind === "question" ? "question" : "finished");
         return;

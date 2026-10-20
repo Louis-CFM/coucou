@@ -46,6 +46,11 @@ function cancelStopTimer(id: string): boolean {
 }
 
 /** Events after which a pending permission request of the same session is moot. */
+/** The card of the session that has waited longest, which stays up while others queue. */
+function waitingView(): "question" | "finished" {
+  return State.primaryWaiting()?.kind === "question" ? "question" : "finished";
+}
+
 /** Events that say the session is working again, or over. */
 const RESUMED = new Set(["UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "SessionEnd"]);
 const TURN_OVER = new Set(["Stop", "StopFailure", "UserPromptSubmit", "SessionEnd", "Interrupt"]);
@@ -415,7 +420,7 @@ function handleHook(island: Island, payload: HookPayload) {
         State.updateTask(agentId, "question");
         State.appendStep(agentId, message);
         State.markWaiting({ key: waitKey, sessionId: sessionId || null, cwd: cwd || null, pillId: agentId, name: projectName, kind: "question", text: message });
-        if (!State.pendingApproval) surface("question", true);
+        if (!State.pendingApproval) surface(waitingView(), true);
         else if (!focused) State.setPillBadge(agentId, "approval");
       }
       break;
@@ -438,7 +443,7 @@ function handleHook(island: Island, payload: HookPayload) {
       State.markWaiting({ key: waitKey, sessionId: sessionId || null, cwd: cwd || null, pillId: agentId, name: projectName, kind: "finished", text: finalText });
       // A card waiting for an answer is never covered by another alert. Behind
       // another pill the card still comes up, for the session that stopped.
-      if (!State.pendingApproval) surface("finished", true);
+      if (!State.pendingApproval) surface(waitingView(), true);
       if (!focused) State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(

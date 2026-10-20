@@ -99,25 +99,10 @@ function agentWho(task: AgentTask | null, label: string): HTMLElement {
   return row;
 }
 
-/** How many other waiting sessions fit beside the buttons. */
-const MAX_OTHER_WAITING = 3;
-
-/** Changes whenever the buttons of the waiting sessions would. */
-function waitingSignature(): string {
-  return State.waiting.map((w) => w.key).join("|");
-}
-
-/**
- * The other sessions waiting for you, one small button each, after the card's
- * own: each opens the window of its own session.
- */
-function otherWaiting(primary: WaitingSession | null, open: (w: WaitingSession) => void): Node[] {
-  const others = State.waiting.filter((w) => w !== primary).reverse();
-  const shown: HTMLElement[] = others.slice(0, MAX_OTHER_WAITING).map((w) =>
-    h("button", { class: "btn secondary waiting-other", title: w.text || w.name, onclick: () => open(w) }, h("span", { text: `${w.name} ↗` })),
-  );
-  if (others.length > MAX_OTHER_WAITING) shown.push(h("span", { class: "sub", text: `+${others.length - MAX_OTHER_WAITING}` }));
-  return shown;
+/** "1/2" after the label of a card when several sessions are waiting, the oldest first. */
+function queuePosition(): string | null {
+  const total = State.waitingNow().length;
+  return total > 1 ? `1/${total}` : null;
 }
 
 function stack(padLeft: number, padRight: number, ...children: Node[]): HTMLElement {
@@ -621,20 +606,21 @@ function buildQuestion(actions: ViewActions): ViewHost {
 
       // A question that arrived as a notification has nothing to pick from.
       if (!questions) {
-        const w = State.primaryWaiting("question");
+        const w = State.primaryWaiting();
         const task = (w && State.tasks.find((x) => x.id === w.pillId)) || State.focusTask;
         who.append(agentWho(task, t("is asking a question")));
+        const position = queuePosition();
+        if (position) who.append(h("span", { class: "sub", text: position }));
         title.textContent = w?.text || (task && lastTextStep(task.steps)) || t("Claude needs an answer.");
-        // Several sessions can wait: each has its own button to its own window.
-        // Rebuilt only when the sessions change: a click must land on the button it pressed.
-        const key = `terminal:${waitingSignature()}`;
+        // Rebuilt only when the session changes: a click must land on the button it pressed.
+        const key = `terminal:${w?.key ?? ""}`;
         if (rowKey !== key) {
           rowKey = key;
           clear(row);
           row.append(
             h("div", { class: "sub", text: tl("Answer it in your terminal.") }),
             ...(w ? [btn(tl("Open terminal"), "primary", () => actions.openTerminal(w))] : []),
-            ...otherWaiting(w, (o) => actions.openTerminal(o)),
+            btn(tl("OK"), "secondary", () => actions.collapse()),
           );
         }
         return;
@@ -723,7 +709,6 @@ function buildFinished(actions: ViewActions): ViewHost {
   const title = h("div", { class: "title one-line" });
   // The session the card is about: the one that finished last, not the pill in front.
   let current: WaitingSession | null = null;
-  let shown = "";
   const open = btn(tl("Open terminal"), "primary", () => actions.openTerminal(current ?? undefined));
   const ok = btn(tl("OK"), "secondary", () => actions.collapse());
   const row = h("div", { class: "actions" }, open, ok);
@@ -732,18 +717,14 @@ function buildFinished(actions: ViewActions): ViewHost {
     el,
     sync() {
       clear(who);
-      current = State.primaryWaiting("finished");
+      current = State.primaryWaiting();
       const task = (current && State.tasks.find((x) => x.id === current!.pillId)) || State.focusTask;
       const agent = task?.source === "agent";
-      who.append(agentWho(task, agent ? t("finished") : t("Claude Code finished")));
+      who.append(agentWho(task, current?.kind === "question" ? t("is asking a question") : agent ? t("finished") : t("Claude Code finished")));
+      const position = queuePosition();
+      if (position) who.append(h("span", { class: "sub", text: position }));
       // The final message, else the last step that is not a diff (FinishedView).
       title.textContent = current?.text || task?.finalLine || (task && lastTextStep(task.steps)) || t("Session finished");
-      const signature = waitingSignature();
-      if (signature !== shown) {
-        shown = signature;
-        while (row.children.length > 2) row.lastElementChild!.remove();
-        row.append(...otherWaiting(current, (o) => actions.openTerminal(o)));
-      }
       // Sessions from the Claude desktop app live there, not in a terminal.
       const label = task?.id === "agent_claude-desktop" ? t("Open Claude") : t("Open terminal");
       const span = open.firstElementChild as HTMLElement;
