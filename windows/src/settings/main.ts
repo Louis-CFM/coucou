@@ -22,6 +22,8 @@ import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
+import { cryptoSection } from "./crypto";
+import { portfolioSection } from "./portfolio";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -517,7 +519,7 @@ const CHAT_STRINGS = {
 };
 
 interface CloudDef {
-  id: "google" | "openai" | "openrouter";
+  id: "google" | "openai" | "openrouter" | "deepseek" | "qwen" | "moonshot";
   name: string;
   placeholder: string;
   where: string;
@@ -527,6 +529,9 @@ const CLOUD: CloudDef[] = [
   { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
   { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
+  { id: "deepseek", name: "DeepSeek", placeholder: "sk-…", where: "platform.deepseek.com" },
+  { id: "qwen", name: "Qwen", placeholder: "sk-…", where: "dashscope.console.aliyun.com" },
+  { id: "moonshot", name: "Moonshot", placeholder: "sk-…", where: "platform.moonshot.cn" },
 ];
 
 function chatProvidersSection(
@@ -778,7 +783,11 @@ const INTEGRATIONS: IntegrationDef[] = [
       { key: "n8n-api-key", label: N_("API key"), placeholder: "…", secret: true },
     ] },
   { id: "integration_resend", name: "Resend", color: "#22C55E",
-    fields: [{ key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true }] },
+    fields: [
+      { key: "resend-api-key", label: N_("API key"), placeholder: "re_…", secret: true },
+      // "Send by email" sends from this address (it must be on a domain verified in Resend).
+      { key: "resend-from", label: N_("Sender address"), placeholder: "you@yourdomain.com", secret: false },
+    ] },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C",
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
@@ -787,6 +796,10 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
   // Its own block below (settings/whatsapp.ts): gateway, QR, filters.
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", fields: [] },
+  // Public prices, no key: exchange, currency, coins and the alert (settings/crypto.ts).
+  { id: "integration_crypto", name: "Crypto", color: "#F7931A", fields: [] },
+  // Exchange accounts and wallets, added through their own forms (settings/portfolio.ts).
+  { id: "integration_portfolio", name: "Portfolio", color: "#FFD700", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -870,6 +883,8 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.id === "integration_crypto") rows.append(cryptoSection());
+    if (def.id === "integration_portfolio") rows.append(portfolioSection());
     if (def.id === "integration_whatsapp") {
       rows.append(whatsappSection(() => settings.activeIntegrations.includes(def.id)));
     }
@@ -1347,7 +1362,7 @@ async function render() {
 
   const keys = [
     "stripe-api-key", "github-token", "vercel-token",
-    "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
+    "n8n-url", "n8n-api-key", "resend-api-key", "resend-from", "notion-api-key", "calcom-api-key",
   ];
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;

@@ -8,6 +8,7 @@
 // through the dictionary, the snippets and (if turned on) Claude's clean-up,
 // and are pasted. The thread sleeps on its channel while nothing happens.
 
+pub mod chat;
 pub mod cleanup;
 pub mod languages;
 pub mod logic;

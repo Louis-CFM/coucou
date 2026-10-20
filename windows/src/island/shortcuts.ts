@@ -139,8 +139,8 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
       break;
 
     // wardrobeToggle never comes this way (Rust sends `open-wardrobe`), nor
-    // talkToCoucou (Rust starts listening itself), and
-    // attachFrontWindow isn't in this version.
+    // talkToCoucou (Rust starts listening itself), nor attachFrontWindow
+    // (Rust reads the window first and sends `attach-window`).
     default:
       break;
   }
@@ -202,6 +202,20 @@ export function registerShortcutHandlers(host: ShortcutHost, resume: () => void)
   void onEvent<null>("open-wardrobe", () => {
     resume();
     host.wardrobeAnywhere();
+  });
+  // Ctrl+Alt+F: the front window, read by Rust while it was still in front, goes
+  // with the next question (performAttachFrontWindow). Nothing to attach: a no.
+  void onEvent<{ appName: string; title: string } | null>("attach-window", (w) => {
+    if (!w) {
+      Sound.play("error");
+      return;
+    }
+    resume();
+    State.droppedFile = null;
+    State.promptContext = { kind: "window", appName: w.appName, title: w.title };
+    Sound.play("approve");
+    host.emote("happy");
+    host.alert("prompt");
   });
 
   // Capture phase: the chat field stops its own key events from bubbling.

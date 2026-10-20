@@ -257,6 +257,7 @@ const NOT_TEXT = new Set([
   "finished", // a task state and a pill badge
   "unknown", // a CI state
   "Resend", // the service's name (the Mac's "Resend" is a button: send again)
+  "Portfolio", // the pill's name in the catalog (the Mac's card title is translated)
   "Stop", // Claude Code's hook event (the Mac's "Stop" is a button)
 ]);
 

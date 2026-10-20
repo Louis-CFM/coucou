@@ -74,13 +74,13 @@ test("the descriptions the Wayland portal shows are the labels Settings shows", 
 });
 
 // testEnabledByDefault
-test("only the island toggle is off by default; the one not ported yet is reserved", () => {
+test("only the island toggle is off by default, and every action is ported", () => {
   for (const d of SHORTCUTS) {
     assert.equal(d.enabledByDefault, d.id !== "toggleIsland", d.id);
-    assert.equal(d.ported, d.id !== "attachFrontWindow", d.id);
+    assert.equal(d.ported, true, d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
-    "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
+    "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow", "nextPill", "prevPill", "muteToggle", "desktopToggle",
     "wardrobeToggle", "captureScreen",
   ]);
   // The Mac's ⌃⌥D, on the same letter.

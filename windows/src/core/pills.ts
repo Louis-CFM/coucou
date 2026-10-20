@@ -137,6 +137,12 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
   // Experimental, through a local gateway (src-tauri/src/whatsapp).
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Public prices from Coinbase or OKX: no key (src-tauri/src/crypto.rs).
+  { id: "integration_crypto", name: "Crypto", color: "#F7931A", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
+  // Exchange accounts (read-only keys) and wallets (src-tauri/src/portfolio.rs).
+  { id: "integration_portfolio", name: "Portfolio", color: "#FFD700", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: none },
 ];
 
 /** The always-on pill unless the user picks another workspace tool. */

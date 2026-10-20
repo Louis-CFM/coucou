@@ -14,6 +14,8 @@ import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
 import { registerWhatsAppHandlers } from "./island/whatsapp";
+import { registerCryptoHandlers } from "./island/crypto";
+import { registerPortfolioHandlers } from "./island/portfolio";
 import { Recap } from "./recap/recap";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
@@ -150,6 +152,8 @@ async function main() {
   registerVoiceHandlers();
   registerSpotifyHandlers(island);
   registerWhatsAppHandlers(island);
+  registerCryptoHandlers(island);
+  registerPortfolioHandlers();
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));

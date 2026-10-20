@@ -65,6 +65,37 @@ pub const PROVIDERS: &[Provider] = &[
         not_chat: &[],
         max_tokens_field: "max_tokens",
     },
+    // The Mac's other chat providers (ChatProvider in IslandTypes.swift), same endpoints.
+    Provider {
+        id: "deepseek",
+        name: "DeepSeek",
+        base_url: "https://api.deepseek.com/v1",
+        key: "deepseek-api-key",
+        models_path: "models",
+        default_model: "deepseek-chat",
+        not_chat: &[],
+        max_tokens_field: "max_tokens",
+    },
+    Provider {
+        id: "qwen",
+        name: "Qwen",
+        base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        key: "qwen-api-key",
+        models_path: "models",
+        default_model: "qwen-max",
+        not_chat: &[],
+        max_tokens_field: "max_tokens",
+    },
+    Provider {
+        id: "moonshot",
+        name: "Moonshot",
+        base_url: "https://api.moonshot.cn/v1",
+        key: "moonshot-api-key",
+        models_path: "models",
+        default_model: "moonshot-v1-32k",
+        not_chat: &[],
+        max_tokens_field: "max_tokens",
+    },
 ];
 
 pub fn provider(id: &str) -> Option<&'static Provider> {

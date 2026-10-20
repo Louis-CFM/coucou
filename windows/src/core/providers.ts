@@ -6,7 +6,7 @@ import type { Settings } from "./state";
 import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
-  | "anthropic" | "openai" | "google" | "openrouter"
+  | "anthropic" | "openai" | "google" | "openrouter" | "deepseek" | "qwen" | "moonshot"
   | "ollama" | "lmstudio" | "custom";
 
 export interface ProviderDef {
@@ -28,6 +28,9 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "google", name: "Google", accent: "#4285F4", key: "google-api-key", urlField: null, defaultModel: "gemini-2.0-flash", prefer: "flash" },
   { id: "openai", name: "OpenAI", accent: "#10A37F", key: "openai-api-key", urlField: null, defaultModel: "gpt-4o", prefer: "mini" },
   { id: "openrouter", name: "OpenRouter", accent: "#6467F2", key: "openrouter-api-key", urlField: null, defaultModel: "openrouter/auto", prefer: null },
+  { id: "deepseek", name: "DeepSeek", accent: "#5B8FF9", key: "deepseek-api-key", urlField: null, defaultModel: "deepseek-chat", prefer: null },
+  { id: "qwen", name: "Qwen", accent: "#FF6A00", key: "qwen-api-key", urlField: null, defaultModel: "qwen-max", prefer: null },
+  { id: "moonshot", name: "Moonshot", accent: "#7C5CFC", key: "moonshot-api-key", urlField: null, defaultModel: "moonshot-v1-32k", prefer: null },
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
