@@ -122,6 +122,21 @@
    "ko": "7일",
    "ja": "7 日"
   },
+  "A build failed": {
+   "zh-Hans": "有构建失败",
+   "hi": "एक बिल्ड फ़ेल हुआ",
+   "es": "Una build ha fallado",
+   "ar": "فشل أحد عمليات البناء",
+   "fr": "Un build a échoué",
+   "bn": "একটি বিল্ড ব্যর্থ হয়েছে",
+   "pt-BR": "Um build falhou",
+   "ru": "Сборка упала",
+   "id": "Ada build yang gagal",
+   "de": "Ein Build ist fehlgeschlagen",
+   "tr": "Bir derleme başarısız oldu",
+   "ko": "빌드가 실패했어요",
+   "ja": "ビルドが失敗しました"
+  },
   "A message whose sender, subject or text holds one of these words or addresses goes straight to Junk. Whole words only: “sale” does not catch “Salesforce”.": {
    "zh-Hans": "发件人、主题或正文包含这些词或地址的邮件会直接移到垃圾邮件。只匹配完整单词：“sale”不会匹配“Salesforce”。",
    "hi": "जिस मेल के प्रेषक, विषय या टेक्स्ट में इनमें से कोई शब्द या पता हो, वह सीधे जंक में जाता है। सिर्फ़ पूरे शब्द: “sale” से “Salesforce” नहीं पकड़ा जाता।",
@@ -136,6 +151,21 @@
    "tr": "Göndereni, konusu ya da metni bu kelimelerden veya adreslerden birini içeren e-posta doğrudan gereksize gider. Yalnızca tam kelimeler: “sale”, “Salesforce”u yakalamaz.",
    "ko": "보낸 사람, 제목, 본문에 이 단어나 주소가 있는 메일은 바로 정크로 갑니다. 단어 단위로만 찾으므로 ‘sale’은 ‘Salesforce’를 잡지 않습니다.",
    "ja": "差出人・件名・本文にこれらの語句やアドレスを含むメールは、そのまま迷惑メールへ移動します。単語単位で判定するので「sale」は「Salesforce」に一致しません。"
+  },
+  "A room that shows your day": {
+   "zh-Hans": "一间展示你一天的房间",
+   "hi": "एक कमरा जो आपका दिन दिखाता है",
+   "es": "Una habitación que muestra tu día",
+   "ar": "غرفة تعرض يومك",
+   "fr": "Une chambre qui montre ta journée",
+   "bn": "একটি ঘর যা আপনার দিন দেখায়",
+   "pt-BR": "Um quarto que mostra o seu dia",
+   "ru": "Комната, которая показывает твой день",
+   "id": "Kamar yang menampilkan harimu",
+   "de": "Ein Zimmer, das deinen Tag zeigt",
+   "tr": "Gününü gösteren bir oda",
+   "ko": "하루가 한눈에 보이는 방",
+   "ja": "あなたの一日がわかる部屋"
   },
   "A word, a phrase or an address": {
    "zh-Hans": "单词、短语或地址",
@@ -572,6 +602,21 @@
    "ko": "모든 변경 사항",
    "ja": "すべての変更点"
   },
+  "All green: CI and deploys": {
+   "zh-Hans": "一切正常：CI 和部署",
+   "hi": "सब हरा: CI और डिप्लॉय",
+   "es": "Todo en verde: CI y despliegues",
+   "ar": "كل شيء ناجح: CI والنشر",
+   "fr": "Tout est vert : CI et déploiements",
+   "bn": "সব সবুজ: CI আর ডিপ্লয়",
+   "pt-BR": "Tudo verde: CI e deploys",
+   "ru": "Всё зелёное: CI и деплои",
+   "id": "Semua hijau: CI dan deploy",
+   "de": "Alles grün: CI und Deployments",
+   "tr": "Her şey yeşil: CI ve dağıtımlar",
+   "ko": "모두 성공: CI와 배포",
+   "ja": "すべて成功：CI とデプロイ"
+  },
   "Allow": {
    "zh-Hans": "允许",
    "hi": "अनुमति दें",
@@ -901,6 +946,21 @@
    "tr": "Onay istekleri Hermes tarafından işlenir (terminal veya ağ geçidi).",
    "ko": "승인 요청은 Hermes(터미널 또는 게이트웨이)가 알아서 처리해요.",
    "ja": "承認リクエストは Hermes（ターミナルまたはゲートウェイ）が処理します。"
+  },
+  "Approvals": {
+   "zh-Hans": "批准",
+   "hi": "मंज़ूरियाँ",
+   "es": "Aprobaciones",
+   "ar": "الموافقات",
+   "fr": "Autorisations",
+   "bn": "অনুমোদন",
+   "pt-BR": "Aprovações",
+   "ru": "Разрешения",
+   "id": "Persetujuan",
+   "de": "Freigaben",
+   "tr": "Onaylar",
+   "ko": "승인",
+   "ja": "許可"
   },
   "Approve commands from the notch": {
    "zh-Hans": "在刘海中批准命令",
@@ -2132,6 +2192,21 @@
    "ko": "노치 닫기 (고정하지 않은 경우)",
    "ja": "ノッチを閉じる（ピン留めしていない場合）"
   },
+  "Coded with agents": {
+   "zh-Hans": "与智能体编程",
+   "hi": "एजेंटों के साथ कोडिंग",
+   "es": "Programado con agentes",
+   "ar": "البرمجة مع الوكلاء",
+   "fr": "Codé avec les agents",
+   "bn": "এজেন্টদের সাথে কোডিং",
+   "pt-BR": "Programado com agentes",
+   "ru": "Код с агентами",
+   "id": "Ngoding bersama agen",
+   "de": "Mit Agenten programmiert",
+   "tr": "Ajanlarla kodlama",
+   "ko": "에이전트와 코딩",
+   "ja": "エージェントとコーディング"
+  },
   "Codex hooks": {
    "zh-Hans": "Codex 钩子",
    "hi": "Codex हुक",
@@ -2239,18 +2314,33 @@
   },
   "Connect": {
    "zh-Hans": "连接",
-   "hi": "कनेक्ट करें",
+   "hi": "जोड़ें",
    "es": "Conectar",
    "ar": "اتصال",
    "fr": "Connecter",
-   "bn": "সংযুক্ত করুন",
+   "bn": "সংযোগ করুন",
    "pt-BR": "Conectar",
    "ru": "Подключить",
    "id": "Hubungkan",
    "de": "Verbinden",
-   "tr": "Bağlan",
+   "tr": "Bağla",
    "ko": "연결",
    "ja": "接続"
+  },
+  "Connect GitHub or Vercel for the weather": {
+   "zh-Hans": "连接 GitHub 或 Vercel 以显示天气",
+   "hi": "मौसम के लिए GitHub या Vercel जोड़ें",
+   "es": "Conecta GitHub o Vercel para ver el tiempo",
+   "ar": "اربط GitHub أو Vercel لعرض الطقس",
+   "fr": "Connecte GitHub ou Vercel pour la météo",
+   "bn": "আবহাওয়ার জন্য GitHub বা Vercel সংযোগ করুন",
+   "pt-BR": "Conecte o GitHub ou a Vercel para ver o tempo",
+   "ru": "Подключи GitHub или Vercel, чтобы видеть погоду",
+   "id": "Hubungkan GitHub atau Vercel untuk cuacanya",
+   "de": "Verbinde GitHub oder Vercel für das Wetter",
+   "tr": "Hava için GitHub veya Vercel'i bağla",
+   "ko": "날씨를 보려면 GitHub나 Vercel을 연결하세요",
+   "ja": "天気には GitHub か Vercel を接続してください"
   },
   "Connect to a local model server. No API key required.": {
    "zh-Hans": "连接到本地模型服务器。无需 API 密钥。",
@@ -2269,7 +2359,7 @@
   },
   "Connected": {
    "zh-Hans": "已连接",
-   "hi": "जुड़ा है",
+   "hi": "जुड़ा हुआ",
    "es": "Conectado",
    "ar": "متصل",
    "fr": "Connecté",
@@ -2536,6 +2626,21 @@
    "tr": "Coucou henüz yapıştıramıyor veya Esc tuşunu algılayamıyor: Erişilebilirlik izni gerekiyor. Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik bölümünde Coucou'yu etkinleştir. Zaten etkinse − ile kaldırıp yeniden ekle: Coucou'nun yeni derlemesi için yeniden izin gerekir.",
    "ko": "Coucou가 아직 붙여넣지도, Esc를 알아채지도 못해요. 손쉬운 사용 권한이 필요해요! 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용에서 Coucou를 켜 주세요. 이미 켜져 있다면 −로 뺐다가 다시 추가해 주세요. Coucou를 새로 빌드하면 다시 허용해야 하거든요.",
    "ja": "Coucou はまだペーストしたり Esc を検知したりできません。アクセシビリティの権限が必要です。システム設定 → プライバシーとセキュリティ → アクセシビリティで Coucou をオンにしてください。すでにオンの場合は − で削除してから追加し直してください。Coucou の新しいビルドでは再度必要です。"
+  },
+  "Coucou can't read Now Playing on this Mac": {
+   "zh-Hans": "Coucou 无法在此 Mac 上读取“正在播放”",
+   "hi": "Coucou इस Mac पर “अभी चल रहा है” को नहीं पढ़ सकता",
+   "es": "Coucou no puede leer «Ahora suena» en este Mac",
+   "ar": "لا يستطيع Coucou قراءة معلومات التشغيل الحالي على هذا الـ Mac",
+   "fr": "Coucou ne peut pas lire « En cours de lecture » sur ce Mac",
+   "bn": "Coucou এই Mac-এ “এখন চলছে” পড়তে পারছে না",
+   "pt-BR": "O Coucou não consegue ler “Tocando Agora” neste Mac",
+   "ru": "Coucou не может прочитать «Исполняется» на этом Mac",
+   "id": "Coucou tidak dapat membaca “Sedang Diputar” di Mac ini",
+   "de": "Coucou kann „Aktuelle Wiedergabe“ auf diesem Mac nicht lesen",
+   "tr": "Coucou bu Mac’te “Çalıyor” bilgisini okuyamıyor",
+   "ko": "Coucou가 이 Mac의 '지금 재생 중'을 읽을 수 없습니다",
+   "ja": "Coucou はこの Mac の「再生中」を読み取れません"
   },
   "Coucou can't use the microphone. Allow it in System Settings → Privacy & Security → Microphone.": {
    "zh-Hans": "Coucou 无法使用麦克风。请在“系统设置”→“隐私与安全性”→“麦克风”中允许。",
@@ -2912,6 +3017,21 @@
    "ko": "사용자 지정…",
    "ja": "カスタム…"
   },
+  "Day and night": {
+   "zh-Hans": "昼夜",
+   "hi": "दिन और रात",
+   "es": "Día y noche",
+   "ar": "الليل والنهار",
+   "fr": "Jour et nuit",
+   "bn": "দিন ও রাত",
+   "pt-BR": "Dia e noite",
+   "ru": "День и ночь",
+   "id": "Siang dan malam",
+   "de": "Tag und Nacht",
+   "tr": "Gece ve gündüz",
+   "ko": "낮과 밤",
+   "ja": "昼と夜"
+  },
   "DeepSeek key saved.": {
    "zh-Hans": "DeepSeek 密钥已保存。",
    "hi": "DeepSeek कुंजी सहेजी गई।",
@@ -3061,6 +3181,21 @@
    "tr": "Dağıtımlar",
    "ko": "배포",
    "ja": "デプロイ"
+  },
+  "Deploys today": {
+   "zh-Hans": "今日部署",
+   "hi": "आज के डिप्लॉय",
+   "es": "Despliegues hoy",
+   "ar": "عمليات النشر اليوم",
+   "fr": "Déploiements du jour",
+   "bn": "আজকের ডিপ্লয়",
+   "pt-BR": "Deploys hoje",
+   "ru": "Деплоев сегодня",
+   "id": "Deploy hari ini",
+   "de": "Deployments heute",
+   "tr": "Bugünkü dağıtımlar",
+   "ko": "오늘 배포",
+   "ja": "今日のデプロイ"
   },
   "Dictate (right-click to choose the language)": {
    "zh-Hans": "听写（右键点按选择语言）",
@@ -3667,7 +3802,7 @@
    "hi": "विफल",
    "es": "Fallido",
    "ar": "فشل",
-   "fr": "Échoué",
+   "fr": "Échec",
    "bn": "ব্যর্থ",
    "pt-BR": "Falhou",
    "ru": "Ошибка",
@@ -3827,6 +3962,21 @@
    "ko": "보내는 주소  (you@yourdomain.com)",
    "ja": "送信元アドレス（you@yourdomain.com）"
   },
+  "From the CI of your main branches on GitHub and your last Vercel deploy.": {
+   "zh-Hans": "根据 GitHub 上主分支的 CI 和你最近一次 Vercel 部署。",
+   "hi": "GitHub पर आपकी मुख्य ब्रांचों के CI और आपके आख़िरी Vercel डिप्लॉय से।",
+   "es": "Según la CI de tus ramas principales en GitHub y tu último despliegue en Vercel.",
+   "ar": "من CI لفروعك الرئيسية على GitHub وآخر نشر لك على Vercel.",
+   "fr": "D'après la CI de tes branches principales sur GitHub et ton dernier déploiement Vercel.",
+   "bn": "GitHub-এ আপনার মূল ব্রাঞ্চের CI আর সর্বশেষ Vercel ডিপ্লয় থেকে।",
+   "pt-BR": "Com base no CI das suas branches principais no GitHub e no seu último deploy na Vercel.",
+   "ru": "По CI основных веток на GitHub и последнему деплою в Vercel.",
+   "id": "Dari CI cabang utamamu di GitHub dan deploy Vercel terakhirmu.",
+   "de": "Aus der CI deiner Hauptbranches auf GitHub und deinem letzten Vercel-Deployment.",
+   "tr": "GitHub'daki ana dallarının CI'ından ve son Vercel dağıtımından.",
+   "ko": "GitHub 메인 브랜치의 CI와 마지막 Vercel 배포를 기준으로 해요.",
+   "ja": "GitHub のメインブランチの CI と、最新の Vercel デプロイから。"
+  },
   "Full sentences and paragraphs, for mails.": {
    "zh-Hans": "完整的句子和段落，适合邮件。",
    "hi": "पूरे वाक्य और पैराग्राफ़, ईमेल के लिए।",
@@ -3886,6 +4036,21 @@
    "tr": "Spotify'ı edin",
    "ko": "Spotify 받기",
    "ja": "Spotify を入手"
+  },
+  "Get Yandex Music": {
+   "zh-Hans": "获取 Yandex Music",
+   "hi": "Yandex Music पाएँ",
+   "es": "Descargar Yandex Music",
+   "ar": "احصل على Yandex Music",
+   "fr": "Obtenir Yandex Music",
+   "bn": "Yandex Music নিন",
+   "pt-BR": "Baixar o Yandex Music",
+   "ru": "Скачать Яндекс Музыку",
+   "id": "Dapatkan Yandex Music",
+   "de": "Yandex Music herunterladen",
+   "tr": "Yandex Music'ı edin",
+   "ko": "Yandex Music 받기",
+   "ja": "Yandex Music を入手"
   },
   "Get it on GitHub": {
    "zh-Hans": "前往 GitHub",
@@ -4561,6 +4726,21 @@
    "tr": "Bir köşedeyken Coucou masaüstünün üzerinde süzülür ve oradan açılır. Mochi’yi ekranın bir köşesine yakın sürükleyebilir ya da üst ortaya geri getirebilirsin.",
    "ko": "모서리에 두면 Coucou가 데스크톱 위에 떠 있고 그 자리에서 열려요. Mochi를 화면 모서리 근처로 끌어다 놓거나 상단 가운데로 다시 옮길 수도 있어요.",
    "ja": "隅に置くと、Coucou はデスクトップの上に浮かび、そこから開きます。Mochi を画面の隅の近くへドラッグしたり、上部中央へ戻したりすることもできます。"
+  },
+  "In the room": {
+   "zh-Hans": "房间设置",
+   "hi": "कमरे में",
+   "es": "En la habitación",
+   "ar": "في الغرفة",
+   "fr": "Dans la chambre",
+   "bn": "ঘরে",
+   "pt-BR": "No quarto",
+   "ru": "В комнате",
+   "id": "Di kamar",
+   "de": "Im Zimmer",
+   "tr": "Odada",
+   "ko": "방 설정",
+   "ja": "部屋の設定"
   },
   "Inbox": {
    "zh-Hans": "收件箱",
@@ -5717,6 +5897,21 @@
    "ko": "모찌와 Mac",
    "ja": "Mochi とあなたの Mac"
   },
+  "Mochi and your agents live here. Every object is live data from Coucou and your tools.": {
+   "zh-Hans": "Mochi 和你的智能体住在这里。每样东西都是来自 Coucou 和你的工具的实时数据。",
+   "hi": "यहाँ मोची और आपके एजेंट रहते हैं। हर चीज़ Coucou और आपके टूल्स का असली डेटा दिखाती है।",
+   "es": "Aquí viven Mochi y tus agentes. Cada objeto muestra datos reales de Coucou y de tus herramientas.",
+   "ar": "هنا يعيش موتشي ووكلاؤك. كل غرض يعرض بيانات حية من Coucou ومن أدواتك.",
+   "fr": "Mochi et tes agents vivent ici. Chaque objet est une vraie donnée de Coucou et de tes outils.",
+   "bn": "এখানে মোচি আর আপনার এজেন্টরা থাকে। প্রতিটি জিনিস Coucou আর আপনার টুলের আসল ডেটা দেখায়।",
+   "pt-BR": "Aqui moram o Mochi e seus agentes. Cada objeto mostra dados reais do Coucou e das suas ferramentas.",
+   "ru": "Здесь живут Мочи и твои агенты. Каждый предмет показывает живые данные из Coucou и твоих сервисов.",
+   "id": "Mochi dan agen-agenmu tinggal di sini. Setiap benda menampilkan data nyata dari Coucou dan alat-alatmu.",
+   "de": "Hier wohnen Mochi und deine Agenten. Jedes Objekt zeigt echte Daten aus Coucou und deinen Tools.",
+   "tr": "Mochi ve ajanların burada yaşıyor. Her nesne Coucou'dan ve araçlarından gelen gerçek veridir.",
+   "ko": "모찌와 에이전트들이 사는 곳이에요. 모든 물건이 Coucou와 도구의 실시간 데이터예요.",
+   "ja": "モチとエージェントたちの部屋。置いてある物はすべて Coucou とツールの実データです。"
+  },
   "Mochi checks Coucou’s releases on GitHub a few times a day and tells you when one is out. Nothing about you is sent.": {
    "zh-Hans": "Mochi 每天会在 GitHub 上查看几次 Coucou 的版本，有新版本时告诉你。不会发送任何关于你的信息。",
    "hi": "Mochi दिन में कुछ बार GitHub पर Coucou के रिलीज़ देखता है और नया आने पर बताता है। आपके बारे में कुछ नहीं भेजा जाता।",
@@ -5731,6 +5926,21 @@
    "tr": "Mochi, Coucou'nun GitHub'daki sürümlerine günde birkaç kez bakar ve yenisi çıkınca sana söyler. Seninle ilgili hiçbir şey gönderilmez.",
    "ko": "모찌가 하루에 몇 번 GitHub에서 Coucou 새 버전을 확인하고, 나오면 바로 알려 줘요. 사용자 정보는 하나도 안 보내요.",
    "ja": "Mochi は GitHub で Coucou のリリースを 1 日に数回確認し、新しいバージョンが出たらお知らせします。あなたに関する情報は送信されません。"
+  },
+  "Mochi goes to the door": {
+   "zh-Hans": "Mochi 走到门口",
+   "hi": "मोची दरवाज़े पर जाता है",
+   "es": "Mochi va a la puerta",
+   "ar": "يذهب موتشي إلى الباب",
+   "fr": "Mochi va à la porte",
+   "bn": "মোচি দরজায় যায়",
+   "pt-BR": "O Mochi vai até a porta",
+   "ru": "Мочи идёт к двери",
+   "id": "Mochi pergi ke pintu",
+   "de": "Mochi geht zur Tür",
+   "tr": "Mochi kapıya gider",
+   "ko": "모찌가 문으로 가요",
+   "ja": "モチがドアに行く"
   },
   "Mochi jumps when a chat reply is ready": {
    "zh-Hans": "聊天回复完成时 Mochi 会跳起来",
@@ -5776,6 +5986,21 @@
    "tr": "Mochi'yi masaüstüne taşı / geri getir",
    "ko": "데스크톱 모찌 켜기/끄기",
    "ja": "Mochi をデスクトップに出す／戻す"
+  },
+  "Mochi's room": {
+   "zh-Hans": "Mochi 的房间",
+   "hi": "मोची का कमरा",
+   "es": "La habitación de Mochi",
+   "ar": "غرفة موتشي",
+   "fr": "La chambre de Mochi",
+   "bn": "মোচির ঘর",
+   "pt-BR": "O quarto do Mochi",
+   "ru": "Комната Мочи",
+   "id": "Kamar Mochi",
+   "de": "Mochis Zimmer",
+   "tr": "Mochi'nin odası",
+   "ko": "모찌의 방",
+   "ja": "モチの部屋"
   },
   "Mochi, his sounds and how the notch behaves.": {
    "zh-Hans": "Mochi、它的声音和刘海的行为。",
@@ -6196,6 +6421,21 @@
    "tr": "Sonraki / önceki sekme",
    "ko": "다음/이전 모찌",
    "ja": "次／前のタブ"
+  },
+  "Next call": {
+   "zh-Hans": "下一次通话",
+   "hi": "अगली कॉल",
+   "es": "Próxima llamada",
+   "ar": "المكالمة التالية",
+   "fr": "Prochain appel",
+   "bn": "পরের কল",
+   "pt-BR": "Próxima chamada",
+   "ru": "Следующий созвон",
+   "id": "Panggilan berikutnya",
+   "de": "Nächster Call",
+   "tr": "Sonraki görüşme",
+   "ko": "다음 통화",
+   "ja": "次の通話"
   },
   "Next tab": {
    "zh-Hans": "下一个标签",
@@ -6649,14 +6889,14 @@
   },
   "Not connected": {
    "zh-Hans": "未连接",
-   "hi": "कनेक्ट नहीं",
+   "hi": "जुड़ा नहीं",
    "es": "No conectado",
    "ar": "غير متصل",
    "fr": "Non connecté",
    "bn": "সংযুক্ত নয়",
    "pt-BR": "Não conectado",
    "ru": "Не подключено",
-   "id": "Tidak terhubung",
+   "id": "Belum terhubung",
    "de": "Nicht verbunden",
    "tr": "Bağlı değil",
    "ko": "연결 안 됨",
@@ -6976,6 +7216,21 @@
    "tr": "Tamam, olduğu gibi bırakıyorum",
    "ko": "알겠어요, 그냥 둘게요",
    "ja": "わかりました、そのままにします"
+  },
+  "Off, the room draws nothing and uses no CPU.": {
+   "zh-Hans": "关闭时，房间不绘制任何内容，也不占用 CPU。",
+   "hi": "बंद होने पर कमरा कुछ नहीं बनाता और CPU इस्तेमाल नहीं करता।",
+   "es": "Desactivada, la habitación no dibuja nada y no usa CPU.",
+   "ar": "عند الإيقاف، لا ترسم الغرفة شيئًا ولا تستهلك المعالج.",
+   "fr": "Désactivée, la chambre ne dessine rien et n'utilise pas de CPU.",
+   "bn": "বন্ধ থাকলে ঘর কিছুই আঁকে না এবং CPU ব্যবহার করে না।",
+   "pt-BR": "Desativado, o quarto não desenha nada e não usa CPU.",
+   "ru": "Когда выключена, комната ничего не рисует и не тратит процессор.",
+   "id": "Saat mati, kamar tidak menggambar apa pun dan tidak memakai CPU.",
+   "de": "Ausgeschaltet zeichnet das Zimmer nichts und braucht keine CPU.",
+   "tr": "Kapalıyken oda hiçbir şey çizmez ve CPU kullanmaz.",
+   "ko": "꺼져 있으면 방은 아무것도 그리지 않고 CPU를 쓰지 않아요.",
+   "ja": "オフのときは何も描かず、CPU を使いません。"
   },
   "Off: the chat uses your API key below.": {
    "zh-Hans": "已关闭：聊天使用下方的 API 密钥。",
@@ -7382,6 +7637,21 @@
    "ko": "Visual Studio Code 열기",
    "ja": "Visual Studio Code を開く"
   },
+  "Open Yandex Music": {
+   "zh-Hans": "打开 Yandex Music",
+   "hi": "Yandex Music खोलें",
+   "es": "Abrir Yandex Music",
+   "ar": "فتح Yandex Music",
+   "fr": "Ouvrir Yandex Music",
+   "bn": "Yandex Music খুলুন",
+   "pt-BR": "Abrir o Yandex Music",
+   "ru": "Открыть Яндекс Музыку",
+   "id": "Buka Yandex Music",
+   "de": "Yandex Music öffnen",
+   "tr": "Yandex Music'ı aç",
+   "ko": "Yandex Music 열기",
+   "ja": "Yandex Music を開く"
+  },
   "Open chat": {
    "zh-Hans": "打开聊天",
    "hi": "चैट खोलें",
@@ -7531,6 +7801,21 @@
    "tr": "Not alıcıyı aç →",
    "ko": "노트테이커 열기 →",
    "ja": "ノートテイカーを開く →"
+  },
+  "Open the island": {
+   "zh-Hans": "打开岛",
+   "hi": "आइलैंड खोलें",
+   "es": "Abrir la isla",
+   "ar": "افتح الجزيرة",
+   "fr": "Ouvrir l'island",
+   "bn": "আইল্যান্ড খুলুন",
+   "pt-BR": "Abrir a ilha",
+   "ru": "Открыть остров",
+   "id": "Buka island",
+   "de": "Island öffnen",
+   "tr": "Adayı aç",
+   "ko": "아일랜드 열기",
+   "ja": "アイランドを開く"
   },
   "Open this window when you open Coucou": {
    "zh-Hans": "打开 Coucou 时打开此窗口",
@@ -7906,6 +8191,21 @@
    "tr": "İzin istekleri her zaman telefondan yanıtlanabilir. Bu açıkken sorular da yanıtlanabilir. Telefon önce ekran kilidini ister.",
    "ko": "권한 요청은 항상 폰에서 응답할 수 있습니다. 이 옵션을 켜면 질문에도 답할 수 있습니다. 폰은 먼저 화면 잠금을 요구합니다.",
    "ja": "許可リクエストは常にスマートフォンから応答できます。オンにすると質問にも回答できます。スマートフォンは先に画面ロックを求めます。"
+  },
+  "Permission requests show up under the room. Nothing is allowed without your click.": {
+   "zh-Hans": "权限请求会显示在房间下方。没有你的点击，什么都不会被允许。",
+   "hi": "अनुमति के अनुरोध कमरे के नीचे दिखते हैं। आपके क्लिक के बिना कुछ भी अनुमत नहीं होता।",
+   "es": "Las solicitudes de permiso aparecen bajo la habitación. Nada se permite sin tu clic.",
+   "ar": "تظهر طلبات الإذن أسفل الغرفة. لا يُسمح بأي شيء دون نقرتك.",
+   "fr": "Les demandes d'autorisation s'affichent sous la chambre. Rien n'est autorisé sans ton clic.",
+   "bn": "অনুমতির অনুরোধ ঘরের নিচে দেখা যায়। আপনার ক্লিক ছাড়া কিছুই অনুমোদিত হয় না।",
+   "pt-BR": "Os pedidos de permissão aparecem abaixo do quarto. Nada é permitido sem o seu clique.",
+   "ru": "Запросы разрешений появляются под комнатой. Ничего не разрешается без твоего клика.",
+   "id": "Permintaan izin muncul di bawah kamar. Tidak ada yang diizinkan tanpa klikmu.",
+   "de": "Berechtigungsanfragen erscheinen unter dem Zimmer. Nichts wird ohne deinen Klick erlaubt.",
+   "tr": "İzin istekleri odanın altında görünür. Senin tıklaman olmadan hiçbir şeye izin verilmez.",
+   "ko": "권한 요청은 방 아래에 표시돼요. 직접 클릭하지 않으면 아무것도 허용되지 않아요.",
+   "ja": "許可のリクエストは部屋の下に表示されます。クリックしない限り何も許可されません。"
   },
   "Permissions": {
    "zh-Hans": "权限",
@@ -8325,7 +8625,7 @@
    "de": "Bereit",
    "tr": "Hazır",
    "ko": "준비됨",
-   "ja": "準備完了"
+   "ja": "完了"
   },
   "Ready · hold {0}": {
    "zh-Hans": "就绪 · 按住 {0}",
@@ -8941,6 +9241,21 @@
    "tr": "Çalıştırıyor",
    "ko": "실행",
    "ja": "実行"
+  },
+  "Runs today": {
+   "zh-Hans": "今日运行",
+   "hi": "आज के रन",
+   "es": "Ejecuciones hoy",
+   "ar": "التشغيلات اليوم",
+   "fr": "Exécutions du jour",
+   "bn": "আজকের রান",
+   "pt-BR": "Execuções hoje",
+   "ru": "Запусков сегодня",
+   "id": "Run hari ini",
+   "de": "Läufe heute",
+   "tr": "Bugünkü çalışmalar",
+   "ko": "오늘 실행",
+   "ja": "今日の実行"
   },
   "SESSIONS": {
    "zh-Hans": "会话",
@@ -9752,6 +10067,21 @@
    "ko": "휴대폰에서 세션 세부 정보 보기",
    "ja": "セッションの詳細をスマートフォンに表示"
   },
+  "Show the room": {
+   "zh-Hans": "显示房间",
+   "hi": "कमरा दिखाएँ",
+   "es": "Mostrar la habitación",
+   "ar": "إظهار الغرفة",
+   "fr": "Afficher la chambre",
+   "bn": "ঘর দেখান",
+   "pt-BR": "Mostrar o quarto",
+   "ru": "Показывать комнату",
+   "id": "Tampilkan kamar",
+   "de": "Zimmer anzeigen",
+   "tr": "Odayı göster",
+   "ko": "방 보기",
+   "ja": "部屋を表示"
+  },
   "Shows your Claude plan usage (5-hour and weekly limits) in the notch header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在刘海标头中显示你的 Claude 计划用量（5 小时及每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一条状态栏中继。如果你已有状态栏，它将照常运行。仅限 Pro 和 Max 计划。",
    "hi": "नॉच हेडर में आपके Claude प्लान का उपयोग (5 घंटे और साप्ताहिक सीमाएं) दिखाता है। Coucou ~/.claude/settings.json में एक स्टेटस लाइन रिले जोड़ता है। अगर आपके पास पहले से स्टेटस लाइन है, तो वह पहले की तरह काम करती रहेगी। केवल Pro और Max प्लान के लिए।",
@@ -9811,6 +10141,21 @@
    "tr": "Metin kısayolları",
    "ko": "스니펫",
    "ja": "スニペット"
+  },
+  "Something is building": {
+   "zh-Hans": "有内容正在构建",
+   "hi": "कुछ बिल्ड हो रहा है",
+   "es": "Algo se está construyendo",
+   "ar": "هناك شيء قيد البناء",
+   "fr": "Quelque chose est en cours de build",
+   "bn": "কিছু একটা বিল্ড হচ্ছে",
+   "pt-BR": "Algo está em build",
+   "ru": "Что-то собирается",
+   "id": "Ada yang sedang dibangun",
+   "de": "Gerade läuft ein Build",
+   "tr": "Bir şey derleniyor",
+   "ko": "빌드 중인 게 있어요",
+   "ja": "ビルド中のものがあります"
   },
   "Sorry, can you say that again?": {
    "zh-Hans": "抱歉，可以再说一遍吗？",
@@ -9916,6 +10261,21 @@
    "tr": "Spotify kurulu değil",
    "ko": "Spotify가 설치돼 있지 않아요",
    "ja": "Spotify がインストールされていません"
+  },
+  "Stars": {
+   "zh-Hans": "星标",
+   "hi": "स्टार",
+   "es": "Estrellas",
+   "ar": "النجوم",
+   "fr": "Étoiles",
+   "bn": "স্টার",
+   "pt-BR": "Estrelas",
+   "ru": "Звёзды",
+   "id": "Bintang",
+   "de": "Sterne",
+   "tr": "Yıldız",
+   "ko": "스타",
+   "ja": "スター"
   },
   "Start": {
    "zh-Hans": "开始",
@@ -10051,6 +10411,21 @@
    "tr": "Mac'inde yerel olarak saklanır. Hiçbir veri Mac'inden çıkmaz. 12 hafta tutulur.",
    "ko": "Mac에만 저장되고 밖으로는 하나도 안 나가요. 12주 동안 보관해요.",
    "ja": "Mac 上にローカル保存されます。何も Mac の外に出ません。12 週間保持されます。"
+  },
+  "Streak": {
+   "zh-Hans": "连续",
+   "hi": "स्ट्रीक",
+   "es": "Racha",
+   "ar": "السلسلة",
+   "fr": "Série",
+   "bn": "স্ট্রিক",
+   "pt-BR": "Sequência",
+   "ru": "Серия",
+   "id": "Streak",
+   "de": "Serie",
+   "tr": "Seri",
+   "ko": "연속 기록",
+   "ja": "連続記録"
   },
   "Stripe, GitHub, Vercel, n8n, Notion and the rest.": {
    "zh-Hans": "Stripe、GitHub、Vercel、n8n、Notion 等。",
@@ -10457,6 +10832,36 @@
    "ko": "다듬기에는 Claude가 필요해요. Claude Code로 쓰는 Claude 요금제나 Claude 키 중 하나를 설정 → 채팅에서 설정해 주세요.",
    "ja": "整える機能は Claude を使います。Claude Code 経由の Claude プラン、または Claude のキーです。設定 → チャットでどちらかを設定してください。"
   },
+  "The desk: Mochi works there while an agent runs.": {
+   "zh-Hans": "书桌：有智能体在运行时，Mochi 就在这里工作。",
+   "hi": "डेस्क: जब कोई एजेंट चल रहा हो, मोची वहाँ काम करता है।",
+   "es": "El escritorio: Mochi trabaja ahí mientras un agente está en marcha.",
+   "ar": "المكتب: يعمل موتشي هناك أثناء تشغيل أحد الوكلاء.",
+   "fr": "Le bureau : Mochi y travaille pendant qu'un agent tourne.",
+   "bn": "ডেস্ক: কোনো এজেন্ট চলার সময় মোচি সেখানে কাজ করে।",
+   "pt-BR": "A mesa: o Mochi trabalha ali enquanto um agente está rodando.",
+   "ru": "Стол: Мочи работает за ним, пока трудится агент.",
+   "id": "Meja: Mochi bekerja di sana selama ada agen yang berjalan.",
+   "de": "Der Schreibtisch: Dort arbeitet Mochi, solange ein Agent läuft.",
+   "tr": "Masa: Bir ajan çalışırken Mochi orada çalışır.",
+   "ko": "책상: 에이전트가 일하는 동안 모찌가 여기서 일해요.",
+   "ja": "机：エージェントが動いている間、モチはここで働きます。"
+  },
+  "The door: Mochi waits there when an agent asks something, and you answer right here.": {
+   "zh-Hans": "门：智能体有问题时，Mochi 会在这里等着，你可以直接在这里回答。",
+   "hi": "दरवाज़ा: जब कोई एजेंट कुछ पूछता है, मोची वहाँ इंतज़ार करता है और आप यहीं जवाब देते हैं।",
+   "es": "La puerta: Mochi espera ahí cuando un agente pregunta algo, y respondes aquí mismo.",
+   "ar": "الباب: ينتظر موتشي هناك عندما يسأل أحد الوكلاء عن شيء، وتجيب من هنا مباشرة.",
+   "fr": "La porte : Mochi y attend quand un agent demande quelque chose, et tu réponds directement ici.",
+   "bn": "দরজা: কোনো এজেন্ট কিছু জিজ্ঞেস করলে মোচি সেখানে অপেক্ষা করে, আর আপনি এখানেই উত্তর দেন।",
+   "pt-BR": "A porta: o Mochi espera ali quando um agente pergunta algo, e você responde aqui mesmo.",
+   "ru": "Дверь: Мочи ждёт у неё, когда агент что-то спрашивает, и ты отвечаешь прямо здесь.",
+   "id": "Pintu: Mochi menunggu di sana saat agen menanyakan sesuatu, dan kamu menjawab langsung di sini.",
+   "de": "Die Tür: Dort wartet Mochi, wenn ein Agent etwas fragt, und du antwortest direkt hier.",
+   "tr": "Kapı: Bir ajan bir şey sorduğunda Mochi orada bekler, sen de buradan yanıtlarsın.",
+   "ko": "문: 에이전트가 뭔가 물으면 모찌가 여기서 기다리고, 바로 여기서 답할 수 있어요.",
+   "ja": "ドア：エージェントが何か聞いてくると、モチはここで待ちます。返事はこの画面でできます。"
+  },
   "The download couldn’t be opened. Nothing was changed.": {
    "zh-Hans": "无法打开下载的文件。未做任何更改。",
    "hi": "डाउनलोड खुल नहीं सका। कुछ नहीं बदला गया।",
@@ -10517,6 +10922,21 @@
    "ko": "다운로드한 파일이 안내된 Coucou 버전이 아니에요. 아무것도 안 건드렸어요.",
    "ja": "ダウンロードしたファイルは告知された Coucou のバージョンではありません。何も変更されていません。"
   },
+  "The frames: your connected tools (Stripe, GitHub, Vercel, n8n, Cal.com). Click one to open it.": {
+   "zh-Hans": "相框：你已连接的工具（Stripe、GitHub、Vercel、n8n、Cal.com）。点击即可打开。",
+   "hi": "फ़्रेम: आपके जुड़े हुए टूल्स (Stripe, GitHub, Vercel, n8n, Cal.com)। खोलने के लिए किसी पर क्लिक करें।",
+   "es": "Los cuadros: tus herramientas conectadas (Stripe, GitHub, Vercel, n8n, Cal.com). Haz clic en uno para abrirlo.",
+   "ar": "الإطارات: أدواتك المتصلة (Stripe وGitHub وVercel وn8n وCal.com). انقر على أحدها لفتحه.",
+   "fr": "Les cadres : tes outils connectés (Stripe, GitHub, Vercel, n8n, Cal.com). Clique sur l'un pour l'ouvrir.",
+   "bn": "ফ্রেম: আপনার সংযুক্ত টুল (Stripe, GitHub, Vercel, n8n, Cal.com)। খুলতে যেকোনোটিতে ক্লিক করুন।",
+   "pt-BR": "Os quadros: suas ferramentas conectadas (Stripe, GitHub, Vercel, n8n, Cal.com). Clique em um para abri-lo.",
+   "ru": "Рамки: твои подключённые сервисы (Stripe, GitHub, Vercel, n8n, Cal.com). Нажми на рамку, чтобы открыть сервис.",
+   "id": "Bingkai: alat-alat yang terhubung (Stripe, GitHub, Vercel, n8n, Cal.com). Klik salah satunya untuk membukanya.",
+   "de": "Die Bilder: deine verbundenen Tools (Stripe, GitHub, Vercel, n8n, Cal.com). Klick auf eines, um es zu öffnen.",
+   "tr": "Çerçeveler: bağlı araçların (Stripe, GitHub, Vercel, n8n, Cal.com). Açmak için birine tıkla.",
+   "ko": "액자: 연결한 도구들(Stripe, GitHub, Vercel, n8n, Cal.com)이에요. 클릭하면 열려요.",
+   "ja": "額縁：接続したツール（Stripe、GitHub、Vercel、n8n、Cal.com）。クリックで開きます。"
+  },
   "The history is off. Turn it on in Settings → Privacy.": {
    "zh-Hans": "历史记录已关闭。请在“设置”→“隐私”中打开。",
    "hi": "इतिहास बंद है। इसे सेटिंग्स → गोपनीयता में चालू करें।",
@@ -10561,6 +10981,21 @@
    "tr": "Çentiği ve işlemlerini açan tuşlar.",
    "ko": "노치와 노치 기능을 여는 단축키들이에요.",
    "ja": "ノッチとその操作を開くキー。"
+  },
+  "The last deploy failed": {
+   "zh-Hans": "最近一次部署失败",
+   "hi": "आख़िरी डिप्लॉय फ़ेल हुआ",
+   "es": "El último despliegue ha fallado",
+   "ar": "فشل آخر نشر",
+   "fr": "Le dernier déploiement a échoué",
+   "bn": "সর্বশেষ ডিপ্লয় ব্যর্থ হয়েছে",
+   "pt-BR": "O último deploy falhou",
+   "ru": "Последний деплой упал",
+   "id": "Deploy terakhir gagal",
+   "de": "Das letzte Deployment ist fehlgeschlagen",
+   "tr": "Son dağıtım başarısız oldu",
+   "ko": "마지막 배포가 실패했어요",
+   "ja": "最新のデプロイが失敗しました"
   },
   "The model chosen in {tool}": {
    "zh-Hans": "在 {tool} 中选择的模型",
@@ -10607,6 +11042,21 @@
    "ko": "노치에 표시되는 모찌들과 순서, 색상이에요.",
    "ja": "ノッチに表示するピル、その順番と色。"
   },
+  "The plant grows with your streak. When nothing runs, Mochi naps on the bed.": {
+   "zh-Hans": "植物会随着你的连续天数长大。没有任务运行时，Mochi 会在床上打盹。",
+   "hi": "पौधा आपकी स्ट्रीक के साथ बढ़ता है। जब कुछ नहीं चल रहा होता, मोची बिस्तर पर झपकी लेता है।",
+   "es": "La planta crece con tu racha. Cuando no hay nada en marcha, Mochi duerme la siesta en la cama.",
+   "ar": "النبتة تكبر مع سلسلة أيامك. وعندما لا يعمل شيء، يغفو موتشي على السرير.",
+   "fr": "La plante pousse avec ta série de jours. Quand rien ne tourne, Mochi fait la sieste sur le lit.",
+   "bn": "গাছটি আপনার স্ট্রিকের সাথে বড় হয়। কিছু না চললে মোচি বিছানায় ঘুমিয়ে নেয়।",
+   "pt-BR": "A planta cresce com a sua sequência. Quando nada está rodando, o Mochi tira um cochilo na cama.",
+   "ru": "Растение растёт вместе с твоей серией дней. Когда ничего не работает, Мочи дремлет на кровати.",
+   "id": "Tanamannya tumbuh seiring streak-mu. Saat tidak ada yang berjalan, Mochi tidur siang di kasur.",
+   "de": "Die Pflanze wächst mit deiner Serie. Wenn nichts läuft, macht Mochi ein Nickerchen auf dem Bett.",
+   "tr": "Bitki serinle birlikte büyür. Hiçbir şey çalışmıyorsa Mochi yatakta kestirir.",
+   "ko": "화분은 연속 기록과 함께 자라요. 아무것도 돌아가지 않으면 모찌는 침대에서 낮잠을 자요.",
+   "ja": "植物は連続日数とともに育ちます。何も動いていないとき、モチはベッドでお昼寝します。"
+  },
   "The recording of this call is gone.": {
    "zh-Hans": "这次通话的录音已不存在。",
    "hi": "इस कॉल की रिकॉर्डिंग अब नहीं है।",
@@ -10621,6 +11071,21 @@
    "tr": "Bu görüşmenin kaydı artık yok.",
    "ko": "이 통화 녹음이 사라졌어요.",
    "ja": "この通話の録音はもうありません。"
+  },
+  "The room gets dark from 8 pm to 7 am.": {
+   "zh-Hans": "晚上 8 点到早上 7 点房间会变暗。",
+   "hi": "रात 8 बजे से सुबह 7 बजे तक कमरे में अँधेरा रहता है।",
+   "es": "La habitación se oscurece de 20:00 a 7:00.",
+   "ar": "تُظلم الغرفة من الساعة 8 مساءً حتى 7 صباحًا.",
+   "fr": "La chambre s'assombrit de 20 h à 7 h.",
+   "bn": "রাত ৮টা থেকে সকাল ৭টা পর্যন্ত ঘর অন্ধকার থাকে।",
+   "pt-BR": "O quarto escurece das 20h às 7h.",
+   "ru": "С 20:00 до 7:00 в комнате темно.",
+   "id": "Kamar menjadi gelap dari pukul 20.00 sampai 07.00.",
+   "de": "Das Zimmer wird von 20 bis 7 Uhr dunkel.",
+   "tr": "Oda 20.00'den 07.00'ye kadar kararır.",
+   "ko": "오후 8시부터 오전 7시까지 방이 어두워져요.",
+   "ja": "20 時から 7 時まで部屋が暗くなります。"
   },
   "The text Coucou pastes": {
    "zh-Hans": "Coucou 要粘贴的文字",
@@ -10667,6 +11132,21 @@
    "ko": "업데이트가 안 됐어요",
    "ja": "アップデートできませんでした"
   },
+  "The window: sun when your CI and deploys are green, rain when a build fails, a storm when a deploy fails.": {
+   "zh-Hans": "窗户：CI 和部署都通过时是晴天，构建失败时下雨，部署失败时有暴风雨。",
+   "hi": "खिड़की: CI और डिप्लॉय हरे हों तो धूप, बिल्ड फ़ेल हो तो बारिश, डिप्लॉय फ़ेल हो तो तूफ़ान।",
+   "es": "La ventana: sol cuando tu CI y tus despliegues están en verde, lluvia cuando falla una build, tormenta cuando falla un despliegue.",
+   "ar": "النافذة: شمس عندما يكون CI وعمليات النشر ناجحة، ومطر عندما يفشل بناء، وعاصفة عندما يفشل نشر.",
+   "fr": "La fenêtre : du soleil quand ta CI et tes déploiements sont verts, de la pluie quand un build échoue, l'orage quand un déploiement échoue.",
+   "bn": "জানালা: CI আর ডিপ্লয় সবুজ থাকলে রোদ, বিল্ড ব্যর্থ হলে বৃষ্টি, ডিপ্লয় ব্যর্থ হলে ঝড়।",
+   "pt-BR": "A janela: sol quando seu CI e seus deploys estão verdes, chuva quando um build falha, tempestade quando um deploy falha.",
+   "ru": "Окно: солнце, когда CI и деплои зелёные, дождь, когда сборка упала, гроза, когда упал деплой.",
+   "id": "Jendela: cerah saat CI dan deploy hijau, hujan saat build gagal, badai saat deploy gagal.",
+   "de": "Das Fenster: Sonne, wenn CI und Deployments grün sind, Regen, wenn ein Build fehlschlägt, Gewitter, wenn ein Deployment fehlschlägt.",
+   "tr": "Pencere: CI ve dağıtımların yeşilse güneş, bir derleme başarısızsa yağmur, bir dağıtım başarısızsa fırtına.",
+   "ko": "창문: CI와 배포가 모두 성공이면 맑음, 빌드가 실패하면 비, 배포가 실패하면 폭풍.",
+   "ja": "窓：CI とデプロイが成功なら晴れ、ビルド失敗で雨、デプロイ失敗で嵐。"
+  },
   "The words show up here as people speak.": {
    "zh-Hans": "大家说话时，文字会显示在这里。",
    "hi": "लोगों के बोलते ही शब्द यहाँ दिखते हैं।",
@@ -10711,6 +11191,21 @@
    "tr": "O zaman",
    "ko": "그러면",
    "ja": "実行"
+  },
+  "These choices are in the island.": {
+   "zh-Hans": "这些选项在岛中。",
+   "hi": "ये विकल्प आइलैंड में हैं।",
+   "es": "Estas opciones están en la isla.",
+   "ar": "هذه الخيارات موجودة في الجزيرة.",
+   "fr": "Ces choix sont dans l'island.",
+   "bn": "এই বিকল্পগুলো আইল্যান্ডে আছে।",
+   "pt-BR": "Essas opções estão na ilha.",
+   "ru": "Эти варианты — в острове.",
+   "id": "Pilihan ini ada di island.",
+   "de": "Diese Auswahl findest du in der Island.",
+   "tr": "Bu seçenekler adada.",
+   "ko": "이 선택지는 아일랜드에 있어요.",
+   "ja": "この選択はアイランドで行います。"
   },
   "This key alone is in every shortcut: add another one.": {
    "zh-Hans": "这个键单独用于所有快捷键：请再加一个。",
@@ -10892,6 +11387,21 @@
    "ko": "아야! 너무 많이 맞았어요.",
    "ja": "一度に叩きすぎです。"
   },
+  "Tools on the walls": {
+   "zh-Hans": "墙上的工具",
+   "hi": "दीवार पर टूल्स",
+   "es": "Herramientas en las paredes",
+   "ar": "الأدوات على الجدران",
+   "fr": "Les outils aux murs",
+   "bn": "দেয়ালে টুল",
+   "pt-BR": "Ferramentas nas paredes",
+   "ru": "Сервисы на стенах",
+   "id": "Alat di dinding",
+   "de": "Tools an der Wand",
+   "tr": "Duvardaki araçlar",
+   "ko": "벽에 건 도구",
+   "ja": "壁のツール"
+  },
   "Top agent": {
    "zh-Hans": "最活跃 Agent",
    "hi": "शीर्ष एजेंट",
@@ -11026,6 +11536,21 @@
    "tr": "Dikteyi aç",
    "ko": "받아쓰기 켜기",
    "ja": "口述をオンにする"
+  },
+  "Turn on the room": {
+   "zh-Hans": "开启房间",
+   "hi": "कमरा चालू करें",
+   "es": "Activar la habitación",
+   "ar": "تفعيل الغرفة",
+   "fr": "Activer la chambre",
+   "bn": "ঘর চালু করুন",
+   "pt-BR": "Ativar o quarto",
+   "ru": "Включить комнату",
+   "id": "Nyalakan kamar",
+   "de": "Zimmer einschalten",
+   "tr": "Odayı aç",
+   "ko": "방 켜기",
+   "ja": "部屋をオンにする"
   },
   "Undo": {
    "zh-Hans": "撤销",
@@ -11461,6 +11986,21 @@
    "tr": "{count} / {total} izleniyor",
    "ko": "{count}개 추적 중 (전체 {total}개)",
    "ja": "{count} 件中 {total} 件を表示"
+  },
+  "Weather at the window": {
+   "zh-Hans": "窗外天气",
+   "hi": "खिड़की पर मौसम",
+   "es": "El tiempo en la ventana",
+   "ar": "الطقس في النافذة",
+   "fr": "La météo à la fenêtre",
+   "bn": "জানালায় আবহাওয়া",
+   "pt-BR": "O tempo na janela",
+   "ru": "Погода за окном",
+   "id": "Cuaca di jendela",
+   "de": "Wetter am Fenster",
+   "tr": "Penceredeki hava",
+   "ko": "창밖 날씨",
+   "ja": "窓の天気"
   },
   "Weather by voice": {
    "zh-Hans": "语音天气",
@@ -12047,6 +12587,36 @@
    "ko": "쓸 내용, 예: Claude Code",
    "ja": "書く内容、例：Claude Code"
   },
+  "Yandex Music": {
+   "zh-Hans": "Yandex Music",
+   "hi": "Yandex Music",
+   "es": "Yandex Music",
+   "ar": "Yandex Music",
+   "fr": "Yandex Music",
+   "bn": "Yandex Music",
+   "pt-BR": "Yandex Music",
+   "ru": "Яндекс Музыка",
+   "id": "Yandex Music",
+   "de": "Yandex Music",
+   "tr": "Yandex Music",
+   "ko": "Yandex Music",
+   "ja": "Yandex Music"
+  },
+  "Yandex Music not installed": {
+   "zh-Hans": "未安装 Yandex Music",
+   "hi": "Yandex Music इंस्टॉल नहीं है",
+   "es": "Yandex Music no está instalado",
+   "ar": "Yandex Music غير مثبت",
+   "fr": "Yandex Music n'est pas installé",
+   "bn": "Yandex Music ইনস্টল নেই",
+   "pt-BR": "Yandex Music não está instalado",
+   "ru": "Яндекс Музыка не установлена",
+   "id": "Yandex Music belum terpasang",
+   "de": "Yandex Music nicht installiert",
+   "tr": "Yandex Music kurulu değil",
+   "ko": "Yandex Music이 설치되어 있지 않습니다",
+   "ja": "Yandex Music はインストールされていません"
+  },
   "Yes, tell me": {
    "zh-Hans": "好的，提醒我",
    "hi": "हाँ, बताओ",
@@ -12393,7 +12963,7 @@
    "ja": "を含む"
   },
   "days in a row": {
-   "zh-Hans": "连续天数",
+   "zh-Hans": "天连续",
    "hi": "लगातार दिन",
    "es": "días seguidos",
    "ar": "أيام متتالية",
@@ -12402,7 +12972,7 @@
    "pt-BR": "dias seguidos",
    "ru": "дней подряд",
    "id": "hari berturut-turut",
-   "de": "Tage in Folge",
+   "de": "Tage am Stück",
    "tr": "gün üst üste",
    "ko": "일 연속",
    "ja": "日連続"
@@ -12932,6 +13502,21 @@
    "ko": "사용자 지정 {0}개",
    "ja": "カスタム {0}"
   },
+  "{0} denied": {
+   "zh-Hans": "已拒绝：{0}",
+   "hi": "अस्वीकृत: {0}",
+   "es": "rechazadas: {0}",
+   "ar": "المرفوضة: {0}",
+   "fr": "refusées : {0}",
+   "bn": "প্রত্যাখ্যাত: {0}",
+   "pt-BR": "recusadas: {0}",
+   "ru": "отклонено: {0}",
+   "id": "ditolak: {0}",
+   "de": "abgelehnt: {0}",
+   "tr": "reddedilen: {0}",
+   "ko": "거부: {0}",
+   "ja": "拒否：{0}"
+  },
   "{0} did not answer": {
    "zh-Hans": "{0} 未响应",
    "hi": "{0} ने जवाब नहीं दिया",
@@ -12976,6 +13561,36 @@
    "tr": "{0} sa %02lld",
    "ko": "{0}시간 %02lld분",
    "ja": "{0} 時間 %02lld"
+  },
+  "{0} has a plan ready": {
+   "zh-Hans": "{0} 的计划已就绪",
+   "hi": "{0} का प्लान तैयार है",
+   "es": "{0} tiene un plan listo",
+   "ar": "لدى {0} خطة جاهزة",
+   "fr": "{0} a un plan prêt",
+   "bn": "{0}-এর পরিকল্পনা প্রস্তুত",
+   "pt-BR": "{0} tem um plano pronto",
+   "ru": "У {0} готов план",
+   "id": "{0} punya rencana yang siap",
+   "de": "{0} hat einen Plan fertig",
+   "tr": "{0} bir plan hazırladı",
+   "ko": "{0}에서 계획을 준비했어요",
+   "ja": "{0} のプランができました"
+  },
+  "{0} has a question": {
+   "zh-Hans": "{0} 有一个问题",
+   "hi": "{0} का एक सवाल है",
+   "es": "{0} tiene una pregunta",
+   "ar": "لدى {0} سؤال",
+   "fr": "{0} a une question",
+   "bn": "{0}-এর একটি প্রশ্ন আছে",
+   "pt-BR": "{0} tem uma pergunta",
+   "ru": "У {0} есть вопрос",
+   "id": "{0} punya pertanyaan",
+   "de": "{0} hat eine Frage",
+   "tr": "{0} bir soru soruyor",
+   "ko": "{0}에서 질문이 있어요",
+   "ja": "{0} から質問があります"
   },
   "{0} is not installed. Install it from Settings → Chat, sign in once in Terminal, then ask again.": {
    "zh-Hans": "{0} 未安装。请在 设置 → 聊天 中安装，在终端登录一次，然后再问一次。",
@@ -13052,6 +13667,21 @@
    "ko": "{0}분",
    "ja": "{0} 分"
   },
+  "{0} needs permission": {
+   "zh-Hans": "{0} 需要权限",
+   "hi": "{0} को अनुमति चाहिए",
+   "es": "{0} necesita permiso",
+   "ar": "{0} يحتاج إلى إذن",
+   "fr": "{0} a besoin d'une autorisation",
+   "bn": "{0}-এর অনুমতি দরকার",
+   "pt-BR": "{0} precisa de permissão",
+   "ru": "{0} просит разрешения",
+   "id": "{0} butuh izin",
+   "de": "{0} braucht eine Erlaubnis",
+   "tr": "{0} izin istiyor",
+   "ko": "{0}에서 권한이 필요해요",
+   "ja": "{0} が許可を求めています"
+  },
   "{0} new messages checked today. None matched a VIP, a banned word or a rule, so Coucou left them as they are.": {
    "zh-Hans": "今天检查了 {0} 封新邮件。没有一封匹配 VIP、屏蔽词或规则，所以 Coucou 保持原样。",
    "hi": "आज {0} नए संदेश जाँचे गए। कोई भी VIP, प्रतिबंधित शब्द या नियम से मेल नहीं खाया, इसलिए Coucou ने उन्हें वैसे ही छोड़ दिया।",
@@ -13112,6 +13742,21 @@
    "ko": "{0} — Spotify 열기",
    "ja": "{0} — Spotify を開く"
   },
+  "{0} — open Yandex Music": {
+   "zh-Hans": "{0} — 打开 Yandex Music",
+   "hi": "{0} — Yandex Music खोलें",
+   "es": "{0} — abrir Yandex Music",
+   "ar": "{0} — فتح Yandex Music",
+   "fr": "{0} — ouvrir Yandex Music",
+   "bn": "{0} — Yandex Music খুলুন",
+   "pt-BR": "{0} — abrir o Yandex Music",
+   "ru": "{0} — открыть Яндекс Музыку",
+   "id": "{0} — buka Yandex Music",
+   "de": "{0} — Yandex Music öffnen",
+   "tr": "{0} — Yandex Music'ı aç",
+   "ko": "{0} — Yandex Music 열기",
+   "ja": "{0} — Yandex Music を開く"
+  },
   "{0} → {1}": {
    "zh-Hans": "{0} → {1}",
    "hi": "{0} → {1}",
@@ -13126,6 +13771,21 @@
    "tr": "{0} → {1}",
    "ko": "{0} → {1}",
    "ja": "{0} → {1}"
+  },
+  "{0}-day streak": {
+   "zh-Hans": "连续 {0} 天",
+   "hi": "{0} दिन की स्ट्रीक",
+   "es": "racha de {0} d",
+   "ar": "سلسلة {0} يوم",
+   "fr": "série de {0} j",
+   "bn": "{0} দিনের স্ট্রিক",
+   "pt-BR": "sequência de {0} d",
+   "ru": "серия: {0} дн.",
+   "id": "streak {0} hari",
+   "de": "{0} Tage in Folge",
+   "tr": "{0} günlük seri",
+   "ko": "{0}일 연속",
+   "ja": "{0}日連続"
   },
   "{0}: {1} messages": {
    "zh-Hans": "{0}：{1} 封邮件",
