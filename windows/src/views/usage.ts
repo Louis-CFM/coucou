@@ -20,15 +20,20 @@ import { clear, dot, h, svg } from "./dom";
 import { ICONS } from "./icons";
 import { language, tl } from "../i18n/i18n";
 
-/** The Claude pill is in the header: overview, turned on, relay in. */
-export function claudePillVisible(): boolean {
-  const s = State.settings;
-  return State.view === "overview" && s.showPlanInNotch && s.planRelayInstalled;
+/** Numbers to show: a pill with nothing but dashes is not shown at all. */
+function hasNumbers(u: PlanUsage | null | undefined): boolean {
+  return !!u && (u.fiveHour != null || u.sevenDay != null);
 }
 
-/** The Codex pill is in the header: overview, turned on (nothing to install). */
+/** The Claude pill is in the header: overview, turned on, relay in, and numbers came. */
+export function claudePillVisible(): boolean {
+  const s = State.settings;
+  return State.view === "overview" && s.showPlanInNotch && s.planRelayInstalled && hasNumbers(State.planUsage);
+}
+
+/** The Codex pill is in the header: overview, turned on, and Codex answered with numbers. */
 export function codexPillVisible(): boolean {
-  return State.view === "overview" && State.settings.showCodexPlanInNotch;
+  return State.view === "overview" && State.settings.showCodexPlanInNotch && hasNumbers(State.codexPlanUsage);
 }
 
 /** A plan card is open and its pill is still there. */
@@ -83,6 +88,8 @@ export function storedClaudePlanUsage(): string | null {
 // ── Codex numbers ─────────────────────────────────────────────────────────────
 
 let codexInFlight = false;
+/** No Codex here (or no answer): asked again ten minutes later, not on every look. */
+let codexFailedAt = 0;
 
 /**
  * Asks Codex again when the numbers are missing or older than a minute. Only
@@ -91,6 +98,7 @@ let codexInFlight = false;
  */
 export function refreshCodexPlanUsage(): void {
   if (codexInFlight || State.paused || !codexIsStale(State.codexPlanUsage)) return;
+  if (Date.now() - codexFailedAt < 10 * 60_000) return;
   codexInFlight = true;
   void Bridge.codexPlanUsage()
     .then((result) => {
@@ -98,6 +106,8 @@ export function refreshCodexPlanUsage(): void {
       if (usage) {
         State.codexPlanUsage = usage;
         State.notify();
+      } else {
+        codexFailedAt = Date.now();
       }
     })
     .finally(() => {
