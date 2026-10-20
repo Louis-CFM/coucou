@@ -64,6 +64,9 @@ final class KeychainStore: @unchecked Sendable {
         "anthropic-api-key",
         "google-api-key",
         "openai-api-key",
+        "deepseek-api-key",
+        "qwen-api-key",
+        "moonshot-api-key",
         "resend-api-key", "resend-from",
         "n8n-url", "n8n-api-key",
         "vercel-token",
@@ -72,6 +75,14 @@ final class KeychainStore: @unchecked Sendable {
         "calcom-api-key",
         "notion-api-key",
         "elevenlabs-api-key",
+        // WhatsApp (local gateway): its address, credentials and the webhook's signing secret
+        "whatsapp-url", "whatsapp-api-key", "whatsapp-webhook-secret",
+        // Portfolio exchange credentials
+        "portfolio-binance-key",  "portfolio-binance-secret",
+        "portfolio-okx-key",      "portfolio-okx-secret",      "portfolio-okx-passphrase",
+        "portfolio-bybit-key",    "portfolio-bybit-secret",
+        "portfolio-kraken-key",   "portfolio-kraken-secret",
+        "portfolio-coinbase-key", "portfolio-coinbase-secret",  "portfolio-coinbase-passphrase",
     ]
 
     private init() {
@@ -174,6 +185,21 @@ final class ClaudeService {
             }
             .sorted { $0.created > $1.created }
             .map { (id: $0.id, label: $0.id) }
+    }
+
+    /// Fetches models from any OpenAI-compatible `/v1/models` endpoint.
+    static func fetchOpenAICompatibleModels(baseURL: String, apiKey: String) async -> [(id: String, label: String)] {
+        guard let url = URL(string: "\(baseURL)/models") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["data"] as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let id = item["id"] as? String else { return nil }
+            return (id: id, label: id)
+        }
     }
 
     /// Chosen in Settings; falls back to the default when the field is left empty.
@@ -284,8 +310,11 @@ final class ClaudeService {
             baseURL = LocalChat.normaliseURL(state.lmstudioServerURL)
         } else {
             switch provider {
-            case .google:  baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-            case .openai:  baseURL = "https://api.openai.com/v1"
+            case .google:    baseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+            case .openai:    baseURL = "https://api.openai.com/v1"
+            case .deepseek:  baseURL = "https://api.deepseek.com/v1"
+            case .qwen:      baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            case .moonshot:  baseURL = "https://api.moonshot.cn/v1"
             case .anthropic, .ollama, .lmstudio: baseURL = ""
             }
         }
@@ -301,14 +330,17 @@ final class ClaudeService {
 
         // Auth header
         let authHeader: String
+        let cloudKey: String?   // the provider's own key, sent when streaming too
         if provider.isLocal {
             authHeader = "Bearer ollama"
+            cloudKey = nil
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
                 await showError("\(provider.displayName) API key missing. Configure it in Settings.", state: state)
                 return
             }
             authHeader = "Bearer \(key)"
+            cloudKey = key
         }
 
         // Build messages
@@ -350,7 +382,7 @@ final class ClaudeService {
         msgs.append(["role": "user", "content": userText])
         conversationMessages.append(["role": "user", "content": userText])
 
-        let useStream = provider.isLocal
+        let useStream = provider.isLocal || provider == .deepseek || provider == .qwen || provider == .moonshot
         var body: [String: Any] = [
             "model": state.activeChatModel,
             "max_tokens": 4096,
@@ -382,7 +414,8 @@ final class ClaudeService {
                 let final = try await LocalChat.streamChat(
                     baseURL: baseURL,
                     encodedBody: encodedBody,
-                    model: modelCopy
+                    model: modelCopy,
+                    apiKey: cloudKey
                 ) { [state, msgId] visible in
                     if !visible.isEmpty, state.stateOverride == .thinking {
                         state.stateOverride = nil   // hide typing dots on first visible text
@@ -405,9 +438,13 @@ final class ClaudeService {
                 let msg: String
                 switch e {
                 case .serverUnreachable:
-                    msg = provider == .ollama
-                        ? "Ollama isn't running. Open it, then ask again."
-                        : "Start the local server in LM Studio, then ask again."
+                    if provider == .ollama {
+                        msg = "Ollama isn't running. Open it, then ask again."
+                    } else if provider == .lmstudio {
+                        msg = "Start the local server in LM Studio, then ask again."
+                    } else {
+                        msg = "\(provider.displayName) is unreachable. Check your connection and API key."
+                    }
                 case .modelNotFound(let m):
                     msg = "\(m) isn't installed. Pick another model above the chat box."
                 case .serverError(let s):

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The gradient over a plan-usage card in the "close" tone (plan usage has its own palette, not the state colours). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:startColor="@color/widget_tint_usage_close"
+        android:endColor="#00000000" />
+    <corners android:radius="@dimen/widget_radius" />
+</shape>

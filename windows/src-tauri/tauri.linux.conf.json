@@ -16,12 +16,14 @@
       },
       "deb": {
         "depends": [
-          "libgtk-layer-shell0 (>= 0.6)"
+          "libgtk-layer-shell0 (>= 0.6)",
+          "libasound2t64 | libasound2"
         ]
       },
       "rpm": {
         "depends": [
-          "gtk-layer-shell"
+          "gtk-layer-shell",
+          "alsa-lib"
         ]
       }
     }

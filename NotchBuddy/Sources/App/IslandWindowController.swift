@@ -325,7 +325,13 @@ final class IslandWindowController: NSWindowController {
         }
 
         // An approval, or an email prepared by voice, stays open until I click.
+        #if !APPSTORE
+        // A WhatsApp reply being typed holds the island open, like a voice mail draft.
+        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil
+                           || WhatsAppController.shared.composing }
+        #else
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
+        #endif
 
         // Voice: wake phrase detected → open listening island
         #if !APPSTORE
@@ -488,6 +494,9 @@ final class IslandWindowController: NSWindowController {
         if overBot && !botHovering { botHoverIn(mousePos: NSEvent.mouseLocation) }
         if !overBot && botHovering { botHoverOut() }
         botHovering = overBot
+        // The pointer on Mochi (or on the resting island): the line about the Mac shows under it.
+        let vitalsHover = (state.mode == .compact && inIsland) || overBot
+        if MachineVitals.shared.hovered != vitalsHover { MachineVitals.shared.hovered = vitalsHover }
         if botHovering {
             let m = NSEvent.mouseLocation
             let dist = hypot(m.x - botHoverStartPos.x, m.y - botHoverStartPos.y)
@@ -596,6 +605,7 @@ final class IslandWindowController: NSWindowController {
         if prev == .expanded {
             SoundEngine.shared.play("close")
             if fsm.isHeldOpen?() != true { state.isPinned = false }
+            HookServer.shared.restoreAlertFocus()
         }
     }
 
@@ -708,6 +718,12 @@ final class IslandWindowController: NSWindowController {
             #if !APPSTORE
             VoiceSpeaker.shared.stop()
             VoiceEngine.shared.startListeningDirectly()
+            #endif
+
+        case .captureScreen:
+            #if !APPSTORE
+            appendAppLog("nb.log", "[Capture] shortcut pressed")
+            ScreenCapture.shared.begin()
             #endif
         }
     }
@@ -902,6 +918,17 @@ final class IslandWindowController: NSWindowController {
         // .botDizzy — posted by BotEngine.slap() on 3rd hit; show confused view + recover after 3.3s
         NotificationCenter.default.addObserver(forName: .botDizzy, object: nil, queue: .main) { [weak self] _ in
             self?.handleDizzy()
+        }
+
+        // Eye tracking at the mouse's own rate: Mochi's look target follows every mouse move
+        // instead of the island poll (8 to 20 Hz away from the island, which made the head step).
+        // Nothing runs while the mouse is still, and a hidden island skips the work.
+        NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { _ in
+            MainActor.assumeIsolated { IslandWindowController.trackMouseLook() }
+        }
+        NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { event in
+            MainActor.assumeIsolated { IslandWindowController.trackMouseLook() }
+            return event
         }
 
         // Window attach drag.
@@ -1331,6 +1358,15 @@ final class IslandWindowController: NSWindowController {
 
     /// Top of the menu-bar screen in AppKit coordinates: origin of `DesktopSpace`.
     static var desktopTop: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
+
+    /// Mochi's look target from the current mouse position (see the mouse-moved monitors).
+    static func trackMouseLook() {
+        let app = AppState.shared
+        guard app.mode != .hidden || app.mochiOnDesktop else { return }
+        let pos = DesktopSpace.topDown(NSEvent.mouseLocation, desktopTop: desktopTop)
+        let cur = app.mousePosition
+        if abs(pos.x - cur.x) > 1 || abs(pos.y - cur.y) > 1 { app.mousePosition = pos }
+    }
 
     /// Screen the island currently sits on (Settings window, desktop Mochi flights).
     private(set) static var currentScreen: NSScreen?

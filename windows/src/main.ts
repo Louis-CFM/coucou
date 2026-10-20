@@ -9,9 +9,11 @@ import { registerHookHandlers } from "./island/hooks";
 import { registerPhoneLink } from "./island/phone-link";
 import { registerIntegrationHandlers, refreshConfigured } from "./island/integrations";
 import { registerShortcutHandlers } from "./island/shortcuts";
+import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
+import { Updates } from "./island/update";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -24,6 +26,18 @@ async function main() {
   if (!root) return;
 
   void Sound.preload();
+
+  // Before the island exists: its canvases size their bitmaps from the pixel
+  // ratio once, so the zoom correction has to land first. If zoom was adjusted,
+  // wait until the ratio updates (or up to 500ms) so nothing is sized against
+  // the stale value.
+  const dprBefore = window.devicePixelRatio || 1;
+  const zoomChanged = await Bridge.fitZoom(dprBefore);
+  if (zoomChanged) {
+    for (let i = 0; i < 20 && window.devicePixelRatio === dprBefore; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  }
 
   const island = new Island(root);
 
@@ -71,6 +85,11 @@ async function main() {
         setPaused(false);
         island.alert("wardrobe");
         break;
+      // "Update Coucou to X…", only in the menu while a new version is out.
+      case "update":
+        setPaused(false);
+        Updates.show();
+        break;
       case "pause":
         setPaused(!State.paused);
         if (State.paused) island.fsm.forceHidden();
@@ -79,7 +98,31 @@ async function main() {
     }
   });
 
-  await onEvent<null>("screen-changed", () => void Bridge.reposition());
+  const checkZoom = async () => {
+    const dpr = window.devicePixelRatio || 1;
+    await Bridge.fitZoom(dpr);
+  };
+
+  await onEvent<null>("screen-changed", async () => {
+    await checkZoom();
+    void Bridge.reposition();
+  });
+
+  const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  mediaQuery.addEventListener?.("change", () => void checkZoom());
+
+  window.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey) e.preventDefault();
+    },
+    { passive: false }
+  );
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")) {
+      e.preventDefault();
+    }
+  });
 
   // Settings → Reload sounds: read the sounds folder again, and let them hear it.
   await onEvent<null>("sounds-changed", () => {
@@ -102,7 +145,10 @@ async function main() {
   registerPhoneLink(island);
   registerIntegrationHandlers(island);
   registerShortcutHandlers(island, () => setPaused(false));
+  registerVoiceHandlers();
   registerSpotifyHandlers(island);
+  // New versions: Rust offers the card, the island opens it when nothing else waits.
+  await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
