@@ -109,6 +109,8 @@ test("System follows the system's language when Coucou has it, else English", ()
   assert.equal(resolveLanguage("", ["zh-CN"]), "zh-Hans");
   assert.equal(resolveLanguage("", ["zh-TW"]), "en"); // Traditional is not one of ours
   assert.equal(resolveLanguage("", ["ar-EG"]), "ar");
+  assert.equal(resolveLanguage("", ["vi-VN"]), "vi");
+  assert.equal(resolveLanguage("", ["de-DE"]), "de");
   assert.equal(resolveLanguage("", ["it-IT"]), "en");
   assert.equal(resolveLanguage("", []), "en");
   // A picked language wins; one this build doesn't know means System.
@@ -117,7 +119,8 @@ test("System follows the system's language when Coucou has it, else English", ()
 });
 
 test("the picker offers the Mac's languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr"]);
+  assert.deepEqual(LANGUAGES.map((l) => l.code),
+    ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "vi"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });

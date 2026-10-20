@@ -12,7 +12,8 @@
    "ru": " · до {date}",
    "id": " · hingga {date}",
    "de": " · bis {date}",
-   "tr": " · {date} tarihine kadar"
+   "tr": " · {date} tarihine kadar",
+   "vi": " · đến {date}"
   },
   "(stored)": {
    "zh-Hans": "（已保存）",
@@ -25,7 +26,8 @@
    "ru": "(сохранён)",
    "id": "(tersimpan)",
    "de": "(gespeichert)",
-   "tr": "(kayıtlı)"
+   "tr": "(kayıtlı)",
+   "vi": "(đã lưu)"
   },
   "+ subagent": {
    "zh-Hans": "+ 子代理",
@@ -38,7 +40,8 @@
    "ru": "+ субагент",
    "id": "+ subagen",
    "de": "+ Unteragent",
-   "tr": "+ alt ajan"
+   "tr": "+ alt ajan",
+   "vi": "+ subagent"
   },
   "A hook group named \"coucou\" that Coucou did not write is already there — Coucou has not touched it.": {
    "zh-Hans": "已存在一个并非 Coucou 写入的名为“coucou”的 hook 组 — Coucou 没有修改它。",
@@ -51,7 +54,8 @@
    "ru": "Уже есть группа хуков «coucou», которую написал не Coucou, — Coucou её не трогал.",
    "id": "Sudah ada grup hook bernama “coucou” yang tidak ditulis Coucou — Coucou tidak menyentuhnya.",
    "de": "Eine nicht von Coucou erstellte Hook-Gruppe namens \"coucou\" ist bereits vorhanden — Coucou hat sie nicht verändert.",
-   "tr": "Coucou'nun oluşturmadığı \"coucou\" adlı bir hook grubu zaten var — Coucou bunu değiştirmedi."
+   "tr": "Coucou'nun oluşturmadığı \"coucou\" adlı bir hook grubu zaten var — Coucou bunu değiştirmedi.",
+   "vi": "Đã có nhóm hook tên \"coucou\" không do Coucou tạo. Coucou không thay đổi nhóm này."
   },
   "API error {code}": {
    "zh-Hans": "API 错误 {code}",
@@ -64,7 +68,8 @@
    "ru": "Ошибка API {code}",
    "id": "Galat API {code}",
    "de": "API-Fehler {code}",
-   "tr": "API hatası {code}"
+   "tr": "API hatası {code}",
+   "vi": "Lỗi API {code}"
   },
   "API key (optional)": {
    "zh-Hans": "API 密钥（可选）",
@@ -77,7 +82,8 @@
    "ru": "API-ключ (необязательно)",
    "id": "Kunci API (opsional)",
    "de": "API-Schlüssel (optional)",
-   "tr": "API anahtarı (isteğe bağlı)"
+   "tr": "API anahtarı (isteğe bağlı)",
+   "vi": "Khóa API (tùy chọn)"
   },
   "API key missing. Open settings.": {
    "zh-Hans": "缺少 API 密钥。请打开设置。",
@@ -90,7 +96,8 @@
    "ru": "Нет API-ключа. Откройте настройки.",
    "id": "Kunci API tidak ada. Buka pengaturan.",
    "de": "API-Schlüssel fehlt. Öffne die Einstellungen.",
-   "tr": "API anahtarı eksik. Ayarları aç."
+   "tr": "API anahtarı eksik. Ayarları aç.",
+   "vi": "Thiếu khóa API. Mở cài đặt."
   },
   "Answer in terminal": {
    "zh-Hans": "在终端中回答",
@@ -103,7 +110,8 @@
    "ru": "Ответить в терминале",
    "id": "Jawab di terminal",
    "de": "Im Terminal antworten",
-   "tr": "Terminalde yanıtla"
+   "tr": "Terminalde yanıtla",
+   "vi": "Trả lời trong terminal"
   },
   "Answer it in your terminal.": {
    "zh-Hans": "请在终端中回答。",
@@ -116,7 +124,8 @@
    "ru": "Ответьте в терминале.",
    "id": "Jawab di terminal Anda.",
    "de": "Beantworte die Frage in deinem Terminal.",
-   "tr": "Terminalinde yanıtla."
+   "tr": "Terminalinde yanıtla.",
+   "vi": "Trả lời nó trong terminal của bạn."
   },
   "Ask": {
    "zh-Hans": "提问",
@@ -129,7 +138,8 @@
    "ru": "Спросить",
    "id": "Tanya",
    "de": "Fragen",
-   "tr": "Sor"
+   "tr": "Sor",
+   "vi": "Hỏi"
   },
   "Asking Codex…": {
    "zh-Hans": "正在询问 Codex…",
@@ -142,7 +152,8 @@
    "ru": "Запрос к Codex…",
    "id": "Menanyakan Codex…",
    "de": "Codex wird gefragt…",
-   "tr": "Codex'e soruluyor…"
+   "tr": "Codex'e soruluyor…",
+   "vi": "Đang hỏi Codex…"
   },
   "Attach the front window to the chat": {
    "zh-Hans": "将前台窗口附加到聊天",
@@ -155,7 +166,8 @@
    "ru": "Прикрепить активное окно к чату",
    "id": "Lampirkan jendela depan ke obrolan",
    "de": "Vorderstes Fenster an den Chat anhängen",
-   "tr": "Öndeki pencereyi sohbete ekle"
+   "tr": "Öndeki pencereyi sohbete ekle",
+   "vi": "Gắn cửa sổ phía trước vào chat"
   },
   "Auto · follows the seasons (now: {outfit})": {
    "zh-Hans": "自动 · 随季节变化（当前：{outfit}）",
@@ -168,7 +180,8 @@
    "ru": "Авто · по сезону (сейчас: {outfit})",
    "id": "Otomatis · mengikuti musim (sekarang: {outfit})",
    "de": "Automatisch · folgt den Jahreszeiten (jetzt: {outfit})",
-   "tr": "Otomatik · mevsime göre (şimdi: {outfit})"
+   "tr": "Otomatik · mevsime göre (şimdi: {outfit})",
+   "vi": "Tự động · theo mùa (hiện tại: {outfit})"
   },
   "Auto · {outfit}": {
    "zh-Hans": "自动 · {outfit}",
@@ -181,7 +194,8 @@
    "ru": "Авто · {outfit}",
    "id": "Otomatis · {outfit}",
    "de": "Automatisch · {outfit}",
-   "tr": "Otomatik · {outfit}"
+   "tr": "Otomatik · {outfit}",
+   "vi": "Tự động · {outfit}"
   },
   "Auto-close": {
    "zh-Hans": "自动关闭",
@@ -194,7 +208,8 @@
    "ru": "Автозакрытие",
    "id": "Tutup otomatis",
    "de": "Automatisch schließen",
-   "tr": "Otomatik kapanma"
+   "tr": "Otomatik kapanma",
+   "vi": "Tự đóng"
   },
   "Back": {
    "zh-Hans": "返回",
@@ -207,7 +222,8 @@
    "ru": "Назад",
    "id": "Kembali",
    "de": "Zurück",
-   "tr": "Geri"
+   "tr": "Geri",
+   "vi": "Quay lại"
   },
   "Back up and remove": {
    "zh-Hans": "备份并移除",
@@ -220,7 +236,8 @@
    "ru": "Сохранить копию и удалить",
    "id": "Cadangkan dan hapus",
    "de": "Sichern und entfernen",
-   "tr": "Yedekle ve kaldır"
+   "tr": "Yedekle ve kaldır",
+   "vi": "Sao lưu và gỡ"
   },
   "Back up and write": {
    "zh-Hans": "备份并写入",
@@ -233,7 +250,8 @@
    "ru": "Сохранить копию и записать",
    "id": "Cadangkan dan tulis",
    "de": "Sichern und schreiben",
-   "tr": "Yedekle ve yaz"
+   "tr": "Yedekle ve yaz",
+   "vi": "Sao lưu và ghi"
   },
   "Backup of {path} failed, nothing was written: {error}": {
    "zh-Hans": "{path} 备份失败，未写入任何内容：{error}",
@@ -246,7 +264,8 @@
    "ru": "Не удалось сохранить копию {path}, ничего не записано: {error}",
    "id": "Pencadangan {path} gagal, tidak ada yang ditulis: {error}",
    "de": "Backup von {path} fehlgeschlagen, nichts wurde geschrieben: {error}",
-   "tr": "{path} yedeklenemedi, hiçbir şey yazılmadı: {error}"
+   "tr": "{path} yedeklenemedi, hiçbir şey yazılmadı: {error}",
+   "vi": "Sao lưu {path} thất bại, không có gì được ghi: {error}"
   },
   "Backup → {path}": {
    "zh-Hans": "备份 → {path}",
@@ -259,7 +278,8 @@
    "ru": "Резервная копия → {path}",
    "id": "Cadangan → {path}",
    "de": "Backup → {path}",
-   "tr": "Yedek → {path}"
+   "tr": "Yedek → {path}",
+   "vi": "Sao lưu → {path}"
   },
   "Bad API response: {error}": {
    "zh-Hans": "API 响应无效：{error}",
@@ -272,7 +292,8 @@
    "ru": "Некорректный ответ API: {error}",
    "id": "Respons API tidak valid: {error}",
    "de": "Ungültige API-Antwort: {error}",
-   "tr": "Geçersiz API yanıtı: {error}"
+   "tr": "Geçersiz API yanıtı: {error}",
+   "vi": "Phản hồi API không hợp lệ: {error}"
   },
   "Can't read {path}: {error}": {
    "zh-Hans": "无法读取 {path}：{error}",
@@ -285,7 +306,8 @@
    "ru": "Не удаётся прочитать {path}: {error}",
    "id": "Tidak dapat membaca {path}: {error}",
    "de": "{path} kann nicht gelesen werden: {error}",
-   "tr": "{path} okunamıyor: {error}"
+   "tr": "{path} okunamıyor: {error}",
+   "vi": "Không đọc được {path}: {error}"
   },
   "Canceled": {
    "zh-Hans": "已取消",
@@ -298,7 +320,8 @@
    "ru": "Отменено",
    "id": "Dibatalkan",
    "de": "Abgebrochen",
-   "tr": "İptal edildi"
+   "tr": "İptal edildi",
+   "vi": "Đã hủy"
   },
   "Cannot copy: {error}": {
    "zh-Hans": "无法复制：{error}",
@@ -311,7 +334,8 @@
    "ru": "Не удаётся скопировать: {error}",
    "id": "Tidak dapat menyalin: {error}",
    "de": "Kopieren nicht möglich: {error}",
-   "tr": "Kopyalanamıyor: {error}"
+   "tr": "Kopyalanamıyor: {error}",
+   "vi": "Không thể sao chép: {error}"
   },
   "Cannot reach {url}. Is the server running?": {
    "zh-Hans": "无法连接到 {url}。服务器在运行吗？",
@@ -324,7 +348,8 @@
    "ru": "Не удаётся подключиться к {url}. Сервер запущен?",
    "id": "Tidak dapat menjangkau {url}. Apakah servernya berjalan?",
    "de": "{url} nicht erreichbar. Läuft der Server?",
-   "tr": "{url} erişilebilir değil. Sunucu çalışıyor mu?"
+   "tr": "{url} erişilebilir değil. Sunucu çalışıyor mu?",
+   "vi": "Không kết nối được {url}. Server có đang chạy không?"
   },
   "Cannot read {path}: {error}": {
    "zh-Hans": "无法读取 {path}：{error}",
@@ -337,7 +362,8 @@
    "ru": "Не удаётся прочитать {path}: {error}",
    "id": "Tidak dapat membaca {path}: {error}",
    "de": "{path} kann nicht gelesen werden: {error}",
-   "tr": "{path} okunamıyor: {error}"
+   "tr": "{path} okunamıyor: {error}",
+   "vi": "Không thể đọc {path}: {error}"
   },
   "Chat providers": {
    "zh-Hans": "聊天服务商",
@@ -350,7 +376,8 @@
    "ru": "Провайдеры чата",
    "id": "Penyedia obrolan",
    "de": "Chatanbieter",
-   "tr": "Sohbet sağlayıcıları"
+   "tr": "Sohbet sağlayıcıları",
+   "vi": "Nhà cung cấp AI cho chat"
   },
   "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
    "zh-Hans": "用 Google AI、OpenAI 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
@@ -363,7 +390,8 @@
    "ru": "Общайтесь с Google AI, OpenAI или OpenRouter вместо Claude: добавьте ключ здесь, затем нажмите на название модели над полем чата, чтобы сменить провайдера и модель. Ключи хранятся в системной связке ключей. У этих провайдеров нет веб-поиска и инструментов: они могут отвечать, но никогда не действуют на этом компьютере.",
    "id": "Mengobrol dengan Google AI, OpenAI, atau OpenRouter sebagai ganti Claude: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem. Penyedia ini tidak punya pencarian web maupun alat: mereka bisa menjawab, tidak pernah bertindak di komputer ini.",
    "de": "Chatte mit Google AI, OpenAI oder OpenRouter statt mit Claude: Hinterlege hier einen Schlüssel und klicke dann auf den Modellnamen über dem Chatfeld, um Anbieter und Modell zu wechseln. Schlüssel bleiben im Systemschlüsselbund. Diese Anbieter erhalten weder Websuche noch Werkzeuge: Sie können antworten, aber auf diesem Computer keine Aktionen ausführen.",
-   "tr": "Claude yerine Google AI, OpenAI veya OpenRouter ile sohbet et: buraya bir anahtar ekle, ardından sağlayıcı ve model değiştirmek için sohbet kutusunun üstündeki model adına tıkla. Anahtarlar sistemin anahtar zincirinde kalır. Bu sağlayıcılarda web araması ve araçlar yoktur: yanıt verebilirler, bu bilgisayarda işlem yapamazlar."
+   "tr": "Claude yerine Google AI, OpenAI veya OpenRouter ile sohbet et: buraya bir anahtar ekle, ardından sağlayıcı ve model değiştirmek için sohbet kutusunun üstündeki model adına tıkla. Anahtarlar sistemin anahtar zincirinde kalır. Bu sağlayıcılarda web araması ve araçlar yoktur: yanıt verebilirler, bu bilgisayarda işlem yapamazlar.",
+   "vi": "Chat với Google AI, OpenAI hoặc OpenRouter thay vì Claude: thêm khóa ở đây, rồi bấm tên model phía trên ô chat để đổi nhà cung cấp và model. Khóa nằm trong keychain của hệ thống. Các nhà cung cấp này không có tìm kiếm web và không có công cụ: chúng chỉ trả lời, không bao giờ tác động lên máy tính này."
   },
   "Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box.": {
    "zh-Hans": "与你自己运行的模型聊天：Ollama 或 LM Studio（地址留空即使用本机的默认地址），或任何兼容 OpenAI API 的服务器，例如 vLLM 或 llama.cpp。连接后，在聊天框上方选择它。",
@@ -376,7 +404,8 @@
    "ru": "Общайтесь с моделью, которую запускаете сами: Ollama или LM Studio (оставьте адрес пустым, чтобы использовать обычный адрес на этом компьютере) или любой сервер с API OpenAI, например vLLM или llama.cpp. После подключения выберите его над полем чата.",
    "id": "Mengobrol dengan model yang Anda jalankan sendiri: Ollama atau LM Studio (kosongkan alamat untuk alamat biasa di komputer ini), atau server apa pun yang mendukung API OpenAI, seperti vLLM atau llama.cpp. Setelah terhubung, pilih di atas kotak obrolan.",
    "de": "Chatte mit einem selbst betriebenen Modell: Ollama oder LM Studio (für die übliche Adresse auf diesem Computer leer lassen) oder einem OpenAI-API-kompatiblen Server wie vLLM oder llama.cpp. Wähle das Modell nach dem Verbinden über dem Chatfeld aus.",
-   "tr": "Kendin çalıştırdığın bir modelle sohbet et: Ollama veya LM Studio (bu bilgisayardaki varsayılan adres için adresi boş bırak) ya da vLLM veya llama.cpp gibi OpenAI API'siyle uyumlu bir sunucu. Bağlandıktan sonra sohbet kutusunun üstünden seç."
+   "tr": "Kendin çalıştırdığın bir modelle sohbet et: Ollama veya LM Studio (bu bilgisayardaki varsayılan adres için adresi boş bırak) ya da vLLM veya llama.cpp gibi OpenAI API'siyle uyumlu bir sunucu. Bağlandıktan sonra sohbet kutusunun üstünden seç.",
+   "vi": "Chat với model chạy trên máy của bạn: Ollama hoặc LM Studio (để trống địa chỉ để dùng địa chỉ mặc định), hoặc server tương thích API OpenAI như vLLM hay llama.cpp. Sau khi kết nối, chọn model phía trên ô chat."
   },
   "Choose a model": {
    "zh-Hans": "选择模型",
@@ -389,7 +418,8 @@
    "ru": "Выберите модель",
    "id": "Pilih model",
    "de": "Modell auswählen",
-   "tr": "Model seç"
+   "tr": "Model seç",
+   "vi": "Chọn một model"
   },
   "Classic token with the repo scope, or fine-grained with read access to Pull requests, Commit statuses and Actions.": {
    "zh-Hans": "带 repo 权限范围的经典令牌，或对 Pull requests、Commit statuses 和 Actions 具有读取权限的细粒度令牌。",
@@ -402,7 +432,8 @@
    "ru": "Классический токен с областью repo или детализированный (fine-grained) с доступом на чтение к Pull requests, Commit statuses и Actions.",
    "id": "Token klasik dengan cakupan repo, atau fine-grained dengan akses baca ke Pull requests, Commit statuses, dan Actions.",
    "de": "Klassisches Token mit repo-Berechtigung oder ein fein abgestuftes Token mit Lesezugriff auf Pull Requests, Commit-Status und Actions.",
-   "tr": "repo kapsamına sahip klasik token veya Pull requests, Commit statuses ve Actions için okuma erişimi olan ayrıntılı token."
+   "tr": "repo kapsamına sahip klasik token veya Pull requests, Commit statuses ve Actions için okuma erişimi olan ayrıntılı token.",
+   "vi": "Token cổ điển với quyền repo, hoặc token chi tiết với quyền đọc Pull requests, trạng thái commit và Actions."
   },
   "Claude declined this one.": {
    "zh-Hans": "Claude 拒绝了这个请求。",
@@ -415,7 +446,8 @@
    "ru": "Claude отклонил этот запрос.",
    "id": "Claude menolak permintaan ini.",
    "de": "Claude hat diese Anfrage abgelehnt.",
-   "tr": "Claude bunu reddetti."
+   "tr": "Claude bunu reddetti.",
+   "vi": "Claude đã từ chối mục này."
   },
   "Claude needs an answer.": {
    "zh-Hans": "Claude 需要一个回答。",
@@ -428,7 +460,8 @@
    "ru": "Claude ждёт ответа.",
    "id": "Claude membutuhkan jawaban.",
    "de": "Claude braucht eine Antwort.",
-   "tr": "Claude yanıt bekliyor."
+   "tr": "Claude yanıt bekliyor.",
+   "vi": "Claude cần một câu trả lời."
   },
   "Claude plan usage": {
    "zh-Hans": "Claude 套餐用量",
@@ -441,7 +474,8 @@
    "ru": "Использование тарифа Claude",
    "id": "Pemakaian paket Claude",
    "de": "Claude-Tarifnutzung",
-   "tr": "Claude plan kullanımı"
+   "tr": "Claude plan kullanımı",
+   "vi": "Mức dùng gói Claude"
   },
   "Close the island": {
    "zh-Hans": "关闭岛",
@@ -454,7 +488,8 @@
    "ru": "Закрыть остров",
    "id": "Tutup pulau",
    "de": "Insel schließen",
-   "tr": "Adayı kapat"
+   "tr": "Adayı kapat",
+   "vi": "Đóng island"
   },
   "Code": {
    "zh-Hans": "代码",
@@ -467,7 +502,8 @@
    "ru": "Код",
    "id": "Kode",
    "de": "Code",
-   "tr": "Kod"
+   "tr": "Kod",
+   "vi": "Mã"
   },
   "Codex plan": {
    "zh-Hans": "Codex 套餐",
@@ -480,7 +516,8 @@
    "ru": "Тариф Codex",
    "id": "Paket Codex",
    "de": "Codex-Tarif",
-   "tr": "Codex planı"
+   "tr": "Codex planı",
+   "vi": "Gói Codex"
   },
   "Codex plan usage": {
    "zh-Hans": "Codex 套餐用量",
@@ -493,7 +530,8 @@
    "ru": "Использование тарифа Codex",
    "id": "Pemakaian paket Codex",
    "de": "Codex-Tarifnutzung",
-   "tr": "Codex plan kullanımı"
+   "tr": "Codex plan kullanımı",
+   "vi": "Mức dùng gói Codex"
   },
   "Codex runs new hooks only once you trust them: start Codex and review them once with /hooks.": {
    "zh-Hans": "Codex 只会运行你信任的新 hooks：启动 Codex，并用 /hooks 检查一次。",
@@ -506,7 +544,8 @@
    "ru": "Codex запускает новые хуки только после того, как вы им доверитесь: откройте Codex и один раз проверьте их через /hooks.",
    "id": "Codex hanya menjalankan hooks baru setelah Anda memercayainya: buka Codex dan tinjau sekali dengan /hooks.",
    "de": "Codex führt neue Hooks erst aus, nachdem du ihnen vertraust: Starte Codex und prüfe sie einmal mit /hooks.",
-   "tr": "Codex yeni hook'ları ancak güvendiğinde çalıştırır: Codex'i başlat ve /hooks ile bir kez incele."
+   "tr": "Codex yeni hook'ları ancak güvendiğinde çalıştırır: Codex'i başlat ve /hooks ile bir kez incele.",
+   "vi": "Codex chỉ chạy hook mới sau khi bạn tin tưởng chúng: khởi động Codex và duyệt một lần bằng /hooks."
   },
   "Connect {name} in Settings → Local models first.": {
    "zh-Hans": "请先在“设置 → 本地模型”中连接 {name}。",
@@ -519,7 +558,8 @@
    "ru": "Сначала подключите {name} в «Настройки → Локальные модели».",
    "id": "Hubungkan {name} dulu di Pengaturan → Model lokal.",
    "de": "Verbinde {name} zuerst unter Einstellungen → Lokale Modelle.",
-   "tr": "Önce Ayarlar → Yerel modeller bölümünden {name} bağlantısını kur."
+   "tr": "Önce Ayarlar → Yerel modeller bölümünden {name} bağlantısını kur.",
+   "vi": "Kết nối {name} trong Cài đặt → Model cục bộ trước."
   },
   "Copied — paste it anywhere.": {
    "zh-Hans": "已复制 — 可以粘贴到任何地方。",
@@ -532,7 +572,8 @@
    "ru": "Скопировано — вставьте куда угодно.",
    "id": "Disalin — tempel di mana saja.",
    "de": "Kopiert — überall einfügen.",
-   "tr": "Kopyalandı — istediğin yere yapıştır."
+   "tr": "Kopyalandı — istediğin yere yapıştır.",
+   "vi": "Đã sao chép — dán vào bất cứ đâu."
   },
   "Copying images isn't available here — use Save image.": {
    "zh-Hans": "此处无法复制图片 — 请使用“保存图片”。",
@@ -545,7 +586,8 @@
    "ru": "Копировать изображения здесь нельзя — используйте «Сохранить изображение».",
    "id": "Menyalin gambar tidak tersedia di sini — gunakan Simpan gambar.",
    "de": "Bilder können hier nicht kopiert werden — verwende Bild speichern.",
-   "tr": "Burada görsel kopyalanamıyor — Görseli kaydet seçeneğini kullan."
+   "tr": "Burada görsel kopyalanamıyor — Görseli kaydet seçeneğini kullan.",
+   "vi": "Không hỗ trợ sao chép ảnh ở đây — hãy dùng Lưu ảnh."
   },
   "Coucou could not list the agents.": {
    "zh-Hans": "Coucou 无法列出代理。",
@@ -558,7 +600,8 @@
    "ru": "Coucou не удалось получить список агентов.",
    "id": "Coucou tidak dapat menampilkan daftar agen.",
    "de": "Coucou konnte die Agenten nicht auflisten.",
-   "tr": "Coucou ajanları listeleyemedi."
+   "tr": "Coucou ajanları listeleyemedi.",
+   "vi": "Coucou không liệt kê được các agent."
   },
   "Coucou counts your agent sessions as they happen — check back next Monday.": {
    "zh-Hans": "Coucou 会实时统计你的代理会话 — 下周一再来看看吧。",
@@ -571,7 +614,8 @@
    "ru": "Coucou считает ваши сессии агентов по ходу дела — загляните в следующий понедельник.",
    "id": "Coucou menghitung sesi agen Anda saat berlangsung — cek lagi Senin depan.",
    "de": "Coucou zählt deine Agentensitzungen mit — schau nächsten Montag wieder vorbei.",
-   "tr": "Coucou ajan oturumlarını gerçekleştiği sırada sayar — gelecek pazartesi tekrar bak."
+   "tr": "Coucou ajan oturumlarını gerçekleştiği sırada sayar — gelecek pazartesi tekrar bak.",
+   "vi": "Coucou đếm các phiên agent khi chúng diễn ra — quay lại vào thứ Hai tới."
   },
   "Coucou is hooked into your Claude Code sessions. Tool calls, questions and permission requests show up in the island, and you can answer them there.": {
    "zh-Hans": "Coucou 已接入你的 Claude Code 会话。工具调用、问题和权限请求都会显示在岛中，你可以直接在那里回应。",
@@ -584,7 +628,8 @@
    "ru": "Coucou подключён к вашим сессиям Claude Code. Вызовы инструментов, вопросы и запросы разрешений появляются в острове, и отвечать можно прямо там.",
    "id": "Coucou terhubung ke sesi Claude Code Anda. Panggilan alat, pertanyaan, dan permintaan izin muncul di pulau, dan Anda bisa menjawabnya di sana.",
    "de": "Coucou ist mit deinen Claude Code-Sitzungen verbunden. Werkzeugaufrufe, Fragen und Berechtigungsanfragen erscheinen in der Insel und können dort beantwortet werden.",
-   "tr": "Coucou, Claude Code oturumlarına bağlı. Araç çağrıları, sorular ve izin istekleri adada görünür; bunları oradan yanıtlayabilirsin."
+   "tr": "Coucou, Claude Code oturumlarına bağlı. Araç çağrıları, sorular ve izin istekleri adada görünür; bunları oradan yanıtlayabilirsin.",
+   "vi": "Coucou đã gắn hook vào các phiên Claude Code. Lệnh gọi công cụ, câu hỏi và yêu cầu cấp quyền sẽ hiện trong island; bạn có thể trả lời ngay tại đó."
   },
   "Could not remove {path}: {error}": {
    "zh-Hans": "无法删除 {path}：{error}",
@@ -597,7 +642,8 @@
    "ru": "Не удалось удалить {path}: {error}",
    "id": "Tidak dapat menghapus {path}: {error}",
    "de": "{path} konnte nicht entfernt werden: {error}",
-   "tr": "{path} kaldırılamadı: {error}"
+   "tr": "{path} kaldırılamadı: {error}",
+   "vi": "Không thể gỡ {path}: {error}"
   },
   "Could not remove: {error}": {
    "zh-Hans": "无法移除：{error}",
@@ -610,7 +656,8 @@
    "ru": "Не удалось удалить: {error}",
    "id": "Tidak dapat menghapus: {error}",
    "de": "Entfernen fehlgeschlagen: {error}",
-   "tr": "Kaldırılamadı: {error}"
+   "tr": "Kaldırılamadı: {error}",
+   "vi": "Không thể gỡ: {error}"
   },
   "Could not save the image: {error}": {
    "zh-Hans": "无法保存图片：{error}",
@@ -623,7 +670,8 @@
    "ru": "Не удалось сохранить изображение: {error}",
    "id": "Tidak dapat menyimpan gambar: {error}",
    "de": "Das Bild konnte nicht gespeichert werden: {error}",
-   "tr": "Görsel kaydedilemedi: {error}"
+   "tr": "Görsel kaydedilemedi: {error}",
+   "vi": "Không thể lưu ảnh: {error}"
   },
   "Could not save your current status line next to the relay; nothing was changed.": {
    "zh-Hans": "无法将你当前的状态栏保存到中继旁边；未做任何更改。",
@@ -636,7 +684,8 @@
    "ru": "Не удалось сохранить вашу текущую строку состояния рядом с ретранслятором; ничего не изменено.",
    "id": "Tidak dapat menyimpan baris status Anda saat ini di samping relay; tidak ada yang diubah.",
    "de": "Deine aktuelle Statuszeile konnte nicht neben dem Relay gespeichert werden; nichts wurde verändert.",
-   "tr": "Mevcut durum satırın aracının yanına kaydedilemedi; hiçbir şey değiştirilmedi."
+   "tr": "Mevcut durum satırın aracının yanına kaydedilemedi; hiçbir şey değiştirilmedi.",
+   "vi": "Không thể lưu status line hiện tại của bạn cạnh relay; không có gì bị thay đổi."
   },
   "Could not save: {error}": {
    "zh-Hans": "无法保存：{error}",
@@ -649,7 +698,8 @@
    "ru": "Не удалось сохранить: {error}",
    "id": "Tidak dapat menyimpan: {error}",
    "de": "Speichern fehlgeschlagen: {error}",
-   "tr": "Kaydedilemedi: {error}"
+   "tr": "Kaydedilemedi: {error}",
+   "vi": "Không thể lưu: {error}"
   },
   "Could not write: {error}": {
    "zh-Hans": "无法写入：{error}",
@@ -662,7 +712,8 @@
    "ru": "Не удалось записать: {error}",
    "id": "Tidak dapat menulis: {error}",
    "de": "Schreiben fehlgeschlagen: {error}",
-   "tr": "Yazılamadı: {error}"
+   "tr": "Yazılamadı: {error}",
+   "vi": "Không thể ghi: {error}"
   },
   "Counts and project names only — never commands, files or prompts. Kept on this computer for 12 weeks.": {
    "zh-Hans": "仅保存计数和项目名称 — 绝不保存命令、文件或提示词。在这台电脑上保留 12 周。",
@@ -675,7 +726,8 @@
    "ru": "Только счётчики и названия проектов — никогда команды, файлы или промпты. Хранится на этом компьютере 12 недель.",
    "id": "Hanya hitungan dan nama proyek — tidak pernah perintah, file, atau prompt. Disimpan di komputer ini selama 12 minggu.",
    "de": "Nur Zähler und Projektnamen — keine Befehle, Dateien oder Prompts. Wird 12 Wochen auf diesem Computer aufbewahrt.",
-   "tr": "Yalnızca sayılar ve proje adları; komut, dosya veya istem içermez. Bu bilgisayarda 12 hafta tutulur."
+   "tr": "Yalnızca sayılar ve proje adları; komut, dosya veya istem içermez. Bu bilgisayarda 12 hafta tutulur.",
+   "vi": "Chỉ số đếm và tên dự án — không bao giờ có lệnh, tệp hay prompt. Giữ trên máy này trong 12 tuần."
   },
   "Custom server": {
    "zh-Hans": "自定义服务器",
@@ -688,7 +740,8 @@
    "ru": "Свой сервер",
    "id": "Server kustom",
    "de": "Eigener Server",
-   "tr": "Özel sunucu"
+   "tr": "Özel sunucu",
+   "vi": "Server tùy chỉnh"
   },
   "Default branch CI": {
    "zh-Hans": "默认分支 CI",
@@ -701,7 +754,8 @@
    "ru": "CI основной ветки",
    "id": "CI cabang utama",
    "de": "CI des Standardbranches",
-   "tr": "Varsayılan dal CI durumu"
+   "tr": "Varsayılan dal CI durumu",
+   "vi": "CI nhánh mặc định"
   },
   "Deployment": {
    "zh-Hans": "部署",
@@ -714,7 +768,8 @@
    "ru": "Развёртывание",
    "id": "Deployment",
    "de": "Bereitstellung",
-   "tr": "Dağıtım"
+   "tr": "Dağıtım",
+   "vi": "Triển khai"
   },
   "Details": {
    "zh-Hans": "详情",
@@ -727,7 +782,8 @@
    "ru": "Подробности",
    "id": "Detail",
    "de": "Details",
-   "tr": "Ayrıntılar"
+   "tr": "Ayrıntılar",
+   "vi": "Chi tiết"
   },
   "Display under the cursor": {
    "zh-Hans": "光标所在的显示器",
@@ -740,7 +796,8 @@
    "ru": "Дисплей под курсором",
    "id": "Layar di bawah kursor",
    "de": "Bildschirm unter dem Mauszeiger",
-   "tr": "İşaretçinin bulunduğu ekran"
+   "tr": "İşaretçinin bulunduğu ekran",
+   "vi": "Màn hình có con trỏ chuột"
   },
   "Docs": {
    "zh-Hans": "文档",
@@ -753,7 +810,8 @@
    "ru": "Документы",
    "id": "Dokumen",
    "de": "Dokumentation",
-   "tr": "Belgeler"
+   "tr": "Belgeler",
+   "vi": "Tài liệu"
   },
   "Done.": {
    "zh-Hans": "完成。",
@@ -766,7 +824,8 @@
    "ru": "Готово.",
    "id": "Selesai.",
    "de": "Fertig.",
-   "tr": "Tamamlandı."
+   "tr": "Tamamlandı.",
+   "vi": "Xong."
   },
   "Done. Open a new Claude Code session to pick the hooks up.": {
    "zh-Hans": "完成。打开新的 Claude Code 会话即可启用 hooks。",
@@ -779,7 +838,8 @@
    "ru": "Готово. Откройте новую сессию Claude Code, чтобы хуки заработали.",
    "id": "Selesai. Buka sesi Claude Code baru agar hooks dimuat.",
    "de": "Fertig. Öffne eine neue Claude Code-Sitzung, um die Hooks zu aktivieren.",
-   "tr": "Tamamlandı. Hook'ları kullanmak için yeni bir Claude Code oturumu aç."
+   "tr": "Tamamlandı. Hook'ları kullanmak için yeni bir Claude Code oturumu aç.",
+   "vi": "Xong. Mở phiên Claude Code mới để kích hoạt hook."
   },
   "Done. Previous settings saved as {backup}. Open a new Claude Code session to pick the hooks up.": {
    "zh-Hans": "完成。旧设置已保存为 {backup}。打开新的 Claude Code 会话即可启用 hooks。",
@@ -792,7 +852,8 @@
    "ru": "Готово. Предыдущие настройки сохранены как {backup}. Откройте новую сессию Claude Code, чтобы хуки заработали.",
    "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Buka sesi Claude Code baru agar hooks dimuat.",
    "de": "Fertig. Bisherige Einstellungen unter {backup} gesichert. Öffne eine neue Claude Code-Sitzung, um die Hooks zu aktivieren.",
-   "tr": "Tamamlandı. Önceki ayarlar {backup} olarak kaydedildi. Hook'ları kullanmak için yeni bir Claude Code oturumu aç."
+   "tr": "Tamamlandı. Önceki ayarlar {backup} olarak kaydedildi. Hook'ları kullanmak için yeni bir Claude Code oturumu aç.",
+   "vi": "Xong. Đã sao lưu cài đặt cũ vào {backup}. Mở phiên Claude Code mới để kích hoạt hook."
   },
   "Done. Previous settings saved as {backup}. The numbers appear after the next reply of a Claude Code session.": {
    "zh-Hans": "完成。旧设置已保存为 {backup}。数字会在 Claude Code 会话的下一次回复后出现。",
@@ -805,7 +866,8 @@
    "ru": "Готово. Предыдущие настройки сохранены как {backup}. Цифры появятся после следующего ответа в сессии Claude Code.",
    "id": "Selesai. Pengaturan sebelumnya disimpan sebagai {backup}. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code.",
    "de": "Fertig. Bisherige Einstellungen unter {backup} gesichert. Die Zahlen erscheinen nach der nächsten Antwort einer Claude Code-Sitzung.",
-   "tr": "Tamamlandı. Önceki ayarlar {backup} olarak kaydedildi. Sayılar, bir Claude Code oturumunun sonraki yanıtından sonra görünür."
+   "tr": "Tamamlandı. Önceki ayarlar {backup} olarak kaydedildi. Sayılar, bir Claude Code oturumunun sonraki yanıtından sonra görünür.",
+   "vi": "Xong. Cài đặt trước đã lưu thành {backup}. Các con số xuất hiện sau phản hồi tiếp theo của một phiên Claude Code."
   },
   "Done. Previous version saved as {paths}.": {
    "zh-Hans": "完成。旧版本已保存为 {paths}。",
@@ -818,7 +880,8 @@
    "ru": "Готово. Предыдущая версия сохранена как {paths}.",
    "id": "Selesai. Versi sebelumnya disimpan sebagai {paths}.",
    "de": "Fertig. Vorherige Version unter {paths} gesichert.",
-   "tr": "Tamamlandı. Önceki sürüm {paths} olarak kaydedildi."
+   "tr": "Tamamlandı. Önceki sürüm {paths} olarak kaydedildi.",
+   "vi": "Xong. Phiên bản trước đã lưu thành {paths}."
   },
   "Done. The numbers appear after the next reply of a Claude Code session.": {
    "zh-Hans": "完成。数字会在 Claude Code 会话的下一次回复后出现。",
@@ -831,7 +894,8 @@
    "ru": "Готово. Цифры появятся после следующего ответа в сессии Claude Code.",
    "id": "Selesai. Angkanya muncul setelah balasan berikutnya dari sesi Claude Code.",
    "de": "Fertig. Die Zahlen erscheinen nach der nächsten Antwort einer Claude Code-Sitzung.",
-   "tr": "Tamamlandı. Sayılar, bir Claude Code oturumunun sonraki yanıtından sonra görünür."
+   "tr": "Tamamlandı. Sayılar, bir Claude Code oturumunun sonraki yanıtından sonra görünür.",
+   "vi": "Xong. Các con số xuất hiện sau phản hồi tiếp theo của một phiên Claude Code."
   },
   "Drop": {
    "zh-Hans": "拖放",
@@ -844,7 +908,8 @@
    "ru": "Перетащить",
    "id": "Letakkan",
    "de": "Ablegen",
-   "tr": "Bırak"
+   "tr": "Bırak",
+   "vi": "Thả"
   },
   "Enter the server address first.": {
    "zh-Hans": "请先输入服务器地址。",
@@ -857,7 +922,8 @@
    "ru": "Сначала введите адрес сервера.",
    "id": "Masukkan alamat server terlebih dahulu.",
    "de": "Gib zuerst die Serveradresse ein.",
-   "tr": "Önce sunucu adresini gir."
+   "tr": "Önce sunucu adresini gir.",
+   "vi": "Nhập địa chỉ server trước."
   },
   "Error": {
    "zh-Hans": "错误",
@@ -870,7 +936,8 @@
    "ru": "Ошибка",
    "id": "Galat",
    "de": "Fehler",
-   "tr": "Hata"
+   "tr": "Hata",
+   "vi": "Lỗi"
   },
   "File": {
    "zh-Hans": "文件",
@@ -883,7 +950,8 @@
    "ru": "Файл",
    "id": "File",
    "de": "Datei",
-   "tr": "Dosya"
+   "tr": "Dosya",
+   "vi": "Tệp"
   },
   "Folders can't be dropped yet.": {
    "zh-Hans": "暂时还不能拖放文件夹。",
@@ -896,7 +964,8 @@
    "ru": "Папки пока перетаскивать нельзя.",
    "id": "Folder belum bisa diletakkan.",
    "de": "Ordner können noch nicht abgelegt werden.",
-   "tr": "Klasörler henüz bırakılamıyor."
+   "tr": "Klasörler henüz bırakılamıyor.",
+   "vi": "Chưa thể thả thư mục."
   },
   "Friday": {
    "zh-Hans": "星期五",
@@ -909,7 +978,8 @@
    "ru": "Пятница",
    "id": "Jumat",
    "de": "Freitag",
-   "tr": "Cuma"
+   "tr": "Cuma",
+   "vi": "Thứ Sáu"
   },
   "From anywhere": {
    "zh-Hans": "全局",
@@ -922,7 +992,8 @@
    "ru": "Отовсюду",
    "id": "Dari mana saja",
    "de": "Überall",
-   "tr": "Her yerden"
+   "tr": "Her yerden",
+   "vi": "Từ mọi nơi"
   },
   "Go to pill 1 to 9": {
    "zh-Hans": "前往第 1 至 9 个标签",
@@ -935,7 +1006,8 @@
    "ru": "Перейти к вкладке 1–9",
    "id": "Buka tab 1 sampai 9",
    "de": "Zu Pill 1 bis 9 wechseln",
-   "tr": "1–9 numaralı araca git"
+   "tr": "1–9 numaralı araca git",
+   "vi": "Chuyển tới pill 1–9"
   },
   "Go to the waiting permission or question": {
    "zh-Hans": "前往待处理的权限请求或问题",
@@ -948,7 +1020,8 @@
    "ru": "Перейти к ожидающему разрешению или вопросу",
    "id": "Buka izin atau pertanyaan yang menunggu",
    "de": "Zur wartenden Berechtigungsanfrage oder Frage wechseln",
-   "tr": "Bekleyen izin isteğine veya soruya git"
+   "tr": "Bekleyen izin isteğine veya soruya git",
+   "vi": "Tới quyền hoặc câu hỏi đang chờ"
   },
   "Hide project names": {
    "zh-Hans": "隐藏项目名称",
@@ -961,7 +1034,8 @@
    "ru": "Скрыть названия проектов",
    "id": "Sembunyikan nama proyek",
    "de": "Projektnamen ausblenden",
-   "tr": "Proje adlarını gizle"
+   "tr": "Proje adlarını gizle",
+   "vi": "Ẩn tên dự án"
   },
   "History cleared.": {
    "zh-Hans": "历史记录已清除。",
@@ -974,7 +1048,8 @@
    "ru": "История очищена.",
    "id": "Riwayat dihapus.",
    "de": "Verlauf gelöscht.",
-   "tr": "Geçmiş temizlendi."
+   "tr": "Geçmiş temizlendi.",
+   "vi": "Đã xóa lịch sử."
   },
   "Hold Ctrl, Alt or the Windows key with it.": {
    "zh-Hans": "同时按住 Ctrl、Alt 或 Windows 键。",
@@ -987,7 +1062,8 @@
    "ru": "Удерживайте вместе с ней Ctrl, Alt или клавишу Windows.",
    "id": "Tahan Ctrl, Alt, atau tombol Windows bersamaan.",
    "de": "Halte dazu Strg, Alt oder die Windows-Taste gedrückt.",
-   "tr": "Bununla birlikte Ctrl, Alt veya Windows tuşunu basılı tut."
+   "tr": "Bununla birlikte Ctrl, Alt veya Windows tuşunu basılı tut.",
+   "vi": "Giữ kèm Ctrl, Alt hoặc phím Windows."
   },
   "Images": {
    "zh-Hans": "图片",
@@ -1000,7 +1076,8 @@
    "ru": "Изображения",
    "id": "Gambar",
    "de": "Bilder",
-   "tr": "Görseller"
+   "tr": "Görseller",
+   "vi": "Hình ảnh"
   },
   "In the open island": {
    "zh-Hans": "在打开的岛中",
@@ -1013,7 +1090,8 @@
    "ru": "В открытом острове",
    "id": "Di pulau yang terbuka",
    "de": "In der geöffneten Insel",
-   "tr": "Ada açıkken"
+   "tr": "Ada açıkken",
+   "vi": "Trong island đang mở"
   },
   "In use": {
    "zh-Hans": "使用中",
@@ -1026,7 +1104,8 @@
    "ru": "Используется",
    "id": "Sedang dipakai",
    "de": "In Verwendung",
-   "tr": "Kullanımda"
+   "tr": "Kullanımda",
+   "vi": "Đang dùng"
   },
   "In use by another app": {
    "zh-Hans": "已被其他应用占用",
@@ -1039,7 +1118,8 @@
    "ru": "Занято другим приложением",
    "id": "Dipakai aplikasi lain",
    "de": "Von einer anderen App verwendet",
-   "tr": "Başka bir uygulama kullanıyor"
+   "tr": "Başka bir uygulama kullanıyor",
+   "vi": "Đang được ứng dụng khác sử dụng"
   },
   "Install hooks…": {
    "zh-Hans": "安装 hooks…",
@@ -1052,7 +1132,8 @@
    "ru": "Установить хуки…",
    "id": "Pasang hooks…",
    "de": "Hooks installieren…",
-   "tr": "Hook'ları kur…"
+   "tr": "Hook'ları kur…",
+   "vi": "Cài hook…"
   },
   "Install relay…": {
    "zh-Hans": "安装中继…",
@@ -1065,7 +1146,8 @@
    "ru": "Установить ретранслятор…",
    "id": "Pasang relay…",
    "de": "Relay installieren…",
-   "tr": "Aracıyı kur…"
+   "tr": "Aracıyı kur…",
+   "vi": "Cài relay…"
   },
   "Install the hooks to see your Claude Code sessions in the island and approve permissions without leaving what you are doing.": {
    "zh-Hans": "安装 hooks，即可在岛中查看 Claude Code 会话，并在不打断手头工作的情况下批准权限。",
@@ -1078,7 +1160,8 @@
    "ru": "Установите хуки, чтобы видеть сессии Claude Code в острове и давать разрешения, не отрываясь от работы.",
    "id": "Pasang hooks untuk melihat sesi Claude Code di pulau dan menyetujui izin tanpa meninggalkan pekerjaan Anda.",
    "de": "Installiere die Hooks, um deine Claude Code-Sitzungen in der Insel zu sehen und Berechtigungen zu genehmigen, ohne deine Arbeit zu unterbrechen.",
-   "tr": "Claude Code oturumlarını adada görmek ve işini bırakmadan izinleri onaylamak için hook'ları kur."
+   "tr": "Claude Code oturumlarını adada görmek ve işini bırakmadan izinleri onaylamak için hook'ları kur.",
+   "vi": "Cài hook để thấy các phiên Claude Code trong island và phê duyệt quyền mà không phải rời việc đang làm."
   },
   "Install…": {
    "zh-Hans": "安装…",
@@ -1091,7 +1174,8 @@
    "ru": "Установить…",
    "id": "Pasang…",
    "de": "Installieren…",
-   "tr": "Kur…"
+   "tr": "Kur…",
+   "vi": "Cài đặt…"
   },
   "Instance URL": {
    "zh-Hans": "实例地址",
@@ -1104,7 +1188,8 @@
    "ru": "URL экземпляра",
    "id": "URL instans",
    "de": "Instanz-URL",
-   "tr": "Sunucu URL'si"
+   "tr": "Sunucu URL'si",
+   "vi": "URL instance"
   },
   "Integration lacks access": {
    "zh-Hans": "集成没有访问权限",
@@ -1117,7 +1202,8 @@
    "ru": "У интеграции нет доступа",
    "id": "Integrasi tidak punya akses",
    "de": "Integration hat keinen Zugriff",
-   "tr": "Entegrasyonun erişimi yok"
+   "tr": "Entegrasyonun erişimi yok",
+   "vi": "Tích hợp thiếu quyền truy cập"
   },
   "Integration token": {
    "zh-Hans": "集成令牌",
@@ -1130,7 +1216,8 @@
    "ru": "Токен интеграции",
    "id": "Token integrasi",
    "de": "Integrationstoken",
-   "tr": "Entegrasyon token'ı"
+   "tr": "Entegrasyon token'ı",
+   "vi": "Token tích hợp"
   },
   "Invalid API key (401)": {
    "zh-Hans": "API 密钥无效（401）",
@@ -1143,7 +1230,8 @@
    "ru": "Неверный API-ключ (401)",
    "id": "Kunci API tidak valid (401)",
    "de": "Ungültiger API-Schlüssel (401)",
-   "tr": "Geçersiz API anahtarı (401)"
+   "tr": "Geçersiz API anahtarı (401)",
+   "vi": "Khóa API không hợp lệ (401)"
   },
   "Island lives on": {
    "zh-Hans": "岛所在位置",
@@ -1156,7 +1244,8 @@
    "ru": "Остров на",
    "id": "Pulau berada di",
    "de": "Insel anzeigen auf",
-   "tr": "Adanın bulunduğu ekran"
+   "tr": "Adanın bulunduğu ekran",
+   "vi": "Island hiển thị trên"
   },
   "Keep the island open": {
    "zh-Hans": "保持岛打开",
@@ -1169,7 +1258,8 @@
    "ru": "Оставить остров открытым",
    "id": "Biarkan pulau tetap terbuka",
    "de": "Insel geöffnet halten",
-   "tr": "Adayı açık tut"
+   "tr": "Adayı açık tut",
+   "vi": "Giữ island mở"
   },
   "Key configured": {
    "zh-Hans": "密钥已配置",
@@ -1182,7 +1272,8 @@
    "ru": "Ключ настроен",
    "id": "Kunci sudah diatur",
    "de": "Schlüssel eingerichtet",
-   "tr": "Anahtar yapılandırıldı"
+   "tr": "Anahtar yapılandırıldı",
+   "vi": "Đã cấu hình khóa"
   },
   "Key from {site}": {
    "zh-Hans": "密钥来自 {site}",
@@ -1195,7 +1286,8 @@
    "ru": "Ключ на {site}",
    "id": "Kunci dari {site}",
    "de": "Schlüssel von {site}",
-   "tr": "{site} üzerinden anahtar al"
+   "tr": "{site} üzerinden anahtar al",
+   "vi": "Khóa từ {site}"
   },
   "Key lacks access": {
    "zh-Hans": "密钥没有访问权限",
@@ -1208,7 +1300,8 @@
    "ru": "У ключа нет доступа",
    "id": "Kunci tidak punya akses",
    "de": "Schlüssel hat keinen Zugriff",
-   "tr": "Anahtarın erişimi yok"
+   "tr": "Anahtarın erişimi yok",
+   "vi": "Khóa thiếu quyền truy cập"
   },
   "Key removed.": {
    "zh-Hans": "密钥已移除。",
@@ -1221,7 +1314,8 @@
    "ru": "Ключ удалён.",
    "id": "Kunci dihapus.",
    "de": "Schlüssel entfernt.",
-   "tr": "Anahtar kaldırıldı."
+   "tr": "Anahtar kaldırıldı.",
+   "vi": "Đã xóa khóa."
   },
   "Key saved in the {store}.": {
    "zh-Hans": "密钥已保存在 {store} 中。",
@@ -1234,7 +1328,8 @@
    "ru": "Ключ сохранён в {store}.",
    "id": "Kunci tersimpan di {store}.",
    "de": "Schlüssel im {store} gespeichert.",
-   "tr": "Anahtar {store} içinde kaydedildi."
+   "tr": "Anahtar {store} içinde kaydedildi.",
+   "vi": "Đã lưu khóa trong {store}."
   },
   "Later — keep it waiting": {
    "zh-Hans": "稍后 — 让它等着",
@@ -1247,7 +1342,8 @@
    "ru": "Позже — пусть подождёт",
    "id": "Nanti — biarkan menunggu",
    "de": "Später — weiter warten lassen",
-   "tr": "Daha sonra — beklet"
+   "tr": "Daha sonra — beklet",
+   "vi": "Để sau — giữ chờ"
   },
   "Launch at startup": {
    "zh-Hans": "开机时启动",
@@ -1260,7 +1356,8 @@
    "ru": "Запуск при старте системы",
    "id": "Jalankan saat startup",
    "de": "Beim Systemstart öffnen",
-   "tr": "Açılışta başlat"
+   "tr": "Açılışta başlat",
+   "vi": "Khởi động cùng hệ thống"
   },
   "Leave the user name and password out of the address.": {
    "zh-Hans": "请不要在地址中包含用户名和密码。",
@@ -1273,7 +1370,8 @@
    "ru": "Не указывайте имя пользователя и пароль в адресе.",
    "id": "Jangan sertakan nama pengguna dan kata sandi di alamat.",
    "de": "Lass Benutzername und Passwort in der Adresse weg.",
-   "tr": "Adrese kullanıcı adı ve parola ekleme."
+   "tr": "Adrese kullanıcı adı ve parola ekleme.",
+   "vi": "Đừng đưa tên đăng nhập và mật khẩu vào địa chỉ."
   },
   "Main display": {
    "zh-Hans": "主显示器",
@@ -1286,7 +1384,8 @@
    "ru": "Основной дисплей",
    "id": "Layar utama",
    "de": "Hauptbildschirm",
-   "tr": "Ana ekran"
+   "tr": "Ana ekran",
+   "vi": "Màn hình chính"
   },
   "Main tool": {
    "zh-Hans": "主要工具",
@@ -1299,7 +1398,8 @@
    "ru": "Основной инструмент",
    "id": "Alat utama",
    "de": "Hauptwerkzeug",
-   "tr": "Ana araç"
+   "tr": "Ana araç",
+   "vi": "Công cụ chính"
   },
   "Meeting": {
    "zh-Hans": "会议",
@@ -1312,7 +1412,8 @@
    "ru": "Встреча",
    "id": "Rapat",
    "de": "Besprechung",
-   "tr": "Toplantı"
+   "tr": "Toplantı",
+   "vi": "Cuộc họp"
   },
   "Monday": {
    "zh-Hans": "星期一",
@@ -1325,7 +1426,8 @@
    "ru": "Понедельник",
    "id": "Senin",
    "de": "Montag",
-   "tr": "Pazartesi"
+   "tr": "Pazartesi",
+   "vi": "Thứ Hai"
   },
   "Mute": {
    "zh-Hans": "静音",
@@ -1338,7 +1440,8 @@
    "ru": "Без звука",
    "id": "Bisukan",
    "de": "Stummschalten",
-   "tr": "Sesi kapat"
+   "tr": "Sesi kapat",
+   "vi": "Tắt tiếng"
   },
   "Mute or unmute Mochi": {
    "zh-Hans": "静音或取消静音 Mochi",
@@ -1351,7 +1454,8 @@
    "ru": "Выключить или включить звук Mochi",
    "id": "Bisukan atau bunyikan Mochi",
    "de": "Mochi stummschalten oder einschalten",
-   "tr": "Mochi'nin sesini kapat / aç"
+   "tr": "Mochi'nin sesini kapat / aç",
+   "vi": "Tắt hoặc bật tiếng Mochi"
   },
   "Network error: {error}": {
    "zh-Hans": "网络错误：{error}",
@@ -1364,7 +1468,8 @@
    "ru": "Ошибка сети: {error}",
    "id": "Galat jaringan: {error}",
    "de": "Netzwerkfehler: {error}",
-   "tr": "Ağ hatası: {error}"
+   "tr": "Ağ hatası: {error}",
+   "vi": "Lỗi mạng: {error}"
   },
   "Next or previous pill": {
    "zh-Hans": "下一个或上一个标签",
@@ -1377,7 +1482,8 @@
    "ru": "Следующая или предыдущая вкладка",
    "id": "Tab berikutnya atau sebelumnya",
    "de": "Nächste oder vorherige Pill",
-   "tr": "Sonraki veya önceki araç"
+   "tr": "Sonraki veya önceki araç",
+   "vi": "Pill tiếp hoặc trước"
   },
   "Next pill": {
    "zh-Hans": "下一个标签",
@@ -1390,7 +1496,8 @@
    "ru": "Следующая вкладка",
    "id": "Tab berikutnya",
    "de": "Nächste Pill",
-   "tr": "Sonraki araç"
+   "tr": "Sonraki araç",
+   "vi": "Pill tiếp"
   },
   "No API key — add it in Settings.": {
    "zh-Hans": "没有 API 密钥 — 请在设置中添加。",
@@ -1403,7 +1510,8 @@
    "ru": "Нет API-ключа — добавьте его в настройках.",
    "id": "Tidak ada kunci API — tambahkan di Pengaturan.",
    "de": "Kein API-Schlüssel — füge ihn in den Einstellungen hinzu.",
-   "tr": "API anahtarı yok — Ayarlar'dan ekle."
+   "tr": "API anahtarı yok — Ayarlar'dan ekle.",
+   "vi": "Chưa có khóa API — thêm trong Cài đặt."
   },
   "No Pictures or Downloads folder to save into.": {
    "zh-Hans": "没有可保存的“图片”或“下载”文件夹。",
@@ -1416,7 +1524,8 @@
    "ru": "Нет папки «Изображения» или «Загрузки» для сохранения.",
    "id": "Tidak ada folder Gambar atau Unduhan untuk menyimpan.",
    "de": "Kein Bilder- oder Downloads-Ordner zum Speichern vorhanden.",
-   "tr": "Kaydetmek için Resimler veya İndirilenler klasörü yok."
+   "tr": "Kaydetmek için Resimler veya İndirilenler klasörü yok.",
+   "vi": "Không có thư mục Pictures hoặc Downloads để lưu."
   },
   "No change.": {
    "zh-Hans": "没有改动。",
@@ -1429,7 +1538,8 @@
    "ru": "Без изменений.",
    "id": "Tidak ada perubahan.",
    "de": "Keine Änderung.",
-   "tr": "Değişiklik yok."
+   "tr": "Değişiklik yok.",
+   "vi": "Không có thay đổi."
   },
   "No connection: {error}": {
    "zh-Hans": "无连接：{error}",
@@ -1442,7 +1552,8 @@
    "ru": "Нет соединения: {error}",
    "id": "Tidak ada koneksi: {error}",
    "de": "Keine Verbindung: {error}",
-   "tr": "Bağlantı yok: {error}"
+   "tr": "Bağlantı yok: {error}",
+   "vi": "Không thể kết nối: {error}"
   },
   "No display server was found, so global shortcuts are off.": {
    "zh-Hans": "未找到显示服务器，因此全局快捷键已关闭。",
@@ -1455,7 +1566,8 @@
    "ru": "Дисплейный сервер не найден, поэтому глобальные сочетания отключены.",
    "id": "Server tampilan tidak ditemukan, jadi pintasan global dimatikan.",
    "de": "Kein Displayserver gefunden; globale Tastenkombinationen sind deaktiviert.",
-   "tr": "Görüntü sunucusu bulunamadığından genel kısayollar kapalı."
+   "tr": "Görüntü sunucusu bulunamadığından genel kısayollar kapalı.",
+   "vi": "Không tìm thấy máy chủ hiển thị nên các phím tắt toàn cục đã bị tắt."
   },
   "No existing file — nothing to back up.": {
    "zh-Hans": "没有现有文件 — 无需备份。",
@@ -1468,7 +1580,8 @@
    "ru": "Файла пока нет — нечего сохранять.",
    "id": "Belum ada file — tidak ada yang perlu dicadangkan.",
    "de": "Keine vorhandene Datei — nichts zu sichern.",
-   "tr": "Mevcut dosya yok — yedeklenecek bir şey yok."
+   "tr": "Mevcut dosya yok — yedeklenecek bir şey yok.",
+   "vi": "Không có tệp sẵn có — không có gì để sao lưu."
   },
   "No key yet — the chat needs one.": {
    "zh-Hans": "还没有密钥 — 聊天需要一个。",
@@ -1481,7 +1594,8 @@
    "ru": "Ключа пока нет — он нужен для чата.",
    "id": "Belum ada kunci — obrolan membutuhkannya.",
    "de": "Noch kein Schlüssel — der Chat benötigt einen.",
-   "tr": "Henüz anahtar yok — sohbet için gerekli."
+   "tr": "Henüz anahtar yok — sohbet için gerekli.",
+   "vi": "Chưa có khóa — chat cần một khóa."
   },
   "No models yet. Download one in {name} first.": {
    "zh-Hans": "还没有模型。请先在 {name} 中下载一个。",
@@ -1494,7 +1608,8 @@
    "ru": "Моделей пока нет. Сначала загрузите модель в {name}.",
    "id": "Belum ada model. Unduh satu di {name} terlebih dahulu.",
    "de": "Noch keine Modelle. Lade zuerst eines in {name} herunter.",
-   "tr": "Henüz model yok. Önce {name} içinde bir model indir."
+   "tr": "Henüz model yok. Önce {name} içinde bir model indir.",
+   "vi": "Chưa có model. Hãy tải một model trong {name} trước."
   },
   "No response text.": {
    "zh-Hans": "没有回复内容。",
@@ -1507,7 +1622,8 @@
    "ru": "В ответе нет текста.",
    "id": "Tidak ada teks balasan.",
    "de": "Kein Antworttext.",
-   "tr": "Yanıt metni yok."
+   "tr": "Yanıt metni yok.",
+   "vi": "Không có nội dung phản hồi."
   },
   "No settings.json yet — nothing to back up.": {
    "zh-Hans": "还没有 settings.json — 无需备份。",
@@ -1520,7 +1636,8 @@
    "ru": "settings.json пока нет — нечего сохранять.",
    "id": "Belum ada settings.json — tidak ada yang perlu dicadangkan.",
    "de": "Noch keine settings.json — nichts zu sichern.",
-   "tr": "Henüz settings.json yok — yedeklenecek bir şey yok."
+   "tr": "Henüz settings.json yok — yedeklenecek bir şey yok.",
+   "vi": "Chưa có settings.json — không có gì để sao lưu."
   },
   "No telemetry. Network requests only go to the services you configure yourself.": {
    "zh-Hans": "没有遥测。网络请求只会发往你自己配置的服务。",
@@ -1533,7 +1650,8 @@
    "ru": "Никакой телеметрии. Сетевые запросы идут только к сервисам, которые вы настроили сами.",
    "id": "Tanpa telemetri. Permintaan jaringan hanya ke layanan yang Anda atur sendiri.",
    "de": "Keine Telemetrie. Netzwerkanfragen gehen nur an Dienste, die du selbst einrichtest.",
-   "tr": "Telemetri yok. Ağ istekleri yalnızca kendin yapılandırdığın servislere gönderilir."
+   "tr": "Telemetri yok. Ağ istekleri yalnızca kendin yapılandırdığın servislere gönderilir.",
+   "vi": "Không thu thập dữ liệu đo lường. Yêu cầu mạng chỉ gửi đến các dịch vụ bạn tự cấu hình."
   },
   "Not a valid address: {address}": {
    "zh-Hans": "不是有效的地址：{address}",
@@ -1546,7 +1664,8 @@
    "ru": "Некорректный адрес: {address}",
    "id": "Alamat tidak valid: {address}",
    "de": "Ungültige Adresse: {address}",
-   "tr": "Geçersiz adres: {address}"
+   "tr": "Geçersiz adres: {address}",
+   "vi": "Địa chỉ không hợp lệ: {address}"
   },
   "Not a valid http:// or https:// address.": {
    "zh-Hans": "不是有效的 http:// 或 https:// 地址。",
@@ -1559,7 +1678,8 @@
    "ru": "Это не корректный адрес http:// или https://.",
    "id": "Bukan alamat http:// atau https:// yang valid.",
    "de": "Keine gültige http://- oder https://-Adresse.",
-   "tr": "Geçerli bir http:// veya https:// adresi değil."
+   "tr": "Geçerli bir http:// veya https:// adresi değil.",
+   "vi": "Địa chỉ http:// hoặc https:// không hợp lệ."
   },
   "Not a valid shortcut": {
    "zh-Hans": "无效的快捷键",
@@ -1572,7 +1692,8 @@
    "ru": "Недопустимое сочетание",
    "id": "Pintasan tidak valid",
    "de": "Keine gültige Tastenkombination",
-   "tr": "Geçerli bir kısayol değil"
+   "tr": "Geçerli bir kısayol değil",
+   "vi": "Phím tắt không hợp lệ"
   },
   "Not available": {
    "zh-Hans": "不可用",
@@ -1585,7 +1706,8 @@
    "ru": "Недоступно",
    "id": "Tidak tersedia",
    "de": "Nicht verfügbar",
-   "tr": "Kullanılamıyor"
+   "tr": "Kullanılamıyor",
+   "vi": "Không khả dụng"
   },
   "Nothing leaves your PC: the server runs on this computer.": {
    "zh-Hans": "数据不会离开你的电脑：服务器运行在这台电脑上。",
@@ -1598,7 +1720,8 @@
    "ru": "Ничего не покидает ваш ПК: сервер работает на этом компьютере.",
    "id": "Tidak ada yang keluar dari PC Anda: server berjalan di komputer ini.",
    "de": "Nichts verlässt deinen PC: Der Server läuft auf diesem Computer.",
-   "tr": "Hiçbir veri bilgisayarından çıkmaz: sunucu bu bilgisayarda çalışır."
+   "tr": "Hiçbir veri bilgisayarından çıkmaz: sunucu bu bilgisayarda çalışır.",
+   "vi": "Không có gì rời khỏi máy bạn: server chạy trên máy tính này."
   },
   "Only files dropped on the island can be added.": {
    "zh-Hans": "只能添加拖放到岛上的文件。",
@@ -1611,7 +1734,8 @@
    "ru": "Добавлять можно только файлы, перетащенные на остров.",
    "id": "Hanya file yang diletakkan di pulau yang bisa ditambahkan.",
    "de": "Nur auf der Insel abgelegte Dateien können hinzugefügt werden.",
-   "tr": "Yalnızca adaya bırakılan dosyalar eklenebilir."
+   "tr": "Yalnızca adaya bırakılan dosyalar eklenebilir.",
+   "vi": "Chỉ có thể thêm các tệp được thả lên island."
   },
   "Open in VS Code": {
    "zh-Hans": "在 VS Code 中打开",
@@ -1624,7 +1748,8 @@
    "ru": "Открыть в VS Code",
    "id": "Buka di VS Code",
    "de": "In VS Code öffnen",
-   "tr": "VS Code'da aç"
+   "tr": "VS Code'da aç",
+   "vi": "Mở trong VS Code"
   },
   "Open or close the island": {
    "zh-Hans": "打开或关闭岛",
@@ -1637,7 +1762,8 @@
    "ru": "Открыть или закрыть остров",
    "id": "Buka atau tutup pulau",
    "de": "Insel öffnen oder schließen",
-   "tr": "Adayı aç / kapat"
+   "tr": "Adayı aç / kapat",
+   "vi": "Mở hoặc đóng island"
   },
   "Open the chat": {
    "zh-Hans": "打开聊天",
@@ -1650,7 +1776,8 @@
    "ru": "Открыть чат",
    "id": "Buka obrolan",
    "de": "Chat öffnen",
-   "tr": "Sohbeti aç"
+   "tr": "Sohbeti aç",
+   "vi": "Mở chat"
   },
   "Open the terminal": {
    "zh-Hans": "打开终端",
@@ -1663,7 +1790,8 @@
    "ru": "Открыть терминал",
    "id": "Buka terminal",
    "de": "Terminal öffnen",
-   "tr": "Terminali aç"
+   "tr": "Terminali aç",
+   "vi": "Mở terminal"
   },
   "Open the wardrobe": {
    "zh-Hans": "打开衣橱",
@@ -1676,7 +1804,8 @@
    "ru": "Открыть гардероб",
    "id": "Buka lemari",
    "de": "Garderobe öffnen",
-   "tr": "Gardırobu aç"
+   "tr": "Gardırobu aç",
+   "vi": "Mở tủ đồ"
   },
   "OpenAI-compatible": {
    "zh-Hans": "兼容 OpenAI",
@@ -1689,7 +1818,8 @@
    "ru": "Совместимый с OpenAI",
    "id": "Kompatibel OpenAI",
    "de": "OpenAI-kompatibel",
-   "tr": "OpenAI uyumlu"
+   "tr": "OpenAI uyumlu",
+   "vi": "Tương thích OpenAI"
   },
   "OpenAI-compatible server": {
    "zh-Hans": "兼容 OpenAI 的服务器",
@@ -1702,7 +1832,8 @@
    "ru": "Сервер, совместимый с OpenAI",
    "id": "Server kompatibel OpenAI",
    "de": "OpenAI-kompatibler Server",
-   "tr": "OpenAI uyumlu sunucu"
+   "tr": "OpenAI uyumlu sunucu",
+   "vi": "Server tương thích OpenAI"
   },
   "PDF": {
    "zh-Hans": "PDF",
@@ -1715,7 +1846,8 @@
    "ru": "PDF",
    "id": "PDF",
    "de": "PDF",
-   "tr": "PDF"
+   "tr": "PDF",
+   "vi": "PDF"
   },
   "Payment": {
    "zh-Hans": "付款",
@@ -1728,7 +1860,8 @@
    "ru": "Платёж",
    "id": "Pembayaran",
    "de": "Zahlung",
-   "tr": "Ödeme"
+   "tr": "Ödeme",
+   "vi": "Thanh toán"
   },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
@@ -1741,7 +1874,8 @@
    "ru": "Сначала выберите модель над полем чата.",
    "id": "Pilih model di atas kotak obrolan terlebih dahulu.",
    "de": "Wähle zuerst ein Modell über dem Chatfeld aus.",
-   "tr": "Önce sohbet kutusunun üstünden bir model seç."
+   "tr": "Önce sohbet kutusunun üstünden bir model seç.",
+   "vi": "Chọn một model phía trên ô chat trước."
   },
   "Pick a {name} model above the chat box.": {
    "zh-Hans": "请在聊天框上方选择一个 {name} 模型。",
@@ -1754,7 +1888,8 @@
    "ru": "Выберите модель {name} над полем чата.",
    "id": "Pilih model {name} di atas kotak obrolan.",
    "de": "Wähle ein {name}-Modell über dem Chatfeld aus.",
-   "tr": "Sohbet kutusunun üstünden bir {name} modeli seç."
+   "tr": "Sohbet kutusunun üstünden bir {name} modeli seç.",
+   "vi": "Chọn một model {name} phía trên ô chat."
   },
   "Pick up to {max} pills to show next to Mochi — {used}/{max} in use. Keys are stored in the {store}, never on disk.": {
    "zh-Hans": "最多选择 {max} 个标签显示在 Mochi 旁边 — 已用 {used}/{max}。密钥保存在 {store} 中，绝不写入磁盘。",
@@ -1767,7 +1902,8 @@
    "ru": "Выберите до {max} вкладок рядом с Mochi — занято {used}/{max}. Ключи хранятся в {store}, никогда на диске.",
    "id": "Pilih hingga {max} tab untuk ditampilkan di samping Mochi — {used}/{max} terpakai. Kunci disimpan di {store}, tidak pernah di disk.",
    "de": "Wähle bis zu {max} Pills neben Mochi — {used}/{max} belegt. Schlüssel werden im {store} gespeichert, niemals auf der Festplatte.",
-   "tr": "Mochi'nin yanında gösterilecek en fazla {max} araç seç — {used}/{max} kullanımda. Anahtarlar {store} içinde saklanır, diske yazılmaz."
+   "tr": "Mochi'nin yanında gösterilecek en fazla {max} araç seç — {used}/{max} kullanımda. Anahtarlar {store} içinde saklanır, diske yazılmaz.",
+   "vi": "Chọn tối đa {max} pill để hiện cạnh Mochi — đang dùng {used}/{max}. Khóa được lưu trong {store}, không bao giờ trên đĩa."
   },
   "Press keys…": {
    "zh-Hans": "请按键…",
@@ -1780,7 +1916,8 @@
    "ru": "Нажмите клавиши…",
    "id": "Tekan tombol…",
    "de": "Tasten drücken…",
-   "tr": "Tuşlara bas…"
+   "tr": "Tuşlara bas…",
+   "vi": "Nhấn phím…"
   },
   "Previous pill": {
    "zh-Hans": "上一个标签",
@@ -1793,7 +1930,8 @@
    "ru": "Предыдущая вкладка",
    "id": "Tab sebelumnya",
    "de": "Vorherige Pill",
-   "tr": "Önceki araç"
+   "tr": "Önceki araç",
+   "vi": "Pill trước"
   },
   "Questions": {
    "zh-Hans": "问题",
@@ -1806,7 +1944,8 @@
    "ru": "Вопросы",
    "id": "Pertanyaan",
    "de": "Fragen",
-   "tr": "Sorular"
+   "tr": "Sorular",
+   "vi": "Câu hỏi"
   },
   "Ready": {
    "zh-Hans": "就绪",
@@ -1819,7 +1958,8 @@
    "ru": "Готово",
    "id": "Siap",
    "de": "Bereit",
-   "tr": "Hazır"
+   "tr": "Hazır",
+   "vi": "Sẵn sàng"
   },
   "Reinstall hooks…": {
    "zh-Hans": "重新安装 hooks…",
@@ -1832,7 +1972,8 @@
    "ru": "Переустановить хуки…",
    "id": "Pasang ulang hooks…",
    "de": "Hooks neu installieren…",
-   "tr": "Hook'ları yeniden kur…"
+   "tr": "Hook'ları yeniden kur…",
+   "vi": "Cài lại hook…"
   },
   "Reinstall…": {
    "zh-Hans": "重新安装…",
@@ -1845,7 +1986,8 @@
    "ru": "Переустановить…",
    "id": "Pasang ulang…",
    "de": "Neu installieren…",
-   "tr": "Yeniden kur…"
+   "tr": "Yeniden kur…",
+   "vi": "Cài lại…"
   },
   "Relay": {
    "zh-Hans": "中继",
@@ -1858,7 +2000,8 @@
    "ru": "Ретранслятор",
    "id": "Relay",
    "de": "Relay",
-   "tr": "Aracı"
+   "tr": "Aracı",
+   "vi": "Relay"
   },
   "Repositories": {
    "zh-Hans": "仓库",
@@ -1871,7 +2014,8 @@
    "ru": "Репозитории",
    "id": "Repositori",
    "de": "Repositorys",
-   "tr": "Depolar"
+   "tr": "Depolar",
+   "vi": "Kho mã"
   },
   "Reset to defaults": {
    "zh-Hans": "恢复默认",
@@ -1884,7 +2028,8 @@
    "ru": "Сбросить по умолчанию",
    "id": "Kembalikan ke bawaan",
    "de": "Auf Standard zurücksetzen",
-   "tr": "Varsayılana sıfırla"
+   "tr": "Varsayılana sıfırla",
+   "vi": "Đặt lại về mặc định"
   },
   "Resets": {
    "zh-Hans": "重置",
@@ -1897,7 +2042,8 @@
    "ru": "Сбросы",
    "id": "Reset",
    "de": "Zurücksetzungen",
-   "tr": "Sıfırlama hakları"
+   "tr": "Sıfırlama hakları",
+   "vi": "Số lần đặt lại"
   },
   "Restart Amp to load the plugin.": {
    "zh-Hans": "重启 Amp 以加载插件。",
@@ -1910,7 +2056,8 @@
    "ru": "Перезапустите Amp, чтобы загрузить плагин.",
    "id": "Mulai ulang Amp untuk memuat plugin.",
    "de": "Starte Amp neu, um das Plugin zu laden.",
-   "tr": "Eklentiyi yüklemek için Amp'i yeniden başlat."
+   "tr": "Eklentiyi yüklemek için Amp'i yeniden başlat.",
+   "vi": "Khởi động lại Amp để tải plugin."
   },
   "Restart Cursor to pick the hooks up.": {
    "zh-Hans": "重启 Cursor 即可启用 hooks。",
@@ -1923,7 +2070,8 @@
    "ru": "Перезапустите Cursor, чтобы хуки заработали.",
    "id": "Mulai ulang Cursor agar hooks dimuat.",
    "de": "Starte Cursor neu, um die Hooks zu aktivieren.",
-   "tr": "Hook'ları kullanmak için Cursor'ı yeniden başlat."
+   "tr": "Hook'ları kullanmak için Cursor'ı yeniden başlat.",
+   "vi": "Khởi động lại Cursor để hook được nhận."
   },
   "Restart OpenCode to load the plugin.": {
    "zh-Hans": "重启 OpenCode 以加载插件。",
@@ -1936,7 +2084,8 @@
    "ru": "Перезапустите OpenCode, чтобы загрузить плагин.",
    "id": "Mulai ulang OpenCode untuk memuat plugin.",
    "de": "Starte OpenCode neu, um das Plugin zu laden.",
-   "tr": "Eklentiyi yüklemek için OpenCode'u yeniden başlat."
+   "tr": "Eklentiyi yüklemek için OpenCode'u yeniden başlat.",
+   "vi": "Khởi động lại OpenCode để tải plugin."
   },
   "Result": {
    "zh-Hans": "结果",
@@ -1949,7 +2098,8 @@
    "ru": "Результат",
    "id": "Hasil",
    "de": "Ergebnis",
-   "tr": "Sonuç"
+   "tr": "Sonuç",
+   "vi": "Kết quả"
   },
   "Saturday": {
    "zh-Hans": "星期六",
@@ -1962,7 +2112,8 @@
    "ru": "Суббота",
    "id": "Sabtu",
    "de": "Samstag",
-   "tr": "Cumartesi"
+   "tr": "Cumartesi",
+   "vi": "Thứ Bảy"
   },
   "Save image": {
    "zh-Hans": "保存图片",
@@ -1975,7 +2126,8 @@
    "ru": "Сохранить изображение",
    "id": "Simpan gambar",
    "de": "Bild speichern",
-   "tr": "Görseli kaydet"
+   "tr": "Görseli kaydet",
+   "vi": "Lưu ảnh"
   },
   "Save key": {
    "zh-Hans": "保存密钥",
@@ -1988,7 +2140,8 @@
    "ru": "Сохранить ключ",
    "id": "Simpan kunci",
    "de": "Schlüssel speichern",
-   "tr": "Anahtarı kaydet"
+   "tr": "Anahtarı kaydet",
+   "vi": "Lưu khóa"
   },
   "Saved as {name}": {
    "zh-Hans": "已保存为 {name}",
@@ -2001,7 +2154,8 @@
    "ru": "Сохранено как {name}",
    "id": "Disimpan sebagai {name}",
    "de": "Als {name} gespeichert",
-   "tr": "{name} olarak kaydedildi"
+   "tr": "{name} olarak kaydedildi",
+   "vi": "Đã lưu thành {name}"
   },
   "Saved. It never touches disk.": {
    "zh-Hans": "已保存。它从不写入磁盘。",
@@ -2014,7 +2168,8 @@
    "ru": "Сохранено. Ключ никогда не попадает на диск.",
    "id": "Tersimpan. Kunci tidak pernah ditulis ke disk.",
    "de": "Gespeichert. Wird niemals auf die Festplatte geschrieben.",
-   "tr": "Kaydedildi. Diske hiçbir zaman yazılmaz."
+   "tr": "Kaydedildi. Diske hiçbir zaman yazılmaz.",
+   "vi": "Đã lưu. Không bao giờ ghi lên đĩa."
   },
   "Saving…": {
    "zh-Hans": "正在保存…",
@@ -2027,7 +2182,8 @@
    "ru": "Сохранение…",
    "id": "Menyimpan…",
    "de": "Wird gespeichert…",
-   "tr": "Kaydediliyor…"
+   "tr": "Kaydediliyor…",
+   "vi": "Đang lưu…"
   },
   "Secret key": {
    "zh-Hans": "私密密钥",
@@ -2040,7 +2196,8 @@
    "ru": "Секретный ключ",
    "id": "Kunci rahasia",
    "de": "Geheimer Schlüssel",
-   "tr": "Gizli anahtar"
+   "tr": "Gizli anahtar",
+   "vi": "Khóa bí mật"
   },
   "Send Mochi to the desktop": {
    "zh-Hans": "把 Mochi 送到桌面",
@@ -2053,7 +2210,8 @@
    "ru": "Отправить Mochi на рабочий стол",
    "id": "Kirim Mochi ke desktop",
    "de": "Mochi auf den Desktop schicken",
-   "tr": "Mochi'yi masaüstüne taşı"
+   "tr": "Mochi'yi masaüstüne taşı",
+   "vi": "Đưa Mochi ra màn hình"
   },
   "Send the message": {
    "zh-Hans": "发送消息",
@@ -2066,7 +2224,8 @@
    "ru": "Отправить сообщение",
    "id": "Kirim pesan",
    "de": "Nachricht senden",
-   "tr": "Mesajı gönder"
+   "tr": "Mesajı gönder",
+   "vi": "Gửi tin nhắn"
   },
   "Sending by email isn't in this version.": {
    "zh-Hans": "此版本暂不支持通过邮件发送。",
@@ -2079,7 +2238,8 @@
    "ru": "Отправки по почте в этой версии нет.",
    "id": "Mengirim lewat email belum ada di versi ini.",
    "de": "Der E-Mail-Versand ist in dieser Version nicht verfügbar.",
-   "tr": "Bu sürümde e-postayla gönderme yok."
+   "tr": "Bu sürümde e-postayla gönderme yok.",
+   "vi": "Gửi qua email chưa có trong phiên bản này."
   },
   "Sessions — approvals stay in the agent": {
    "zh-Hans": "会话 — 审批仍在代理中进行",
@@ -2092,7 +2252,8 @@
    "ru": "Сессии — подтверждения остаются в агенте",
    "id": "Sesi — persetujuan tetap di agen",
    "de": "Sitzungen — Genehmigungen bleiben beim Agenten",
-   "tr": "Oturumlar — onaylar ajanda kalır"
+   "tr": "Oturumlar — onaylar ajanda kalır",
+   "vi": "Phiên — phê duyệt vẫn ở trong agent"
   },
   "Sessions, and Allow / Deny from the island": {
    "zh-Hans": "会话，以及在岛中允许 / 拒绝",
@@ -2105,7 +2266,8 @@
    "ru": "Сессии и «Разрешить / Отклонить» из острова",
    "id": "Sesi, dan Izinkan / Tolak dari pulau",
    "de": "Sitzungen und Zulassen / Ablehnen aus der Insel",
-   "tr": "Oturumlar ve adadan İzin ver / Reddet"
+   "tr": "Oturumlar ve adadan İzin ver / Reddet",
+   "vi": "Phiên, và Cho phép / Từ chối từ island"
   },
   "Share your week": {
    "zh-Hans": "分享你的一周",
@@ -2118,7 +2280,8 @@
    "ru": "Поделитесь своей неделей",
    "id": "Bagikan minggu Anda",
    "de": "Deine Woche teilen",
-   "tr": "Haftanı paylaş"
+   "tr": "Haftanı paylaş",
+   "vi": "Chia sẻ tuần của bạn"
   },
   "Show in folder": {
    "zh-Hans": "在文件夹中显示",
@@ -2131,7 +2294,8 @@
    "ru": "Показать в папке",
    "id": "Tampilkan di folder",
    "de": "Im Ordner anzeigen",
-   "tr": "Klasörde göster"
+   "tr": "Klasörde göster",
+   "vi": "Hiện trong thư mục"
   },
   "Show other coding agents in the island. Coucou adds its entries to each agent's own config: you see the exact change and where the backup goes before anything is written, and uninstalling removes only what Coucou added.": {
    "zh-Hans": "在岛中显示其他编程代理。Coucou 会把自己的条目添加到各代理的配置中：写入之前，你会看到确切的改动和备份位置；卸载只会移除 Coucou 添加的内容。",
@@ -2144,7 +2308,8 @@
    "ru": "Показывайте другие агенты для кода в острове. Coucou добавляет свои записи в конфигурацию каждого агента: до любой записи вы видите точное изменение и куда пойдёт резервная копия, а удаление убирает только то, что добавил Coucou.",
    "id": "Tampilkan agen coding lain di pulau. Coucou menambahkan entrinya ke konfigurasi masing-masing agen: Anda melihat perubahan persisnya dan lokasi cadangan sebelum apa pun ditulis, dan mencopot pemasangan hanya menghapus yang ditambahkan Coucou.",
    "de": "Zeige weitere Programmieragenten in der Insel. Coucou ergänzt Einträge in der jeweiligen Agentenkonfiguration: Du siehst die genaue Änderung und den Backup-Pfad, bevor etwas geschrieben wird. Beim Deinstallieren wird nur entfernt, was Coucou hinzugefügt hat.",
-   "tr": "Diğer kodlama ajanlarını adada göster. Coucou kendi girdilerini her ajanın yapılandırmasına ekler: herhangi bir şey yazılmadan önce tam değişikliği ve yedeğin konumunu görürsün. Kaldırıldığında yalnızca Coucou'nun ekledikleri silinir."
+   "tr": "Diğer kodlama ajanlarını adada göster. Coucou kendi girdilerini her ajanın yapılandırmasına ekler: herhangi bir şey yazılmadan önce tam değişikliği ve yedeğin konumunu görürsün. Kaldırıldığında yalnızca Coucou'nun ekledikleri silinir.",
+   "vi": "Hiện các agent lập trình khác trong island. Coucou thêm các mục của nó vào config riêng của từng agent: bạn thấy thay đổi chính xác và vị trí bản sao lưu trước khi có gì được ghi, và gỡ cài đặt chỉ xóa những gì Coucou đã thêm."
   },
   "Shows your Claude plan usage (5-hour and weekly limits) in the island's header. Coucou adds a status line relay in ~/.claude/settings.json. If you already have a status line, it keeps working as before. Pro and Max plans only.": {
    "zh-Hans": "在岛的顶栏显示你的 Claude 套餐用量（5 小时和每周限额）。Coucou 会在 ~/.claude/settings.json 中添加一个状态栏中继。如果你已有状态栏，它会照常工作。仅限 Pro 和 Max 套餐。",
@@ -2157,7 +2322,8 @@
    "ru": "Показывает использование тарифа Claude (лимиты на 5 часов и на неделю) в заголовке острова. Coucou добавляет ретранслятор строки состояния в ~/.claude/settings.json. Если у вас уже есть строка состояния, она работает как прежде. Только тарифы Pro и Max.",
    "id": "Menampilkan pemakaian paket Claude Anda (batas 5 jam dan mingguan) di header pulau. Coucou menambahkan relay baris status di ~/.claude/settings.json. Jika Anda sudah punya baris status, baris itu tetap berjalan seperti biasa. Khusus paket Pro dan Max.",
    "de": "Zeigt deine Claude-Tarifnutzung (5-Stunden- und Wochenlimits) im Insel-Kopfbereich. Coucou ergänzt einen Statuszeilen-Relay in ~/.claude/settings.json. Eine bestehende Statuszeile funktioniert wie bisher. Nur für Pro- und Max-Tarife.",
-   "tr": "Claude plan kullanımını (5 saatlik ve haftalık sınırlar) adanın başlığında gösterir. Coucou, ~/.claude/settings.json içine bir durum satırı aracısı ekler. Mevcut durum satırın varsa eskisi gibi çalışmaya devam eder. Yalnızca Pro ve Max planları için."
+   "tr": "Claude plan kullanımını (5 saatlik ve haftalık sınırlar) adanın başlığında gösterir. Coucou, ~/.claude/settings.json içine bir durum satırı aracısı ekler. Mevcut durum satırın varsa eskisi gibi çalışmaya devam eder. Yalnızca Pro ve Max planları için.",
+   "vi": "Hiện mức dùng gói Claude (giới hạn 5 giờ và hàng tuần) ở đầu island. Coucou thêm một relay status line vào ~/.claude/settings.json. Nếu bạn đã có status line, nó vẫn hoạt động như cũ. Chỉ dành cho gói Pro và Max."
   },
   "Shows your Codex plan usage (weekly limit and free resets left) in the island's header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.": {
    "zh-Hans": "在岛的顶栏显示你的 Codex 套餐用量（每周限额和剩余的免费重置次数）。标签显示时，Coucou 会询问 Codex CLI（codex app-server），不会安装任何东西。Codex 必须已用 ChatGPT 登录。",
@@ -2170,7 +2336,8 @@
    "ru": "Показывает использование тарифа Codex (недельный лимит и оставшиеся бесплатные сбросы) в заголовке острова. Coucou спрашивает Codex CLI (codex app-server), когда видна вкладка; ничего не устанавливается. В Codex нужно войти через ChatGPT.",
    "id": "Menampilkan pemakaian paket Codex Anda (batas mingguan dan sisa reset gratis) di header pulau. Coucou menanyakan Codex CLI (codex app-server) saat tab tampil; tidak ada yang dipasang. Codex harus masuk dengan ChatGPT.",
    "de": "Zeigt deine Codex-Tarifnutzung (Wochenlimit und verbleibende kostenlose Zurücksetzungen) im Insel-Kopfbereich. Coucou fragt die Codex CLI (codex app-server) ab, wenn die Pill angezeigt wird; es wird nichts installiert. Codex muss mit ChatGPT angemeldet sein.",
-   "tr": "Codex plan kullanımını (haftalık sınır ve kalan ücretsiz sıfırlama hakları) adanın başlığında gösterir. Araç göründüğünde Coucou, Codex CLI'a (codex app-server) sorgu gönderir; hiçbir şey kurulmaz. Codex'te ChatGPT ile oturum açılmış olmalı."
+   "tr": "Codex plan kullanımını (haftalık sınır ve kalan ücretsiz sıfırlama hakları) adanın başlığında gösterir. Araç göründüğünde Coucou, Codex CLI'a (codex app-server) sorgu gönderir; hiçbir şey kurulmaz. Codex'te ChatGPT ile oturum açılmış olmalı.",
+   "vi": "Hiện mức dùng gói Codex (giới hạn hàng tuần và số lần đặt lại miễn phí còn lại) ở đầu island. Coucou hỏi Codex CLI (codex app-server) khi pill hiện; không cài gì cả. Codex phải đăng nhập bằng ChatGPT."
   },
   "Start a new Antigravity conversation to pick the hooks up.": {
    "zh-Hans": "开启新的 Antigravity 对话即可启用 hooks。",
@@ -2183,7 +2350,8 @@
    "ru": "Начните новый разговор в Antigravity, чтобы хуки заработали.",
    "id": "Mulai percakapan Antigravity baru agar hooks dimuat.",
    "de": "Starte ein neues Antigravity-Gespräch, um die Hooks zu aktivieren.",
-   "tr": "Hook'ları kullanmak için yeni bir Antigravity sohbeti başlat."
+   "tr": "Hook'ları kullanmak için yeni bir Antigravity sohbeti başlat.",
+   "vi": "Bắt đầu một hội thoại Antigravity mới để hook được nhận."
   },
   "Start a new Copilot CLI session to pick the hooks up.": {
    "zh-Hans": "开启新的 Copilot CLI 会话即可启用 hooks。",
@@ -2196,7 +2364,8 @@
    "ru": "Начните новую сессию Copilot CLI, чтобы хуки заработали.",
    "id": "Mulai sesi Copilot CLI baru agar hooks dimuat.",
    "de": "Starte eine neue Copilot CLI-Sitzung, um die Hooks zu aktivieren.",
-   "tr": "Hook'ları kullanmak için yeni bir Copilot CLI oturumu başlat."
+   "tr": "Hook'ları kullanmak için yeni bir Copilot CLI oturumu başlat.",
+   "vi": "Bắt đầu một phiên Copilot CLI mới để hook được nhận."
   },
   "Start a new Gemini CLI session to pick the hooks up.": {
    "zh-Hans": "开启新的 Gemini CLI 会话即可启用 hooks。",
@@ -2209,7 +2378,8 @@
    "ru": "Начните новую сессию Gemini CLI, чтобы хуки заработали.",
    "id": "Mulai sesi Gemini CLI baru agar hooks dimuat.",
    "de": "Starte eine neue Gemini CLI-Sitzung, um die Hooks zu aktivieren.",
-   "tr": "Hook'ları kullanmak için yeni bir Gemini CLI oturumu başlat."
+   "tr": "Hook'ları kullanmak için yeni bir Gemini CLI oturumu başlat.",
+   "vi": "Bắt đầu một phiên Gemini CLI mới để hook được nhận."
   },
   "Start a new Muse Code session to pick the hooks up.": {
    "zh-Hans": "开启新的 Muse Code 会话即可启用 hooks。",
@@ -2222,7 +2392,8 @@
    "ru": "Начните новую сессию Muse Code, чтобы хуки заработали.",
    "id": "Mulai sesi Muse Code baru agar hooks dimuat.",
    "de": "Starte eine neue Muse Code-Sitzung, um die Hooks zu aktivieren.",
-   "tr": "Hook'ları kullanmak için yeni bir Muse Code oturumu başlat."
+   "tr": "Hook'ları kullanmak için yeni bir Muse Code oturumu başlat.",
+   "vi": "Bắt đầu một phiên Muse Code mới để hook được nhận."
   },
   "Start a new chat": {
    "zh-Hans": "开始新聊天",
@@ -2235,7 +2406,8 @@
    "ru": "Начать новый чат",
    "id": "Mulai obrolan baru",
    "de": "Neuen Chat starten",
-   "tr": "Yeni sohbet başlat"
+   "tr": "Yeni sohbet başlat",
+   "vi": "Bắt đầu chat mới"
   },
   "Sunday": {
    "zh-Hans": "星期日",
@@ -2248,7 +2420,8 @@
    "ru": "Воскресенье",
    "id": "Minggu",
    "de": "Sonntag",
-   "tr": "Pazar"
+   "tr": "Pazar",
+   "vi": "Chủ Nhật"
   },
   "Switch provider or model": {
    "zh-Hans": "切换服务商或模型",
@@ -2261,7 +2434,8 @@
    "ru": "Сменить провайдера или модель",
    "id": "Ganti penyedia atau model",
    "de": "Anbieter oder Modell wechseln",
-   "tr": "Sağlayıcı veya model değiştir"
+   "tr": "Sağlayıcı veya model değiştir",
+   "vi": "Đổi nhà cung cấp hoặc model"
   },
   "That key can't be used in a shortcut.": {
    "zh-Hans": "这个键不能用于快捷键。",
@@ -2274,7 +2448,8 @@
    "ru": "Эту клавишу нельзя использовать в сочетании.",
    "id": "Tombol itu tidak dapat dipakai dalam pintasan.",
    "de": "Diese Taste kann nicht für eine Tastenkombination verwendet werden.",
-   "tr": "Bu tuş kısayolda kullanılamaz."
+   "tr": "Bu tuş kısayolda kullanılamaz.",
+   "vi": "Khóa đó không dùng được trong phím tắt."
   },
   "The address must start with http:// or https://.": {
    "zh-Hans": "地址必须以 http:// 或 https:// 开头。",
@@ -2287,7 +2462,8 @@
    "ru": "Адрес должен начинаться с http:// или https://.",
    "id": "Alamat harus diawali http:// atau https://.",
    "de": "Die Adresse muss mit http:// oder https:// beginnen.",
-   "tr": "Adres http:// veya https:// ile başlamalı."
+   "tr": "Adres http:// veya https:// ile başlamalı.",
+   "vi": "Địa chỉ phải bắt đầu bằng http:// hoặc https://."
   },
   "The file is removed.": {
    "zh-Hans": "该文件将被删除。",
@@ -2300,7 +2476,8 @@
    "ru": "Файл удаляется.",
    "id": "File dihapus.",
    "de": "Die Datei wurde entfernt.",
-   "tr": "Dosya kaldırıldı."
+   "tr": "Dosya kaldırıldı.",
+   "vi": "Tệp sẽ bị xóa."
   },
   "The image could not be read.": {
    "zh-Hans": "无法读取图片。",
@@ -2313,7 +2490,8 @@
    "ru": "Не удалось прочитать изображение.",
    "id": "Gambar tidak dapat dibaca.",
    "de": "Das Bild konnte nicht gelesen werden.",
-   "tr": "Görsel okunamadı."
+   "tr": "Görsel okunamadı.",
+   "vi": "Không đọc được ảnh."
   },
   "The image is too large.": {
    "zh-Hans": "图片过大。",
@@ -2326,7 +2504,8 @@
    "ru": "Изображение слишком большое.",
    "id": "Gambar terlalu besar.",
    "de": "Das Bild ist zu groß.",
-   "tr": "Görsel çok büyük."
+   "tr": "Görsel çok büyük.",
+   "vi": "Ảnh quá lớn."
   },
   "The preview is out of date. Nothing was written — review the new diff.": {
    "zh-Hans": "预览已过期。未写入任何内容 — 请查看新的差异。",
@@ -2339,7 +2518,8 @@
    "ru": "Предпросмотр устарел. Ничего не записано — проверьте новый diff.",
    "id": "Pratinjau sudah usang. Tidak ada yang ditulis — tinjau diff yang baru.",
    "de": "Die Vorschau ist veraltet. Nichts wurde geschrieben — prüfe den neuen Diff.",
-   "tr": "Önizleme güncel değil. Hiçbir şey yazılmadı — yeni değişiklikleri incele."
+   "tr": "Önizleme güncel değil. Hiçbir şey yazılmadı — yeni değişiklikleri incele.",
+   "vi": "Bản xem trước đã cũ. Không có gì được ghi — xem lại diff mới."
   },
   "The relay isn't installed yet.": {
    "zh-Hans": "中继尚未安装。",
@@ -2352,7 +2532,8 @@
    "ru": "Ретранслятор ещё не установлен.",
    "id": "Relay belum terpasang.",
    "de": "Der Relay ist noch nicht installiert.",
-   "tr": "Aracı henüz kurulu değil."
+   "tr": "Aracı henüz kurulu değil.",
+   "vi": "Relay chưa được cài."
   },
   "The relay isn't installed yet. Restart Coucou.": {
    "zh-Hans": "中继尚未安装。请重启 Coucou。",
@@ -2365,7 +2546,8 @@
    "ru": "Ретранслятор ещё не установлен. Перезапустите Coucou.",
    "id": "Relay belum terpasang. Mulai ulang Coucou.",
    "de": "Der Relay ist noch nicht installiert. Starte Coucou neu.",
-   "tr": "Aracı henüz kurulu değil. Coucou'yu yeniden başlat."
+   "tr": "Aracı henüz kurulu değil. Coucou'yu yeniden başlat.",
+   "vi": "Relay chưa được cài. Khởi động lại Coucou."
   },
   "The server refused the key. Check it, then connect again.": {
    "zh-Hans": "服务器拒绝了该密钥。请检查后重新连接。",
@@ -2378,7 +2560,8 @@
    "ru": "Сервер отклонил ключ. Проверьте его и подключитесь снова.",
    "id": "Server menolak kunci. Periksa, lalu hubungkan lagi.",
    "de": "Der Server hat den Schlüssel abgelehnt. Prüfe ihn und verbinde dich erneut.",
-   "tr": "Sunucu anahtarı reddetti. Kontrol edip tekrar bağlan."
+   "tr": "Sunucu anahtarı reddetti. Kontrol edip tekrar bağlan.",
+   "vi": "Server từ chối khóa. Kiểm tra lại rồi kết nối lại."
   },
   "The server's answer is too large.": {
    "zh-Hans": "服务器的回复过大。",
@@ -2391,7 +2574,8 @@
    "ru": "Ответ сервера слишком большой.",
    "id": "Jawaban server terlalu besar.",
    "de": "Die Serverantwort ist zu groß.",
-   "tr": "Sunucunun yanıtı çok büyük."
+   "tr": "Sunucunun yanıtı çok büyük.",
+   "vi": "Phản hồi của server quá lớn."
   },
   "This address is another machine, over plain http: what you ask travels unencrypted.": {
    "zh-Hans": "这个地址是另一台机器，且使用明文 http：你的提问会以未加密的形式传输。",
@@ -2404,7 +2588,8 @@
    "ru": "Этот адрес — другой компьютер, по обычному http: ваши запросы передаются без шифрования.",
    "id": "Alamat ini adalah mesin lain, melalui http biasa: pertanyaan Anda dikirim tanpa enkripsi.",
    "de": "Diese Adresse verweist auf einen anderen Computer und verwendet unverschlüsseltes HTTP: Deine Anfragen werden unverschlüsselt übertragen.",
-   "tr": "Bu adres başka bir bilgisayara ait ve düz http kullanıyor: soruların şifrelenmeden iletilir."
+   "tr": "Bu adres başka bir bilgisayara ait ve düz http kullanıyor: soruların şifrelenmeden iletilir.",
+   "vi": "Địa chỉ này là một máy khác, qua http thường: nội dung bạn hỏi sẽ truyền không mã hóa."
   },
   "This address is another machine: what you ask is sent to it.": {
    "zh-Hans": "这个地址是另一台机器：你的提问会发送给它。",
@@ -2417,7 +2602,8 @@
    "ru": "Этот адрес — другой компьютер: ваши запросы отправляются туда.",
    "id": "Alamat ini adalah mesin lain: pertanyaan Anda dikirim ke sana.",
    "de": "Diese Adresse verweist auf einen anderen Computer: Deine Anfragen werden dorthin gesendet.",
-   "tr": "Bu adres başka bir bilgisayara ait: soruların o bilgisayara gönderilir."
+   "tr": "Bu adres başka bir bilgisayara ait: soruların o bilgisayara gönderilir.",
+   "vi": "Địa chỉ này là một máy khác: nội dung bạn hỏi sẽ được gửi tới đó."
   },
   "This agent takes a plugin, not hook entries.": {
    "zh-Hans": "此代理使用插件，而不是 hook 条目。",
@@ -2430,7 +2616,8 @@
    "ru": "Этот агент использует плагин, а не записи хуков.",
    "id": "Agen ini memakai plugin, bukan entri hook.",
    "de": "Dieser Agent verwendet ein Plugin statt Hook-Einträgen.",
-   "tr": "Bu ajan hook girdileri yerine eklenti kullanır."
+   "tr": "Bu ajan hook girdileri yerine eklenti kullanır.",
+   "vi": "Agent này dùng plugin, không dùng mục hook."
   },
   "This is exactly what changes for {name}. Nothing else is touched.": {
    "zh-Hans": "这正是 {name} 将发生的改动。其他内容不会被触碰。",
@@ -2443,7 +2630,8 @@
    "ru": "Вот что именно изменится для {name}. Больше ничего не затрагивается.",
    "id": "Inilah persisnya yang berubah untuk {name}. Tidak ada yang lain disentuh.",
    "de": "Dies sind die genauen Änderungen für {name}. Alles andere bleibt unverändert.",
-   "tr": "{name} için yapılacak değişiklik tam olarak bu. Başka hiçbir şeye dokunulmaz."
+   "tr": "{name} için yapılacak değişiklik tam olarak bu. Başka hiçbir şeye dokunulmaz.",
+   "vi": "Đây là toàn bộ thay đổi dành cho {name}. Coucou không sửa bất kỳ mục nào khác."
   },
   "This is exactly what will change in your settings.json. Your own hooks are left untouched.": {
    "zh-Hans": "这正是你的 settings.json 将发生的改动。你自己的 hooks 不会被触碰。",
@@ -2456,7 +2644,8 @@
    "ru": "Вот что именно изменится в вашем settings.json. Ваши собственные хуки не затрагиваются.",
    "id": "Inilah persisnya yang akan berubah di settings.json Anda. Hooks milik Anda tidak disentuh.",
    "de": "Dies sind die genauen Änderungen in deiner settings.json. Deine eigenen Hooks bleiben unverändert.",
-   "tr": "settings.json dosyanda yapılacak değişiklik tam olarak bu. Kendi hook'ların korunur."
+   "tr": "settings.json dosyanda yapılacak değişiklik tam olarak bu. Kendi hook'ların korunur.",
+   "vi": "Đây chính xác là những gì sẽ thay đổi trong settings.json của bạn. Hook của riêng bạn được giữ nguyên."
   },
   "This is exactly what will change: only the status line. If you already have one it keeps working, Coucou's relay runs it for you.": {
    "zh-Hans": "这正是将发生的改动：只涉及状态栏。如果你已有状态栏，它会照常工作，由 Coucou 的中继替你运行。",
@@ -2469,7 +2658,8 @@
    "ru": "Вот что именно изменится: только строка состояния. Если она у вас уже есть, она продолжит работать — её запускает ретранслятор Coucou.",
    "id": "Inilah persisnya yang akan berubah: hanya baris status. Jika Anda sudah punya, baris itu tetap berjalan, relay Coucou menjalankannya untuk Anda.",
    "de": "Dies wird geändert: nur die Statuszeile. Eine vorhandene Statuszeile funktioniert weiterhin; Coucous Relay führt sie für dich aus.",
-   "tr": "Yapılacak değişiklik tam olarak bu: yalnızca durum satırı. Mevcut bir durum satırın varsa çalışmaya devam eder; Coucou'nun aracısı onu senin için çalıştırır."
+   "tr": "Yapılacak değişiklik tam olarak bu: yalnızca durum satırı. Mevcut bir durum satırın varsa çalışmaya devam eder; Coucou'nun aracısı onu senin için çalıştırır.",
+   "vi": "Đây chính xác là những gì sẽ thay đổi: chỉ status line. Nếu bạn đã có một cái, nó vẫn chạy, relay của Coucou sẽ chạy nó giúp bạn."
   },
   "This puts your previous status line back, or removes the entry if there was none.": {
    "zh-Hans": "这会恢复你之前的状态栏；如果之前没有，则移除该条目。",
@@ -2482,7 +2672,8 @@
    "ru": "Возвращается ваша прежняя строка состояния, а если её не было — запись удаляется.",
    "id": "Ini mengembalikan baris status Anda sebelumnya, atau menghapus entri jika sebelumnya tidak ada.",
    "de": "Stellt deine vorherige Statuszeile wieder her oder entfernt den Eintrag, falls es vorher keinen gab.",
-   "tr": "Önceki durum satırını geri yükler veya önceden yoksa girdiyi kaldırır."
+   "tr": "Önceki durum satırını geri yükler veya önceden yoksa girdiyi kaldırır.",
+   "vi": "Thao tác này khôi phục status line trước đó của bạn, hoặc gỡ mục đó nếu trước đây không có."
   },
   "This removes Coucou's entries only. Everything else stays.": {
    "zh-Hans": "这只会移除 Coucou 的条目，其余内容保持不变。",
@@ -2495,7 +2686,8 @@
    "ru": "Удаляются только записи Coucou. Всё остальное остаётся.",
    "id": "Ini hanya menghapus entri Coucou. Yang lain tetap ada.",
    "de": "Entfernt nur Coucous Einträge. Alles andere bleibt erhalten.",
-   "tr": "Yalnızca Coucou'nun girdilerini kaldırır. Diğer her şey korunur."
+   "tr": "Yalnızca Coucou'nun girdilerini kaldırır. Diğer her şey korunur.",
+   "vi": "Thao tác này chỉ gỡ các mục của Coucou. Mọi thứ khác giữ nguyên."
   },
   "This removes Coucou's entries only. Your own hooks are left untouched.": {
    "zh-Hans": "这只会移除 Coucou 的条目。你自己的 hooks 不会被触碰。",
@@ -2508,7 +2700,8 @@
    "ru": "Удаляются только записи Coucou. Ваши собственные хуки не затрагиваются.",
    "id": "Ini hanya menghapus entri Coucou. Hooks milik Anda tidak disentuh.",
    "de": "Entfernt nur Coucous Einträge. Deine eigenen Hooks bleiben unverändert.",
-   "tr": "Yalnızca Coucou'nun girdilerini kaldırır. Kendi hook'ların korunur."
+   "tr": "Yalnızca Coucou'nun girdilerini kaldırır. Kendi hook'ların korunur.",
+   "vi": "Thao tác này chỉ gỡ các mục của Coucou. Hook của riêng bạn được giữ nguyên."
   },
   "Thursday": {
    "zh-Hans": "星期四",
@@ -2521,7 +2714,8 @@
    "ru": "Четверг",
    "id": "Kamis",
    "de": "Donnerstag",
-   "tr": "Perşembe"
+   "tr": "Perşembe",
+   "vi": "Thứ Năm"
   },
   "Token lacks access": {
    "zh-Hans": "令牌没有访问权限",
@@ -2534,7 +2728,8 @@
    "ru": "У токена нет доступа",
    "id": "Token tidak punya akses",
    "de": "Token hat keinen Zugriff",
-   "tr": "Token'ın erişimi yok"
+   "tr": "Token'ın erişimi yok",
+   "vi": "Token thiếu quyền truy cập"
   },
   "Token lacks the needed scope": {
    "zh-Hans": "令牌缺少所需的权限范围",
@@ -2547,7 +2742,8 @@
    "ru": "У токена нет нужной области доступа",
    "id": "Token tidak memiliki cakupan yang diperlukan",
    "de": "Token fehlt die erforderliche Berechtigung",
-   "tr": "Token gerekli kapsama sahip değil"
+   "tr": "Token gerekli kapsama sahip değil",
+   "vi": "Token thiếu scope cần thiết"
   },
   "Total stars": {
    "zh-Hans": "星标总数",
@@ -2560,7 +2756,8 @@
    "ru": "Всего звёзд",
    "id": "Total bintang",
    "de": "Sterne insgesamt",
-   "tr": "Toplam yıldız"
+   "tr": "Toplam yıldız",
+   "vi": "Tổng số sao"
   },
   "Tuesday": {
    "zh-Hans": "星期二",
@@ -2573,7 +2770,8 @@
    "ru": "Вторник",
    "id": "Selasa",
    "de": "Dienstag",
-   "tr": "Salı"
+   "tr": "Salı",
+   "vi": "Thứ Ba"
   },
   "Turn it on once with `hermes plugins enable coucou`, then start a new Hermes session.": {
    "zh-Hans": "先用 `hermes plugins enable coucou` 启用一次，然后开启新的 Hermes 会话。",
@@ -2586,7 +2784,8 @@
    "ru": "Включите его один раз командой `hermes plugins enable coucou`, затем начните новую сессию Hermes.",
    "id": "Aktifkan sekali dengan `hermes plugins enable coucou`, lalu mulai sesi Hermes baru.",
    "de": "Aktiviere es einmal mit `hermes plugins enable coucou` und starte dann eine neue Hermes-Sitzung.",
-   "tr": "Bir kez `hermes plugins enable coucou` ile etkinleştir, ardından yeni bir Hermes oturumu başlat."
+   "tr": "Bir kez `hermes plugins enable coucou` ile etkinleştir, ardından yeni bir Hermes oturumu başlat.",
+   "vi": "Bật một lần bằng `hermes plugins enable coucou`, rồi bắt đầu một phiên Hermes mới."
   },
   "Types “{char}”": {
    "zh-Hans": "输入“{char}”",
@@ -2599,7 +2798,8 @@
    "ru": "Вводит «{char}»",
    "id": "Mengetik “{char}”",
    "de": "Gibt „{char}“ ein",
-   "tr": "“{char}” yazıyor"
+   "tr": "“{char}” yazıyor",
+   "vi": "Gõ ra “{char}”"
   },
   "Unexpected API response.": {
    "zh-Hans": "API 返回了意外的响应。",
@@ -2612,7 +2812,8 @@
    "ru": "Неожиданный ответ API.",
    "id": "Respons API tak terduga.",
    "de": "Unerwartete API-Antwort.",
-   "tr": "Beklenmeyen API yanıtı."
+   "tr": "Beklenmeyen API yanıtı.",
+   "vi": "Phản hồi API bất ngờ."
   },
   "Uninstall hooks…": {
    "zh-Hans": "卸载 hooks…",
@@ -2625,7 +2826,8 @@
    "ru": "Удалить хуки…",
    "id": "Copot hooks…",
    "de": "Hooks deinstallieren…",
-   "tr": "Hook'ları kaldır…"
+   "tr": "Hook'ları kaldır…",
+   "vi": "Gỡ hook…"
   },
   "Uninstall relay…": {
    "zh-Hans": "卸载中继…",
@@ -2638,7 +2840,8 @@
    "ru": "Удалить ретранслятор…",
    "id": "Copot relay…",
    "de": "Relay deinstallieren…",
-   "tr": "Aracıyı kaldır…"
+   "tr": "Aracıyı kaldır…",
+   "vi": "Gỡ relay…"
   },
   "Uninstall…": {
    "zh-Hans": "卸载…",
@@ -2651,7 +2854,8 @@
    "ru": "Удалить…",
    "id": "Copot…",
    "de": "Deinstallieren…",
-   "tr": "Kaldır…"
+   "tr": "Kaldır…",
+   "vi": "Gỡ cài đặt…"
   },
   "Unknown agent \"{id}\".": {
    "zh-Hans": "未知代理“{id}”。",
@@ -2664,7 +2868,8 @@
    "ru": "Неизвестный агент «{id}».",
    "id": "Agen tidak dikenal “{id}”.",
    "de": "Unbekannter Agent \"{id}\".",
-   "tr": "Bilinmeyen ajan \"{id}\"."
+   "tr": "Bilinmeyen ajan \"{id}\".",
+   "vi": "Agent không xác định \"{id}\"."
   },
   "Untitled": {
    "zh-Hans": "无标题",
@@ -2677,7 +2882,8 @@
    "ru": "Без названия",
    "id": "Tanpa judul",
    "de": "Ohne Titel",
-   "tr": "Başlıksız"
+   "tr": "Başlıksız",
+   "vi": "Không tiêu đề"
   },
   "Use a secret key (sk_live_… not pk_live_…)": {
    "zh-Hans": "请使用私密密钥（sk_live_…，而不是 pk_live_…）",
@@ -2690,7 +2896,8 @@
    "ru": "Используйте секретный ключ (sk_live_…, а не pk_live_…)",
    "id": "Gunakan kunci rahasia (sk_live_…, bukan pk_live_…)",
    "de": "Verwende einen geheimen Schlüssel (sk_live_… statt pk_live_…)",
-   "tr": "Gizli anahtar kullan (pk_live_… yerine sk_live_…)"
+   "tr": "Gizli anahtar kullan (pk_live_… yerine sk_live_…)",
+   "vi": "Dùng khóa bí mật (sk_live_… không phải pk_live_…)"
   },
   "Use in chat": {
    "zh-Hans": "在聊天中使用",
@@ -2703,7 +2910,8 @@
    "ru": "Использовать в чате",
    "id": "Pakai di obrolan",
    "de": "Im Chat verwenden",
-   "tr": "Sohbette kullan"
+   "tr": "Sohbette kullan",
+   "vi": "Dùng trong chat"
   },
   "Used twice": {
    "zh-Hans": "重复使用",
@@ -2716,7 +2924,8 @@
    "ru": "Используется дважды",
    "id": "Dipakai dua kali",
    "de": "Doppelt belegt",
-   "tr": "İki kez kullanılmış"
+   "tr": "İki kez kullanılmış",
+   "vi": "Dùng hai lần"
   },
   "Wardrobe…": {
    "zh-Hans": "衣橱…",
@@ -2729,7 +2938,8 @@
    "ru": "Гардероб…",
    "id": "Lemari…",
    "de": "Garderobe…",
-   "tr": "Gardırop…"
+   "tr": "Gardırop…",
+   "vi": "Tủ đồ…"
   },
   "Warning: the key would be sent unencrypted (http://) to another machine. Use https://, or a server on this computer.": {
    "zh-Hans": "警告：密钥将以未加密的方式（http://）发送到另一台机器。请使用 https://，或本机上的服务器。",
@@ -2742,7 +2952,8 @@
    "ru": "Внимание: ключ будет отправлен без шифрования (http://) на другой компьютер. Используйте https:// или сервер на этом компьютере.",
    "id": "Peringatan: kunci akan dikirim tanpa enkripsi (http://) ke mesin lain. Gunakan https://, atau server di komputer ini.",
    "de": "Warnung: Der Schlüssel würde unverschlüsselt (http://) an einen anderen Computer gesendet. Verwende https:// oder einen Server auf diesem Computer.",
-   "tr": "Uyarı: anahtar başka bir bilgisayara şifrelenmeden (http://) gönderilir. https:// veya bu bilgisayardaki bir sunucuyu kullan."
+   "tr": "Uyarı: anahtar başka bir bilgisayara şifrelenmeden (http://) gönderilir. https:// veya bu bilgisayardaki bir sunucuyu kullan.",
+   "vi": "Cảnh báo: khóa sẽ được gửi không mã hóa (http://) tới một máy khác. Hãy dùng https://, hoặc một server trên máy này."
   },
   "Wednesday": {
    "zh-Hans": "星期三",
@@ -2755,7 +2966,8 @@
    "ru": "Среда",
    "id": "Rabu",
    "de": "Mittwoch",
-   "tr": "Çarşamba"
+   "tr": "Çarşamba",
+   "vi": "Thứ Tư"
   },
   "Work from any app. Click a shortcut to change it, then press the new keys — Esc cancels, Backspace removes it.": {
    "zh-Hans": "在任何应用中都可使用。点击某个快捷键即可修改，然后按下新的按键 — Esc 取消，Backspace 删除。",
@@ -2768,7 +2980,8 @@
    "ru": "Работают из любого приложения. Нажмите на сочетание, чтобы изменить его, затем нажмите новые клавиши — Esc отменяет, Backspace удаляет.",
    "id": "Berfungsi dari aplikasi apa pun. Klik pintasan untuk mengubahnya, lalu tekan tombol baru — Esc membatalkan, Backspace menghapusnya.",
    "de": "Arbeite in jeder App. Klicke auf eine Tastenkombination und drücke die neuen Tasten — Esc bricht ab, die Rücktaste entfernt sie.",
-   "tr": "Her uygulamada çalışır. Değiştirmek için bir kısayola tıkla, ardından yeni tuşlara bas — Esc iptal eder, Backspace kaldırır."
+   "tr": "Her uygulamada çalışır. Değiştirmek için bir kısayola tıkla, ardından yeni tuşlara bas — Esc iptal eder, Backspace kaldırır.",
+   "vi": "Dùng được từ mọi ứng dụng. Bấm một phím tắt để đổi, rồi nhấn phím mới — Esc hủy, Backspace gỡ bỏ."
   },
   "Workflow": {
    "zh-Hans": "工作流",
@@ -2781,7 +2994,8 @@
    "ru": "Сценарий",
    "id": "Alur kerja",
    "de": "Workflow",
-   "tr": "İş akışı"
+   "tr": "İş akışı",
+   "vi": "Workflow"
   },
   "Write to {path} failed: {error}": {
    "zh-Hans": "写入 {path} 失败：{error}",
@@ -2794,7 +3008,8 @@
    "ru": "Не удалось записать {path}: {error}",
    "id": "Gagal menulis ke {path}: {error}",
    "de": "Schreiben nach {path} fehlgeschlagen: {error}",
-   "tr": "{path} dosyasına yazılamadı: {error}"
+   "tr": "{path} dosyasına yazılamadı: {error}",
+   "vi": "Ghi vào {path} thất bại: {error}"
   },
   "Your Wayland desktop doesn't let apps listen for keys outside their own windows. Add the shortcuts in your system's keyboard settings instead, with these commands:": {
    "zh-Hans": "你的 Wayland 桌面不允许应用监听自身窗口之外的按键。请改为在系统的键盘设置中添加快捷键，使用以下命令：",
@@ -2807,7 +3022,8 @@
    "ru": "Ваш рабочий стол Wayland не позволяет приложениям слушать клавиши вне своих окон. Добавьте сочетания в настройках клавиатуры системы с такими командами:",
    "id": "Desktop Wayland Anda tidak mengizinkan aplikasi mendengarkan tombol di luar jendelanya sendiri. Tambahkan pintasan di pengaturan keyboard sistem Anda, dengan perintah berikut:",
    "de": "Dein Wayland-Desktop erlaubt Apps nicht, Tastendrücke außerhalb ihrer eigenen Fenster zu erkennen. Füge die Tastenkombinationen stattdessen mit diesen Befehlen in den Tastatureinstellungen deines Systems hinzu:",
-   "tr": "Wayland masaüstün, uygulamaların kendi pencereleri dışındaki tuşları dinlemesine izin vermiyor. Bunun yerine kısayolları sistemin klavye ayarlarından şu komutlarla ekle:"
+   "tr": "Wayland masaüstün, uygulamaların kendi pencereleri dışındaki tuşları dinlemesine izin vermiyor. Bunun yerine kısayolları sistemin klavye ayarlarından şu komutlarla ekle:",
+   "vi": "Môi trường Wayland không cho ứng dụng theo dõi phím bấm ngoài cửa sổ của mình. Hãy thêm các phím tắt trong phần cài đặt bàn phím của hệ thống bằng các lệnh sau:"
   },
   "Desktop: {keys}": {
    "zh-Hans": "桌面：{keys}",
@@ -2820,7 +3036,8 @@
    "ru": "Рабочий стол: {keys}",
    "id": "Desktop: {keys}",
    "de": "Desktop: {keys}",
-   "tr": "Masaüstü: {keys}"
+   "tr": "Masaüstü: {keys}",
+   "vi": "Desktop: {keys}"
   },
   "Not set by your desktop": {
    "zh-Hans": "桌面未设置",
@@ -2833,7 +3050,8 @@
    "ru": "Не назначено рабочим столом",
    "id": "Tidak diatur oleh desktop Anda",
    "de": "Nicht vom Desktop festgelegt",
-   "tr": "Masaüstün tarafından ayarlanmadı"
+   "tr": "Masaüstün tarafından ayarlanmadı",
+   "vi": "Môi trường desktop chưa thiết lập"
   },
   "These shortcuts are registered with your desktop. It may ask you to confirm them or to pick other keys; when it says which keys it uses, they show next to each shortcut.": {
    "zh-Hans": "这些快捷键已在你的桌面注册。桌面可能会请你确认，或选择其他按键；如果它告知所用的按键，会显示在每个快捷键旁边。",
@@ -2846,7 +3064,8 @@
    "ru": "Эти сочетания зарегистрированы в вашем рабочем столе. Он может попросить подтвердить их или выбрать другие клавиши; если он сообщает, какие клавиши использует, они показаны рядом с каждым сочетанием.",
    "id": "Pintasan ini terdaftar di desktop Anda. Desktop mungkin meminta Anda mengonfirmasinya atau memilih tombol lain; jika desktop menyebutkan tombol yang dipakainya, tombol itu tampil di samping setiap pintasan.",
    "de": "Diese Tastenkombinationen sind bei deinem Desktop registriert. Er kann dich bitten, sie zu bestätigen oder andere Tasten zu wählen. Sobald er die verwendeten Tasten meldet, erscheinen sie neben der jeweiligen Tastenkombination.",
-   "tr": "Bu kısayollar masaüstüne kaydedilir. Masaüstün bunları onaylamanı veya başka tuşlar seçmeni isteyebilir; kullandığı tuşları bildirdiğinde bunlar ilgili kısayolun yanında görünür."
+   "tr": "Bu kısayollar masaüstüne kaydedilir. Masaüstün bunları onaylamanı veya başka tuşlar seçmeni isteyebilir; kullandığı tuşları bildirdiğinde bunlar ilgili kısayolun yanında görünür.",
+   "vi": "Các phím tắt này đã được đăng ký với môi trường desktop. Hệ thống có thể yêu cầu xác nhận hoặc chọn tổ hợp phím khác; tổ hợp được dùng sẽ hiện bên cạnh từng phím tắt."
   },
   "Asking your desktop to register the shortcuts. It may show its own window to confirm them.": {
    "zh-Hans": "正在请求桌面注册这些快捷键。桌面可能会显示自己的窗口让你确认。",
@@ -2859,7 +3078,8 @@
    "ru": "Запрашиваем регистрацию сочетаний у рабочего стола. Он может показать своё окно для подтверждения.",
    "id": "Meminta desktop Anda mendaftarkan pintasan. Desktop mungkin menampilkan jendelanya sendiri untuk konfirmasi.",
    "de": "Der Desktop wird gebeten, die Tastenkombinationen zu registrieren. Möglicherweise zeigt er ein eigenes Bestätigungsfenster.",
-   "tr": "Masaüstünden kısayolları kaydetmesi isteniyor. Onaylamak için kendi penceresini gösterebilir."
+   "tr": "Masaüstünden kısayolları kaydetmesi isteniyor. Onaylamak için kendi penceresini gösterebilir.",
+   "vi": "Đang yêu cầu môi trường desktop đăng ký phím tắt. Hệ thống có thể mở cửa sổ xác nhận."
   },
   "If one doesn't work, you can also add it in your system's keyboard settings with these commands:": {
    "zh-Hans": "如果某个快捷键不起作用，也可以使用以下命令在系统的键盘设置中添加：",
@@ -2872,7 +3092,8 @@
    "ru": "Если какое-то не работает, его можно добавить и в настройках клавиатуры системы с такими командами:",
    "id": "Jika salah satunya tidak berfungsi, Anda juga bisa menambahkannya di pengaturan keyboard sistem dengan perintah berikut:",
    "de": "Falls eine nicht funktioniert, kannst du sie mit diesen Befehlen auch in den Tastatureinstellungen deines Systems hinzufügen:",
-   "tr": "Bir kısayol çalışmazsa sistemin klavye ayarlarından şu komutlarla da ekleyebilirsin:"
+   "tr": "Bir kısayol çalışmazsa sistemin klavye ayarlarından şu komutlarla da ekleyebilirsin:",
+   "vi": "Nếu một phím không hoạt động, bạn cũng có thể thêm nó trong cài đặt bàn phím của hệ thống bằng các lệnh sau:"
   },
   "all green": {
    "zh-Hans": "全部通过",
@@ -2885,7 +3106,8 @@
    "ru": "всё зелёное",
    "id": "semua hijau",
    "de": "alles erfolgreich",
-   "tr": "tümü başarılı"
+   "tr": "tümü başarılı",
+   "vi": "tất cả đều đạt"
   },
   "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.": {
    "zh-Hans": "coucou-hook.exe 尚未就位。请重启 Coucou；如果仍然失败，请用 `cargo build -p coucou-hook` 构建它。",
@@ -2898,7 +3120,8 @@
    "ru": "coucou-hook.exe ещё не на месте. Перезапустите Coucou; если не поможет, соберите его командой `cargo build -p coucou-hook`.",
    "id": "coucou-hook.exe belum ada di tempatnya. Mulai ulang Coucou; jika masih gagal, build dengan `cargo build -p coucou-hook`.",
    "de": "coucou-hook.exe ist noch nicht vorhanden. Starte Coucou neu; falls es weiterhin fehlschlägt, erstelle die Datei mit `cargo build -p coucou-hook`.",
-   "tr": "coucou-hook.exe henüz yerinde değil. Coucou'yu yeniden başlat; sorun sürerse `cargo build -p coucou-hook` ile derle."
+   "tr": "coucou-hook.exe henüz yerinde değil. Coucou'yu yeniden başlat; sorun sürerse `cargo build -p coucou-hook` ile derle.",
+   "vi": "coucou-hook.exe chưa có sẵn. Khởi động lại Coucou; nếu vẫn lỗi, build nó bằng `cargo build -p coucou-hook`."
   },
   "failing": {
    "zh-Hans": "失败",
@@ -2911,7 +3134,8 @@
    "ru": "с ошибками",
    "id": "gagal",
    "de": "fehlgeschlagen",
-   "tr": "başarısız"
+   "tr": "başarısız",
+   "vi": "không đạt"
   },
   "finished": {
    "zh-Hans": "已完成",
@@ -2924,7 +3148,8 @@
    "ru": "завершил",
    "id": "selesai",
    "de": "beendet",
-   "tr": "tamamlandı"
+   "tr": "tamamlandı",
+   "vi": "đã xong"
   },
   "installed": {
    "zh-Hans": "已安装",
@@ -2937,7 +3162,8 @@
    "ru": "установлен",
    "id": "terpasang",
    "de": "installiert",
-   "tr": "kurulu"
+   "tr": "kurulu",
+   "vi": "đã cài"
   },
   "is asking": {
    "zh-Hans": "在提问",
@@ -2950,7 +3176,8 @@
    "ru": "спрашивает",
    "id": "bertanya",
    "de": "fragt",
-   "tr": "soruyor"
+   "tr": "soruyor",
+   "vi": "đang hỏi"
   },
   "is asking ({index} of {total})": {
    "zh-Hans": "在提问（第 {index} 个，共 {total} 个）",
@@ -2963,7 +3190,8 @@
    "ru": "спрашивает ({index} из {total})",
    "id": "bertanya ({index} dari {total})",
    "de": "fragt ({index} von {total})",
-   "tr": "soruyor ({index} / {total})"
+   "tr": "soruyor ({index} / {total})",
+   "vi": "đang hỏi ({index} trên {total})"
   },
   "is asking a question": {
    "zh-Hans": "在提问",
@@ -2976,7 +3204,8 @@
    "ru": "задаёт вопрос",
    "id": "mengajukan pertanyaan",
    "de": "stellt eine Frage",
-   "tr": "soru soruyor"
+   "tr": "soru soruyor",
+   "vi": "đang đặt câu hỏi"
   },
   "lines": {
    "zh-Hans": "行",
@@ -2989,7 +3218,8 @@
    "ru": "строк",
    "id": "baris",
    "de": "Zeilen",
-   "tr": "satır"
+   "tr": "satır",
+   "vi": "dòng"
   },
   "no repos": {
    "zh-Hans": "没有仓库",
@@ -3002,7 +3232,8 @@
    "ru": "нет репозиториев",
    "id": "tidak ada repositori",
    "de": "keine Repositorys",
-   "tr": "depo yok"
+   "tr": "depo yok",
+   "vi": "không có kho mã"
   },
   "not installed": {
    "zh-Hans": "未安装",
@@ -3015,7 +3246,8 @@
    "ru": "не установлен",
    "id": "belum terpasang",
    "de": "nicht installiert",
-   "tr": "kurulu değil"
+   "tr": "kurulu değil",
+   "vi": "chưa cài"
   },
   "passing": {
    "zh-Hans": "通过",
@@ -3028,7 +3260,8 @@
    "ru": "успешно",
    "id": "lulus",
    "de": "erfolgreich",
-   "tr": "başarılı"
+   "tr": "başarılı",
+   "vi": "đạt"
   },
   "running": {
    "zh-Hans": "运行中",
@@ -3041,7 +3274,8 @@
    "ru": "выполняется",
    "id": "berjalan",
    "de": "läuft",
-   "tr": "çalışıyor"
+   "tr": "çalışıyor",
+   "vi": "đang chạy"
   },
   "seconds after you leave the island": {
    "zh-Hans": "鼠标离开岛后的秒数",
@@ -3054,7 +3288,8 @@
    "ru": "секунд после ухода с острова",
    "id": "detik setelah Anda meninggalkan pulau",
    "de": "Sekunden nach dem Verlassen der Insel",
-   "tr": "adadan ayrıldıktan sonraki saniye"
+   "tr": "adadan ayrıldıktan sonraki saniye",
+   "vi": "giây sau khi bạn rời island"
   },
   "settings.json: {what} has an unexpected type — Coucou has not touched it.": {
    "zh-Hans": "settings.json：{what} 的类型不符合预期 — Coucou 没有修改它。",
@@ -3067,7 +3302,8 @@
    "ru": "settings.json: у {what} неожиданный тип — Coucou его не трогал.",
    "id": "settings.json: {what} bertipe tak terduga — Coucou tidak menyentuhnya.",
    "de": "settings.json: {what} hat einen unerwarteten Typ — Coucou hat nichts verändert.",
-   "tr": "settings.json: {what} beklenmeyen bir türde — Coucou bunu değiştirmedi."
+   "tr": "settings.json: {what} beklenmeyen bir türde — Coucou bunu değiştirmedi.",
+   "vi": "settings.json: {what} có kiểu dữ liệu không hợp lệ — Coucou không thay đổi mục này."
   },
   "unknown": {
    "zh-Hans": "未知",
@@ -3080,7 +3316,8 @@
    "ru": "неизвестно",
    "id": "tidak diketahui",
    "de": "unbekannt",
-   "tr": "bilinmiyor"
+   "tr": "bilinmiyor",
+   "vi": "không rõ"
   },
   "{allowed} allowed, {denied} denied": {
    "zh-Hans": "允许 {allowed} 次，拒绝 {denied} 次",
@@ -3093,7 +3330,8 @@
    "ru": "разрешено: {allowed}, отклонено: {denied}",
    "id": "{allowed} diizinkan, {denied} ditolak",
    "de": "{allowed} zugelassen, {denied} abgelehnt",
-   "tr": "{allowed} izin verildi, {denied} reddedildi"
+   "tr": "{allowed} izin verildi, {denied} reddedildi",
+   "vi": "{allowed} được cho phép, {denied} bị từ chối"
   },
   "{count} contributions": {
    "zh-Hans": {
@@ -3143,7 +3381,8 @@
    "tr": {
     "one": "{count} katkı",
     "other": "{count} katkı"
-   }
+   },
+   "vi": "{count} đóng góp"
   },
   "{count} models": {
    "zh-Hans": {
@@ -3193,7 +3432,8 @@
    "tr": {
     "one": "{count} model",
     "other": "{count} model"
-   }
+   },
+   "vi": "{count} model"
   },
   "{count} repos": {
    "zh-Hans": {
@@ -3243,7 +3483,8 @@
    "tr": {
     "one": "{count} depo",
     "other": "{count} depo"
-   }
+   },
+   "vi": "{count} kho mã"
   },
   "{file} isn't UTF-8 text — Coucou won't touch it.": {
    "zh-Hans": "{file} 不是 UTF-8 文本 — Coucou 不会修改它。",
@@ -3256,7 +3497,8 @@
    "ru": "{file} — не текст в UTF-8, Coucou его не тронет.",
    "id": "{file} bukan teks UTF-8 — Coucou tidak akan menyentuhnya.",
    "de": "{file} ist kein UTF-8-Text — Coucou verändert die Datei nicht.",
-   "tr": "{file} UTF-8 metni değil — Coucou dosyayı değiştirmeyecek."
+   "tr": "{file} UTF-8 metni değil — Coucou dosyayı değiştirmeyecek.",
+   "vi": "{file} không phải văn bản UTF-8 — Coucou sẽ không đụng tới."
   },
   "{file} isn't a JSON object — Coucou won't touch it.": {
    "zh-Hans": "{file} 不是 JSON 对象 — Coucou 不会修改它。",
@@ -3269,7 +3511,8 @@
    "ru": "{file} — не объект JSON, Coucou его не тронет.",
    "id": "{file} bukan objek JSON — Coucou tidak akan menyentuhnya.",
    "de": "{file} ist kein JSON-Objekt — Coucou verändert die Datei nicht.",
-   "tr": "{file} bir JSON nesnesi değil — Coucou dosyayı değiştirmeyecek."
+   "tr": "{file} bir JSON nesnesi değil — Coucou dosyayı değiştirmeyecek.",
+   "vi": "{file} không phải một đối tượng JSON — Coucou sẽ không đụng tới."
   },
   "{file} isn't valid JSON ({error}). Fix or move it, then try again — Coucou won't overwrite it.": {
    "zh-Hans": "{file} 不是有效的 JSON（{error}）。请修复或移走它后重试 — Coucou 不会覆盖它。",
@@ -3282,7 +3525,8 @@
    "ru": "{file} — некорректный JSON ({error}). Исправьте или переместите его и попробуйте снова — Coucou не будет его перезаписывать.",
    "id": "{file} bukan JSON yang valid ({error}). Perbaiki atau pindahkan, lalu coba lagi — Coucou tidak akan menimpanya.",
    "de": "{file} ist kein gültiges JSON ({error}). Korrigiere oder verschiebe die Datei und versuche es erneut — Coucou überschreibt sie nicht.",
-   "tr": "{file} geçerli JSON değil ({error}). Düzelt veya taşı, ardından tekrar dene — Coucou üzerine yazmayacak."
+   "tr": "{file} geçerli JSON değil ({error}). Düzelt veya taşı, ardından tekrar dene — Coucou üzerine yazmayacak.",
+   "vi": "{file} không phải JSON hợp lệ ({error}). Sửa hoặc di chuyển nó rồi thử lại — Coucou sẽ không ghi đè."
   },
   "{h}h {m}m": {
    "zh-Hans": "{h} 小时 {m} 分钟",
@@ -3295,7 +3539,8 @@
    "ru": "{h} ч {m} мин",
    "id": "{h} j {m} mnt",
    "de": "{h} Std. {m} Min.",
-   "tr": "{h} sa {m} dk"
+   "tr": "{h} sa {m} dk",
+   "vi": "{h} giờ {m} phút"
   },
   "{keys} types “{char}” on your keyboard, so it can't be a shortcut. Pick another key.": {
    "zh-Hans": "{keys} 在你的键盘上会输入“{char}”，所以不能用作快捷键。请换一个键。",
@@ -3308,7 +3553,8 @@
    "ru": "{keys} вводит «{char}» на вашей клавиатуре, поэтому не может быть сочетанием. Выберите другую клавишу.",
    "id": "{keys} mengetik “{char}” di keyboard Anda, jadi tidak bisa menjadi pintasan. Pilih tombol lain.",
    "de": "{keys} gibt auf deiner Tastatur „{char}“ ein und kann daher keine Tastenkombination sein. Wähle andere Tasten.",
-   "tr": "{keys} klavyende “{char}” yazıyor, bu yüzden kısayol olamaz. Başka bir tuş seç."
+   "tr": "{keys} klavyende “{char}” yazıyor, bu yüzden kısayol olamaz. Başka bir tuş seç.",
+   "vi": "{keys} gõ ra “{char}” trên bàn phím của bạn, nên không thể làm phím tắt. Chọn phím khác."
   },
   "{model} isn't installed. Pick another model above the chat box.": {
    "zh-Hans": "{model} 未安装。请在聊天框上方选择其他模型。",
@@ -3321,7 +3567,8 @@
    "ru": "{model} не установлена. Выберите другую модель над полем чата.",
    "id": "{model} belum terpasang. Pilih model lain di atas kotak obrolan.",
    "de": "{model} ist nicht installiert. Wähle ein anderes Modell über dem Chatfeld aus.",
-   "tr": "{model} kurulu değil. Sohbet kutusunun üstünden başka bir model seç."
+   "tr": "{model} kurulu değil. Sohbet kutusunun üstünden başka bir model seç.",
+   "vi": "{model} chưa được cài. Chọn model khác phía trên ô chat."
   },
   "{name} API key missing. Add it in Settings.": {
    "zh-Hans": "缺少 {name} 的 API 密钥。请在设置中添加。",
@@ -3334,7 +3581,8 @@
    "ru": "Нет API-ключа {name}. Добавьте его в настройках.",
    "id": "Kunci API {name} tidak ada. Tambahkan di Pengaturan.",
    "de": "API-Schlüssel für {name} fehlt. Füge ihn in den Einstellungen hinzu.",
-   "tr": "{name} API anahtarı eksik. Ayarlar'dan ekle."
+   "tr": "{name} API anahtarı eksik. Ayarlar'dan ekle.",
+   "vi": "Thiếu khóa API của {name}. Thêm trong Cài đặt."
   },
   "{name} rate limit reached (429): {detail}": {
    "zh-Hans": "{name} 已达到速率限制（429）：{detail}",
@@ -3347,7 +3595,8 @@
    "ru": "{name}: достигнут лимит запросов (429): {detail}",
    "id": "Batas laju {name} tercapai (429): {detail}",
    "de": "Anfragelimit für {name} erreicht (429): {detail}",
-   "tr": "{name} istek sınırına ulaşıldı (429): {detail}"
+   "tr": "{name} istek sınırına ulaşıldı (429): {detail}",
+   "vi": "{name} đã chạm giới hạn yêu cầu (429): {detail}"
   },
   "{name} rejected the API key ({status}). Check it in Settings.": {
    "zh-Hans": "{name} 拒绝了 API 密钥（{status}）。请在设置中检查。",
@@ -3360,7 +3609,8 @@
    "ru": "{name} отклонил API-ключ ({status}). Проверьте его в настройках.",
    "id": "{name} menolak kunci API ({status}). Periksa di Pengaturan.",
    "de": "{name} hat den API-Schlüssel abgelehnt ({status}). Prüfe ihn in den Einstellungen.",
-   "tr": "{name} API anahtarını reddetti ({status}). Ayarlar'dan kontrol et."
+   "tr": "{name} API anahtarını reddetti ({status}). Ayarlar'dan kontrol et.",
+   "vi": "{name} từ chối khóa API ({status}). Kiểm tra trong Cài đặt."
   },
   "{name} wasn't written by Coucou — Coucou has not touched it.": {
    "zh-Hans": "{name} 不是由 Coucou 写入的 — Coucou 没有修改它。",
@@ -3373,7 +3623,8 @@
    "ru": "{name} записан не Coucou — Coucou его не трогал.",
    "id": "{name} tidak ditulis oleh Coucou — Coucou tidak menyentuhnya.",
    "de": "{name} wurde nicht von Coucou erstellt — Coucou hat nichts verändert.",
-   "tr": "{name} Coucou tarafından oluşturulmadı — Coucou bunu değiştirmedi."
+   "tr": "{name} Coucou tarafından oluşturulmadı — Coucou bunu değiştirmedi.",
+   "vi": "{name} không do Coucou tạo — Coucou không thay đổi mục này."
   },
   "{name} — {width}×{height} at {x},{y}": {
    "zh-Hans": "{name} — {width}×{height}，位于 {x},{y}",
@@ -3386,7 +3637,8 @@
    "ru": "{name} — {width}×{height} в точке {x},{y}",
    "id": "{name} — {width}×{height} di {x},{y}",
    "de": "{name} — {width}×{height} bei {x},{y}",
-   "tr": "{name} — {width}×{height}, konum: {x},{y}"
+   "tr": "{name} — {width}×{height}, konum: {x},{y}",
+   "vi": "{name} — {width}×{height} tại {x},{y}"
   },
   "{name}: model not found (404). Pick another one above the chat box. {detail}": {
    "zh-Hans": "{name}：未找到模型（404）。请在聊天框上方选择其他模型。{detail}",
@@ -3399,7 +3651,8 @@
    "ru": "{name}: модель не найдена (404). Выберите другую над полем чата. {detail}",
    "id": "{name}: model tidak ditemukan (404). Pilih yang lain di atas kotak obrolan. {detail}",
    "de": "{name}: Modell nicht gefunden (404). Wähle ein anderes über dem Chatfeld aus. {detail}",
-   "tr": "{name}: model bulunamadı (404). Sohbet kutusunun üstünden başka bir model seç. {detail}"
+   "tr": "{name}: model bulunamadı (404). Sohbet kutusunun üstünden başka bir model seç. {detail}",
+   "vi": "{name}: không tìm thấy model (404). Chọn cái khác phía trên ô chat. {detail}"
   },
   "{name}: not enough credits (402). {detail}": {
    "zh-Hans": "{name}：额度不足（402）。{detail}",
@@ -3412,7 +3665,8 @@
    "ru": "{name}: недостаточно кредитов (402). {detail}",
    "id": "{name}: kredit tidak cukup (402). {detail}",
    "de": "{name}: Nicht genügend Guthaben (402). {detail}",
-   "tr": "{name}: yeterli kredi yok (402). {detail}"
+   "tr": "{name}: yeterli kredi yok (402). {detail}",
+   "vi": "{name}: không đủ tín dụng (402). {detail}"
   },
   "{n} available": {
    "zh-Hans": "可用 {n} 次",
@@ -3425,7 +3679,8 @@
    "ru": "доступно: {n}",
    "id": "{n} tersedia",
    "de": "{n} verfügbar",
-   "tr": "{n} kullanılabilir"
+   "tr": "{n} kullanılabilir",
+   "vi": "{n} khả dụng"
   },
   "{n}d": {
    "zh-Hans": "{n} 天",
@@ -3438,7 +3693,8 @@
    "ru": "{n} д",
    "id": "{n} h",
    "de": "{n} T.",
-   "tr": "{n} gün"
+   "tr": "{n} gün",
+   "vi": "{n} ngày"
   },
   "{n}h": {
    "zh-Hans": "{n} 小时",
@@ -3451,7 +3707,8 @@
    "ru": "{n} ч",
    "id": "{n} j",
    "de": "{n} Std.",
-   "tr": "{n} sa"
+   "tr": "{n} sa",
+   "vi": "{n} giờ"
   },
   "{n}m": {
    "zh-Hans": "{n} 分钟",
@@ -3464,7 +3721,8 @@
    "ru": "{n} мин",
    "id": "{n} mnt",
    "de": "{n} Min.",
-   "tr": "{n} dk"
+   "tr": "{n} dk",
+   "vi": "{n} phút"
   },
   "{path} changed since the preview. Nothing was written — review the new diff.": {
    "zh-Hans": "{path} 在预览后已被修改。未写入任何内容 — 请查看新的差异。",
@@ -3477,7 +3735,8 @@
    "ru": "{path} изменился после предпросмотра. Ничего не записано — проверьте новый diff.",
    "id": "{path} berubah sejak pratinjau. Tidak ada yang ditulis — tinjau diff yang baru.",
    "de": "{path} wurde seit der Vorschau verändert. Nichts wurde geschrieben — prüfe den neuen Diff.",
-   "tr": "{path} önizlemeden sonra değişti. Hiçbir şey yazılmadı — yeni değişiklikleri incele."
+   "tr": "{path} önizlemeden sonra değişti. Hiçbir şey yazılmadı — yeni değişiklikleri incele.",
+   "vi": "{path} đã thay đổi từ lúc xem trước. Không có gì được ghi — xem lại diff mới."
   },
   "{time} ago": {
    "zh-Hans": "{time}前",
@@ -3490,7 +3749,8 @@
    "ru": "{time} назад",
    "id": "{time} yang lalu",
    "de": "vor {time}",
-   "tr": "{time} önce"
+   "tr": "{time} önce",
+   "vi": "{time} trước"
   },
   "{total} past year": {
    "zh-Hans": "过去一年 {total}",
@@ -3503,7 +3763,8 @@
    "ru": "{total} за год",
    "id": "{total} setahun terakhir",
    "de": "{total} im letzten Jahr",
-   "tr": "geçen yıl {total}"
+   "tr": "geçen yıl {total}",
+   "vi": "{total} trong năm qua"
   },
   "{used}/{max} slots in use — the main tool doesn't take one.": {
    "zh-Hans": "已用 {used}/{max} 个位置 — 主要工具不占位置。",
@@ -3516,7 +3777,8 @@
    "ru": "Занято мест: {used}/{max} — основной инструмент место не занимает.",
    "id": "{used}/{max} slot terpakai — alat utama tidak memakai slot.",
    "de": "{used}/{max} Plätze belegt — das Hauptwerkzeug belegt keinen.",
-   "tr": "{used}/{max} yuva kullanımda — ana araç yuva kullanmaz."
+   "tr": "{used}/{max} yuva kullanımda — ana araç yuva kullanmaz.",
+   "vi": "Đang dùng {used}/{max} vị trí — công cụ chính không chiếm vị trí."
   },
   "{what} has an unexpected type — Coucou has not touched it.": {
    "zh-Hans": "{what} 的类型不符合预期 — Coucou 没有修改它。",
@@ -3529,7 +3791,8 @@
    "ru": "У {what} неожиданный тип — Coucou его не трогал.",
    "id": "{what} bertipe tak terduga — Coucou tidak menyentuhnya.",
    "de": "{what} hat einen unerwarteten Typ — Coucou hat nichts verändert.",
-   "tr": "{what} beklenmeyen bir türde — Coucou bunu değiştirmedi."
+   "tr": "{what} beklenmeyen bir türde — Coucou bunu değiştirmedi.",
+   "vi": "{what} có kiểu dữ liệu không hợp lệ — Coucou không thay đổi mục này."
   },
   "• subagent done": {
    "zh-Hans": "• 子代理完成",
@@ -3542,7 +3805,8 @@
    "ru": "• субагент завершил",
    "id": "• subagen selesai",
    "de": "• Unteragent fertig",
-   "tr": "• alt ajan tamamladı"
+   "tr": "• alt ajan tamamladı",
+   "vi": "• subagent xong"
   },
   "⚠ failed": {
    "zh-Hans": "⚠ 失败",
@@ -3555,7 +3819,8 @@
    "ru": "⚠ ошибка",
    "id": "⚠ gagal",
    "de": "⚠ fehlgeschlagen",
-   "tr": "⚠ başarısız"
+   "tr": "⚠ başarısız",
+   "vi": "⚠ thất bại"
   },
   "A key is only sent over https, or to a server on this computer.": {
    "zh-Hans": "密钥只会通过 https 发送，或发送到本机上的服务器。",
@@ -3568,7 +3833,8 @@
    "ru": "Ключ отправляется только по https или на сервер на этом компьютере.",
    "id": "Kunci hanya dikirim lewat https, atau ke server di komputer ini.",
    "de": "Ein Schlüssel wird nur über HTTPS oder an einen Server auf diesem Computer gesendet.",
-   "tr": "Anahtar yalnızca https üzerinden veya bu bilgisayardaki bir sunucuya gönderilir."
+   "tr": "Anahtar yalnızca https üzerinden veya bu bilgisayardaki bir sunucuya gönderilir.",
+   "vi": "Khóa chỉ được gửi qua https, hoặc tới một server trên máy tính này."
   },
   "Only a file dropped on the island can be sent with a question.": {
    "zh-Hans": "只有拖放到岛上的文件才能随问题一起发送。",
@@ -3581,7 +3847,8 @@
    "ru": "С вопросом можно отправить только файл, перетащенный на остров.",
    "id": "Hanya file yang dijatuhkan ke pulau yang bisa dikirim bersama pertanyaan.",
    "de": "Nur eine auf der Insel abgelegte Datei kann mit einer Frage gesendet werden.",
-   "tr": "Soruyla birlikte yalnızca adaya bırakılan bir dosya gönderilebilir."
+   "tr": "Soruyla birlikte yalnızca adaya bırakılan bir dosya gönderilebilir.",
+   "vi": "Chỉ tệp được thả lên island mới gửi kèm câu hỏi được."
   },
   "The numbers come from the Claude Code command-line tool. The Claude desktop app does not report them, so the gauge stays empty if you only use the desktop app.": {
    "zh-Hans": "数据来自 Claude Code 命令行工具。Claude 桌面应用不会提供这些数据，因此如果你只使用桌面应用，仪表会一直为空。",
@@ -3594,7 +3861,8 @@
    "ru": "Данные приходят из консольного инструмента Claude Code. Настольное приложение Claude их не передаёт, поэтому индикатор останется пустым, если вы пользуетесь только им.",
    "id": "Angka-angka ini berasal dari alat baris perintah Claude Code. Aplikasi desktop Claude tidak mengirimkannya, jadi pengukur tetap kosong jika Anda hanya memakai aplikasi desktop.",
    "de": "Die Zahlen stammen aus dem Kommandozeilenprogramm Claude Code. Die Claude-Desktop-App meldet sie nicht; wenn du nur die Desktop-App nutzt, bleibt die Anzeige leer.",
-   "tr": "Sayılar Claude Code komut satırı aracından gelir. Claude masaüstü uygulaması bunları bildirmez; yalnızca masaüstü uygulamasını kullanıyorsan gösterge boş kalır."
+   "tr": "Sayılar Claude Code komut satırı aracından gelir. Claude masaüstü uygulaması bunları bildirmez; yalnızca masaüstü uygulamasını kullanıyorsan gösterge boş kalır.",
+   "vi": "Các con số này đến từ công cụ dòng lệnh Claude Code. Ứng dụng Claude desktop không báo cáo chúng, nên đồng hồ đo sẽ trống nếu bạn chỉ dùng ứng dụng desktop."
   },
   "Your phone finds this computer again by itself when the network changes. It is announced on your local network only while this switch is on. Some hotspots and guest networks block this.": {
    "zh-Hans": "网络变化后，你的手机会自动重新找到这台电脑。只有在此开关打开时，才会在本地网络中公布。某些热点和访客网络会阻止这一功能。",
@@ -3607,7 +3875,8 @@
    "ru": "Телефон сам находит этот компьютер снова, когда сеть меняется. Компьютер объявляется в вашей локальной сети только пока этот переключатель включён. Некоторые точки доступа и гостевые сети это блокируют.",
    "id": "Ponsel Anda menemukan komputer ini lagi secara otomatis saat jaringan berubah. Komputer ini hanya diumumkan di jaringan lokal Anda selama sakelar ini aktif. Beberapa hotspot dan jaringan tamu memblokirnya.",
    "de": "Dein Telefon findet diesen Computer bei einem Netzwerkwechsel automatisch wieder. Er wird nur bei aktiviertem Schalter im lokalen Netzwerk bekannt gegeben. Manche Hotspots und Gastnetzwerke blockieren das.",
-   "tr": "Ağ değiştiğinde telefonun bu bilgisayarı kendiliğinden yeniden bulur. Bilgisayar yalnızca bu seçenek açıkken yerel ağında duyurulur. Bazı erişim noktaları ve misafir ağları bunu engeller."
+   "tr": "Ağ değiştiğinde telefonun bu bilgisayarı kendiliğinden yeniden bulur. Bilgisayar yalnızca bu seçenek açıkken yerel ağında duyurulur. Bazı erişim noktaları ve misafir ağları bunu engeller.",
+   "vi": "Điện thoại của bạn tự tìm lại máy tính này khi mạng thay đổi. Máy được quảng bá trên mạng cục bộ chỉ khi công tắc này bật. Một số điểm phát sóng và mạng khách chặn việc này."
   },
   "Let the phone answer Claude Code's questions": {
    "zh-Hans": "允许手机回答 Claude Code 的提问",
@@ -3620,7 +3889,8 @@
    "ru": "Разрешить телефону отвечать на вопросы Claude Code",
    "id": "Izinkan ponsel menjawab pertanyaan Claude Code",
    "de": "Fragen von Claude Code auf dem Telefon beantworten",
-   "tr": "Telefon Claude Code'un sorularını yanıtlayabilsin"
+   "tr": "Telefon Claude Code'un sorularını yanıtlayabilsin",
+   "vi": "Cho điện thoại trả lời câu hỏi của Claude Code"
   },
   "The phone shows each question with its options. Every answer is confirmed with the phone's fingerprint or screen lock.": {
    "zh-Hans": "手机会显示每个问题及其选项。每个回答都需要用手机的指纹或锁屏来确认。",
@@ -3633,7 +3903,8 @@
    "ru": "Телефон показывает каждый вопрос с вариантами. Каждый ответ подтверждается отпечатком пальца или блокировкой экрана телефона.",
    "id": "Ponsel menampilkan setiap pertanyaan beserta pilihannya. Setiap jawaban dikonfirmasi dengan sidik jari atau kunci layar ponsel.",
    "de": "Das Telefon zeigt jede Frage mit ihren Optionen. Jede Antwort wird mit Fingerabdruck oder Bildschirmsperre des Telefons bestätigt.",
-   "tr": "Telefon her soruyu seçenekleriyle gösterir. Her yanıt telefonun parmak izi veya ekran kilidiyle doğrulanır."
+   "tr": "Telefon her soruyu seçenekleriyle gösterir. Her yanıt telefonun parmak izi veya ekran kilidiyle doğrulanır.",
+   "vi": "Điện thoại hiện từng câu hỏi kèm các lựa chọn. Mỗi câu trả lời đều được xác nhận bằng vân tay hoặc khóa màn hình của điện thoại."
   },
   "Android phone": {
    "zh-Hans": "Android 手机",
@@ -3646,7 +3917,8 @@
    "ru": "Телефон Android",
    "id": "Ponsel Android",
    "de": "Android-Telefon",
-   "tr": "Android telefon"
+   "tr": "Android telefon",
+   "vi": "Điện thoại Android"
   },
   "Send your agents' sessions to Coucou for Android and answer permission requests from the phone. Off by default; it only listens on your local network.": {
    "zh-Hans": "把你的智能体会话发送到 Coucou for Android，并在手机上回应权限请求。默认关闭；仅在本地网络中监听。",
@@ -3659,7 +3931,8 @@
    "ru": "Отправляйте сессии ваших агентов в Coucou for Android и отвечайте на запросы разрешений с телефона. По умолчанию выключено; слушает только в вашей локальной сети.",
    "id": "Kirim sesi agen Anda ke Coucou for Android dan jawab permintaan izin dari ponsel. Nonaktif secara default; hanya mendengarkan di jaringan lokal Anda.",
    "de": "Sende die Sitzungen deiner Agenten an Coucou für Android und beantworte Berechtigungsanfragen auf dem Telefon. Standardmäßig aus; lauscht nur im lokalen Netzwerk.",
-   "tr": "Ajanlarının oturumlarını Android için Coucou'ya gönder ve izin isteklerini telefondan yanıtla. Varsayılan olarak kapalıdır; yalnızca yerel ağında dinler."
+   "tr": "Ajanlarının oturumlarını Android için Coucou'ya gönder ve izin isteklerini telefondan yanıtla. Varsayılan olarak kapalıdır; yalnızca yerel ağında dinler.",
+   "vi": "Gửi phiên của các agent tới Coucou cho Android và trả lời yêu cầu quyền từ điện thoại. Mặc định tắt; chỉ lắng nghe trên mạng cục bộ của bạn."
   },
   "Allow on the phone asks for the fingerprint or the screen lock. Deny does not.": {
    "zh-Hans": "在手机上点“允许”需要指纹或锁屏验证；“拒绝”则不需要。",
@@ -3672,7 +3945,8 @@
    "ru": "Чтобы разрешить на телефоне, нужен отпечаток пальца или блокировка экрана. Для отказа — не нужен.",
    "id": "Mengizinkan di ponsel meminta sidik jari atau kunci layar. Menolak tidak.",
    "de": "Erlauben auf dem Telefon erfordert Fingerabdruck oder Bildschirmsperre. Ablehnen nicht.",
-   "tr": "Telefonda izin vermek parmak izi veya ekran kilidi gerektirir. Reddetmek gerektirmez."
+   "tr": "Telefonda izin vermek parmak izi veya ekran kilidi gerektirir. Reddetmek gerektirmez.",
+   "vi": "Cho phép trên điện thoại sẽ yêu cầu vân tay hoặc khóa màn hình. Từ chối thì không."
   },
   "Phone link": {
    "zh-Hans": "手机连接",
@@ -3685,7 +3959,8 @@
    "ru": "Связь с телефоном",
    "id": "Tautan ponsel",
    "de": "Telefonverbindung",
-   "tr": "Telefon bağlantısı"
+   "tr": "Telefon bağlantısı",
+   "vi": "Liên kết điện thoại"
   },
   "Could not turn it on: {error}": {
    "zh-Hans": "无法开启：{error}",
@@ -3698,7 +3973,8 @@
    "ru": "Не удалось включить: {error}",
    "id": "Tidak dapat mengaktifkan: {error}",
    "de": "Konnte nicht aktiviert werden: {error}",
-   "tr": "Açılamadı: {error}"
+   "tr": "Açılamadı: {error}",
+   "vi": "Không bật được: {error}"
   },
   "Show pairing code": {
    "zh-Hans": "显示配对码",
@@ -3711,7 +3987,8 @@
    "ru": "Показать код сопряжения",
    "id": "Tampilkan kode penyandingan",
    "de": "Kopplungscode anzeigen",
-   "tr": "Eşleştirme kodunu göster"
+   "tr": "Eşleştirme kodunu göster",
+   "vi": "Hiện mã ghép nối"
   },
   "Phones connected: {count}": {
    "zh-Hans": "已连接的手机：{count}",
@@ -3724,7 +4001,8 @@
    "ru": "Подключённые телефоны: {count}",
    "id": "Ponsel terhubung: {count}",
    "de": "Verbundene Telefone: {count}",
-   "tr": "Bağlı telefonlar: {count}"
+   "tr": "Bağlı telefonlar: {count}",
+   "vi": "Điện thoại đã kết nối: {count}"
   },
   "In Coucou for Android, scan this code with the camera or paste the link.": {
    "zh-Hans": "在 Coucou for Android 中，用相机扫描此码，或粘贴链接。",
@@ -3737,7 +4015,8 @@
    "ru": "В Coucou for Android отсканируйте этот код камерой или вставьте ссылку.",
    "id": "Di Coucou for Android, pindai kode ini dengan kamera atau tempel tautannya.",
    "de": "Scanne diesen Code in Coucou für Android mit der Kamera oder füge den Link ein.",
-   "tr": "Android için Coucou'da bu kodu kamerayla tara veya bağlantıyı yapıştır."
+   "tr": "Android için Coucou'da bu kodu kamerayla tara veya bağlantıyı yapıştır.",
+   "vi": "Trong Coucou cho Android, quét mã này bằng camera hoặc dán liên kết."
   },
   "Copy link": {
    "zh-Hans": "复制链接",
@@ -3750,7 +4029,8 @@
    "ru": "Скопировать ссылку",
    "id": "Salin tautan",
    "de": "Link kopieren",
-   "tr": "Bağlantıyı kopyala"
+   "tr": "Bağlantıyı kopyala",
+   "vi": "Sao chép liên kết"
   },
   "Pair again": {
    "zh-Hans": "重新配对",
@@ -3763,7 +4043,8 @@
    "ru": "Сопрячь заново",
    "id": "Sandingkan ulang",
    "de": "Erneut koppeln",
-   "tr": "Yeniden eşleştir"
+   "tr": "Yeniden eşleştir",
+   "vi": "Ghép nối lại"
   },
   "The phone that was paired is disconnected and needs the new code.": {
    "zh-Hans": "已配对的手机会断开连接，并需要新的配对码。",
@@ -3776,7 +4057,8 @@
    "ru": "Сопряжённый телефон отключится, и ему понадобится новый код.",
    "id": "Ponsel yang tersandingkan akan terputus dan memerlukan kode baru.",
    "de": "Die Verbindung zum gekoppelten Telefon wird getrennt; es benötigt den neuen Code.",
-   "tr": "Eşleştirilmiş telefonun bağlantısı kesilir ve yeni kod gerekir."
+   "tr": "Eşleştirilmiş telefonun bağlantısı kesilir ve yeni kod gerekir.",
+   "vi": "Điện thoại đã ghép nối đã bị ngắt và cần mã mới."
   },
   "If Windows asks about the firewall, allow Coucou on private networks. The phone and this computer must be on the same Wi-Fi.": {
    "zh-Hans": "如果 Windows 询问防火墙，请允许 Coucou 在专用网络上通信。手机和这台电脑必须连接同一个 Wi-Fi。",
@@ -3789,7 +4071,8 @@
    "ru": "Если Windows спросит про брандмауэр, разрешите Coucou в частных сетях. Телефон и этот компьютер должны быть в одной сети Wi-Fi.",
    "id": "Jika Windows menanyakan firewall, izinkan Coucou di jaringan pribadi. Ponsel dan komputer ini harus berada di Wi-Fi yang sama.",
    "de": "Wenn Windows nach der Firewall fragt, erlaube Coucou in privaten Netzwerken. Telefon und Computer müssen im selben WLAN sein.",
-   "tr": "Windows güvenlik duvarını sorarsa özel ağlarda Coucou'ya izin ver. Telefon ve bu bilgisayar aynı Wi-Fi ağında olmalıdır."
+   "tr": "Windows güvenlik duvarını sorarsa özel ağlarda Coucou'ya izin ver. Telefon ve bu bilgisayar aynı Wi-Fi ağında olmalıdır.",
+   "vi": "Nếu Windows hỏi về tường lửa, hãy cho phép Coucou trên mạng riêng. Điện thoại và máy tính này phải cùng một Wi-Fi."
   },
   "The phone connects to {address}": {
    "zh-Hans": "手机连接的地址：{address}",
@@ -3802,7 +4085,8 @@
    "ru": "Телефон подключается к {address}",
    "id": "Ponsel terhubung ke {address}",
    "de": "Das Telefon verbindet sich mit {address}",
-   "tr": "Telefon {address} adresine bağlanır"
+   "tr": "Telefon {address} adresine bağlanır",
+   "vi": "Điện thoại kết nối tới {address}"
   },
   "Let the phone chat with my AI providers": {
    "zh-Hans": "允许手机使用我的 AI 提供商聊天",
@@ -3815,7 +4099,8 @@
    "ru": "Разрешить телефону общаться с моими ИИ-провайдерами",
    "id": "Izinkan ponsel mengobrol dengan penyedia AI saya",
    "de": "Chat mit meinen KI-Anbietern auf dem Telefon erlauben",
-   "tr": "Telefon yapay zekâ sağlayıcılarımla sohbet edebilsin"
+   "tr": "Telefon yapay zekâ sağlayıcılarımla sohbet edebilsin",
+   "vi": "Cho điện thoại chat với các nhà cung cấp AI của tôi"
   },
   "Chat uses the API keys saved on this computer. The phone never sees them, and each message may cost money.": {
    "zh-Hans": "聊天使用保存在这台电脑上的 API 密钥。手机永远看不到密钥，每条消息都可能产生费用。",
@@ -3828,7 +4113,8 @@
    "ru": "Чат использует ключи API, сохранённые на этом компьютере. Телефон их никогда не видит, а каждое сообщение может стоить денег.",
    "id": "Obrolan memakai kunci API yang tersimpan di komputer ini. Ponsel tidak pernah melihatnya, dan setiap pesan dapat memakan biaya.",
    "de": "Der Chat nutzt die auf diesem Computer gespeicherten API-Schlüssel. Das Telefon sieht sie nie; jede Nachricht kann Kosten verursachen.",
-   "tr": "Sohbet, bu bilgisayarda kayıtlı API anahtarlarını kullanır. Telefon bunları asla görmez ve her ileti ücretli olabilir."
+   "tr": "Sohbet, bu bilgisayarda kayıtlı API anahtarlarını kullanır. Telefon bunları asla görmez ve her ileti ücretli olabilir.",
+   "vi": "Chat dùng các khóa API đã lưu trên máy tính này. Điện thoại không bao giờ thấy chúng, và mỗi tin nhắn có thể tốn tiền."
   },
   "Models the phone may use": {
    "zh-Hans": "手机可使用的模型",
@@ -3841,7 +4127,8 @@
    "ru": "Модели, доступные телефону",
    "id": "Model yang boleh dipakai ponsel",
    "de": "Für das Telefon erlaubte Modelle",
-   "tr": "Telefonun kullanabileceği modeller"
+   "tr": "Telefonun kullanabileceği modeller",
+   "vi": "Model điện thoại được phép dùng"
   },
   "Choose models": {
    "zh-Hans": "选择模型",
@@ -3854,7 +4141,8 @@
    "ru": "Выбрать модели",
    "id": "Pilih model",
    "de": "Modelle auswählen",
-   "tr": "Model seç"
+   "tr": "Model seç",
+   "vi": "Chọn model"
   },
   "Nothing is allowed yet: the phone cannot chat until you tick a model.": {
    "zh-Hans": "尚未允许任何模型：勾选一个模型后，手机才能聊天。",
@@ -3867,7 +4155,8 @@
    "ru": "Пока ничего не разрешено: телефон не сможет общаться, пока вы не отметите модель.",
    "id": "Belum ada yang diizinkan: ponsel tidak bisa mengobrol sampai Anda mencentang sebuah model.",
    "de": "Noch nichts erlaubt: Das Telefon kann erst chatten, wenn du ein Modell auswählst.",
-   "tr": "Henüz hiçbir modele izin verilmedi: bir model seçeneğini işaretlemeden telefon sohbet edemez."
+   "tr": "Henüz hiçbir modele izin verilmedi: bir model seçeneğini işaretlemeden telefon sohbet edemez.",
+   "vi": "Chưa cho phép gì cả: điện thoại không thể chat cho tới khi bạn tích một model."
   },
   "No provider is ready: add an API key or connect a local model first.": {
    "zh-Hans": "没有可用的提供商：请先添加 API 密钥或连接本地模型。",
@@ -3880,7 +4169,8 @@
    "ru": "Нет готовых провайдеров: сначала добавьте ключ API или подключите локальную модель.",
    "id": "Belum ada penyedia yang siap: tambahkan kunci API atau hubungkan model lokal terlebih dahulu.",
    "de": "Kein Anbieter ist bereit: Füge zuerst einen API-Schlüssel hinzu oder verbinde ein lokales Modell.",
-   "tr": "Hazır sağlayıcı yok: önce API anahtarı ekle veya yerel bir model bağla."
+   "tr": "Hazır sağlayıcı yok: önce API anahtarı ekle veya yerel bir model bağla.",
+   "vi": "Chưa có nhà cung cấp nào sẵn sàng: hãy thêm khóa API hoặc kết nối một model cục bộ trước."
   },
   "Show session details on the phone": {
    "zh-Hans": "在手机上显示会话详情",
@@ -3893,7 +4183,8 @@
    "ru": "Показывать детали сессии на телефоне",
    "id": "Tampilkan detail sesi di ponsel",
    "de": "Sitzungsdetails auf dem Telefon anzeigen",
-   "tr": "Oturum ayrıntılarını telefonda göster"
+   "tr": "Oturum ayrıntılarını telefonda göster",
+   "vi": "Hiện chi tiết phiên trên điện thoại"
   },
   "Sends the last steps (as shown on the island, so they can include commands), the final line, the project's folder name and the colour. Never a path.": {
    "zh-Hans": "发送最近的步骤（与灵动岛上显示的一致，可能包含命令）、最后一行、项目文件夹名称和颜色。绝不发送路径。",
@@ -3906,7 +4197,8 @@
    "ru": "Отправляет последние шаги (как на острове, поэтому в них могут быть команды), последнюю строку, имя папки проекта и цвет. Никогда не путь.",
    "id": "Mengirim langkah terakhir (seperti tampil di pulau, jadi bisa berisi perintah), baris akhir, nama folder proyek, dan warna. Tidak pernah jalur.",
    "de": "Sendet die letzten Schritte (wie in der Insel angezeigt, daher auch mit möglichen Befehlen), die letzte Zeile, den Namen des Projektordners und die Farbe. Niemals einen Pfad.",
-   "tr": "Son adımları (adada gösterildiği gibi; komut içerebilir), son satırı, proje klasörünün adını ve rengini gönderir. Dosya yolu asla gönderilmez."
+   "tr": "Son adımları (adada gösterildiği gibi; komut içerebilir), son satırı, proje klasörünün adını ve rengini gönderir. Dosya yolu asla gönderilmez.",
+   "vi": "Gửi các bước cuối (như hiện trên island, nên có thể gồm cả lệnh), dòng kết thúc, tên thư mục dự án và màu. Không bao giờ gửi đường dẫn."
   },
   "Show the files an agent changed on the phone": {
    "zh-Hans": "在手机上显示智能体修改过的文件",
@@ -3919,7 +4211,8 @@
    "ru": "Показывать на телефоне файлы, изменённые агентом",
    "id": "Tampilkan file yang diubah agen di ponsel",
    "de": "Vom Agenten geänderte Dateien auf dem Telefon anzeigen",
-   "tr": "Ajanın değiştirdiği dosyaları telefonda göster"
+   "tr": "Ajanın değiştirdiği dosyaları telefonda göster",
+   "vi": "Hiện các tệp agent đã thay đổi trên điện thoại"
   },
   "The phone lists the files each agent changed and, when you tap one, shows what changed in it (200 lines at most, long lines cut). File names and lines go only to your paired phone, over the pinned encrypted link, and only when it asks.": {
    "zh-Hans": "手机会列出每个智能体修改过的文件，点按某个文件即可查看其中的改动（最多 200 行，过长的行会被截断）。文件名和内容只会在手机请求时，通过已固定证书的加密连接发送给已配对的手机。",
@@ -3932,7 +4225,8 @@
    "ru": "Телефон показывает список файлов, изменённых каждым агентом, а при нажатии на файл — что в нём изменилось (не более 200 строк, длинные строки обрезаются). Имена файлов и строки отправляются только на ваш подключённый телефон, по защищённому зашифрованному каналу и только по его запросу.",
    "id": "Ponsel menampilkan daftar file yang diubah tiap agen dan, saat Anda mengetuk salah satu, apa yang berubah di dalamnya (maksimal 200 baris, baris panjang dipotong). Nama file dan baris hanya dikirim ke ponsel Anda yang terhubung, lewat tautan terenkripsi yang disematkan, dan hanya saat ponsel memintanya.",
    "de": "Das Telefon listet die von jedem Agenten geänderten Dateien auf und zeigt beim Antippen die Änderungen (höchstens 200 Zeilen, lange Zeilen gekürzt). Dateinamen und Zeilen gehen nur auf Anfrage an dein gekoppeltes Telefon, über die verschlüsselte Verbindung mit Zertifikatsbindung.",
-   "tr": "Telefon, her ajanın değiştirdiği dosyaları listeler ve birine dokunduğunda değişiklikleri gösterir (en fazla 200 satır, uzun satırlar kısaltılır). Dosya adları ve satırlar yalnızca eşleştirilmiş telefonuna, sertifikası sabitlenmiş şifreli bağlantı üzerinden ve yalnızca telefon istediğinde gönderilir."
+   "tr": "Telefon, her ajanın değiştirdiği dosyaları listeler ve birine dokunduğunda değişiklikleri gösterir (en fazla 200 satır, uzun satırlar kısaltılır). Dosya adları ve satırlar yalnızca eşleştirilmiş telefonuna, sertifikası sabitlenmiş şifreli bağlantı üzerinden ve yalnızca telefon istediğinde gönderilir.",
+   "vi": "Điện thoại liệt kê các tệp mỗi agent đã thay đổi và, khi bạn chạm vào một tệp, hiện nội dung đã thay đổi (tối đa 200 dòng, dòng dài bị cắt). Tên tệp và nội dung chỉ đi tới điện thoại đã ghép nối của bạn, qua liên kết mã hóa đã ghim, và chỉ khi điện thoại yêu cầu."
   },
   "Show my plan usage on the phone": {
    "zh-Hans": "在手机上显示我的套餐用量",
@@ -3945,7 +4239,8 @@
    "ru": "Показывать на телефоне использование моего тарифа",
    "id": "Tampilkan penggunaan paket saya di ponsel",
    "de": "Meine Plannutzung auf dem Telefon anzeigen",
-   "tr": "Plan kullanımımı telefonda göster"
+   "tr": "Plan kullanımımı telefonda göster",
+   "vi": "Hiện mức dùng gói của tôi trên điện thoại"
   },
   "The phone shows how much of your Claude and Codex plans is used and when they reset: the same percentages as the pills here, nothing else.": {
    "zh-Hans": "手机会显示您的 Claude 和 Codex 套餐已用多少以及何时重置：与这里的药丸显示的百分比相同，不包含其他内容。",
@@ -3958,7 +4253,8 @@
    "ru": "Телефон показывает, какая часть ваших тарифов Claude и Codex использована и когда они сбросятся: те же проценты, что и на плашках здесь, и ничего больше.",
    "id": "Ponsel menampilkan seberapa banyak paket Claude dan Codex Anda terpakai dan kapan direset: persentase yang sama dengan pil di sini, tidak ada yang lain.",
    "de": "Das Telefon zeigt die Nutzung deiner Claude- und Codex-Pläne und wann sie zurückgesetzt werden: dieselben Prozentwerte wie in den Kapseln hier, sonst nichts.",
-   "tr": "Telefon, Claude ve Codex planlarını ne kadar kullandığını ve ne zaman sıfırlandıklarını gösterir: buradaki araçlarla aynı yüzdeler, başka hiçbir şey."
+   "tr": "Telefon, Claude ve Codex planlarını ne kadar kullandığını ve ne zaman sıfırlandıklarını gösterir: buradaki araçlarla aynı yüzdeler, başka hiçbir şey.",
+   "vi": "Điện thoại hiện mức dùng gói Claude và Codex của bạn cùng thời điểm đặt lại: đúng tỉ lệ phần trăm như các pill ở đây, không gì khác."
   },
   "Payment failed": {
    "zh-Hans": "付款失败",
@@ -3971,7 +4267,8 @@
    "ru": "Платёж не прошёл",
    "id": "Pembayaran gagal",
    "de": "Zahlung fehlgeschlagen",
-   "tr": "Ödeme başarısız"
+   "tr": "Ödeme başarısız",
+   "vi": "Thanh toán thất bại"
   },
   "Delivered": {
    "zh-Hans": "已送达",
@@ -3984,7 +4281,8 @@
    "ru": "Доставлено",
    "id": "Terkirim",
    "de": "Zugestellt",
-   "tr": "Teslim edildi"
+   "tr": "Teslim edildi",
+   "vi": "Đã gửi"
   },
   "Not delivered": {
    "zh-Hans": "未送达",
@@ -3997,7 +4295,8 @@
    "ru": "Не доставлено",
    "id": "Tidak terkirim",
    "de": "Nicht zugestellt",
-   "tr": "Teslim edilmedi"
+   "tr": "Teslim edilmedi",
+   "vi": "Chưa gửi"
   },
   "Show these services on the phone": {
    "zh-Hans": "在手机上显示这些服务",
@@ -4010,7 +4309,8 @@
    "ru": "Показывать эти сервисы на телефоне",
    "id": "Tampilkan layanan ini di ponsel",
    "de": "Diese Dienste auf dem Telefon anzeigen",
-   "tr": "Bu hizmetleri telefonda göster"
+   "tr": "Bu hizmetleri telefonda göster",
+   "vi": "Hiện các dịch vụ này trên điện thoại"
   },
   "Each tick lets your paired phone see that service's card: a headline and up to three short lines, read-only. Nothing is shown until you tick it. No addresses, subjects, links or keys are ever sent.": {
    "zh-Hans": "勾选后，已配对的手机即可查看该服务的卡片：一个标题和最多三行简短内容，只读。未勾选前不会显示任何内容。绝不会发送地址、主题、链接或密钥。",
@@ -4023,7 +4323,8 @@
    "ru": "Каждая отметка позволяет подключённому телефону видеть карточку сервиса: заголовок и до трёх коротких строк, только для чтения. Пока вы не отметите, ничего не показывается. Адреса, темы писем, ссылки и ключи не отправляются никогда.",
    "id": "Setiap centang memungkinkan ponsel Anda yang terhubung melihat kartu layanan itu: satu judul dan hingga tiga baris pendek, hanya-baca. Tidak ada yang ditampilkan sebelum Anda mencentangnya. Alamat, subjek, tautan, atau kunci tidak pernah dikirim.",
    "de": "Jede Auswahl erlaubt deinem gekoppelten Telefon, die Karte dieses Dienstes zu sehen: eine Überschrift und bis zu drei kurze Zeilen, nur lesend. Ohne Auswahl wird nichts angezeigt. Adressen, Betreffzeilen, Links und Schlüssel werden niemals gesendet.",
-   "tr": "İşaretlediğin her seçenek, eşleştirilmiş telefonunun o hizmetin kartını görmesini sağlar: bir başlık ve en fazla üç kısa satır, salt okunur. İşaretlemeden hiçbir şey gösterilmez. Adresler, konular, bağlantılar veya anahtarlar asla gönderilmez."
+   "tr": "İşaretlediğin her seçenek, eşleştirilmiş telefonunun o hizmetin kartını görmesini sağlar: bir başlık ve en fazla üç kısa satır, salt okunur. İşaretlemeden hiçbir şey gösterilmez. Adresler, konular, bağlantılar veya anahtarlar asla gönderilmez.",
+   "vi": "Mỗi tích cho phép điện thoại đã ghép nối xem thẻ của dịch vụ đó: một tiêu đề và tối đa ba dòng ngắn, chỉ đọc. Không có gì được hiện cho tới khi bạn tích. Không bao giờ gửi địa chỉ, tiêu đề, liên kết hay khóa."
   },
   "The link you copied contains the pairing code: anyone who gets it can pair a phone with this computer. If it ends up somewhere it should not, press Pair again to make a new code; the old one stops working.": {
    "zh-Hans": "您复制的链接包含配对码：任何拿到它的人都可以将手机与这台电脑配对。如果它出现在不该出现的地方，请点击“重新配对”生成新的配对码；旧的配对码将失效。",
@@ -4036,7 +4337,8 @@
    "ru": "Скопированная ссылка содержит код сопряжения: любой, кто её получит, сможет связать телефон с этим компьютером. Если ссылка попала не туда, нажмите «Связать заново», чтобы создать новый код; старый перестанет работать.",
    "id": "Tautan yang Anda salin berisi kode pemasangan: siapa pun yang mendapatkannya dapat memasangkan ponsel ke komputer ini. Jika tautan itu sampai ke tempat yang tidak semestinya, tekan Pasangkan lagi untuk membuat kode baru; kode lama berhenti berfungsi.",
    "de": "Der kopierte Link enthält den Kopplungscode: Wer ihn erhält, kann ein Telefon mit diesem Computer koppeln. Gelangt er an die falsche Stelle, drücke Erneut koppeln für einen neuen Code; der alte wird ungültig.",
-   "tr": "Kopyaladığın bağlantı eşleştirme kodunu içerir: bağlantıyı alan herkes bu bilgisayarla bir telefon eşleştirebilir. Yanlış bir yere giderse yeni kod oluşturmak için Yeniden eşleştir'e bas; eski kod geçersiz olur."
+   "tr": "Kopyaladığın bağlantı eşleştirme kodunu içerir: bağlantıyı alan herkes bu bilgisayarla bir telefon eşleştirebilir. Yanlış bir yere giderse yeni kod oluşturmak için Yeniden eşleştir'e bas; eski kod geçersiz olur.",
+   "vi": "Liên kết bạn đã sao chép chứa mã ghép nối: bất kỳ ai có nó đều có thể ghép nối một điện thoại với máy tính này. Nếu nó lọt ra chỗ không nên, hãy bấm Ghép nối lại để tạo mã mới; mã cũ sẽ ngừng hoạt động."
   },
   "Reaching the relay…": {
    "zh-Hans": "正在连接中继…",
@@ -4049,7 +4351,8 @@
    "ru": "Подключение к ретранслятору…",
    "id": "Menghubungi relay…",
    "de": "Verbindung zum Relay wird hergestellt…",
-   "tr": "Aktarıcıya bağlanılıyor…"
+   "tr": "Aktarıcıya bağlanılıyor…",
+   "vi": "Đang kết nối tới relay…"
   },
   "Connected to the relay, waiting for the phone.": {
    "zh-Hans": "已连接到中继,正在等待手机。",
@@ -4062,7 +4365,8 @@
    "ru": "Подключено к ретранслятору, ожидание телефона.",
    "id": "Terhubung ke relay, menunggu ponsel.",
    "de": "Mit dem Relay verbunden, wartet auf das Telefon.",
-   "tr": "Aktarıcıya bağlandı, telefon bekleniyor."
+   "tr": "Aktarıcıya bağlandı, telefon bekleniyor.",
+   "vi": "Đã kết nối tới relay, đang chờ điện thoại."
   },
   "The phone is connected through the relay.": {
    "zh-Hans": "手机已通过中继连接。",
@@ -4075,7 +4379,8 @@
    "ru": "Телефон подключён через ретранслятор.",
    "id": "Ponsel terhubung melalui relay.",
    "de": "Das Telefon ist über das Relay verbunden.",
-   "tr": "Telefon aktarıcı üzerinden bağlı."
+   "tr": "Telefon aktarıcı üzerinden bağlı.",
+   "vi": "Điện thoại đã kết nối qua relay."
   },
   "The relay refused the access key.": {
    "zh-Hans": "中继拒绝了该访问密钥。",
@@ -4088,7 +4393,8 @@
    "ru": "Ретранслятор отклонил ключ доступа.",
    "id": "Relay menolak kunci akses.",
    "de": "Das Relay hat den Zugriffsschlüssel abgelehnt.",
-   "tr": "Aktarıcı erişim anahtarını reddetti."
+   "tr": "Aktarıcı erişim anahtarını reddetti.",
+   "vi": "Relay từ chối khóa truy cập."
   },
   "The relay cannot be reached. Trying again.": {
    "zh-Hans": "无法连接到中继,正在重试。",
@@ -4101,7 +4407,8 @@
    "ru": "Ретранслятор недоступен. Повторная попытка.",
    "id": "Relay tidak dapat dijangkau. Mencoba lagi.",
    "de": "Das Relay ist nicht erreichbar. Erneuter Versuch.",
-   "tr": "Aktarıcıya ulaşılamıyor. Yeniden deneniyor."
+   "tr": "Aktarıcıya ulaşılamıyor. Yeniden deneniyor.",
+   "vi": "Không kết nối được tới relay. Đang thử lại."
   },
   "This pairing is in use somewhere else. Press Pair again.": {
    "zh-Hans": "此配对正在别处使用。请点击“重新配对”。",
@@ -4114,7 +4421,8 @@
    "ru": "Это сопряжение используется где-то ещё. Нажмите «Сопрячь заново».",
    "id": "Penyandingan ini dipakai di tempat lain. Tekan «Sandingkan ulang».",
    "de": "Diese Kopplung wird anderswo verwendet. Drücke Erneut koppeln.",
-   "tr": "Bu eşleştirme başka bir yerde kullanılıyor. Yeniden eşleştir'e bas."
+   "tr": "Bu eşleştirme başka bir yerde kullanılıyor. Yeniden eşleştir'e bas.",
+   "vi": "Ghép nối này đang được dùng ở nơi khác. Hãy bấm Ghép nối lại."
   },
   "The relay is limiting connections from here. Trying again later.": {
    "zh-Hans": "中继正在限制来自此处的连接,稍后重试。",
@@ -4127,7 +4435,8 @@
    "ru": "Ретранслятор ограничивает подключения отсюда. Повтор позже.",
    "id": "Relay membatasi koneksi dari sini. Mencoba lagi nanti.",
    "de": "Das Relay begrenzt Verbindungen von hier. Später wird es erneut versucht.",
-   "tr": "Aktarıcı buradan gelen bağlantıları sınırlıyor. Daha sonra yeniden denenecek."
+   "tr": "Aktarıcı buradan gelen bağlantıları sınırlıyor. Daha sonra yeniden denenecek.",
+   "vi": "Relay đang giới hạn kết nối từ đây. Sẽ thử lại sau."
   },
   "Off": {
    "zh-Hans": "关",
@@ -4140,7 +4449,8 @@
    "ru": "Выключено",
    "id": "Mati",
    "de": "Aus",
-   "tr": "Kapalı"
+   "tr": "Kapalı",
+   "vi": "Tắt"
   },
   "Save address": {
    "zh-Hans": "保存地址",
@@ -4153,7 +4463,8 @@
    "ru": "Сохранить адрес",
    "id": "Simpan alamat",
    "de": "Adresse speichern",
-   "tr": "Adresi kaydet"
+   "tr": "Adresi kaydet",
+   "vi": "Lưu địa chỉ"
   },
   "Away from home Wi-Fi": {
    "zh-Hans": "不在家中 Wi-Fi 时",
@@ -4166,7 +4477,8 @@
    "ru": "Вне домашнего Wi-Fi",
    "id": "Di luar Wi-Fi rumah",
    "de": "Außerhalb des Heim-WLANs",
-   "tr": "Ev Wi-Fi ağı dışındayken"
+   "tr": "Ev Wi-Fi ağı dışındayken",
+   "vi": "Khi rời Wi-Fi nhà"
   },
   "Reach this computer from your phone on mobile data or another network, through a relay you deployed yourself. Everything is encrypted end to end: the relay only forwards data it cannot read. Off by default.": {
    "zh-Hans": "通过你自己部署的中继,让手机在移动数据或其他网络下也能连接此电脑。所有内容均为端到端加密:中继只转发它无法读取的数据。默认关闭。",
@@ -4179,7 +4491,8 @@
    "ru": "Подключайтесь к этому компьютеру с телефона через мобильный интернет или другую сеть с помощью ретранслятора, который вы развернули сами. Всё шифруется сквозным шифрованием: ретранслятор лишь пересылает данные, которые не может прочитать. По умолчанию выключено.",
    "id": "Jangkau komputer ini dari ponsel lewat data seluler atau jaringan lain, melalui relay yang Anda pasang sendiri. Semuanya terenkripsi ujung ke ujung: relay hanya meneruskan data yang tidak bisa dibacanya. Nonaktif secara bawaan.",
    "de": "Erreiche diesen Computer vom Telefon über mobile Daten oder ein anderes Netzwerk, über ein selbst bereitgestelltes Relay. Alles ist Ende-zu-Ende verschlüsselt: Das Relay leitet nur Daten weiter, die es nicht lesen kann. Standardmäßig aus.",
-   "tr": "Kendi kurduğun bir aktarıcı üzerinden, mobil veri veya başka bir ağ kullanarak telefonundan bu bilgisayara ulaş. Her şey uçtan uca şifrelidir: aktarıcı okuyamadığı veriyi yalnızca iletir. Varsayılan olarak kapalıdır."
+   "tr": "Kendi kurduğun bir aktarıcı üzerinden, mobil veri veya başka bir ağ kullanarak telefonundan bu bilgisayara ulaş. Her şey uçtan uca şifrelidir: aktarıcı okuyamadığı veriyi yalnızca iletir. Varsayılan olarak kapalıdır.",
+   "vi": "Truy cập máy tính này từ điện thoại qua dữ liệu di động hoặc mạng khác, thông qua một relay do bạn tự triển khai. Mọi thứ được mã hóa đầu-cuối: relay chỉ chuyển tiếp dữ liệu mà nó không đọc được. Mặc định tắt."
   },
   "Relay address": {
    "zh-Hans": "中继地址",
@@ -4192,7 +4505,8 @@
    "ru": "Адрес ретранслятора",
    "id": "Alamat relay",
    "de": "Relay-Adresse",
-   "tr": "Aktarıcı adresi"
+   "tr": "Aktarıcı adresi",
+   "vi": "Địa chỉ relay"
   },
   "Relay access key": {
    "zh-Hans": "中继访问密钥",
@@ -4205,7 +4519,8 @@
    "ru": "Ключ доступа к ретранслятору",
    "id": "Kunci akses relay",
    "de": "Relay-Zugriffsschlüssel",
-   "tr": "Aktarıcı erişim anahtarı"
+   "tr": "Aktarıcı erişim anahtarı",
+   "vi": "Khóa truy cập relay"
   },
   "Paste the access key you set when you deployed the relay. It is kept in the system keystore and never shown again.": {
    "zh-Hans": "粘贴部署中继时设置的访问密钥。它保存在系统密钥库中,之后不会再显示。",
@@ -4218,7 +4533,8 @@
    "ru": "Вставьте ключ доступа, заданный при развёртывании ретранслятора. Он хранится в системном хранилище ключей и больше не показывается.",
    "id": "Tempel kunci akses yang Anda atur saat memasang relay. Kunci disimpan di penyimpanan kunci sistem dan tidak ditampilkan lagi.",
    "de": "Füge den beim Bereitstellen des Relays festgelegten Zugriffsschlüssel ein. Er wird im Schlüsselspeicher des Systems aufbewahrt und nie wieder angezeigt.",
-   "tr": "Aktarıcıyı kurarken belirlediğin erişim anahtarını yapıştır. Sistem anahtar deposunda saklanır ve yeniden gösterilmez."
+   "tr": "Aktarıcıyı kurarken belirlediğin erişim anahtarını yapıştır. Sistem anahtar deposunda saklanır ve yeniden gösterilmez.",
+   "vi": "Dán khóa truy cập bạn đã đặt khi triển khai relay. Khóa được lưu trong kho khóa của hệ thống và không bao giờ hiện lại."
   },
   "This code also carries the access key and the end-to-end key for the relay {host}. Pair again makes a new key and a new room.": {
    "zh-Hans": "此代码还包含中继 {host} 的访问密钥和端到端密钥。“重新配对”会生成新的密钥和新的房间。",
@@ -4231,7 +4547,8 @@
    "ru": "Этот код также содержит ключ доступа и сквозной ключ для ретранслятора {host}. «Сопрячь заново» создаёт новый ключ и новую комнату.",
    "id": "Kode ini juga memuat kunci akses dan kunci ujung ke ujung untuk relay {host}. «Sandingkan ulang» membuat kunci dan ruang baru.",
    "de": "Dieser Code enthält auch den Zugriffsschlüssel und den Ende-zu-Ende-Schlüssel für das Relay {host}. Erneut koppeln erstellt einen neuen Schlüssel und einen neuen Raum.",
-   "tr": "Bu kod, {host} aktarıcısı için erişim anahtarını ve uçtan uca şifreleme anahtarını da içerir. Yeniden eşleştirmek yeni bir anahtar ve yeni bir oda oluşturur."
+   "tr": "Bu kod, {host} aktarıcısı için erişim anahtarını ve uçtan uca şifreleme anahtarını da içerir. Yeniden eşleştirmek yeni bir anahtar ve yeni bir oda oluşturur.",
+   "vi": "Mã này cũng mang khóa truy cập và khóa đầu-cuối cho relay {host}. Ghép nối lại sẽ tạo khóa mới và phòng mới."
   },
   "Dictate anywhere on your computer": {
    "zh-Hans": "在电脑上的任何地方听写",
@@ -4244,7 +4561,8 @@
    "ru": "Диктуйте где угодно на компьютере",
    "id": "Dikte di mana saja di komputermu",
    "de": "Überall auf deinem Computer diktieren",
-   "tr": "Bilgisayarında her yerde dikte et"
+   "tr": "Bilgisayarında her yerde dikte et",
+   "vi": "Đọc chính tả ở bất cứ đâu trên máy tính"
   },
   "Parakeet, on your computer": {
    "zh-Hans": "Parakeet，在你的电脑上",
@@ -4257,7 +4575,8 @@
    "ru": "Parakeet на вашем компьютере",
    "id": "Parakeet, di komputermu",
    "de": "Parakeet auf deinem Computer",
-   "tr": "Parakeet, bilgisayarında"
+   "tr": "Parakeet, bilgisayarında",
+   "vi": "Parakeet, trên máy của bạn"
   },
   "The most accurate, offline, 25 languages. Downloaded once (about {0} MB).": {
    "zh-Hans": "最准确，离线可用，支持 25 种语言。只需下载一次（约 {0} MB）。",
@@ -4270,7 +4589,8 @@
    "ru": "Самый точный, офлайн, 25 языков. Скачивается один раз (около {0} МБ).",
    "id": "Paling akurat, offline, 25 bahasa. Diunduh sekali (sekitar {0} MB).",
    "de": "Höchste Genauigkeit, offline, 25 Sprachen. Einmaliger Download (etwa {0} MB).",
-   "tr": "En doğru sonuçlar, çevrimdışı, 25 dil. Bir kez indirilir (yaklaşık {0} MB)."
+   "tr": "En doğru sonuçlar, çevrimdışı, 25 dil. Bir kez indirilir (yaklaşık {0} MB).",
+   "vi": "Chính xác nhất, ngoại tuyến, 25 ngôn ngữ. Tải một lần (khoảng {0} MB)."
   },
   "On a keyboard with AltGr, the right Alt types characters: pick another key.": {
    "zh-Hans": "在带 AltGr 的键盘上，右 Alt 用于输入字符：请选择其他按键。",
@@ -4283,7 +4603,8 @@
    "ru": "На клавиатуре с AltGr правый Alt набирает символы: выберите другую клавишу.",
    "id": "Pada keyboard dengan AltGr, Alt kanan mengetik karakter: pilih tombol lain.",
    "de": "Auf einer Tastatur mit AltGr dient die rechte Alt-Taste zur Zeicheneingabe: Wähle eine andere Taste.",
-   "tr": "AltGr içeren klavyelerde sağ Alt karakter yazmak için kullanılır: başka bir tuş seç."
+   "tr": "AltGr içeren klavyelerde sağ Alt karakter yazmak için kullanılır: başka bir tuş seç.",
+   "vi": "Trên bàn phím có AltGr, phím Alt phải dùng để gõ ký tự: hãy chọn phím khác."
   },
   "Paste again": {
    "zh-Hans": "再次粘贴",
@@ -4296,7 +4617,8 @@
    "ru": "Вставить снова",
    "id": "Tempel lagi",
    "de": "Erneut einfügen",
-   "tr": "Yeniden yapıştır"
+   "tr": "Yeniden yapıştır",
+   "vi": "Dán lại"
   },
   "Coucou can't watch the keyboard here: use the pill's microphone to dictate.": {
    "zh-Hans": "Coucou 在这里无法监听键盘：请用胶囊上的麦克风听写。",
@@ -4309,7 +4631,8 @@
    "ru": "Здесь Coucou не может следить за клавиатурой: диктуйте через микрофон на пилюле.",
    "id": "Coucou tidak bisa memantau keyboard di sini: gunakan mikrofon pil untuk mendikte.",
    "de": "Coucou kann hier die Tastatur nicht überwachen: Nutze zum Diktieren das Mikrofon der Kapsel.",
-   "tr": "Coucou burada klavyeyi izleyemiyor: dikte etmek için aracın mikrofonunu kullan."
+   "tr": "Coucou burada klavyeyi izleyemiyor: dikte etmek için aracın mikrofonunu kullan.",
+   "vi": "Coucou không theo dõi được bàn phím ở đây: hãy dùng micrô của pill để đọc chính tả."
   },
   "Microphone": {
    "zh-Hans": "麦克风",
@@ -4322,7 +4645,8 @@
    "ru": "Микрофон",
    "id": "Mikrofon",
    "de": "Mikrofon",
-   "tr": "Mikrofon"
+   "tr": "Mikrofon",
+   "vi": "Micrô"
   },
   "System default": {
    "zh-Hans": "系统默认",
@@ -4335,7 +4659,8 @@
    "ru": "Системный по умолчанию",
    "id": "Bawaan sistem",
    "de": "Systemstandard",
-   "tr": "Sistem varsayılanı"
+   "tr": "Sistem varsayılanı",
+   "vi": "Mặc định của hệ thống"
   },
   "The one Coucou listens to for dictation and calls.": {
    "zh-Hans": "Coucou 听写和录制通话时使用的麦克风。",
@@ -4348,7 +4673,8 @@
    "ru": "Тот, который Coucou слушает для диктовки и звонков.",
    "id": "Yang didengarkan Coucou untuk dikte dan panggilan.",
    "de": "Das Mikrofon, das Coucou für Diktate und Gespräche verwendet.",
-   "tr": "Coucou'nun dikte ve görüşmeler için dinlediği mikrofon."
+   "tr": "Coucou'nun dikte ve görüşmeler için dinlediği mikrofon.",
+   "vi": "Micrô Coucou dùng để nghe đọc chính tả và cuộc gọi."
   },
   "Your voice never leaves this computer: Parakeet turns it into text here, and the recording is dropped as soon as it is pasted.": {
    "zh-Hans": "你的声音不会离开这台电脑：Parakeet 在本机把它转成文字，粘贴后录音即被丢弃。",
@@ -4361,7 +4687,8 @@
    "ru": "Ваш голос не покидает этот компьютер: Parakeet превращает его в текст здесь, а запись удаляется сразу после вставки.",
    "id": "Suaramu tidak pernah meninggalkan komputer ini: Parakeet mengubahnya menjadi teks di sini, dan rekamannya dibuang begitu ditempel.",
    "de": "Deine Stimme verlässt diesen Computer nie: Parakeet wandelt sie hier in Text um; die Aufnahme wird gelöscht, sobald der Text eingefügt ist.",
-   "tr": "Sesin bu bilgisayardan asla dışarı çıkmaz: Parakeet burada metne dönüştürür; kayıt, metin yapıştırılır yapıştırılmaz silinir."
+   "tr": "Sesin bu bilgisayardan asla dışarı çıkmaz: Parakeet burada metne dönüştürür; kayıt, metin yapıştırılır yapıştırılmaz silinir.",
+   "vi": "Giọng nói của bạn không bao giờ rời khỏi máy tính này: Parakeet chuyển thành văn bản ngay tại đây, và bản ghi âm bị xóa ngay sau khi dán."
   },
   "With Claude, the transcript (never the audio) goes to Anthropic with your key from Notch → Chat.": {
    "zh-Hans": "使用 Claude 时，文字记录（绝不包括音频）会通过你在“Notch → 聊天”中设置的密钥发送给 Anthropic。",
@@ -4374,7 +4701,8 @@
    "ru": "С Claude расшифровка (но никогда не звук) уходит в Anthropic с вашим ключом из Notch → Чат.",
    "id": "Dengan Claude, transkrip (tidak pernah audionya) dikirim ke Anthropic dengan kuncimu dari Notch → Obrolan.",
    "de": "Mit Claude wird das Transkript mit deinem Schlüssel aus Notch → Chat an Anthropic gesendet, niemals das Audio.",
-   "tr": "Claude ile döküm, Çentik → Sohbet bölümündeki anahtarınla Anthropic'e gönderilir; ses asla gönderilmez."
+   "tr": "Claude ile döküm, Çentik → Sohbet bölümündeki anahtarınla Anthropic'e gönderilir; ses asla gönderilmez.",
+   "vi": "Với Claude, bản chép lời (không bao giờ là âm thanh) được gửi tới Anthropic bằng khóa của bạn trong Notch → Chat."
   },
   "Everything stays on this computer. Tell the people in the call that you are recording.": {
    "zh-Hans": "所有内容都留在这台电脑上。请告知通话中的人你正在录音。",
@@ -4387,7 +4715,8 @@
    "ru": "Всё остаётся на этом компьютере. Предупредите участников звонка, что вы ведёте запись.",
    "id": "Semuanya tetap di komputer ini. Beri tahu orang di panggilan bahwa kamu merekam.",
    "de": "Alles bleibt auf diesem Computer. Informiere die Gesprächsteilnehmer über die Aufnahme.",
-   "tr": "Her şey bu bilgisayarda kalır. Görüşmedeki kişilere kayıt yaptığını söyle."
+   "tr": "Her şey bu bilgisayarda kalır. Görüşmedeki kişilere kayıt yaptığını söyle.",
+   "vi": "Mọi thứ ở lại trên máy tính này. Hãy báo cho những người trong cuộc gọi biết bạn đang ghi âm."
   },
   "Not when Coucou starts with the computer.": {
    "zh-Hans": "Coucou 随电脑启动时不会打开。",
@@ -4400,7 +4729,8 @@
    "ru": "Не при запуске Coucou вместе с компьютером.",
    "id": "Tidak saat Coucou mulai bersama komputer.",
    "de": "Nicht, wenn Coucou mit dem Computer startet.",
-   "tr": "Coucou bilgisayarla birlikte başlatıldığında geçerli değildir."
+   "tr": "Coucou bilgisayarla birlikte başlatıldığında geçerli değildir.",
+   "vi": "Không mở khi Coucou khởi động cùng máy tính."
   },
   "The history, the statistics and your notes stay on this computer, in Coucou's folder. Dictations are never saved as audio; a call's audio is deleted as soon as its transcript is written.": {
    "zh-Hans": "历史记录、统计数据和你的笔记都留在这台电脑上的 Coucou 文件夹中。听写从不保存为音频；通话的音频在文字记录写好后立即删除。",
@@ -4413,7 +4743,8 @@
    "ru": "История, статистика и ваши заметки остаются на этом компьютере, в папке Coucou. Диктовки никогда не сохраняются как звук; звук звонка удаляется сразу после записи расшифровки.",
    "id": "Riwayat, statistik, dan catatanmu tetap di komputer ini, di folder Coucou. Dikte tidak pernah disimpan sebagai audio; audio panggilan dihapus begitu transkripnya ditulis.",
    "de": "Verlauf, Statistik und Notizen bleiben auf diesem Computer im Coucou-Ordner. Diktate werden nie als Audio gespeichert; die Gesprächsaufnahme wird gelöscht, sobald das Transkript geschrieben ist.",
-   "tr": "Geçmiş, istatistikler ve notların bu bilgisayarda, Coucou klasöründe kalır. Dikteler asla ses olarak kaydedilmez; görüşmenin sesi, dökümü yazılır yazılmaz silinir."
+   "tr": "Geçmiş, istatistikler ve notların bu bilgisayarda, Coucou klasöründe kalır. Dikteler asla ses olarak kaydedilmez; görüşmenin sesi, dökümü yazılır yazılmaz silinir.",
+   "vi": "Lịch sử, thống kê và ghi chú của bạn ở lại trên máy tính này, trong thư mục của Coucou. Đọc chính tả không bao giờ được lưu dưới dạng âm thanh; âm thanh của cuộc gọi bị xóa ngay khi bản chép lời được viết xong."
   },
   "{0} h {1}": {
    "zh-Hans": "{0} 小时 {1}",
@@ -4426,7 +4757,8 @@
    "ru": "{0} ч {1}",
    "id": "{0} j {1}",
    "de": "{0} Std. {1}",
-   "tr": "{0} sa {1}"
+   "tr": "{0} sa {1}",
+   "vi": "{0} giờ {1}"
   },
   "Counted on this computer, never sent anywhere.": {
    "zh-Hans": "在这台电脑上统计，从不发送到任何地方。",
@@ -4439,7 +4771,8 @@
    "ru": "Считается на этом компьютере и никуда не отправляется.",
    "id": "Dihitung di komputer ini, tidak pernah dikirim ke mana pun.",
    "de": "Wird auf diesem Computer erfasst und nirgendwohin gesendet.",
-   "tr": "Bu bilgisayarda hesaplanır, hiçbir yere gönderilmez."
+   "tr": "Bu bilgisayarda hesaplanır, hiçbir yere gönderilmez.",
+   "vi": "Được đếm trên máy tính này, không bao giờ gửi đi đâu."
   },
   "Coucou writes your calls on this computer with Parakeet, and tells the voices apart with a second small model. Both are downloaded once (about {0} MB), then everything works offline.": {
    "zh-Hans": "Coucou 用 Parakeet 在这台电脑上转写你的通话，并用另一个小模型区分不同的声音。两者只需下载一次（约 {0} MB），之后一切都可离线运行。",
@@ -4452,7 +4785,8 @@
    "ru": "Coucou записывает ваши звонки на этом компьютере с помощью Parakeet и различает голоса второй небольшой моделью. Обе скачиваются один раз (около {0} МБ), дальше всё работает офлайн.",
    "id": "Coucou menulis panggilanmu di komputer ini dengan Parakeet, dan membedakan suara dengan model kecil kedua. Keduanya diunduh sekali (sekitar {0} MB), lalu semuanya bekerja offline.",
    "de": "Coucou transkribiert deine Gespräche auf diesem Computer mit Parakeet und unterscheidet die Stimmen mit einem zweiten kleinen Modell. Beide werden einmal heruntergeladen (etwa {0} MB), danach läuft alles offline.",
-   "tr": "Coucou görüşmelerini bu bilgisayarda Parakeet ile yazıya döker ve ikinci küçük bir modelle sesleri ayırt eder. İkisi de bir kez indirilir (yaklaşık {0} MB), sonra her şey çevrimdışı çalışır."
+   "tr": "Coucou görüşmelerini bu bilgisayarda Parakeet ile yazıya döker ve ikinci küçük bir modelle sesleri ayırt eder. İkisi de bir kez indirilir (yaklaşık {0} MB), sonra her şey çevrimdışı çalışır.",
+   "vi": "Coucou ghi lại cuộc gọi của bạn ngay trên máy tính này bằng Parakeet, và phân biệt các giọng nói bằng một model nhỏ thứ hai. Cả hai được tải một lần (khoảng {0} MB), sau đó mọi thứ hoạt động ngoại tuyến."
   },
   "The clean-up uses your Claude key. Add it in Notch → Chat.": {
    "zh-Hans": "清理功能使用你的 Claude 密钥。请在“Notch → 聊天”中添加。",
@@ -4465,7 +4799,8 @@
    "ru": "Для очистки нужен ваш ключ Claude. Добавьте его в Notch → Чат.",
    "id": "Pembersihan memakai kunci Claude-mu. Tambahkan di Notch → Obrolan.",
    "de": "Die Überarbeitung nutzt deinen Claude-Schlüssel. Füge ihn unter Notch → Chat hinzu.",
-   "tr": "Düzenleme, Claude anahtarını kullanır. Çentik → Sohbet bölümünden ekle."
+   "tr": "Düzenleme, Claude anahtarını kullanır. Çentik → Sohbet bölümünden ekle.",
+   "vi": "Tính năng dọn dẹp dùng khóa Claude của bạn. Thêm khóa trong Notch → Chat."
   },
   "With the clean-up on, the text (never your voice) goes to Anthropic with your Claude key. Off, everything stays on this computer.": {
    "zh-Hans": "开启清理后，文字（绝不包括你的声音）会通过你的 Claude 密钥发送给 Anthropic。关闭时，一切都留在这台电脑上。",
@@ -4478,7 +4813,8 @@
    "ru": "Когда очистка включена, текст (но никогда не голос) уходит в Anthropic с вашим ключом Claude. Когда выключена, всё остаётся на этом компьютере.",
    "id": "Dengan pembersihan aktif, teks (tidak pernah suaramu) dikirim ke Anthropic dengan kunci Claude-mu. Saat nonaktif, semuanya tetap di komputer ini.",
    "de": "Bei aktivierter Überarbeitung wird der Text mit deinem Claude-Schlüssel an Anthropic gesendet, niemals deine Stimme. Ist sie aus, bleibt alles auf diesem Computer.",
-   "tr": "Düzenleme açıkken metin, Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey bu bilgisayarda kalır."
+   "tr": "Düzenleme açıkken metin, Claude anahtarınla Anthropic'e gönderilir; sesin asla gönderilmez. Kapalıyken her şey bu bilgisayarda kalır.",
+   "vi": "Khi bật dọn dẹp, văn bản (không bao giờ là giọng nói) được gửi tới Anthropic bằng khóa Claude của bạn. Khi tắt, mọi thứ ở lại trên máy tính này."
   },
   "Mochi, his sounds and how the island behaves.": {
    "zh-Hans": "Mochi、它的声音以及岛的行为方式。",
@@ -4491,7 +4827,8 @@
    "ru": "Mochi, его звуки и поведение острова.",
    "id": "Mochi, suaranya, dan cara pulau berperilaku.",
    "de": "Mochi, seine Klänge und das Verhalten der Insel.",
-   "tr": "Mochi, sesleri ve adanın davranışı."
+   "tr": "Mochi, sesleri ve adanın davranışı.",
+   "vi": "Mochi, âm thanh của cậu ấy và cách island hoạt động."
   },
   "The pills shown in the island, their order and their colours.": {
    "zh-Hans": "岛中显示的胶囊、它们的顺序和颜色。",
@@ -4504,7 +4841,8 @@
    "ru": "Пилюли на острове, их порядок и цвета.",
    "id": "Pil yang ditampilkan di pulau, urutannya, dan warnanya.",
    "de": "Die in der Insel angezeigten Kapseln, ihre Reihenfolge und Farben.",
-   "tr": "Adada gösterilen araçlar, sıraları ve renkleri."
+   "tr": "Adada gösterilen araçlar, sıraları ve renkleri.",
+   "vi": "Các pill hiện trong island, thứ tự và màu sắc của chúng."
   },
   "The AI of the island's chat, with your own keys.": {
    "zh-Hans": "岛内聊天使用的 AI，用你自己的密钥。",
@@ -4517,7 +4855,8 @@
    "ru": "ИИ чата острова — с вашими собственными ключами.",
    "id": "AI untuk obrolan pulau, dengan kuncimu sendiri.",
    "de": "Die KI im Chat der Insel, mit deinen eigenen Schlüsseln.",
-   "tr": "Adanın sohbetindeki yapay zekâ, kendi anahtarlarınla."
+   "tr": "Adanın sohbetindeki yapay zekâ, kendi anahtarlarınla.",
+   "vi": "AI của chat trong island, dùng khóa của riêng bạn."
   },
   "Your agents and their approvals on your Android phone, over your Wi-Fi.": {
    "zh-Hans": "通过你的 Wi-Fi，在 Android 手机上查看代理并批准请求。",
@@ -4530,7 +4869,8 @@
    "ru": "Ваши агенты и их подтверждения на телефоне Android через ваш Wi-Fi.",
    "id": "Agenmu dan persetujuannya di ponsel Android, lewat Wi-Fi-mu.",
    "de": "Deine Agenten und ihre Freigaben auf deinem Android-Telefon, über dein WLAN.",
-   "tr": "Ajanların ve onayları, Wi-Fi üzerinden Android telefonunda."
+   "tr": "Ajanların ve onayları, Wi-Fi üzerinden Android telefonunda.",
+   "vi": "Các agent của bạn và phê duyệt của chúng trên điện thoại Android, qua Wi-Fi của bạn."
   },
   "The keys that open the island and its actions.": {
    "zh-Hans": "打开岛及其操作的按键。",
@@ -4543,7 +4883,8 @@
    "ru": "Клавиши, открывающие остров и его действия.",
    "id": "Tombol yang membuka pulau dan tindakannya.",
    "de": "Die Tasten für die Insel und ihre Aktionen.",
-   "tr": "Adayı ve işlemlerini açan tuşlar."
+   "tr": "Adayı ve işlemlerini açan tuşlar.",
+   "vi": "Các phím mở island và các hành động của island."
   },
   "Downloading the voice model…": {
    "zh-Hans": "正在下载语音模型…",
@@ -4556,7 +4897,8 @@
    "ru": "Скачивается голосовая модель…",
    "id": "Mengunduh model suara…",
    "de": "Sprachmodell wird heruntergeladen…",
-   "tr": "Ses modeli indiriliyor…"
+   "tr": "Ses modeli indiriliyor…",
+   "vi": "Đang tải model giọng nói…"
   },
   "Download the voice model to dictate": {
    "zh-Hans": "下载语音模型即可听写",
@@ -4569,7 +4911,8 @@
    "ru": "Скачайте голосовую модель, чтобы диктовать",
    "id": "Unduh model suara untuk mendikte",
    "de": "Sprachmodell zum Diktieren herunterladen",
-   "tr": "Dikte etmek için ses modelini indir"
+   "tr": "Dikte etmek için ses modelini indir",
+   "vi": "Tải model giọng nói để đọc chính tả"
   },
   "Use the pill's microphone to dictate": {
    "zh-Hans": "用胶囊上的麦克风听写",
@@ -4582,7 +4925,8 @@
    "ru": "Диктуйте через микрофон на пилюле",
    "id": "Gunakan mikrofon pil untuk mendikte",
    "de": "Zum Diktieren das Mikrofon der Kapsel verwenden",
-   "tr": "Dikte etmek için aracın mikrofonunu kullan"
+   "tr": "Dikte etmek için aracın mikrofonunu kullan",
+   "vi": "Dùng micrô của pill để đọc chính tả"
   },
   "Copied · press Ctrl+V to paste": {
    "zh-Hans": "已复制 · 按 Ctrl+V 粘贴",
@@ -4595,7 +4939,8 @@
    "ru": "Скопировано · Ctrl+V, чтобы вставить",
    "id": "Disalin · tekan Ctrl+V untuk menempel",
    "de": "Kopiert · zum Einfügen Ctrl+V drücken",
-   "tr": "Kopyalandı · yapıştırmak için Ctrl+V tuşlarına bas"
+   "tr": "Kopyalandı · yapıştırmak için Ctrl+V tuşlarına bas",
+   "vi": "Đã sao chép · nhấn Ctrl+V để dán"
   },
   "Download the voice model first, in Coucou → Settings → Recognition.": {
    "zh-Hans": "请先在“Coucou → 设置 → 识别”中下载语音模型。",
@@ -4608,7 +4953,8 @@
    "ru": "Сначала скачайте голосовую модель: Coucou → Настройки → Распознавание.",
    "id": "Unduh model suara dulu, di Coucou → Pengaturan → Pengenalan.",
    "de": "Lade zuerst das Sprachmodell unter Coucou → Einstellungen → Erkennung herunter.",
-   "tr": "Önce Coucou → Ayarlar → Tanıma bölümünden ses modelini indir."
+   "tr": "Önce Coucou → Ayarlar → Tanıma bölümünden ses modelini indir.",
+   "vi": "Tải model giọng nói trước, trong Coucou → Cài đặt → Nhận dạng."
   },
   "Your words are copied: click where you want them and press Ctrl+V.": {
    "zh-Hans": "你的文字已复制：点击想放的位置，然后按 Ctrl+V。",
@@ -4621,7 +4967,8 @@
    "ru": "Слова скопированы: щёлкните, куда их вставить, и нажмите Ctrl+V.",
    "id": "Kata-katamu disalin: klik di tempat yang kamu mau lalu tekan Ctrl+V.",
    "de": "Deine Worte wurden kopiert: Klicke auf die gewünschte Stelle und drücke Ctrl+V.",
-   "tr": "Sözlerin kopyalandı: istediğin yere tıkla ve Ctrl+V tuşlarına bas."
+   "tr": "Sözlerin kopyalandı: istediğin yere tıkla ve Ctrl+V tuşlarına bas.",
+   "vi": "Từ của bạn đã được sao chép: bấm vào nơi bạn muốn rồi nhấn Ctrl+V."
   },
   "On Wayland, the desktop holds the dictation key for Coucou: Ctrl+Alt+V, or the keys you picked when it asked. The first paste asks once to let Coucou type for you.": {
    "zh-Hans": "在 Wayland 上，桌面会替 Coucou 管理听写按键：Ctrl+Alt+V，或者它询问时你选的按键。第一次粘贴时会询问一次，是否允许 Coucou 替你输入。",
@@ -4634,7 +4981,8 @@
    "ru": "В Wayland клавишей диктовки для Coucou управляет рабочий стол: Ctrl+Alt+V или клавиши, которые вы выбрали, когда он спросил. При первой вставке он один раз спросит, разрешить ли Coucou печатать за вас.",
    "id": "Di Wayland, desktop yang memegang tombol dikte untuk Coucou: Ctrl+Alt+V, atau tombol yang kamu pilih saat ditanya. Saat menempel pertama kali, desktop akan bertanya sekali apakah Coucou boleh mengetik untukmu.",
    "de": "Unter Wayland verwaltet der Desktop die Diktiertaste für Coucou: Ctrl+Alt+V oder die bei der Abfrage gewählten Tasten. Beim ersten Einfügen wirst du einmal gefragt, ob Coucou für dich tippen darf.",
-   "tr": "Wayland'da masaüstü, Coucou için dikte tuşunu yönetir: Ctrl+Alt+V veya sorulduğunda seçtiğin tuşlar. İlk yapıştırmada Coucou'nun senin için yazmasına bir kez izin vermen istenir."
+   "tr": "Wayland'da masaüstü, Coucou için dikte tuşunu yönetir: Ctrl+Alt+V veya sorulduğunda seçtiğin tuşlar. İlk yapıştırmada Coucou'nun senin için yazmasına bir kez izin vermen istenir.",
+   "vi": "Trên Wayland, môi trường desktop giữ phím đọc chính tả cho Coucou: Ctrl+Alt+V, hoặc các phím bạn đã chọn khi được hỏi. Lần dán đầu tiên sẽ hỏi một lần để cho phép Coucou tự gõ thay bạn."
   },
   "ElevenLabs key": {
    "zh-Hans": "ElevenLabs 密钥",
@@ -4647,7 +4995,8 @@
    "ru": "Ключ ElevenLabs",
    "id": "Kunci ElevenLabs",
    "de": "ElevenLabs-Schlüssel",
-   "tr": "ElevenLabs anahtarı"
+   "tr": "ElevenLabs anahtarı",
+   "vi": "Khóa ElevenLabs"
   },
   "Say « OK Coucou », then ask anything: add a pill, play music, the weather, an email to prepare.": {
    "zh-Hans": "说「OK Coucou」，然后随便问：添加一个胶囊、播放音乐、天气、准备一封邮件。",
@@ -4660,7 +5009,8 @@
    "ru": "Скажите « OK Coucou » и просите что угодно: добавить плашку, включить музыку, погоду, подготовить письмо.",
    "id": "Ucapkan « OK Coucou », lalu minta apa saja: tambah pil, putar musik, cuaca, email yang perlu disiapkan.",
    "de": "Sage « OK Coucou » und frage dann nach Belieben: eine Kapsel hinzufügen, Musik abspielen, das Wetter oder eine E-Mail vorbereiten.",
-   "tr": "« OK Coucou » de, sonra istediğini sor: araç ekleme, müzik çalma, hava durumu veya hazırlanacak bir e-posta."
+   "tr": "« OK Coucou » de, sonra istediğini sor: araç ekleme, müzik çalma, hava durumu veya hazırlanacak bir e-posta.",
+   "vi": "Nói « OK Coucou », rồi hỏi bất cứ điều gì: thêm pill, phát nhạc, xem thời tiết, soạn email."
   },
   "Listening": {
    "zh-Hans": "聆听",
@@ -4673,7 +5023,8 @@
    "ru": "Прослушивание",
    "id": "Mendengarkan",
    "de": "Hört zu",
-   "tr": "Dinleniyor"
+   "tr": "Dinleniyor",
+   "vi": "Đang nghe"
   },
   "Listen for « OK Coucou »": {
    "zh-Hans": "聆听「OK Coucou」",
@@ -4686,7 +5037,8 @@
    "ru": "Слушать « OK Coucou »",
    "id": "Dengarkan « OK Coucou »",
    "de": "Auf « OK Coucou » hören",
-   "tr": "« OK Coucou » ifadesini dinle"
+   "tr": "« OK Coucou » ifadesini dinle",
+   "vi": "Lắng nghe « OK Coucou »"
   },
   "The microphone stays open; only what follows « OK Coucou » goes further.": {
    "zh-Hans": "麦克风保持开启；只有「OK Coucou」之后的内容才会被进一步处理。",
@@ -4699,7 +5051,8 @@
    "ru": "Микрофон остаётся включённым; дальше уходит только то, что сказано после « OK Coucou ».",
    "id": "Mikrofon tetap terbuka; hanya yang diucapkan setelah « OK Coucou » yang diteruskan.",
    "de": "Das Mikrofon bleibt offen; nur das nach « OK Coucou » Gesagte wird weiterverarbeitet.",
-   "tr": "Mikrofon açık kalır; yalnızca « OK Coucou » sonrasında söylediklerin işlenmeye devam eder."
+   "tr": "Mikrofon açık kalır; yalnızca « OK Coucou » sonrasında söylediklerin işlenmeye devam eder.",
+   "vi": "Micrô vẫn mở; chỉ những gì nói sau « OK Coucou » mới được xử lý tiếp."
   },
   "Hears « OK Coucou » here, without the internet.": {
    "zh-Hans": "在这台电脑上听到「OK Coucou」，无需联网。",
@@ -4712,7 +5065,8 @@
    "ru": "Слышит « OK Coucou » прямо здесь, без интернета.",
    "id": "Mendengar « OK Coucou » di sini, tanpa internet.",
    "de": "Erkennt « OK Coucou » hier, ohne Internet.",
-   "tr": "« OK Coucou » ifadesini burada, internet olmadan duyar."
+   "tr": "« OK Coucou » ifadesini burada, internet olmadan duyar.",
+   "vi": "Nghe « OK Coucou » ngay tại đây, không cần internet."
   },
   "Coucou answers with Claude: add your Claude key in Notch → Chat.": {
    "zh-Hans": "Coucou 用 Claude 回答：请在 Notch → 聊天 中添加你的 Claude 密钥。",
@@ -4725,7 +5079,8 @@
    "ru": "Coucou отвечает с помощью Claude: добавьте свой ключ Claude в Notch → Чат.",
    "id": "Coucou menjawab dengan Claude: tambahkan kunci Claude-mu di Notch → Obrolan.",
    "de": "Coucou antwortet mit Claude: Füge deinen Claude-Schlüssel unter Notch → Chat hinzu.",
-   "tr": "Coucou, Claude ile yanıt verir: Çentik → Sohbet bölümünden Claude anahtarını ekle."
+   "tr": "Coucou, Claude ile yanıt verir: Çentik → Sohbet bölümünden Claude anahtarını ekle.",
+   "vi": "Coucou trả lời bằng Claude: thêm khóa Claude trong Notch → Chat."
   },
   "Download the voice model so Coucou can hear you.": {
    "zh-Hans": "下载语音模型，Coucou 才能听到你。",
@@ -4738,7 +5093,8 @@
    "ru": "Скачайте голосовую модель, чтобы Coucou мог вас слышать.",
    "id": "Unduh model suara agar Coucou bisa mendengarmu.",
    "de": "Lade das Sprachmodell herunter, damit Coucou dich hören kann.",
-   "tr": "Coucou'nun seni duyabilmesi için ses modelini indir."
+   "tr": "Coucou'nun seni duyabilmesi için ses modelini indir.",
+   "vi": "Tải model giọng nói để Coucou nghe được bạn."
   },
   "Answers": {
    "zh-Hans": "回答",
@@ -4751,7 +5107,8 @@
    "ru": "Ответы",
    "id": "Jawaban",
    "de": "Antworten",
-   "tr": "Yanıtlar"
+   "tr": "Yanıtlar",
+   "vi": "Câu trả lời"
   },
   "System voice": {
    "zh-Hans": "系统语音",
@@ -4764,7 +5121,8 @@
    "ru": "Системный голос",
    "id": "Suara sistem",
    "de": "Systemstimme",
-   "tr": "Sistem sesi"
+   "tr": "Sistem sesi",
+   "vi": "Giọng hệ thống"
   },
   "Text only": {
    "zh-Hans": "仅文字",
@@ -4777,7 +5135,8 @@
    "ru": "Только текст",
    "id": "Teks saja",
    "de": "Nur Text",
-   "tr": "Yalnızca metin"
+   "tr": "Yalnızca metin",
+   "vi": "Chỉ văn bản"
   },
   "Coucou answers out loud": {
    "zh-Hans": "Coucou 大声回答",
@@ -4790,7 +5149,8 @@
    "ru": "Coucou отвечает вслух",
    "id": "Coucou menjawab dengan suara",
    "de": "Coucou antwortet laut",
-   "tr": "Coucou sesli yanıt verir"
+   "tr": "Coucou sesli yanıt verir",
+   "vi": "Coucou trả lời thành tiếng"
   },
   "Female": {
    "zh-Hans": "女声",
@@ -4803,7 +5163,8 @@
    "ru": "Женский",
    "id": "Perempuan",
    "de": "Weiblich",
-   "tr": "Kadın"
+   "tr": "Kadın",
+   "vi": "Nữ"
   },
   "Male": {
    "zh-Hans": "男声",
@@ -4816,7 +5177,8 @@
    "ru": "Мужской",
    "id": "Laki-laki",
    "de": "Männlich",
-   "tr": "Erkek"
+   "tr": "Erkek",
+   "vi": "Nam"
   },
   "Your voice never leaves this computer: Parakeet turns it into text here. Only the words after « OK Coucou » go to Anthropic with your Claude key, and to ElevenLabs if you picked it for the answers.": {
    "zh-Hans": "你的声音永远不会离开这台电脑：Parakeet 在本机把它转成文字。只有「OK Coucou」之后的文字会用你的 Claude 密钥发送给 Anthropic；如果你选了 ElevenLabs 来朗读回答，也会发送给 ElevenLabs。",
@@ -4829,7 +5191,8 @@
    "ru": "Ваш голос никогда не покидает этот компьютер: Parakeet превращает его в текст здесь. Только слова после « OK Coucou » уходят в Anthropic с вашим ключом Claude и в ElevenLabs, если вы выбрали его для ответов.",
    "id": "Suaramu tidak pernah keluar dari komputer ini: Parakeet mengubahnya menjadi teks di sini. Hanya kata-kata setelah « OK Coucou » yang dikirim ke Anthropic dengan kunci Claude-mu, dan ke ElevenLabs jika kamu memilihnya untuk jawaban.",
    "de": "Deine Stimme verlässt diesen Computer nie: Parakeet wandelt sie hier in Text um. Nur die Wörter nach « OK Coucou » werden mit deinem Claude-Schlüssel an Anthropic gesendet und an ElevenLabs, falls du es für Antworten ausgewählt hast.",
-   "tr": "Sesin bu bilgisayardan asla dışarı çıkmaz: Parakeet burada metne dönüştürür. Yalnızca « OK Coucou » sonrasındaki sözcükler Claude anahtarınla Anthropic'e; yanıtlar için ElevenLabs'i seçtiysen ona da gönderilir."
+   "tr": "Sesin bu bilgisayardan asla dışarı çıkmaz: Parakeet burada metne dönüştürür. Yalnızca « OK Coucou » sonrasındaki sözcükler Claude anahtarınla Anthropic'e; yanıtlar için ElevenLabs'i seçtiysen ona da gönderilir.",
+   "vi": "Giọng nói của bạn không bao giờ rời khỏi máy tính này: Parakeet chuyển thành văn bản ngay tại đây. Chỉ những từ sau « OK Coucou » được gửi tới Anthropic bằng khóa Claude của bạn, và tới ElevenLabs nếu bạn đã chọn dịch vụ này cho câu trả lời."
   },
   "An email is never sent by Coucou: your mail app opens with it written, and you send it.": {
    "zh-Hans": "Coucou 从不发送邮件：你的邮件应用会打开并填好内容，由你来发送。",
@@ -4842,7 +5205,8 @@
    "ru": "Coucou никогда не отправляет письма: ваше почтовое приложение откроется с готовым текстом, а отправите его вы.",
    "id": "Coucou tidak pernah mengirim email: aplikasi email-mu terbuka dengan email yang sudah ditulis, dan kamu yang mengirimnya.",
    "de": "Coucou sendet niemals eine E-Mail: Deine Mail-App öffnet sich mit dem vorbereiteten Text und du sendest ihn.",
-   "tr": "Coucou asla e-posta göndermez: posta uygulaman yazılmış e-postayla açılır ve sen gönderirsin."
+   "tr": "Coucou asla e-posta göndermez: posta uygulaman yazılmış e-postayla açılır ve sen gönderirsin.",
+   "vi": "Coucou không bao giờ tự gửi email: ứng dụng thư của bạn mở ra với nội dung đã soạn, và bạn bấm gửi."
   },
   "Coucou couldn't answer: check your Claude key in Notch → Chat.": {
    "zh-Hans": "Coucou 无法回答：请检查 Notch → 聊天 中的 Claude 密钥。",
@@ -4855,7 +5219,8 @@
    "ru": "Coucou не смог ответить: проверьте ключ Claude в Notch → Чат.",
    "id": "Coucou tidak bisa menjawab: periksa kunci Claude-mu di Notch → Obrolan.",
    "de": "Coucou konnte nicht antworten: Prüfe deinen Claude-Schlüssel unter Notch → Chat.",
-   "tr": "Coucou yanıt veremedi: Çentik → Sohbet bölümündeki Claude anahtarını kontrol et."
+   "tr": "Coucou yanıt veremedi: Çentik → Sohbet bölümündeki Claude anahtarını kontrol et.",
+   "vi": "Coucou không trả lời được: kiểm tra khóa Claude trong Notch → Chat."
   },
   "Show clock in the island": {
    "zh-Hans": "在灵动岛中显示时钟",
@@ -4868,7 +5233,8 @@
    "ru": "Показывать часы в острове",
    "id": "Tampilkan jam di pulau",
    "de": "Uhr in der Insel anzeigen",
-   "tr": "Adada saati göster"
+   "tr": "Adada saati göster",
+   "vi": "Hiện đồng hồ trong island"
   },
   "The date and the time in the middle of the island when it is compact.": {
    "zh-Hans": "岛收起时，在中间显示日期和时间。",
@@ -4881,7 +5247,8 @@
    "ru": "Дата и время в середине острова, когда он свёрнут.",
    "id": "Tanggal dan jam di tengah pulau saat ringkas.",
    "de": "Datum und Uhrzeit in der Mitte der Insel, wenn sie kompakt ist.",
-   "tr": "Ada kompaktken ortasında tarih ve saat."
+   "tr": "Ada kompaktken ortasında tarih ve saat.",
+   "vi": "Ngày và giờ ở giữa island khi island thu gọn."
   },
   "Get new versions from the island?": {
    "zh-Hans": "在岛里获取新版本？",
@@ -4894,7 +5261,8 @@
    "ru": "Получать новые версии прямо в острове?",
    "id": "Dapatkan versi baru dari pulau?",
    "de": "Neue Versionen direkt in der Insel?",
-   "tr": "Yeni sürümler adada görünsün mü?"
+   "tr": "Yeni sürümler adada görünsün mü?",
+   "vi": "Nhận phiên bản mới từ island?"
   },
   "Mochi checks Coucou's releases on GitHub a few times a day and tells you when one is out. Nothing about you is sent.": {
    "zh-Hans": "Mochi 每天会在 GitHub 上查看几次 Coucou 的版本，有新版本时告诉你。不会发送任何关于你的信息。",
@@ -4907,7 +5275,8 @@
    "ru": "Mochi несколько раз в день проверяет релизы Coucou на GitHub и сообщает о новых. О вас ничего не отправляется.",
    "id": "Mochi memeriksa rilis Coucou di GitHub beberapa kali sehari dan memberi tahu saat ada yang baru. Tidak ada data tentangmu yang dikirim.",
    "de": "Mochi schaut ein paar Mal am Tag nach Coucous Releases auf GitHub und sagt dir, wenn eine neue da ist. Über dich wird nichts gesendet.",
-   "tr": "Mochi, Coucou'nun GitHub'daki sürümlerine günde birkaç kez bakar ve yenisi çıkınca sana söyler. Seninle ilgili hiçbir şey gönderilmez."
+   "tr": "Mochi, Coucou'nun GitHub'daki sürümlerine günde birkaç kez bakar ve yenisi çıkınca sana söyler. Seninle ilgili hiçbir şey gönderilmez.",
+   "vi": "Mochi kiểm tra bản phát hành của Coucou trên GitHub vài lần mỗi ngày và báo bạn khi có bản mới. Không có thông tin gì về bạn được gửi đi."
   },
   "Coucou {version} is out": {
    "zh-Hans": "Coucou {version} 已发布",
@@ -4920,7 +5289,8 @@
    "ru": "Вышел Coucou {version}",
    "id": "Coucou {version} sudah rilis",
    "de": "Coucou {version} ist da",
-   "tr": "Coucou {version} çıktı"
+   "tr": "Coucou {version} çıktı",
+   "vi": "Đã có Coucou {version}"
   },
   "You have {version}": {
    "zh-Hans": "当前版本 {version}",
@@ -4933,7 +5303,8 @@
    "ru": "У вас {version}",
    "id": "Kamu punya {version}",
    "de": "Du hast {version}",
-   "tr": "Sende {version} var"
+   "tr": "Sende {version} var",
+   "vi": "Bạn đang dùng {version}"
   },
   "What's new": {
    "zh-Hans": "新功能",
@@ -4946,7 +5317,8 @@
    "ru": "Что нового",
    "id": "Yang baru",
    "de": "Was ist neu",
-   "tr": "Yenilikler"
+   "tr": "Yenilikler",
+   "vi": "Có gì mới"
   },
   "Downloading from GitHub… {percent} %": {
    "zh-Hans": "正在从 GitHub 下载… {percent} %",
@@ -4959,7 +5331,8 @@
    "ru": "Загрузка с GitHub… {percent} %",
    "id": "Mengunduh dari GitHub… {percent} %",
    "de": "Wird von GitHub geladen… {percent} %",
-   "tr": "GitHub'dan indiriliyor… %{percent}"
+   "tr": "GitHub'dan indiriliyor… %{percent}",
+   "vi": "Đang tải từ GitHub… {percent} %"
   },
   "Installing… Coucou closes and comes back by itself.": {
    "zh-Hans": "正在安装… Coucou 会关闭并自动重新打开。",
@@ -4972,7 +5345,8 @@
    "ru": "Установка… Coucou закроется и сам откроется снова.",
    "id": "Memasang… Coucou akan menutup lalu terbuka lagi dengan sendirinya.",
    "de": "Wird installiert… Coucou schließt sich und kommt von selbst wieder.",
-   "tr": "Yükleniyor… Coucou kapanır ve kendiliğinden geri gelir."
+   "tr": "Yükleniyor… Coucou kapanır ve kendiliğinden geri gelir.",
+   "vi": "Đang cài… Coucou sẽ đóng và tự mở lại."
   },
   "The update didn't go through": {
    "zh-Hans": "更新未完成",
@@ -4985,7 +5359,8 @@
    "ru": "Обновление не удалось",
    "id": "Pembaruan tidak berhasil",
    "de": "Das Update hat nicht geklappt",
-   "tr": "Güncelleme tamamlanamadı"
+   "tr": "Güncelleme tamamlanamadı",
+   "vi": "Bản cập nhật không thành công"
   },
   "Install {version}": {
    "zh-Hans": "安装 {version}",
@@ -4998,7 +5373,8 @@
    "ru": "Установить {version}",
    "id": "Pasang {version}",
    "de": "{version} installieren",
-   "tr": "{version} sürümünü yükle"
+   "tr": "{version} sürümünü yükle",
+   "vi": "Cài {version}"
   },
   "Get {version} on GitHub": {
    "zh-Hans": "在 GitHub 上获取 {version}",
@@ -5011,7 +5387,8 @@
    "ru": "Скачать {version} на GitHub",
    "id": "Ambil {version} di GitHub",
    "de": "{version} auf GitHub holen",
-   "tr": "{version} sürümünü GitHub'dan al"
+   "tr": "{version} sürümünü GitHub'dan al",
+   "vi": "Tải {version} trên GitHub"
   },
   "Couldn't reach GitHub": {
    "zh-Hans": "无法连接 GitHub",
@@ -5024,7 +5401,8 @@
    "ru": "Не удалось связаться с GitHub",
    "id": "Tidak dapat menghubungi GitHub",
    "de": "GitHub nicht erreichbar",
-   "tr": "GitHub'a ulaşılamadı"
+   "tr": "GitHub'a ulaşılamadı",
+   "vi": "Không kết nối được tới GitHub"
   },
   "Coucou looks at its own releases on GitHub a few times a day. An update is installed only after your click, once its SHA-256 matches the one GitHub publishes.": {
    "zh-Hans": "Coucou 每天会在 GitHub 上查看几次自己的版本。只有在你点击后，并且其 SHA-256 与 GitHub 公布的一致时，才会安装更新。",
@@ -5037,7 +5415,8 @@
    "ru": "Coucou несколько раз в день проверяет свои релизы на GitHub. Обновление устанавливается только после вашего нажатия и только если его SHA-256 совпадает с тем, что публикует GitHub.",
    "id": "Coucou memeriksa rilisnya sendiri di GitHub beberapa kali sehari. Pembaruan hanya dipasang setelah kamu mengeklik, dan setelah SHA-256-nya cocok dengan yang diterbitkan GitHub.",
    "de": "Coucou schaut ein paar Mal am Tag nach seinen eigenen Releases auf GitHub. Ein Update wird erst nach deinem Klick installiert, wenn seine SHA-256 mit der von GitHub veröffentlichten übereinstimmt.",
-   "tr": "Coucou günde birkaç kez GitHub'daki kendi sürümlerine bakar. Güncelleme yalnızca sen tıkladıktan sonra, SHA-256 değeri GitHub'ın yayımladığıyla eşleştiğinde yüklenir."
+   "tr": "Coucou günde birkaç kez GitHub'daki kendi sürümlerine bakar. Güncelleme yalnızca sen tıkladıktan sonra, SHA-256 değeri GitHub'ın yayımladığıyla eşleştiğinde yüklenir.",
+   "vi": "Coucou kiểm tra bản phát hành của mình trên GitHub vài lần mỗi ngày. Bản cập nhật chỉ được cài sau khi bạn bấm, và khi mã SHA-256 khớp với mã GitHub công bố."
   },
   "Coucou looks at its own releases on GitHub a few times a day and tells you when one is out. Update it the way you installed it: AppImage, .deb, .rpm or your package manager.": {
    "zh-Hans": "Coucou 每天会在 GitHub 上查看几次自己的版本，有新版本时告诉你。请用你安装它的方式更新：AppImage、.deb、.rpm 或你的包管理器。",
@@ -5050,7 +5429,8 @@
    "ru": "Coucou несколько раз в день проверяет свои релизы на GitHub и сообщает о новых. Обновляйте его так же, как устанавливали: AppImage, .deb, .rpm или менеджер пакетов.",
    "id": "Coucou memeriksa rilisnya sendiri di GitHub beberapa kali sehari dan memberi tahu saat ada yang baru. Perbarui dengan cara kamu memasangnya: AppImage, .deb, .rpm, atau manajer paketmu.",
    "de": "Coucou schaut ein paar Mal am Tag nach seinen eigenen Releases auf GitHub und sagt dir, wenn eine neue da ist. Aktualisiere es so, wie du es installiert hast: AppImage, .deb, .rpm oder dein Paketmanager.",
-   "tr": "Coucou günde birkaç kez GitHub'daki kendi sürümlerine bakar ve yenisi çıkınca sana söyler. Onu nasıl yüklediysen öyle güncelle: AppImage, .deb, .rpm ya da paket yöneticin."
+   "tr": "Coucou günde birkaç kez GitHub'daki kendi sürümlerine bakar ve yenisi çıkınca sana söyler. Onu nasıl yüklediysen öyle güncelle: AppImage, .deb, .rpm ya da paket yöneticin.",
+   "vi": "Coucou kiểm tra bản phát hành của mình trên GitHub vài lần mỗi ngày và báo bạn khi có bản mới. Hãy cập nhật theo cách bạn đã cài: AppImage, .deb, .rpm hoặc trình quản lý gói của bạn."
   },
   "The download failed. Try again, or get the new version on GitHub.": {
    "zh-Hans": "下载失败。请重试，或前往 GitHub 获取新版本。",
@@ -5063,7 +5443,8 @@
    "ru": "Загрузка не удалась. Попробуйте снова или скачайте новую версию на GitHub.",
    "id": "Unduhan gagal. Coba lagi, atau ambil versi barunya di GitHub.",
    "de": "Der Download ist fehlgeschlagen. Versuch es noch mal oder hol dir die neue Version auf GitHub.",
-   "tr": "İndirme başarısız oldu. Tekrar dene ya da yeni sürümü GitHub'dan al."
+   "tr": "İndirme başarısız oldu. Tekrar dene ya da yeni sürümü GitHub'dan al.",
+   "vi": "Tải xuống thất bại. Thử lại, hoặc lấy phiên bản mới trên GitHub."
   },
   "GitHub gave no checksum for this download, so nothing was installed.": {
    "zh-Hans": "GitHub 没有提供此下载的校验值，因此没有安装任何内容。",
@@ -5076,7 +5457,8 @@
    "ru": "GitHub не указал контрольную сумму для этой загрузки, поэтому ничего не установлено.",
    "id": "GitHub tidak memberi checksum untuk unduhan ini, jadi tidak ada yang dipasang.",
    "de": "GitHub hat für diesen Download keine Prüfsumme angegeben, daher wurde nichts installiert.",
-   "tr": "GitHub bu indirme için sağlama değeri vermedi, bu yüzden hiçbir şey yüklenmedi."
+   "tr": "GitHub bu indirme için sağlama değeri vermedi, bu yüzden hiçbir şey yüklenmedi.",
+   "vi": "GitHub không cung cấp mã kiểm tra cho bản tải này, nên không có gì được cài."
   },
   "The download isn't the file GitHub published for this version, so nothing was installed.": {
    "zh-Hans": "下载的文件不是 GitHub 为此版本发布的文件，因此没有安装任何内容。",
@@ -5089,7 +5471,8 @@
    "ru": "Загруженный файл не совпадает с тем, что GitHub опубликовал для этой версии, поэтому ничего не установлено.",
    "id": "Unduhan ini bukan file yang diterbitkan GitHub untuk versi ini, jadi tidak ada yang dipasang.",
    "de": "Der Download ist nicht die Datei, die GitHub für diese Version veröffentlicht hat, daher wurde nichts installiert.",
-   "tr": "İndirilen dosya GitHub'ın bu sürüm için yayımladığı dosya değil, bu yüzden hiçbir şey yüklenmedi."
+   "tr": "İndirilen dosya GitHub'ın bu sürüm için yayımladığı dosya değil, bu yüzden hiçbir şey yüklenmedi.",
+   "vi": "Bản tải về không phải tệp GitHub công bố cho phiên bản này, nên không có gì được cài."
   },
   "Windows blocked the installer. Get the new version from its release page instead.": {
    "zh-Hans": "Windows 阻止了安装程序。请改从发布页面获取新版本。",
@@ -5102,7 +5485,8 @@
    "ru": "Windows заблокировала установщик. Скачайте новую версию со страницы релиза.",
    "id": "Windows memblokir pemasangnya. Ambil versi barunya dari halaman rilis saja.",
    "de": "Windows hat das Installationsprogramm blockiert. Hol dir die neue Version stattdessen von der Release-Seite.",
-   "tr": "Windows yükleyiciyi engelledi. Yeni sürümü bunun yerine sürüm sayfasından al."
+   "tr": "Windows yükleyiciyi engelledi. Yeni sürümü bunun yerine sürüm sayfasından al.",
+   "vi": "Windows đã chặn trình cài đặt. Hãy lấy phiên bản mới từ trang phát hành của nó."
   },
   "Update Coucou to {version}…": {
    "zh-Hans": "将 Coucou 更新到 {version}…",
@@ -5115,7 +5499,8 @@
    "ru": "Обновить Coucou до {version}…",
    "id": "Perbarui Coucou ke {version}…",
    "de": "Coucou auf {version} aktualisieren…",
-   "tr": "Coucou'yu {version} sürümüne güncelle…"
+   "tr": "Coucou'yu {version} sürümüne güncelle…",
+   "vi": "Cập nhật Coucou lên {version}…"
   }
  }
 }

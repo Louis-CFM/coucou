@@ -224,13 +224,14 @@ Weekly recap** turns it off or clears it.
 
 ## Languages
 
-Coucou speaks twelve of the Mac app's languages: English, 简体中文, हिन्दी,
+Coucou speaks thirteen of the Mac app's languages: English, 简体中文, हिन्दी,
 Español, العربية, Français, বাংলা, Português (Brasil), Русский, Bahasa
-Indonesia, Deutsch and Türkçe (Traditional Chinese and Thai are on the Mac
-only for now). **Settings… → General → Language** picks one; **System** (the
-default) follows your system's language when it is one of these, English
-otherwise. The island, the settings window and the tray menu switch at once —
-nothing restarts, and the island keeps its sessions, steps and chat.
+Indonesia, Deutsch, Türkçe and Tiếng Việt (Traditional Chinese and Thai are
+on the Mac only for now). **Settings… → General → Language** picks one;
+**System** (the default) follows your system's language when it is one of
+these, English otherwise. The island, the settings window and the tray menu
+switch at once — nothing restarts, and the island keeps its sessions, steps
+and chat.
 
 In Arabic the island's cards read right to left; Mochi, the pills and the
 header stay where they are, and commands, code and file paths stay left to
