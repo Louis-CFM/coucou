@@ -64,6 +64,7 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 | `TERM_PROGRAM=iTerm.app` + `ITERM_SESSION_ID` | AppleScript iTerm : sélectionner la session, activer |
 | `TERM_PROGRAM=vscode` | ouvrir le dossier `cwd` dans VS Code ou Cursor (selon `__CFBundleIdentifier`) |
 | Ghostty, Warp, autre | activer l'app |
+| Conductor (`__CFBundleIdentifier=com.conductor.app`, sans `TERM_PROGRAM`) | activer Conductor (pas de lien documenté vers un workspace précis) |
 | rien (app Claude) | activer l'app Claude |
 Demande l'autorisation Automatisation la première fois (normal).
 
@@ -321,6 +322,23 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 
 ---
 
+## 6bis. WhatsApp (expérimental, build GitHub uniquement)
+
+Pas d'API WhatsApp pour un compte perso : Coucou parle à une **passerelle locale non officielle** que l'utilisateur lance sur son Mac, [GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice) (par défaut) ou [OpenWA](https://github.com/rmyndharis/OpenWA). Tout le code est sous `#if !APPSTORE` ; la pill `integration_whatsapp` (#25D366) est `githubOnly`.
+
+- **Fichiers** : `WhatsAppModels.swift` (boîte en mémoire, filtres, garde-fous, requête HTTP), `WhatsAppGateway.swift` (payloads et réponses des deux passerelles, HMAC), `WhatsAppProvider.swift` (`GOWAProvider`, `OpenWAProvider`), `WhatsAppWebhook.swift` (serveur 127.0.0.1), `WhatsAppController.swift`, `WhatsAppViews.swift` (carte, conversation, Réglages), `WhatsAppGOWAProcess.swift` (GOWA lancé par Coucou). Tests : `scripts/test-whatsapp.sh`.
+- **GOWA** : `http://127.0.0.1:3000`, auth basique `user:pass` facultative. Coucou prend l'appareil connecté, sinon crée `coucou` (`POST /devices`) ; QR = PNG de `GET /devices/{id}/login`, récupéré sur la passerelle elle-même ; webhook déclaré par `PATCH /devices/{id}/webhook` (événement `message`), signé `X-Hub-Signature-256: sha256=<hex>`. Messages : `GET /chats`, `GET /chat/{jid}/messages` ; envoi `POST /send/message` ; lu `POST /message/{id}/read`. Pas de liste de mentions : `@<mon numéro>` dans le texte.
+- **OpenWA** : `http://127.0.0.1:2785/api`, en-tête `X-API-Key`, moteur `ENGINE_TYPE=baileys`. Session prête, sinon `coucou` créée et démarrée ; QR = data-URL de `GET /sessions/{id}/qr` ; webhook `POST /sessions/{id}/webhooks` (`message.received`, `message.sent`), signé `X-OpenWA-Signature`. Il faut `SSRF_ALLOWED_HOSTS=127.0.0.1` côté OpenWA, sinon il refuse l'adresse locale (Coucou passe alors au polling).
+- **Temps réel** : `NWListener` lié à `127.0.0.1` (port 47823 par défaut), pairs non-loopback refusés, signature HMAC-SHA256 vérifiée sur le corps brut avec un secret aléatoire du Keychain. Sans livraison depuis 5 min : polling toutes les 20 s. Statut toutes les 5 s tant que ce n'est pas lié, toutes les minutes ensuite, toutes les 30 s après une minute de panne. Réveil : on redemande tout.
+- **Pill** : une ligne par conversation (initiales, nom, aperçu, non-lus), médias en libellé. Nouveau message : émote `happy`, son `pop` (réglage son global), état `finished` comme Stripe (règles d'ouverture habituelles), seulement le nom de la conversation dans la pill, jamais le texte. Passerelle en panne deux fois de suite : badge rouge, rien de plus.
+- **Répondre** : clic → 10 derniers messages + champ (Entrée envoie, Maj+Entrée saut de ligne, Échap ferme ; le brouillon garde l'île ouverte). Réponse seulement dans une conversation déjà là, 4 096 caractères max, 6 par minute. Lu à l'ouverture (option) ou à la réponse, jamais à la réception.
+- **Filtres** : groupes muets sauf mention, chats ignorés (clic droit ou Réglages), Concentration via `INFocusStatusCenter` (demande la capability Communication Notifications ; sans elle, le réglage s'affiche indisponible).
+- **Vie privée** : rien d'autre que la passerelle locale (pas de photo de profil, elles sont sur les serveurs de WhatsApp), historique en mémoire seulement (20 messages par conversation), vidé à la fermeture ou à la désactivation, aucun contenu dans les logs ni sur disque. URL, identifiants et secret dans le Keychain.
+- **Installer WhatsApp (un clic)** : `WhatsAppGOWAInstaller` lit la dernière release de GOWA (`api.github.com/repos/aldinokemal/go-whatsapp-web-multidevice/releases/latest`), prend `whatsapp_<version>_darwin_<arm64|amd64>.zip`, vérifie son SHA-256 avec `checksums-macos.txt` (sinon le `digest` de GitHub ; sans empreinte, rien n'est installé), dézippe avec `/usr/bin/ditto`, range le binaire `darwin-<arch>` sous `~/Library/Application Support/Coucou/GOWA/gowa` (chmod 755, sans quarantaine), puis active « Lancer GOWA automatiquement » et redémarre l'intégration : le QR suit. Redirections acceptées vers github.com et *.githubusercontent.com seulement. C'est le seul appel réseau hors passerelle, et seulement au clic.
+- **Lancer GOWA automatiquement** : processus enfant `rest --host=127.0.0.1 --port=<port de l'URL> --auto-download-media=false`, identifiant passé par `APP_BASIC_AUTH` (pas sur la ligne de commande), sortie vers `/dev/null`, dossier `~/Library/Application Support/Coucou/GOWA`, arrêté à la fermeture de Coucou ou quand l'option est coupée, redémarré seulement si son binaire, son adresse ou son mot de passe change (en attendant que l'ancien soit parti), relancé s'il tombe (une fois par minute au plus). Aucune requête ne suit de redirection : rien ne part ailleurs que vers la passerelle.
+
+---
+
 ## 7. Permissions macOS demandées (récapitulatif pour Louis)
 
 | Permission | Pourquoi | Quand |
@@ -331,6 +349,7 @@ Réglages → Chat → Local models → **Disconnect**. Efface l'URL sauvegardé
 | Automatisation → Spotify *(GitHub only)* | lire la position, le shuffle, le volume ; piloter la lecture | activation de la pill Spotify, ou première ouverture de sa carte |
 | Enregistrement de l'écran | capturer la fenêtre attrapée | première attache |
 | Micro + Reconnaissance vocale (optionnel) | dictée | premier clic sur le micro |
+| État de Concentration *(GitHub only)* | WhatsApp reste discret pendant une Concentration | activation de WhatsApp, si « Rester discret pendant une Concentration » est coché |
 
 Aucune permission Accessibilité nécessaire.
 

@@ -8,6 +8,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
+import type { UpdateStatus } from "./update";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -199,6 +200,7 @@ export const Bridge = {
   focusWindow: (focused: boolean) => call<void>("focus_window", { focused }),
 
   reposition: () => call<void>("reposition"),
+  fitZoom: (dpr: number) => call<boolean>("fit_zoom", { dpr }),
 
   /** Displays the island can be pinned to: `key` is what `settings.screen` stores. */
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
@@ -398,7 +400,7 @@ export const Bridge = {
   /** Asleep, the cursor poll stops. */
   desktopSetAsleep: (asleep: boolean) => call<void>("desktop_mochi_set_asleep", { asleep }),
 
-  // ── Spotify (src-tauri/src/spotify.rs, Linux) ─────────────────────────────
+  // ── Spotify (src-tauri/src/spotify.rs) ────────────────────────────────────
   /** Reads the player again (the card came on screen) and reports it. */
   spotifyRefresh: () => call<SpotifyState | null>("spotify_refresh"),
   /** True when Spotify took it. `value`: seconds for seek, 0/1 for shuffle and repeat, 0…100 for volume. */
@@ -408,6 +410,23 @@ export const Bridge = {
   spotifyOpen: () => call<boolean>("spotify_open"),
   /** Whether there is a Spotify to launch (Settings). */
   spotifyInstalled: () => call<boolean>("spotify_installed"),
+
+  // ── New versions (src-tauri/src/update.rs) ────────────────────────────────
+  updateStatus: () => call<UpdateStatus>("update_status"),
+  /** The island's question or Settings' toggle: may Coucou look at GitHub on its own? */
+  updateSetConsent: (allowed: boolean) => call<void>("update_set_consent", { allowed }),
+  /** "Check now": one look at GitHub, the toggle on or off. */
+  updateCheck: () => call<UpdateStatus>("update_check"),
+  /** The island opened the card Rust offered ("ask" or "announce"). */
+  updateShown: (kind: "ask" | "announce") => call<void>("update_shown", { kind }),
+  /** Settings → Install X: opens the island's update card. */
+  updateShow: () => call<void>("update_show"),
+  updateLater: () => call<void>("update_later"),
+  updateDismiss: () => call<void>("update_dismiss"),
+  /** "Update now" (Windows): download, check the SHA-256, run the installer, quit. */
+  updateInstall: () => call<void>("update_install"),
+  /** The release's page on github.com. */
+  updateOpenPage: () => call<void>("update_open_page"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

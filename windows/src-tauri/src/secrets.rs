@@ -20,6 +20,8 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
+    // « OK Coucou »'s answers in an ElevenLabs voice.
+    "elevenlabs-api-key",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

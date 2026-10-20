@@ -101,6 +101,8 @@ pub struct Settings {
     /// Falls back to $VISUAL, $EDITOR, then "code".
     #[serde(default)]
     pub editor: Option<String>,
+    /// The date and time in the middle of the compact island. Off by default.
+    pub show_clock: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -167,6 +169,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             editor: None,
+            show_clock: false,
         }
     }
 }
@@ -454,7 +457,8 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "editor": "cursor"
+  "editor": "cursor",
+  "showClock": true
 }"##;
 
     fn custom() -> Value {
@@ -963,6 +967,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "editor",
+                "showClock",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

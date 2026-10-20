@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "N waiting" badge: the waiting tone, from the shared palette. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_tone_attention" />
+    <corners android:radius="10dp" />
+</shape>
