@@ -4,6 +4,7 @@
 
 import { onEvent, Bridge, type IntegrationUpdate } from "../core/bridge";
 import { gitHubAlert, type GitHubEvent } from "../core/github";
+import { hasCalendarLink } from "../core/agenda-store";
 import { availablePills } from "../core/pills";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
@@ -58,6 +59,9 @@ export async function refreshConfigured() {
     switch (def.connect.kind) {
       case "key":
         configured = (await Bridge.secretPresent(def.connect.key)) ?? false;
+        break;
+      case "calendars":
+        configured = await hasCalendarLink(State.settings.agendaCalendars);
         break;
       case "hooks":
         // Without an answer from Rust (a plain browser), the Claude Code pill

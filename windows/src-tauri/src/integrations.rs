@@ -71,6 +71,7 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_github", 7, 300, poll_github);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
+    spawn(app.clone(), "integration_agenda", 10, 300, poll_agenda);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
@@ -120,6 +121,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        "integration_agenda" => poll_agenda(app).await,
         _ => {}
     }
 }
@@ -783,6 +785,48 @@ fn parse_notion_page(obj: &Value) -> Option<Value> {
         "lastEditedAt": obj.get("last_edited_time").and_then(Value::as_str)?,
         "url": obj.get("url").and_then(Value::as_str).unwrap_or("https://notion.so"),
     }))
+}
+
+// ── Agenda ───────────────────────────────────────────────────────────────────
+
+/// Reads the calendars the user added and shows the next days. The card gets the events and, for
+/// each calendar that failed, why; it is an error only when every calendar failed, so one stale link
+/// never hides the others' events.
+async fn poll_agenda(app: AppHandle) {
+    let calendars = app
+        .try_state::<crate::Shared>()
+        .map(|shared| shared.settings.lock().unwrap().agenda_calendars.clone())
+        .unwrap_or_default();
+    let window = crate::agenda::window_now();
+    let loaded = crate::agenda::load(&calendars, &window).await;
+    let nothing_worked = !loaded.read.is_empty() && loaded.events.is_empty() && loaded.errors.len() == loaded.read.len();
+    // What the chat may be told: nothing when no calendar answered, so it never claims a free week.
+    crate::agenda::chat::remember(if loaded.read.is_empty() || nothing_worked {
+        None
+    } else {
+        Some(crate::agenda::chat::Feed {
+            events: loaded.events.clone(),
+            failed: loaded.errors.iter().map(|e| e.calendar.clone()).collect(),
+        })
+    });
+    if loaded.read.is_empty() {
+        return;
+    }
+    emit(&app, IntegrationUpdate {
+        id: "integration_agenda",
+        data: json!({ "events": loaded.events, "errors": loaded.errors }),
+        error: if nothing_worked { loaded.errors.first().map(|e| e.message.clone()) } else { None },
+        event: None,
+    });
+}
+
+/// A calendar was added, removed or switched, or its link changed, in Settings: read again now, not in five minutes.
+pub fn agenda_changed(app: &AppHandle) {
+    if PAUSED.load(Ordering::Relaxed) || !enabled(app, "integration_agenda") {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move { poll_agenda(app).await });
 }
 
 // ── Cal.com ───────────────────────────────────────────────────────────────────

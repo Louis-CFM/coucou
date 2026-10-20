@@ -4515,6 +4515,248 @@
    "pt-BR": "Este arquivo não pode ser usado como som",
    "ru": "Этот файл нельзя использовать как звук",
    "id": "File ini tidak dapat dipakai sebagai suara"
+  },
+  "Check": {
+   "zh-Hans": "检查",
+   "hi": "जाँचें",
+   "es": "Comprobar",
+   "ar": "تحقق",
+   "fr": "Vérifier",
+   "bn": "যাচাই করুন",
+   "pt-BR": "Verificar",
+   "ru": "Проверить",
+   "id": "Periksa"
+  },
+  "Events in the next 7 days: {n}": {
+   "zh-Hans": "未来 7 天的事件：{n}",
+   "hi": "अगले 7 दिनों में इवेंट: {n}",
+   "es": "Eventos en los próximos 7 días: {n}",
+   "ar": "الأحداث في الأيام السبعة القادمة: {n}",
+   "fr": "Événements des 7 prochains jours : {n}",
+   "bn": "পরবর্তী ৭ দিনের ইভেন্ট: {n}",
+   "pt-BR": "Eventos nos próximos 7 dias: {n}",
+   "ru": "События в ближайшие 7 дней: {n}",
+   "id": "Acara dalam 7 hari ke depan: {n}"
+  },
+  "Tomorrow": {
+   "zh-Hans": "明天",
+   "hi": "कल",
+   "es": "Mañana",
+   "ar": "غدًا",
+   "fr": "Demain",
+   "bn": "আগামীকাল",
+   "pt-BR": "Amanhã",
+   "ru": "Завтра",
+   "id": "Besok"
+  },
+  "All day": {
+   "zh-Hans": "全天",
+   "hi": "पूरे दिन",
+   "es": "Todo el día",
+   "ar": "طوال اليوم",
+   "fr": "Toute la journée",
+   "bn": "সারাদিন",
+   "pt-BR": "O dia todo",
+   "ru": "Весь день",
+   "id": "Sepanjang hari"
+  },
+  "Overlaps another event": {
+   "zh-Hans": "与另一个事件重叠",
+   "hi": "किसी अन्य इवेंट से टकराता है",
+   "es": "Se solapa con otro evento",
+   "ar": "يتداخل مع حدث آخر",
+   "fr": "Chevauche un autre événement",
+   "bn": "অন্য একটি ইভেন্টের সঙ্গে মিলে যায়",
+   "pt-BR": "Sobrepõe-se a outro evento",
+   "ru": "Пересекается с другим событием",
+   "id": "Bertabrakan dengan acara lain"
+  },
+  "Overlap": {
+   "zh-Hans": "冲突",
+   "hi": "टकराव",
+   "es": "Solapado",
+   "ar": "تداخل",
+   "fr": "Chevauche",
+   "bn": "মিলে যায়",
+   "pt-BR": "Sobreposto",
+   "ru": "Пересечение",
+   "id": "Bentrok"
+  },
+  "Now": {
+   "zh-Hans": "现在",
+   "hi": "अभी",
+   "es": "Ahora",
+   "ar": "الآن",
+   "fr": "En cours",
+   "bn": "এখন",
+   "pt-BR": "Agora",
+   "ru": "Сейчас",
+   "id": "Sekarang"
+  },
+  "Join": {
+   "zh-Hans": "加入",
+   "hi": "जुड़ें",
+   "es": "Unirse",
+   "ar": "انضمام",
+   "fr": "Rejoindre",
+   "bn": "যোগ দিন",
+   "pt-BR": "Participar",
+   "ru": "Подключиться",
+   "id": "Gabung"
+  },
+  "Nothing planned in the next 7 days": {
+   "zh-Hans": "未来 7 天没有安排",
+   "hi": "अगले 7 दिनों में कुछ तय नहीं है",
+   "es": "Nada previsto en los próximos 7 días",
+   "ar": "لا شيء مخطط له في الأيام السبعة القادمة",
+   "fr": "Rien de prévu dans les 7 prochains jours",
+   "bn": "পরবর্তী ৭ দিনে কিছু নির্ধারিত নেই",
+   "pt-BR": "Nada planejado nos próximos 7 dias",
+   "ru": "На ближайшие 7 дней ничего не запланировано",
+   "id": "Tidak ada rencana dalam 7 hari ke depan"
+  },
+  "Nothing left today": {
+   "zh-Hans": "今天没有剩余安排",
+   "hi": "आज कुछ बाकी नहीं है",
+   "es": "Nada más por hoy",
+   "ar": "لم يبقَ شيء لليوم",
+   "fr": "Plus rien aujourd'hui",
+   "bn": "আজ আর কিছু বাকি নেই",
+   "pt-BR": "Nada mais para hoje",
+   "ru": "На сегодня больше ничего",
+   "id": "Tidak ada lagi hari ini"
+  },
+  "That link did not return a calendar": {
+   "zh-Hans": "该链接没有返回日历",
+   "hi": "उस लिंक से कैलेंडर नहीं मिला",
+   "es": "Ese enlace no devolvió un calendario",
+   "ar": "لم يُرجع هذا الرابط تقويمًا",
+   "fr": "Ce lien n'a pas renvoyé de calendrier",
+   "bn": "ওই লিঙ্ক থেকে কোনো ক্যালেন্ডার পাওয়া যায়নি",
+   "pt-BR": "Esse link não retornou um calendário",
+   "ru": "По этой ссылке календарь не получен",
+   "id": "Tautan itu tidak mengembalikan kalender"
+  },
+  "The link must start with https:// (or webcal://)": {
+   "zh-Hans": "链接必须以 https://（或 webcal://）开头",
+   "hi": "लिंक https:// (या webcal://) से शुरू होना चाहिए",
+   "es": "El enlace debe empezar por https:// (o webcal://)",
+   "ar": "يجب أن يبدأ الرابط بـ https:// (أو webcal://)",
+   "fr": "Le lien doit commencer par https:// (ou webcal://)",
+   "bn": "লিঙ্ক https:// (বা webcal://) দিয়ে শুরু হতে হবে",
+   "pt-BR": "O link deve começar com https:// (ou webcal://)",
+   "ru": "Ссылка должна начинаться с https:// (или webcal://)",
+   "id": "Tautan harus diawali https:// (atau webcal://)"
+  },
+  "Could not reach the calendar": {
+   "zh-Hans": "无法连接该日历",
+   "hi": "कैलेंडर तक नहीं पहुँच सके",
+   "es": "No se pudo conectar con el calendario",
+   "ar": "تعذّر الوصول إلى التقويم",
+   "fr": "Impossible de joindre le calendrier",
+   "bn": "ক্যালেন্ডারে পৌঁছানো যায়নি",
+   "pt-BR": "Não foi possível acessar o calendário",
+   "ru": "Не удалось связаться с календарём",
+   "id": "Tidak dapat menghubungi kalender"
+  },
+  "The calendar answered {code}": {
+   "zh-Hans": "日历返回 {code}",
+   "hi": "कैलेंडर ने {code} लौटाया",
+   "es": "El calendario respondió {code}",
+   "ar": "ردّ التقويم بالرمز {code}",
+   "fr": "Le calendrier a répondu {code}",
+   "bn": "ক্যালেন্ডার {code} উত্তর দিয়েছে",
+   "pt-BR": "O calendário respondeu {code}",
+   "ru": "Календарь ответил кодом {code}",
+   "id": "Kalender menjawab {code}"
+  },
+  "The link no longer works: publish the calendar again": {
+   "zh-Hans": "该链接已失效：请重新发布日历",
+   "hi": "लिंक अब काम नहीं करता: कैलेंडर फिर से प्रकाशित करें",
+   "es": "El enlace ya no funciona: vuelve a publicar el calendario",
+   "ar": "لم يعد الرابط يعمل: أعد نشر التقويم",
+   "fr": "Le lien ne fonctionne plus : publiez à nouveau le calendrier",
+   "bn": "লিঙ্কটি আর কাজ করছে না: ক্যালেন্ডারটি আবার প্রকাশ করুন",
+   "pt-BR": "O link não funciona mais: publique o calendário novamente",
+   "ru": "Ссылка больше не работает: опубликуйте календарь заново",
+   "id": "Tautan tidak lagi berfungsi: publikasikan ulang kalender"
+  },
+  "Nothing to check: add a calendar first.": {
+   "zh-Hans": "没有可检查的内容：请先添加日历。",
+   "hi": "जाँचने के लिए कुछ नहीं: पहले एक कैलेंडर जोड़ें।",
+   "es": "Nada que comprobar: añade primero un calendario.",
+   "ar": "لا شيء للتحقق منه: أضف تقويمًا أولاً.",
+   "fr": "Rien à vérifier : ajoutez d'abord un calendrier.",
+   "bn": "যাচাই করার কিছু নেই: আগে একটি ক্যালেন্ডার যোগ করুন।",
+   "pt-BR": "Nada para verificar: adicione primeiro um calendário.",
+   "ru": "Нечего проверять: сначала добавьте календарь.",
+   "id": "Tidak ada yang diperiksa: tambahkan kalender dulu."
+  },
+  "No calendar added": {
+   "zh-Hans": "尚未添加日历",
+   "hi": "कोई कैलेंडर नहीं जोड़ा गया",
+   "es": "Ningún calendario añadido",
+   "ar": "لم تتم إضافة أي تقويم",
+   "fr": "Aucun calendrier ajouté",
+   "bn": "কোনো ক্যালেন্ডার যোগ করা হয়নি",
+   "pt-BR": "Nenhum calendário adicionado",
+   "ru": "Календари не добавлены",
+   "id": "Belum ada kalender yang ditambahkan"
+  },
+  "Up to {max} calendars": {
+   "zh-Hans": "最多 {max} 个日历",
+   "hi": "अधिकतम {max} कैलेंडर",
+   "es": "Hasta {max} calendarios",
+   "ar": "حتى {max} تقاويم",
+   "fr": "Jusqu'à {max} calendriers",
+   "bn": "সর্বোচ্চ {max}টি ক্যালেন্ডার",
+   "pt-BR": "Até {max} calendários",
+   "ru": "Не более {max} календарей",
+   "id": "Maksimal {max} kalender"
+  },
+  "Calendar {n}": {
+   "zh-Hans": "日历 {n}",
+   "hi": "कैलेंडर {n}",
+   "es": "Calendario {n}",
+   "ar": "التقويم {n}",
+   "fr": "Calendrier {n}",
+   "bn": "ক্যালেন্ডার {n}",
+   "pt-BR": "Calendário {n}",
+   "ru": "Календарь {n}",
+   "id": "Kalender {n}"
+  },
+  "Paste the link a calendar is published at, and add as many as you like. Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar. iCloud: icloud.com/calendar, share a calendar as a public calendar. Anyone who has a link can read that calendar, so the links stay in the credential store.": {
+   "zh-Hans": "粘贴日历发布的链接，可添加任意多个。Outlook 网页版：设置 → 日历 → 共享日历 → 发布日历。iCloud：在 icloud.com/calendar 将日历共享为公开日历。任何拥有链接的人都能读取该日历，因此链接保存在凭据存储中。",
+   "hi": "कैलेंडर जिस लिंक पर प्रकाशित है उसे चिपकाएँ, जितने चाहें उतने जोड़ें। वेब पर Outlook: सेटिंग्स → कैलेंडर → साझा कैलेंडर → कैलेंडर प्रकाशित करें। iCloud: icloud.com/calendar पर किसी कैलेंडर को सार्वजनिक कैलेंडर के रूप में साझा करें। जिसके पास लिंक है वह उस कैलेंडर को पढ़ सकता है, इसलिए लिंक क्रेडेंशियल स्टोर में रखे जाते हैं।",
+   "es": "Pega el enlace en el que se publica un calendario y añade tantos como quieras. Outlook en la web: Configuración → Calendario → Calendarios compartidos → Publicar un calendario. iCloud: icloud.com/calendar, comparte un calendario como calendario público. Quien tenga un enlace puede leer ese calendario, por eso los enlaces se guardan en el almacén de credenciales.",
+   "ar": "الصق الرابط الذي يُنشر عليه التقويم، وأضف ما تشاء من التقاويم. Outlook على الويب: الإعدادات ← التقويم ← التقاويم المشتركة ← نشر تقويم. iCloud: icloud.com/calendar، شارك تقويمًا كتقويم عام. يمكن لأي شخص يملك الرابط قراءة ذلك التقويم، لذلك تُحفظ الروابط في مخزن بيانات الاعتماد.",
+   "fr": "Collez le lien auquel un calendrier est publié, et ajoutez-en autant que vous voulez. Outlook sur le web : Paramètres → Calendrier → Calendriers partagés → Publier un calendrier. iCloud : icloud.com/calendar, partagez un calendrier en calendrier public. Quiconque a un lien peut lire ce calendrier : les liens restent donc dans le coffre d'identifiants.",
+   "bn": "ক্যালেন্ডার যে লিঙ্কে প্রকাশিত সেটি পেস্ট করুন, যত খুশি যোগ করুন। ওয়েবে Outlook: সেটিংস → ক্যালেন্ডার → শেয়ার করা ক্যালেন্ডার → ক্যালেন্ডার প্রকাশ করুন। iCloud: icloud.com/calendar-এ একটি ক্যালেন্ডারকে পাবলিক ক্যালেন্ডার হিসেবে শেয়ার করুন। যার কাছে লিঙ্ক আছে সে ওই ক্যালেন্ডার পড়তে পারে, তাই লিঙ্কগুলো ক্রেডেনশিয়াল স্টোরে রাখা হয়।",
+   "pt-BR": "Cole o link em que um calendário é publicado e adicione quantos quiser. Outlook na web: Configurações → Calendário → Calendários compartilhados → Publicar um calendário. iCloud: icloud.com/calendar, compartilhe um calendário como calendário público. Quem tiver um link pode ler esse calendário, por isso os links ficam no armazenamento de credenciais.",
+   "ru": "Вставьте ссылку, по которой опубликован календарь, и добавьте сколько нужно. Outlook в вебе: Параметры → Календарь → Общие календари → Опубликовать календарь. iCloud: icloud.com/calendar, откройте календарь для всех. Любой, у кого есть ссылка, может читать этот календарь, поэтому ссылки хранятся в хранилище учётных данных.",
+   "id": "Tempel tautan tempat kalender dipublikasikan, dan tambahkan sebanyak yang Anda mau. Outlook di web: Pengaturan → Kalender → Kalender bersama → Publikasikan kalender. iCloud: icloud.com/calendar, bagikan kalender sebagai kalender publik. Siapa pun yang memiliki tautan dapat membaca kalender itu, jadi tautan disimpan di penyimpanan kredensial."
+  },
+  "Share my agenda with the chat": {
+   "zh-Hans": "与聊天共享我的日程",
+   "hi": "चैट के साथ मेरा एजेंडा साझा करें",
+   "es": "Compartir mi agenda con el chat",
+   "ar": "مشاركة جدولي مع الدردشة",
+   "fr": "Partager mon agenda avec le chat",
+   "bn": "চ্যাটের সঙ্গে আমার এজেন্ডা শেয়ার করুন",
+   "pt-BR": "Compartilhar minha agenda com o chat",
+   "ru": "Делиться моим расписанием с чатом",
+   "id": "Bagikan agenda saya dengan obrolan"
+  },
+  "The chat gets the titles, times and calendar names of the next 7 days, so you can ask it to sum up your day or week. They go to the chat provider you picked. Places and meeting links are never sent.": {
+   "zh-Hans": "聊天会收到未来 7 天的事件标题、时间和日历名称，这样你就可以让它总结你的一天或一周。这些内容会发送给你选择的聊天服务商。地点和会议链接绝不会发送。",
+   "hi": "चैट को अगले 7 दिनों के इवेंट के शीर्षक, समय और कैलेंडर के नाम मिलते हैं, ताकि आप उससे अपने दिन या सप्ताह का सारांश माँग सकें। ये आपके चुने हुए चैट प्रदाता को भेजे जाते हैं। स्थान और मीटिंग लिंक कभी नहीं भेजे जाते।",
+   "es": "El chat recibe los títulos, las horas y los nombres de calendario de los próximos 7 días, para que puedas pedirle un resumen de tu día o de tu semana. Se envían al proveedor de chat que elegiste. Los lugares y los enlaces de reunión nunca se envían.",
+   "ar": "تتلقى الدردشة عناوين الأحداث وأوقاتها وأسماء التقاويم للأيام السبعة القادمة، لتتمكن من أن تطلب منها تلخيص يومك أو أسبوعك. تُرسل إلى مزوّد الدردشة الذي اخترته. لا تُرسل الأماكن ولا روابط الاجتماعات أبدًا.",
+   "fr": "Le chat reçoit les titres, les heures et les noms de calendrier des 7 prochains jours, pour que vous puissiez lui demander un résumé de votre journée ou de votre semaine. Ils partent chez le fournisseur de chat que vous avez choisi. Les lieux et les liens de réunion ne sont jamais envoyés.",
+   "bn": "চ্যাট পরবর্তী ৭ দিনের ইভেন্টের শিরোনাম, সময় ও ক্যালেন্ডারের নাম পায়, যাতে আপনি তাকে দিন বা সপ্তাহের সারসংক্ষেপ করতে বলতে পারেন। এগুলি আপনার বেছে নেওয়া চ্যাট প্রদানকারীর কাছে যায়। স্থান ও মিটিং লিঙ্ক কখনও পাঠানো হয় না।",
+   "pt-BR": "O chat recebe os títulos, os horários e os nomes dos calendários dos próximos 7 dias, para que você possa pedir um resumo do seu dia ou da sua semana. Eles vão para o provedor de chat que você escolheu. Locais e links de reunião nunca são enviados.",
+   "ru": "Чат получает названия, время и имена календарей на ближайшие 7 дней, чтобы вы могли попросить подвести итог дня или недели. Они отправляются выбранному вами провайдеру чата. Места и ссылки на встречи никогда не отправляются.",
+   "id": "Obrolan menerima judul, waktu, dan nama kalender 7 hari ke depan, sehingga Anda bisa memintanya merangkum hari atau minggu Anda. Semuanya dikirim ke penyedia obrolan yang Anda pilih. Lokasi dan tautan rapat tidak pernah dikirim."
   }
  }
 }

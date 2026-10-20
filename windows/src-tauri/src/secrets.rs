@@ -24,8 +24,18 @@ pub const KNOWN_KEYS: &[&str] = &[
     "elevenlabs-api-key",
 ];
 
+/// A key the island may use: one of `KNOWN_KEYS`, or the link of an Agenda calendar. Those are as
+/// many as the user adds (anyone who has a link can read that calendar, so each is a secret), so
+/// they are a prefix and a valid id rather than a list.
+fn allowed(key: &str) -> bool {
+    KNOWN_KEYS.contains(&key)
+        || key
+            .strip_prefix(crate::agenda::LINK_PREFIX)
+            .is_some_and(crate::agenda::valid_id)
+}
+
 fn entry(key: &str) -> Option<Entry> {
-    if !KNOWN_KEYS.contains(&key) {
+    if !allowed(key) {
         return None;
     }
     Entry::new(SERVICE, key).ok()
@@ -104,6 +114,18 @@ pub fn set_internal(key: &str, value: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_agenda_calendars_link_is_allowed_and_nothing_near_it_is() {
+        assert!(allowed("agenda-link-a1b2c3d4"));
+        assert!(allowed("stripe-api-key"));
+        assert!(!allowed("agenda-link-"), "no id");
+        assert!(!allowed("agenda-link-A1B2C3D4"), "an id is lower case");
+        assert!(!allowed("agenda-link-a1b2/../phone-link-key"));
+        assert!(!allowed("agenda-link-phone-link-key"), "an id has no dashes");
+        assert!(!allowed("agenda-linka1b2c3d4"));
+        assert!(!allowed("phone-link-token"), "the phone link's secrets stay out of reach");
+    }
 
     #[test]
     fn the_phone_links_secrets_cannot_be_reached_from_the_island() {
