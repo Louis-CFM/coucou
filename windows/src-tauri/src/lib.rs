@@ -35,12 +35,13 @@ mod sounds;
 mod speech;
 mod spotify;
 mod tray;
+mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
 
 use std::process::Command;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
@@ -668,17 +669,42 @@ fn create_settings_window(app: &AppHandle) {
         .build()
     {
         Ok(win) => {
-            // Closing it must only hide it, or it could never be reopened.
-            let hidden = win.clone();
-            win.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            let this = win.clone();
+            win.on_window_event(move |event| match event {
+                // Closing it must only hide it, or it could never be reopened.
+                tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
-                    let _ = hidden.hide();
+                    let _ = this.hide();
+                    set_hub_shown(&this, false);
                 }
+                // Minimised (a 0×0 resize on Windows) or back from it.
+                tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true) => {
+                    let on = this.is_visible().unwrap_or(false) && !this.is_minimized().unwrap_or(false);
+                    set_hub_shown(&this, on);
+                }
+                _ => {}
             });
         }
         Err(err) => log::line(format!("Coucou window failed: {err}")),
     }
+}
+
+/// Whether the Coucou window is on screen (shown and not minimised). Its page
+/// animates its canvases only then (hub/hero.ts): WebKitGTK can keep
+/// `document.visibilityState` at "visible" for a hidden window, and its
+/// animation loop then kept a core busy with the window closed (#792).
+static HUB_SHOWN: AtomicBool = AtomicBool::new(false);
+
+fn set_hub_shown(win: &tauri::WebviewWindow, shown: bool) {
+    if HUB_SHOWN.swap(shown, Ordering::Relaxed) != shown {
+        let _ = win.emit_to(HUB_LABEL, "hub-visible", shown);
+    }
+}
+
+/// The page asks once at load, in case it missed the event.
+#[tauri::command]
+fn hub_shown() -> bool {
+    HUB_SHOWN.load(Ordering::Relaxed)
 }
 
 pub fn show_settings_window(app: &AppHandle) {
@@ -698,6 +724,7 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    set_hub_shown(&win, true);
 }
 
 /// The argument the login item starts Coucou with.
@@ -756,6 +783,7 @@ pub fn run() {
             focus_window,
             reposition,
             fit_zoom,
+            hub_shown,
             list_monitors,
             open_url,
             open_in_vscode,
@@ -882,6 +910,15 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            update::update_status,
+            update::update_set_consent,
+            update::update_check,
+            update::update_shown,
+            update::update_show,
+            update::update_later,
+            update::update_dismiss,
+            update::update_install,
+            update::update_open_page,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -932,6 +969,8 @@ pub fn run() {
                 }
             });
 
+            // New versions: nothing goes to GitHub until the user agrees (update.rs).
+            update::start(handle.clone());
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
                 // writing it again adds it, so the window stays hidden at login.

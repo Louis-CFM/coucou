@@ -605,6 +605,7 @@ final class IslandWindowController: NSWindowController {
         if prev == .expanded {
             SoundEngine.shared.play("close")
             if fsm.isHeldOpen?() != true { state.isPinned = false }
+            HookServer.shared.restoreAlertFocus()
         }
     }
 

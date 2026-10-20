@@ -128,6 +128,7 @@ enum LocalChat {
         baseURL: String,
         model: String,
         messages: [[String: Any]],
+        apiKey: String? = nil,
         onToken: @MainActor @escaping (String) -> Void
     ) async throws -> String {
         let body: [String: Any] = [
@@ -137,23 +138,39 @@ enum LocalChat {
             "max_tokens": 4096,
         ]
         let bodyData = (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
-        return try await streamChat(baseURL: baseURL, encodedBody: bodyData, model: model, onToken: onToken)
+        return try await streamChat(baseURL: baseURL, encodedBody: bodyData, model: model, apiKey: apiKey, onToken: onToken)
     }
 
+    /// Where a streamed chat goes and the bearer token it carries.
+    /// A cloud provider (DeepSeek, Qwen, Moonshot) passes its key: its base URL
+    /// already ends with its version (`https://api.deepseek.com/v1`), so only
+    /// `/chat/completions` is added, and the key is the bearer token. A local
+    /// server (Ollama, LM Studio) passes nil: `/v1` is added, with `Bearer ollama`.
+    static func streamEndpoint(baseURL: String, apiKey: String?) -> (url: String, authorization: String) {
+        if let key = apiKey, !key.isEmpty {
+            return ("\(baseURL)/chat/completions", "Bearer \(key)")
+        }
+        return ("\(baseURL)/v1/chat/completions", "Bearer ollama")
+    }
+
+    /// - Parameters:
+    ///   - apiKey: A cloud provider's key from the Keychain; nil for a local server.
     static func streamChat(
         baseURL: String,
         encodedBody: Data,
         model: String,
+        apiKey: String? = nil,
         onToken: @MainActor @escaping (String) -> Void
     ) async throws -> String {
-        guard let url = URL(string: "\(baseURL)/v1/chat/completions") else {
+        let endpoint = streamEndpoint(baseURL: baseURL, apiKey: apiKey)
+        guard let url = URL(string: endpoint.url) else {
             throw LocalChatError.serverUnreachable(baseURL)
         }
 
         var req = URLRequest(url: url, timeoutInterval: 300)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer ollama", forHTTPHeaderField: "Authorization")
+        req.setValue(endpoint.authorization, forHTTPHeaderField: "Authorization")
         req.httpBody = encodedBody
 
         let bytes: URLSession.AsyncBytes

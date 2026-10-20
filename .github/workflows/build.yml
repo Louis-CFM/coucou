@@ -45,11 +45,20 @@ jobs:
       - name: Test WhatsApp (gateway payloads, signatures, inbox, filters)
         run: bash scripts/test-whatsapp.sh
 
+      - name: Test Mac update (releases, versions, where it may replace itself)
+        run: bash scripts/test-mac-update.sh
+
+      - name: Test Claude Desktop chat (stop button labels)
+        run: bash scripts/test-claude-desktop-chat.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 
       - name: Test auto-close timing
         run: bash scripts/test-auto-close.sh
+
+      - name: Test Mac translations (Traditional Chinese coverage, format arguments, catalog keys)
+        run: python3 scripts/test-localization.py
 
       - name: Test open on hover
         run: bash scripts/test-island-hover.sh
@@ -85,6 +94,9 @@ jobs:
 
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
+
+      - name: Test Claude Code host
+        run: bash scripts/test-claude-host.sh
 
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
