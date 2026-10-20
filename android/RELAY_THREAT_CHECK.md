@@ -4,7 +4,8 @@ A line-by-line check of `RELAY_PLAN.md` section 5 against what was built. For ea
 if that stopped being true**, and what is accepted or not covered. Written after the code, by reading it again as an attacker,
 not from the plan. "Not testable here" means exactly that; it is not a claim that it works.
 
-Test names are abbreviated: *Rust* = `windows/src-tauri/src/phone_link/` (`relay_crypto.rs`, `relay_client.rs`, `hub.rs`),
+Test names are abbreviated: *Rust* = `windows/src-tauri/src/phone_link/` (`relay_crypto.rs`, `relay_client.rs`) and
+`windows/phone-link/src/hub.rs`,
 *Kotlin* = `android/app/src/test/.../link/`, *relay* = `android/relay/tests/`.
 
 ## The table
