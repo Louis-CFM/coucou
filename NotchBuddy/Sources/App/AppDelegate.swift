@@ -307,6 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if !APPSTORE
         _ = MusicController.shared
         _ = SpotifyController.shared
+        _ = YandexMusicController.shared
         MailController.shared.start()
         WhatsAppController.shared.start()
         MacUpdater.shared.start()

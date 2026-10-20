@@ -12,6 +12,8 @@ import { registerShortcutHandlers } from "./island/shortcuts";
 import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { SPOTIFY_ID } from "./core/spotify";
+import { applyYandexMusic, registerYandexMusicHandlers } from "./island/yandex-music";
+import { YANDEX_MUSIC_ID } from "./core/yandex-music";
 import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
@@ -147,11 +149,15 @@ async function main() {
   registerShortcutHandlers(island, () => setPaused(false));
   registerVoiceHandlers();
   registerSpotifyHandlers(island);
+  registerYandexMusicHandlers(island);
   // New versions: Rust offers the card, the island opens it when nothing else waits.
   await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));
+  }
+  if (State.settings.activeIntegrations.includes(YANDEX_MUSIC_ID)) {
+    void Bridge.yandexMusicRefresh().then((s) => s && applyYandexMusic(island, s));
   }
 
   // Monday recap: app start (greeting over), an agent starting work, waking up.

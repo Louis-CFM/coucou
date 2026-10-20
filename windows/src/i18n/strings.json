@@ -1731,6 +1731,19 @@
    "de": "Coucou kann noch nicht einfügen oder Esc erkennen: Die Berechtigung für Bedienungshilfen fehlt. Aktiviere Coucou unter Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen. Falls es bereits aktiviert ist, entferne es mit − und füge es erneut hinzu: Eine neue Version von Coucou benötigt die Berechtigung erneut.",
    "tr": "Coucou henüz yapıştıramıyor veya Esc tuşunu algılayamıyor: Erişilebilirlik izni gerekiyor. Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik bölümünde Coucou'yu etkinleştir. Zaten etkinse − ile kaldırıp yeniden ekle: Coucou'nun yeni derlemesi için yeniden izin gerekir."
   },
+  "Coucou can't read Now Playing on this Mac": {
+   "zh-Hans": "Coucou 无法在此 Mac 上读取“正在播放”",
+   "hi": "Coucou इस Mac पर “अभी चल रहा है” को नहीं पढ़ सकता",
+   "es": "Coucou no puede leer «Ahora suena» en este Mac",
+   "ar": "لا يستطيع Coucou قراءة معلومات التشغيل الحالي على هذا الـ Mac",
+   "fr": "Coucou ne peut pas lire « En cours de lecture » sur ce Mac",
+   "bn": "Coucou এই Mac-এ “এখন চলছে” পড়তে পারছে না",
+   "pt-BR": "O Coucou não consegue ler “Tocando Agora” neste Mac",
+   "ru": "Coucou не может прочитать «Исполняется» на этом Mac",
+   "id": "Coucou tidak dapat membaca “Sedang Diputar” di Mac ini",
+   "de": "Coucou kann „Aktuelle Wiedergabe“ auf diesem Mac nicht lesen",
+   "tr": "Coucou bu Mac’te “Çalıyor” bilgisini okuyamıyor"
+  },
   "Coucou can't use the microphone. Allow it in System Settings → Privacy & Security → Microphone.": {
    "zh-Hans": "Coucou 无法使用麦克风。请在“系统设置”→“隐私与安全性”→“麦克风”中允许。",
    "hi": "Coucou माइक्रोफ़ोन इस्तेमाल नहीं कर पा रहा। सिस्टम सेटिंग्स → गोपनीयता और सुरक्षा → माइक्रोफ़ोन में अनुमति दें।",
@@ -2744,6 +2757,19 @@
    "id": "Dapatkan Spotify",
    "de": "Spotify herunterladen",
    "tr": "Spotify'ı edin"
+  },
+  "Get Yandex Music": {
+   "zh-Hans": "获取 Yandex Music",
+   "hi": "Yandex Music पाएँ",
+   "es": "Descargar Yandex Music",
+   "ar": "احصل على Yandex Music",
+   "fr": "Obtenir Yandex Music",
+   "bn": "Yandex Music নিন",
+   "pt-BR": "Baixar o Yandex Music",
+   "ru": "Скачать Яндекс Музыку",
+   "id": "Dapatkan Yandex Music",
+   "de": "Yandex Music herunterladen",
+   "tr": "Yandex Music'ı edin"
   },
   "Get it on GitHub": {
    "zh-Hans": "前往 GitHub",
@@ -5110,6 +5136,19 @@
    "id": "Buka Visual Studio Code",
    "de": "Visual Studio Code öffnen",
    "tr": "Visual Studio Code'u aç"
+  },
+  "Open Yandex Music": {
+   "zh-Hans": "打开 Yandex Music",
+   "hi": "Yandex Music खोलें",
+   "es": "Abrir Yandex Music",
+   "ar": "فتح Yandex Music",
+   "fr": "Ouvrir Yandex Music",
+   "bn": "Yandex Music খুলুন",
+   "pt-BR": "Abrir o Yandex Music",
+   "ru": "Открыть Яндекс Музыку",
+   "id": "Buka Yandex Music",
+   "de": "Yandex Music öffnen",
+   "tr": "Yandex Music'ı aç"
   },
   "Open chat": {
    "zh-Hans": "打开聊天",
@@ -8452,6 +8491,32 @@
    "de": "Geschrieben, z. B. Claude Code",
    "tr": "Yazılan, ör. Claude Code"
   },
+  "Yandex Music": {
+   "zh-Hans": "Yandex Music",
+   "hi": "Yandex Music",
+   "es": "Yandex Music",
+   "ar": "Yandex Music",
+   "fr": "Yandex Music",
+   "bn": "Yandex Music",
+   "pt-BR": "Yandex Music",
+   "ru": "Яндекс Музыка",
+   "id": "Yandex Music",
+   "de": "Yandex Music",
+   "tr": "Yandex Music"
+  },
+  "Yandex Music not installed": {
+   "zh-Hans": "未安装 Yandex Music",
+   "hi": "Yandex Music इंस्टॉल नहीं है",
+   "es": "Yandex Music no está instalado",
+   "ar": "Yandex Music غير مثبت",
+   "fr": "Yandex Music n'est pas installé",
+   "bn": "Yandex Music ইনস্টল নেই",
+   "pt-BR": "Yandex Music não está instalado",
+   "ru": "Яндекс Музыка не установлена",
+   "id": "Yandex Music belum terpasang",
+   "de": "Yandex Music nicht installiert",
+   "tr": "Yandex Music kurulu değil"
+  },
   "Yes, tell me": {
    "zh-Hans": "好的，提醒我",
    "hi": "हाँ, बताओ",
@@ -9049,6 +9114,19 @@
    "id": "{0} — buka Spotify",
    "de": "{0} — Spotify öffnen",
    "tr": "{0} — Spotify'ı aç"
+  },
+  "{0} — open Yandex Music": {
+   "zh-Hans": "{0} — 打开 Yandex Music",
+   "hi": "{0} — Yandex Music खोलें",
+   "es": "{0} — abrir Yandex Music",
+   "ar": "{0} — فتح Yandex Music",
+   "fr": "{0} — ouvrir Yandex Music",
+   "bn": "{0} — Yandex Music খুলুন",
+   "pt-BR": "{0} — abrir o Yandex Music",
+   "ru": "{0} — открыть Яндекс Музыку",
+   "id": "{0} — buka Yandex Music",
+   "de": "{0} — Yandex Music öffnen",
+   "tr": "{0} — Yandex Music'ı aç"
   },
   "{0} → {1}": {
    "zh-Hans": "{0} → {1}",

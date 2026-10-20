@@ -36,6 +36,7 @@ mod spotify;
 mod tray;
 mod update;
 mod voice;
+mod yandex_music;
 #[cfg(windows)]
 mod webview_drop;
 
@@ -129,6 +130,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    yandex_music::sync(&app, &settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -906,6 +908,10 @@ pub fn run() {
             spotify::spotify_control,
             spotify::spotify_open,
             spotify::spotify_installed,
+            yandex_music::yandex_music_refresh,
+            yandex_music::yandex_music_control,
+            yandex_music::yandex_music_open,
+            yandex_music::yandex_music_installed,
             flow::flow_status,
             flow::flow_set_prefs,
             flow::flow_history,
@@ -990,6 +996,7 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            yandex_music::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
