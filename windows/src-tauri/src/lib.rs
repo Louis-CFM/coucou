@@ -940,6 +940,12 @@ pub fn run() {
             phone_link::start_if_enabled(&handle);
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
+            // The entry stores the executable's path: point it at this one, in case the app moved.
+            if loaded.autostart {
+                if let Err(err) = handle.autolaunch().enable() {
+                    log::line(format!("autostart: {err}"));
+                }
+            }
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
