@@ -2672,3 +2672,126 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* ── Agenda: the day's events from Outlook and iCloud (views/agenda.ts) ─────────────────────
+   One list that scrolls inside the card's strip: three rows show, the rest is a scroll away. */
+
+.ag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 96px;
+  overflow-y: auto;
+  padding-top: 4px;
+  scrollbar-width: none;
+}
+
+.ag-list::-webkit-scrollbar {
+  display: none;
+}
+
+.ag-day {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ag-day-label {
+  font: 600 9px var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim-3);
+  padding: 4px 8px 1px;
+}
+
+.ag-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  flex: 0 0 20px;
+  padding: 0 8px;
+  border-radius: 5px;
+  min-width: 0;
+}
+
+.ag-time {
+  font: 500 10px var(--mono);
+  color: #c9d2e6;
+  flex: 0 0 auto;
+  min-width: 38px;
+}
+
+.ag-title {
+  font: 500 11px var(--font);
+  color: #9398a1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ag-row.active .ag-title,
+.ag-row.upcoming .ag-title {
+  color: #e6e8ec;
+}
+
+/* An event the calendar marks as free: shown, but quieter. */
+.ag-row.free .ag-title {
+  color: #6b7079;
+  font-style: italic;
+}
+
+.ag-conflict {
+  font: 500 9px var(--font);
+  color: #f5a524;
+  background: #f5a52422;
+  border-radius: 999px;
+  padding: 1px 6px;
+  flex: 0 0 auto;
+}
+
+.ag-badge {
+  font: 600 9px var(--font);
+  border-radius: 999px;
+  padding: 1px 6px;
+  flex: 0 0 auto;
+}
+
+.ag-badge.active {
+  color: #22c55e;
+  background: #22c55e22;
+}
+
+.ag-badge.upcoming {
+  color: #4f8ef7;
+  background: #4f8ef722;
+}
+
+.ag-join {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 600 9.5px var(--font);
+  color: #4f8ef7;
+  background: #4f8ef71a;
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 7px;
+  flex: 0 0 auto;
+  cursor: default;
+}
+
+.ag-join:hover {
+  background: #4f8ef733;
+}
+
+.ag-error {
+  font: 400 10px var(--font);
+  color: #f4505e;
+  padding: 3px 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

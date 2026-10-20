@@ -196,6 +196,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   // Opened from a plan pill in the header: stands in for the left card.
   const plan = new PlanCard();
   let planTimer: number | null = null;
+  let agendaTimer: number | null = null;
   // Spotify's card and pill are kept and updated in place: the progress bar
   // runs on, and a slider being dragged must not be rebuilt under the pointer.
   const spotifyCard = buildSpotifyCard();
@@ -247,6 +248,20 @@ function buildOverview(actions: ViewActions): ViewHost {
     },
     openSettings: () => actions.openSettingsWindow(),
   };
+
+  /** The Agenda's "now" and "next" marks move with the clock: every 30 s while its card is on screen. */
+  function syncAgendaTimer(open: boolean) {
+    const stop = () => {
+      if (agendaTimer != null) window.clearInterval(agendaTimer);
+      agendaTimer = null;
+    };
+    if (!open) return stop();
+    if (agendaTimer != null) return;
+    agendaTimer = window.setInterval(() => {
+      if (State.focusTask?.id === "integration_agenda" && State.mode === "expanded") State.notify();
+      else stop();
+    }, 30_000);
+  }
 
   /** The countdowns move every 30 s while a card is open, and only then. */
   function syncPlanTimer(open: boolean) {
@@ -309,6 +324,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         cardKey = "";
       }
       syncPlanTimer(planOpen);
+      syncAgendaTimer(task?.id === "integration_agenda" && State.mode === "expanded");
 
       // A diff that has since been dropped (cap, expiry, session end) just closes.
       const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;

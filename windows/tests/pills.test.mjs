@@ -46,13 +46,28 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_music", "Apple Music", "#FA2D48", "service", "Integration"],
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
+  // The Agenda is Windows and Linux's own (the Mac has no such pill): it is checked apart below.
   assert.deepEqual(
-    PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
+    PILL_CATALOG.filter((p) => p.id !== "integration_agenda").map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
   ]);
+});
+
+test("Agenda is a service pill after Cal.com, connected by the calendars the user added", () => {
+  const ids = PILL_CATALOG.map((p) => p.id);
+  assert.equal(ids.indexOf("integration_agenda"), ids.indexOf("integration_calcom") + 1);
+  const def = pillDefinition("integration_agenda");
+  assert.deepEqual(
+    [def.name, def.color, def.category, def.subtitle, def.support],
+    ["Agenda", "#4F8EF7", "service", "Integration", "yes"],
+  );
+  assert.deepEqual(def.connect, { kind: "calendars" });
+  // It can be declared on both systems.
+  assert.ok(availablePills("linux").some((p) => p.id === "integration_agenda"));
+  assert.ok(availablePills("windows").some((p) => p.id === "integration_agenda"));
 });
 
 test("the shipped pills keep their IDs, colours and sources with current display names", () => {

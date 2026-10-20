@@ -49,6 +49,14 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["stati
 # The microphone, and the computer's own sound for the Notetaker (WASAPI
 # loopback on Windows, a PulseAudio/PipeWire monitor on Linux). Apache-2.0.
 cpal = "0.18"
+# The Agenda pill (agenda/): calendars published as ICS links (Outlook on the web, iCloud, any other).
+# icalendar reads the ICS (MIT/Apache-2.0), rrule expands "every Monday" the way RFC 5545 says
+# (MIT/Apache-2.0).
+icalendar = "0.17"
+rrule = { version = "0.14", default-features = false }
+# The dates and time zones the two above already work in (both are in the tree through them).
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

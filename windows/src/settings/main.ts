@@ -12,6 +12,7 @@ import {
 } from "../core/shortcuts";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import type { UpdateStatus } from "../core/update";
+import type { AgendaCalendar } from "../core/agenda";
 import { SOUND_NAMES } from "../core/sound";
 import {
   MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
@@ -24,6 +25,8 @@ import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { updateRows, updatesListener } from "./updates";
 import { colorDot } from "./colors";
+import { MAX_CALENDARS, isCalendarLink, linkKey, newCalendarId, nextColor } from "../core/agenda";
+import { hasCalendarLink } from "../core/agenda-store";
 import { renderDiff, statusDot } from "./parts";
 import {
   LANGUAGES, N_, isRtl, onLanguageChange, resolveLanguage, setLanguage, systemLanguages, t, tn,
@@ -435,6 +438,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
     if (isComingSoon(def.id)) return t("Coming soon");
     if (def.connect.kind === "hooks" && !connected[def.id]) return t("Hooks not installed");
     if (def.connect.kind === "key" && !connected[def.id]) return t("Key not configured");
+    if (def.connect.kind === "calendars" && !connected[def.id]) return t("No calendar added");
     if (def.connect.kind === "server" && !settings[def.connect.field]) return t("Not connected");
     return null;
   }
@@ -763,6 +767,8 @@ interface IntegrationDef {
   fields: { key: string; label: string; placeholder: string; secret: boolean }[];
   /** What the key needs, shown under its field. */
   hint?: string;
+  /** More than keys to fill in (the Agenda's check and its calendars): built under the fields. */
+  extra?: () => HTMLElement;
 }
 
 const INTEGRATIONS: IntegrationDef[] = [
@@ -784,9 +790,137 @@ const INTEGRATIONS: IntegrationDef[] = [
     fields: [{ key: "notion-api-key", label: N_("Integration token"), placeholder: "ntn_…", secret: true }] },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A",
     fields: [{ key: "calcom-api-key", label: N_("API key"), placeholder: "cal_…", secret: true }] },
+  // The day's events from the calendars added here, each an ICS link: nothing to fill in but the list.
+  { id: "integration_agenda", name: "Agenda", color: "#4F8EF7", fields: [],
+    hint: N_("Paste the link a calendar is published at, and add as many as you like. Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar. iCloud: icloud.com/calendar, share a calendar as a public calendar. Anyone who has a link can read that calendar, so the links stay in the credential store."),
+    extra: agendaExtra },
   // Nothing to enter: Spotify is read from the OS (src-tauri/src/spotify.rs).
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
 ];
+
+/** Settings → Agenda: the calendars (a name, a link, on or off), and a form to add one. */
+function agendaExtra(): HTMLElement {
+  const list = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  const form = h("div", { style: "display:flex;flex-direction:column;gap:6px" });
+  const message = h("div", { class: "hint" });
+  /** What the last Check said of each calendar, by id. */
+  const answers: Record<string, { ok: boolean; text: string }> = {};
+
+  function row(calendar: AgendaCalendar): HTMLElement {
+    const sw = h("button", { class: calendar.enabled ? "switch on" : "switch" });
+    sw.addEventListener("click", () => {
+      calendar.enabled = !calendar.enabled;
+      sw.classList.toggle("on", calendar.enabled);
+      void save();
+    });
+    const name = h("input", {
+      type: "text", value: calendar.name, spellcheck: "false", style: "flex:1 1 auto;min-width:0",
+    }) as HTMLInputElement;
+    name.addEventListener("change", () => {
+      calendar.name = name.value.trim() || calendar.name;
+      name.value = calendar.name;
+      void save();
+    });
+    const remove = h("button", { text: t("Remove") });
+    remove.addEventListener("click", async () => {
+      try {
+        await Bridge.secretClear(linkKey(calendar.id));
+      } catch {
+        // The entry may already be gone; the calendar leaves the list either way.
+      }
+      settings.agendaCalendars = settings.agendaCalendars.filter((c) => c.id !== calendar.id);
+      delete answers[calendar.id];
+      void save();
+      draw();
+    });
+    const answer = answers[calendar.id];
+    return h("div", { style: "display:flex;flex-direction:column;gap:2px" },
+      h("div", { class: "row" },
+        h("span", { style: `width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:${calendar.color}` }),
+        name, sw, remove,
+      ),
+      answer
+        ? h("div", { class: answer.ok ? "notice ok" : "notice err", text: answer.text })
+        : h("span"),
+    );
+  }
+
+  function drawForm() {
+    clear(form);
+    if (settings.agendaCalendars.length >= MAX_CALENDARS) {
+      form.append(h("div", { class: "hint", text: t("Up to {max} calendars", { max: MAX_CALENDARS }) }));
+      return;
+    }
+    const name = h("input", {
+      type: "text", placeholder: t("Name"), spellcheck: "false", style: "flex:0 1 150px;min-width:0",
+    }) as HTMLInputElement;
+    const link = h("input", {
+      type: "password", placeholder: "https://… / webcal://…", autocomplete: "off", spellcheck: "false",
+      style: "flex:1 1 auto;min-width:0",
+    }) as HTMLInputElement;
+    const add = h("button", { text: t("Add") });
+    add.addEventListener("click", async () => {
+      message.textContent = "";
+      const url = link.value.trim();
+      if (!isCalendarLink(url)) {
+        message.textContent = t("The link must start with https:// (or webcal://)");
+        return;
+      }
+      const calendars = settings.agendaCalendars;
+      const id = newCalendarId(calendars.map((c) => c.id));
+      try {
+        await Bridge.secretSet(linkKey(id), url);
+      } catch (err) {
+        message.textContent = t("Could not save: {error}", { error: String(err).replace(/^Error:\s*/, "") });
+        return;
+      }
+      settings.agendaCalendars = [
+        ...calendars,
+        {
+          id, color: nextColor(calendars), enabled: true,
+          name: name.value.trim() || t("Calendar {n}", { n: calendars.length + 1 }),
+        },
+      ];
+      void save();
+      draw();
+    });
+    form.append(h("div", { class: "row" }, name, link, add));
+  }
+
+  function draw() {
+    clear(list);
+    for (const calendar of settings.agendaCalendars) list.append(row(calendar));
+    drawForm();
+  }
+
+  const check = h("button", { text: t("Check") });
+  check.addEventListener("click", async () => {
+    check.disabled = true;
+    message.textContent = "";
+    for (const id of Object.keys(answers)) delete answers[id];
+    const report = (await Bridge.agendaCheck()) ?? [];
+    if (report.length === 0) message.textContent = t("Nothing to check: add a calendar first.");
+    for (const r of report) {
+      answers[r.id] = {
+        ok: r.ok,
+        text: r.ok ? t("Events in the next 7 days: {n}", { n: r.events }) : (r.error ?? ""),
+      };
+    }
+    draw();
+    check.disabled = false;
+  });
+
+  draw();
+  const share = h("div", { class: "row" },
+    toggle(settings.agendaChat, (on) => {
+      settings.agendaChat = on;
+      void save();
+    }),
+    h("span", { text: t("Share my agenda with the chat") }),
+  );
+  return h("div", { style: "display:flex;flex-direction:column;gap:6px;padding-top:4px" }, list, form, h("div", { class: "row" }, check), message, share,
+    h("div", { class: "hint", text: t("The chat gets the titles, times and calendar names of the next 7 days, so you can ask it to sum up your day or week. They go to the chat provider you picked. Places and meeting links are never sent.") }));
+}
 
 const MAX_ACTIVE = MAX_DECLARED;
 
@@ -856,6 +990,7 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
+    if (def.extra) rows.append(def.extra());
     if (def.id === "integration_spotify") {
       // As on the Mac's row: said only when there is no Spotify to launch.
       const hint = h("div", { class: "hint", style: "padding-top:5px" });
@@ -1343,6 +1478,8 @@ async function render() {
   for (const def of availablePills()) {
     if (def.connect.kind === "key") {
       connected[def.id] = present[def.connect.key] ?? (await Bridge.secretPresent(def.connect.key)) ?? false;
+    } else if (def.connect.kind === "calendars") {
+      connected[def.id] = await hasCalendarLink(settings.agendaCalendars);
     }
   }
   /** A chat provider's key was saved or removed: its pill's row says so at once. */

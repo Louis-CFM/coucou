@@ -354,6 +354,8 @@ export const Bridge = {
   refreshIntegration: (id: string) => call<void>("refresh_integration", { id }),
   /** The GitHub card is on screen: refetch that part if it is stale. */
   githubRefresh: (section: "pulse" | "activity") => call<void>("github_refresh", { section }),
+  /** Reads each calendar that is on, now, and says how it answered (Settings → Agenda's Check button). */
+  agendaCheck: () => call<{ id: string; ok: boolean; events: number; error: string | null }[]>("agenda_check"),
   /** Opens the configured n8n instance in the browser. */
   openN8n: () => call<void>("open_n8n"),
 
