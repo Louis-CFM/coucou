@@ -182,8 +182,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
     headerActions.classList.toggle("both-plans", claudeOn && codexOn);
     if (claudeOn) claudePill.sync();
     if (codexOn) codexPill.sync();
-    // Codex is asked when its pill comes into view (stale answers only).
-    const shown = codexOn && State.mode === "expanded";
+    // Codex is asked when the overview opens with its pill turned on (stale
+    // answers only); the pill itself shows once Codex answered.
+    const shown = State.view === "overview" && State.settings.showCodexPlanInNotch && State.mode === "expanded";
     if (shown && !codexShown) refreshCodexPlanUsage();
     codexShown = shown;
   }

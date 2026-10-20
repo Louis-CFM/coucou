@@ -207,17 +207,23 @@ test("both pills are off by default, so the header is as it shipped", () => {
   assert.equal(codexPillVisible(), false);
 });
 
-test("the Claude pill needs the switch and the relay, and the overview", () => {
+test("the Claude pill needs the switch, the relay, numbers and the overview", () => {
   State.settings.showPlanInNotch = true;
   assert.equal(claudePillVisible(), false);
   State.settings.planRelayInstalled = true;
+  // No numbers yet: no pill of dashes.
+  assert.equal(claudePillVisible(), false);
+  State.planUsage = { fiveHour: win(20, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   assert.equal(claudePillVisible(), true);
   State.view = "prompt";
   assert.equal(claudePillVisible(), false);
 });
 
-test("the Codex pill needs only its switch, on the overview", () => {
+test("the Codex pill needs its switch and Codex's numbers, on the overview", () => {
   State.settings.showCodexPlanInNotch = true;
+  // No Codex here, or no answer yet: no pill of dashes.
+  assert.equal(codexPillVisible(), false);
+  State.codexPlanUsage = { sevenDay: win(10, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   assert.equal(codexPillVisible(), true);
   State.view = "settings";
   assert.equal(codexPillVisible(), false);
@@ -226,15 +232,19 @@ test("the Codex pill needs only its switch, on the overview", () => {
 test("an open card follows its pill, and Mochi wears that plan's colour", () => {
   State.settings.showPlanInNotch = true;
   State.settings.planRelayInstalled = true;
+  State.planUsage = { fiveHour: win(0, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   State.showingPlanDetail = true;
   assert.equal(planCardOpen(), true);
+  State.planUsage = null;
+  assert.equal(planCardOpen(), false);
   assert.equal(openPlanColor(), "#6B7079");
+  State.planUsage = { fiveHour: win(0, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   // The Codex card cannot be open without its pill.
   State.planDetailIsCodex = true;
   assert.equal(planCardOpen(), false);
   State.settings.showCodexPlanInNotch = true;
-  assert.equal(planCardOpen(), true);
   State.codexPlanUsage = { sevenDay: win(85, Date.now() / 1000 + 3600), updatedAt: Date.now() };
+  assert.equal(planCardOpen(), true);
   assert.equal(openPlanColor(), "#F4505E");
 });
 

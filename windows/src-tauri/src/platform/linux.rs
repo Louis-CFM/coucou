@@ -239,6 +239,15 @@ pub fn no_console(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
+/// How long the system has been running (the login settling wait is Windows'; here it is never waited on).
+pub fn uptime() -> std::time::Duration {
+    std::fs::read_to_string("/proc/uptime")
+        .ok()
+        .and_then(|s| s.split_whitespace().next()?.parse::<f64>().ok())
+        .map(std::time::Duration::from_secs_f64)
+        .unwrap_or(std::time::Duration::from_secs(3600))
+}
+
 pub fn open_url(url: &str) {
     let _ = Command::new("xdg-open").arg(url).spawn();
 }

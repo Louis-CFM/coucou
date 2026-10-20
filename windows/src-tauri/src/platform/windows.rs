@@ -118,6 +118,11 @@ pub fn no_console(cmd: &mut Command) -> &mut Command {
     cmd.creation_flags(CREATE_NO_WINDOW)
 }
 
+/// How long Windows has been running.
+pub fn uptime() -> std::time::Duration {
+    std::time::Duration::from_millis(unsafe { windows::Win32::System::SystemInformation::GetTickCount64() })
+}
+
 pub fn open_url(url: &str) {
     let _ = no_console(Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", url]))
         .spawn();

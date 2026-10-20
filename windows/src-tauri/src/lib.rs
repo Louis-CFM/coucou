@@ -694,6 +694,24 @@ pub fn show_hub(app: &AppHandle, page: Option<&str>) {
 const AUTOSTART_ARG: &str = "--autostart";
 
 /// Coucou started with the computer, not opened by the user: the window stays hidden.
+/// The island after a login: once Windows has been up a minute (and at least
+/// a few seconds from now), with its transparent background said again.
+fn show_island_when_settled(app: AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        while platform::uptime() < std::time::Duration::from_secs(60) {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if let Some(win) = island::window(&handle) {
+                let _ = win.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+                let _ = win.show();
+            }
+        });
+    });
+}
+
 pub fn launched_at_login() -> bool {
     std::env::args().any(|a| a == AUTOSTART_ARG)
 }
@@ -919,7 +937,17 @@ pub fn run() {
                 #[cfg(windows)]
                 webview_drop::install(&handle);
                 island::apply_geometry(&handle, &loaded.screen, false);
-                let _ = win.show();
+                // Said outright, not only in the config: a webview whose background
+                // isn't transparent paints the whole window black.
+                let _ = win.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
+                if launched_at_login() {
+                    // Right after Windows starts, its compositor and the GPU aren't ready:
+                    // a transparent window shown then stays a black rectangle. Wait for the
+                    // desktop to settle, then show it.
+                    show_island_when_settled(handle.clone());
+                } else {
+                    let _ = win.show();
+                }
             }
             gate.collapsed.store(false, Ordering::Relaxed);
             // Nothing drawn yet, so nothing takes the mouse until the page
