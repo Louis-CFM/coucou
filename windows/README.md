@@ -609,6 +609,12 @@ own window.
   its `spotify:` link, and without Spotify **Get Spotify** opens its download
   page. Windows gives no Spotify link for the track, so an ad is told apart by
   having a title and no artist or album.
+- **Yandex Music** (Settings → Integrations) is read the same way, from the
+  system media controls: title, artist, progress bar with seek, play/pause,
+  previous, next, the cover and the Windows mixer volume (no shuffle or
+  repeat), and Mochi dances while it plays. **Open Yandex Music** goes through
+  its `yandexmusic:` link, and without it **Get Yandex Music** opens its
+  download page. Not on Linux: there is no official client.
 - Not in this version: sending a dropped file by email and dragging Mochi onto
   a window to attach it as context. On the Mac, email goes through Resend or
   Apple Mail's scripting; neither has a safe equivalent that attaches a file

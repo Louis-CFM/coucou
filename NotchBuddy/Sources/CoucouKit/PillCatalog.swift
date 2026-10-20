@@ -124,6 +124,8 @@ enum PillCatalog {
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
         .init(id: "integration_spotify", name: "Spotify",     color: "#1DB954",
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
+        .init(id: "integration_yandex_music", name: "Yandex Music", color: "#FFEE00",
+              category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
         .init(id: "integration_mail",    name: "Mail",        color: "#2F8CFF",
               category: .service,   subtitle: String(localized: "Integration"),  source: .n8n, githubOnly: true),
         .init(id: "integration_whatsapp", name: "WhatsApp",  color: "#25D366",

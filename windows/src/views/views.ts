@@ -29,6 +29,8 @@ import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { MAIL_ID } from "../core/mail";
 import { buildMailCard } from "./mail";
+import { buildYandexMusicCard, buildYandexMusicPill, type YandexMusicPillHost } from "./yandex-music";
+import { YANDEX_MUSIC_ID } from "../core/yandex-music";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -217,6 +219,8 @@ function buildOverview(actions: ViewActions): ViewHost {
     keyboard: (on) => actions.keyboard(on),
     holdOpen: (on) => actions.holdOpen(on),
   });
+  const yandexMusicCard = buildYandexMusicCard();
+  let yandexMusicPill: YandexMusicPillHost | null = null;
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -226,7 +230,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "mail" | "yandex" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -400,6 +404,14 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         whatsappCard.sync();
+      } else if (task && task.id === YANDEX_MUSIC_ID) {
+        if (mode !== "yandex") {
+          clear(leftBody);
+          leftBody.append(yandexMusicCard.el);
+          mode = "yandex";
+          cardKey = "";
+        }
+        yandexMusicCard.sync();
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [
@@ -430,10 +442,14 @@ function buildOverview(actions: ViewActions): ViewHost {
         pillIds = pillKey;
         clear(pills);
         spotifyPill = null;
+        yandexMusicPill = null;
         for (const t of others) {
           if (t.id === SPOTIFY_ID) {
             spotifyPill = buildSpotifyPill(t, () => actions.setFocus(t.id));
             pills.append(spotifyPill.el);
+          } else if (t.id === YANDEX_MUSIC_ID) {
+            yandexMusicPill = buildYandexMusicPill(t, () => actions.setFocus(t.id));
+            pills.append(yandexMusicPill.el);
           } else {
             pills.append(buildPill(t, actions));
           }
@@ -441,6 +457,7 @@ function buildOverview(actions: ViewActions): ViewHost {
         pruneMiniBots();
       }
       spotifyPill?.sync();
+      yandexMusicPill?.sync();
     },
   };
 }

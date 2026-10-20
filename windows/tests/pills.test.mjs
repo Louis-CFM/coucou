@@ -47,6 +47,7 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
     ["integration_mail", "Mail", "#2F8CFF", "service", "Integration"],
     ["integration_whatsapp", "WhatsApp", "#25D366", "service", "Integration"],
+    ["integration_yandex_music", "Yandex Music", "#FFEE00", "service", "Integration"],
   ];
   assert.deepEqual(
     PILL_CATALOG.filter((p) => !["integration_gitlab", "integration_gitea"].includes(p.id))
@@ -116,7 +117,24 @@ test("this build leaves out what only macOS has", () => {
   // Spotify: MPRIS on Linux, the system media controls on Windows.
   assert.ok(linux.includes("integration_spotify"));
   assert.ok(windows.includes("integration_spotify"));
-  assert.deepEqual(linux, windows.filter((id) => id !== "integration_mail"));
+  // Yandex Music: the Windows media controls only; it has no Linux client.
+  assert.ok(windows.includes("integration_yandex_music"));
+  assert.ok(!linux.includes("integration_yandex_music"));
+  assert.deepEqual(linux, windows.filter((id) => id !== "integration_mail" && id !== "integration_yandex_music"));
+});
+
+test("Yandex Music: a Windows-only service with nothing to set up", () => {
+  const def = pillDefinition("integration_yandex_music");
+  assert.equal(def.support, "windows");
+  assert.deepEqual(def.connect, { kind: "none" });
+  assert.equal(def.category, "service");
+  assert.equal(def.color, "#FFEE00");
+  assert.ok(!isComingSoon("integration_yandex_music"));
+  assert.ok(!isHookPill("integration_yandex_music"));
+  assert.ok(!mainPillChoices("windows").some((p) => p.id === "integration_yandex_music"));
+  const empty = { mainPill: "integration_claude", activeIntegrations: [] };
+  assert.deepEqual(toggleDeclared(empty, "integration_yandex_music", "windows"), ["integration_yandex_music"]);
+  assert.equal(toggleDeclared(empty, "integration_yandex_music", "linux"), null);
 });
 
 test("Spotify: a service on both systems with nothing to set up", () => {
