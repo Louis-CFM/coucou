@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Plan usage, stale-hook check and connected pill for Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL can also put the relay in as the distro's status line (your own status line keeps running there), says when Coucou's commands in a distro start a relay that is no longer the current one, and the Claude Code pill is connected through WSL hooks
+- **Diffs and folders of sessions in WSL** *(Windows)* — the diff's ↗ and "Open terminal"'s fallback now work for sessions in WSL: their Linux paths are turned into the distro's `\\wsl.localhost\…` share, and opened in VS Code's Remote - WSL window when that extension is installed
+- **"Open terminal" finds the right tab** *(Windows)* — the relay now sends its own parent processes with a session's first events, so the session's window is found even for events that don't wait for an answer, and for sessions in WSL; in Windows Terminal Coucou remembers the tab a prompt was sent from and brings it forward selected. With several sessions, the pill follows the one that spoke last (a Stop used to leave the previous one on it), and a session ending no longer resets the pill of another
+- **Claude Code in WSL** *(Windows)* — Settings → Claude Code in WSL installs the hooks in a distro's own `~/.claude/settings.json`; they run `coucou-hook.exe` through WSL, so sessions in WSL show up in the island and their permissions are answered there. Same diff and dated backup as on Windows, your own hooks stay untouched
+
 ## 0.5.1 — October 18, 2026
 
 - **WhatsApp in one click** *(macOS, GitHub build)* — no more GitHub, zip or Terminal: Settings → Integrations → WhatsApp → **Install WhatsApp**. Coucou downloads GOWA, the open-source gateway, for your Mac (about 15 MB, once), checks it against the SHA-256 GOWA publishes, starts it, and shows the QR code to scan. It starts and stops with Coucou, and **Update** fetches GOWA's latest version. Your own gateway (GOWA by hand, OpenWA, another address) moves under **Advanced**

@@ -30,6 +30,7 @@ use std::time::Duration;
 use serde_json::{Map, Value};
 
 mod normalize;
+mod procs;
 mod reply;
 
 /// Budget for getting a pipe connection. Beyond this the agent wins, always.
@@ -109,7 +110,7 @@ fn main() {
     let env = |key: &str| std::env::var(key).ok();
     let cwd = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    let Some(event) = prepare(&raw, &args, &env, &cwd) else {
+    let Some(event) = prepare_with(&raw, &args, &env, &cwd, &procs::context) else {
         // Nothing we could forward. An agent that needs JSON still gets its
         // "no opinion" — Copilot is fail-closed and would deny without it.
         let name = normalize::event(&args.event);
@@ -147,7 +148,19 @@ fn print(line: Option<String>) {
 
 /// The payload to forward, from the raw stdin bytes. `env` reads an environment
 /// variable and `cwd` is the working directory, so tests stay pure.
+#[cfg(test)]
 fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &str) -> Option<Event> {
+    prepare_with(raw, args, env, cwd, &|_| Vec::new())
+}
+
+/// `prepare`, plus whatever `extra` has to add for the event once it is named.
+fn prepare_with(
+    raw: &[u8],
+    args: &Args,
+    env: &dyn Fn(&str) -> Option<String>,
+    cwd: &str,
+    extra: &dyn Fn(&str) -> Vec<(&'static str, Value)>,
+) -> Option<Event> {
     // Some shells hand us a UTF-8 BOM; serde_json would choke on it.
     let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(raw);
     let mut payload = serde_json::from_slice::<Value>(raw).ok()?;
@@ -186,6 +199,9 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     }
 
     add_terminal_context(map, env);
+    for (key, value) in extra(&name) {
+        map.insert(key.into(), value);
+    }
 
     // Kept whole: what goes back to Claude Code must be its own input, not the
     // shortened copy the island is shown.
@@ -413,6 +429,21 @@ mod tests {
         let s = v["tool_input"]["content"].as_str().unwrap();
         assert!(s.len() <= MAX_FIELD_LEN + 4);
         assert!(s.ends_with('…'));
+    }
+
+    #[test]
+    fn the_extra_context_is_added_once_the_event_is_named() {
+        let raw = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1"}"#;
+        let args = Args { agent: String::new(), event: String::new() };
+        let extra = |event: &str| vec![("coucou_seen", Value::String(event.to_string()))];
+        let ev = prepare_with(raw.as_bytes(), &args, &|_| None, "/", &extra).expect("forwarded");
+        let v: Value = serde_json::from_str(&ev.line).unwrap();
+        assert_eq!(v["coucou_seen"], "UserPromptSubmit");
+        // Without it, the payload is what it always was.
+        let plain: Value =
+            serde_json::from_str(&prepare(raw.as_bytes(), &args, &|_| None, "/").unwrap().line).unwrap();
+        assert!(plain.get("coucou_seen").is_none());
+        assert!(plain.get("coucou_procs").is_none());
     }
 
     #[test]

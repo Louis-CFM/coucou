@@ -33,7 +33,7 @@ use ::windows::Win32::UI::Shell::{
 };
 use ::windows::Win32::UI::WindowsAndMessaging::{
     EnumChildWindows, EnumWindows, GetClassNameW, GetCursorPos, GetWindow, GetWindowLongPtrW,
-    GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow,
+    GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow,
     SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, GW_OWNER, SW_RESTORE, SW_SHOWNORMAL, WS_EX_NOACTIVATE,
     WS_EX_TOOLWINDOW,
 };
@@ -433,6 +433,15 @@ pub fn first_with_window(pids: &[u32]) -> Option<u32> {
     pids.iter().copied().find(|pid| windows.iter().any(|(_, owner, _)| owner == pid))
 }
 
+/// `pid:exe` for each, for the log: what "Open terminal" is going to look at.
+pub fn describe_processes(pids: &[u32]) -> String {
+    let table = process_table();
+    pids.iter()
+        .map(|pid| format!("{pid}:{}", table.get(pid).map(|p| p.exe.as_str()).unwrap_or("?")))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// What a session remembers: the ancestor that owns a window, or nothing.
 pub fn window_owners(ancestors: &[u32]) -> Vec<u32> {
     first_with_window(ancestors).into_iter().collect()
@@ -462,6 +471,37 @@ pub fn focus_process_window(pid: u32, folder: &str) -> bool {
 /// Brings forward the window a session remembered (`window_owners`).
 pub fn focus_session_window(owners: &[u32], folder: &str) -> bool {
     owners.first().is_some_and(|pid| focus_process_window(*pid, folder))
+}
+
+/// The windows of every Windows Terminal, for tests that need a real one.
+#[cfg(test)]
+pub fn windows_terminal_windows() -> Vec<isize> {
+    let pids: Vec<u32> = process_table()
+        .into_iter()
+        .filter(|(_, p)| p.exe.eq_ignore_ascii_case("WindowsTerminal.exe"))
+        .map(|(pid, _)| pid)
+        .collect();
+    top_windows().into_iter().filter(|(_, owner, _)| pids.contains(owner)).map(|(hwnd, _, _)| hwnd).collect()
+}
+
+/// The selected tab of a window in front, remembered for a session (uia.rs).
+pub fn capture_tab(hwnd: isize) -> Option<session_window::TabRef> {
+    super::uia::capture(hwnd)
+}
+
+/// "Open terminal" for a session whose tab was remembered: the window forward
+/// with that tab selected. False when the window is gone or the tab cannot be
+/// told apart, and the caller falls back to the window of the process.
+pub fn focus_session_tab(tab: &session_window::TabRef) -> bool {
+    let hwnd = HWND(tab.hwnd as *mut _);
+    if !unsafe { IsWindow(Some(hwnd)) }.as_bool() {
+        return false;
+    }
+    // Selected first, so the window comes forward already showing the session.
+    if !super::uia::select(tab) {
+        return false;
+    }
+    bring_forward(tab.hwnd)
 }
 
 /// Brings forward the window of a running app, by executable name.
