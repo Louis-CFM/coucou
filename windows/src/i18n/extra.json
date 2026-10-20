@@ -8428,6 +8428,20 @@
       },
       "id": {
         "other": "{count} pembaruan YouTrack"
+      },
+      "de": {
+        "one": "{count} YouTrack-Neuigkeit",
+        "other": "{count} YouTrack-Neuigkeiten"
+      },
+      "tr": {
+        "one": "{count} YouTrack güncellemesi",
+        "other": "{count} YouTrack güncellemesi"
+      },
+      "ko": {
+        "other": "YouTrack 새 소식 {count}개"
+      },
+      "ja": {
+        "other": "YouTrack の新着 {count} 件"
       }
     },
     "Permanent token": {
@@ -8439,7 +8453,11 @@
       "bn": "স্থায়ী টোকেন",
       "pt-BR": "Token permanente",
       "ru": "Постоянный токен",
-      "id": "Token permanen"
+      "id": "Token permanen",
+      "de": "Permanentes Token",
+      "tr": "Kalıcı token",
+      "ko": "영구 토큰",
+      "ja": "永続トークン"
     },
     "Reload": {
       "zh-Hans": "重新加载",
@@ -8450,7 +8468,11 @@
       "bn": "আবার লোড করুন",
       "pt-BR": "Recarregar",
       "ru": "Обновить",
-      "id": "Muat ulang"
+      "id": "Muat ulang",
+      "de": "Neu laden",
+      "tr": "Yeniden yükle",
+      "ko": "다시 불러오기",
+      "ja": "再読み込み"
     },
     "Choose a saved search…": {
       "zh-Hans": "选择一个已保存的搜索…",
@@ -8461,7 +8483,11 @@
       "bn": "একটি সংরক্ষিত খোঁজ বেছে নিন…",
       "pt-BR": "Escolha uma busca salva…",
       "ru": "Выберите сохранённый поиск…",
-      "id": "Pilih pencarian tersimpan…"
+      "id": "Pilih pencarian tersimpan…",
+      "de": "Wähle eine gespeicherte Suche…",
+      "tr": "Kayıtlı bir arama seç…",
+      "ko": "저장된 검색을 선택하세요…",
+      "ja": "保存済みの検索を選択…"
     },
     "No saved search yet": {
       "zh-Hans": "还没有已保存的搜索",
@@ -8472,7 +8498,11 @@
       "bn": "এখনও কোনো সংরক্ষিত খোঁজ নেই",
       "pt-BR": "Nenhuma busca salva ainda",
       "ru": "Сохранённых поисков пока нет",
-      "id": "Belum ada pencarian tersimpan"
+      "id": "Belum ada pencarian tersimpan",
+      "de": "Noch keine gespeicherte Suche",
+      "tr": "Henüz kayıtlı arama yok",
+      "ko": "저장된 검색이 아직 없어요",
+      "ja": "保存済みの検索はまだありません"
     },
     "Shared with you": {
       "zh-Hans": "与你共享",
@@ -8483,7 +8513,11 @@
       "bn": "আপনার সাথে শেয়ার করা",
       "pt-BR": "Compartilhadas com você",
       "ru": "Доступные вам",
-      "id": "Dibagikan dengan Anda"
+      "id": "Dibagikan dengan Anda",
+      "de": "Mit dir geteilt",
+      "tr": "Seninle paylaşılanlar",
+      "ko": "나와 공유됨",
+      "ja": "共有されたもの"
     },
     "The saved search Coucou followed is gone. Choose another one.": {
       "zh-Hans": "Coucou 关注的已保存搜索不存在了，请另选一个。",
@@ -8494,7 +8528,11 @@
       "bn": "Coucou যে সংরক্ষিত খোঁজটি অনুসরণ করছিল সেটি আর নেই। অন্য একটি বেছে নিন।",
       "pt-BR": "A busca salva que o Coucou seguia não existe mais. Escolha outra.",
       "ru": "Сохранённого поиска, за которым следил Coucou, больше нет. Выберите другой.",
-      "id": "Pencarian tersimpan yang diikuti Coucou sudah tidak ada. Pilih yang lain."
+      "id": "Pencarian tersimpan yang diikuti Coucou sudah tidak ada. Pilih yang lain.",
+      "de": "Die gespeicherte Suche, der Coucou gefolgt ist, gibt es nicht mehr. Wähle eine andere.",
+      "tr": "Coucou'nun takip ettiği kayıtlı arama artık yok. Başka birini seç.",
+      "ko": "Coucou가 팔로우하던 저장된 검색이 없어졌어요. 다른 검색을 선택하세요.",
+      "ja": "Coucou がフォローしていた保存済みの検索がなくなりました。別の検索を選んでください。"
     },
     "Couldn't load the saved searches": {
       "zh-Hans": "无法加载已保存的搜索",
@@ -8505,7 +8543,11 @@
       "bn": "সংরক্ষিত খোঁজগুলো লোড করা যায়নি",
       "pt-BR": "Não foi possível carregar as buscas salvas",
       "ru": "Не удалось загрузить сохранённые поиски",
-      "id": "Tidak bisa memuat pencarian tersimpan"
+      "id": "Tidak bisa memuat pencarian tersimpan",
+      "de": "Die gespeicherten Suchen konnten nicht geladen werden",
+      "tr": "Kayıtlı aramalar yüklenemedi",
+      "ko": "저장된 검색을 불러올 수 없어요",
+      "ja": "保存済みの検索を読み込めませんでした"
     },
     "Saved search": {
       "zh-Hans": "已保存的搜索",
@@ -8516,7 +8558,11 @@
       "bn": "সংরক্ষিত খোঁজ",
       "pt-BR": "Busca salva",
       "ru": "Сохранённый поиск",
-      "id": "Pencarian tersimpan"
+      "id": "Pencarian tersimpan",
+      "de": "Gespeicherte Suche",
+      "tr": "Kayıtlı arama",
+      "ko": "저장된 검색",
+      "ja": "保存済みの検索"
     },
     "Open the search in YouTrack": {
       "zh-Hans": "在 YouTrack 中打开此搜索",
@@ -8527,7 +8573,11 @@
       "bn": "খোঁজটি YouTrack-এ খুলুন",
       "pt-BR": "Abrir a busca no YouTrack",
       "ru": "Открыть поиск в YouTrack",
-      "id": "Buka pencarian di YouTrack"
+      "id": "Buka pencarian di YouTrack",
+      "de": "Suche in YouTrack öffnen",
+      "tr": "Aramayı YouTrack'te aç",
+      "ko": "YouTrack에서 검색 열기",
+      "ja": "YouTrack で検索を開く"
     },
     "{count}+ issues": {
       "zh-Hans": "{count}+ 个问题",
@@ -8538,7 +8588,11 @@
       "bn": "{count}+ ইস্যু",
       "pt-BR": "{count}+ issues",
       "ru": "{count}+ задач",
-      "id": "{count}+ isu"
+      "id": "{count}+ isu",
+      "de": "{count}+ Tickets",
+      "tr": "{count}+ kayıt",
+      "ko": "이슈 {count}개 이상",
+      "ja": "課題 {count} 件以上"
     },
     "{count} issues": {
       "zh-Hans": {
@@ -8580,6 +8634,20 @@
       },
       "id": {
         "other": "{count} isu"
+      },
+      "de": {
+        "one": "{count} Ticket",
+        "other": "{count} Tickets"
+      },
+      "tr": {
+        "one": "{count} kayıt",
+        "other": "{count} kayıt"
+      },
+      "ko": {
+        "other": "이슈 {count}개"
+      },
+      "ja": {
+        "other": "課題 {count} 件"
       }
     },
     "updated by {name}": {
@@ -8591,7 +8659,11 @@
       "bn": "{name} আপডেট করেছেন",
       "pt-BR": "atualizada por {name}",
       "ru": "обновил {name}",
-      "id": "diperbarui oleh {name}"
+      "id": "diperbarui oleh {name}",
+      "de": "aktualisiert von {name}",
+      "tr": "{name} güncelledi",
+      "ko": "{name}님이 업데이트함",
+      "ja": "{name} が更新"
     },
     "Nothing in this search": {
       "zh-Hans": "此搜索中没有内容",
@@ -8602,7 +8674,11 @@
       "bn": "এই খোঁজে কিছু নেই",
       "pt-BR": "Nada nesta busca",
       "ru": "В этом поиске пусто",
-      "id": "Tidak ada apa pun di pencarian ini"
+      "id": "Tidak ada apa pun di pencarian ini",
+      "de": "Nichts in dieser Suche",
+      "tr": "Bu aramada hiçbir şey yok",
+      "ko": "이 검색에는 아무것도 없어요",
+      "ja": "この検索には何もありません"
     },
     "Set the YouTrack URL in Settings → Integrations": {
       "zh-Hans": "请在 设置 → 集成 中填写 YouTrack 地址",
@@ -8613,7 +8689,11 @@
       "bn": "সেটিংস → ইন্টিগ্রেশনে YouTrack URL দিন",
       "pt-BR": "Defina a URL do YouTrack em Ajustes → Integrações",
       "ru": "Укажите URL YouTrack в Настройки → Интеграции",
-      "id": "Atur URL YouTrack di Pengaturan → Integrasi"
+      "id": "Atur URL YouTrack di Pengaturan → Integrasi",
+      "de": "Gib die YouTrack-URL unter Einstellungen → Integrationen ein",
+      "tr": "YouTrack URL'sini Ayarlar → Entegrasyonlar'da gir",
+      "ko": "설정 → 연동에서 YouTrack URL을 입력하세요",
+      "ja": "設定 → 連携 で YouTrack の URL を入力してください"
     },
     "The YouTrack URL must start with https://": {
       "zh-Hans": "YouTrack 地址必须以 https:// 开头",
@@ -8624,7 +8704,11 @@
       "bn": "YouTrack URL অবশ্যই https:// দিয়ে শুরু হতে হবে",
       "pt-BR": "A URL do YouTrack deve começar com https://",
       "ru": "URL YouTrack должен начинаться с https://",
-      "id": "URL YouTrack harus diawali https://"
+      "id": "URL YouTrack harus diawali https://",
+      "de": "Die YouTrack-URL muss mit https:// beginnen",
+      "tr": "YouTrack URL'si https:// ile başlamalı",
+      "ko": "YouTrack URL은 https://로 시작해야 해요",
+      "ja": "YouTrack の URL は https:// で始まる必要があります"
     },
     "Created: {title}": {
       "zh-Hans": "已创建：{title}",
@@ -8635,7 +8719,11 @@
       "bn": "তৈরি হয়েছে: {title}",
       "pt-BR": "Criada: {title}",
       "ru": "Создано: {title}",
-      "id": "Dibuat: {title}"
+      "id": "Dibuat: {title}",
+      "de": "Erstellt: {title}",
+      "tr": "Oluşturuldu: {title}",
+      "ko": "생성됨: {title}",
+      "ja": "作成: {title}"
     },
     "Created by {name}: {title}": {
       "zh-Hans": "{name} 创建了：{title}",
@@ -8646,7 +8734,11 @@
       "bn": "{name} তৈরি করেছেন: {title}",
       "pt-BR": "Criada por {name}: {title}",
       "ru": "Создал {name}: {title}",
-      "id": "Dibuat oleh {name}: {title}"
+      "id": "Dibuat oleh {name}: {title}",
+      "de": "Erstellt von {name}: {title}",
+      "tr": "{name} oluşturdu: {title}",
+      "ko": "{name}님이 생성함: {title}",
+      "ja": "{name} が作成: {title}"
     },
     "Updated: {title}": {
       "zh-Hans": "已更新：{title}",
@@ -8657,7 +8749,11 @@
       "bn": "আপডেট হয়েছে: {title}",
       "pt-BR": "Atualizada: {title}",
       "ru": "Обновлено: {title}",
-      "id": "Diperbarui: {title}"
+      "id": "Diperbarui: {title}",
+      "de": "Aktualisiert: {title}",
+      "tr": "Güncellendi: {title}",
+      "ko": "업데이트됨: {title}",
+      "ja": "更新: {title}"
     },
     "{field}: {old} → none": {
       "zh-Hans": "{field}：{old} → 无",
@@ -8668,7 +8764,11 @@
       "bn": "{field}: {old} → কিছু না",
       "pt-BR": "{field}: {old} → nenhum",
       "ru": "{field}: {old} → нет",
-      "id": "{field}: {old} → tidak ada"
+      "id": "{field}: {old} → tidak ada",
+      "de": "{field}: {old} → keiner",
+      "tr": "{field}: {old} → yok",
+      "ko": "{field}: {old} → 없음",
+      "ja": "{field}: {old} → なし"
     },
     "Comment deleted": {
       "zh-Hans": "评论已删除",
@@ -8679,7 +8779,11 @@
       "bn": "মন্তব্য মুছে ফেলা হয়েছে",
       "pt-BR": "Comentário excluído",
       "ru": "Комментарий удалён",
-      "id": "Komentar dihapus"
+      "id": "Komentar dihapus",
+      "de": "Kommentar gelöscht",
+      "tr": "Yorum silindi",
+      "ko": "댓글 삭제됨",
+      "ja": "コメントを削除"
     },
     "Comment edited": {
       "zh-Hans": "评论已编辑",
@@ -8690,7 +8794,11 @@
       "bn": "মন্তব্য সম্পাদিত",
       "pt-BR": "Comentário editado",
       "ru": "Комментарий изменён",
-      "id": "Komentar diedit"
+      "id": "Komentar diedit",
+      "de": "Kommentar bearbeitet",
+      "tr": "Yorum düzenlendi",
+      "ko": "댓글 수정됨",
+      "ja": "コメントを編集"
     },
     "Title changed": {
       "zh-Hans": "标题已更改",
@@ -8701,7 +8809,11 @@
       "bn": "শিরোনাম বদলানো হয়েছে",
       "pt-BR": "Título alterado",
       "ru": "Заголовок изменён",
-      "id": "Judul diubah"
+      "id": "Judul diubah",
+      "de": "Titel geändert",
+      "tr": "Başlık değişti",
+      "ko": "제목 변경됨",
+      "ja": "タイトルを変更"
     },
     "Description edited": {
       "zh-Hans": "描述已编辑",
@@ -8712,7 +8824,11 @@
       "bn": "বিবরণ সম্পাদিত",
       "pt-BR": "Descrição editada",
       "ru": "Описание изменено",
-      "id": "Deskripsi diedit"
+      "id": "Deskripsi diedit",
+      "de": "Beschreibung bearbeitet",
+      "tr": "Açıklama düzenlendi",
+      "ko": "설명 수정됨",
+      "ja": "説明を編集"
     },
     "Attached {name}": {
       "zh-Hans": "附加了 {name}",
@@ -8723,7 +8839,11 @@
       "bn": "{name} সংযুক্ত করা হয়েছে",
       "pt-BR": "Anexado {name}",
       "ru": "Прикреплён {name}",
-      "id": "Melampirkan {name}"
+      "id": "Melampirkan {name}",
+      "de": "Anhang: {name}",
+      "tr": "Ek: {name}",
+      "ko": "첨부: {name}",
+      "ja": "添付: {name}"
     },
     "Attachment removed: {name}": {
       "zh-Hans": "附件已移除：{name}",
@@ -8734,7 +8854,11 @@
       "bn": "সংযুক্তি সরানো হয়েছে: {name}",
       "pt-BR": "Anexo removido: {name}",
       "ru": "Вложение удалено: {name}",
-      "id": "Lampiran dihapus: {name}"
+      "id": "Lampiran dihapus: {name}",
+      "de": "Anhang entfernt: {name}",
+      "tr": "Ek kaldırıldı: {name}",
+      "ko": "첨부 삭제: {name}",
+      "ja": "添付を削除: {name}"
     },
     "Linked to {issue}": {
       "zh-Hans": "已关联到 {issue}",
@@ -8745,7 +8869,11 @@
       "bn": "{issue}-এর সাথে যুক্ত",
       "pt-BR": "Vinculada a {issue}",
       "ru": "Связано с {issue}",
-      "id": "Ditautkan ke {issue}"
+      "id": "Ditautkan ke {issue}",
+      "de": "Verknüpft mit {issue}",
+      "tr": "{issue} ile bağlandı",
+      "ko": "{issue}에 연결됨",
+      "ja": "{issue} にリンク"
     },
     "Unlinked from {issue}": {
       "zh-Hans": "已取消与 {issue} 的关联",
@@ -8756,7 +8884,11 @@
       "bn": "{issue} থেকে বিচ্ছিন্ন",
       "pt-BR": "Desvinculada de {issue}",
       "ru": "Связь с {issue} удалена",
-      "id": "Tautan ke {issue} dilepas"
+      "id": "Tautan ke {issue} dilepas",
+      "de": "Verknüpfung mit {issue} entfernt",
+      "tr": "{issue} ile bağlantı kaldırıldı",
+      "ko": "{issue}와의 연결 해제됨",
+      "ja": "{issue} とのリンクを解除"
     },
     "{minutes} min": {
       "zh-Hans": "{minutes} 分钟",
@@ -8767,7 +8899,11 @@
       "bn": "{minutes} মি.",
       "pt-BR": "{minutes} min",
       "ru": "{minutes} мин",
-      "id": "{minutes} mnt"
+      "id": "{minutes} mnt",
+      "de": "{minutes} min",
+      "tr": "{minutes} dk",
+      "ko": "{minutes}분",
+      "ja": "{minutes} 分"
     },
     "{hours} h": {
       "zh-Hans": "{hours} 小时",
@@ -8778,7 +8914,11 @@
       "bn": "{hours} ঘ.",
       "pt-BR": "{hours} h",
       "ru": "{hours} ч",
-      "id": "{hours} j"
+      "id": "{hours} j",
+      "de": "{hours} h",
+      "tr": "{hours} sa",
+      "ko": "{hours}시간",
+      "ja": "{hours} 時間"
     },
     "This token can't read YouTrack (403)": {
       "zh-Hans": "此令牌无法读取 YouTrack（403）",
@@ -8789,7 +8929,11 @@
       "bn": "এই টোকেন YouTrack পড়তে পারে না (403)",
       "pt-BR": "Este token não consegue ler o YouTrack (403)",
       "ru": "Этот токен не может читать YouTrack (403)",
-      "id": "Token ini tidak bisa membaca YouTrack (403)"
+      "id": "Token ini tidak bisa membaca YouTrack (403)",
+      "de": "Dieses Token kann YouTrack nicht lesen (403)",
+      "tr": "Bu token YouTrack'i okuyamıyor (403)",
+      "ko": "이 토큰으로는 YouTrack을 읽을 수 없어요 (403)",
+      "ja": "このトークンでは YouTrack を読めません (403)"
     },
     "Unexpected answer from YouTrack — check the URL": {
       "zh-Hans": "YouTrack 返回了意外的响应 — 请检查地址",
@@ -8800,7 +8944,11 @@
       "bn": "YouTrack থেকে অপ্রত্যাশিত উত্তর — URL দেখুন",
       "pt-BR": "Resposta inesperada do YouTrack — verifique a URL",
       "ru": "Неожиданный ответ YouTrack — проверьте URL",
-      "id": "Jawaban tak terduga dari YouTrack — periksa URL-nya"
+      "id": "Jawaban tak terduga dari YouTrack — periksa URL-nya",
+      "de": "Unerwartete Antwort von YouTrack – prüfe die URL",
+      "tr": "YouTrack'ten beklenmeyen yanıt — URL'yi kontrol et",
+      "ko": "YouTrack에서 예상치 못한 응답이 왔어요 — URL을 확인하세요",
+      "ja": "YouTrack から予期しない応答がありました — URL を確認してください"
     },
     "Not a YouTrack address (404) — check the URL": {
       "zh-Hans": "不是 YouTrack 地址（404）— 请检查地址",
@@ -8811,7 +8959,11 @@
       "bn": "এটি YouTrack ঠিকানা নয় (404) — URL দেখুন",
       "pt-BR": "Não é um endereço do YouTrack (404) — verifique a URL",
       "ru": "Это не адрес YouTrack (404) — проверьте URL",
-      "id": "Bukan alamat YouTrack (404) — periksa URL-nya"
+      "id": "Bukan alamat YouTrack (404) — periksa URL-nya",
+      "de": "Keine YouTrack-Adresse (404) – prüfe die URL",
+      "tr": "Bir YouTrack adresi değil (404) — URL'yi kontrol et",
+      "ko": "YouTrack 주소가 아니에요 (404) — URL을 확인하세요",
+      "ja": "YouTrack のアドレスではありません (404) — URL を確認してください"
     },
     "Choose a saved search in Settings → Integrations": {
       "zh-Hans": "请在 设置 → 集成 中选择一个已保存的搜索",
@@ -8822,7 +8974,11 @@
       "bn": "সেটিংস → ইন্টিগ্রেশনে একটি সংরক্ষিত খোঁজ বেছে নিন",
       "pt-BR": "Escolha uma busca salva em Ajustes → Integrações",
       "ru": "Выберите сохранённый поиск в Настройки → Интеграции",
-      "id": "Pilih pencarian tersimpan di Pengaturan → Integrasi"
+      "id": "Pilih pencarian tersimpan di Pengaturan → Integrasi",
+      "de": "Wähle eine gespeicherte Suche unter Einstellungen → Integrationen",
+      "tr": "Ayarlar → Entegrasyonlar'da kayıtlı bir arama seç",
+      "ko": "설정 → 연동에서 저장된 검색을 선택하세요",
+      "ja": "設定 → 連携 で保存済みの検索を選んでください"
     },
     "The saved search is gone — choose another in Settings": {
       "zh-Hans": "已保存的搜索不存在了 — 请在设置中另选一个",
@@ -8833,7 +8989,11 @@
       "bn": "সংরক্ষিত খোঁজটি আর নেই — সেটিংসে অন্য একটি বেছে নিন",
       "pt-BR": "A busca salva não existe mais — escolha outra em Ajustes",
       "ru": "Сохранённого поиска больше нет — выберите другой в настройках",
-      "id": "Pencarian tersimpan sudah tidak ada — pilih yang lain di Pengaturan"
+      "id": "Pencarian tersimpan sudah tidak ada — pilih yang lain di Pengaturan",
+      "de": "Die gespeicherte Suche gibt es nicht mehr – wähle in den Einstellungen eine andere",
+      "tr": "Kayıtlı arama artık yok — Ayarlar'da başka birini seç",
+      "ko": "저장된 검색이 없어졌어요 — 설정에서 다른 검색을 선택하세요",
+      "ja": "保存済みの検索がなくなりました — 設定で別の検索を選んでください"
     },
     "YouTrack can't run this saved search (400)": {
       "zh-Hans": "YouTrack 无法执行此已保存的搜索（400）",
@@ -8844,7 +9004,11 @@
       "bn": "YouTrack এই সংরক্ষিত খোঁজ চালাতে পারছে না (400)",
       "pt-BR": "O YouTrack não consegue executar esta busca salva (400)",
       "ru": "YouTrack не может выполнить этот сохранённый поиск (400)",
-      "id": "YouTrack tidak bisa menjalankan pencarian tersimpan ini (400)"
+      "id": "YouTrack tidak bisa menjalankan pencarian tersimpan ini (400)",
+      "de": "YouTrack kann diese gespeicherte Suche nicht ausführen (400)",
+      "tr": "YouTrack bu kayıtlı aramayı çalıştıramıyor (400)",
+      "ko": "YouTrack이 이 저장된 검색을 실행할 수 없어요 (400)",
+      "ja": "YouTrack はこの保存済みの検索を実行できません (400)"
     },
     "Save the token first": {
       "zh-Hans": "请先保存令牌",
@@ -8855,7 +9019,11 @@
       "bn": "আগে টোকেন সংরক্ষণ করুন",
       "pt-BR": "Salve primeiro o token",
       "ru": "Сначала сохраните токен",
-      "id": "Simpan token dulu"
+      "id": "Simpan token dulu",
+      "de": "Speichere zuerst das Token",
+      "tr": "Önce token'ı kaydet",
+      "ko": "먼저 토큰을 저장하세요",
+      "ja": "先にトークンを保存してください"
     }
   }
 }
