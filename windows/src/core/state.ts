@@ -256,6 +256,8 @@ class AppState {
    * there — so the island's own Mochi is hidden (AppState.mochiOnDesktop).
    */
   mochiOnDesktop = false;
+  /** Every Mochi is asleep after a quiet spell (island.ts "Sleep"). */
+  asleep = false;
 
   /** Outfit shown on Mochi while the pointer rests on a wardrobe button. */
   wardrobePreview: Outfit | null = null;
