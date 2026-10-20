@@ -37,6 +37,8 @@ export type PillConnect =
   | { kind: "hooks" }
   /** A key in the credential store. */
   | { kind: "key"; key: string }
+  /** The Agenda: connected once a calendar that is on has its link in the credential store. */
+  | { kind: "calendars" }
   /** A model server the chat is connected to (Settings → Local models). */
   | { kind: "server"; field: "ollamaUrl" | "lmstudioUrl" }
   /** Nothing to set up. */
@@ -58,6 +60,7 @@ export type HostOs = "windows" | "linux";
 
 const hooks: PillConnect = { kind: "hooks" };
 const key = (k: string): PillConnect => ({ kind: "key", key: k });
+const calendars: PillConnect = { kind: "calendars" };
 const none: PillConnect = { kind: "none" };
 const server = (field: "ollamaUrl" | "lmstudioUrl"): PillConnect => ({ kind: "server", field });
 
@@ -126,6 +129,10 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("notion-api-key") },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("calcom-api-key") },
+  // Windows and Linux's own, like PhpStorm: the day's events from the calendars the user added, each
+  // an ICS link (src-tauri/src/agenda/). Connected once one of them is on and has its link.
+  { id: "integration_agenda", name: "Agenda", color: "#4F8EF7", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: calendars },
   { id: "integration_stripe", name: "Stripe", color: "#0570DE", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("stripe-api-key") },
   { id: "integration_music", name: "Apple Music", color: "#FA2D48", category: "service",

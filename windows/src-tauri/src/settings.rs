@@ -99,6 +99,10 @@ pub struct Settings {
     pub phone_relay_url: String,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// The calendars of the Agenda pill. Their links are secrets and are not here (agenda/).
+    pub agenda_calendars: Vec<crate::agenda::AgendaCalendar>,
+    /// The chat gets the week's events (titles, times, calendar) with its instructions. Off until asked for.
+    pub agenda_chat: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -165,6 +169,8 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             show_clock: false,
+            agenda_calendars: Vec::new(),
+            agenda_chat: false,
         }
     }
 }
@@ -452,7 +458,9 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "showClock": true
+  "showClock": true,
+  "agendaCalendars": [{ "id": "a1b2c3d4", "name": "Work", "color": "#7B83EB", "enabled": false }],
+  "agendaChat": true
 }"##;
 
     fn custom() -> Value {
@@ -961,6 +969,8 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "showClock",
+                "agendaCalendars",
+                "agendaChat",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

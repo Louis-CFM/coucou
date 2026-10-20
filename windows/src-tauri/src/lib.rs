@@ -1,5 +1,6 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
+mod agenda;
 mod agent_hooks;
 mod agents;
 mod chat;
@@ -90,11 +91,13 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
-    let (screen_changed, autostart_changed, shortcuts_changed) = {
+    let (screen_changed, autostart_changed, shortcuts_changed, agenda_changed) = {
         let mut current = shared.settings.lock().unwrap();
         let screen_changed = current.screen != settings.screen;
         let autostart_changed = current.autostart != settings.autostart;
         let shortcuts_changed = current.shortcuts != settings.shortcuts;
+        let agenda_changed = current.agenda_calendars != settings.agenda_calendars
+            || current.agenda_chat != settings.agenda_chat;
         // Where Mochi sits on the desktop is desktop.rs's to say, not a webview's.
         let mut settings = settings.clone();
         settings.desktop_mochi = current.desktop_mochi.clone();
@@ -110,7 +113,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         settings.phone_relay_url = current.phone_relay_url.clone();
         settings.phone_chat_models = current.phone_chat_models.clone();
         *current = settings;
-        (screen_changed, autostart_changed, shortcuts_changed)
+        (screen_changed, autostart_changed, shortcuts_changed, agenda_changed)
     };
     let settings = shared.settings.lock().unwrap().clone();
     if let Err(err) = settings::save(&settings) {
@@ -128,6 +131,9 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
         island::apply_geometry(&app, &settings.screen, collapsed);
     }
     integrations::settings_saved(&app, &settings.active_integrations);
+    if agenda_changed {
+        integrations::agenda_changed(&app);
+    }
     spotify::sync(&app, &settings.active_integrations);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
@@ -549,6 +555,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
             integrations::github_token_changed(&app);
         }
     }
+    if key.starts_with("agenda-") {
+        integrations::agenda_changed(&app);
+    }
     Ok(())
 }
 
@@ -562,7 +571,40 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     if had {
         integrations::github_token_changed(&app);
     }
+    if key.starts_with("agenda-") {
+        integrations::agenda_changed(&app);
+    }
     Ok(())
+}
+
+/// How one calendar answered when asked now: for the "Check" button of Settings → Agenda.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgendaCheck {
+    id: String,
+    ok: bool,
+    /// Events of the next days found in this calendar.
+    events: usize,
+    error: Option<String>,
+}
+
+#[tauri::command]
+async fn agenda_check(shared: State<'_, Shared>) -> Result<Vec<AgendaCheck>, String> {
+    let calendars = shared.settings.lock().unwrap().agenda_calendars.clone();
+    let loaded = agenda::load(&calendars, &agenda::window_now()).await;
+    Ok(loaded
+        .read
+        .iter()
+        .map(|calendar| {
+            let error = loaded.errors.iter().find(|e| e.id == calendar.id).map(|e| e.message.clone());
+            AgendaCheck {
+                id: calendar.id.clone(),
+                ok: error.is_none(),
+                events: loaded.events.iter().filter(|e| e.source == calendar.id).count(),
+                error,
+            }
+        })
+        .collect())
 }
 
 /// Opens the configured n8n instance — the URL lives in the Credential Manager.
@@ -798,6 +840,7 @@ pub fn run() {
             secret_set,
             secret_clear,
             refresh_integration,
+            agenda_check,
             github_refresh,
             open_n8n,
             open_settings_window,

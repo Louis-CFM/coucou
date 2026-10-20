@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Agenda** *(Windows and Linux)* — a new pill with what is left to do today and the next days, from as many calendars as you add, merged in one list with a dot of its own colour per calendar. A calendar is the ICS link it is published at: Outlook on the web (so no app to get approved by an administrator), iCloud's public calendar, Google's secret address. The event on now is marked, the next one within the hour too, two events that overlap are flagged, all-day events come first and a Teams, Zoom, Meet or Webex meeting has a **Join** button. Settings → Integrations → Agenda is a list with a name, a link and a switch per calendar, and a **Check** button that says on each line what it found. The links stay in the Windows Credential Manager or the Linux Secret Service. The chat can know your agenda too: **Share my agenda with the chat** (off by default) adds the titles, times and calendar names of the next seven days to Mochi's instructions, so you can ask for a summary of your day or week. Places and meeting links are never sent.
+
 ## 0.5.2 — October 20, 2026
 
 New versions now come to you: Mochi says it in the notch and one click installs it. Plus four new languages and a round of community work.

@@ -10,6 +10,7 @@ import type { CodexPlanUsage, PlanUsage } from "./plan";
 import type { ProviderId } from "./providers";
 import type { FileDiff } from "./diff";
 import type { Bindings } from "./shortcuts";
+import type { AgendaCalendar } from "./agenda";
 import { DEFAULT_OUTFIT, type Outfit } from "../mochi/wardrobe";
 import { pillColor } from "./pill-colors";
 import { Spotify, musicPlaying } from "./spotify";
@@ -130,6 +131,10 @@ export interface Settings {
   ollamaUrl: string;
   lmstudioUrl: string;
   customUrl: string;
+  /** The calendars of the Agenda pill; their links are secrets, in the credential store. */
+  agendaCalendars: AgendaCalendar[];
+  /** The chat is told the week's events (titles, times, calendar). */
+  agendaChat: boolean;
   /** Global shortcuts the user changed, by action id (see core/shortcuts.ts). */
   shortcuts: Bindings;
   /**
@@ -189,6 +194,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ollamaUrl: "",
   lmstudioUrl: "",
   customUrl: "",
+  agendaCalendars: [],
+  agendaChat: false,
   shortcuts: {},
   mochiOutfit: DEFAULT_OUTFIT,
   pillColors: {},
