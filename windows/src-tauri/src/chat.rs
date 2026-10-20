@@ -48,6 +48,8 @@ pub struct ModelInfo {
 #[derive(Default)]
 pub struct Chat {
     inner: Mutex<Conversation>,
+    /// The agenda block for Mochi's instructions, set by each turn from the settings.
+    agenda: Mutex<Option<String>>,
 }
 
 #[derive(Default)]
@@ -72,6 +74,21 @@ pub struct Turn {
 }
 
 impl Chat {
+    /// Mochi's instructions for this turn: the usual ones, then the agenda when the user shares it.
+    pub fn system_prompt(&self, web_search: bool) -> String {
+        let mut prompt = system_prompt(web_search);
+        if let Some(agenda) = self.agenda.lock().unwrap().as_deref() {
+            prompt.push_str("\n\n");
+            prompt.push_str(agenda);
+        }
+        prompt
+    }
+
+    /// What this turn shares: the agenda, if the setting is on, the Agenda pill is on and a read succeeded.
+    pub fn share_agenda(&self, settings: &Settings) {
+        *self.agenda.lock().unwrap() = agenda_block(settings);
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -133,6 +150,14 @@ fn system_prompt_for(first_name: Option<&str>, web_search: bool) -> String {
 Respond in the user's language. Be thorough and complete — use as much detail as the task requires. \
 Use light Markdown when it helps: short paragraphs, bullet lists, **bold**, `inline code` and fenced code blocks. Avoid tables and big headings: the chat window is small."
     )
+}
+
+/// The agenda text for the instructions, or nothing: the setting must be on, the pill too.
+fn agenda_block(settings: &Settings) -> Option<String> {
+    if !settings.agenda_chat || !settings.active_integrations.iter().any(|x| x == "integration_agenda") {
+        return None;
+    }
+    crate::agenda::chat::block(&crate::agenda::chat::last()?, chrono::Local::now())
 }
 
 /// The window context line, as ClaudeService.chat() writes it.
@@ -205,6 +230,7 @@ pub async fn send(
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
+    chat.share_agenda(settings);
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
     if provider == ANTHROPIC || provider.is_empty() {
@@ -230,6 +256,7 @@ pub async fn send_for_phone(
     query: String,
     on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
+    chat.share_agenda(settings);
     if provider == ANTHROPIC {
         return claude::send(chat, model, query, None).await;
     }
@@ -340,6 +367,48 @@ mod tests {
         assert!(p.starts_with("You are Mochi, a personal AI assistant living at the top of the user's screen."));
         assert!(!p.contains("web search"));
         assert!(p.contains("no web access"));
+    }
+
+    #[test]
+    fn the_agenda_reaches_the_instructions_only_with_the_setting_and_the_pill_on() {
+        use crate::agenda::{chat as agenda_chat, AgendaEvent};
+        let event = AgendaEvent {
+            id: "e".into(),
+            title: "Budget review".into(),
+            start: chrono::Utc::now().timestamp() + 600,
+            end: chrono::Utc::now().timestamp() + 1_200,
+            all_day: false,
+            start_day: None,
+            end_day: None,
+            location: None,
+            join_url: None,
+            source: "work".into(),
+            calendar: "Work".into(),
+            color: "#7B83EB".into(),
+            busy: true,
+            conflict: false,
+        };
+        agenda_chat::remember(Some(agenda_chat::Feed { events: vec![event], failed: vec![] }));
+        let chat = Chat::default();
+        let mut settings =
+            Settings { active_integrations: vec!["integration_agenda".into()], ..Settings::default() };
+
+        chat.share_agenda(&settings);
+        assert!(!chat.system_prompt(true).contains("Budget review"), "off by default");
+
+        settings.agenda_chat = true;
+        settings.active_integrations.clear();
+        chat.share_agenda(&settings);
+        assert!(!chat.system_prompt(true).contains("Budget review"), "the pill is off");
+
+        settings.active_integrations = vec!["integration_agenda".into()];
+        chat.share_agenda(&settings);
+        let prompt = chat.system_prompt(true);
+        assert!(prompt.starts_with("You are Mochi") && prompt.contains("Budget review [Work]"));
+
+        agenda_chat::remember(None);
+        chat.share_agenda(&settings);
+        assert!(!chat.system_prompt(true).contains("calendar"), "nothing read: nothing said");
     }
 
     #[test]

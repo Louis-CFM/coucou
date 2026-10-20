@@ -536,6 +536,33 @@ own window.
   Apple Mail's scripting; neither has a safe equivalent that attaches a file
   here, and the drop card would need a third button it doesn't have.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
+- The Agenda pill (Windows and Linux only, the Mac has none) shows what is left to do today and
+  the next six days from the calendars you add, merged in one list with a dot of its own colour per
+  calendar. Settings → Integrations → Agenda is a list: a name, a link and a switch per calendar (up
+  to ten), a form to add one, and **Check**, which says on each line how many events it found or why
+  it could not read them.
+  - **A calendar is an ICS link**, whoever publishes it: Outlook on the web (Settings → Calendar →
+    Shared calendars → Publish a calendar), iCloud (icloud.com/calendar, share a calendar as a
+    *public calendar*; `webcal://…` works), Google's secret address. Outlook goes through the link
+    rather than Microsoft Graph because Graph needs the organisation to approve an app, which a
+    managed Microsoft 365 tenant can refuse, and the link needs nobody's approval.
+  - **Anyone who has a link can read that calendar**, so each link is a secret of its own in the
+    credential store, never in a file or a log, and an error never repeats it. Only `https` (and
+    `webcal`, which is https by another name) is accepted. Switching a calendar off keeps its link;
+    removing it forgets it. To end the sharing itself, untick it where it was published.
+  - Outlook refreshes a published calendar late (it can be hours), and the file says nothing of your
+    replies to invitations, so a declined meeting is only hidden if it was cancelled.
+  - Teams meetings get a **Join** button, found in the invitation's headers or text; only `https`
+    links to Teams, Zoom, Google Meet or Webex are offered.
+  - Two events of the day that overlap are flagged, unless one is marked free. Recurring events are
+    expanded, a weekly 09:00 stays 09:00 across a clock change, and a time zone Outlook names in
+    Windows' way ("Romance Standard Time") is understood; one that is in neither list is read in your
+    own zone.
+  - **The chat can know your agenda**, if you switch on *Share my agenda with the chat* (off by
+    default). Mochi's instructions then carry the titles, times and calendar names of the next seven
+    days, so you can ask for a summary of your day or week. They go to the chat provider you picked,
+    like anything you type. Places and meeting links are never sent, and nothing is sent if the
+    Agenda pill is off or no calendar could be read.
 - The Cursor pill carries both Cursor Agent's own hooks and Claude Code running
   in Cursor's terminal.
 - The PhpStorm pill (Windows and Linux only, the Mac has none) carries Claude
