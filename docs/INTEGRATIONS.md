@@ -64,6 +64,7 @@ Vérifier dans la doc la liste exacte des événements et leurs champs.
 | `TERM_PROGRAM=iTerm.app` + `ITERM_SESSION_ID` | AppleScript iTerm : sélectionner la session, activer |
 | `TERM_PROGRAM=vscode` | ouvrir le dossier `cwd` dans VS Code ou Cursor (selon `__CFBundleIdentifier`) |
 | Ghostty, Warp, autre | activer l'app |
+| Conductor (`__CFBundleIdentifier=com.conductor.app`, sans `TERM_PROGRAM`) | activer Conductor (pas de lien documenté vers un workspace précis) |
 | rien (app Claude) | activer l'app Claude |
 Demande l'autorisation Automatisation la première fois (normal).
 

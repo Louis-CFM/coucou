@@ -17,13 +17,17 @@
 		<string>en</string>
 		<string>ar</string>
 		<string>bn</string>
+		<string>de</string>
 		<string>es</string>
 		<string>fr</string>
 		<string>hi</string>
 		<string>id</string>
 		<string>pt-BR</string>
 		<string>ru</string>
+		<string>th</string>
+		<string>tr</string>
 		<string>zh-Hans</string>
+		<string>zh-Hant</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>Coucou</string>

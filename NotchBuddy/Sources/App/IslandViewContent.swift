@@ -45,6 +45,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .update:
+            #if !APPSTORE
+            UpdateCardView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
@@ -358,11 +364,12 @@ struct ApprovalView: View {
         // Captured when the card is drawn: a click answers the request that was on screen,
         // and is ignored if the card has moved on to the next one since.
         let shownId = approval?.id
+        let isPlan = approval?.tool == "ExitPlanMode"
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
-                    AgentWho(task: asker, label: "needs permission")
+                    AgentWho(task: asker, label: isPlan ? "has a plan ready" : "needs permission")
                     // Other requests waiting behind this one: "1/3".
                     if let count = approval?.queueCount, count > 1 {
                         Text(verbatim: "1/\(count)")
@@ -372,20 +379,35 @@ struct ApprovalView: View {
                     }
                 }
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
-                HStack(spacing: 8) {
-                    SecondaryButton("Deny") {
-                        HookServer.shared.sendApprovalDecision("deny", for: shownId)
+                if isPlan {
+                    // The terminal's plan dialog choices, not a tool permission.
+                    HStack(spacing: 8) {
+                        SecondaryButton("Change plan") {
+                            HookServer.shared.sendApprovalDecision("plan_change", for: shownId)
+                        }
+                        PrimaryButton("Auto mode") {
+                            HookServer.shared.sendApprovalDecision("plan_auto", for: shownId)
+                        }
+                        SecondaryButton("Manual") {
+                            HookServer.shared.sendApprovalDecision("plan_default", for: shownId)
+                        }
                     }
-                    PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow", for: shownId)
-                    }
-                    // Codex, Copilot CLI and Muse Code do not support updatedPermissions
-                    let hideAlways = approval?.pillId == "agent_codex"
-                        || approval?.pillId == "agent_copilot"
-                        || approval?.pillId == "agent_muse"
-                    if !hideAlways {
-                        SecondaryButton("Always") {
-                            HookServer.shared.sendApprovalDecision("always", for: shownId)
+                } else {
+                    HStack(spacing: 8) {
+                        SecondaryButton("Deny") {
+                            HookServer.shared.sendApprovalDecision("deny", for: shownId)
+                        }
+                        PrimaryButton("Allow") {
+                            HookServer.shared.sendApprovalDecision("allow", for: shownId)
+                        }
+                        // Codex, Copilot CLI and Muse Code do not support updatedPermissions
+                        let hideAlways = approval?.pillId == "agent_codex"
+                            || approval?.pillId == "agent_copilot"
+                            || approval?.pillId == "agent_muse"
+                        if !hideAlways {
+                            SecondaryButton("Always") {
+                                HookServer.shared.sendApprovalDecision("always", for: shownId)
+                            }
                         }
                     }
                 }

@@ -53,10 +53,13 @@ struct PillSessionRegistry {
         var bundleId: String
         var isWorking: Bool
         var lastSeen: Date
+        /// Last time the session was mid-turn or ended a turn. A stray notification
+        /// from an idle session does not move it, unlike `lastSeen`.
+        var lastWorked: Date = .distantPast
     }
 
     private struct Pill {
-        /// Live sessions, oldest first. The first one owns name and cwd.
+        /// Live sessions, oldest first.
         var order: [String] = []
         var sessions: [String: Session] = [:]
     }
@@ -82,7 +85,7 @@ struct PillSessionRegistry {
         if !display.cwd.isEmpty { session.cwd = display.cwd }
         if display.hostApp != nil { session.hostApp = display.hostApp }
         if !display.bundleId.isEmpty { session.bundleId = display.bundleId }
-        if working { session.isWorking = true }
+        if working { session.isWorking = true; session.lastWorked = now }
         session.lastSeen = now
         p.sessions[display.session] = session
         pills[pill] = p
@@ -100,6 +103,7 @@ struct PillSessionRegistry {
         sweep(&p, now: now)
         p.sessions[session]?.isWorking = false
         p.sessions[session]?.lastSeen = now
+        p.sessions[session]?.lastWorked = now
         if p.order.isEmpty { pills.removeValue(forKey: pill) } else { pills[pill] = p }
         return p.sessions.values.contains(where: \.isWorking) ? .sessionOnly : .pill
     }
@@ -121,12 +125,18 @@ struct PillSessionRegistry {
 
     // MARK: - Reading
 
-    /// The session whose project name and cwd the pill shows. Ownership goes
-    /// to the oldest live session and only moves on when that one ends, so a
-    /// single name field stops flipping between two parallel sessions.
+    /// The session whose project name and cwd the pill shows, so the name matches
+    /// the activity under it: the oldest session that is mid-turn (it keeps the
+    /// name while parallel sessions work, so it does not flip between them), else
+    /// the one that worked last, else the oldest live one.
     func displayOwner(of pill: String) -> Display? {
-        guard let p = pills[pill], let id = p.order.first,
-              let session = p.sessions[id] else { return nil }
+        guard let p = pills[pill] else { return nil }
+        let working = p.order.first { p.sessions[$0]?.isWorking == true }
+        // max(by:) keeps the first of equal elements: with no turn seen yet, the oldest.
+        let lastWorked = p.order.max {
+            (p.sessions[$0]?.lastWorked ?? .distantPast) < (p.sessions[$1]?.lastWorked ?? .distantPast)
+        }
+        guard let id = working ?? lastWorked, let session = p.sessions[id] else { return nil }
         return Display(session: id, projectName: session.projectName, cwd: session.cwd,
                        hostApp: session.hostApp, bundleId: session.bundleId)
     }
