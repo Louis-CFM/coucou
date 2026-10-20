@@ -21,6 +21,9 @@ pub struct Settings {
     pub open_on_hover: bool,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
+    /// The GitLab projects followed, by id: their merge requests and pipelines
+    /// only. Empty follows every project, as before. The To-Do list stays whole.
+    pub gitlab_projects: Vec<i64>,
     /// The always-on workspace pill (src/core/pills.ts checks it is one).
     pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
@@ -136,6 +139,7 @@ impl Default for Settings {
                 "integration_vercel".into(),
                 "integration_github".into(),
             ],
+            gitlab_projects: Vec::new(),
             main_pill: "integration_claude".into(),
             screen: "primary".into(),
             autostart: false,
@@ -424,6 +428,7 @@ mod tests {
   "openOnHover": true,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
+  "gitlabProjects": [42, 7],
   "mainPill": "agent_cursor",
   "screen": "cursor",
   "autostart": true,
@@ -932,6 +937,7 @@ mod tests {
                 "openOnHover",
                 "absenceInterval",
                 "activeIntegrations",
+                "gitlabProjects",
                 "mainPill",
                 "screen",
                 "autostart",

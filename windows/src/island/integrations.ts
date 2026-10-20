@@ -112,9 +112,12 @@ function handle(island: Island, update: IntegrationUpdate) {
         task.pillBadge = event.success ? "finished" : "error";
       }
       Sound.play(event.success ? "finish" : "error");
-      // Same as the Swift pollers: show the compact island so the badge is seen,
-      // but never steal the screen for a successful deploy.
-      island.reveal();
+      // GitLab's news opens its own card, like Claude Code's "finished" — unless
+      // an alert is waiting for an answer: an approval must not be pushed away.
+      // The others, as the Swift pollers do, only show the compact island so the
+      // badge is seen, never stealing the screen for a successful deploy.
+      if (update.id === "integration_gitlab" && !State.isPinned) island.alert("gitlab");
+      else island.reveal();
 
       const existing = clearTimers.get(update.id);
       if (existing != null) window.clearTimeout(existing);
