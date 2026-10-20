@@ -49,6 +49,8 @@ final class HookServer: @unchecked Sendable {
 
     /// True when a real nb-hook connection is holding the approval fd open.
     @MainActor var hasRealPendingApproval: Bool { !approvals.isEmpty }
+    /// Everything waiting, oldest first, for the queue list on the card.
+    @MainActor var queuedApprovals: [QueuedApproval] { approvals.entries }
     /// True when a real nb-hook connection is holding the question fd open.
     @MainActor var hasRealPendingQuestion: Bool { pendingQuestionFD >= 0 }
     private var questionPillId: String = ""           // pill that owns the pending question
@@ -891,12 +893,26 @@ final class HookServer: @unchecked Sendable {
             ? Self.planTitle(toolInput["plan"] as? String)
             : toolInput["command"] as? String ?? tool
 
+        let rawCommand = toolInput["command"] as? String
+        if AutoApprove.enabled,
+           AutoApprove.matches(AutoApprove.rules, pillId: pillId, cwd: cwd, tool: tool, command: rawCommand) {
+            nbLog("PermissionRequest \(tool) [\(pillId)]: allowed by an auto-approve rule")
+            RecapStore.shared.recordDecision(pillId: pillId, decision: "allow")
+            appendStep(id: pillId, step: String(localized: "Auto-approved · \(command)"))
+            Task.detached { [weak self] in
+                self?.sendLine(fd: fd, text: #"{"permissionDecision":"allow"}"#)
+                close(fd)
+            }
+            return
+        }
+
         // Several requests can wait at once (several sessions or agents): they queue, the
         // card shows the oldest. Past the cap, the newest goes back to its own terminal.
         let entry = QueuedApproval(id: UUID(), fd: fd, sessionId: sessionId, pillId: pillId,
                                    projectName: projectName, cwd: cwd, tool: tool,
                                    command: command, inputKey: inputKey,
-                                   hostApp: terminalHost?.bundleId, bundleId: bundleId)
+                                   hostApp: terminalHost?.bundleId, bundleId: bundleId,
+                                   rawCommand: rawCommand)
         guard approvals.enqueue(entry) == .accepted else {
             nbLog("PermissionRequest \(tool): \(ApprovalQueue.maxPending) already waiting, asked in the terminal")
             Task.detached { [weak self] in
@@ -969,9 +985,18 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        if decision == "always_here" {
+            // The click is the consent: the rule covers this agent, folder, tool and prefix only.
+            guard let rule = AutoApprove.rule(pillId: head.pillId, cwd: head.cwd,
+                                              tool: head.tool, command: head.rawCommand) else { return }
+            AutoApprove.add(rule)
+            AutoApprove.enabled = true
+            nbLog("Auto-approve rule added for \(head.pillId) \(head.tool)")
+        }
+
         let json: String
         switch decision {
-        case "allow":  json = #"{"permissionDecision":"allow"}"#
+        case "allow", "always_here": json = #"{"permissionDecision":"allow"}"#
         case "always": json = #"{"permissionDecision":"always"}"#
         case "ask":    json = #"{"permissionDecision":"ask"}"#
         // Plan approval (ExitPlanMode): the hook turns "mode" into a setMode permission update.
@@ -982,10 +1007,25 @@ final class HookServer: @unchecked Sendable {
         default:       json = #"{"permissionDecision":"deny"}"#
         }
         // The recap only counts allow / always / deny.
-        let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny"][decision] ?? decision
+        let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny",
+                             "always_here": "allow"][decision] ?? decision
         RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision)
         removeApproval(id: head.id, answer: json)
         if decision == "plan_change" { ClaudeHost.activate(head.hostApp) }
+    }
+
+    /// The queue list picked a request: it takes the card. Nothing is answered.
+    @MainActor
+    func showQueuedApproval(_ id: UUID) {
+        guard approvals.promote(id: id) else { return }
+        showApprovalHead()
+    }
+
+    /// Whether the card's "Always here" can make a rule for the request on screen.
+    @MainActor
+    func canAutoApproveHead() -> Bool {
+        guard let head = approvals.head else { return false }
+        return AutoApprove.rule(pillId: head.pillId, cwd: head.cwd, tool: head.tool, command: head.rawCommand) != nil
     }
 
     /// The plan's first non-empty line without its Markdown heading marks, for the card.

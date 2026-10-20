@@ -229,6 +229,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** Requests waiting behind the card, oldest first (the Mac's ApprovalQueue minus its head). */
+  approvalQueue: ApprovalInfo[] = [];
   /** The pill that was in front when the card came up; it comes back after. */
   focusBeforeApproval: string | null = null;
 
@@ -324,9 +326,18 @@ class AppState {
     const req = this.pendingApproval;
     if (!req) return;
     this.pendingApproval = null;
+    if (!this.approvalQueue.some((a) => a.pillId === req.pillId)) {
+      this.updateTask(req.pillId, "working");
+      this.setPillBadge(req.pillId, null);
+    }
+    // The next request in line takes the card; the pill you were on waits for the last one.
+    const next = this.approvalQueue.shift();
+    if (next) {
+      this.pendingApproval = next;
+      this.setFocus(next.pillId);
+      return;
+    }
     this.isPinned = false;
-    this.updateTask(req.pillId, "working");
-    this.setPillBadge(req.pillId, null);
     const previous = this.focusBeforeApproval;
     this.focusBeforeApproval = null;
     if (previous && this.focusId === req.pillId && this.tasks.some((t) => t.id === previous)) {
@@ -502,6 +513,32 @@ class AppState {
     this.settings.activeIntegrations = next;
     if (!next.includes(id) && this.focusId === id) this.focusId = this.mainPillId;
     this.loadIntegrationTasks();
+  }
+
+  /** The queue list picked a request: it takes the card, the one shown goes back in line first. */
+  promoteApproval(requestId: string): boolean {
+    const i = this.approvalQueue.findIndex((a) => a.requestId === requestId);
+    if (i < 0 || !this.pendingApproval) return false;
+    const [picked] = this.approvalQueue.splice(i, 1);
+    this.approvalQueue.unshift(this.pendingApproval);
+    this.pendingApproval = picked;
+    this.setFocus(picked.pillId);
+    return true;
+  }
+
+  /** Takes matching requests out of the line behind the card, and returns them. */
+  dropQueued(match: (a: ApprovalInfo) => boolean): ApprovalInfo[] {
+    const gone = this.approvalQueue.filter(match);
+    if (gone.length === 0) return gone;
+    this.approvalQueue = this.approvalQueue.filter((a) => !match(a));
+    for (const a of gone) {
+      if (this.pendingApproval?.pillId !== a.pillId && !this.approvalQueue.some((q) => q.pillId === a.pillId)) {
+        this.updateTask(a.pillId, "working");
+        this.setPillBadge(a.pillId, null);
+      }
+    }
+    this.notify();
+    return gone;
   }
 
   /**

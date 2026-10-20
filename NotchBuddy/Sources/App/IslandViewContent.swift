@@ -356,6 +356,8 @@ struct EmptyStateView: View {
 
 struct ApprovalView: View {
     @ObservedObject var state: AppState
+    /// The "1/3" count was clicked: the card lists everything waiting instead.
+    @State private var showingQueue = false
 
     var approval: ApprovalInfo? { state.pendingApproval }
 
@@ -376,43 +378,57 @@ struct ApprovalView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
                     AgentWho(task: asker, label: isPlan ? "has a plan ready" : "needs permission")
-                    // Other requests waiting behind this one: "1/3".
+                    // Other requests waiting behind this one: "1/3". A click lists them.
                     if let count = approval?.queueCount, count > 1 {
-                        Text(verbatim: "1/\(count)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "#8E939C"))
-                            .monospacedDigit()
+                        Button { showingQueue.toggle() } label: {
+                            Text(verbatim: "1/\(count)")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(hex: showingQueue ? "#F5F6F8" : "#8E939C"))
+                                .monospacedDigit()
+                        }
+                        .buttonStyle(.plain)
+                        .help(Text("Show everything waiting"))
                     }
                 }
-                CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
-                if isPlan {
-                    // The terminal's plan dialog choices, not a tool permission.
-                    HStack(spacing: 8) {
-                        SecondaryButton("Change plan") {
-                            HookServer.shared.sendApprovalDecision("plan_change", for: shownId)
-                        }
-                        PrimaryButton("Auto mode") {
-                            HookServer.shared.sendApprovalDecision("plan_auto", for: shownId)
-                        }
-                        SecondaryButton("Manual") {
-                            HookServer.shared.sendApprovalDecision("plan_default", for: shownId)
-                        }
-                    }
+                if showingQueue, (approval?.queueCount ?? 1) > 1 {
+                    ApprovalQueueList(state: state) { showingQueue = false }
                 } else {
-                    HStack(spacing: 8) {
-                        SecondaryButton("Deny") {
-                            HookServer.shared.sendApprovalDecision("deny", for: shownId)
+                    CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
+                    if isPlan {
+                        // The terminal's plan dialog choices, not a tool permission.
+                        HStack(spacing: 8) {
+                            SecondaryButton("Change plan") {
+                                HookServer.shared.sendApprovalDecision("plan_change", for: shownId)
+                            }
+                            PrimaryButton("Auto mode") {
+                                HookServer.shared.sendApprovalDecision("plan_auto", for: shownId)
+                            }
+                            SecondaryButton("Manual") {
+                                HookServer.shared.sendApprovalDecision("plan_default", for: shownId)
+                            }
                         }
-                        PrimaryButton("Allow") {
-                            HookServer.shared.sendApprovalDecision("allow", for: shownId)
-                        }
-                        // Codex, Copilot CLI and Muse Code do not support updatedPermissions
-                        let hideAlways = approval?.pillId == "agent_codex"
-                            || approval?.pillId == "agent_copilot"
-                            || approval?.pillId == "agent_muse"
-                        if !hideAlways {
-                            SecondaryButton("Always") {
-                                HookServer.shared.sendApprovalDecision("always", for: shownId)
+                    } else {
+                        HStack(spacing: 8) {
+                            SecondaryButton("Deny") {
+                                HookServer.shared.sendApprovalDecision("deny", for: shownId)
+                            }
+                            PrimaryButton("Allow") {
+                                HookServer.shared.sendApprovalDecision("allow", for: shownId)
+                            }
+                            // Codex, Copilot CLI and Muse Code do not support updatedPermissions
+                            let hideAlways = approval?.pillId == "agent_codex"
+                                || approval?.pillId == "agent_copilot"
+                                || approval?.pillId == "agent_muse"
+                            if !hideAlways {
+                                SecondaryButton("Always") {
+                                    HookServer.shared.sendApprovalDecision("always", for: shownId)
+                                }
+                            } else if HookServer.shared.canAutoApproveHead() {
+                                // These agents have no Always of their own: a rule for this folder.
+                                SecondaryButton("Always here") {
+                                    HookServer.shared.sendApprovalDecision("always_here", for: shownId)
+                                }
+                                .help(Text("Allow this command in this folder from now on. Remove it in Settings → Agents."))
                             }
                         }
                     }
@@ -423,6 +439,51 @@ struct ApprovalView: View {
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// Every request waiting, oldest first. A click puts one on the card; nothing is answered here.
+struct ApprovalQueueList: View {
+    @ObservedObject var state: AppState
+    let close: () -> Void
+
+    var body: some View {
+        let entries = HookServer.shared.queuedApprovals
+        ScrollView {
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                    Button {
+                        HookServer.shared.showQueuedApproval(entry.id)
+                        close()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color(hex: state.tasks.first { $0.id == entry.pillId }?.color ?? "#8E939C"))
+                                .frame(width: 6, height: 6)
+                            Text(verbatim: entry.projectName.isEmpty ? entry.tool : entry.projectName)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: "#F5F6F8"))
+                            Text(verbatim: entry.command)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(Color(hex: "#C5C8CD"))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Spacer(minLength: 4)
+                            Text(entry.received, style: .relative)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#6B7079"))
+                                .monospacedDigit()
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Color.white.opacity(index == 0 ? 0.09 : 0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxHeight: 92)
     }
 }
 

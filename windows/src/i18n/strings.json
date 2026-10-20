@@ -496,6 +496,32 @@
    "de": "Coucou erlauben, Spotify zu steuern",
    "tr": "Coucou'nun Spotify'ı kontrol etmesine izin ver"
   },
+  "Allow the commands you picked with Always here without asking again. Only for Codex, Copilot CLI and Muse Code, only in the same folder, and never for a command that chains, redirects or deletes.": {
+   "zh-Hans": "用“此处始终”选过的命令以后不再询问直接允许。仅限 Codex、Copilot CLI 和 Muse Code，仅限同一文件夹，且绝不用于串联、重定向或删除的命令。",
+   "hi": "«हमेशा यहाँ» से चुने कमांड बिना दोबारा पूछे चलने दें। सिर्फ़ Codex, Copilot CLI और Muse Code के लिए, सिर्फ़ उसी फ़ोल्डर में, और कभी भी जोड़ने, रीडायरेक्ट करने या मिटाने वाले कमांड के लिए नहीं।",
+   "es": "Permite sin volver a preguntar los comandos que elegiste con «Siempre aquí». Solo para Codex, Copilot CLI y Muse Code, solo en la misma carpeta, y nunca para un comando que encadena, redirige o borra.",
+   "ar": "السماح بالأوامر التي اخترتها بـ «دائمًا هنا» دون السؤال مجددًا. فقط لـ Codex وCopilot CLI وMuse Code، وفي المجلد نفسه فقط، وأبدًا لأمر يتسلسل أو يعيد التوجيه أو يحذف.",
+   "fr": "Autorise sans redemander les commandes choisies avec « Toujours ici ». Seulement pour Codex, Copilot CLI et Muse Code, seulement dans le même dossier, et jamais pour une commande qui enchaîne, redirige ou supprime.",
+   "bn": "«সবসময় এখানে» দিয়ে বেছে নেওয়া কমান্ডগুলো আর না জিজ্ঞেস করেই অনুমতি দিন। শুধু Codex, Copilot CLI ও Muse Code-এর জন্য, শুধু একই ফোল্ডারে, এবং কখনও শৃঙ্খলিত, রিডাইরেক্ট বা মুছে ফেলা কমান্ডের জন্য নয়।",
+   "pt-BR": "Permite sem perguntar de novo os comandos que você escolheu com «Sempre aqui». Só para Codex, Copilot CLI e Muse Code, só na mesma pasta, e nunca para um comando que encadeia, redireciona ou apaga.",
+   "ru": "Разрешать без вопросов команды, выбранные кнопкой «Всегда здесь». Только для Codex, Copilot CLI и Muse Code, только в той же папке и никогда для команд, которые объединяют, перенаправляют или удаляют.",
+   "id": "Izinkan perintah yang kamu pilih dengan Selalu di sini tanpa ditanya lagi. Hanya untuk Codex, Copilot CLI, dan Muse Code, hanya di folder yang sama, dan tidak pernah untuk perintah yang dirangkai, dialihkan, atau menghapus.",
+   "de": "Befehle, die du mit „Immer hier“ gewählt hast, ohne erneute Nachfrage erlauben. Nur für Codex, Copilot CLI und Muse Code, nur im selben Ordner und nie für Befehle, die verketten, umleiten oder löschen.",
+   "tr": "«Her zaman burada» ile seçtiğin komutlara yeniden sormadan izin ver. Yalnızca Codex, Copilot CLI ve Muse Code için, yalnızca aynı klasörde ve asla zincirleyen, yönlendiren ya da silen bir komut için değil."
+  },
+  "Allow this command in this folder from now on. Remove it in Settings → Agents.": {
+   "zh-Hans": "从现在起允许此文件夹中的这条命令。可在设置 → 代理中移除。",
+   "hi": "अब से इस फ़ोल्डर में यह कमांड चलने दें। सेटिंग्स → एजेंट में हटाएँ।",
+   "es": "Permitir este comando en esta carpeta a partir de ahora. Quítalo en Ajustes → Agentes.",
+   "ar": "السماح بهذا الأمر في هذا المجلد من الآن. أزله من الإعدادات ← الوكلاء.",
+   "fr": "Autoriser cette commande dans ce dossier désormais. À retirer dans Réglages → Agents.",
+   "bn": "এখন থেকে এই ফোল্ডারে এই কমান্ডের অনুমতি দিন। সেটিংস → এজেন্টে সরান।",
+   "pt-BR": "Permitir este comando nesta pasta daqui em diante. Remova em Ajustes → Agentes.",
+   "ru": "Разрешать эту команду в этой папке и дальше. Удалить можно в Настройки → Агенты.",
+   "id": "Izinkan perintah ini di folder ini mulai sekarang. Hapus di Pengaturan → Agen.",
+   "de": "Diesen Befehl in diesem Ordner ab jetzt erlauben. Entfernen unter Einstellungen → Agenten.",
+   "tr": "Bu komuta bu klasörde bundan sonra izin ver. Ayarlar → Ajanlar’dan kaldır."
+  },
   "Already active": {
    "zh-Hans": "已激活",
    "hi": "पहले से सक्रिय",
@@ -521,6 +547,19 @@
    "id": "Selalu",
    "de": "Immer",
    "tr": "Her zaman"
+  },
+  "Always here": {
+   "zh-Hans": "此处始终",
+   "hi": "हमेशा यहाँ",
+   "es": "Siempre aquí",
+   "ar": "دائمًا هنا",
+   "fr": "Toujours ici",
+   "bn": "সবসময় এখানে",
+   "pt-BR": "Sempre aqui",
+   "ru": "Всегда здесь",
+   "id": "Selalu di sini",
+   "de": "Immer hier",
+   "tr": "Her zaman burada"
   },
   "Amp plugin": {
    "zh-Hans": "Amp 插件",
@@ -807,6 +846,32 @@
    "id": "Mode otomatis",
    "de": "Automatikmodus",
    "tr": "Otomatik mod"
+  },
+  "Auto-approve": {
+   "zh-Hans": "自动批准",
+   "hi": "स्वतः स्वीकृति",
+   "es": "Aprobar automáticamente",
+   "ar": "الموافقة التلقائية",
+   "fr": "Approbation automatique",
+   "bn": "স্বয়ংক্রিয় অনুমোদন",
+   "pt-BR": "Aprovação automática",
+   "ru": "Автоодобрение",
+   "id": "Setujui otomatis",
+   "de": "Automatisch erlauben",
+   "tr": "Otomatik onay"
+  },
+  "Auto-approved · {0}": {
+   "zh-Hans": "已自动批准 · {0}",
+   "hi": "स्वतः स्वीकृत · {0}",
+   "es": "Aprobado automáticamente · {0}",
+   "ar": "موافقة تلقائية · {0}",
+   "fr": "Approuvé automatiquement · {0}",
+   "bn": "স্বয়ংক্রিয় অনুমোদিত · {0}",
+   "pt-BR": "Aprovado automaticamente · {0}",
+   "ru": "Одобрено автоматически · {0}",
+   "id": "Disetujui otomatis · {0}",
+   "de": "Automatisch erlaubt · {0}",
+   "tr": "Otomatik onaylandı · {0}"
   },
   "Auto-close · {seconds}s": {
    "zh-Hans": "自动关闭 · {seconds} 秒",
@@ -4539,6 +4604,19 @@
    "de": "Keine andere App geöffnet",
    "tr": "Başka açık uygulama yok"
   },
+  "No rules yet.": {
+   "zh-Hans": "还没有规则。",
+   "hi": "अभी कोई नियम नहीं।",
+   "es": "Aún no hay reglas.",
+   "ar": "لا توجد قواعد بعد.",
+   "fr": "Aucune règle pour l’instant.",
+   "bn": "এখনও কোনো নিয়ম নেই।",
+   "pt-BR": "Nenhuma regra ainda.",
+   "ru": "Правил пока нет.",
+   "id": "Belum ada aturan.",
+   "de": "Noch keine Regeln.",
+   "tr": "Henüz kural yok."
+  },
   "No snippet yet. Your booking link, your signature, your address: say a few words, get the whole text.": {
    "zh-Hans": "还没有片段。你的预约链接、签名、地址：说几个字，就能得到整段文字。",
    "hi": "अभी कोई स्निपेट नहीं। आपका बुकिंग लिंक, हस्ताक्षर, पता: कुछ शब्द बोलें, पूरा टेक्स्ट पाएँ।",
@@ -6865,6 +6943,19 @@
    "id": "Tampilkan permintaan persetujuan di notch",
    "de": "Berechtigungsanfragen in der Notch anzeigen",
    "tr": "Onay isteklerini adada göster"
+  },
+  "Show everything waiting": {
+   "zh-Hans": "显示所有等待项",
+   "hi": "सब प्रतीक्षारत दिखाएँ",
+   "es": "Ver todo lo que espera",
+   "ar": "عرض كل ما ينتظر",
+   "fr": "Voir tout ce qui attend",
+   "bn": "অপেক্ষমাণ সব দেখান",
+   "pt-BR": "Ver tudo o que espera",
+   "ru": "Показать всё ожидающее",
+   "id": "Tampilkan semua yang menunggu",
+   "de": "Alles Wartende zeigen",
+   "tr": "Bekleyen her şeyi göster"
   },
   "Show in notch": {
    "zh-Hans": "在刘海中显示",

@@ -48,6 +48,8 @@ export interface ViewActions {
   answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
   answerInTerminal(): void;
+  /** The queue list picked a waiting request: it takes the card. Nothing is answered. */
+  showQueued(requestId: string): void;
   toggleSound(): void;
   setVolume(v: number): void;
   setAutoClose(seconds: number): void;
@@ -529,9 +531,31 @@ function buildApproval(actions: ViewActions): ViewHost {
   const who = h("div");
   const code = h("div", { class: "code" });
   const row = h("div", { class: "actions" });
+  const list = h("div", { class: "queue-list" });
   const el = h("div", { class: "view" },
-    card("amber", stack(116, 16, who, code, row), foldButton(actions)));
+    card("amber", stack(116, 16, who, code, row, list), foldButton(actions)));
   let rowKey = "";
+  // The "1/3" count was clicked: the card lists everything waiting instead.
+  let showingQueue = false;
+  const drawQueue = () => {
+    clear(list);
+    const pending = State.pendingApproval;
+    if (!pending) return;
+    for (const [i, a] of [pending, ...State.approvalQueue].entries()) {
+      const task = State.tasks.find((x) => x.id === a.pillId) ?? null;
+      list.append(h("button", {
+        class: i === 0 ? "queue-row current" : "queue-row",
+        onclick: () => {
+          showingQueue = false;
+          if (i > 0) actions.showQueued(a.requestId);
+          else State.notify();
+        },
+      },
+      dot(task?.color ?? "#8E939C", 6),
+      h("span", { class: "n", text: task?.name ?? a.tool }),
+      h("span", { class: "c", text: a.command || a.tool })));
+    }
+  };
   // The card pops up under a cursor that was busy with something else: a click
   // meant for the window underneath must not land on Allow. Clicks in the first
   // moments after a new request appears are ignored.
@@ -551,6 +575,19 @@ function buildApproval(actions: ViewActions): ViewHost {
       }
       clear(who);
       who.append(agentWho(State.focusTask, t("needs permission")));
+      const waiting = State.approvalQueue.length + 1;
+      if (waiting < 2) showingQueue = false;
+      else {
+        who.firstElementChild?.append(h("button", {
+          class: showingQueue ? "queue-count on" : "queue-count",
+          title: tl("Show everything waiting"),
+          text: `1/${waiting}`,
+          onclick: () => { showingQueue = !showingQueue; State.notify(); },
+        }));
+      }
+      code.style.display = row.style.display = showingQueue ? "none" : "";
+      list.style.display = showingQueue ? "" : "none";
+      if (showingQueue) drawQueue();
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
