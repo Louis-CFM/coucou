@@ -9,8 +9,6 @@ import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { WhatsAppPrefs, WhatsAppState } from "./whatsapp";
-import type { CryptoPrefs, CryptoState } from "./crypto";
-import type { ExchangeKind, PortfolioState, WalletKind } from "./portfolio";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -440,28 +438,6 @@ export const Bridge = {
   whatsappUnignore: (chat: string) => call<void>("whatsapp_unignore", { chat }),
   /** WhatsApp's app when installed, WhatsApp Web otherwise. */
   whatsappOpenApp: () => call<void>("whatsapp_open_app"),
-
-  // ── Crypto (src-tauri/src/crypto.rs) ──────────────────────────────────────
-  cryptoState: () => call<CryptoState>("crypto_state"),
-  /** Exchange, currency, coins or the alert changed: starts over with the new list. */
-  cryptoSetPrefs: (prefs: CryptoPrefs) => call<void>("crypto_set_prefs", { prefs }),
-  /** The card came on screen: reads again if the last read is older than 20 s. */
-  cryptoRefresh: () => call<void>("crypto_refresh"),
-  /** The coin's page on the exchange. */
-  cryptoOpen: (symbol: string) => call<void>("crypto_open", { symbol }),
-
-  // ── Portfolio (src-tauri/src/portfolio.rs) ────────────────────────────────
-  portfolioState: () => call<PortfolioState>("portfolio_state"),
-  /** Tests the keys against the exchange and keeps them only then: null, or what went wrong. */
-  portfolioAddExchange: (exchange: ExchangeKind, key: string, secret: string, passphrase: string) =>
-    call<string | null>("portfolio_add_exchange", { exchange, key, secret, passphrase }),
-  portfolioRemoveExchange: (exchange: ExchangeKind) => call<void>("portfolio_remove_exchange", { exchange }),
-  /** Reads the address's balance before keeping it: null, or what went wrong. */
-  portfolioAddWallet: (kind: WalletKind, address: string, label: string) =>
-    call<string | null>("portfolio_add_wallet", { kind, address, label }),
-  portfolioRemoveWallet: (address: string) => call<void>("portfolio_remove_wallet", { address }),
-  /** The card came on screen: reads again if the last read is older than 30 s. */
-  portfolioRefresh: () => call<void>("portfolio_refresh"),
 
   // ── The chat's microphone (src-tauri/src/flow/chat.rs) ───────────────────
   /** Opens the microphone; rejects with why it can't (no voice model, no microphone). */

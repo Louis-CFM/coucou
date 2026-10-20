@@ -25,11 +25,7 @@ import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spot
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
-import { buildCryptoCard } from "./crypto";
-import { CRYPTO_ID } from "../core/crypto";
-import { buildPortfolioCard } from "./portfolio";
 import { buildMail } from "./mail";
-import { PORTFOLIO_ID } from "../core/portfolio";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
 import type { ViewCommand } from "../island/shortcuts";
@@ -228,8 +224,6 @@ function buildOverview(actions: ViewActions): ViewHost {
   let spotifyPill: SpotifyPillHost | null = null;
   // WhatsApp's card keeps its open conversation and draft across syncs.
   const whatsappCard = buildWhatsAppCard((on) => actions.setPinned(on));
-  const cryptoCard = buildCryptoCard();
-  const portfolioCard = buildPortfolioCard();
 
   const el = h("div", { class: "view overview" },
     h("div", { class: "left" }, left),
@@ -239,7 +233,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "crypto" | "portfolio" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -405,23 +399,6 @@ function buildOverview(actions: ViewActions): ViewHost {
           cardKey = "";
         }
         whatsappCard.sync();
-      } else if (task && task.id === CRYPTO_ID) {
-        // Its own card in every state (loading, no coins, prices).
-        if (mode !== "crypto") {
-          clear(leftBody);
-          leftBody.append(cryptoCard.el);
-          mode = "crypto";
-          cardKey = "";
-        }
-        cryptoCard.sync();
-      } else if (task && task.id === PORTFOLIO_ID) {
-        if (mode !== "portfolio") {
-          clear(leftBody);
-          leftBody.append(portfolioCard.el);
-          mode = "portfolio";
-          cardKey = "";
-        }
-        portfolioCard.sync();
       } else if (task) {
         const info = State.integrations[task.id];
         const key = [

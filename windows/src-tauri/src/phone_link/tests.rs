@@ -1707,7 +1707,7 @@ fn every_secret_the_phone_link_stores_is_in_the_keystores_key_list() {
     ] {
         assert!(crate::secrets::INTERNAL_KEYS.contains(&key), "{key} is not in secrets::INTERNAL_KEYS");
     }
-    // And nothing of the phone link's in the list is a stray (WhatsApp and Portfolio keep their own there).
+    // And nothing of the phone link's in the list is a stray (WhatsApp keeps its own there).
     let phone = crate::secrets::INTERNAL_KEYS.iter().filter(|k| k.starts_with("phone-")).count();
     assert_eq!(phone, 6);
 }

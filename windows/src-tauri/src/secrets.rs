@@ -81,22 +81,6 @@ pub const INTERNAL_KEYS: &[&str] = &[
     "phone-relay-access",
     // Signs what the WhatsApp gateway posts to Coucou.
     "whatsapp-webhook-secret",
-    // Portfolio's exchange keys: tested and stored by portfolio.rs, never read by a webview.
-    "portfolio-binance-key",
-    "portfolio-binance-secret",
-    "portfolio-binance-passphrase",
-    "portfolio-okx-key",
-    "portfolio-okx-secret",
-    "portfolio-okx-passphrase",
-    "portfolio-bybit-key",
-    "portfolio-bybit-secret",
-    "portfolio-bybit-passphrase",
-    "portfolio-kraken-key",
-    "portfolio-kraken-secret",
-    "portfolio-kraken-passphrase",
-    "portfolio-coinbase-key",
-    "portfolio-coinbase-secret",
-    "portfolio-coinbase-passphrase",
 ];
 
 /// Whether the keystore would accept this key through `get_internal` / `set_internal`.

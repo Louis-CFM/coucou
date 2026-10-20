@@ -7,7 +7,6 @@ mod chat;
 mod claude;
 mod codex_plan;
 mod config_file;
-mod crypto;
 mod desktop;
 mod files;
 mod gemini;
@@ -27,7 +26,6 @@ mod openai_compat;
 mod phone_link;
 mod pipe;
 mod platform;
-mod portfolio;
 #[cfg(target_os = "linux")]
 mod portal;
 mod recap;
@@ -135,8 +133,6 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
-    crypto::settings_saved(&app);
-    portfolio::settings_saved(&app);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -847,16 +843,6 @@ pub fn run() {
             whatsapp::whatsapp_ignore,
             whatsapp::whatsapp_unignore,
             whatsapp::whatsapp_open_app,
-            crypto::crypto_state,
-            crypto::crypto_set_prefs,
-            crypto::crypto_refresh,
-            crypto::crypto_open,
-            portfolio::portfolio_state,
-            portfolio::portfolio_add_exchange,
-            portfolio::portfolio_remove_exchange,
-            portfolio::portfolio_add_wallet,
-            portfolio::portfolio_remove_wallet,
-            portfolio::portfolio_refresh,
             flow::chat::chat_dictate_start,
             flow::chat::chat_dictate_stop,
             flow::chat::chat_dictate_cancel,
@@ -953,8 +939,6 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             whatsapp::start(&handle);
-            crypto::start(handle.clone());
-            portfolio::start(handle.clone());
             shortcuts::apply(&handle, &loaded.shortcuts);
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:

@@ -22,8 +22,6 @@ import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
-import { cryptoSection } from "./crypto";
-import { portfolioSection } from "./portfolio";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import {
@@ -796,10 +794,6 @@ const INTEGRATIONS: IntegrationDef[] = [
   { id: "integration_spotify", name: "Spotify", color: "#1DB954", fields: [] },
   // Its own block below (settings/whatsapp.ts): gateway, QR, filters.
   { id: "integration_whatsapp", name: "WhatsApp", color: "#25D366", fields: [] },
-  // Public prices, no key: exchange, currency, coins and the alert (settings/crypto.ts).
-  { id: "integration_crypto", name: "Crypto", color: "#F7931A", fields: [] },
-  // Exchange accounts and wallets, added through their own forms (settings/portfolio.ts).
-  { id: "integration_portfolio", name: "Portfolio", color: "#FFD700", fields: [] },
 ];
 
 const MAX_ACTIVE = MAX_DECLARED;
@@ -883,8 +877,6 @@ function integrationsSection(present: Record<string, boolean>): HTMLElement {
     }
 
     if (def.hint) rows.append(h("div", { class: "hint", text: t(def.hint) }));
-    if (def.id === "integration_crypto") rows.append(cryptoSection());
-    if (def.id === "integration_portfolio") rows.append(portfolioSection());
     if (def.id === "integration_whatsapp") {
       rows.append(whatsappSection(() => settings.activeIntegrations.includes(def.id)));
     }

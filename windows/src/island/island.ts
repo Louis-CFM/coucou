@@ -15,7 +15,6 @@ import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { SPOTIFY_ID, islandDances } from "../core/spotify";
 import { WHATSAPP_ID } from "../core/whatsapp";
-import { CRYPTO_ID, Crypto } from "../core/crypto";
 import { BotEngine, hexToRGB } from "../mochi/engine";
 import { Greeting } from "../mochi/greeting";
 import { createMiniBot, pruneMiniBots, syncMiniBotStates, tickMiniBots } from "../mochi/minibots";
@@ -201,10 +200,6 @@ export class Island {
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (task.id === WHATSAPP_ID) void Bridge.whatsappOpenApp();
-        else if (task.id === CRYPTO_ID) {
-          const first = Crypto.state.quotes[0];
-          if (first) void Bridge.cryptoOpen(first.symbol);
-        }
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
       openUrl: (url) => {
