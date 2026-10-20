@@ -171,3 +171,14 @@ gh release create "$TAG" "$ZIP" \
   --notes "$NOTES"
 
 echo "✓ $TAG released: https://github.com/Louis-CFM/coucou/releases/tag/$TAG"
+
+# ── 7. Homebrew cask ──────────────────────────────────────────────────────────
+# Casks/coucou.rb points at the zip just published: bump its version and hash.
+CASK="$REPO_ROOT/Casks/coucou.rb"
+SHA=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
+sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 \".*\"/  sha256 \"$SHA\"/" "$CASK"
+git add "$CASK"
+git commit -m "Homebrew cask: $VERSION" -- "$CASK"
+git push origin HEAD:main \
+  || echo "warning: could not push the cask bump, push it to main yourself so brew upgrade picks up $VERSION" >&2
+echo "✓ Homebrew cask bumped to $VERSION"

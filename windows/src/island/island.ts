@@ -57,6 +57,8 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
+  private clockEl!: HTMLElement;
+  private clockTimer?: number;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -191,6 +193,7 @@ export class Island {
         else if (task.id === "integration_claude" || task.sessionId) {
           void Bridge.openSession(task.sessionId ?? null, task.sessionCwd ?? null);
         } else if (task.id === "integration_n8n") void Bridge.openN8n();
+        else if (task.id === "integration_gitea") void Bridge.openGitea();
         else if (task.id === SPOTIFY_ID) void Bridge.spotifyOpen();
         else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
       },
@@ -258,6 +261,7 @@ export class Island {
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
+    this.clockEl = h("div", { id: "island-clock" });
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
@@ -292,6 +296,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.clockEl,
       this.countdown,
     );
 
@@ -678,6 +683,7 @@ export class Island {
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
     this.miniGrid.style.top = `${hh / 2 - 14.5}px`;
+    this.clockEl.style.height = `${hh}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
@@ -1190,8 +1196,22 @@ export class Island {
       }
     }
 
+    this.updateClock();
+
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+  }
+
+  /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
+  private updateClock() {
+    const on = State.mode === "compact" && State.settings.showClock;
+    this.clockEl.style.opacity = on ? "1" : "0";
+    if (!on) return;
+    const now = new Date();
+    const date = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const text = `${date}  ${time}`;
+    if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
   }
 
   /** Applies settings coming from Rust at boot. */
@@ -1201,6 +1221,8 @@ export class Island {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
     this.fsm.openOnHover = State.settings.openOnHover;
     State.notify();
+    // ponytail: one timer for the life of the window; a minute is the clock's finest tick.
+    this.clockTimer ??= window.setInterval(() => this.updateClock(), 10_000);
   }
 
   get panelSize() {

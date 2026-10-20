@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.2 — October 20, 2026
+
+New versions now come to you: Mochi says it in the notch and one click installs it. Plus four new languages and a round of community work.
+
+- **New version in the notch** *(macOS, GitHub build)* — Coucou asks once whether it may look at its releases on GitHub; then, a few times a day, Mochi tells you when a new Coucou is out: **Update now**, What's new, Later. The click downloads it from GitHub, checks it is Coucou at the announced version, signed with its developer's Developer ID and notarized by Apple, swaps the app and restarts. Also in the menu bar and in Settings → General → Updates (Check now). Nothing is checked before you say yes, and nothing about you is sent
+- **Four new languages** — German and Turkish (by @Ohualtex), Thai (by @XBalanceZ) and Traditional Chinese (by @shawn-t516): 14 languages in Settings → General → Language
+- **Homebrew** — `brew tap louis-cfm/coucou https://github.com/Louis-CFM/coucou`, then `brew install --cask coucou` (#340 by @espensgr)
+- **Plan approval from the notch** — when Claude Code has a plan ready, the card offers the terminal's own choices: Auto mode, Manual, or Change plan, which brings the terminal forward to type the change (#703 by @orrrrli)
+- **The pill's name** — a Claude Code session's pill is named after its `/rename` title, else the folder it started in (no longer the subfolder it moved into), and with several sessions it follows the one that is working (#761 by @orrrrli)
+- **Quiet when you're watching** — a turn that ends while its terminal is in front only takes a badge: no sound, no reveal (#719 by @orrrrli)
+- **Alerts from every pill** — Settings → General → Behavior → *Open for every pill's alerts*: another pill that finishes or fails opens the notch for a moment, then the pill you had comes back (#683, asked by @Arochell). Off by default
+- **Claude Desktop chats** *(GitHub build, experimental)* — Mochi jumps when a regular chat reply is ready in the Claude app, while you're elsewhere (#686, idea by @GreGCerisier). Settings → Agents → Claude Desktop chats, off by default; it uses Accessibility and reads nothing of the chat
+- **Antigravity questions** — when Antigravity asks you something, its pill says so with a sound (#709 by @Ohualtex, #690)
+- **Conductor** — Claude Code sessions run from Conductor land on the Claude Code pill, and Open terminal brings Conductor forward (#793, asked by @victorlohezic)
+- DeepSeek, Qwen and Moonshot chats work again: streaming sent the wrong key (#803 and #730 by @itgoodojo, fix from #667 by @pedrozampiroli)
+
+## Windows and Linux 0.5.1 — October 20, 2026
+
+- **New version in the island** — Coucou asks once whether it may look at its releases on GitHub, then tells you when a new one is out. On Windows, **Update now** downloads the installer that matches how you installed Coucou (setup.exe or MSI), checks its SHA-256 against the one GitHub publishes, installs it and comes back by itself; the portable exe and Linux get the release page. Settings → General → Updates and the tray menu too (#812, plan by @afpruivo)
+- **German and Turkish** (by @Ohualtex): 12 languages
+- **Optional clock** in the middle of the compact island, for the place a Mac has its notch: Settings → General → Show clock in the island (#788 by @eduardo-qts)
+- **Antigravity questions** — the pill turns to a question with a sound and the island shows up (#709 by @Ohualtex)
+- **Linux**: the Coucou window no longer keeps a core busy once closed, on KDE and other desktops whose webview doesn't report it hidden (#792, reported by @Michael-1103)
+- The island's error view shows the real error and who stopped
+
 ## 0.5.1 — October 18, 2026
 
 - **WhatsApp in one click** *(macOS, GitHub build)* — no more GitHub, zip or Terminal: Settings → Integrations → WhatsApp → **Install WhatsApp**. Coucou downloads GOWA, the open-source gateway, for your Mac (about 15 MB, once), checks it against the SHA-256 GOWA publishes, starts it, and shows the QR code to scan. It starts and stops with Coucou, and **Update** fetches GOWA's latest version. Your own gateway (GOWA by hand, OpenWA, another address) moves under **Advanced**

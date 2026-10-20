@@ -47,12 +47,27 @@ test("the catalog holds the Mac's pills with the Claude Code label for Windows a
     ["integration_spotify", "Spotify", "#1DB954", "service", "Integration"],
   ];
   assert.deepEqual(
-    PILL_CATALOG.map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
+    PILL_CATALOG.filter((p) => !["integration_gitlab", "integration_gitea"].includes(p.id))
+      .map((p) => [p.id, p.name, p.color, p.category, p.subtitle]),
     mac,
   );
   assert.deepEqual(PILL_CATEGORIES.map((c) => c.title), [
     "Where you code", "Agents", "AI for the chat", "Services",
   ]);
+});
+
+test("GitLab is a supported service integration", () => {
+  const def = pillDefinition("integration_gitlab");
+  assert.deepEqual([def.name, def.color, def.category, def.support], ["GitLab", "#FC6D26", "service", "yes"]);
+  assert.ok(!isComingSoon("integration_gitlab"));
+});
+
+test("Gitea is an available service pill", () => {
+  assert.deepEqual(
+    pillDefinition("integration_gitea"),
+    { id: "integration_gitea", name: "Gitea", color: "#609926", category: "service",
+      subtitle: "Integration", source: "n8n", support: "yes", connect: { kind: "key", key: "gitea-token" } },
+  );
 });
 
 test("the shipped pills keep their IDs, colours and sources with current display names", () => {

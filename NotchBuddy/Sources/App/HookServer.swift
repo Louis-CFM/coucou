@@ -56,6 +56,8 @@ final class HookServer: @unchecked Sendable {
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
     private var activeSessionId: String? = nil        // current Claude Code session
     private var focusBeforeApproval: String? = nil    // saved focus to restore after approval
+    private var focusBeforeAlert: String? = nil       // saved focus while another pill's card shows
+    private var alertPill: String? = nil              // the pill that took the focus for its alert
     private var sessions = PillSessionRegistry()      // live sessions behind each pill
 
     private init() {}
@@ -417,8 +419,7 @@ final class HookServer: @unchecked Sendable {
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
         let cwd = payload["cwd"] as? String ?? ""
-        let rawName = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let projectName = sessionName(payload, cwd: cwd)
 
         // Determine which pill this event belongs to.
         // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
@@ -471,6 +472,11 @@ final class HookServer: @unchecked Sendable {
         }
 
         let focused = state.focusId == agentId
+        // The user is looking at the session's terminal: a finish or an error is already in
+        // front of them, so the pill only takes a badge (no sound, no reveal). Warp exposes
+        // no active tab, so a sibling session in another tab of the same terminal is quiet too.
+        let terminalInFront = hostApp != nil
+            && NSWorkspace.shared.frontmostApplication?.bundleIdentifier == hostApp
         // Several sessions can share one pill (it is chosen from the client, not from the
         // session). The registry tells a turn-ending event whether it may touch the pill,
         // and which session owns the project name shown on it.
@@ -550,10 +556,15 @@ final class HookServer: @unchecked Sendable {
             guard tool != "AskUserQuestion" else { break }
             upsertTask(pill: agentId, display: display, working: true,
                        externalAgent: isExternalAgent ? validAgent : nil)
-            state.updateTask(id: agentId, state: .working)
+            let isQuestion = tool == "ask_question" || tool.hasSuffix(":ask_question")
+            state.updateTask(id: agentId, state: isQuestion ? .question : .working)
             let input = payload["tool_input"] as? [String: Any] ?? [:]
             let step = localizedStep(tool: tool, input: input)
             appendStep(id: agentId, step: step)
+            if isQuestion {
+                SoundEngine.shared.play("question")
+                if state.isPresent { expandIfNeeded(to: .overview) }
+            }
             nbLog("PreToolUse \(tool)")
 
         case "PostToolUse":
@@ -588,6 +599,8 @@ final class HookServer: @unchecked Sendable {
 
         case "Stop":
             let scope = sessions.endTurn(pill: agentId, session: sessionId)
+            // A turn ending can hand the name to a sibling session that is still working.
+            applyDisplayOwner(pill: agentId)
             let rawFinal = (payload["last_assistant_message"] as? String)
                 ?? (payload["message"] as? String) ?? ""
             let finalText = DiffEngine.toOneLine(rawFinal)
@@ -604,8 +617,8 @@ final class HookServer: @unchecked Sendable {
             if !finalText.isEmpty, let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = finalText
             }
-            SoundEngine.shared.play("finish")
-            if focused {
+            if !terminalInFront { SoundEngine.shared.play("finish") }
+            if !terminalInFront && showsAlert(for: agentId, focused: focused) {
                 expandIfNeeded(to: .finished)
             } else {
                 setPillBadge(id: agentId, badge: .finished)
@@ -623,15 +636,17 @@ final class HookServer: @unchecked Sendable {
 
         case "StopFailure":
             RecapStore.shared.stop(sessionId: recapSessionId)
-            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
+            let failScope = sessions.endTurn(pill: agentId, session: sessionId)
+            applyDisplayOwner(pill: agentId)
+            guard failScope == .pill else { break }
             nbLog("StopFailure \(sessionId.prefix(8)) — \(payload.keys.sorted().joined(separator: ", ")): \(Self.stopFailureDetail(payload) ?? "no detail")")
             state.updateTask(id: agentId, state: .error)
             // The error view shows what went wrong (finalLine), not the last thing said before it.
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) {
                 state.tasks[idx].finalLine = Self.stopFailureDetail(payload)
             }
-            SoundEngine.shared.play("error")
-            if focused {
+            if !terminalInFront { SoundEngine.shared.play("error") }
+            if !terminalInFront && showsAlert(for: agentId, focused: focused) {
                 expandIfNeeded(to: .error)
             } else {
                 setPillBadge(id: agentId, badge: .error)
@@ -640,7 +655,9 @@ final class HookServer: @unchecked Sendable {
         case "Interrupt":
             // Codex: user stopped the turn
             RecapStore.shared.stop(sessionId: recapSessionId)
-            guard sessions.endTurn(pill: agentId, session: sessionId) == .pill else { break }
+            let interruptScope = sessions.endTurn(pill: agentId, session: sessionId)
+            applyDisplayOwner(pill: agentId)
+            guard interruptScope == .pill else { break }
             activeSessionId = nil
             state.updateTask(id: agentId, state: .idle)
             clearPillBadge(id: agentId)
@@ -712,6 +729,36 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Helpers
 
+    /// Whether a finish or an error opens the island. The pill shown always does; another pill
+    /// does too with "Show alerts from every pill" (#683): it takes the focus for its card, and
+    /// the pill that was shown comes back when the island closes. Never over an approval, a
+    /// question, or a card the user is busy in (chat, mail, settings…).
+    @MainActor
+    private func showsAlert(for pill: String, focused: Bool) -> Bool {
+        if focused { return true }
+        let state = AppState.shared
+        guard state.alertsFromAllPills, state.pendingApproval == nil, state.pendingQuestion == nil else { return false }
+        if state.mode == .expanded, ![IslandView.overview, .finished, .error, .empty].contains(state.view) { return false }
+        if focusBeforeAlert == nil { focusBeforeAlert = state.focusId }
+        alertPill = pill
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = pill }
+        return true
+    }
+
+    /// The island closed: the pill that was shown before another pill's alert comes back.
+    @MainActor
+    func restoreAlertFocus() {
+        guard let prev = focusBeforeAlert else { return }
+        let borrowed = alertPill
+        focusBeforeAlert = nil
+        alertPill = nil
+        let state = AppState.shared
+        // Only if the alert's pill is still the one shown (the user may have picked another).
+        guard state.pendingApproval == nil, state.focusId == borrowed, borrowed != prev,
+              state.tasks.contains(where: { $0.id == prev }) else { return }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) { state.focusId = prev }
+    }
+
     @MainActor
     private func expandIfNeeded(to view: IslandView) {
         let state = AppState.shared
@@ -759,8 +806,7 @@ final class HookServer: @unchecked Sendable {
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let projectName = sessionName(payload, cwd: cwd)
 
         let rawAgent = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"] as? String ?? ""
@@ -840,7 +886,10 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let command = toolInput["command"] as? String ?? tool
+        // A plan is too long for the card: show its title.
+        let command = tool == "ExitPlanMode"
+            ? Self.planTitle(toolInput["plan"] as? String)
+            : toolInput["command"] as? String ?? tool
 
         // Several requests can wait at once (several sessions or agents): they queue, the
         // card shows the oldest. Past the cap, the newest goes back to its own terminal.
@@ -925,10 +974,26 @@ final class HookServer: @unchecked Sendable {
         case "allow":  json = #"{"permissionDecision":"allow"}"#
         case "always": json = #"{"permissionDecision":"always"}"#
         case "ask":    json = #"{"permissionDecision":"ask"}"#
+        // Plan approval (ExitPlanMode): the hook turns "mode" into a setMode permission update.
+        case "plan_auto":    json = #"{"permissionDecision":"allow","mode":"auto"}"#
+        case "plan_default": json = #"{"permissionDecision":"allow","mode":"default"}"#
+        // Reject the plan and stop Claude, so the change can be typed in the terminal.
+        case "plan_change":  json = #"{"permissionDecision":"change_plan"}"#
         default:       json = #"{"permissionDecision":"deny"}"#
         }
-        RecapStore.shared.recordDecision(pillId: head.pillId, decision: decision)
+        // The recap only counts allow / always / deny.
+        let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny"][decision] ?? decision
+        RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision)
         removeApproval(id: head.id, answer: json)
+        if decision == "plan_change" { ClaudeHost.activate(head.hostApp) }
+    }
+
+    /// The plan's first non-empty line without its Markdown heading marks, for the card.
+    static func planTitle(_ plan: String?) -> String {
+        let firstLine = plan?.split(separator: "\n")
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let title = firstLine.map { String($0.drop { $0 == "#" || $0 == " " }) } ?? ""
+        return title.isEmpty ? "Plan" : title
     }
 
     // MARK: - Question request
@@ -940,8 +1005,7 @@ final class HookServer: @unchecked Sendable {
                      ?? payload["conversation_id"] as? String
                      ?? "unknown"
         let cwd       = payload["cwd"]        as? String ?? ""
-        let rawName   = URL(fileURLWithPath: cwd).lastPathComponent
-        let projectName = aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+        let projectName = sessionName(payload, cwd: cwd)
 
         let rawAgent    = payload["coucou_agent"] as? String ?? ""
         let termProgram = payload["term_program"]  as? String ?? ""
@@ -1128,6 +1192,15 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Project name alias mapping
 
+    /// The pill's name: the session's /rename title, else the folder the session started
+    /// in (the hook reads both from the transcript), else the current cwd's folder.
+    private func sessionName(_ payload: [String: Any], cwd: String) -> String {
+        if let title = payload["session_title"] as? String, !title.isEmpty { return title }
+        let root = payload["session_root"] as? String ?? ""
+        let rawName = URL(fileURLWithPath: root.isEmpty ? cwd : root).lastPathComponent
+        return aliasProjectName(rawName.isEmpty ? "Session" : rawName)
+    }
+
     private func aliasProjectName(_ name: String) -> String {
         let aliases: [String: String] = [
             "notch-buddy":  "Notch Buddy",
@@ -1158,8 +1231,11 @@ final class HookServer: @unchecked Sendable {
             "apply_patch":  String(localized: "step.edits",     defaultValue: "Edits"),
             "update_plan":  String(localized: "step.tasks",     defaultValue: "Tasks"),
             "spawn_agent":  String(localized: "step.agent",     defaultValue: "Agent"),
+            // Antigravity tools
+            "ask_question": String(localized: "step.needs-input", defaultValue: "Needs input"),
         ]
-        var label = labels[tool] ?? tool
+        let labelTool = tool == "ask_question" || tool.hasSuffix(":ask_question") ? "ask_question" : tool
+        var label = labels[labelTool] ?? tool
 
         // Codex MCP tools arrive as mcp__server__tool — show "server · tool"
         if tool.hasPrefix("mcp__") {
@@ -1184,6 +1260,14 @@ final class HookServer: @unchecked Sendable {
                 }
             }
             return label
+        }
+
+        // ask_question: extract the question string
+        if (tool == "ask_question" || tool.hasSuffix(":ask_question")),
+           let questions = input["questions"] as? [[String: Any]],
+           let firstQ = questions.first?["question"] as? String,
+           !firstQ.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "\(label) · \(oneLine(firstQ))"
         }
 
         if let cmd = input["command"] as? String {
@@ -3248,6 +3332,36 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+def add_session_name(payload):
+    # Name the pill after the folder the session started in, not the current cwd (the
+    # agent may cd into subfolders), or after the session's /rename title. Both come
+    # from the transcript: its first lines and the last custom-title entry.
+    path = payload.get('transcript_path') or ''
+    if not path:
+        return
+    try:
+        with open(path, 'rb') as f:
+            for line in f.read(16384).splitlines():
+                try:
+                    root = json.loads(line).get('cwd')
+                except Exception:
+                    continue
+                if root:
+                    payload['session_root'] = root
+                    break
+            f.seek(0, os.SEEK_END)
+            start = max(0, f.tell() - 65536)
+            f.seek(start)
+            lines = f.read().splitlines()
+            for line in reversed(lines[1:] if start else lines):
+                if b'"custom-title"' in line:
+                    title = json.loads(line).get('customTitle')
+                    if title:
+                        payload['session_title'] = title
+                    break
+    except Exception:
+        pass
+
 def main():
     raw = b''
     payload = {}
@@ -3315,6 +3429,7 @@ def main():
                 payload['cwd'] = paths[0]
             else:
                 payload['cwd'] = os.getcwd()
+        add_session_name(payload)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3382,6 +3497,7 @@ def main():
             payload['cwd'] = paths[0]
         else:
             payload['cwd'] = os.getcwd()
+    add_session_name(payload)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
@@ -3435,6 +3551,13 @@ def main():
                     else:
                         # Claude Code / Codex plain allow
                         out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
+                    # Claude Code ignores an allow for ExitPlanMode without updatedInput (Allow and Always).
+                    if payload.get('tool_name') == 'ExitPlanMode' and 'hookSpecificOutput' in out:
+                        out['hookSpecificOutput']['decision']['updatedInput'] = payload.get('tool_input', {})
+                        # Mode picked on the plan card: same choice as the terminal's plan dialog.
+                        mode = resp_obj.get('mode')
+                        if mode in ('auto', 'default'):
+                            out['hookSpecificOutput']['decision']['updatedPermissions'] = [{'type': 'setMode', 'mode': mode, 'destination': 'session'}]
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -3451,6 +3574,13 @@ def main():
                     answers = resp_obj.get('answers', {})
                     questions = payload.get('tool_input', {}).get('questions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'change_plan':
+                    # Plan card "Change plan": like the terminal's "Tell Claude what to change",
+                    # reject the plan and stop Claude so the prompt is free for the change.
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'interrupt': True, 'message': 'The user wants to change the plan and will type the changes in the terminal.'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -3555,6 +3685,36 @@ def normalize_tool_fields(payload):
     if not payload.get('cwd') and payload.get('workdir'):
         payload['cwd'] = payload['workdir']
 
+def add_session_name(payload):
+    # Name the pill after the folder the session started in, not the current cwd (the
+    # agent may cd into subfolders), or after the session's /rename title. Both come
+    # from the transcript: its first lines and the last custom-title entry.
+    path = payload.get('transcript_path') or ''
+    if not path:
+        return
+    try:
+        with open(path, 'rb') as f:
+            for line in f.read(16384).splitlines():
+                try:
+                    root = json.loads(line).get('cwd')
+                except Exception:
+                    continue
+                if root:
+                    payload['session_root'] = root
+                    break
+            f.seek(0, os.SEEK_END)
+            start = max(0, f.tell() - 65536)
+            f.seek(start)
+            lines = f.read().splitlines()
+            for line in reversed(lines[1:] if start else lines):
+                if b'"custom-title"' in line:
+                    title = json.loads(line).get('customTitle')
+                    if title:
+                        payload['session_title'] = title
+                    break
+    except Exception:
+        pass
+
 def main():
     raw = b''
     payload = {}
@@ -3622,6 +3782,7 @@ def main():
                 payload['cwd'] = paths[0]
             else:
                 payload['cwd'] = os.getcwd()
+        add_session_name(payload)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(125)
@@ -3688,6 +3849,7 @@ def main():
             payload['cwd'] = paths[0]
         else:
             payload['cwd'] = os.getcwd()
+    add_session_name(payload)
 
     # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
     try:
@@ -3741,6 +3903,13 @@ def main():
                     else:
                         # Claude Code / Codex plain allow
                         out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
+                    # Claude Code ignores an allow for ExitPlanMode without updatedInput (Allow and Always).
+                    if payload.get('tool_name') == 'ExitPlanMode' and 'hookSpecificOutput' in out:
+                        out['hookSpecificOutput']['decision']['updatedInput'] = payload.get('tool_input', {})
+                        # Mode picked on the plan card: same choice as the terminal's plan dialog.
+                        mode = resp_obj.get('mode')
+                        if mode in ('auto', 'default'):
+                            out['hookSpecificOutput']['decision']['updatedPermissions'] = [{'type': 'setMode', 'mode': mode, 'destination': 'session'}]
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -3757,6 +3926,13 @@ def main():
                     answers = resp_obj.get('answers', {})
                     questions = payload.get('tool_input', {}).get('questions', [])
                     out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}}
+                    sys.stdout.write(json.dumps(out) + '\\n')
+                    sys.stdout.flush()
+                    sys.exit(0)
+                elif decision == 'change_plan':
+                    # Plan card "Change plan": like the terminal's "Tell Claude what to change",
+                    # reject the plan and stop Claude so the prompt is free for the change.
+                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'interrupt': True, 'message': 'The user wants to change the plan and will type the changes in the terminal.'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)

@@ -13,6 +13,13 @@ struct TerminalTargetTests {
                                   running: ["com.apple.Terminal", "com.cmuxterm.app"]) == "com.cmuxterm.app",
               "session app (cmux) is preferred over a running Terminal")
 
+        // Conductor (no TERM_PROGRAM, bundle id only) goes back to Conductor
+        check(TerminalTarget.pick(sessionBundleId: "com.conductor.app",
+                                  running: ["com.apple.Terminal", "com.conductor.app"]) == "com.conductor.app",
+              "Conductor session goes back to Conductor")
+        check(!TerminalTarget.knownTerminals.contains("com.conductor.app"),
+              "Conductor is not a fallback terminal")
+
         // VS Code integrated terminal goes back to VS Code
         check(TerminalTarget.pick(sessionBundleId: "com.microsoft.VSCode",
                                   running: ["com.microsoft.VSCode", "com.googlecode.iterm2"]) == "com.microsoft.VSCode",

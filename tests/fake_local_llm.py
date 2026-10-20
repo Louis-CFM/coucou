@@ -9,6 +9,8 @@ Routes:
   POST /v1/chat/completions    → SSE stream with <think> block, reasoning-only
                                   deltas (content=null), and Markdown answer
   POST /v1/chat/completions    → 404 when model == "unknown-model"
+  POST /v1/chat/completions    → 401 unless Authorization is "Bearer ollama"
+                                  or "Bearer " + CLOUD_TEST_KEY
 """
 
 import json
@@ -42,7 +44,10 @@ SSE_EVENTS = [
     {"choices": [{"delta": {"content": "```python\nprint('hello')\n```"}}]},
 ]
 
-EXPECTED_RESPONSE = "## Answer\n\nHere is the result:\n\n- **item 1**\n- item 2\n\n```python\nprint('hello')\n```"
+# The key ChatParsingTests sends as a cloud provider (DeepSeek, Qwen, Moonshot)
+CLOUD_TEST_KEY = "sk-test-cloud-key"
+
+EXPECTED_RESPONSE ="## Answer\n\nHere is the result:\n\n- **item 1**\n- item 2\n\n```python\nprint('hello')\n```"
 
 
 class FakeLLMHandler(BaseHTTPRequestHandler):
@@ -74,6 +79,22 @@ class FakeLLMHandler(BaseHTTPRequestHandler):
         if self.path != "/v1/chat/completions":
             self.send_response(404)
             self.end_headers()
+            return
+
+        # Wrong bearer token → 401, like DeepSeek's "Authentication Fails".
+        # A local call sends "Bearer ollama"; the cloud test sends its key.
+        if self.headers.get("Authorization") not in ("Bearer ollama", "Bearer " + CLOUD_TEST_KEY):
+            err = json.dumps({
+                "error": {
+                    "message": "Authentication Fails, Your api key is invalid",
+                    "type": "authentication_error",
+                }
+            }).encode()
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(err)))
+            self.end_headers()
+            self.wfile.write(err)
             return
 
         # Unknown model → 404 with OpenAI-format error
