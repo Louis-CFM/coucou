@@ -176,6 +176,23 @@ body {
   transition: opacity 0.25s ease-in-out;
 }
 
+/* Date and time in the middle of the compact island, between Mochi and the grid. */
+#island-clock {
+  position: absolute;
+  left: 50px;
+  right: 56px;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+
 /* A mini Mochi: the slot is the body, the canvas is larger and overflows it so
    hands, badges and particles are not cut off. */
 .mini {
@@ -2329,6 +2346,33 @@ input[type="range"]::-webkit-slider-thumb {
   width: 28px;
   height: 28px;
   pointer-events: none;
+}
+
+/* ── New version (views/update.ts) — UpdateCardView on macOS ────────────────── */
+
+.update-line {
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The download's progress: the Mac's green, 260 px at most. */
+.update-bar {
+  width: 100%;
+  max-width: 260px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.update-bar .fill {
+  height: 100%;
+  width: 0;
+  background: #34d399;
+  transition: width 0.25s linear;
 }
 
 /* ── Spotify: the pill's controls and the now-playing card ──────────────────
