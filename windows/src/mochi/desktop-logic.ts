@@ -37,6 +37,8 @@ export const DESKTOP_EVENTS = {
   dropped: "desktop-mochi-dropped",
   /** Rust → desktop window */
   cursor: "desktop-cursor",
+  /** Linux: the compositor's pointer, for his eyes only (it does not wake him). */
+  gaze: "desktop-gaze",
   visible: "desktop-visible",
   flight: "desktop-flight",
 } as const;
@@ -96,6 +98,11 @@ export function gaze(bot: Point, mouse: Point): { lookX: number; lookY: number }
     lookX: Math.tanh((mouse.x - bot.x) / 260),
     lookY: -Math.tanh((mouse.y - bot.y) / 200),
   };
+}
+
+/** Where he looks: the pointer over his window, else the compositor's (Linux), else the page's last one. */
+export function gazePoint(page: Point, global: Point | null, overWindow: boolean): Point {
+  return overWindow || !global ? page : global;
 }
 
 /** An alert went up during a flight: once landed, he turns right back. */
