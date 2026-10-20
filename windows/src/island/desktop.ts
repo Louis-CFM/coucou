@@ -24,6 +24,8 @@ export interface DesktopHost {
   wardrobeFromDesktop(): void;
   /** Three pokes on the desktop Mochi. */
   dizzyFromDesktop(): void;
+  /** A click on the sleeping desktop Mochi. */
+  wake(): void;
 }
 
 export class DesktopLink {
@@ -76,6 +78,7 @@ export class DesktopLink {
     await onEvent<null>(DESKTOP_EVENTS.home, () => void this.controller.flyHome());
     await onEvent<null>(DESKTOP_EVENTS.wardrobe, () => this.host.wardrobeFromDesktop());
     await onEvent<null>(DESKTOP_EVENTS.dizzy, () => this.host.dizzyFromDesktop());
+    await onEvent<null>(DESKTOP_EVENTS.wake, () => this.host.wake());
     // The window's page (re)loaded: it knows nothing yet.
     await onEvent<null>(DESKTOP_EVENTS.ready, () => {
       this.pushed = "";
@@ -170,6 +173,7 @@ export class DesktopLink {
       outfit: State.wardrobePreview ?? this.seasons.get(parseOutfit(State.settings.mochiOutfit)),
       soundEnabled: State.settings.soundEnabled,
       soundVolume: State.settings.soundVolume,
+      asleep: State.asleep,
       paused: State.paused,
       dancing: desktopDances(State.spotifyPlaying, State.effectiveState),
     };

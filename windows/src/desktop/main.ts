@@ -12,8 +12,8 @@ import type { BotEmoteName } from "../core/layout";
 import { Sound } from "../core/sound";
 import { BotEngine } from "../mochi/engine";
 import {
-  DESKTOP_EVENTS, DOUBLE_CLICK_MS, DRAG_THRESHOLD, PANEL_SIZE, agentActive, gaze, isOverBody,
-  layerDragTopLeft, lookOrigin, pointerDistance, shouldSleep, windowDragTopLeft,
+  DESKTOP_EVENTS, DOUBLE_CLICK_MS, DRAG_THRESHOLD, PANEL_SIZE, SLEEP_MOUSE_DISTANCE, gaze, isOverBody,
+  layerDragTopLeft, lookOrigin, pointerDistance, windowDragTopLeft,
   type DesktopSnapshot, type Point,
 } from "../mochi/desktop-logic";
 
@@ -41,9 +41,10 @@ class DesktopMochi {
 
   private visible = false;
   private asleep = false;
+  /** Rust's cursor poll is off (desktopSetAsleep): asleep, with the pointer away. */
+  private pollOff = false;
   /** Whether the island has told us anything yet. */
   private informed = false;
-  private lastAgentActive = performance.now();
   /** Pointer in window coordinates, and when the page last heard of it. */
   private cursor: Point | null = null;
   private lastPointer = -Infinity;
@@ -80,8 +81,6 @@ class DesktopMochi {
 
     await onEvent<DesktopSnapshot>(DESKTOP_EVENTS.state, (s) => this.onSnapshot(s));
     await onEvent<{ emote: BotEmoteName; duration: number }>(DESKTOP_EVENTS.emote, (e) => {
-      this.lastAgentActive = performance.now();
-      this.wake();
       this.engine.triggerEmote(e.emote, e.duration);
       this.schedule();
     });
@@ -106,7 +105,6 @@ class DesktopMochi {
     this.informed = true;
     Sound.setEnabled(s.soundEnabled);
     Sound.setVolume(s.soundVolume);
-    if (agentActive(s.state)) this.lastAgentActive = performance.now();
     if (!this.asleep) this.engine.setState(s.state);
     this.updateSleep(performance.now());
     this.schedule();
@@ -117,9 +115,8 @@ class DesktopMochi {
     if (on) {
       // The two pages may have started in either order: ask again if needed.
       if (!this.informed) void emitToWindow(ISLAND, DESKTOP_EVENTS.ready);
-      // Landing counts as something going on: he looks around for a while.
-      this.lastAgentActive = performance.now();
       this.asleep = false;
+      this.pollOff = false;
       this.engine.setState(this.snap.state, true);
       this.engine.setOutfit(this.snap.outfit, false);
       this.schedule();
@@ -134,34 +131,31 @@ class DesktopMochi {
     Sound.idle();
   }
 
+  /** He sleeps and wakes with the island's Mochis (a chat message or a
+   *  session starting wakes them, island.ts), never for the pointer. */
   private updateSleep(now: number) {
     if (!this.visible) return;
-    // Dancing keeps him up: asleep he would bounce at a few frames a second.
-    if (this.snap.dancing && !this.snap.paused) this.lastAgentActive = now;
+    const sleep = !this.dragging && (this.snap.paused || !!this.snap.asleep);
+    // Asleep, Rust stops the cursor poll and his whole little window takes the
+    // mouse; the first move over it turns the poll back on (clicks around his
+    // body go through again) without waking him, until the pointer is away.
     const distance = pointerDistance(this.mode === "poll", this.cursor, now - this.lastPointer);
-    const sleep =
-      !this.dragging &&
-      (this.snap.paused || shouldSleep((now - this.lastAgentActive) / 1000, distance));
+    const pollOff = sleep && distance >= SLEEP_MOUSE_DISTANCE;
+    if (pollOff !== this.pollOff) {
+      this.pollOff = pollOff;
+      void Bridge.desktopSetAsleep(pollOff);
+    }
     if (sleep === this.asleep) return;
     this.asleep = sleep;
     this.engine.setState(sleep ? "sleeping" : this.snap.state);
-    // Asleep, Rust stops the cursor poll; his whole little window then listens
-    // for the pointer, and the first move over it wakes him.
-    void Bridge.desktopSetAsleep(sleep);
     if (sleep) Sound.idle();
     this.schedule();
   }
 
-  private wake() {
-    if (!this.asleep) return;
-    this.updateSleep(performance.now());
-  }
-
-  /** Pointer in window coordinates: his eyes, and waking up. */
+  /** Pointer in window coordinates: his eyes. */
   private notePointer(p: Point) {
     this.cursor = p;
     this.lastPointer = performance.now();
-    if (this.asleep) this.wake();
     this.schedule();
   }
 
@@ -261,12 +255,15 @@ class DesktopMochi {
         this.endDrag(e);
         return;
       }
+      // Asleep, a click wakes him (and every Mochi) instead of poking him.
+      if (this.asleep) {
+        void emitToWindow(ISLAND, DESKTOP_EVENTS.wake);
+        return;
+      }
       // Single click → poke, once it is clear it isn't a double click.
       this.cancelPoke();
       this.pokeTimer = window.setTimeout(() => {
         this.pokeTimer = null;
-        this.lastAgentActive = performance.now();
-        this.wake();
         this.engine.slap();
         this.schedule();
       }, DOUBLE_CLICK_MS);
