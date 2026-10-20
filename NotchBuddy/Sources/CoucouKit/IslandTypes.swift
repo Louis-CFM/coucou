@@ -16,6 +16,7 @@ enum IslandView: String, CaseIterable {
     case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
     case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
     case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
+    case convert      // a dropped file turned into another format (image, PDF, document)
 }
 
 // MARK: - Bot State
@@ -243,6 +244,8 @@ enum IslandConst {
         .capture:      ViewLayout(height: 160, botX: 58,  botY: nil, botDiameter: 52, agentMode: .none),
         // New version: Mochi on the left, the version and Update now
         .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
+        // Convert: same place as the choose card it comes from
+        .convert:      ViewLayout(height: 176, botX: 60,  botY: nil, botDiameter: 52, agentMode: .column),
     ]
 
     // Project colors — keyed by lowercase display name or slug

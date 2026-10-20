@@ -776,6 +776,7 @@ struct VoiceMailDraft: Equatable {
 struct DroppedFile {
     var url: URL
     var name: String
+    var originalURL: URL? = nil   // where the user dropped it from, so Convert can save next to it
 }
 
 struct SearchResult {

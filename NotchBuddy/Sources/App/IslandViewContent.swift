@@ -19,6 +19,7 @@ struct IslandViewContent: View {
         case .uploading: UploadingView(state: state)
         case .choose:    ChooseView(state: state)
         case .mail:      MailView(state: state)
+        case .convert:   ConvertView(state: state)
         case .prompt:    PromptView(state: state)
         case .searching: SearchingView(state: state)
         case .result:    ResultView(state: state)
@@ -1105,6 +1106,9 @@ struct ChooseView: View {
                 HStack(spacing: 8) {
                     PrimaryButton("Ask a question") { state.view = .prompt }
                     SecondaryButton("Send by email") { state.view = .mail }
+                    if let file = state.droppedFile, !FileConverter.formats(for: file.url).isEmpty {
+                        SecondaryButton("convert.button") { state.view = .convert }
+                    }
                 }
             }
             .padding(.leading, 98)
