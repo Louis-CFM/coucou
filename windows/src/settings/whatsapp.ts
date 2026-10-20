@@ -9,6 +9,7 @@ import {
   linkColor, linkLabel, type WhatsAppGateway, type WhatsAppPrefs, type WhatsAppState,
 } from "../core/whatsapp";
 import { h, clear } from "../views/dom";
+import { MAX_DECLARED } from "../core/pills";
 import { t } from "../i18n/i18n";
 
 const MUTED = "color:#8E939C;font-size:11px";
@@ -70,7 +71,7 @@ export function whatsappSection(declared: () => boolean): HTMLElement {
     if (!p.enabled) return;
 
     if (!declared()) {
-      box.append(hint(t("Make room in Active pills to show the WhatsApp pill (4 at most)."), "#F4505E"));
+      box.append(hint(t("Make room in Active pills to show the WhatsApp pill ({max} at most).", { max: MAX_DECLARED }), "#F4505E"));
     }
 
     // One click: Coucou downloads GOWA, checks it and starts it.

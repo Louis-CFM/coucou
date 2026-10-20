@@ -4614,6 +4614,17 @@
    "pt-BR": "Este arquivo é grande demais para enviar por e-mail.",
    "ru": "Файл слишком большой для отправки по почте.",
    "id": "File ini terlalu besar untuk dikirim lewat email."
+  },
+  "Make room in Active pills to show the WhatsApp pill ({max} at most).": {
+   "zh-Hans": "请在“活跃胶囊”中腾出位置以显示 WhatsApp（最多 {max} 个）。",
+   "hi": "WhatsApp पिल दिखाने के लिए सक्रिय पिल्स में जगह बनाएँ (अधिकतम {max})।",
+   "es": "Libera un hueco en Píldoras activas para mostrar la de WhatsApp ({max} como máximo).",
+   "ar": "أفرغ مكانًا في الحبوب النشطة لعرض حبة واتساب ({max} كحد أقصى).",
+   "fr": "Libère une place dans Pills actives pour afficher la pill WhatsApp ({max} au maximum).",
+   "bn": "WhatsApp পিল দেখাতে সক্রিয় পিলে জায়গা খালি করুন (সর্বোচ্চ {max}টি)।",
+   "pt-BR": "Libere um espaço em Pílulas ativas para mostrar a do WhatsApp (no máximo {max}).",
+   "ru": "Освободите место в активных пилюлях для WhatsApp (не больше {max}).",
+   "id": "Kosongkan tempat di Pil aktif untuk menampilkan pil WhatsApp (maksimal {max})."
   }
  }
 }
