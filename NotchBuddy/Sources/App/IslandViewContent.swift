@@ -224,6 +224,7 @@ struct OverviewView: View {
         guard let task else { return }
         switch task.id {
         case "integration_claude":
+            if ClaudeEditorChat.open(task) { return }
             if ClaudeHost.activate(task.hostApp) { return }
             let vscodeBundleId = "com.microsoft.VSCode"
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
@@ -719,7 +720,9 @@ struct ErrorView: View {
 
 #if !APPSTORE
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
+@MainActor
 private func openSessionApp(_ task: AgentTask?) {
+    if ClaudeEditorChat.open(task) { return }
     if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
        !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
@@ -2453,6 +2456,7 @@ struct IntegrationCardView: View {
     }
 
     private func openVSCode() {
+        if ClaudeEditorChat.open(task) { return }
         let ids = ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium.codium"]
         let appURL = ids.compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }.first
 
