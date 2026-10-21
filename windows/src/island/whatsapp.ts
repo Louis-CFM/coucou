@@ -12,6 +12,8 @@ import { WHATSAPP_ID, WhatsApp, type WhatsAppState } from "../core/whatsapp";
 export interface WhatsAppHost {
   /** The compact island, by the island's usual rules. */
   reveal(): void;
+  /** The island open on a view, whatever is in front (a message counts as important). */
+  alert(view: "overview"): void;
   emote(name: "happy"): void;
 }
 
@@ -20,7 +22,7 @@ let lastAnnounce = 0;
 
 export function registerWhatsAppHandlers(island: WhatsAppHost) {
   void onEvent<WhatsAppState>("whatsapp", (s) => applyWhatsApp(s));
-  void onEvent<{ name: string; react: boolean }>("whatsapp-announce", (a) => announce(island, a.name, a.react));
+  void onEvent<{ name: string; chat: string; react: boolean }>("whatsapp-announce", (a) => announce(island, a.name, a.chat, a.react));
   // Rust may have read the gateway before this page listened: ask once.
   void Bridge.whatsappState().then((s) => s && applyWhatsApp(s));
   // The pill on screen: its badge goes (WhatsAppController.clearBadge).
@@ -43,7 +45,24 @@ export function applyWhatsApp(next: WhatsAppState) {
   State.notify();
 }
 
-function announce(island: WhatsAppHost, name: string, react: boolean) {
+/**
+ * A message came in: the island opens, tall, on the WhatsApp pill with that
+ * conversation open. Not over a card that waits for an answer (an approval, a
+ * question) or one the user is busy in, and never in the middle of a reply
+ * being typed in another conversation: there it is the badge and the sound.
+ * Do not disturb is honoured in Rust, which then sends nothing.
+ */
+function popUp(island: WhatsAppHost, chat: string): boolean {
+  if (State.pendingApproval) return false;
+  if (State.mode === "expanded" && State.view !== "overview") return false;
+  if (WhatsApp.drafting) return false;
+  WhatsApp.openRequest = chat;
+  State.setFocus(WHATSAPP_ID);
+  if (State.mode !== "expanded") island.alert("overview");
+  return true;
+}
+
+function announce(island: WhatsAppHost, name: string, chat: string, react: boolean) {
   if (State.paused) return;
   const task = State.tasks.find((t) => t.id === WHATSAPP_ID);
   if (!task) return;
@@ -53,10 +72,11 @@ function announce(island: WhatsAppHost, name: string, react: boolean) {
   task.stepIndex = 0;
   if (State.focusId !== WHATSAPP_ID) task.pillBadge = "finished";
   lastAnnounce = Date.now();
+  const shown = popUp(island, chat);
   if (react) {
     island.emote("happy");
     Sound.play("pop");
-    island.reveal();
+    if (!shown) island.reveal();
   }
   if (quietTimer != null) window.clearTimeout(quietTimer);
   quietTimer = window.setTimeout(() => {

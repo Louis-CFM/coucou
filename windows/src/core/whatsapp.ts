@@ -129,6 +129,10 @@ export const IDLE_WHATSAPP: WhatsAppState = {
 /** What Rust last said, for the island and Settings alike. */
 export const WhatsApp = {
   state: { ...IDLE_WHATSAPP } as WhatsAppState,
+  /** A conversation the card should open next (a message just came in), or null. */
+  openRequest: null as string | null,
+  /** The card is open on a conversation with something typed in the reply. */
+  drafting: false,
 };
 
 /** The gateways' own default addresses (WAGatewayKind.defaultURL). */

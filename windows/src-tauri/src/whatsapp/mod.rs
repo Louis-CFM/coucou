@@ -676,9 +676,15 @@ fn announce_message(app: &AppHandle, chat: &str) {
     #[derive(Serialize, Clone)]
     struct Announce {
         name: String,
+        /// The conversation, for the island to open it.
+        chat: String,
         react: bool,
     }
-    let _ = app.emit_to(crate::island::WINDOW_LABEL, "whatsapp-announce", Announce { name, react: !burst });
+    let _ = app.emit_to(
+        crate::island::WINDOW_LABEL,
+        "whatsapp-announce",
+        Announce { name, chat: chat.to_string(), react: !burst },
+    );
 }
 
 /// Windows' Do not disturb, presentation mode or a full-screen app.

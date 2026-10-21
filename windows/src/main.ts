@@ -68,6 +68,7 @@ async function main() {
   await onEvent<{ path: string; dataUrl: string }>("capture-ready", (c) => island.onCaptureReady(c));
   await onEvent<null>("capture-used", () => island.onCaptureUsed());
   await onEvent<boolean>("browser-foreground", (on) => island.setBrowserForeground(on));
+  await onEvent<string | null>("front-exe", (exe) => { State.frontExe = exe; });
 
   /** Pause has to reach Rust too, or the pollers keep calling out. */
   const setPaused = (on: boolean) => {

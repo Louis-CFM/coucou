@@ -107,6 +107,8 @@ export interface Settings {
   mochiFeelsComputer: boolean;
   /** Date and time in the middle of the compact island. */
   showClock: boolean;
+  /** Another pill's finish or error opens the island for a moment (Mac #683). */
+  alertsFromAllPills: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -175,6 +177,7 @@ export const DEFAULT_SETTINGS: Settings = {
   openOnHover: false,
   mochiFeelsComputer: true,
   showClock: false,
+  alertsFromAllPills: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
@@ -300,6 +303,9 @@ class AppState {
       category === "agent" || (category == null && task.id.startsWith("agent_"));
     return agent ? "work" : null;
   }
+
+  /** The program in front, lower-case ("claude.exe"); null when unknown. */
+  frontExe: string | null = null;
 
   get focusTask(): AgentTask | null {
     return this.tasks.find((t) => t.id === this.focusId) ?? this.tasks[0] ?? null;

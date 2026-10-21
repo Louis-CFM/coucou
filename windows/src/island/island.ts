@@ -26,6 +26,7 @@ import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../vie
 import { h } from "../views/dom";
 import { IslandStateMachine } from "./fsm";
 import { refreshHookPills } from "./integrations";
+import { restoreAlertFocus } from "./hooks";
 import { DesktopLink } from "./desktop";
 import type { ViewCommand } from "./shortcuts";
 import { DRAG_THRESHOLD } from "../mochi/desktop-logic";
@@ -212,7 +213,7 @@ export class Island {
         const req = State.pendingApproval;
         void Bridge.log(`decide ${d} req=${req?.requestId ?? "none"}`);
         if (!req) return;
-        Sound.play(d === "deny" ? "blip" : "approve");
+        Sound.play(d === "deny" || d === "plan_change" ? "blip" : "approve");
         void Bridge.approvalDecision(req.requestId, d);
         this.closeApproval();
       },
@@ -375,6 +376,8 @@ export class Island {
     }
     if (mode !== "expanded") {
       closePlanCard();
+      // Another pill's alert borrowed the focus: the pill you had comes back.
+      restoreAlertFocus();
       this.engine.resetMorph();
       // Nothing can be seen of the sequence once the island is shut, and leaving
       // it running would keep the frame loop awake — the island must cost
@@ -967,6 +970,11 @@ export class Island {
    * question) open it as usual.
    */
   private browserInFront = false;
+
+  /** A browser is the app in front (its tab strip is where the island opens). */
+  get browserFront(): boolean {
+    return this.browserInFront;
+  }
 
   setBrowserForeground(on: boolean) {
     const was = this.browserInFront;

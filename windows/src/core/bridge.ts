@@ -282,7 +282,7 @@ export const Bridge = {
    */
   codexPlanUsage: () => call<unknown>("codex_plan_usage"),
 
-  approvalDecision: (requestId: string, decision: "allow" | "deny") =>
+  approvalDecision: (requestId: string, decision: ApprovalDecision) =>
     call<void>("approval_decision", { requestId, decision }),
   /** "The card is up" — until this lands the relay only waits a moment. */
   approvalAck: (requestId: string) => call<void>("approval_ack", { requestId }),
@@ -478,6 +478,9 @@ export const Bridge = {
   /** The release's page on github.com. */
   updateOpenPage: () => call<void>("update_open_page"),
 };
+
+/** Allow / Deny, or the plan card's choices (ExitPlanMode). */
+export type ApprovalDecision = "allow" | "deny" | "plan_auto" | "plan_default" | "plan_change";
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
 

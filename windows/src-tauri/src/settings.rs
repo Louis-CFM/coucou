@@ -104,6 +104,8 @@ pub struct Settings {
     pub mochi_feels_computer: bool,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
+    /// Another pill's finish or error opens the island for a moment (Mac #683). Off by default.
+    pub alerts_from_all_pills: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -171,6 +173,7 @@ impl Default for Settings {
             phone_relay_url: String::new(),
             mochi_feels_computer: true,
             show_clock: false,
+            alerts_from_all_pills: false,
         }
     }
 }
@@ -459,7 +462,8 @@ mod tests {
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "mochiFeelsComputer": false,
-  "showClock": true
+  "showClock": true,
+  "alertsFromAllPills": true
 }"##;
 
     fn custom() -> Value {
@@ -969,6 +973,7 @@ mod tests {
                 "phoneRelayUrl",
                 "mochiFeelsComputer",
                 "showClock",
+                "alertsFromAllPills",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

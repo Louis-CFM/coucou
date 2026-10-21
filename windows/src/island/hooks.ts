@@ -67,6 +67,9 @@ interface HookPayload {
   platform?: string;
   /** "cursor" when Claude Code runs in Cursor's terminal (set by the relay). */
   term_editor?: string;
+  /** The relay's terminal context: VS Code's process, Windows Terminal's session. */
+  vscode_pid?: string;
+  wt_session?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
 }
@@ -160,7 +163,71 @@ const APPROVAL_FIELDS = [
   "prompt", // Task
 ] as const;
 
+/** A plan's first line without its Markdown heading marks: the plan card's line (Mac planTitle). */
+export function planTitle(plan: unknown): string {
+  const first = typeof plan === "string" ? plan.split("\n").find((l) => l.trim()) : undefined;
+  const title = first ? first.replace(/^[#\s]+/, "").trim() : "";
+  return title || "Plan";
+}
+
+// ── A finish or an error: who is told ─────────────────────────────────────────
+
+/** Terminals and editors a Claude Code session may run in. */
+const TERMINALS = new Set([
+  "windowsterminal.exe", "wt.exe", "powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe",
+  "code.exe", "cursor.exe", "windsurf.exe", "wezterm-gui.exe", "alacritty.exe", "warp.exe",
+  "tabby.exe", "hyper.exe", "mintty.exe", "antigravity.exe",
+]);
+
+/** The programs a pill's session shows itself in, as far as Windows can tell. */
+export function hostExes(pillId: string, payload: { vscode_pid?: string; wt_session?: string; term_editor?: string }): string[] {
+  if (pillId === "agent_claude-desktop") return ["claude.exe"];
+  if (pillId === "agent_cursor" || payload.term_editor === "cursor") return ["cursor.exe"];
+  if (pillId === "agent_antigravity") return ["antigravity.exe"];
+  if (payload.vscode_pid) return ["code.exe"];
+  if (payload.wt_session) return ["windowsterminal.exe"];
+  return [...TERMINALS];
+}
+
+/**
+ * Mac #9e95732: you are looking at the session's own window, so its finish or
+ * error is already in front of you: the pill takes a badge, no sound, no card.
+ */
+export function hostInFront(pillId: string, payload: Parameters<typeof hostExes>[1], front = State.frontExe): boolean {
+  return front != null && hostExes(pillId, payload).includes(front);
+}
+
+let focusBeforeAlert: string | null = null;
+let alertPill: string | null = null;
+
+/**
+ * Mac #683: with "Open for every pill's alerts", a pill other than the one shown
+ * that finishes or fails takes the focus for its card, and the pill that was
+ * shown comes back when the island closes. Never over an approval, a question,
+ * a card the user is busy in, or a browser in front (the island keeps out of its tabs).
+ */
+export function borrowFocusForAlert(pillId: string, browserFront: boolean): boolean {
+  if (!State.settings.alertsFromAllPills || browserFront || State.pendingApproval) return false;
+  if (State.mode === "expanded" && !["overview", "finished", "error", "empty"].includes(State.view)) return false;
+  if (focusBeforeAlert == null) focusBeforeAlert = State.focusId;
+  alertPill = pillId;
+  State.setFocus(pillId);
+  return true;
+}
+
+/** The island closed: the pill shown before another pill's alert comes back. */
+export function restoreAlertFocus(): void {
+  const prev = focusBeforeAlert;
+  const borrowed = alertPill;
+  focusBeforeAlert = null;
+  alertPill = null;
+  if (prev == null || State.pendingApproval || State.focusId !== borrowed || borrowed === prev) return;
+  if (State.tasks.some((t) => t.id === prev)) State.setFocus(prev);
+}
+
 function approvalTarget(tool: string, input: Record<string, unknown>): string {
+  // A plan is too long for the card: its title.
+  if (tool === "ExitPlanMode") return planTitle(input.plan);
   for (const field of APPROVAL_FIELDS) {
     const value = input[field];
     if (typeof value === "string" && value.trim()) {
@@ -418,10 +485,13 @@ function handleHook(island: Island, payload: HookPayload) {
         const t = State.tasks.find((x) => x.id === agentId);
         if (t) t.finalLine = finalText;
       }
-      Sound.play("finish");
+      // In front of the session's own window: only the badge (Mac #9e95732).
+      const quiet = hostInFront(agentId, payload);
+      if (!quiet) Sound.play("finish");
       // A card waiting for an answer is never covered by another alert.
-      if (focused && !State.pendingApproval) surface("finished", true);
-      else State.setPillBadge(agentId, "finished");
+      if (!quiet && !State.pendingApproval && (focused || borrowFocusForAlert(agentId, island.browserFront))) {
+        surface("finished", true);
+      } else State.setPillBadge(agentId, "finished");
       cancelStopTimer(agentId);
       stopTimers.set(
         agentId,
@@ -448,9 +518,11 @@ function handleHook(island: Island, payload: HookPayload) {
     case "StopFailure":
       supersedeStop();
       State.updateTask(agentId, "error");
-      Sound.play("error");
-      if (focused && !State.pendingApproval) surface("error", true);
-      else State.setPillBadge(agentId, "error");
+      const quietError = hostInFront(agentId, payload);
+      if (!quietError) Sound.play("error");
+      if (!quietError && !State.pendingApproval && (focused || borrowFocusForAlert(agentId, island.browserFront))) {
+        surface("error", true);
+      } else State.setPillBadge(agentId, "error");
       break;
 
     case "SessionEnd":

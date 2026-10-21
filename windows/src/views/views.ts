@@ -19,7 +19,7 @@ import {
 import { buildDiffCard } from "./diff";
 import { buildWorkCard } from "./work";
 import { lastTextStep } from "../core/diff";
-import { Bridge } from "../core/bridge";
+import { Bridge, type ApprovalDecision } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
 import { buildUpdate } from "./update";
@@ -48,7 +48,7 @@ export interface ViewActions {
   /** The ↗ button: opens whatever the focused pill points at. */
   openTarget(): void;
   openUrl(url: string): void;
-  decide(d: "allow" | "deny"): void;
+  decide(d: ApprovalDecision): void;
   /** Answers the question Claude Code asked: question text → chosen label. */
   answer(answers: Record<string, string | string[]>): void;
   /** Hands the pending request back to the terminal. */
@@ -566,7 +566,7 @@ function buildApproval(actions: ViewActions): ViewHost {
   // moments after a new request appears are ignored.
   let shownFor: string | null = null;
   let shownAt = 0;
-  const guarded = (d: "allow" | "deny") => () => {
+  const guarded = (d: ApprovalDecision) => () => {
     if (performance.now() - shownAt < CLICK_GUARD_MS) return;
     actions.decide(d);
   };
@@ -579,7 +579,9 @@ function buildApproval(actions: ViewActions): ViewHost {
         shownAt = performance.now();
       }
       clear(who);
-      who.append(agentWho(State.focusTask, t("needs permission")));
+      // Claude Code's plan (ExitPlanMode): the terminal's plan dialog choices.
+      const isPlan = State.pendingApproval?.tool === "ExitPlanMode";
+      who.append(agentWho(State.focusTask, isPlan ? t("has a plan ready") : t("needs permission")));
       // The whole point of approving here rather than in the terminal: this line
       // is the command, the file path or the URL being authorised, not just the
       // name of the tool asking.
@@ -587,13 +589,27 @@ function buildApproval(actions: ViewActions): ViewHost {
       // Two buttons, built once. Rebuilding them between a mouse-down and a
       // mouse-up would swallow the click, and there is nothing left to vary:
       // "Always" is gone until the remembered-rules list exists to back it.
-      if (rowKey === "built") return;
-      rowKey = "built";
+      const kind = isPlan ? "plan" : "tool";
+      if (rowKey === kind) return;
+      rowKey = kind;
       clear(row);
-      row.append(
-        btn(tl("Deny"), "secondary", guarded("deny"), "N"),
-        btn(tl("Allow"), "primary", guarded("allow"), "Y"),
-      );
+      if (isPlan) {
+        row.append(
+          btn(tl("Change plan"), "secondary", () => {
+            if (performance.now() - shownAt < CLICK_GUARD_MS) return;
+            actions.decide("plan_change");
+            // The change is typed in the terminal: it comes to the front.
+            actions.openTerminal();
+          }, "N"),
+          btn(tl("Auto mode"), "primary", guarded("plan_auto"), "Y"),
+          btn(tl("Manual"), "secondary", guarded("plan_default")),
+        );
+      } else {
+        row.append(
+          btn(tl("Deny"), "secondary", guarded("deny"), "N"),
+          btn(tl("Allow"), "primary", guarded("allow"), "Y"),
+        );
+      }
     },
   };
 }

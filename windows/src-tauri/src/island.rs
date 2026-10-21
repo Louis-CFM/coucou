@@ -563,9 +563,19 @@ pub fn spawn_browser_watch(app: AppHandle, gate: Arc<PollGate>) {
     }
     std::thread::spawn(move || {
         let mut last: Option<bool> = None;
+        let mut last_exe: Option<String> = None;
         let mut ticks: u32 = 0;
         loop {
-            let now = platform::foreground_exe().is_some_and(|exe| is_browser(&exe));
+            let exe = platform::foreground_exe().map(|e| e.to_lowercase());
+            // The program in front, for a finish that stays quiet while its own
+            // window is (Mac #9e95732). Its name only, when it changes.
+            if exe != last_exe {
+                if let Some(win) = window(&app) {
+                    let _ = win.emit("front-exe", exe.clone());
+                }
+                last_exe = exe.clone();
+            }
+            let now = exe.as_deref().is_some_and(is_browser);
             // Repeated every 2 s as well: the first report can go out before the
             // page is listening.
             ticks = ticks.wrapping_add(1);

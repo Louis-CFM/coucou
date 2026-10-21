@@ -111,16 +111,21 @@ export function buildWhatsAppCard(pin: (on: boolean) => void): WhatsAppCardHost 
   let convKey = "";
   let lastShown = "";
 
-  function openConversation(id: string) {
+  /** `typing`: opened by a click, so the reply field takes the keyboard. A
+   * conversation opened by a message coming in leaves it where it is. */
+  function openConversation(id: string, typing = true) {
     openChat = id;
     draft.value = "";
+    WhatsApp.drafting = false;
     convKey = "";
     lastShown = "";
     void Bridge.whatsappOpen(id);
-    // The reply field needs the keyboard: the island lends it focus while open.
-    void Bridge.focusWindow(true);
+    if (typing) {
+      // The reply field needs the keyboard: the island lends it focus while open.
+      void Bridge.focusWindow(true);
+    }
     sync();
-    window.setTimeout(() => draft.focus(), 120);
+    if (typing) window.setTimeout(() => draft.focus(), 120);
   }
 
   function closeConversation() {
@@ -135,6 +140,7 @@ export function buildWhatsAppCard(pin: (on: boolean) => void): WhatsAppCardHost 
   /** WhatsAppController.composing: a draft keeps the island open. Only a pin it set itself is lifted. */
   let pinnedByDraft = false;
   function setComposing(on: boolean) {
+    WhatsApp.drafting = on;
     if (on && !State.isPinned) {
       pin(true);
       pinnedByDraft = true;
@@ -166,7 +172,10 @@ export function buildWhatsAppCard(pin: (on: boolean) => void): WhatsAppCardHost 
 
   back.addEventListener("click", closeConversation);
   send.addEventListener("click", () => void submit());
+  // Opened by a message: a click in the reply field asks for the keyboard.
+  draft.addEventListener("mousedown", () => void Bridge.focusWindow(true));
   draft.addEventListener("input", () => {
+    WhatsApp.drafting = draft.value.trim() !== "";
     setComposing(draft.value.trim() !== "");
     paintSend();
   });
@@ -247,6 +256,15 @@ export function buildWhatsAppCard(pin: (on: boolean) => void): WhatsAppCardHost 
 
   function sync() {
     const s = WhatsApp.state;
+    // A message just came in: its conversation, once it is in the list.
+    const wanted = WhatsApp.openRequest;
+    if (wanted && s.conversations.some((c) => c.id === wanted)) {
+      WhatsApp.openRequest = null;
+      if (openChat !== wanted) {
+        openConversation(wanted, false);
+        return;
+      }
+    }
     // Kept open through a missed check (the draft too): only gone when WhatsApp is off.
     const conversation = openChat && s.link.state !== "off" ? s.conversations.find((c) => c.id === openChat) : undefined;
     if (openChat && !conversation && s.link.state === "off") {

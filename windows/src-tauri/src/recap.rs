@@ -318,8 +318,8 @@ impl Recap {
             return;
         }
         let word = match decision {
-            "allow" | "always" => "allow",
-            "deny" => "deny",
+            "allow" | "always" | "plan_auto" | "plan_default" => "allow",
+            "deny" | "plan_change" => "deny",
             _ => return,
         };
         self.history.decisions.push(Decision { agent, date: now, decision: word.to_string() });

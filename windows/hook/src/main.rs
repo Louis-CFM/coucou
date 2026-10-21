@@ -97,6 +97,9 @@ struct Event {
     name: String,
     /// For Claude Code's AskUserQuestion, the question as it was asked.
     question: Option<Value>,
+    /// For Claude Code's ExitPlanMode, the plan as it was proposed: an allow for it
+    /// only counts with the plan sent back (reply.rs).
+    plan: Option<Value>,
 }
 
 fn main() {
@@ -133,7 +136,13 @@ fn main() {
     });
 
     let decision = rx.recv_timeout(budget).ok().flatten();
-    print(reply::stdout(&args.agent, &event.name, decision.as_deref(), event.question.as_ref()));
+    print(reply::stdout_with_plan(
+        &args.agent,
+        &event.name,
+        decision.as_deref(),
+        event.question.as_ref(),
+        event.plan.as_ref(),
+    ));
     std::process::exit(0);
 }
 
@@ -192,6 +201,9 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let question = (map.get("tool_name").and_then(Value::as_str) == Some("AskUserQuestion"))
         .then(|| map.get("tool_input").cloned())
         .flatten();
+    let plan = (map.get("tool_name").and_then(Value::as_str) == Some("ExitPlanMode"))
+        .then(|| map.get("tool_input").cloned())
+        .flatten();
 
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
@@ -199,7 +211,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question })
+    Some(Event { line, name, question, plan })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
