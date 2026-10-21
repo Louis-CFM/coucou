@@ -107,10 +107,39 @@ export async function refreshClaudeDesktopPlan(now = Date.now()): Promise<void> 
   if (usage.fiveHour || usage.sevenDay) setClaudePlanUsage(usage);
 }
 
-/** Reads the Claude app's record now and every five minutes. */
+/** An RFC 3339 time as epoch ms, or 0: unknown. */
+const epochOf = (at: string | null) => {
+  const ms = at ? Date.parse(at) : NaN;
+  return Number.isFinite(ms) ? ms : 0;
+};
+
+/**
+ * The plan's use right now, from Anthropic with Claude Code's sign-in. False
+ * when there is none to use (not signed in, expired, offline): the Claude
+ * app's record is read instead.
+ */
+export async function refreshClaudeLivePlan(now = Date.now()): Promise<boolean> {
+  const p = await Bridge.claudeLivePlan();
+  if (!p) return false;
+  const usage: PlanUsage = { updatedAt: now };
+  if (p.fiveHour != null) usage.fiveHour = { usedPct: p.fiveHour, resetsAt: epochOf(p.fiveHourResetsAt) };
+  if (p.sevenDay != null) usage.sevenDay = { usedPct: p.sevenDay, resetsAt: epochOf(p.sevenDayResetsAt) };
+  if (!usage.fiveHour && !usage.sevenDay) return false;
+  setClaudePlanUsage(usage);
+  return true;
+}
+
+/** The freshest numbers there are: live when Claude Code is signed in, else the Claude app's record. */
+async function refreshClaudePlan(): Promise<void> {
+  if (State.paused) return;
+  if (await refreshClaudeLivePlan()) return;
+  await refreshClaudeDesktopPlan();
+}
+
+/** Now, and every minute: the gauge follows the plan as it is used. */
 export function startClaudeDesktopPlan(): void {
-  void refreshClaudeDesktopPlan();
-  window.setInterval(() => void refreshClaudeDesktopPlan(), 5 * 60_000);
+  void refreshClaudePlan();
+  window.setInterval(() => void refreshClaudePlan(), 60_000);
 }
 
 // ── Codex numbers ─────────────────────────────────────────────────────────────

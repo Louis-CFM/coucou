@@ -953,6 +953,7 @@ pub fn run() {
             flow::chat::chat_dictate_cancel,
             mail::mail_send,
             claude_plan::claude_desktop_plan,
+            claude_plan::claude_live_plan,
             tests_check::tests_check,
             tests_check::tests_check_ping,
             tests_check::tests_git_diff,

@@ -461,6 +461,11 @@ export const Bridge = {
   /** The newest plan sample the Claude desktop app recorded (src-tauri/src/claude_plan.rs). */
   claudeDesktopPlan: () =>
     call<{ at: number; fiveHour: number | null; sevenDay: number | null } | null>("claude_desktop_plan"),
+  /** The plan's use right now, from Anthropic with Claude Code's sign-in (claude_plan.rs). */
+  claudeLivePlan: () =>
+    call<{ fiveHour: number | null; sevenDay: number | null; fiveHourResetsAt: string | null; sevenDayResetsAt: string | null } | null>(
+      "claude_live_plan",
+    ),
 
   // ── Test results (src-tauri/src/tests_check.rs) ──────────────────────────
   /** The double-check of one unclear run; null while it is off. */
