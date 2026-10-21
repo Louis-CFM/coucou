@@ -10,12 +10,8 @@ enum IslandMode: String, CaseIterable {
 
 enum IslandView: String, CaseIterable {
     case overview, empty, approval, question, error, finished
-    case confused, upload, uploading, choose, mail, prompt
-    case searching, result, note, settings, greeting, wardrobe, recap
-    case listening    // voice wake detected — "À l'écoute…" with live transcript
-    case voiceResult  // voice command executed — "✓ Musique lancée" for ~2 s
-    case capture      // a screen capture just taken (⌃⌥X): paste, copy, annotate, ask Claude
-    case update       // a new Coucou is out on GitHub: one click to install it (GitHub build)
+    case confused, upload, prompt
+    case searching, result, note, settings
 }
 
 // MARK: - Bot State
@@ -31,17 +27,6 @@ enum BotState: String, CaseIterable {
 enum BotEmote: String, CaseIterable {
     case love, surprised, proud, wink, yawn, happy, annoyed
     case listening   // attentive: head tilt + wide-open eyes
-}
-
-// MARK: - Voice sub-state
-
-/// What Mochi is doing during a voice exchange (compact island or expanded).
-/// Driven by IslandWindowController; read by BotEngine each frame.
-enum BotVoiceSubState: Equatable {
-    case none       // voice not active
-    case listening  // mic open, waiting for words
-    case thinking   // command received, waiting for AI / TTS queue to drain
-    case speaking   // TTS audio playing
 }
 
 // MARK: - Approval info (pending PermissionRequest from Claude Code)
@@ -88,103 +73,26 @@ struct AgentTask: Identifiable, Equatable {
 
 enum AgentSource: Equatable {
     case claudeCode
-    case n8n
-    case agent   // third-party agent via coucou_agent field
+    case service
+    case agent   // third-party agent via the hook relay
 }
 
 // MARK: - Chat provider
 
+/// The chat talks to Claude only; the enum stays so the stored provider setting keeps decoding.
 enum ChatProvider: String, CaseIterable, Codable {
     case anthropic = "anthropic"
-    case google    = "google"
-    case openai    = "openai"
-    case ollama    = "ollama"
-    case lmstudio  = "lmstudio"
-    case deepseek  = "deepseek"
-    case qwen      = "qwen"
-    case moonshot  = "moonshot"
 
-    var displayName: String {
-        switch self {
-        case .anthropic: "Anthropic"
-        case .google:    "Google"
-        case .openai:    "OpenAI"
-        case .ollama:    "Ollama"
-        case .lmstudio:  "LM Studio"
-        case .deepseek:  "DeepSeek"
-        case .qwen:      "Qwen"
-        case .moonshot:  "Moonshot"
-        }
-    }
-
-    var accentHex: String {
-        switch self {
-        case .anthropic: "#E07950"
-        case .google:    "#4285F4"
-        case .openai:    "#10A37F"
-        case .ollama:    "#FACC15"
-        case .lmstudio:  "#A3E635"
-        case .deepseek:  "#5B8FF9"
-        case .qwen:      "#FF6A00"
-        case .moonshot:  "#7C5CFC"
-        }
-    }
-
-    var defaultModel: String {
-        switch self {
-        case .anthropic: "claude-sonnet-4-6"
-        case .google:    "gemini-2.0-flash"
-        case .openai:    "gpt-4o"
-        case .ollama:    "llama3.2"
-        case .lmstudio:  "local-model"
-        case .deepseek:  "deepseek-chat"
-        case .qwen:      "qwen-max"
-        case .moonshot:  "moonshot-v1-32k"
-        }
-    }
-
-    var keychainKey: String {
-        switch self {
-        case .anthropic: "anthropic-api-key"
-        case .google:    "google-api-key"
-        case .openai:    "openai-api-key"
-        case .ollama:    ""
-        case .lmstudio:  ""
-        case .deepseek:  "deepseek-api-key"
-        case .qwen:      "qwen-api-key"
-        case .moonshot:  "moonshot-api-key"
-        }
-    }
-
-    var isLocal: Bool {
-        self == .ollama || self == .lmstudio
-    }
-
-    var pillID: String {
-        switch self {
-        case .anthropic: "ai_anthropic"
-        case .google:    "ai_google"
-        case .openai:    "ai_openai"
-        case .ollama:    "ai_ollama"
-        case .lmstudio:  "ai_lmstudio"
-        case .deepseek:  "ai_deepseek"
-        case .qwen:      "ai_qwen"
-        case .moonshot:  "ai_moonshot"
-        }
-    }
+    var displayName: String { "Anthropic" }
+    var accentHex: String { "#E07950" }
+    var defaultModel: String { "claude-sonnet-4-6" }
+    var keychainKey: String { "anthropic-api-key" }
+    var isLocal: Bool { false }
+    var pillID: String { "ai_anthropic" }
 
     init?(pillID: String) {
-        switch pillID {
-        case "ai_anthropic": self = .anthropic
-        case "ai_google":    self = .google
-        case "ai_openai":    self = .openai
-        case "ai_ollama":    self = .ollama
-        case "ai_lmstudio":  self = .lmstudio
-        case "ai_deepseek":  self = .deepseek
-        case "ai_qwen":      self = .qwen
-        case "ai_moonshot":  self = .moonshot
-        default:             return nil
-        }
+        guard pillID == "ai_anthropic" else { return nil }
+        self = .anthropic
     }
 }
 
@@ -223,41 +131,15 @@ enum IslandConst {
         .finished:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
         .confused:  ViewLayout(height: 160, botX: 76,  botY: nil, botDiameter: 66, agentMode: .column),
         .upload:    ViewLayout(height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: .column),
-        .uploading: ViewLayout(height: 176, botX: 46,  botY: 118, botDiameter: 20, agentMode: .none),
-        .choose:    ViewLayout(height: 176, botX: 60,  botY: 101, botDiameter: 52, agentMode: .column),
-        .mail:      ViewLayout(height: 240, botX: 56,  botY: nil, botDiameter: 46, agentMode: .column),
         .prompt:    ViewLayout(height: 160, botX: 52,  botY: nil, botDiameter: 44, agentMode: .column),
         .searching: ViewLayout(height: 160, botX: 52,  botY: nil, botDiameter: 44, agentMode: .column),
         .result:    ViewLayout(height: 160, botX: 52,  botY: nil, botDiameter: 44, agentMode: .column),
         .note:      ViewLayout(height: 160, botX: 60,  botY: nil, botDiameter: 50, agentMode: .column),
         .settings:  ViewLayout(height: 160, botX: 54,  botY: nil, botDiameter: 46, agentMode: .none),
-        // Greeting: bot drawn by GreetingCanvasView; no BotPlacement needed
-        .greeting:  ViewLayout(height: 150, botX: 320, botY: 90,  botDiameter: 0,  agentMode: .none),
-        .wardrobe:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
-        .recap:     ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
-        // Voice listening: Mochi (listening emote) on left, transcript on right
-        .listening:    ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
-        // Voice result: same layout as listening — Mochi on left, ✓/✗ on right
-        .voiceResult:  ViewLayout(height: 160, botX: 68,  botY: nil, botDiameter: 58, agentMode: .none),
-        // Screen capture: Mochi on the left (he just swallowed it), the image and what to do with it
-        .capture:      ViewLayout(height: 160, botX: 58,  botY: nil, botDiameter: 52, agentMode: .none),
-        // New version: Mochi on the left, the version and Update now
-        .update:       ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .none),
     ]
 
-    // Project colors — keyed by lowercase display name or slug
-    static let projectColors: [String: String] = [
-        "korus":             "#FF5A4E",
-        "sbe hub":           "#2EC4A0",
-        "morning ai brief":  "#F29B38",
-        "publication ig":    "#7C5CFF",
-        "ig post":           "#7C5CFF",
-        "louisraille.fr":    "#38BDF8",
-        "louisraille":       "#38BDF8",
-        "notch buddy":       "#EC4899",
-        "notch-buddy":       "#EC4899",
-        "notchbuddy":        "#EC4899",
-    ]
+    // Project colors — keyed by lowercase display name or slug (none fixed in this fork)
+    static let projectColors: [String: String] = [:]
 
     static let fallbackColors = ["#22C55E", "#EAB308", "#60A5FA", "#E879F9"]
 

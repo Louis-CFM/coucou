@@ -40,3 +40,14 @@ struct IslandRestingLayout {
     var miniGridScale: CGFloat { min(1, max(0, height - 4) / 28) }
     var miniGridCenterX: CGFloat { width - 40 }
 }
+
+// MARK: - Desktop space
+
+/// One y-down space for the whole desktop, like Quartz: x as in AppKit, y measured down
+/// from the top of the menu-bar screen. The cursor and the mascot use it, so the gaze
+/// stays right whichever screen the island sits on.
+enum DesktopSpace {
+    static func topDown(_ appKitPoint: CGPoint, desktopTop: CGFloat) -> CGPoint {
+        CGPoint(x: appKitPoint.x, y: desktopTop - appKitPoint.y)
+    }
+}

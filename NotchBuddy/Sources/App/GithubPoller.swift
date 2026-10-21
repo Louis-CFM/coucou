@@ -40,7 +40,6 @@ final class GithubPoller: @unchecked Sendable {
     // MARK: - Stats (unchanged logic)
 
     private func pollStats() {
-        guard !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("github-token") else { return }
         fetchUser(token: token)
     }
@@ -87,7 +86,6 @@ final class GithubPoller: @unchecked Sendable {
 
     /// Dispatches guards + state reads to main, then fires network on background.
     private func pollPulse() {
-        guard !DemoEngine.isPollerPaused else { scheduleNextPulse(hasPending: false); return }
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.pulseInFlight else { return }
             guard let token = KeychainStore.shared.get("github-token"),
@@ -205,7 +203,6 @@ final class GithubPoller: @unchecked Sendable {
     // MARK: - Activity (contribution calendar, 30 min cadence)
 
     private func pollActivity() {
-        guard !DemoEngine.isPollerPaused else { scheduleNextActivity(); return }
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.activityInFlight else { return }
             guard let token = KeychainStore.shared.get("github-token"),

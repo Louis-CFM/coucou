@@ -197,19 +197,10 @@ final class HookServer: @unchecked Sendable {
     /// Called by QuestionView. Sends answers JSON and cleans up.
     @MainActor
     func sendQuestionAnswers(_ answers: [String: Any]) {
-        // Only intercept a demo question — real questions always have a live fd.
-        if DemoEngine.shared.isActive, pendingQuestionFD < 0 {
-            AppState.shared.pendingQuestion = nil
-            AppState.shared.isPinned = false
-            AppState.shared.view = AppState.shared.tasks.isEmpty ? .empty : .overview
-            DemoEngine.shared.handleQuestionAnswered(answers: answers)
-            return
-        }
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
         let source = questionFDSource
         questionFDSource = nil
-        let sid = questionSessionId
         questionSessionId = ""
         if fd >= 0, let data = try? JSONSerialization.data(withJSONObject: ["permissionDecision": "answer", "answers": answers], options: .withoutEscapingSlashes),
            let json = String(data: data, encoding: .utf8) {
@@ -220,7 +211,6 @@ final class HookServer: @unchecked Sendable {
         } else {
             source?.cancel()
         }
-        if !sid.isEmpty { RecapStore.shared.recordQuestionAnswered(sessionId: sid) }
         dismissQuestionCard(note: "")
     }
 
@@ -473,11 +463,6 @@ final class HookServer: @unchecked Sendable {
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
             hostApp: hostApp, bundleId: bundleId)
-        // For sessions that carry no id, derive a unique key from pill + cwd so that
-        // concurrent anonymous sessions are tracked independently in RecapStore.
-        let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
-            ? "\(agentId)+\(cwd)"
-            : sessionId
 
 
         // Waiting permission requests: an event that settles one (its tool finished, or its
@@ -508,7 +493,6 @@ final class HookServer: @unchecked Sendable {
                        externalAgent: isExternalAgent ? validAgent : nil)
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             nbLog("SessionStart \(isExternalAgent ? agentId : projectName) (\(sessionId.prefix(8)))")
-            NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
             if state.isPresent { expandIfNeeded(to: .overview) }
             SoundEngine.shared.play("work")
             if agentId == "agent_hermes", let platform = payload["platform"] as? String,
@@ -526,15 +510,12 @@ final class HookServer: @unchecked Sendable {
             if let prompt = payload["prompt"] as? String, !prompt.isEmpty {
                 appendStep(id: agentId, step: String(prompt.prefix(60)))
             }
-            RecapStore.shared.userPromptSubmit(sessionId: recapSessionId, pillId: agentId, project: projectName)
-            NotificationCenter.default.post(name: .checkMondayRecap, object: nil)
             if state.isPresent { expandIfNeeded(to: .overview) }
 
         case "PreToolUse":
             activeSessionId = sessionId
             let tool = payload["tool_name"] as? String ?? "Tool"
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
-            RecapStore.shared.preToolUse(sessionId: recapSessionId, tool: tool)
             // AskUserQuestion is handled via the dedicated --ask hook.
             // Skip state/step update here to avoid flickering over the question card.
             guard tool != "AskUserQuestion" else { break }
@@ -561,7 +542,6 @@ final class HookServer: @unchecked Sendable {
                 let idx = state.appendSessionDiff(diff, for: agentId)
                 let step = String.makeDiffStep(filename: diff.name, added: diff.added, removed: diff.removed, diffId: idx)
                 appendStep(id: agentId, step: step)
-                RecapStore.shared.recordFileDiff(sessionId: recapSessionId, path: diff.name, added: diff.added, removed: diff.removed)
             }
 
         case "PostToolUseFailure":
@@ -590,7 +570,6 @@ final class HookServer: @unchecked Sendable {
             let finalText = DiffEngine.toOneLine(rawFinal)
             // The step log is shared, so the conclusion is worth showing either way.
             if !finalText.isEmpty { appendStep(id: agentId, step: finalText) }
-            RecapStore.shared.stop(sessionId: recapSessionId)
             // Another session is still mid-turn behind this pill: the finished state, the
             // sound and the idle reset below would land on its work. Its own Stop comes later.
             guard scope == .pill else {
@@ -619,7 +598,6 @@ final class HookServer: @unchecked Sendable {
             }
 
         case "StopFailure":
-            RecapStore.shared.stop(sessionId: recapSessionId)
             let failScope = sessions.endTurn(pill: agentId, session: sessionId)
             applyDisplayOwner(pill: agentId)
             guard failScope == .pill else { break }
@@ -638,7 +616,6 @@ final class HookServer: @unchecked Sendable {
 
         case "Interrupt":
             // Codex: user stopped the turn
-            RecapStore.shared.stop(sessionId: recapSessionId)
             let interruptScope = sessions.endTurn(pill: agentId, session: sessionId)
             applyDisplayOwner(pill: agentId)
             guard interruptScope == .pill else { break }
@@ -649,7 +626,6 @@ final class HookServer: @unchecked Sendable {
         case "SessionEnd":
             // Only the last session behind the pill may take the card and its diffs down.
             guard sessions.endSession(pill: agentId, session: sessionId) == .pill else {
-                RecapStore.shared.sessionEnd(sessionId: recapSessionId)
                 nbLog("SessionEnd \(sessionId.prefix(8)) — \(sessions.liveCount(pill: agentId)) session(s) left on \(agentId)")
                 applyDisplayOwner(pill: agentId)
                 break
@@ -658,7 +634,6 @@ final class HookServer: @unchecked Sendable {
             if let idx = state.tasks.firstIndex(where: { $0.id == agentId }) { state.tasks[idx].finalLine = nil }
             state.clearSessionDiffs(for: agentId)
             state.removeTask(id: agentId)
-            RecapStore.shared.sessionEnd(sessionId: recapSessionId)
 
         case "SubagentStart":
             appendStep(id: agentId, step: "+ subagent")
@@ -922,17 +897,6 @@ final class HookServer: @unchecked Sendable {
     /// card moved on to another request is ignored, so it can never answer the wrong one.
     @MainActor
     func sendApprovalDecision(_ decision: String, for id: UUID? = nil) {
-        // Only intercept a demo card — a real card has a queued request behind it.
-        if DemoEngine.shared.isActive,
-           AppState.shared.pendingApproval?.sessionId == "demo_session",
-           approvals.isEmpty {
-            let s = AppState.shared
-            s.pendingApproval = nil
-            s.isPinned = false
-            s.view = s.tasks.isEmpty ? .empty : .overview
-            DemoEngine.shared.handleApprovalDecision(decision)
-            return
-        }
         guard let head = approvals.head else {
             // A card with nothing behind it any more: just close it.
             let s = AppState.shared
@@ -958,9 +922,6 @@ final class HookServer: @unchecked Sendable {
         case "plan_change":  json = #"{"permissionDecision":"change_plan"}"#
         default:       json = #"{"permissionDecision":"deny"}"#
         }
-        // The recap only counts allow / always / deny.
-        let recapDecision = ["plan_auto": "allow", "plan_default": "allow", "plan_change": "deny"][decision] ?? decision
-        RecapStore.shared.recordDecision(pillId: head.pillId, decision: recapDecision)
         removeApproval(id: head.id, answer: json)
         if decision == "plan_change" { ClaudeHost.activate(head.hostApp) }
     }

@@ -6,11 +6,6 @@ options:
   xcodeVersion: "27.0"
   createIntermediateGroups: true
 
-packages:
-  FluidAudio:
-    url: https://github.com/FluidInference/FluidAudio
-    exactVersion: 0.17.7
-
 configs:
   Debug: debug
   Release: release
@@ -79,8 +74,6 @@ targets:
       configs:
         Release:
           CODE_SIGN_ENTITLEMENTS: Resources/OrcaNotch.entitlements
-    dependencies:
-      - package: FluidAudio
     postBuildScripts:
       - name: "Write Git Hash to Info.plist"
         script: |

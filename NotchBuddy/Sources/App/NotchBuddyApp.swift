@@ -7,10 +7,10 @@ struct NotchBuddyApp: App {
 
     var body: some Scene {
         Settings {
-            SettingsView()
+            EmptyView()
         }
         .commands {
-            // ⌘, and Coucou → Settings… open the notch's pages of the Coucou window.
+            // ⌘, and Orca Notch → Settings… open the Settings window.
             CommandGroup(replacing: .appSettings) {
                 Button(NSLocalizedString("Settings…", comment: "")) {
                     delegate.openSettings()
