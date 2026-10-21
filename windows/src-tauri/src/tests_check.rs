@@ -295,11 +295,15 @@ fn laya_home(c: &Config) -> PathBuf {
 /// How to start the Laya in `dir`: a hand-made `laya_serve.py` next to its
 /// environment (it knows its own model cache), else the environment's `laya-serve`.
 fn runner(dir: &Path) -> Option<(PathBuf, Vec<String>)> {
+    // A full path only: "D:Laya" means a different folder depending on where it runs.
+    if !dir.is_absolute() {
+        return None;
+    }
     let scripts = dir.join(".venv").join("Scripts");
     let python = scripts.join("python.exe");
     let script = dir.join("laya_serve.py");
     if python.is_file() && script.is_file() {
-        return Some((python, vec![script.to_string_lossy().to_string()]));
+        return Some((python, vec!["laya_serve.py".to_string()]));
     }
     let serve = scripts.join("laya-serve.exe");
     serve.is_file().then(|| (serve, Vec::new()))
@@ -758,7 +762,8 @@ mod tests {
         std::fs::write(dir.join("laya_serve.py"), b"").unwrap();
         let (program, args) = runner(&dir).unwrap();
         assert_eq!(program, scripts.join("python.exe"));
-        assert!(args[0].ends_with("laya_serve.py"));
+        assert_eq!(args, ["laya_serve.py"]);
+        assert!(runner(Path::new("D:Laya")).is_none());
         let c = Config { mode: "local".into(), laya_url: String::new(), laya_dir: format!(" {} ", dir.display()), fix_loop: false };
         assert_eq!(laya_home(&c), dir);
         assert!(installed(&c));
