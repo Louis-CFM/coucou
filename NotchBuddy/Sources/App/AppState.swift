@@ -23,14 +23,11 @@ final class AppState: ObservableObject {
     var notchHeight: CGFloat = IslandConst.notchHeight
     var hasNotch = true
 
-    // Last app active before NotchBuddy (for window context capture)
+    // Last app active before Orca Notch (for window context capture)
     var lastExternalApp: NSRunningApplication? = nil
 
     // Bot drag-attach state (hides original bot while ghost follows cursor)
     @Published var isDraggingBot: Bool = false
-
-    // Desktop Mochi: true while Mochi lives on the desktop instead of the notch
-    @Published var mochiOnDesktop: Bool = false
 
     // Mouse tracking
     var mousePosition: CGPoint = .zero
@@ -46,14 +43,7 @@ final class AppState: ObservableObject {
     // Number of navigable items in the card currently on screen (0 = no list)
     @Published var cardItemCount: Int = 0
 
-    // Upload progress (0-1) — set to 1.0 only at completion; animation is time-based
-    @Published var uploadProgress: Double = 0
-
-    // Upload animation timing (non-published — TimelineViews read these directly)
-    var uploadStartTime: Date?
-    var uploadDuration: Double = 2.4
-
-    // File drag-over state (mailbox morph glow + mouth spring)
+    // File drag-over state (drop zone highlight)
     @Published var fileDragOver: Bool = false
 
     // Sound enabled — persisted
@@ -61,19 +51,7 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(soundEnabled, forKey: "soundEnabled") }
     }
 
-    // Weekly recap — persisted
-    @Published var recapEnabled: Bool = (UserDefaults.standard.object(forKey: "recapEnabled") as? Bool) ?? true {
-        didSet { UserDefaults.standard.set(recapEnabled, forKey: "recapEnabled") }
-    }
-    @Published var recapHideProjects: Bool = UserDefaults.standard.bool(forKey: "recapHideProjects") {
-        didSet { UserDefaults.standard.set(recapHideProjects, forKey: "recapHideProjects") }
-    }
-
-    // Mochi outfit selection — persisted
-    @Published var mochiOutfitSelection: Outfit = .auto {
-        didSet { Outfit.stored = mochiOutfitSelection }
-    }
-    // A colour of the user's own for each pill's Mochi (pill id → "#RRGGBB") — persisted.
+    // A colour of the user's own for each pill's mascot (pill id → "#RRGGBB") — persisted.
     // Empty means the catalog's colours. PillDefinition.color reads the stored value, so
     // what is built from the catalog follows on its own; the tasks already on the island
     // hold a copy of their colour and are repainted here.
@@ -91,29 +69,11 @@ final class AppState: ObservableObject {
             if changed { tasks = repainted }
         }
     }
-    /// Picks a colour for a pill's Mochi; nil, or the pill's own catalog colour, goes back to the default.
+    /// Picks a colour for a pill's mascot; nil, or the pill's own catalog colour, goes back to the default.
     func setPillColor(_ id: String, _ hex: String?) {
         guard let def = PillCatalog.definition(for: id) else { return }
         pillColors = PillColors.picking(hex, for: id, catalogColor: def.defaultColor, in: pillColors)
     }
-    // Transient: outfit preview while hovering in wardrobe (overrides resolvedOutfit in BotCanvasView)
-    var wardrobePreviewOutfit: Outfit? = nil
-    // Per-day seasonal cache — read on every Mochi frame: valid until the next midnight,
-    // so a frame costs one date comparison instead of calendar math.
-    private var _seasonalCache: (validUntil: Date, outfit: Outfit)?
-    var resolvedOutfit: Outfit {
-        if let preview = wardrobePreviewOutfit { return preview }
-        guard mochiOutfitSelection == .auto else { return mochiOutfitSelection }
-        let now = Date()
-        if let c = _seasonalCache, now < c.validUntil { return c.outfit }
-        let cal = Calendar.current
-        let outfit = Outfit.seasonal(for: now, calendar: cal)
-        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))
-            ?? now.addingTimeInterval(3600)
-        _seasonalCache = (validUntil: midnight, outfit: outfit)
-        return outfit
-    }
-
     // Claude model used by the chat and the search — persisted
     static let defaultClaudeModel = "claude-sonnet-4-6"
     @Published var claudeModel: String = AppState.defaultClaudeModel {
@@ -124,84 +84,21 @@ final class AppState: ObservableObject {
     @Published var chatProvider: ChatProvider = .anthropic {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
     }
-    @Published var googleChatModel: String = ChatProvider.google.defaultModel {
-        didSet { UserDefaults.standard.set(googleChatModel, forKey: "googleChatModel") }
-    }
-    @Published var openAIChatModel: String = ChatProvider.openai.defaultModel {
-        didSet { UserDefaults.standard.set(openAIChatModel, forKey: "openAIChatModel") }
-    }
-    @Published var ollamaChatModel: String = ChatProvider.ollama.defaultModel {
-        didSet { UserDefaults.standard.set(ollamaChatModel, forKey: "ollamaChatModel") }
-    }
-    @Published var lmstudioChatModel: String = ChatProvider.lmstudio.defaultModel {
-        didSet { UserDefaults.standard.set(lmstudioChatModel, forKey: "lmstudioChatModel") }
-    }
-    @Published var deepseekChatModel: String = ChatProvider.deepseek.defaultModel {
-        didSet { UserDefaults.standard.set(deepseekChatModel, forKey: "deepseekChatModel") }
-    }
-    @Published var qwenChatModel: String = ChatProvider.qwen.defaultModel {
-        didSet { UserDefaults.standard.set(qwenChatModel, forKey: "qwenChatModel") }
-    }
-    @Published var moonshotChatModel: String = ChatProvider.moonshot.defaultModel {
-        didSet { UserDefaults.standard.set(moonshotChatModel, forKey: "moonshotChatModel") }
-    }
-    @Published var ollamaServerURL: String = "" {
-        didSet { UserDefaults.standard.set(ollamaServerURL, forKey: "ollamaServerURL") }
-    }
-    @Published var lmstudioServerURL: String = "" {
-        didSet { UserDefaults.standard.set(lmstudioServerURL, forKey: "lmstudioServerURL") }
-    }
-
     // The always-on workspace pill (default: VS Code). Persisted.
     @Published var mainPillId: String = PillCatalog.defaultMainPillId {
         didSet { UserDefaults.standard.set(mainPillId, forKey: "mainPill") }
     }
 
-    // Dynamically fetched model lists for the in-chat picker (keyed by provider)
+    // Dynamically fetched model list for the in-chat picker
     @Published var fetchedProviderModels: [ChatProvider: [(id: String, label: String)]] = [:]
     @Published var providerModelFetchError: [ChatProvider: String] = [:]
     @Published var loadingProviderModels: Set<ChatProvider> = []
 
-    /// Fetches models for `provider` if not already loaded or loading.
+    /// Fetches the Claude models if not already loaded or loading.
     /// Sets `providerModelFetchError` if the key is absent or the request fails.
     func fetchModelsIfNeeded(for provider: ChatProvider) {
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
-        // Local providers: fetch from server URL (no API key needed)
-        if provider.isLocal {
-            let baseURL = provider == .ollama ? ollamaServerURL : lmstudioServerURL
-            let normalised = LocalChat.normaliseURL(baseURL)
-            guard !normalised.isEmpty else {
-                providerModelFetchError[provider] = provider == .ollama
-                    ? "Connect Ollama in Settings → Chat first."
-                    : "Connect LM Studio in Settings → Chat first."
-                return
-            }
-            loadingProviderModels.insert(provider)
-            providerModelFetchError.removeValue(forKey: provider)
-            Task {
-                let result = await LocalChat.fetchModelsResult(baseURL: normalised)
-                loadingProviderModels.remove(provider)
-                switch result {
-                case .success(let models) where models.isEmpty:
-                    providerModelFetchError[provider] = provider == .ollama
-                        ? "No models yet. Download one in Ollama first."
-                        : "No models yet. Download one in LM Studio first."
-                case .success(let models):
-                    fetchedProviderModels[provider] = models
-                    let current = provider == .ollama ? ollamaChatModel : lmstudioChatModel
-                    if !models.contains(where: { $0.id == current }) {
-                        let first = models.first!.id
-                        if provider == .ollama { ollamaChatModel = first }
-                        else                   { lmstudioChatModel = first }
-                    }
-                case .failure:
-                    providerModelFetchError[provider] = "Cannot reach \(normalised). Is the server running?"
-                }
-            }
-            return
-        }
-        // Remote providers: require API key
         guard let apiKey = KeychainStore.shared.get(provider.keychainKey), !apiKey.isEmpty else {
             providerModelFetchError[provider] = "No API key — add it in Settings."
             return
@@ -209,65 +106,21 @@ final class AppState: ObservableObject {
         loadingProviderModels.insert(provider)
         providerModelFetchError.removeValue(forKey: provider)
         Task {
-            let models: [(id: String, label: String)]
-            switch provider {
-            case .anthropic: models = await ClaudeService.fetchModels(apiKey: apiKey)
-            case .google:    models = await ClaudeService.fetchGoogleModels(apiKey: apiKey)
-            case .openai:    models = await ClaudeService.fetchOpenAIModels(apiKey: apiKey)
-            case .deepseek:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.deepseek.com/v1", apiKey: apiKey)
-            case .qwen:      models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", apiKey: apiKey)
-            case .moonshot:  models = await ClaudeService.fetchOpenAICompatibleModels(baseURL: "https://api.moonshot.cn/v1", apiKey: apiKey)
-            case .ollama, .lmstudio: models = []  // handled above
-            }
+            let models = await ClaudeService.fetchModels(apiKey: apiKey)
             loadingProviderModels.remove(provider)
             if models.isEmpty {
                 providerModelFetchError[provider] = "Failed to load models. Check your API key."
             } else {
                 fetchedProviderModels[provider] = models
-                switch provider {
-                case .anthropic:
-                    if !models.contains(where: { $0.id == claudeModel }) {
-                        claudeModel = models.first(where: { $0.id.contains("sonnet") })?.id ?? models.first!.id
-                    }
-                case .google:
-                    if !models.contains(where: { $0.id == googleChatModel }) {
-                        googleChatModel = models.first(where: { $0.id.contains("flash") })?.id ?? models.first!.id
-                    }
-                case .openai:
-                    if !models.contains(where: { $0.id == openAIChatModel }) {
-                        openAIChatModel = models.first(where: { $0.id.contains("mini") })?.id ?? models.first!.id
-                    }
-                case .deepseek:
-                    if !models.contains(where: { $0.id == deepseekChatModel }) {
-                        deepseekChatModel = models.first!.id
-                    }
-                case .qwen:
-                    if !models.contains(where: { $0.id == qwenChatModel }) {
-                        qwenChatModel = models.first!.id
-                    }
-                case .moonshot:
-                    if !models.contains(where: { $0.id == moonshotChatModel }) {
-                        moonshotChatModel = models.first!.id
-                    }
-                case .ollama, .lmstudio: break
+                if !models.contains(where: { $0.id == claudeModel }) {
+                    claudeModel = models.first(where: { $0.id.contains("sonnet") })?.id ?? models.first!.id
                 }
             }
         }
     }
 
-    /// The model currently active for chat (provider-aware).
-    var activeChatModel: String {
-        switch chatProvider {
-        case .anthropic: return claudeModel
-        case .google:    return googleChatModel
-        case .openai:    return openAIChatModel
-        case .ollama:    return ollamaChatModel
-        case .lmstudio:  return lmstudioChatModel
-        case .deepseek:  return deepseekChatModel
-        case .qwen:      return qwenChatModel
-        case .moonshot:  return moonshotChatModel
-        }
-    }
+    /// The model currently active for chat.
+    var activeChatModel: String { claudeModel }
 
     // Sound volume (0–0.2) — persisted, synced to SoundEngine
     @Published var soundVolume: Double = 0.12 {
@@ -277,21 +130,11 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Selected app language ("" = System, else BCP-47 code e.g. "fr")
-    @Published var appLanguage: String = {
-        let bundleId = Bundle.main.bundleIdentifier ?? "fr.louisraille.NotchBuddy"
-        let langs = UserDefaults.standard.persistentDomain(forName: bundleId)?["AppleLanguages"] as? [String]
-        return langs?.first ?? ""
-    }()
-
     // Context for prompt (window attach / file)
     @Published var promptContext: PromptContext? = nil
 
     // Dropped file (set during upload flow)
     @Published var droppedFile: DroppedFile? = nil
-    /// A mail prepared by voice: fills the mail card; sent through Apple Mail on the
-    /// user's click. nil for the drop-a-file flow.
-    @Published var voiceMailDraft: VoiceMailDraft? = nil
 
     // Short note message (shown in NoteView)
     @Published var noteMessage: String? = nil
@@ -314,11 +157,6 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(absenceInterval, forKey: "absenceInterval") }
     }
 
-    // Greeting threshold — how long hidden before greeting on reappear (default 2 min)
-    var greetThresholdSeconds: TimeInterval = 120 {
-        didSet { UserDefaults.standard.set(greetThresholdSeconds, forKey: "greetThreshold") }
-    }
-
     // Hotkey to show island (e.g. ⌘⇧N)
     @Published var hotkeyEnabled: Bool = false {
         didSet { UserDefaults.standard.set(hotkeyEnabled, forKey: "hotkeyEnabled") }
@@ -335,26 +173,8 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(islandDisplay.storageValue, forKey: "islandDisplay") }
     }
 
-    // Vercel project filter — empty = watch all projects
-    @Published var vercelProjectFilter: Set<String> = [] {
-        didSet {
-            if let data = try? JSONEncoder().encode(Array(vercelProjectFilter)) {
-                UserDefaults.standard.set(data, forKey: "vercelProjectFilter")
-            }
-        }
-    }
-
-    // n8n workflow filter — empty = watch all workflows
-    @Published var n8nWorkflowFilter: Set<String> = [] {
-        didSet {
-            if let data = try? JSONEncoder().encode(Array(n8nWorkflowFilter)) {
-                UserDefaults.standard.set(data, forKey: "n8nWorkflowFilter")
-            }
-        }
-    }
-
     // Active integration pills (main workspace pill excluded). Max 4.
-    @Published var activeIntegrations: Set<String> = ["integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
+    @Published var activeIntegrations: Set<String> = ["integration_github"] {
         didSet {
             if let data = try? JSONEncoder().encode(Array(activeIntegrations)) {
                 UserDefaults.standard.set(data, forKey: "activeIntegrations")
@@ -370,38 +190,10 @@ final class AppState: ObservableObject {
     // Pending API result
     @Published var searchResult: SearchResult? = nil
 
-    // Vercel deployments (populated by VercelPoller)
-    @Published var vercelDeployments: [VercelDeployment] = []
-
-    // Resend emails (populated by ResendPoller)
-    @Published var resendEmails: [ResendEmail] = []
-    @Published var resendTotal: Int? = nil
-
     // GitHub stats + pulse + activity (populated by GithubPoller)
     @Published var githubStats: GitHubStats? = nil
     @Published var githubPulse: GitHubPulse? = nil
     @Published var githubActivity: GitHubActivity? = nil
-
-    // Stripe (populated by StripePoller)
-    @Published var stripePayments: [StripePayment] = []
-    @Published var stripeBalance: Int = 0           // raw balance in cents
-    @Published var stripeDisplayBalance: Int = 0    // animated balance target
-    @Published var stripeCurrency: String = "eur"
-    @Published var stripeLoaded: Bool = false       // true after first successful poll
-    @Published var stripeError: String? = nil      // last API error (nil = ok)
-
-    // Cal.com (populated by CalcomPoller)
-    @Published var calcomBookings: [CalcomBooking] = []
-    @Published var calcomLoaded: Bool = false
-    @Published var calcomError: String? = nil
-
-    // Notion (populated by NotionPoller)
-    @Published var notionPages: [NotionPage] = []
-    @Published var notionLoaded: Bool = false
-    @Published var notionError: String? = nil
-
-    // n8n — the last executions, newest first (for the iPhone; the notch shows only the latest)
-    @Published var n8nRuns: [N8nRun] = []
 
     // Chat conversation history
     @Published var chatHistory: [ChatMessage] = []
@@ -454,20 +246,6 @@ final class AppState: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3600, execute: work)
     }
 
-    #if !APPSTORE
-    @Published var musicPlaying: Bool = false
-    @Published var musicAutomationDenied: Bool = false
-
-    // Voice command result (shown in VoiceResultView for ~2 s, then cleared by IWC)
-    @Published var voiceResult: VoiceActionResult? = nil
-    /// True from "OK Coucou" until Coucou has finished answering (island stays compact).
-    /// Drives Mochi's single attentive pose for the whole exchange.
-    @Published var voiceActive = false
-    /// Listening / thinking / speaking — drives per-frame Mochi animations.
-    /// Set by IslandWindowController; read by BotCanvasView each display frame.
-    @Published var voiceSubState: BotVoiceSubState = .none
-    #endif
-
     // Claude plan gauge (from statusline hook)
     @Published var claudePlanUsage: PlanUsage? = nil {
         didSet {
@@ -479,12 +257,9 @@ final class AppState: ObservableObject {
     }
 
     // Plan gauge: show pill in notch header — persisted
-    #if !APPSTORE
     @Published var showPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
     }
-    // In-memory plan usage override for demo mode. Never persisted. Set by DemoEngine.
-    @Published var demoPlanUsageOverride: PlanUsage? = nil
     // Cached relay-installed state — updated at launch, after install/uninstall, on Settings open
     @Published var planRelayInstalled: Bool = false
     // Transient — reset when island closes or view changes
@@ -517,7 +292,6 @@ final class AppState: ObservableObject {
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
     }
-    #endif
 
     // MARK: - Init (loads persisted settings)
 
@@ -526,20 +300,10 @@ final class AppState: ObservableObject {
 
         if let v = ud.object(forKey: "soundEnabled") as? Bool   { soundEnabled = v }
         if let v = ud.object(forKey: "soundVolume")  as? Double { soundVolume  = v }
-        mochiOutfitSelection = Outfit.stored
         pillColors = PillColors.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
         if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
-        if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
-        if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
-        if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }
-        if let v = ud.string(forKey: "lmstudioChatModel"), !v.isEmpty { lmstudioChatModel = v }
-        if let v = ud.string(forKey: "deepseekChatModel"), !v.isEmpty { deepseekChatModel = v }
-        if let v = ud.string(forKey: "qwenChatModel"),     !v.isEmpty { qwenChatModel     = v }
-        if let v = ud.string(forKey: "moonshotChatModel"), !v.isEmpty { moonshotChatModel = v }
-        if let v = ud.string(forKey: "ollamaServerURL"), !v.isEmpty { ollamaServerURL = v }
-        if let v = ud.string(forKey: "lmstudioServerURL"), !v.isEmpty { lmstudioServerURL = v }
         // Migrate old 60s default → 15s
         if let v = ud.object(forKey: "openOnHover") as? Bool { openOnHover = v }
         if let v = ud.object(forKey: "alertsFromAllPills") as? Bool { alertsFromAllPills = v }
@@ -547,15 +311,10 @@ final class AppState: ObservableObject {
             autoCloseInterval = (v == 60) ? 15 : v
         }
         if let v = ud.object(forKey: "absenceInterval")   as? Double { absenceInterval   = v }
-        if let v = ud.object(forKey: "greetThreshold")    as? Double { greetThresholdSeconds = v }
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }
         if let v = ud.string(forKey: "islandDisplay") { islandDisplay = IslandDisplayChoice(storageValue: v) }
-        if let d = ud.data(forKey: "vercelProjectFilter"),
-           let a = try? JSONDecoder().decode([String].self, from: d) { vercelProjectFilter = Set(a) }
-        if let d = ud.data(forKey: "n8nWorkflowFilter"),
-           let a = try? JSONDecoder().decode([String].self, from: d) { n8nWorkflowFilter = Set(a) }
         if let d = ud.data(forKey: "activeIntegrations"),
            let a = try? JSONDecoder().decode([String].self, from: d) { activeIntegrations = Set(a) }
         if let v = ud.string(forKey: "mainPill"), !v.isEmpty,
@@ -564,11 +323,9 @@ final class AppState: ObservableObject {
         }
         if let d = ud.data(forKey: "claudePlanUsage"),
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
-        #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
         planRelayInstalled = HookServer.statusLineInstalled()
-        #endif
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)
@@ -767,12 +524,6 @@ enum PromptContext {
     case file(name: String, fileURL: URL?)
 }
 
-struct VoiceMailDraft: Equatable {
-    var to: String
-    var subject: String
-    var body: String
-}
-
 struct DroppedFile {
     var url: URL
     var name: String
@@ -790,28 +541,6 @@ struct ResultItem {
     var url: String?
 }
 
-// MARK: - Vercel
-
-struct VercelDeployment: Identifiable {
-    let id: String
-    let projectName: String
-    let url: String
-    let state: String        // "READY", "ERROR", "CANCELED"
-    let createdAt: Date
-    let commitMessage: String?
-    let branch: String?
-
-    var isSuccess: Bool { state == "READY" }
-    var statusLabel: String { isSuccess ? "Ready" : (state == "CANCELED" ? "Canceled" : "Error") }
-    var timeAgo: String {
-        let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
-    }
-}
-
 // MARK: - Publish only on change
 
 extension AppState {
@@ -822,102 +551,11 @@ extension AppState {
     }
 }
 
-// MARK: - Resend
-
-struct ResendEmail: Identifiable {
-    let id: String
-    let to: [String]
-    let subject: String
-    let createdAt: Date
-    let lastEvent: String   // "delivered", "bounced", "complained", "opened", etc.
-
-    var recipientShort: String {
-        guard let first = to.first else { return "?" }
-        return first.components(separatedBy: "@").first ?? first
-    }
-    var timeAgo: String {
-        let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
-    }
-    var isDelivered: Bool { lastEvent == "delivered" }
-}
-
 // MARK: - GitHub
 
 struct GitHubStats {
     let totalRepos: Int
     let totalStars: Int
-}
-
-// MARK: - Stripe
-
-struct StripePayment: Identifiable, Equatable {
-    let id: String
-    let amount: Int         // in cents/smallest unit
-    let currency: String
-    let description: String?
-    let createdAt: Date
-    let status: String      // "succeeded", "pending", "failed"
-
-    var amountFormatted: String { String(format: "%.2f", Double(amount) / 100.0) }
-    var isSuccess: Bool { status == "succeeded" }
-    var timeAgo: String {
-        let diff = Date().timeIntervalSince(createdAt)
-        if diff < 60    { return "just now" }
-        if diff < 3600  { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
-    }
-}
-
-// MARK: - Cal.com
-
-struct CalcomBooking: Identifiable, Equatable {
-    let id: Int
-    let title: String
-    let startTime: Date
-    let endTime: Date
-    let status: String
-    let attendeeName: String?
-    let attendeeEmail: String?
-    let attendeeNotes: String?
-
-    var isActive: Bool { status == "ACCEPTED" || status == "PENDING" }
-    var timeLabel: String {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: startTime)
-    }
-    var dayKey: String {
-        let c = Calendar.current.dateComponents([.year, .month, .day], from: startTime)
-        return "\(c.year!)-\(String(format: "%02d", c.month!))-\(String(format: "%02d", c.day!))"
-    }
-}
-
-// MARK: - Notion
-
-struct N8nRun: Equatable {
-    let workflow: String
-    let detail: String?
-    let success: Bool
-    let date: Date
-}
-
-struct NotionPage: Identifiable {
-    let id: String
-    let title: String
-    let emoji: String?
-    let lastEditedAt: Date
-    let url: String
-
-    var timeAgo: String {
-        let diff = Date().timeIntervalSince(lastEditedAt)
-        if diff < 60 { return "now" }
-        if diff < 3600 { return "\(Int(diff/60))m" }
-        if diff < 86400 { return "\(Int(diff/3600))h" }
-        return "\(Int(diff/86400))d"
-    }
 }
 
 // MARK: - Chat

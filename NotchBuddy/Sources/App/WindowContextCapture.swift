@@ -5,14 +5,10 @@ import ApplicationServices
 
 enum WindowContextCapture {
 
-    /// Returns a PromptContext from the given app (typically the last app active before NotchBuddy).
+    /// Returns a PromptContext from the given app (typically the last app active before Orca Notch).
     /// Uses AXUIElement for window title (requires Accessibility permission).
     /// Uses AppleScript for browser URL (Safari, Chrome, Arc, Firefox, Edge).
     static func captureActive(from app: NSRunningApplication? = NSWorkspace.shared.frontmostApplication) -> PromptContext? {
-        #if APPSTORE
-        // App Store: no Accessibility API, no screen capture
-        return nil
-        #else
         guard let app, let appName = app.localizedName else { return nil }
 
         let pid = app.processIdentifier
@@ -36,7 +32,6 @@ enum WindowContextCapture {
         let url = browserURL(for: app)
 
         return .window(appName: appName, title: title, url: url)
-        #endif
     }
 
     // MARK: - Private
@@ -55,14 +50,10 @@ enum WindowContextCapture {
     ]
 
     private static func browserURL(for app: NSRunningApplication) -> String? {
-        #if APPSTORE
-        return nil  // No AppleScript in App Store sandbox
-        #else
         guard let bundleId = app.bundleIdentifier,
               let script = browserScripts[bundleId] else { return nil }
         var error: NSDictionary?
         let result = NSAppleScript(source: script)?.executeAndReturnError(&error)
         return error == nil ? result?.stringValue : nil
-        #endif
     }
 }

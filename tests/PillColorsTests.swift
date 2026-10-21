@@ -1,6 +1,6 @@
 import Foundation
 
-// A colour of the user's own for each pill's Mochi (CoucouKit/PillColors.swift).
+// A colour of the user's own for each pill's the mascot (Orca NotchKit/PillColors.swift).
 // Mirrors windows/tests/pill-colors.test.mjs so every platform reads the same
 // preference the same way.
 

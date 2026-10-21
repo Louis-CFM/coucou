@@ -29,7 +29,7 @@ enum ClaudeSettingsFileTests {
 
     static func main() throws {
         let dir = fm.temporaryDirectory
-            .appendingPathComponent("coucou-settings-\(ProcessInfo.processInfo.processIdentifier)")
+            .appendingPathComponent("orca-notch-settings-\(ProcessInfo.processInfo.processIdentifier)")
         try? fm.removeItem(at: dir)
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: dir) }
@@ -46,7 +46,7 @@ enum ClaudeSettingsFileTests {
         precondition(blank.object.isEmpty && blank.bytes != nil)
 
         // This is the whole bug: content we cannot use came back as an empty
-        // object, and the install then wrote nothing but Coucou's hooks over it.
+        // object, and the install then wrote nothing but Orca Notch's hooks over it.
         for bad in ["{ not json", "[1,2,3]", "\"a string\""] {
             try Data(bad.utf8).write(to: url)
             let refused = failure { _ = try ClaudeSettingsFile.read(at: url) }
@@ -129,7 +129,7 @@ enum ClaudeSettingsFileTests {
         precondition(mode(url) == 0o644)
 
         // No leftover temporary file beside the settings.
-        let leftovers = try fm.contentsOfDirectory(atPath: dir.path).filter { $0.contains(".coucou-") }
+        let leftovers = try fm.contentsOfDirectory(atPath: dir.path).filter { $0.contains(".orca-notch-") }
         precondition(leftovers.isEmpty)
 
         // No file at all: created in a missing folder, ours only, nothing to back up.

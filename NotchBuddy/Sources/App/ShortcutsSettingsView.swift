@@ -7,7 +7,7 @@ import AppKit
 struct ShortcutsSettingsView: View {
     // Conflicts detected by HotKeyCenter (system already owns that combo)
     @State private var systemConflicts: Set<ShortcutAction> = []
-    // Internal duplicates (two Coucou shortcuts share the same combo)
+    // Internal duplicates (two Orca Notch shortcuts share the same combo)
     @State private var internalDups: Set<ShortcutAction> = []
 
     // Per-action state (enabled flag + current spec)
@@ -48,11 +48,7 @@ struct ShortcutsSettingsView: View {
 
     /// Shortcuts listed here. The App Store build hides the ones it can't run.
     private var globalActions: [ShortcutAction] {
-        #if APPSTORE
-        ShortcutAction.allCases.filter { !$0.isNonAppStore }
-        #else
         ShortcutAction.allCases
-        #endif
     }
 
     @ViewBuilder

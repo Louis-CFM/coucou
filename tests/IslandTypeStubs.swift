@@ -1,5 +1,5 @@
 // Minimal stubs for IslandMode and IslandView — used only by standalone test compilation.
-// The real definitions live in Sources/CoucouKit/IslandTypes.swift.
+// The real definitions live in Sources/NotchKit/IslandTypes.swift.
 import Foundation
 
 enum IslandMode: String, CaseIterable {

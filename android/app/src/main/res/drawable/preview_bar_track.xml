@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The faint track of a plan-usage bar in the Widget picker (the real bar is drawn to a bitmap by BarBitmap). -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#40808080" />
-    <corners android:radius="3dp" />
-</shape>

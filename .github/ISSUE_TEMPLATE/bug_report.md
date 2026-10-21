@@ -14,4 +14,4 @@ labels: bug
 
 **Mac model**
 
-**Coucou version**
+**Orca Notch version**

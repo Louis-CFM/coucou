@@ -29,22 +29,15 @@ final class GithubPoller: @unchecked Sendable {
         }
     }
 
-    /// Pull requests, CI and activity are fetched when the GitHub pill is in
-    /// the notch, or when the iPhone sync is on (the iPhone shows GitHub even
-    /// when its pill isn't in the notch).
+    /// Pull requests, CI and activity are fetched when the GitHub pill is in the notch.
     @MainActor private static var isWanted: Bool {
         if AppState.shared.activeIntegrations.contains("integration_github") { return true }
-        #if PHONE_LINK
-        return UserDefaults.standard.bool(forKey: "iPhoneSyncEnabled")
-        #else
         return false
-        #endif
     }
 
     // MARK: - Stats (unchanged logic)
 
     private func pollStats() {
-        guard !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("github-token") else { return }
         fetchUser(token: token)
     }
@@ -91,7 +84,6 @@ final class GithubPoller: @unchecked Sendable {
 
     /// Dispatches guards + state reads to main, then fires network on background.
     private func pollPulse() {
-        guard !DemoEngine.isPollerPaused else { scheduleNextPulse(hasPending: false); return }
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.pulseInFlight else { return }
             guard let token = KeychainStore.shared.get("github-token"),
@@ -145,11 +137,7 @@ final class GithubPoller: @unchecked Sendable {
                 let old = AppState.shared.githubPulse
                 let events = GitHubPulse.events(old: old, new: pulse)
                 AppState.shared.githubPulse = pulse
-                // Badge and sound only for the pill in the notch, not when the
-                // fetch only feeds the iPhone.
-                if AppState.shared.activeIntegrations.contains("integration_github") {
-                    AppState.shared.handleGitHubEvents(events)
-                }
+                AppState.shared.handleGitHubEvents(events)
             }
             self.finishPulse(hasPending: pulse.hasPending)
         }.resume()
@@ -209,7 +197,6 @@ final class GithubPoller: @unchecked Sendable {
     // MARK: - Activity (contribution calendar, 30 min cadence)
 
     private func pollActivity() {
-        guard !DemoEngine.isPollerPaused else { scheduleNextActivity(); return }
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.activityInFlight else { return }
             guard let token = KeychainStore.shared.get("github-token"),
