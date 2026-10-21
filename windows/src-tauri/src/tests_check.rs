@@ -599,6 +599,7 @@ pub fn laya_status(app: AppHandle) -> LayaStatus {
 
 #[tauri::command]
 pub fn laya_start(app: AppHandle) {
+    *ACTIVITY.lock().unwrap() = Some(Instant::now());
     // Off the main thread: it asks Laya's health first.
     std::thread::spawn(move || start_server(&app));
 }
@@ -624,16 +625,61 @@ fn marker() -> PathBuf {
     crate::platform::local_dir().join("fix-loop.on")
 }
 
-/// At launch and after every save: Laya runs while the check is Local (once it is
-/// installed), the relay's marker follows the fix loop.
-pub fn settings_saved(app: &AppHandle) {
-    let c = config(app);
+/// The relay's marker follows the fix loop.
+fn write_marker(c: &Config) {
     if c.fix_loop {
         let _ = std::fs::write(marker(), b"1");
     } else {
         let _ = std::fs::remove_file(marker());
     }
+}
+
+/// When an agent last did something (pipe.rs): Laya stays up while there is work.
+static ACTIVITY: Mutex<Option<Instant>> = Mutex::new(None);
+/// Laya with no agent at work for this long goes: its model holds gigabytes.
+const LAYA_IDLE: Duration = Duration::from_secs(20 * 60);
+
+/// At launch: only the relay's marker. Laya waits for an agent session: loading its
+/// model takes a core for minutes and gigabytes of memory, which at login competes
+/// with everything else starting (the machine stalls). A watch lets it go once no
+/// agent has been at work for a while.
+pub fn launched(app: &AppHandle) {
+    write_marker(&config(app));
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(60));
+        let idle = ACTIVITY.lock().unwrap().is_none_or(|at| at.elapsed() > LAYA_IDLE);
+        if idle && with_laya(|l| l.server.is_some()) {
+            crate::log::line("laya: no agent at work for 20 minutes, stopped");
+            stop_server();
+            set(&app, "idle", String::new());
+        }
+    });
+}
+
+/// Every hook event: an agent is at work. Laya starts for it while the double-check
+/// is on this computer (it takes a minute or two to be ready).
+pub fn agent_activity(app: &AppHandle) {
+    *ACTIVITY.lock().unwrap() = Some(Instant::now());
+    let c = config(app);
+    // Not set up, or it failed to start: Settings shows why, and it isn't tried on every event.
+    if c.mode != "local" || !installed(&c) || with_laya(|l| l.server.is_some() || l.status.external || l.busy || l.status.phase == "error") {
+        return;
+    }
+    if STARTING.try_lock().is_err() {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || start_server(&app));
+}
+
+/// After every save: Laya runs while the check is Local (once it is installed), the
+/// relay's marker follows the fix loop.
+pub fn settings_saved(app: &AppHandle) {
+    let c = config(app);
+    write_marker(&c);
     if c.mode == "local" {
+        *ACTIVITY.lock().unwrap() = Some(Instant::now());
         let app = app.clone();
         std::thread::spawn(move || start_server(&app));
     } else {

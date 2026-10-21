@@ -811,6 +811,14 @@ pub fn run() {
     i18n::set_picked(&loaded.language);
     let gate = Arc::new(PollGate::new());
 
+    let mut context = tauri::generate_context!();
+    // Installed in a folder of its own (D:\Coucou): the windows' browser data lives
+    // there too, not in %LOCALAPPDATA%.
+    if let Some(dir) = platform::own_folder() {
+        context.config_mut().app.app_directories_override =
+            Some(tauri::utils::config::AppDirectoriesOverride::Root(dir.join("WebView")));
+    }
+
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // `coucou --shortcut <action>`: what a desktop's own keyboard
@@ -1080,8 +1088,8 @@ pub fn run() {
             whatsapp::start(&handle);
             // Live plan usage from claude.ai, once you connected your account.
             claude_account::start(&handle);
-            // Laya while the double-check is Local; the relay's fix-loop marker.
-            tests_check::settings_saved(&handle);
+            // The relay's fix-loop marker. Laya waits for an agent session (tests_check.rs).
+            tests_check::launched(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
@@ -1096,7 +1104,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building Coucou")
         .run(|app, event| {
             // Withdraw the phone link's announcement on the local network before the process ends.

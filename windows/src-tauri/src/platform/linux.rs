@@ -40,6 +40,11 @@ fn xdg(var: &str, fallback: &str) -> PathBuf {
 }
 
 /// ~/.config/coucou — preferences.
+/// Only Windows installs Coucou in a folder of its own (windows.rs).
+pub fn own_folder() -> Option<PathBuf> {
+    None
+}
+
 pub fn config_dir() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("coucou")
 }

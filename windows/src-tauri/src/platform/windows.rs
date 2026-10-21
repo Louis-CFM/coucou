@@ -55,16 +55,42 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 // ── Files ─────────────────────────────────────────────────────────────────────
 
-/// %APPDATA%\Coucou — preferences.
+/// Coucou installed in a folder of its own, other than the usual
+/// %LOCALAPPDATA%\Coucou (D:\Coucou, say): an installed copy, its uninstaller
+/// beside it, or a folder marked with `coucou.portable`. Everything of Coucou's
+/// then lives in that one folder: its data there, its preferences in Settings,
+/// its windows' browser data in WebView (lib.rs).
+pub fn own_folder() -> Option<PathBuf> {
+    static FOLDER: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    FOLDER
+        .get_or_init(|| {
+            let exe = std::env::current_exe().ok()?;
+            let dir = exe.parent()?.to_path_buf();
+            let marked = dir.join("uninstall.exe").is_file() || dir.join("coucou.portable").is_file();
+            let key = |p: &std::path::Path| p.to_string_lossy().trim_end_matches('\\').to_lowercase();
+            let usual = std::env::var_os("LOCALAPPDATA").map(|b| PathBuf::from(b).join("Coucou"));
+            (marked && usual.is_none_or(|u| key(&u) != key(&dir))).then_some(dir)
+        })
+        .clone()
+}
+
+/// %APPDATA%\Coucou — preferences (Settings in Coucou's own folder, if it has one).
 pub fn config_dir() -> PathBuf {
+    if let Some(dir) = own_folder() {
+        return dir.join("Settings");
+    }
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
     base.join("Coucou")
 }
 
-/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe, the inbox and the log live.
+/// %LOCALAPPDATA%\Coucou — where coucou-hook.exe, the inbox and the log live
+/// (Coucou's own folder, if it has one).
 pub fn local_dir() -> PathBuf {
+    if let Some(dir) = own_folder() {
+        return dir;
+    }
     let base = std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));

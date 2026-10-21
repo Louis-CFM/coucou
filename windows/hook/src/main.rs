@@ -169,9 +169,20 @@ fn main() {
 
 /// The app's marker for the fix loop, `fix-loop.on` in Coucou's folder.
 fn fix_loop_on(env: &dyn Fn(&str) -> Option<String>) -> bool {
-    env("LOCALAPPDATA")
-        .map(|dir| std::path::Path::new(&dir).join("Coucou").join("fix-loop.on").is_file())
-        .unwrap_or(false)
+    coucou_dir(env).map(|dir| dir.join("fix-loop.on").is_file()).unwrap_or(false)
+}
+
+/// Coucou's folder: the one this relay was put in (its `bin`, beside coucou.exe),
+/// wherever Coucou is installed (D:\Coucou); else %LOCALAPPDATA%\Coucou.
+fn coucou_dir(env: &dyn Fn(&str) -> Option<String>) -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok();
+    let bin = exe.as_deref().and_then(std::path::Path::parent);
+    if let Some(home) = bin.filter(|b| b.file_name().is_some_and(|n| n.eq_ignore_ascii_case("bin"))).and_then(std::path::Path::parent) {
+        if home.join("coucou.exe").is_file() {
+            return Some(home.to_path_buf());
+        }
+    }
+    env("LOCALAPPDATA").map(|dir| std::path::Path::new(&dir).join("Coucou"))
 }
 
 /// The command of a shell tool call (Bash, PowerShell).
