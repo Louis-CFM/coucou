@@ -29,7 +29,7 @@ struct IslandViewContent: View {
 
 struct OverviewView: View {
     @ObservedObject var state: AppState
-    @State private var showingN8nDetail = false
+    @State private var showingDetailCard = false
     @State private var activeDiffId: Int? = nil
 
     var agent: AgentTask? { state.focusTask }
@@ -43,7 +43,7 @@ struct OverviewView: View {
                 // Title row + ticker stacked (or integration card)
                 if let agent = agent {
                     if agent.isIntegration {
-                        IntegrationCardView(task: agent, showingDetail: $showingN8nDetail, onDiffTap: { diffIdx in
+                        IntegrationCardView(task: agent, showingDetail: $showingDetailCard, onDiffTap: { diffIdx in
                             withAnimation(.easeIn(duration: 0.16)) { activeDiffId = diffIdx }
                         })
                     } else {
@@ -129,7 +129,7 @@ struct OverviewView: View {
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
+                let hideJumpButton = showingDetailCard || state.showingPlanDetail || activeDiffId != nil
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
@@ -153,7 +153,7 @@ struct OverviewView: View {
             }
         }
         .onChange(of: state.focusId) { _, new in
-            showingN8nDetail = false
+            showingDetailCard = false
             activeDiffId = nil
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
@@ -1623,12 +1623,6 @@ struct IntegrationCardView: View {
 
 }
 
-// MARK: - Vercel Deployment List View
-
-// MARK: - Vercel Deployment Detail View
-
-// MARK: - Resend Card View
-
 // MARK: - GitHub Pulse Card View
 
 private func ciWorstState(_ prs: [GitHubPR]) -> CIState {
@@ -2309,10 +2303,6 @@ private struct CalcomDetailRow: View {
         }
     }
 }
-
-// MARK: - Notion Card View
-
-// MARK: - n8n Execution Detail View
 
 // MARK: - Ticker (overview scrolling task steps) V2
 

@@ -892,7 +892,7 @@ final class HookServer: @unchecked Sendable {
         showApprovalHead()
     }
 
-    /// Called by ApprovalView buttons and the iPhone. Writes the decision to the waiting
+    /// Called by ApprovalView buttons. Writes the decision to the waiting
     /// nb-hook of request `id` — the one that was on screen. A click that lands after the
     /// card moved on to another request is ignored, so it can never answer the wrong one.
     @MainActor
