@@ -35,6 +35,7 @@ mod session_window;
 mod settings;
 mod shortcuts;
 mod sounds;
+mod tests_check;
 mod speech;
 mod spotify;
 mod tray;
@@ -135,6 +136,7 @@ fn save_settings(app: AppHandle, shared: State<Shared>, settings: Settings) {
     }
     integrations::settings_saved(&app, &settings.active_integrations);
     spotify::sync(&app, &settings.active_integrations);
+    tests_check::settings_saved(&app);
     if shortcuts_changed {
         shortcuts::apply(&app, &settings.shortcuts);
     }
@@ -945,6 +947,14 @@ pub fn run() {
             flow::chat::chat_dictate_cancel,
             mail::mail_send,
             claude_plan::claude_desktop_plan,
+            tests_check::tests_check,
+            tests_check::tests_check_ping,
+            tests_check::tests_note,
+            tests_check::laya_status,
+            tests_check::laya_setup,
+            tests_check::laya_start,
+            tests_check::laya_stop,
+            tests_check::laya_remove,
             vitals::vitals_set_active,
             capture::capture_begin,
             capture::capture_paste,
@@ -1056,6 +1066,8 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             whatsapp::start(&handle);
+            // Laya while the double-check is Local; the relay's fix-loop marker.
+            tests_check::settings_saved(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);
             // New versions: nothing goes to GitHub until the user agrees (update.rs).
             update::start(handle.clone());
@@ -1078,6 +1090,7 @@ pub fn run() {
                 phone_link::stop_on_exit(app);
                 notes::shutdown(app);
                 whatsapp::shutdown();
+                tests_check::shutdown();
             }
         });
 }

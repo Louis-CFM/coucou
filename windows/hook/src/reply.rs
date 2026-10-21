@@ -37,6 +37,15 @@ pub fn stdout_with_plan(
     question: Option<&Value>,
     plan: Option<&Value>,
 ) -> Option<String> {
+    // The fix loop (Coucou's Settings): Claude Code ending its turn while its tests
+    // fail is sent back. Only that exact block, only for Claude Code; it never
+    // allows anything.
+    if event == "Stop" && agent.is_empty() {
+        return decision
+            .and_then(|d| serde_json::from_str::<Value>(d).ok())
+            .filter(|v| v.get("decision").and_then(Value::as_str) == Some("block") && v.get("reason").is_some_and(Value::is_string))
+            .map(|v| json!({ "decision": "block", "reason": v["reason"] }).to_string());
+    }
     if event != "PermissionRequest" {
         // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
         // (and the user's Always Allow): Coucou never allows a tool by itself.
@@ -176,6 +185,18 @@ fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_stop_is_only_ever_blocked_with_a_reason() {
+        let block = r#"{"decision":"block","reason":"Coucou: the tests fail"}"#;
+        let out: Value = serde_json::from_str(&stdout("", "Stop", Some(block), None).unwrap()).unwrap();
+        assert_eq!(out["decision"], "block");
+        assert!(stdout("", "Stop", None, None).is_none());
+        assert!(stdout("", "Stop", Some("allow"), None).is_none());
+        assert!(stdout("", "Stop", Some(r#"{"decision":"approve"}"#), None).is_none());
+        // Another agent's Stop keeps its usual answer.
+        assert_eq!(stdout("gemini", "Stop", Some(block), None).as_deref(), Some("{}"));
+    }
 
     #[test]
     fn a_plan_is_sent_back_with_its_allow_and_the_mode_picked() {

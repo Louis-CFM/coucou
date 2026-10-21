@@ -109,6 +109,11 @@ export interface Settings {
   showClock: boolean;
   /** Another pill's finish or error opens the island for a moment (Mac #683). */
   alertsFromAllPills: boolean;
+  /** Double-check unclear test results: Laya here, Jev in the cloud. */
+  testChecker: "off" | "local" | "cloud";
+  layaUrl: string;
+  /** Claude Code is sent back when it finishes with failing tests. */
+  fixFailingTests: boolean;
   absenceInterval: number;
   /** Declared pills next to the main one (at most 4), in the order they were added. */
   activeIntegrations: string[];
@@ -178,6 +183,9 @@ export const DEFAULT_SETTINGS: Settings = {
   mochiFeelsComputer: true,
   showClock: false,
   alertsFromAllPills: false,
+  testChecker: "off",
+  layaUrl: "",
+  fixFailingTests: false,
   absenceInterval: 180,
   activeIntegrations: [
     "integration_resend", "integration_n8n", "integration_vercel", "integration_github",

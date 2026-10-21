@@ -106,6 +106,12 @@ pub struct Settings {
     pub show_clock: bool,
     /// Another pill's finish or error opens the island for a moment (Mac #683). Off by default.
     pub alerts_from_all_pills: bool,
+    /// Double-check unclear test results: "off", "local" (Laya) or "cloud" (Jev).
+    pub test_checker: String,
+    /// Laya's address when it isn't the default one (tests_check.rs keeps it local).
+    pub laya_url: String,
+    /// Claude Code is sent back when it finishes with its tests failing. Off by default.
+    pub fix_failing_tests: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -174,6 +180,9 @@ impl Default for Settings {
             mochi_feels_computer: true,
             show_clock: false,
             alerts_from_all_pills: false,
+            test_checker: "off".into(),
+            laya_url: String::new(),
+            fix_failing_tests: false,
         }
     }
 }
@@ -463,7 +472,10 @@ mod tests {
   "phoneRelayUrl": "wss://relay.example.workers.dev",
   "mochiFeelsComputer": false,
   "showClock": true,
-  "alertsFromAllPills": true
+  "alertsFromAllPills": true,
+  "testChecker": "local",
+  "layaUrl": "http://127.0.0.1:8001",
+  "fixFailingTests": true
 }"##;
 
     fn custom() -> Value {
@@ -974,6 +986,9 @@ mod tests {
                 "mochiFeelsComputer",
                 "showClock",
                 "alertsFromAllPills",
+                "testChecker",
+                "layaUrl",
+                "fixFailingTests",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

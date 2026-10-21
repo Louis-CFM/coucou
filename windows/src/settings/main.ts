@@ -21,6 +21,7 @@ import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
 import { agentsSection } from "./agents";
+import { testsSection } from "./tests";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
 import { updateRows, updatesListener } from "./updates";
@@ -1413,7 +1414,7 @@ async function render() {
   const sections: Partial<Record<PageId, () => HTMLElement[]>> = {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
-    agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
+    agents: () => [claudeSection(status), agentsSection(agents), planSection(status), testsSection(() => settings, () => void save())],
     chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present)],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],

@@ -15,6 +15,7 @@ import type { Island } from "./island";
 import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
+import { recordTestRun } from "./tests";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -70,6 +71,12 @@ interface HookPayload {
   /** The relay's terminal context: VS Code's process, Windows Terminal's session. */
   vscode_pid?: string;
   wt_session?: string;
+  /** The end of a test command's output, kept by the relay (core/tests.ts). */
+  coucou_test_output?: string;
+  coucou_test_failed?: boolean;
+  coucou_test_stopped?: boolean;
+  /** The fix loop sent this Stop back (tests_check.rs). */
+  coucou_sent_back?: boolean;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
 }
@@ -450,12 +457,14 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       State.updateTask(agentId, "working");
       recordDiff(agentId, payload);
+      recordTestRun(agentId, payload);
       break;
 
     case "PostToolUseFailure":
       supersedeStop();
       State.updateTask(agentId, "working");
       State.appendStep(agentId, t("⚠ failed"));
+      recordTestRun(agentId, payload);
       break;
 
     case "Notification": {
@@ -474,6 +483,13 @@ function handleHook(island: Island, payload: HookPayload) {
     }
 
     case "Stop": {
+      // The fix loop sent it back (its tests fail): still at work, nothing to celebrate.
+      if (payload.coucou_sent_back === true) {
+        supersedeStop();
+        State.updateTask(agentId, "working");
+        State.appendStep(agentId, t("Sent back to fix the failing tests"));
+        break;
+      }
       State.updateTask(agentId, "finished");
       // Claude Code puts the turn's answer in the Stop payload itself, so there is
       // no transcript to read (the relay does not even forward its path). Other

@@ -461,6 +461,19 @@ export const Bridge = {
   /** The newest plan sample the Claude desktop app recorded (src-tauri/src/claude_plan.rs). */
   claudeDesktopPlan: () =>
     call<{ at: number; fiveHour: number | null; sevenDay: number | null } | null>("claude_desktop_plan"),
+
+  // ── Test results (src-tauri/src/tests_check.rs) ──────────────────────────
+  /** The double-check of one unclear run; null while it is off. */
+  testsCheck: (evidence: Record<string, unknown>) => call<CheckAnswer | null>("tests_check", { evidence }),
+  testsCheckPing: (mode: "local" | "cloud") => call<CheckAnswer>("tests_check_ping", { mode }),
+  /** A session's last test run, for the fix loop. */
+  testsNote: (sessionId: string, failed: boolean, summary: string) =>
+    call<void>("tests_note", { sessionId, failed, summary }),
+  layaStatus: () => call<LayaStatus>("laya_status"),
+  layaSetup: () => call<void>("laya_setup"),
+  layaStart: () => call<void>("laya_start"),
+  layaStop: () => call<void>("laya_stop"),
+  layaRemove: () => call<void>("laya_remove"),
   // ── New versions (src-tauri/src/update.rs) ────────────────────────────────
   updateStatus: () => call<UpdateStatus>("update_status"),
   /** The island's question or Settings' toggle: may Coucou look at GitHub on its own? */
@@ -478,6 +491,24 @@ export const Bridge = {
   /** The release's page on github.com. */
   updateOpenPage: () => call<void>("update_open_page"),
 };
+
+/** The double-check's answer: P(the tests pass), or why it couldn't say. */
+export interface CheckAnswer {
+  by: "laya" | "jev";
+  p: number | null;
+  model: string | null;
+  error: string | null;
+  ms: number;
+}
+
+/** Laya on this computer: setting up, starting, ready. */
+export interface LayaStatus {
+  phase: string;
+  message: string;
+  line: string;
+  installed: boolean;
+  running: boolean;
+}
 
 /** Allow / Deny, or the plan card's choices (ExitPlanMode). */
 export type ApprovalDecision = "allow" | "deny" | "plan_auto" | "plan_default" | "plan_change";

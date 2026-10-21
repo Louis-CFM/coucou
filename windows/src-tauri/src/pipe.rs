@@ -216,6 +216,19 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
+    crate::tests_check::observe(&payload, &event);
+    // Claude Code ending its turn while the fix loop is on: the relay waits for
+    // this line (a block when its tests fail, else nothing). Before the island
+    // hears the Stop, so it can say the session was sent back.
+    if event == "Stop" && crate::tests_check::fix_loop_on(&app) {
+        let reply = crate::tests_check::stop_reply(&app, &payload);
+        if reply.is_some() {
+            payload["coucou_sent_back"] = json!(true);
+        }
+        let _ = pipe.write_all(format!("{}\n", reply.unwrap_or_default()).as_bytes()).await;
+        let _ = pipe.flush().await;
+    }
+
     if event != "PermissionRequest" {
         // The status line relay calls in with every Claude Code update: not log-worthy.
         if event != "StatusLine" {

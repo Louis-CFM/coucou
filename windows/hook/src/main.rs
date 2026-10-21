@@ -38,6 +38,11 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
+/// Claude Code's Stop, while the fix loop is on: the app answers at once (from
+/// what it already knows), so this is only there in case it doesn't.
+const STOP_BUDGET: Duration = Duration::from_secs(2);
+/// How much of a test command's output is kept: its end, where the summary is.
+const TEST_OUTPUT_TAIL: usize = 8_000;
 
 /// Fields that are pointless to forward and can be enormous (a whole file read,
 /// a full command output). The island never shows them.
@@ -123,7 +128,17 @@ fn main() {
     // Only an agent whose decisions the island can give waits for one; any other
     // would be held for nothing, its decision being thrown away (reply.rs).
     let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
-    let budget = if waits_for_answer { DECISION_BUDGET } else { FIRE_AND_FORGET_BUDGET };
+    // "Make Claude fix failing tests" (Coucou's Settings): a Claude Code session
+    // ending its turn may be sent back. The app leaves a marker while it is on.
+    let fix_loop = event.name == "Stop" && args.agent.is_empty() && fix_loop_on(&env);
+    let budget = if waits_for_answer {
+        DECISION_BUDGET
+    } else if fix_loop {
+        STOP_BUDGET
+    } else {
+        FIRE_AND_FORGET_BUDGET
+    };
+    let waits_for_answer = waits_for_answer || fix_loop;
 
     // The worker owns every blocking call. If it overruns the budget we simply
     // stop listening and exit: the process dying takes the pipe handle with it.
@@ -144,6 +159,68 @@ fn main() {
         event.plan.as_ref(),
     ));
     std::process::exit(0);
+}
+
+/// The app's marker for the fix loop, `fix-loop.on` in Coucou's folder.
+fn fix_loop_on(env: &dyn Fn(&str) -> Option<String>) -> bool {
+    env("LOCALAPPDATA")
+        .map(|dir| std::path::Path::new(&dir).join("Coucou").join("fix-loop.on").is_file())
+        .unwrap_or(false)
+}
+
+/// A shell command that runs tests (dotpals' list): npm test, pytest, cargo test…
+pub fn is_test_command(command: &str) -> bool {
+    let c = format!(" {} ", command.to_ascii_lowercase().replace(['\t', '\n', '\r', ';', '&', '|', '(', ')'], " "));
+    let c = c.split_whitespace().collect::<Vec<_>>().join(" ");
+    let c = format!(" {c} ");
+    const RUNS: [&str; 26] = [
+        " npm test ", " npm run test", " pnpm test ", " pnpm run test", " yarn test", " yarn run test",
+        " bun test", " bun run test", " node --test", " jest", " vitest", " mocha", " pytest",
+        " tox ", " rspec", " phpunit", " playwright test", " go test", " cargo test", " dotnet test",
+        " gradle test", " gradlew test", " mvn test", " -m unittest", " deno test", " make test",
+    ];
+    RUNS.iter().any(|r| c.contains(r)) || c.contains(" npx jest") || c.contains(" npx vitest")
+}
+
+/// The end of a finished test command's output (stdout, stderr, the error), for
+/// the island to read its result. Only for a test command: no other output is
+/// ever forwarded.
+fn test_output(map: &serde_json::Map<String, Value>, name: &str) -> Option<(String, bool, bool)> {
+    if name != "PostToolUse" && name != "PostToolUseFailure" {
+        return None;
+    }
+    let tool = map.get("tool_name").and_then(Value::as_str)?;
+    if tool != "Bash" && tool != "PowerShell" {
+        return None;
+    }
+    let command = map.get("tool_input").and_then(|i| i.get("command")).and_then(Value::as_str)?;
+    if !is_test_command(command) {
+        return None;
+    }
+    let response = map.get("tool_response");
+    let text = |v: Option<&Value>| v.and_then(Value::as_str).unwrap_or_default().to_string();
+    let mut out = match response {
+        Some(Value::String(s)) => s.clone(),
+        Some(r) => format!("{}\n{}", text(r.get("stdout")), text(r.get("stderr"))),
+        None => String::new(),
+    };
+    let error = text(map.get("error"));
+    if !error.is_empty() {
+        out.push('\n');
+        out.push_str(&error);
+    }
+    let stopped = response.and_then(|r| r.get("interrupted")).and_then(Value::as_bool).unwrap_or(false);
+    let out = out.trim().to_string();
+    let tail = if out.len() > TEST_OUTPUT_TAIL {
+        let mut start = out.len() - TEST_OUTPUT_TAIL;
+        while !out.is_char_boundary(start) {
+            start += 1;
+        }
+        format!("…{}", &out[start..])
+    } else {
+        out
+    };
+    Some((tail, name == "PostToolUseFailure", stopped))
 }
 
 fn print(line: Option<String>) {
@@ -186,6 +263,7 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     let name = normalize::refine(normalize::event(&raw_event), map);
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
+    let tests = test_output(map, &name);
     for field in DROPPED_FIELDS {
         map.remove(*field);
     }
@@ -208,6 +286,12 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     // Every string is capped, except the edit text of a finished Edit /
     // MultiEdit / Write, which the live diff needs whole (within its own limits).
     truncate_payload(&mut payload, &name);
+    // After the caps: the end of a test run's output is kept whole.
+    if let (Some((output, failed, stopped)), Some(map)) = (tests, payload.as_object_mut()) {
+        map.insert("coucou_test_output".into(), Value::String(output));
+        map.insert("coucou_test_failed".into(), Value::Bool(failed));
+        map.insert("coucou_test_stopped".into(), Value::Bool(stopped));
+    }
 
     let mut line = payload.to_string();
     line.push('\n');
@@ -454,6 +538,22 @@ mod tests {
         let (v, ev) = run(r#"{"hook_event_name":"stop","status":"error","tool_output":"huge"}"#, "cursor", "");
         assert_eq!(ev.name, "StopFailure");
         assert!(v.get("tool_output").is_none());
+    }
+
+    #[test]
+    fn a_test_commands_output_end_is_kept_and_no_other_output() {
+        let raw = r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"cd app && npm test"},"tool_response":{"stdout":"PASS a.test.js\nTests: 3 passed, 3 total","stderr":"","interrupted":false}}"#;
+        let (v, _) = run(raw, "", "PostToolUse");
+        assert!(v["coucou_test_output"].as_str().unwrap().contains("3 passed"));
+        assert_eq!(v["coucou_test_failed"], false);
+        assert!(v.get("tool_response").is_none());
+        let raw = r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"ls -la"},"tool_response":{"stdout":"secret.txt"}}"#;
+        let (v, _) = run(raw, "", "PostToolUse");
+        assert!(v.get("coucou_test_output").is_none());
+        assert!(is_test_command("python -m pytest -q"));
+        assert!(is_test_command("cargo test --release"));
+        assert!(!is_test_command("git status"));
+        assert!(!is_test_command("cat test.txt"));
     }
 
     #[test]
