@@ -9,6 +9,7 @@ mod config_file;
 mod desktop;
 mod files;
 mod flow;
+mod fullscreen;
 mod github;
 mod hooks;
 mod i18n;
@@ -983,6 +984,7 @@ pub fn run() {
             }
             gate.set_active(true);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            fullscreen::spawn(handle.clone());
 
             log::line(format!("--- Coucou {} started ---", env!("CARGO_PKG_VERSION")));
             hooks::ensure_hook_exe(&handle);
