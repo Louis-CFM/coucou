@@ -171,6 +171,7 @@ fn reason(by: &str, status: Option<u16>, timed_out: bool) -> String {
     match (by, status) {
         ("jev", Some(401 | 403)) => t("TypeSafe didn't accept the API key"),
         (_, Some(429)) => t("too many requests right now"),
+        ("laya", Some(503)) => t("Laya is still loading its model…"),
         ("jev", Some(_)) => t("TypeSafe answered with an error"),
         (_, Some(_)) => t("Laya answered with an error"),
         ("jev", None) => t("couldn't reach TypeSafe"),
@@ -204,6 +205,12 @@ pub async fn tests_check(app: AppHandle, evidence: Value) -> Option<Answer> {
         "cloud" => "jev",
         _ => return None,
     };
+    if by == "laya" {
+        *USED.lock().unwrap() = Some(Instant::now());
+        if let Some(why) = laya_not_ready(&app) {
+            return Some(Answer { by: by.into(), p: None, model: None, error: Some(why), ms: 0 });
+        }
+    }
     let started = Instant::now();
     let key = if by == "jev" { crate::secrets::get(JEV_KEY) } else { None };
     if by == "jev" && key.is_none() {
@@ -230,6 +237,14 @@ pub async fn tests_check(app: AppHandle, evidence: Value) -> Option<Answer> {
 pub async fn tests_check_ping(app: AppHandle, mode: String) -> Answer {
     let c = config(&app);
     let by = if mode == "cloud" { "jev" } else { "laya" };
+    if by == "laya" {
+        *USED.lock().unwrap() = Some(Instant::now());
+        // Only a Laya that is up: Test connection never loads its model.
+        let phase = with_laya(|l| l.status.phase.clone());
+        if phase == "starting" {
+            return Answer { by: by.into(), p: None, model: None, error: Some(crate::i18n::t("Laya is still loading its model…")), ms: 0 };
+        }
+    }
     let started = Instant::now();
     let result: Result<(), String> = async {
         let res = if by == "jev" {
@@ -243,7 +258,9 @@ pub async fn tests_check_ping(app: AppHandle, mode: String) -> Answer {
     }
     .await;
     let ms = started.elapsed().as_millis() as u64;
-    Answer { by: by.into(), p: None, model: None, error: result.err(), ms }
+    // Nothing answers on Laya's port: it isn't running (it only starts when needed).
+    let error = result.err().map(|e| if by == "laya" && e == crate::i18n::t("couldn't reach Laya: is it running?") { crate::i18n::t("Laya isn't running: press Start.") } else { e });
+    Answer { by: by.into(), p: None, model: None, error, ms }
 }
 
 // ── Laya on this computer ─────────────────────────────────────────────────────
@@ -506,6 +523,14 @@ fn start_server(app: &AppHandle) {
         return;
     }
     with_laya(|l| l.status.external = false);
+    // Its model needs a few GB: loading it on a machine short of memory swaps
+    // everything else out, and the whole computer stalls. Not now, then.
+    if let Some(free) = available_gb().filter(|free| *free < LAYA_MEMORY_GB) {
+        let (need, free) = (format!("{LAYA_MEMORY_GB:.1}"), format!("{free:.1}"));
+        crate::log::line(format!("laya: not started, {free} GB free"));
+        set(app, "memory", crate::i18n::tf("Laya needs about {need} GB of free memory to load its model; {free} GB is free now. Close some apps, then press Start.", &[("need", &need), ("free", &free)]));
+        return;
+    }
     let Some((program, args)) = runner(&home) else {
         if c.laya_dir.trim().is_empty() {
             publish(app);
@@ -607,7 +632,7 @@ pub fn laya_status(app: AppHandle) -> LayaStatus {
 
 #[tauri::command]
 pub fn laya_start(app: AppHandle) {
-    *ACTIVITY.lock().unwrap() = Some(Instant::now());
+    *USED.lock().unwrap() = Some(Instant::now());
     // Off the main thread: it asks Laya's health first.
     std::thread::spawn(move || start_server(&app));
 }
@@ -642,64 +667,71 @@ fn write_marker(c: &Config) {
     }
 }
 
-/// When an agent last did something (pipe.rs): Laya stays up while there is work.
-static ACTIVITY: Mutex<Option<Instant>> = Mutex::new(None);
-/// When Coucou started, and how long Laya waits after that before it may start.
-static LAUNCHED: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
-const LAYA_GRACE: Duration = Duration::from_secs(3 * 60);
-/// Laya with no agent at work for this long goes: its model holds gigabytes.
-const LAYA_IDLE: Duration = Duration::from_secs(20 * 60);
+/// When Laya was last asked or started: it goes once it hasn't been used for a while.
+static USED: Mutex<Option<Instant>> = Mutex::new(None);
+/// Laya unused for this long goes: its model holds gigabytes.
+const LAYA_IDLE: Duration = Duration::from_secs(15 * 60);
+/// Free memory Laya's model needs to load without the machine swapping.
+const LAYA_MEMORY_GB: f64 = 2.5;
 
-/// At launch: only the relay's marker. Laya waits for an agent session: loading its
-/// model takes a core for minutes and gigabytes of memory, which at login competes
-/// with everything else starting (the machine stalls). A watch lets it go once no
-/// agent has been at work for a while.
+/// Memory free right now (GB), as Task Manager's "Available".
+#[cfg(windows)]
+fn available_gb() -> Option<f64> {
+    use ::windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
+    let mut status = MEMORYSTATUSEX { dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32, ..Default::default() };
+    unsafe { GlobalMemoryStatusEx(&mut status) }.ok()?;
+    Some(status.ullAvailPhys as f64 / 1_073_741_824.0)
+}
+
+#[cfg(not(windows))]
+fn available_gb() -> Option<f64> {
+    None
+}
+
+/// Why Laya can't answer this check now, starting it when it isn't running: on demand
+/// only, so its model is loaded when there is a question for it, never just in case.
+fn laya_not_ready(app: &AppHandle) -> Option<String> {
+    use crate::i18n::t;
+    let (phase, running, busy) = with_laya(|l| (l.status.phase.clone(), l.server.is_some() || l.status.external, l.busy));
+    if phase == "ready" && running {
+        return None;
+    }
+    if phase == "starting" || busy {
+        return Some(t("Laya is still loading its model…"));
+    }
+    if !installed(&config(app)) {
+        return Some(t("couldn't reach Laya: is it running?"));
+    }
+    if STARTING.try_lock().is_ok() {
+        let app = app.clone();
+        std::thread::spawn(move || start_server(&app));
+    }
+    Some(t("Laya is starting: it checks the next unclear test run."))
+}
+
+/// At launch: only the relay's marker. Laya loads only when there is a question for
+/// it (laya_not_ready) or you press Start: its model takes a core for minutes and
+/// gigabytes of memory. A watch lets it go once it hasn't been used for a while.
 pub fn launched(app: &AppHandle) {
-    let _ = LAUNCHED.set(Instant::now());
     write_marker(&config(app));
     let app = app.clone();
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_secs(60));
-        let idle = ACTIVITY.lock().unwrap().is_none_or(|at| at.elapsed() > LAYA_IDLE);
+        let idle = USED.lock().unwrap().is_none_or(|at| at.elapsed() > LAYA_IDLE);
         if idle && with_laya(|l| l.server.is_some()) {
-            crate::log::line("laya: no agent at work for 20 minutes, stopped");
+            crate::log::line("laya: unused for 15 minutes, stopped");
             stop_server();
             set(&app, "idle", String::new());
         }
     });
 }
 
-/// Every hook event: an agent is at work. Laya starts for it while the double-check
-/// is on this computer (it takes a minute or two to be ready).
-pub fn agent_activity(app: &AppHandle) {
-    *ACTIVITY.lock().unwrap() = Some(Instant::now());
-    // Not in Coucou's first minutes: everything else is starting then (the speech
-    // model, the windows), and Laya's model on top stalls the machine.
-    if LAUNCHED.get().is_some_and(|at| at.elapsed() < LAYA_GRACE) {
-        return;
-    }
-    let c = config(app);
-    // Not set up, or it failed to start: Settings shows why, and it isn't tried on every event.
-    if c.mode != "local" || !installed(&c) || with_laya(|l| l.server.is_some() || l.status.external || l.busy || l.status.phase == "error") {
-        return;
-    }
-    if STARTING.try_lock().is_err() {
-        return;
-    }
-    let app = app.clone();
-    std::thread::spawn(move || start_server(&app));
-}
-
-/// After every save: Laya runs while the check is Local (once it is installed), the
-/// relay's marker follows the fix loop.
+/// After every save: the relay's marker follows the fix loop; Laya goes when the
+/// double-check is no longer on this computer (it starts only when needed).
 pub fn settings_saved(app: &AppHandle) {
     let c = config(app);
     write_marker(&c);
-    if c.mode == "local" {
-        *ACTIVITY.lock().unwrap() = Some(Instant::now());
-        let app = app.clone();
-        std::thread::spawn(move || start_server(&app));
-    } else {
+    if c.mode != "local" {
         stop_server();
     }
 }

@@ -43,8 +43,8 @@ const DECISION_BUDGET: Duration = Duration::from_secs(110);
 /// commit are answered from what the island already knows.
 fn loop_budget(event: &str) -> Duration {
     match event {
-        "Stop" => Duration::from_secs(3),
-        "PreToolUse" => Duration::from_secs(2),
+        "Stop" => Duration::from_secs(5),
+        "PreToolUse" => Duration::from_secs(3),
         _ => Duration::from_secs(7),
     }
 }

@@ -213,8 +213,6 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         .to_string();
 
     note_session_window(&pipe, &payload, &event);
-    // An agent at work: Laya is started for it, if the double-check is on this computer.
-    crate::tests_check::agent_activity(&app);
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
@@ -276,8 +274,8 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
 /// always reaches it.
 fn loop_wait(event: &str) -> Duration {
     match event {
-        "Stop" => Duration::from_millis(2_500),
-        "PreToolUse" => Duration::from_millis(1_500),
+        "Stop" => Duration::from_millis(4_500),
+        "PreToolUse" => Duration::from_millis(2_500),
         _ => Duration::from_millis(6_500),
     }
 }
@@ -357,6 +355,8 @@ fn send(app: &AppHandle, request_id: &str, reply: Reply, keep: bool) {
         Some(tx) => {
             let _ = tx.try_send(reply);
         }
+        // The fix loop's word after its relay stopped waiting: nothing to log.
+        None if request_id.starts_with("loop-") => {}
         None => log::line(format!("reply for id={request_id} — no pending request")),
     }
 }

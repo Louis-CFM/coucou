@@ -7235,6 +7235,58 @@
    "id": "Hubungkan…",
    "de": "Verbinden…",
    "tr": "Bağla…"
+  },
+  "Laya is still loading its model…": {
+   "zh-Hans": "Laya 仍在加载其模型…",
+   "hi": "Laya अभी अपना मॉडल लोड कर रहा है…",
+   "es": "Laya todavía está cargando su modelo…",
+   "ar": "لا يزال Laya يحمّل نموذجه…",
+   "fr": "Laya charge encore son modèle…",
+   "bn": "Laya এখনও তার মডেল লোড করছে…",
+   "pt-BR": "O Laya ainda está carregando o modelo…",
+   "ru": "Laya ещё загружает свою модель…",
+   "id": "Laya masih memuat modelnya…",
+   "de": "Laya lädt sein Modell noch…",
+   "tr": "Laya hâlâ modelini yüklüyor…"
+  },
+  "Laya is starting: it checks the next unclear test run.": {
+   "zh-Hans": "Laya 正在启动：它会检查下一个不明确的测试结果。",
+   "hi": "Laya शुरू हो रहा है: यह अगला अस्पष्ट टेस्ट नतीजा जाँचेगा।",
+   "es": "Laya se está iniciando: comprobará el próximo resultado de pruebas dudoso.",
+   "ar": "يجري تشغيل Laya: سيتحقق من نتيجة الاختبارات غير الواضحة التالية.",
+   "fr": "Laya démarre : il vérifiera le prochain résultat de tests incertain.",
+   "bn": "Laya চালু হচ্ছে: এটি পরের অস্পষ্ট টেস্ট ফল যাচাই করবে।",
+   "pt-BR": "O Laya está iniciando: ele verifica o próximo resultado de testes incerto.",
+   "ru": "Laya запускается: он проверит следующий неясный результат тестов.",
+   "id": "Laya sedang dimulai: ia akan memeriksa hasil tes tidak jelas berikutnya.",
+   "de": "Laya startet: Es prüft das nächste unklare Testergebnis.",
+   "tr": "Laya başlatılıyor: bir sonraki belirsiz test sonucunu kontrol edecek."
+  },
+  "Laya isn't running: press Start.": {
+   "zh-Hans": "Laya 没有运行：请点击启动。",
+   "hi": "Laya नहीं चल रहा: शुरू करें दबाएँ।",
+   "es": "Laya no está en marcha: pulsa Iniciar.",
+   "ar": "Laya لا يعمل: اضغط بدء.",
+   "fr": "Laya n'est pas lancé : appuie sur Démarrer.",
+   "bn": "Laya চলছে না: চালু করুন চাপুন।",
+   "pt-BR": "O Laya não está rodando: clique em Iniciar.",
+   "ru": "Laya не запущен: нажмите «Запустить».",
+   "id": "Laya tidak berjalan: tekan Mulai.",
+   "de": "Laya läuft nicht: Drück auf Starten.",
+   "tr": "Laya çalışmıyor: Başlat'a bas."
+  },
+  "Laya needs about {need} GB of free memory to load its model; {free} GB is free now. Close some apps, then press Start.": {
+   "zh-Hans": "Laya 需要约 {need} GB 可用内存来加载模型；当前只有 {free} GB。请关闭一些应用，然后点击启动。",
+   "hi": "Laya को अपना मॉडल लोड करने के लिए लगभग {need} GB खाली मेमोरी चाहिए; अभी {free} GB खाली है। कुछ ऐप बंद करें, फिर शुरू करें दबाएँ।",
+   "es": "Laya necesita unos {need} GB de memoria libre para cargar su modelo; ahora hay {free} GB libres. Cierra algunas apps y pulsa Iniciar.",
+   "ar": "يحتاج Laya إلى نحو {need} غيغابايت من الذاكرة الحرة لتحميل نموذجه؛ المتاح الآن {free} غيغابايت. أغلق بعض التطبيقات ثم اضغط بدء.",
+   "fr": "Laya a besoin d'environ {need} Go de mémoire libre pour charger son modèle ; {free} Go sont libres. Ferme quelques apps, puis appuie sur Démarrer.",
+   "bn": "মডেল লোড করতে Laya-র প্রায় {need} GB খালি মেমরি লাগে; এখন {free} GB খালি। কিছু অ্যাপ বন্ধ করে চালু করুন চাপুন।",
+   "pt-BR": "O Laya precisa de cerca de {need} GB de memória livre para carregar o modelo; agora há {free} GB livres. Feche alguns apps e clique em Iniciar.",
+   "ru": "Laya нужно около {need} ГБ свободной памяти, чтобы загрузить модель; сейчас свободно {free} ГБ. Закройте несколько приложений и нажмите «Запустить».",
+   "id": "Laya butuh sekitar {need} GB memori kosong untuk memuat modelnya; sekarang {free} GB kosong. Tutup beberapa aplikasi, lalu tekan Mulai.",
+   "de": "Laya braucht etwa {need} GB freien Arbeitsspeicher für sein Modell; frei sind gerade {free} GB. Schließ ein paar Apps und drück dann auf Starten.",
+   "tr": "Laya'nın modelini yüklemek için yaklaşık {need} GB boş belleğe ihtiyacı var; şu an {free} GB boş. Birkaç uygulamayı kapatıp Başlat'a bas."
   }
  }
 }

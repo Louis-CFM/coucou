@@ -357,7 +357,9 @@ async function testRun(p: LoopPayload, id: string): Promise<LoopDecision> {
   let checked: ReturnType<typeof checkOf> = null;
   let check: Step["check"];
   if (v.state === "unclear" && State.settings.testChecker && State.settings.testChecker !== "off") {
-    const answer = await (checkFor(step.id) ?? Promise.resolve(null));
+    // Within the relay's wait: a slow answer still reaches the card, not this reply.
+    const late = new Promise<null>((r) => window.setTimeout(() => r(null), 4500));
+    const answer = await Promise.race([checkFor(step.id) ?? Promise.resolve(null), late]);
     if (answer) {
       step.check = answer.p == null
         ? { by: answer.by, error: answer.error ?? "no answer", ms: answer.ms }

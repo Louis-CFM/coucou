@@ -65,6 +65,8 @@ export function testsSection(settings: () => Settings, save: () => void): HTMLEl
       const line = st ? [st.message, st.line].filter(Boolean).join(" — ") : "";
       const buttons = h("div", { class: "row", style: "gap:6px" });
       const busy = st != null && ["python", "venv", "install", "starting"].includes(st.phase);
+      // Not enough free memory for its model: said plainly, in the warning colour.
+      const warn = st?.phase === "error" || st?.phase === "memory";
       const custom = (s.layaDir ?? "").trim() !== "";
       if (st?.external) {
         // Started outside Coucou: used as it is, nothing to start, stop or remove.
@@ -97,7 +99,7 @@ export function testsSection(settings: () => Settings, save: () => void): HTMLEl
         h("div", { class: "hint", style: MUTED, text: t("Already have Laya? Enter its folder (the one with its .venv). Coucou starts it from there and never changes or removes it. A Laya that is already running is used as it is.") }),
         buttons,
       );
-      if (line) box.append(h("div", { style: `${MUTED};color:${st?.phase === "error" ? "#F4505E" : "#8E939C"}`, text: line }));
+      if (line) box.append(h("div", { style: `${MUTED};color:${warn ? "#F4505E" : "#8E939C"}`, text: line }));
     }
 
     if (mode === "cloud") {
