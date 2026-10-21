@@ -543,7 +543,15 @@ fn start_server(app: &AppHandle) {
             cmd.stdout(Stdio::null()).stderr(Stdio::null());
         }
     }
-    match hidden(&mut cmd).spawn() {
+    // Below normal priority: answering a test question can wait a moment, your apps can't.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000 | 0x0000_4000); // CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS
+    }
+    #[cfg(not(windows))]
+    hidden(&mut cmd);
+    match cmd.spawn() {
         Ok(child) => {
             with_laya(|l| {
                 l.server = Some(child);
@@ -636,6 +644,9 @@ fn write_marker(c: &Config) {
 
 /// When an agent last did something (pipe.rs): Laya stays up while there is work.
 static ACTIVITY: Mutex<Option<Instant>> = Mutex::new(None);
+/// When Coucou started, and how long Laya waits after that before it may start.
+static LAUNCHED: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+const LAYA_GRACE: Duration = Duration::from_secs(3 * 60);
 /// Laya with no agent at work for this long goes: its model holds gigabytes.
 const LAYA_IDLE: Duration = Duration::from_secs(20 * 60);
 
@@ -644,6 +655,7 @@ const LAYA_IDLE: Duration = Duration::from_secs(20 * 60);
 /// with everything else starting (the machine stalls). A watch lets it go once no
 /// agent has been at work for a while.
 pub fn launched(app: &AppHandle) {
+    let _ = LAUNCHED.set(Instant::now());
     write_marker(&config(app));
     let app = app.clone();
     std::thread::spawn(move || loop {
@@ -661,6 +673,11 @@ pub fn launched(app: &AppHandle) {
 /// is on this computer (it takes a minute or two to be ready).
 pub fn agent_activity(app: &AppHandle) {
     *ACTIVITY.lock().unwrap() = Some(Instant::now());
+    // Not in Coucou's first minutes: everything else is starting then (the speech
+    // model, the windows), and Laya's model on top stalls the machine.
+    if LAUNCHED.get().is_some_and(|at| at.elapsed() < LAYA_GRACE) {
+        return;
+    }
     let c = config(app);
     // Not set up, or it failed to start: Settings shows why, and it isn't tried on every event.
     if c.mode != "local" || !installed(&c) || with_laya(|l| l.server.is_some() || l.status.external || l.busy || l.status.phase == "error") {
