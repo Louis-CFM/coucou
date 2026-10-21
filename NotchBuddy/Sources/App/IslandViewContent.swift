@@ -1386,7 +1386,6 @@ struct PromptView: View {
 
     #if !APPSTORE
     @State private var dictation = MacDictation()
-    @State private var dictationOperation: UUID?
     #endif
     var body: some View {
         ZStack(alignment: .leading) {
@@ -1481,12 +1480,11 @@ struct PromptView: View {
                     // Dictate instead of typing (on-device speech recognition when available)
                     Button {
                         guard !state.agentsOnly, !dictation.isStarting, !dictation.isFinishing else { return }
-                        let operation = dictationOperation ?? state.optionalWork.begin()
-                        dictationOperation = operation
+                        let operation = state.optionalWork.begin()
                         Task {
+                            defer { state.optionalWork.end(operation) }
                             if dictation.isRecording { text = await dictation.finish() }
-                            else { await dictation.start(from: text) }
-                            if !dictation.isRecording { endDictationOwnership(operation) }
+                            else { await dictation.start(from: text, onEnd: { text = $0 }) }
                         }
                     } label: {
                         Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
@@ -1530,7 +1528,6 @@ struct PromptView: View {
             // the view. stop() releases the local microphone synchronously.
             if dictation.isRecording { text = dictation.text }
             dictation.stop()
-            if let operation = dictationOperation { endDictationOwnership(operation) }
         }
         #endif
         .onChange(of: state.view) { _, view in
@@ -1562,9 +1559,9 @@ struct PromptView: View {
         guard !dictation.isStarting, !dictation.isFinishing else { return }
         // Still dictating: take the final words (and the right language) before sending.
         if dictation.isRecording {
-            let operation = dictationOperation ?? state.optionalWork.begin()
+            let operation = state.optionalWork.begin()
             Task {
-                defer { endDictationOwnership(operation) }
+                defer { state.optionalWork.end(operation) }
                 text = await dictation.finish()
                 sendMessage()
             }
@@ -1585,12 +1582,6 @@ struct PromptView: View {
         }
     }
 
-    #if !APPSTORE
-    private func endDictationOwnership(_ operation: UUID) {
-        state.optionalWork.end(operation)
-        if dictationOperation == operation { dictationOperation = nil }
-    }
-    #endif
 }
 
 

@@ -104,3 +104,12 @@ separate manual testing; the standalone tests do not exercise those services.
 
 This implementation covers the macOS GitHub and App Store targets. The separate
 Windows/Linux app and phone UI do not yet have this switch.
+
+Recognition ownership belongs to `MacDictation`, including natural final/error
+callbacks, failed startup, explicit finish and cancellation. Prompt actions hold a
+short admission claim before scheduling their task; the recognizer retains its own
+claim until final words reach the shared draft and cleanup completes. Generation
+checks prevent old results, finish waiters and timeout callbacks from affecting a
+replacement recording. Native contracts inject only the audio/recognizer boundary
+and drive the shipping result/teardown handlers. The Flow keyboard regression uses
+the right-Option device bit and a full-mode activation control.

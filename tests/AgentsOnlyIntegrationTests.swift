@@ -1,5 +1,8 @@
 import AppKit
 import Foundation
+#if !APPSTORE
+import Speech
+#endif
 
 // Contracts use the shipping sources but keep diagnostic writes out of the
 // installed app's log directory. Service/audio boundaries below are injected.
@@ -75,6 +78,7 @@ struct AgentsOnlyIntegrationTests {
         defer { UserDefaults.standard.removePersistentDomain(forName: domain) }
         URLProtocol.registerClass(ContractURLProtocol.self)
         defer { URLProtocol.unregisterClass(ContractURLProtocol.self) }
+        SoundEngine.shared.enabled = false
         let state = AppState.shared
         await testChat(state)
         testClick(state)
@@ -240,12 +244,15 @@ struct AgentsOnlyIntegrationTests {
         flow.stop()
         permission.release() // Cancelled waiter resumes after permission became granted.
         for _ in 0..<10 { await Task.yield() }
-        eventHandler?(.flagsChanged, flow.key.keyCode, .option, nil)
+        let rightOption = NSEvent.ModifierFlags(rawValue: NSEvent.ModifierFlags.option.rawValue | 0x40)
+        eventHandler?(.flagsChanged, flow.key.keyCode, rightOption, nil)
         precondition(installs == 1 && removals == 1 && !flow.busy, "A cancelled permission waiter revived keyboard/microphone work")
         precondition(state.setAgentsOnly(false))
         flow.start()
         precondition(installs == 2)
-        flow.stop()
+        eventHandler?(.flagsChanged, flow.key.keyCode, rightOption, nil)
+        precondition(flow.busy, "The same right-Option event must activate dictation in full mode")
+        flow.stop() // Cancel synchronously, before its task can request microphone access.
         UserDefaults.standard.set(false, forKey: FlowDictation.enabledKey)
         print("PASS actual FlowDictation permission grant / focus race and keyboard boundary")
     }
@@ -270,18 +277,63 @@ struct AgentsOnlyIntegrationTests {
         let permission = ContractGate()
         let dictation = MacDictation(authorization: { await permission.wait(); return true })
         state.promptDraft = "unsent draft"
-        let operation = state.optionalWork.begin() // PromptView claims before scheduling start/finish.
         let task = Task { await dictation.start(from: state.promptDraft) }
         await eventually("Prompt mic permission did not start") { dictation.isStarting }
         precondition(!state.setAgentsOnly(true))
         dictation.stop()
-        state.optionalWork.end(operation)
-        precondition(state.setAgentsOnly(true))
+        precondition(!state.optionalWork.busy && state.setAgentsOnly(true))
         permission.release(); await task.value
         precondition(!dictation.isStarting && !dictation.isRecording, "A removed prompt cannot start a microphone after late permission")
         precondition(state.promptDraft == "unsent draft")
         precondition(state.setAgentsOnly(false) && state.promptDraft == "unsent draft")
         print("PASS actual MacDictation late permission and shared draft preservation")
+        await testNaturalDictation(state)
+    }
+
+    @MainActor static func testNaturalDictation(_ state: AppState) async {
+        var reports: [MacDictation.Report] = []
+        var starts = 0, stops = 0, cancellations = 0
+        let dictation = MacDictation(authorization: { true }, input: .init(candidates: { _ in
+            [.init(locale: Locale(identifier: "en-US"), request: SFSpeechAudioBufferRecognitionRequest(), start: { report in
+                reports.append(report)
+                return { cancellations += 1 }
+            })]
+        }, startAudio: { _, _ in starts += 1; return true }, stopAudio: { stops += 1 }))
+        for failed in [false, true] {
+            state.promptDraft = "draft"
+            await dictation.start(from: state.promptDraft, onEnd: { state.promptDraft = $0 })
+            precondition(dictation.isRecording && state.optionalWork.busy && !state.setAgentsOnly(true))
+            let old = reports.last!
+            old(failed ? nil : "spoken", [], 1, !failed, failed)
+            await eventually("Natural recognition did not release mode ownership") {
+                !dictation.isRecording && !state.optionalWork.busy
+            }
+            precondition(state.promptDraft == (failed ? "draft " : "draft spoken"))
+            precondition(state.setAgentsOnly(true) && state.setAgentsOnly(false))
+            await dictation.start(from: "new draft")
+            old("stale", [], 1, true, false)
+            for _ in 0..<10 { await Task.yield() }
+            precondition(dictation.isRecording && state.optionalWork.busy && dictation.transcript.isEmpty,
+                         "An old recognition result ended or changed its replacement")
+            precondition(!state.setAgentsOnly(true))
+            dictation.stop()
+            dictation.stop() // Repeated teardown cannot release another operation.
+            precondition(!state.optionalWork.busy && state.setAgentsOnly(true) && state.setAgentsOnly(false))
+        }
+        // Explicit finish still holds ownership until its awaited final result.
+        await dictation.start(from: "finish")
+        let finish = Task { await dictation.finish() }
+        await eventually("Explicit dictation finish did not wait") { dictation.isFinishing }
+        precondition(!state.setAgentsOnly(true))
+        reports.last!("last words", [], 1, true, false)
+        let finalText = await finish.value
+        precondition(finalText == "finish last words")
+        precondition(!state.optionalWork.busy && state.setAgentsOnly(true) && state.setAgentsOnly(false))
+        precondition(starts == 5 && cancellations == 5 && stops >= 5)
+        let denied = MacDictation(authorization: { false })
+        await denied.start(from: "")
+        precondition(!state.optionalWork.busy && !denied.isStarting)
+        print("PASS actual MacDictation natural final/error, explicit finish, failed start and stale callbacks")
     }
 
     @MainActor static func testMusicRestoration(_ state: AppState) async {
