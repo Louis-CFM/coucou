@@ -1,6 +1,6 @@
 import Foundation
 
-/// A colour of the user's own for each pill's Mochi.
+/// A colour of the user's own for each pill's the mascot.
 ///
 /// `PillCatalog` keeps every default. This holds only what the user changed, by
 /// pill ID, so an empty preference paints the island exactly as the catalog
@@ -10,7 +10,7 @@ enum PillColors {
 
     /// What the palette offers, in the order it is shown. Every colour is one
     /// the catalog already uses, and all of them stay readable on the island's
-    /// black with Mochi's dark eyes, which a free colour picker could not promise.
+    /// black with the mascot's dark eyes, which a free colour picker could not promise.
     static let palette: [String] = [
         "#F5F6F8", "#F4505E", "#F29B38", "#FACC15", "#4ADE80",
         "#2DD4BF", "#38BDF8", "#818CF8", "#C084FC", "#E879F9",

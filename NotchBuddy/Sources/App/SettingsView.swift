@@ -102,7 +102,7 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
-    /// Shown inside the Coucou Flow window (GitHub build): one section, without this window's
+    /// Shown inside the Settings window: one section, without this window's
     /// sidebar, as the window has its own.
     private var embeddedSection: String? = nil
     private var section: String { embeddedSection ?? selectedSection }
@@ -130,7 +130,7 @@ struct SettingsView: View {
                             .resizable()
                             .frame(width: 32, height: 32)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Coucou")
+                            Text("Orca Notch")
                                 .font(.system(size: 13, weight: .semibold))
                             Text(appVersion)
                                 .font(.system(size: 11))
@@ -267,7 +267,7 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(!state.soundEnabled)
-                Text("Drop a file named like one of Mochi's sounds (finish.wav, approval.mp3, greet.m4a…) in the sounds folder to replace it, then Reload.")
+                Text("Orca Notch plays macOS system sounds. Drop a file named finish.wav, approval.mp3, question.aiff, error.wav or approve.wav in the sounds folder to replace one, then Reload.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -361,55 +361,6 @@ struct SettingsView: View {
                 .onChange(of: launchAtStartup) { _, on in toggleStartup(on) }
                 .padding(6)
         }
-
-        GroupBox(String(localized: "Language")) {
-            VStack(alignment: .leading, spacing: 10) {
-                Picker("", selection: $state.appLanguage) {
-                    Text(String(localized: "System")).tag("")
-                    Text("English").tag("en")
-                    Text("简体中文").tag("zh-Hans")
-                    Text("繁體中文").tag("zh-Hant")
-                    Text("हिन्दी").tag("hi")
-                    Text("Español").tag("es")
-                    Text("العربية").tag("ar")
-                    Text("Français").tag("fr")
-                    Text("বাংলা").tag("bn")
-                    Text("Português (Brasil)").tag("pt-BR")
-                    Text("Русский").tag("ru")
-                    Text("Bahasa Indonesia").tag("id")
-                    Text("Deutsch").tag("de")
-                    Text("Türkçe").tag("tr")
-                    Text("ไทย").tag("th")
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .onChange(of: state.appLanguage) { _, code in
-                    if code.isEmpty {
-                        UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-                    } else {
-                        UserDefaults.standard.set([code], forKey: "AppleLanguages")
-                    }
-                    UserDefaults.standard.synchronize()
-                }
-                HStack(spacing: 8) {
-                    Button(String(localized: "Restart Coucou")) {
-                        let appPath = Bundle.main.bundleURL.path
-                        let pid = ProcessInfo.processInfo.processIdentifier
-                        let task = Process()
-                        task.executableURL = URL(fileURLWithPath: "/bin/sh")
-                        task.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; open \"$1\"", "--", appPath]
-                        try? task.run()
-                        NSApp.terminate(nil)
-                    }
-                    .buttonStyle(.bordered)
-                    Text(String(localized: "Applies on next launch"))
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding(6)
-        }
-
     }
 
     private func refreshConnectedScreens() {
@@ -424,7 +375,7 @@ struct SettingsView: View {
     @ViewBuilder private var activePillsSection: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Choose the tools you use. Coucou only shows what you declare here.")
+                Text("Choose the tools you use. Orca Notch only shows what you declare here.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
@@ -614,7 +565,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(copilotHooksInstalled
                      ? String(localized: "hooks.copilot.installed")
-                     : "~/.copilot/hooks/coucou.json")
+                     : "~/.copilot/hooks/orca-notch.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
@@ -680,7 +631,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(openCodePluginInstalled
                      ? String(localized: "plugin.opencode.installed")
-                     : "~/.config/opencode/plugins/coucou.js")
+                     : "~/.config/opencode/plugins/orca-notch.js")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
@@ -713,7 +664,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(ampPluginInstalled
                      ? String(localized: "plugin.amp.installed")
-                     : "~/.config/amp/plugins/coucou.ts")
+                     : "~/.config/amp/plugins/orca-notch.ts")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
@@ -746,7 +697,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(hermesPluginInstalled
                      ? String(localized: "plugin.hermes.installed")
-                     : "~/.hermes/plugins/coucou/__init__.py")
+                     : "~/.hermes/plugins/orca-notch/__init__.py")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
                 HStack(spacing: 10) {
@@ -879,7 +830,7 @@ struct SettingsView: View {
                     }
                 }
                 Divider()
-                Text("Shows your Codex plan usage (weekly limit and free resets left) in the notch header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.")
+                Text("Shows your Codex plan usage (weekly limit and free resets left) in the notch header. Orca Notch asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1020,7 +971,7 @@ struct SettingsView: View {
             pendingGeminiJSON = try HookServer.shared.previewGeminiHooks(install: install)
             showGeminiDiff = true
             statusMessage = String(localized: "hooks.review-json")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1047,7 +998,7 @@ struct SettingsView: View {
             pendingAgyJSON = try HookServer.shared.previewAgyHooks(install: install)
             showAgyDiff = true
             statusMessage = String(localized: "hooks.review-json")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1074,7 +1025,7 @@ struct SettingsView: View {
             pendingCodexJSON = try HookServer.shared.previewCodexHooks(install: install)
             showCodexDiff = true
             statusMessage = String(localized: "hooks.review-json")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1101,7 +1052,7 @@ struct SettingsView: View {
             pendingCopilotJSON = try HookServer.shared.previewCopilotHooks(install: install)
             showCopilotDiff = true
             statusMessage = String(localized: "hooks.review-json")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1128,7 +1079,7 @@ struct SettingsView: View {
             pendingMuseJSON = try HookServer.shared.previewMuseHooks(install: install)
             showMuseDiff = true
             statusMessage = String(localized: "hooks.review-json")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1155,7 +1106,7 @@ struct SettingsView: View {
             pendingOpenCodeContent = try HookServer.shared.previewOpenCodePlugin(install: install)
             showOpenCodeDiff = true
             statusMessage = String(localized: "plugin.review-content")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1186,7 +1137,7 @@ struct SettingsView: View {
             pendingAmpContent = try HookServer.shared.previewAmpPlugin(install: install)
             showAmpDiff = true
             statusMessage = String(localized: "plugin.review-content")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1217,7 +1168,7 @@ struct SettingsView: View {
             pendingHermesPluginContent = try HookServer.shared.previewHermesPlugin(install: install)
             showHermesPluginDiff = true
             statusMessage = String(localized: "plugin.review-content")
-        } catch let e as NSError where e.domain == "CoucouNoop" {
+        } catch let e as NSError where e.domain == "OrcaNotchNoop" {
             statusMessage = e.localizedDescription
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
@@ -1536,7 +1487,7 @@ struct ShortcutRecorderButton: View {
 }
 
 extension SettingsView {
-    /// One section of Settings, for the Coucou Flow window.
+    /// One section of Settings, for the Orca Notch Flow window.
     init(embeddedSection: String) {
         self.init()
         self.embeddedSection = embeddedSection

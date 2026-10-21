@@ -14,7 +14,7 @@ final class HookServer: @unchecked Sendable {
     // Support directory paths
     static var supportDir: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("NotchBuddy")
+            .appendingPathComponent("OrcaNotch")
     }
     static var socketPath: String {
         return supportDir.appendingPathComponent("nb.sock").path
@@ -58,7 +58,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Approval queue helpers
 
-    /// Note shown when a request was answered outside Coucou.
+    /// Note shown when a request was answered outside Orca Notch.
     @MainActor
     private func handledNote(pill: String) -> String {
         switch pill {
@@ -117,7 +117,7 @@ final class HookServer: @unchecked Sendable {
     private func removeApproval(id: UUID, answer json: String? = nil, note: String? = nil) {
         guard let entry = approvals.remove(id: id) else { return }
         let age = Int(Date().timeIntervalSince(entry.received))
-        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Coucou" } ?? note ?? "dropped")")
+        nbLog("Approval \(entry.tool) closed after \(age) s: \(json.map { _ in "answered from Orca Notch" } ?? note ?? "dropped")")
         let source = approvalSources.removeValue(forKey: id)
         if let json {
             let fd = entry.fd
@@ -352,10 +352,10 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
-        let coucouKind = payload["coucou_kind"] as? String ?? ""
+        let orcaNotchKind = payload["orca_notch_kind"] as? String ?? ""
 
         // statusline payloads are handled separately — no session, no reveal, no sound
-        if coucouKind == "statusline" {
+        if orcaNotchKind == "statusline" {
             Task { @MainActor in self.processStatusLine(payload: payload) }
             sendLine(fd: fd, text: #"{"ok":true}"#)
             close(fd)
@@ -363,7 +363,7 @@ final class HookServer: @unchecked Sendable {
         }
 
         // AskUserQuestion via --ask PreToolUse hook — hold fd open like PermissionRequest
-        if coucouKind == "ask_user_question" {
+        if orcaNotchKind == "ask_user_question" {
             let toolInput = payload["tool_input"] as? [String: Any] ?? [:]
             if let parsed = AskQuestion.parse(toolInput: toolInput) {
                 Task { @MainActor in self.processQuestionRequest(fd: fd, parsed: parsed, payload: payload) }
@@ -390,7 +390,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Event → AppState
     // Claude Code events route to the permanent "integration_claude" task.
-    // Events tagged with a valid coucou_agent route to a dynamic "integration_<agent>" task.
+    // Events tagged with a valid orca_notch_agent route to a dynamic "integration_<agent>" task.
     // View switches only happen if VS Code (or the agent pill) is currently focused.
     // When not focused: state updates animate the mini bot in the pill; badge shown for alerts.
 
@@ -404,8 +404,8 @@ final class HookServer: @unchecked Sendable {
         let projectName = sessionName(payload, cwd: cwd)
 
         // Determine which pill this event belongs to.
-        // coucou_agent must be lowercase, digits and hyphens, ≤ 24 chars.
-        let rawAgent = payload["coucou_agent"] as? String ?? ""
+        // orca_notch_agent must be lowercase, digits and hyphens, ≤ 24 chars.
+        let rawAgent = payload["orca_notch_agent"] as? String ?? ""
         let validAgent = Self.validateAgent(rawAgent)
 
         let termProgram = payload["term_program"] as? String ?? ""
@@ -420,7 +420,7 @@ final class HookServer: @unchecked Sendable {
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
-        // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
+        // • other valid orca_notch_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
         // • VS Code → integration_claude
         // • a known terminal (Warp, Terminal, iTerm…) → integration_claude, host recorded on the task
@@ -648,7 +648,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Agent validation + dynamic pill
 
-    /// Validates a coucou_agent name: lowercase, digits and hyphens, 1–24 chars.
+    /// Validates a orca_notch_agent name: lowercase, digits and hyphens, 1–24 chars.
     /// "claude" is reserved and rejected so it cannot impersonate the Claude Code pill.
     /// Returns the name unchanged if valid, nil otherwise.
     private static func validateAgent(_ raw: String) -> String? {
@@ -740,7 +740,7 @@ final class HookServer: @unchecked Sendable {
             // Non-alert work events: reveal compact only, never force-expand
             NotificationCenter.default.post(name: .hookReveal, object: nil)
         }
-        // Already compact and non-alert: Mochi state update is enough, no expand
+        // Already compact and non-alert: the mascot state update is enough, no expand
     }
 
     // MARK: - Status line (plan gauge)
@@ -767,7 +767,7 @@ final class HookServer: @unchecked Sendable {
         let cwd       = payload["cwd"]        as? String ?? ""
         let projectName = sessionName(payload, cwd: cwd)
 
-        let rawAgent = payload["coucou_agent"] as? String ?? ""
+        let rawAgent = payload["orca_notch_agent"] as? String ?? ""
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
@@ -776,17 +776,17 @@ final class HookServer: @unchecked Sendable {
             bundleId.lowercased().contains("vscode"))
 
         // Codex, Copilot CLI and Muse Code get the same approval card as Claude Code / Cursor.
-        // Other external agents (any other coucou_agent) answer immediately with "ask"
+        // Other external agents (any other orca_notch_agent) answer immediately with "ask"
         // so the agent re-asks in its own terminal — they do not get a notch card.
         let isCodexRequest   = rawAgent == "codex"
         let isCopilotRequest = rawAgent == "copilot"
         let isMuseRequest    = rawAgent == "muse"
-        // isHermesRequest is true only when the plugin sent coucou_has_transport: true,
+        // isHermesRequest is true only when the plugin sent orca_notch_has_transport: true,
         // meaning register_approval_transport is wired and Hermes will honour our choice.
         // Without that flag the request falls through to "ask" so Hermes handles it natively.
         let isHermesRequest  = rawAgent == "hermes"
             && UserDefaults.standard.bool(forKey: "hermesApprovalsEnabled")
-            && (payload["coucou_has_transport"] as? Bool == true)
+            && (payload["orca_notch_has_transport"] as? Bool == true)
         if !isCodexRequest && !isCopilotRequest && !isMuseRequest && !isHermesRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -945,7 +945,7 @@ final class HookServer: @unchecked Sendable {
         let cwd       = payload["cwd"]        as? String ?? ""
         let projectName = sessionName(payload, cwd: cwd)
 
-        let rawAgent    = payload["coucou_agent"] as? String ?? ""
+        let rawAgent    = payload["orca_notch_agent"] as? String ?? ""
         let termProgram = payload["term_program"]  as? String ?? ""
         let bundleId    = payload["bundle_id"]     as? String ?? ""
         let isCursorEditor = bundleId.lowercased() == "com.todesktop.230313mzl4w4u92"
@@ -1036,7 +1036,7 @@ final class HookServer: @unchecked Sendable {
     }
 
     /// Records the session an event came from, then refreshes its card.
-    /// `externalAgent` is the validated `coucou_agent` name for a third-party agent pill,
+    /// `externalAgent` is the validated `orca_notch_agent` name for a third-party agent pill,
     /// nil for a workspace pill.
     @MainActor
     private func upsertTask(pill: String, display: PillSessionRegistry.Display,
@@ -1137,9 +1137,9 @@ final class HookServer: @unchecked Sendable {
 
     private func aliasProjectName(_ name: String) -> String {
         let aliases: [String: String] = [
-            "notch-buddy":  "Notch Buddy",
-            "notchbuddy":   "Notch Buddy",
-            "notch_buddy":  "Notch Buddy",
+            "orca-notch":  "Orca Notch",
+            "orcanotch":     "Orca Notch",
+            "notch_buddy":  "Orca Notch",
         ]
         return aliases[name.lowercased()] ?? name
     }
@@ -1313,7 +1313,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Outdated hook detection
 
-    /// Returns true if settings.json has a Coucou hook that needs updating:
+    /// Returns true if settings.json has a Orca Notch hook that needs updating:
     /// either a PermissionRequest hook with timeout < 120s, or the AskUserQuestion
     /// PreToolUse matcher is missing (requires Claude Code 2.1.85+).
     static func hooksNeedUpdate() -> Bool {
@@ -1324,16 +1324,16 @@ final class HookServer: @unchecked Sendable {
               let hooks = settings["hooks"] as? [String: Any] else {
             return false
         }
-        // Track whether any Coucou hook is installed at all
-        var hasCoucouHooks = false
+        // Track whether any Orca Notch hook is installed at all
+        var hasOrcaNotchHooks = false
 
         if let permReqHooks = hooks["PermissionRequest"] as? [[String: Any]] {
             for matcher in permReqHooks {
                 if let hookList = matcher["hooks"] as? [[String: Any]] {
                     for hook in hookList {
                         if let cmd = hook["command"] as? String,
-                           cmd.contains("NotchBuddy") || cmd.contains("coucou") {
-                            hasCoucouHooks = true
+                           cmd.contains("OrcaNotch") {
+                            hasOrcaNotchHooks = true
                             if let timeout = hook["timeout"] as? Int, timeout < 120 { return true }
                         }
                     }
@@ -1342,13 +1342,13 @@ final class HookServer: @unchecked Sendable {
         }
 
         // Check that the AskUserQuestion PreToolUse entry exists
-        if hasCoucouHooks {
+        if hasOrcaNotchHooks {
             let preToolHooks = hooks["PreToolUse"] as? [[String: Any]] ?? []
             let hasAskEntry = preToolHooks.contains { m in
                 (m["matcher"] as? String) == "AskUserQuestion"
                 && (m["hooks"] as? [[String: Any]])?.contains {
                     let cmd = $0["command"] as? String ?? ""
-                    return cmd.contains("NotchBuddy") || cmd.contains("coucou")
+                    return cmd.contains("OrcaNotch")
                 } ?? false
             }
             if !hasAskEntry { return true }
@@ -1402,7 +1402,7 @@ final class HookServer: @unchecked Sendable {
         var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
             var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
+            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("OrcaNotch") == true || ($0["command"] as? String)?.contains("orca-notch") == true } ?? false }
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
         }
@@ -1429,8 +1429,8 @@ final class HookServer: @unchecked Sendable {
             if var matchers = hooks[key] as? [[String: Any]] {
                 matchers.removeAll { matcher in
                     (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true ||
-                        ($0["command"] as? String)?.contains("coucou") == true
+                        ($0["command"] as? String)?.contains("OrcaNotch") == true ||
+                        ($0["command"] as? String)?.contains("orca-notch") == true
                     } ?? false
                 }
                 if matchers.isEmpty { hooks.removeValue(forKey: key) }
@@ -1493,7 +1493,7 @@ final class HookServer: @unchecked Sendable {
             try? clCheck.run()
             clCheck.waitUntilExit()
             if clCheck.terminationStatus != 0 {
-                throw NSError(domain: "Coucou", code: 1,
+                throw NSError(domain: "OrcaNotch", code: 1,
                               userInfo: [NSLocalizedDescriptionKey:
                                   "Command Line Tools are required but not installed. Run: xcode-select --install"])
             }
@@ -1577,7 +1577,7 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - Claude Code installed-state detection (both builds)
 
-    /// True when ~/.claude/settings.json already routes Claude Code events to Coucou.
+    /// True when ~/.claude/settings.json already routes Claude Code events to Orca Notch.
     /// Cursor sessions ride on these same hooks, so they share this state.
     static func claudeHooksInstalled() -> Bool {
         let url = FileManager.default.homeDirectoryForCurrentUser
@@ -1585,7 +1585,7 @@ final class HookServer: @unchecked Sendable {
         guard let data = try? Data(contentsOf: url),
               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         else { return false }
-        return coucouHooksPresent(inSettings: json)
+        return orcaNotchHooksPresent(inSettings: json)
     }
 
     // MARK: - Gemini CLI and Antigravity hook installers  
@@ -1623,8 +1623,8 @@ final class HookServer: @unchecked Sendable {
     static func agyHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: agyHooksURL),
               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let coucou = root["coucou"] else { return false }
-        let json = (try? JSONSerialization.data(withJSONObject: coucou))
+              let orcaNotch = root["orca-notch"] else { return false }
+        let json = (try? JSONSerialization.data(withJSONObject: orcaNotch))
             .flatMap { String(data: $0, encoding: .utf8) } ?? ""
         return json.contains("nb-hook")
     }
@@ -1638,7 +1638,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.geminiSettingsURL
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+            throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: "No Gemini CLI hooks to remove."
             ])
         }
@@ -1654,7 +1654,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.geminiSettingsURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "~/.gemini/settings.json changed since preview. Refresh and try again."
             ])
         }
@@ -1667,8 +1667,8 @@ final class HookServer: @unchecked Sendable {
         var settings = try Self.strictReadJSONObject(at: Self.geminiSettingsURL,
                                                      label: "~/.gemini/settings.json")
         if let raw = settings["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         let base = hookBase()
@@ -1684,8 +1684,8 @@ final class HookServer: @unchecked Sendable {
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
         for (geminiEvent, normalizedEvent, timeout) in events {
             if let raw = hooks[geminiEvent], !(raw is [[String: Any]]) {
-                throw NSError(domain: "Coucou", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\"[\"\(geminiEvent)\"] has an unexpected type — Coucou has not touched it."
+                throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\"[\"\(geminiEvent)\"] has an unexpected type — Orca Notch has not touched it."
                 ])
             }
             var groups = hooks[geminiEvent] as? [[String: Any]] ?? []
@@ -1708,8 +1708,8 @@ final class HookServer: @unchecked Sendable {
         var settings = try Self.strictReadJSONObject(at: Self.geminiSettingsURL,
                                                      label: "~/.gemini/settings.json")
         if let raw = settings["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.gemini/settings.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         if var hooks = settings["hooks"] as? [String: Any] {
@@ -1734,7 +1734,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.agyHooksURL
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+            throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: "No Antigravity hooks to remove."
             ])
         }
@@ -1750,7 +1750,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.agyHooksURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "~/.gemini/config/hooks.json changed since preview. Refresh and try again."
             ])
         }
@@ -1765,20 +1765,20 @@ final class HookServer: @unchecked Sendable {
         let base = hookBase()
         // PreToolUse / PostToolUse: tool-level hooks — use matcher group
         // PreInvocation / PostInvocation / Stop: lifecycle hooks — direct handler, no matcher
-        var coucou: [String: Any] = [:]
+        var orcaNotch: [String: Any] = [:]
         for event in ["PreToolUse", "PostToolUse"] {
             let hook: [String: Any] = ["type": "command",
                                        "command": "\(base) --agent antigravity \(event)",
                                        "timeout": 10]
-            coucou[event] = [["matcher": "*", "hooks": [hook]]]
+            orcaNotch[event] = [["matcher": "*", "hooks": [hook]]]
         }
         for event in ["PreInvocation", "PostInvocation", "Stop"] {
             let hook: [String: Any] = ["type": "command",
                                        "command": "\(base) --agent antigravity \(event)",
                                        "timeout": 10]
-            coucou[event] = [hook]
+            orcaNotch[event] = [hook]
         }
-        root["coucou"] = coucou
+        root["orca-notch"] = orcaNotch
         return try JSONSerialization.data(withJSONObject: root,
                                          options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     }
@@ -1786,7 +1786,7 @@ final class HookServer: @unchecked Sendable {
     private func withoutAgyHooks() throws -> Data {
         var root = try Self.strictReadJSONObject(at: Self.agyHooksURL,
                                                  label: "~/.gemini/config/hooks.json")
-        root.removeValue(forKey: "coucou")
+        root.removeValue(forKey: "orca-notch")
         return try JSONSerialization.data(withJSONObject: root,
                                          options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     }
@@ -1806,13 +1806,13 @@ final class HookServer: @unchecked Sendable {
         let data: Data
         do { data = try Data(contentsOf: url) }
         catch {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "\(label) cannot be read — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "\(label) cannot be read — Orca Notch has not touched it."
             ])
         }
         guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "\(label) is not valid JSON — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "\(label) is not valid JSON — Orca Notch has not touched it."
             ])
         }
         return obj
@@ -1829,7 +1829,7 @@ final class HookServer: @unchecked Sendable {
                 .appendingPathComponent("\(suffix).bak-\(fmt.string(from: Date()))")
             do { try fm.copyItem(at: url, to: backupURL) }
             catch {
-                throw NSError(domain: "Coucou", code: 3, userInfo: [
+                throw NSError(domain: "OrcaNotch", code: 3, userInfo: [
                     NSLocalizedDescriptionKey: "Could not back up \(url.lastPathComponent): \(error.localizedDescription)"
                 ])
             }
@@ -1863,7 +1863,7 @@ final class HookServer: @unchecked Sendable {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
     }
 
-    /// True when ~/.codex/hooks.json already routes Codex events to Coucou's nb-hook.
+    /// True when ~/.codex/hooks.json already routes Codex events to Orca Notch's nb-hook.
     static func codexHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: codexHooksURL),
               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -1889,7 +1889,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.codexHooksURL
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+            throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: "No Codex hooks to remove."
             ])
         }
@@ -1905,7 +1905,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.codexHooksURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "~/.codex/hooks.json changed since preview. Refresh and try again."
             ])
         }
@@ -1917,8 +1917,8 @@ final class HookServer: @unchecked Sendable {
     private func buildCodexHooksData() throws -> Data {
         var root = try Self.strictReadJSONObject(at: Self.codexHooksURL, label: "~/.codex/hooks.json")
         if let raw = root["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         let base = hookBase()
@@ -1928,7 +1928,7 @@ final class HookServer: @unchecked Sendable {
             ("SessionStart",    10,  nil),
             ("UserPromptSubmit", 10, nil),
             ("PreToolUse",      10,  nil),
-            ("PermissionRequest", 120, "Waiting for your answer in the notch (Coucou)"),
+            ("PermissionRequest", 120, "Waiting for your answer in the notch (Orca Notch)"),
             ("PostToolUse",     10,  nil),
             ("Stop",            10,  nil),
             ("SubagentStart",   10,  nil),
@@ -1939,12 +1939,12 @@ final class HookServer: @unchecked Sendable {
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         for (event, timeout, statusMsg) in events {
             if let raw = hooks[event], !(raw is [[String: Any]]) {
-                throw NSError(domain: "Coucou", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\"[\"\(event)\"] has an unexpected type — Coucou has not touched it."
+                throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\"[\"\(event)\"] has an unexpected type — Orca Notch has not touched it."
                 ])
             }
             var groups = hooks[event] as? [[String: Any]] ?? []
-            // Remove existing Coucou entries
+            // Remove existing Orca Notch entries
             groups = removeNbHookEntries(from: groups)
             var hookEntry: [String: Any] = [
                 "type": "command",
@@ -1963,8 +1963,8 @@ final class HookServer: @unchecked Sendable {
     private func withoutCodexHooks() throws -> Data {
         var root = try Self.strictReadJSONObject(at: Self.codexHooksURL, label: "~/.codex/hooks.json")
         if let raw = root["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.codex/hooks.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         if var hooks = root["hooks"] as? [String: Any] {
@@ -1984,10 +1984,10 @@ final class HookServer: @unchecked Sendable {
 
     static var copilotHooksURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".copilot/hooks/coucou.json")
+            .appendingPathComponent(".copilot/hooks/orca-notch.json")
     }
 
-    /// True when ~/.copilot/hooks/coucou.json already routes Copilot events to Coucou's nb-hook.
+    /// True when ~/.copilot/hooks/orca-notch.json already routes Copilot events to Orca Notch's nb-hook.
     static func copilotHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: copilotHooksURL),
               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -2009,7 +2009,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.copilotHooksURL
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+            throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: "No Copilot hooks to remove."
             ])
         }
@@ -2030,12 +2030,12 @@ final class HookServer: @unchecked Sendable {
         let url = Self.copilotHooksURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.copilot/hooks/coucou.json changed since preview. Refresh and try again."
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.copilot/hooks/orca-notch.json changed since preview. Refresh and try again."
             ])
         }
         if let data = _pendingCopilotData {
-            try writeJSONFile(data, to: url, suffix: "coucou.json")
+            try writeJSONFile(data, to: url, suffix: "orca-notch.json")
         } else {
             // Uninstall: delete the file entirely
             try FileManager.default.removeItem(at: url)
@@ -2046,10 +2046,10 @@ final class HookServer: @unchecked Sendable {
 
     private func buildCopilotHooksData() throws -> Data {
         var root = try Self.strictReadJSONObject(at: Self.copilotHooksURL,
-                                                  label: "~/.copilot/hooks/coucou.json")
+                                                  label: "~/.copilot/hooks/orca-notch.json")
         if let raw = root["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.copilot/hooks/coucou.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.copilot/hooks/orca-notch.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         let base = hookBase()
@@ -2069,8 +2069,8 @@ final class HookServer: @unchecked Sendable {
         var hooks = root["hooks"] as? [String: Any] ?? [:]
         for (event, timeout) in events {
             if let raw = hooks[event], !(raw is [[String: Any]]) {
-                throw NSError(domain: "Coucou", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "~/.copilot/hooks/coucou.json: \"hooks\"[\"\(event)\"] has an unexpected type — Coucou has not touched it."
+                throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.copilot/hooks/orca-notch.json: \"hooks\"[\"\(event)\"] has an unexpected type — Orca Notch has not touched it."
                 ])
             }
             var entries = hooks[event] as? [[String: Any]] ?? []
@@ -2086,7 +2086,7 @@ final class HookServer: @unchecked Sendable {
 
     private func withoutCopilotHooks() throws -> Data {
         var root = try Self.strictReadJSONObject(at: Self.copilotHooksURL,
-                                                  label: "~/.copilot/hooks/coucou.json")
+                                                  label: "~/.copilot/hooks/orca-notch.json")
         if var hooks = root["hooks"] as? [String: Any] {
             for key in hooks.keys {
                 if var entries = hooks[key] as? [[String: Any]] {
@@ -2107,7 +2107,7 @@ final class HookServer: @unchecked Sendable {
             .appendingPathComponent(".config/muse/settings.json")
     }
 
-    /// True when ~/.config/muse/settings.json already routes Muse events to Coucou's nb-hook.
+    /// True when ~/.config/muse/settings.json already routes Muse events to Orca Notch's nb-hook.
     static func museHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: museSettingsURL),
               let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -2135,7 +2135,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.museSettingsURL
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install && !exists {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+            throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: "No Muse Code hooks to remove."
             ])
         }
@@ -2151,7 +2151,7 @@ final class HookServer: @unchecked Sendable {
         let url = Self.museSettingsURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "~/.config/muse/settings.json changed since preview. Refresh and try again."
             ])
         }
@@ -2164,8 +2164,8 @@ final class HookServer: @unchecked Sendable {
         var settings = try Self.strictReadJSONObject(at: Self.museSettingsURL,
                                                       label: "~/.config/muse/settings.json")
         if let raw = settings["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/muse/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.config/muse/settings.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         let base = hookBase()
@@ -2183,8 +2183,8 @@ final class HookServer: @unchecked Sendable {
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
         for (event, timeoutSec) in events {
             if let raw = hooks[event], !(raw is [[String: Any]]) {
-                throw NSError(domain: "Coucou", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "~/.config/muse/settings.json: \"hooks\"[\"\(event)\"] has an unexpected type — Coucou has not touched it."
+                throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "~/.config/muse/settings.json: \"hooks\"[\"\(event)\"] has an unexpected type — Orca Notch has not touched it."
                 ])
             }
             var groups = hooks[event] as? [[String: Any]] ?? []
@@ -2207,8 +2207,8 @@ final class HookServer: @unchecked Sendable {
         var settings = try Self.strictReadJSONObject(at: Self.museSettingsURL,
                                                       label: "~/.config/muse/settings.json")
         if let raw = settings["hooks"], !(raw is [String: Any]) {
-            throw NSError(domain: "Coucou", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/muse/settings.json: \"hooks\" has an unexpected type — Coucou has not touched it."
+            throw NSError(domain: "OrcaNotch", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "~/.config/muse/settings.json: \"hooks\" has an unexpected type — Orca Notch has not touched it."
             ])
         }
         if var hooks = settings["hooks"] as? [String: Any] {
@@ -2231,7 +2231,7 @@ final class HookServer: @unchecked Sendable {
 
     static var openCodePluginURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/opencode/plugins/coucou.js")
+            .appendingPathComponent(".config/opencode/plugins/orca-notch.js")
     }
 
     static func openCodePluginInstalled() -> Bool {
@@ -2244,8 +2244,8 @@ final class HookServer: @unchecked Sendable {
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
         return """
-// Coucou hook plugin for OpenCode — generated by Coucou.app
-// Forwards every event to the Coucou notch (fire-and-forget, never blocks).
+// Orca Notch hook plugin for OpenCode — generated by Orca Notch
+// Forwards every event to the Orca Notch notch (fire-and-forget, never blocks).
 import { spawn } from 'node:child_process';
 
 const HOOK = '\(path)';
@@ -2267,7 +2267,7 @@ function forward(hook_event_name, payload) {
   p.unref();
 }
 
-export const CoucouPlugin = async (_ctx) => ({
+export const OrcaNotchPlugin = async (_ctx) => ({
   event: async ({ event }) => {
     const hook_event_name = EVENT_MAP[event.type];
     if (!hook_event_name) return;
@@ -2304,7 +2304,7 @@ export const CoucouPlugin = async (_ctx) => ({
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install {
             guard exists else {
-                throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                     NSLocalizedDescriptionKey: "No OpenCode plugin to remove."
                 ])
             }
@@ -2325,8 +2325,8 @@ export const CoucouPlugin = async (_ctx) => ({
         let url = Self.openCodePluginURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/opencode/plugins/coucou.js changed since preview. Refresh and try again."
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.config/opencode/plugins/orca-notch.js changed since preview. Refresh and try again."
             ])
         }
         guard let content = _pendingOpenCodeContent else {
@@ -2339,7 +2339,7 @@ export const CoucouPlugin = async (_ctx) => ({
             fmt.locale = Locale(identifier: "en_US_POSIX")
             fmt.dateFormat = "yyyyMMdd-HHmmss"
             let backupURL = url.deletingLastPathComponent()
-                .appendingPathComponent("coucou.js.bak-\(fmt.string(from: Date()))")
+                .appendingPathComponent("orca-notch.js.bak-\(fmt.string(from: Date()))")
             try fm.copyItem(at: url, to: backupURL)
         }
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -2352,9 +2352,9 @@ export const CoucouPlugin = async (_ctx) => ({
         let url = Self.openCodePluginURL
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-        guard content.contains("generated by Coucou") else {
-            throw NSError(domain: "Coucou", code: 3, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/opencode/plugins/coucou.js was not generated by Coucou — not deleting it."
+        guard content.contains("generated by Orca Notch") else {
+            throw NSError(domain: "OrcaNotch", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "~/.config/opencode/plugins/orca-notch.js was not generated by Orca Notch — not deleting it."
             ])
         }
         try FileManager.default.removeItem(at: url)
@@ -2367,7 +2367,7 @@ export const CoucouPlugin = async (_ctx) => ({
 
     static var ampPluginURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/amp/plugins/coucou.ts")
+            .appendingPathComponent(".config/amp/plugins/orca-notch.ts")
     }
 
     static func ampPluginInstalled() -> Bool {
@@ -2380,8 +2380,8 @@ export const CoucouPlugin = async (_ctx) => ({
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
         return """
-// Coucou hook plugin for Amp — generated by Coucou.app
-// Forwards every event to the Coucou notch (display only, never blocks).
+// Orca Notch hook plugin for Amp — generated by Orca Notch
+// Forwards every event to the Orca Notch notch (display only, never blocks).
 import { spawn } from 'node:child_process';
 
 const HOOK = '\(path)';
@@ -2412,7 +2412,7 @@ export default function (amp: any): void {
         let exists = FileManager.default.fileExists(atPath: url.path)
         if !install {
             guard exists else {
-                throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                     NSLocalizedDescriptionKey: "No Amp plugin to remove."
                 ])
             }
@@ -2433,8 +2433,8 @@ export default function (amp: any): void {
         let url = Self.ampPluginURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/amp/plugins/coucou.ts changed since preview. Refresh and try again."
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.config/amp/plugins/orca-notch.ts changed since preview. Refresh and try again."
             ])
         }
         guard let content = _pendingAmpContent else {
@@ -2447,7 +2447,7 @@ export default function (amp: any): void {
             fmt.locale = Locale(identifier: "en_US_POSIX")
             fmt.dateFormat = "yyyyMMdd-HHmmss"
             let backupURL = url.deletingLastPathComponent()
-                .appendingPathComponent("coucou.ts.bak-\(fmt.string(from: Date()))")
+                .appendingPathComponent("orca-notch.ts.bak-\(fmt.string(from: Date()))")
             try fm.copyItem(at: url, to: backupURL)
         }
         try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -2460,9 +2460,9 @@ export default function (amp: any): void {
         let url = Self.ampPluginURL
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-        guard content.contains("generated by Coucou") else {
-            throw NSError(domain: "Coucou", code: 3, userInfo: [
-                NSLocalizedDescriptionKey: "~/.config/amp/plugins/coucou.ts was not generated by Coucou — not deleting it."
+        guard content.contains("generated by Orca Notch") else {
+            throw NSError(domain: "OrcaNotch", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "~/.config/amp/plugins/orca-notch.ts was not generated by Orca Notch — not deleting it."
             ])
         }
         try FileManager.default.removeItem(at: url)
@@ -2477,7 +2477,7 @@ export default function (amp: any): void {
 
     static var hermesPluginDir: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".hermes/plugins/coucou")
+            .appendingPathComponent(".hermes/plugins/orca-notch")
     }
     static var hermesInitPyURL: URL { hermesPluginDir.appendingPathComponent("__init__.py") }
     static var hermesPluginYamlURL: URL { hermesPluginDir.appendingPathComponent("plugin.yaml") }
@@ -2575,8 +2575,8 @@ export default function (amp: any): void {
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
         return """
-# Coucou hook plugin for Hermes Agent — generated by Coucou.app
-# Session/tool events → Coucou notch (fire-and-forget, never blocks).
+# Orca Notch hook plugin for Hermes Agent — generated by Orca Notch
+# Session/tool events → Orca Notch notch (fire-and-forget, never blocks).
 # Approval transport: uses register_approval_transport when available (future Hermes),
 # falls back to pre_approval_request observer-only hook (hermes 0.15.x).
 import json, subprocess, threading
@@ -2665,7 +2665,7 @@ def register(ctx) -> None:
     ctx.register_hook('post_tool_call',   post_tool_call)
 
     if hasattr(ctx, 'register_approval_transport'):
-        # Hermes version supports transport API — Coucou shows a real Allow/Deny card
+        # Hermes version supports transport API — Orca Notch shows a real Allow/Deny card
         # and returns the user's choice to Hermes.
         def _present(request) -> object:
             sid = (getattr(request, 'session_id', None)
@@ -2680,8 +2680,8 @@ def register(ctx) -> None:
             payload = json.dumps({
                 'hook_event_name': 'PermissionRequest',
                 'session_id': sid,
-                'coucou_agent': 'hermes',
-                'coucou_has_transport': True,
+                'orca_notch_agent': 'hermes',
+                'orca_notch_has_transport': True,
                 'tool_name': cmd,
                 'tool_input': {'command': cmd, 'description': desc},
             }).encode()
@@ -2701,7 +2701,7 @@ def register(ctx) -> None:
                 # Fall back to Hermes' native prompt on any error.
                 return request.respond('deny')
 
-        ctx.register_approval_transport('coucou', _present)
+        ctx.register_approval_transport('orca-notch', _present)
     else:
         # Observer-only hook (hermes 0.15.x): Hermes still controls the decision.
         # Fire a PreToolUse-style step so the notch shows "⏳ Approval pending in Hermes"
@@ -2723,12 +2723,12 @@ def register(ctx) -> None:
     }
 
     private static let hermesPluginYaml = """
-name: coucou
+name: orca-notch
 version: "1.0"
-description: Coucou notch integration — generated by Coucou.app
+description: Orca Notch notch integration — generated by Orca Notch
 """
 
-    /// Merges Coucou keys into a Hermes config.yaml string without touching other settings.
+    /// Merges Orca Notch keys into a Hermes config.yaml string without touching other settings.
     ///
     /// Returns the merged YAML string, or nil if the file uses an unsupported structure
     /// (flow maps `{…}`, YAML anchors `&`, multi-document `---`) that the line-level
@@ -2784,7 +2784,7 @@ description: Coucou notch integration — generated by Coucou.app
         }
 
         // --- security.approval ---
-        let transportLine = "\(ind2)transport: coucou"
+        let transportLine = "\(ind2)transport: orca-notch"
         let fallbackLine  = "\(ind2)transport_fallback: builtin"
 
         func ensureApprovalTransport() {
@@ -2826,19 +2826,19 @@ description: Coucou notch integration — generated by Coucou.app
         }
 
         func removeApprovalTransport() {
-            // Only remove exact Coucou-written transport keys; don't touch unrelated keys.
+            // Only remove exact Orca Notch-written transport keys; don't touch unrelated keys.
             lines.removeAll { line in
                 let t = line.trimmingCharacters(in: .whitespaces)
-                return t == "transport: coucou" || t == "transport_fallback: builtin"
+                return t == "transport: orca-notch" || t == "transport_fallback: builtin"
             }
         }
 
         // --- plugins.enabled ---
-        // Note: actual plugin enable/disable is done via `hermes plugins enable/disable coucou`
+        // Note: actual plugin enable/disable is done via `hermes plugins enable/disable orca-notch`
         // CLI after writing/removing the plugin files. This block ensures the preview
         // shows the complete intended state of config.yaml.
-        func ensureCoucouPlugin() {
-            // "Already present" = coucou in the plugins.enabled list specifically.
+        func ensureOrcaNotchPlugin() {
+            // "Already present" = orca-notch in the plugins.enabled list specifically.
             // Check by finding plugins: section first, then enabled: sub-key within it.
             if let pluginsIdx = topLevelIndex(key: "plugins") {
                 let pluginsRange = sectionRange(from: pluginsIdx)
@@ -2849,41 +2849,41 @@ description: Coucou notch integration — generated by Coucou.app
                     let trimmed = enabledLine.trimmingCharacters(in: .whitespaces)
                     if trimmed.contains("[") && trimmed.contains("]") {
                         // Inline list: enabled: [x, y]  or  enabled: []
-                        if trimmed.contains("coucou") { return }   // already present
+                        if trimmed.contains("orca-notch") { return }   // already present
                         if trimmed == "enabled: []" || trimmed == "enabled:[]" {
                             // Empty inline list → expand to block entry
                             let prefix = enabledLine.prefix(while: { $0 == " " })
                             lines[enabledIdx] = "\(prefix)enabled:"
-                            lines.insert("\(prefix)\(ind)- coucou", at: enabledIdx + 1)
+                            lines.insert("\(prefix)\(ind)- orca-notch", at: enabledIdx + 1)
                         } else {
-                            lines[enabledIdx] = enabledLine.replacingOccurrences(of: "]", with: ", coucou]")
+                            lines[enabledIdx] = enabledLine.replacingOccurrences(of: "]", with: ", orca-notch]")
                         }
                     } else {
-                        // Block list — check if coucou is already a child of this enabled:
+                        // Block list — check if orca-notch is already a child of this enabled:
                         let enabledRange = sectionRange(from: enabledIdx)
                         let alreadyPresent = (enabledRange.lowerBound + 1 ..< enabledRange.upperBound)
-                            .contains { lines[$0].trimmingCharacters(in: .whitespaces) == "- coucou" }
+                            .contains { lines[$0].trimmingCharacters(in: .whitespaces) == "- orca-notch" }
                         if alreadyPresent { return }
                         // Insert after enabled:
                         let prefix = enabledLine.prefix(while: { $0 == " " })
-                        lines.insert("\(prefix)\(ind)- coucou", at: enabledIdx + 1)
+                        lines.insert("\(prefix)\(ind)- orca-notch", at: enabledIdx + 1)
                     }
                 } else {
                     // No enabled: key under plugins: — insert after plugins:
                     lines.insert("\(ind)enabled:", at: pluginsIdx + 1)
-                    lines.insert("\(ind)\(ind)- coucou", at: pluginsIdx + 2)
+                    lines.insert("\(ind)\(ind)- orca-notch", at: pluginsIdx + 2)
                 }
             } else {
                 // No plugins: section — append
                 if lines.last != "" { lines.append("") }
                 lines.append("plugins:")
                 lines.append("\(ind)enabled:")
-                lines.append("\(ind)\(ind)- coucou")
+                lines.append("\(ind)\(ind)- orca-notch")
             }
         }
 
-        func removeCoucouPlugin() {
-            // Remove the `- coucou` entry from plugins.enabled only.
+        func removeOrcaNotchPlugin() {
+            // Remove the `- orca-notch` entry from plugins.enabled only.
             // If that leaves enabled: with no entries, leave the key in place (don't remove it).
             guard let pluginsIdx = topLevelIndex(key: "plugins") else { return }
             let pluginsRange = sectionRange(from: pluginsIdx)
@@ -2893,24 +2893,24 @@ description: Coucou notch integration — generated by Coucou.app
             let enabledLine = lines[enabledIdx]
             let trimmed = enabledLine.trimmingCharacters(in: .whitespaces)
             if trimmed.contains("[") && trimmed.contains("]") {
-                // Inline list: remove coucou from it
+                // Inline list: remove orca-notch from it
                 let cleaned = trimmed
-                    .replacingOccurrences(of: ", coucou", with: "")
-                    .replacingOccurrences(of: "coucou, ", with: "")
-                    .replacingOccurrences(of: "coucou",   with: "")
+                    .replacingOccurrences(of: ", orca-notch", with: "")
+                    .replacingOccurrences(of: "orca-notch, ", with: "")
+                    .replacingOccurrences(of: "orca-notch",   with: "")
                 let prefix = enabledLine.prefix(while: { $0 == " " })
                 lines[enabledIdx] = "\(prefix)\(cleaned)"
             } else {
-                // Block list: remove the `- coucou` entry
+                // Block list: remove the `- orca-notch` entry
                 let enabledRange = sectionRange(from: enabledIdx)
                 // Collect indices to remove first, then remove in reverse to preserve indices.
                 let toRemove = (enabledRange.lowerBound + 1 ..< enabledRange.upperBound)
-                    .filter { lines[$0].trimmingCharacters(in: .whitespaces) == "- coucou" }
+                    .filter { lines[$0].trimmingCharacters(in: .whitespaces) == "- orca-notch" }
                 for i in toRemove.reversed() { lines.remove(at: i) }
             }
         }
 
-        ensureCoucouPlugin()
+        ensureOrcaNotchPlugin()
         if enableApprovals { ensureApprovalTransport() } else { removeApprovalTransport() }
         return lines.joined(separator: "\n")
     }
@@ -2918,7 +2918,7 @@ description: Coucou notch integration — generated by Coucou.app
     func previewHermesPlugin(install: Bool) throws -> String {
         if !install {
             guard FileManager.default.fileExists(atPath: Self.hermesInitPyURL.path) else {
-                throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+                throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                     NSLocalizedDescriptionKey: "No Hermes plugin to remove."
                 ])
             }
@@ -2939,8 +2939,8 @@ description: Coucou notch integration — generated by Coucou.app
         let url = Self.hermesInitPyURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "~/.hermes/plugins/coucou/__init__.py changed since preview. Refresh and try again."
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "~/.hermes/plugins/orca-notch/__init__.py changed since preview. Refresh and try again."
             ])
         }
         let fm = FileManager.default
@@ -2958,7 +2958,7 @@ description: Coucou notch integration — generated by Coucou.app
             try Self.hermesPluginYaml.write(to: Self.hermesPluginYamlURL, atomically: true, encoding: .utf8)
             // Register the plugin with the Hermes CLI so it appears in plugins.enabled.
             // Best-effort — silently ignored if hermes is not on PATH.
-            try? Self.runHermesCLI(["plugins", "enable", "coucou"])
+            try? Self.runHermesCLI(["plugins", "enable", "orca-notch"])
         }
         _pendingHermesPluginContent = nil
         _pendingHermesPluginFingerprint = nil
@@ -2968,14 +2968,14 @@ description: Coucou notch integration — generated by Coucou.app
         let url = Self.hermesInitPyURL
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-        guard content.contains("generated by Coucou") else {
-            throw NSError(domain: "Coucou", code: 3, userInfo: [
-                NSLocalizedDescriptionKey: "~/.hermes/plugins/coucou/__init__.py was not generated by Coucou — not deleting it."
+        guard content.contains("generated by Orca Notch") else {
+            throw NSError(domain: "OrcaNotch", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "~/.hermes/plugins/orca-notch/__init__.py was not generated by Orca Notch — not deleting it."
             ])
         }
         // Remove from hermes plugins.enabled first, then delete the files.
         // Best-effort — silently ignored if hermes is not on PATH.
-        try? Self.runHermesCLI(["plugins", "disable", "coucou"])
+        try? Self.runHermesCLI(["plugins", "disable", "orca-notch"])
         try FileManager.default.removeItem(at: Self.hermesPluginDir)
     }
 
@@ -2990,7 +2990,7 @@ description: Coucou notch integration — generated by Coucou.app
             (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.local/bin/hermes",
         ]
         guard let hermesBin = hermesPaths.first(where: { FileManager.default.fileExists(atPath: $0) }) else {
-            throw NSError(domain: "CoucouNoop", code: 0, userInfo: [
+            throw NSError(domain: "OrcaNotchNoop", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: "hermes CLI not found."
             ])
         }
@@ -3012,8 +3012,8 @@ description: Coucou notch integration — generated by Coucou.app
         let effectiveApprovals = enableApprovals && supportsTransport
         guard let merged = Self.mergedHermesConfig(base, enableApprovals: effectiveApprovals) else {
             _pendingHermesConfigContent = nil
-            throw NSError(domain: "Coucou", code: 4, userInfo: [
-                NSLocalizedDescriptionKey: "~/.hermes/config.yaml uses an unsupported structure (flow maps, YAML anchors, or multi-document). Edit it manually and add:\n  security:\n    approval:\n      transport: coucou\n      transport_fallback: builtin"
+            throw NSError(domain: "OrcaNotch", code: 4, userInfo: [
+                NSLocalizedDescriptionKey: "~/.hermes/config.yaml uses an unsupported structure (flow maps, YAML anchors, or multi-document). Edit it manually and add:\n  security:\n    approval:\n      transport: orca-notch\n      transport_fallback: builtin"
             ])
         }
         _pendingHermesConfigContent = merged
@@ -3026,7 +3026,7 @@ description: Coucou notch integration — generated by Coucou.app
         let url = Self.hermesConfigURL
         let current = (try? Data(contentsOf: url)) ?? Data()
         guard sha256Hex(current) == fp else {
-            throw NSError(domain: "Coucou", code: 1, userInfo: [
+            throw NSError(domain: "OrcaNotch", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "~/.hermes/config.yaml changed since preview. Refresh and try again."
             ])
         }
@@ -3055,7 +3055,7 @@ description: Coucou notch integration — generated by Coucou.app
 // MARK: - Notification names for hook server → controller communication
 
 extension Notification.Name {
-    static let hookExpand = Notification.Name("notchBuddy.hookExpand")
+    static let hookExpand = Notification.Name("orcaNotch.hookExpand")
 }
 
 // MARK: - nb-hook shell wrapper (same for both GitHub and App Store)
@@ -3066,7 +3066,7 @@ extension Notification.Name {
 
 private let nbHookShellWrapper = """
 #!/bin/sh
-# Coucou hook relay — always exits 0, never blocks Claude Code
+# Orca Notch hook relay — always exits 0, never blocks Claude Code
 HOOK_DIR="$(dirname "$0")"
 out=""
 if xcode-select -p >/dev/null 2>&1; then
@@ -3102,8 +3102,8 @@ exit 0
 
 private let nbHookPythonGitHub = """
 #!/usr/bin/env python3
-# nb-hook.py — Coucou hook relay for Claude Code and third-party agents (GitHub version)
-# Reads JSON from stdin, forwards to Coucou via Unix socket, translates response.
+# nb-hook.py — Orca Notch hook relay for Claude Code and third-party agents (GitHub version)
+# Reads JSON from stdin, forwards to Orca Notch via Unix socket, translates response.
 import sys, json, os, socket
 
 def normalize_event(name):
@@ -3207,13 +3207,13 @@ def main():
             return
 
     socket_path = os.path.expanduser(
-        '~/Library/Application Support/NotchBuddy/nb.sock'
+        '~/Library/Application Support/OrcaNotch/nb.sock'
     )
 
-    # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
+    # --statusline mode: relay rate_limits to Orca Notch, then delegate to saved previous
     if '--statusline' in sys.argv[1:]:
         relay = {
-            'coucou_kind': 'statusline',
+            'orca_notch_kind': 'statusline',
             'session_id': payload.get('session_id', ''),
             'rate_limits': payload.get('rate_limits', {}),
         }
@@ -3247,7 +3247,7 @@ def main():
         tool = payload.get('tool_name', '')
         if tool != 'AskUserQuestion':
             return  # Not an AskUserQuestion invocation — exit cleanly (no output)
-        payload['coucou_kind'] = 'ask_user_question'
+        payload['orca_notch_kind'] = 'ask_user_question'
         env = os.environ
         payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
         payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
@@ -3294,7 +3294,7 @@ def main():
         return
 
     # Parse --agent <name> and optional positional event from argv.
-    # --agent tags the payload with coucou_agent so the app routes to the right pill.
+    # --agent tags the payload with orca_notch_agent so the app routes to the right pill.
     # The positional arg is a fallback event name for agents that do not set hook_event_name.
     args = sys.argv[1:]
     agent = ''
@@ -3309,11 +3309,11 @@ def main():
                 arg_event = args[i]
             i += 1
     if agent:
-        payload.setdefault('coucou_agent', agent)
+        payload.setdefault('orca_notch_agent', agent)
     # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
     # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
-    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
-        payload['coucou_agent'] = 'claude-desktop'
+    if not payload.get('orca_notch_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
+        payload['orca_notch_agent'] = 'claude-desktop'
 
     # Enrich with terminal context
     env = os.environ
@@ -3342,7 +3342,7 @@ def main():
     # socket_path is already defined above
 
     if event == 'PermissionRequest':
-        # Block and wait for Coucou's decision (Claude Code allows up to 120s)
+        # Block and wait for Orca Notch's decision (Claude Code allows up to 120s)
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.settimeout(118)
@@ -3395,7 +3395,7 @@ def main():
                     if agent in ('copilot', 'muse'):
                         out = {'permissionDecision': 'deny'}
                     else:
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Coucou'}}}
+                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Orca Notch'}}}
                     sys.stdout.write(json.dumps(out) + '\\n')
                     sys.stdout.flush()
                     sys.exit(0)
@@ -3436,7 +3436,7 @@ def main():
         pass  # Always exit cleanly — never block the agent
 
     # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
-    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
+    # permission prompt (and the user's Always Allow); Orca Notch never allows a tool by itself.
     if agent == 'antigravity' and event == 'PreToolUse':
         sys.stdout.write('{"decision":"ask"}\\n')
         sys.stdout.flush()
@@ -3450,358 +3450,6 @@ except Exception:
     pass
 sys.exit(0)
 """
-
-// MARK: - nb-hook Python relay (App Store — socket in sandboxed container)
-
-private let nbHookPythonAppStore = """
-#!/usr/bin/env python3
-# nb-hook.py — Coucou (App Store) hook relay for Claude Code and third-party agents
-# Socket lives inside the sandboxed container; script runs outside the sandbox.
-import sys, json, os, socket
-
-def normalize_event(name):
-    mapping = {
-        'BeforeTool': 'PreToolUse', 'BeforeToolSelection': 'PreToolUse',
-        'AfterTool': 'PostToolUse', 'AfterModel': 'PostToolUse',
-        'BeforeAgent': 'UserPromptSubmit', 'AfterAgent': 'Stop',
-        'startup': 'SessionStart', 'exit': 'SessionEnd',
-        'PreInvocation': 'UserPromptSubmit', 'PostInvocation': 'PostToolUse',
-        'pre_tool_use': 'PreToolUse', 'post_tool_use': 'PostToolUse',
-        'user_prompt_submit': 'UserPromptSubmit', 'session_start': 'SessionStart',
-        'session_end': 'SessionEnd', 'stop': 'Stop',
-        'sessionStart': 'SessionStart', 'userPromptSubmitted': 'UserPromptSubmit',
-        'agentStop': 'Stop', 'notification': 'Notification',
-        'preToolUse': 'PreToolUse', 'postToolUse': 'PostToolUse',
-        'permissionRequest': 'PermissionRequest', 'sessionEnd': 'SessionEnd',
-    }
-    return mapping.get(name, name)
-
-def normalize_tool_fields(payload):
-    if 'tool_name' not in payload:
-        # Copilot sends toolName directly; other agents nest in toolCall
-        if payload.get('toolName'):
-            payload['tool_name'] = payload['toolName']
-        else:
-            tool = payload.get('toolCall')
-            if not isinstance(tool, dict):
-                tool = {}
-            name = tool.get('name') or payload.get('tool', '')
-            if name:
-                payload['tool_name'] = name
-    if 'tool_input' not in payload:
-        # Copilot sends toolArgs directly
-        tool_args = payload.get('toolArgs')
-        if isinstance(tool_args, dict):
-            payload['tool_input'] = tool_args
-        else:
-            tool = payload.get('toolCall') or {}
-            if isinstance(tool.get('args'), dict):
-                flat = dict(tool['args'])
-                for src, dst in [('CommandLine', 'command'), ('FilePath', 'file_path'),
-                                 ('Path', 'path'), ('Url', 'url'), ('Query', 'query'), ('Pattern', 'pattern')]:
-                    if src in flat:
-                        flat[dst] = flat[src]
-                payload['tool_input'] = flat
-    if 'session_id' not in payload:
-        for k in ['conversationId', 'conversation_id', 'sessionId', 'GEMINI_SESSION_ID']:
-            if payload.get(k):
-                payload['session_id'] = payload[k]
-                break
-        if 'session_id' not in payload:
-            sid = os.environ.get('GEMINI_SESSION_ID', '')
-            if sid:
-                payload['session_id'] = sid
-    # Copilot sends workdir for the current working directory
-    if not payload.get('cwd') and payload.get('workdir'):
-        payload['cwd'] = payload['workdir']
-
-def add_session_name(payload):
-    # Name the pill after the folder the session started in, not the current cwd (the
-    # agent may cd into subfolders), or after the session's /rename title. Both come
-    # from the transcript: its first lines and the last custom-title entry.
-    path = payload.get('transcript_path') or ''
-    if not path:
-        return
-    try:
-        with open(path, 'rb') as f:
-            for line in f.read(16384).splitlines():
-                try:
-                    root = json.loads(line).get('cwd')
-                except Exception:
-                    continue
-                if root:
-                    payload['session_root'] = root
-                    break
-            f.seek(0, os.SEEK_END)
-            start = max(0, f.tell() - 65536)
-            f.seek(start)
-            lines = f.read().splitlines()
-            for line in reversed(lines[1:] if start else lines):
-                if b'"custom-title"' in line:
-                    title = json.loads(line).get('customTitle')
-                    if title:
-                        payload['session_title'] = title
-                    break
-    except Exception:
-        pass
-
-def main():
-    raw = b''
-    payload = {}
-    try:
-        raw = sys.stdin.buffer.read()
-        if not raw:
-            if '--statusline' not in sys.argv[1:]:
-                return
-        else:
-            payload = json.loads(raw)
-    except Exception:
-        if '--statusline' not in sys.argv[1:]:
-            return
-
-    socket_path = os.path.expanduser(
-        '~/Library/Containers/fr.louisraille.Coucou/Data/nb.sock'
-    )
-
-    # --statusline mode: relay rate_limits to Coucou, then delegate to saved previous
-    if '--statusline' in sys.argv[1:]:
-        relay = {
-            'coucou_kind': 'statusline',
-            'session_id': payload.get('session_id', ''),
-            'rate_limits': payload.get('rate_limits', {}),
-        }
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(0.3)
-            s.connect(socket_path)
-            s.sendall((json.dumps(relay) + '\\n').encode())
-            s.close()
-        except Exception:
-            pass
-        prev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statusline-previous.json')
-        if os.path.exists(prev_file):
-            try:
-                import subprocess
-                with open(prev_file) as f:
-                    prev = json.load(f)
-                cmd = prev.get('command', '')
-                if cmd:
-                    result = subprocess.run(['/bin/sh', '-c', cmd], input=raw,
-                                             capture_output=True, timeout=10)
-                    if result.stdout:
-                        sys.stdout.buffer.write(result.stdout)
-                        sys.stdout.buffer.flush()
-            except Exception:
-                pass
-        return
-
-    # --ask mode: dedicated hook for AskUserQuestion via PreToolUse (Claude Code 2.1.85+)
-    if '--ask' in sys.argv[1:]:
-        tool = payload.get('tool_name', '')
-        if tool != 'AskUserQuestion':
-            return  # Not an AskUserQuestion invocation — exit cleanly (no output)
-        payload['coucou_kind'] = 'ask_user_question'
-        env = os.environ
-        payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-        payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-        payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-        payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-        if 'cwd' not in payload or not payload['cwd']:
-            paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-            if isinstance(paths, list) and paths:
-                payload['cwd'] = paths[0]
-            else:
-                payload['cwd'] = os.getcwd()
-        add_session_name(payload)
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(125)
-            s.connect(socket_path)
-            s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
-            s.close()
-            response = b''.join(chunks).decode().strip()
-            if response:
-                try:
-                    resp_obj = json.loads(response)
-                    decision = resp_obj.get('permissionDecision', '')
-                except Exception:
-                    decision = ''
-                if decision == 'answer':
-                    answers = resp_obj.get('answers', {})
-                    questions = payload.get('tool_input', {}).get('questions', [])
-                    out = {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                # 'ask' or unknown: fall through → no output → Claude Code asks in terminal
-        except Exception:
-            pass
-        return
-
-    # Parse --agent <name> and optional positional event from argv.
-    # --agent tags the payload with coucou_agent so the app routes to the right pill.
-    # The positional arg is a fallback event name for agents that do not set hook_event_name.
-    args = sys.argv[1:]
-    agent = ''
-    arg_event = ''
-    i = 0
-    while i < len(args):
-        if args[i] == '--agent' and i + 1 < len(args):
-            agent = args[i + 1]
-            i += 2
-        else:
-            if not arg_event:
-                arg_event = args[i]
-            i += 1
-    if agent:
-        payload.setdefault('coucou_agent', agent)
-    # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
-    # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
-    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
-        payload['coucou_agent'] = 'claude-desktop'
-
-    env = os.environ
-    payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))
-    payload.setdefault('iterm_session_id', env.get('ITERM_SESSION_ID', ''))
-    payload.setdefault('term_session_id', env.get('TERM_SESSION_ID', ''))
-    payload.setdefault('bundle_id', env.get('__CFBundleIdentifier', ''))
-    if 'cwd' not in payload or not payload['cwd']:
-        paths = payload.get('workspacePaths') or payload.get('workspace_roots', [])
-        if isinstance(paths, list) and paths:
-            payload['cwd'] = paths[0]
-        else:
-            payload['cwd'] = os.getcwd()
-    add_session_name(payload)
-
-    # Normalize event name and tool fields (Gemini CLI / Antigravity → canonical names)
-    try:
-        raw_event = payload.get('hook_event_name', '') or arg_event
-        if raw_event:
-            payload['hook_event_name'] = normalize_event(raw_event)
-        normalize_tool_fields(payload)
-    except Exception:
-        pass
-
-    event = payload.get('hook_event_name', '')
-    # socket_path is already defined above
-
-    if event == 'PermissionRequest':
-        # Block and wait for Coucou's decision (Claude Code allows up to 120s)
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(118)
-            s.connect(socket_path)
-            s.sendall((json.dumps(payload) + '\\n').encode())
-            chunks = []
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                if b'\\n' in chunk:
-                    break
-            s.close()
-            response = b''.join(chunks).decode().strip()
-            if response:
-                try:
-                    resp_obj = json.loads(response)
-                    decision = resp_obj.get('permissionDecision', '')
-                except Exception:
-                    decision = ''
-                if agent == 'hermes':
-                    hermes_choice = 'once' if decision == 'allow' else decision
-                    if hermes_choice in ('once', 'always', 'deny'):
-                        sys.stdout.write(json.dumps({'choice': hermes_choice}) + '\\n')
-                        sys.stdout.flush()
-                    sys.exit(0)
-                if decision in ('allow', 'always'):
-                    # Copilot/Muse use {"permissionDecision":"allow"} directly
-                    if agent in ('copilot', 'muse'):
-                        out = {'permissionDecision': 'allow'}
-                    elif decision == 'always' and agent != 'codex':
-                        # Let Claude Code persist the rule via updatedPermissions
-                        suggestions = payload.get('permission_suggestions', [])
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedPermissions': suggestions}}}
-                    else:
-                        # Claude Code / Codex plain allow
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow'}}}
-                    # Claude Code ignores an allow for ExitPlanMode without updatedInput (Allow and Always).
-                    if payload.get('tool_name') == 'ExitPlanMode' and 'hookSpecificOutput' in out:
-                        out['hookSpecificOutput']['decision']['updatedInput'] = payload.get('tool_input', {})
-                        # Mode picked on the plan card: same choice as the terminal's plan dialog.
-                        mode = resp_obj.get('mode')
-                        if mode in ('auto', 'default'):
-                            out['hookSpecificOutput']['decision']['updatedPermissions'] = [{'type': 'setMode', 'mode': mode, 'destination': 'session'}]
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'deny':
-                    if agent in ('copilot', 'muse'):
-                        out = {'permissionDecision': 'deny'}
-                    else:
-                        out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'message': 'Denied from Coucou'}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'answer':
-                    # AskUserQuestion answered from the notch
-                    answers = resp_obj.get('answers', {})
-                    questions = payload.get('tool_input', {}).get('questions', [])
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'allow', 'updatedInput': {'questions': questions, 'answers': answers}}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                elif decision == 'change_plan':
-                    # Plan card "Change plan": like the terminal's "Tell Claude what to change",
-                    # reject the plan and stop Claude so the prompt is free for the change.
-                    out = {'hookSpecificOutput': {'hookEventName': 'PermissionRequest', 'decision': {'behavior': 'deny', 'interrupt': True, 'message': 'The user wants to change the plan and will type the changes in the terminal.'}}}
-                    sys.stdout.write(json.dumps(out) + '\\n')
-                    sys.stdout.flush()
-                    sys.exit(0)
-                # 'ask' or unknown: fall through → no output → agent re-asks
-        except Exception:
-            pass
-        # App unreachable, timed out, or no explicit decision — print nothing
-        # Copilot is fail-closed: must always output valid JSON so it re-asks rather than deny
-        # Hermes: no output → json.loads raises in plugin → transport_fallback: builtin activates
-        if agent == 'copilot':
-            sys.stdout.write('{"permissionDecision":"ask"}\\n')
-            sys.stdout.flush()
-        sys.exit(0)
-
-    try:
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.settimeout(0.3)
-        s.connect(socket_path)
-        s.sendall((json.dumps(payload) + '\\n').encode())
-        s.close()
-    except Exception:
-        pass  # Always exit cleanly — never block the agent
-
-    # Antigravity needs a decision on PreToolUse ({} reads as a denial). "ask" keeps its own
-    # permission prompt (and the user's Always Allow); Coucou never allows a tool by itself.
-    if agent == 'antigravity' and event == 'PreToolUse':
-        sys.stdout.write('{"decision":"ask"}\\n')
-        sys.stdout.flush()
-    elif agent in ('gemini', 'antigravity', 'muse', 'copilot'):
-        sys.stdout.write('{}\\n')
-        sys.stdout.flush()
-
-try:
-    main()
-except Exception:
-    pass
-sys.exit(0)
-"""
-
 
 extension HookServer {
     /// What stopped a Claude Code turn, from its StopFailure hook: Claude Code's own message when

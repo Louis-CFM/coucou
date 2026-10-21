@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		0325A44358904B44C2237CCE /* ApprovalQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BAE224C1C435C9FFD05BF65 /* ApprovalQueue.swift */; };
 		065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA02B08886939FF6FE0475DD /* IslandViewContent.swift */; };
-		06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
 		091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
 		1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
 		1DAB0704A136FF8E6FB34191 /* ClaudeResponseText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444604C7E2C530B664849EF9 /* ClaudeResponseText.swift */; };
@@ -49,6 +48,7 @@
 		B43ED72DC305F4A70A391094 /* PillSessionRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF1D0C0784ED873065DD8C0 /* PillSessionRegistry.swift */; };
 		B733A76DD197F6D6D949284C /* HotKeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1218B86E249691AF44F819AC /* HotKeyCenter.swift */; };
 		B79F437C45D3B9F9823D60C9 /* TurnSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5909156D75798650AE7C44 /* TurnSnapshot.swift */; };
+		C06D46BDD226087A9B272054 /* OrcaNotchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A3BD527D057ACC7404B929 /* OrcaNotchApp.swift */; };
 		C07E9A04E827284FDF33DB16 /* ShortcutLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA51E5B140C20812641168EA /* ShortcutLogic.swift */; };
 		C2F85492FC2CD2B84AC7FB88 /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0943B42F8073DC7B5C92FF /* IslandTypes.swift */; };
 		C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */; };
@@ -87,6 +87,7 @@
 		79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookServer.swift; sourceTree = "<group>"; };
 		7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7F940CD6207AA2E7C5E7CCD2 /* PillColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillColors.swift; sourceTree = "<group>"; };
+		87A3BD527D057ACC7404B929 /* OrcaNotchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrcaNotchApp.swift; sourceTree = "<group>"; };
 		87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTarget.swift; sourceTree = "<group>"; };
 		8BF22817EC70748F2D1FB2E7 /* ClaudePlanGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudePlanGauge.swift; sourceTree = "<group>"; };
 		8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GithubPoller.swift; sourceTree = "<group>"; };
@@ -111,7 +112,6 @@
 		EBB84A66045EB20CAC93A8A6 /* AskQuestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskQuestion.swift; sourceTree = "<group>"; };
 		EC5909156D75798650AE7C44 /* TurnSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnSnapshot.swift; sourceTree = "<group>"; };
 		F19652DA0EE0F6977084A73E /* ServiceSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceSnapshot.swift; sourceTree = "<group>"; };
-		F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchBuddyApp.swift; sourceTree = "<group>"; };
 		F2458A67DF32632CA09C9B56 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 		F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudePlanCardView.swift; sourceTree = "<group>"; };
 		F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserIdentity.swift; sourceTree = "<group>"; };
@@ -172,7 +172,7 @@
 				D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */,
 				FA02B08886939FF6FE0475DD /* IslandViewContent.swift */,
 				D710BD7834228045869D0184 /* IslandWindowController.swift */,
-				F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */,
+				87A3BD527D057ACC7404B929 /* OrcaNotchApp.swift */,
 				9EF1D0C0784ED873065DD8C0 /* PillSessionRegistry.swift */,
 				B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */,
 				7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */,
@@ -351,7 +351,7 @@
 				065FCE817315454DE3F85F25 /* IslandViewContent.swift in Sources */,
 				091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */,
 				CCA9A4B67070DFF455DD297E /* Mascot.swift in Sources */,
-				06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */,
+				C06D46BDD226087A9B272054 /* OrcaNotchApp.swift in Sources */,
 				A243372F214156E66DA03E9D /* PillCatalog.swift in Sources */,
 				5BEF7579345FA0B6C8C1778A /* PillColors.swift in Sources */,
 				B43ED72DC305F4A70A391094 /* PillSessionRegistry.swift in Sources */,

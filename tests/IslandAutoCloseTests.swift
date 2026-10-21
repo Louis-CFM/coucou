@@ -47,16 +47,6 @@ enum IslandAutoCloseTests {
         hoveredEdit.mouseLeft()
         try await waitForCompact(hoveredEdit, )
 
-        // Greeting timing is independent from the normal auto-close preference.
-        let greeting = IslandStateMachine()
-        greeting.greetAutoCollapseDelay = 1.5
-        greeting.launch()
-        greeting.greetComplete()
-        greeting.homeToPetitDelay = 0.01
-        try await Task.sleep(for: .milliseconds(400))
-        precondition(greeting.state == .coucou)
-        try await waitForCompact(greeting)
-
         // An unanswered approval holds the island open even after a delay edit.
         let heldOpen = openedMachine(delay: 0.05)
         var approvalPending = true
@@ -82,7 +72,7 @@ enum IslandAutoCloseTests {
         heldCountdown.mouseLeft()
         try await waitForCompact(heldCountdown, )
 
-        print("Island auto-close: 8 cases passed")
+        print("Island auto-close: 7 cases passed")
     }
 
     @MainActor

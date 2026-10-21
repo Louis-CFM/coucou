@@ -153,7 +153,7 @@ enum ShortcutLogic {
         return c
     }
 
-    // MARK: - Conflict detection (within Coucou's own shortcuts)
+    // MARK: - Conflict detection (within Orca Notch's own shortcuts)
 
     /// Returns the set of actions whose (keyCode, nsFlags) pair is shared with another action.
     static func duplicates(in specs: [ShortcutAction: ShortcutSpec]) -> Set<ShortcutAction> {

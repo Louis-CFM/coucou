@@ -137,7 +137,7 @@ enum ShortcutTests {
 
     static func testLoadSaveRoundTrip() {
         // Use a test-only suite to avoid polluting the app UserDefaults
-        let suiteName = "com.coucou.ShortcutTests.\(Int.random(in: 10000...99999))"
+        let suiteName = "com.orca-notch.ShortcutTests.\(Int.random(in: 10000...99999))"
         guard let ud = UserDefaults(suiteName: suiteName) else {
             preconditionFailure("could not create test UserDefaults suite")
         }
@@ -181,12 +181,8 @@ enum ShortcutTests {
         precondition(!ShortcutAction.toggleIsland.enabledByDefault,
                      "toggleIsland must be disabled by default")
 
-        // talkToCoucou is OFF by default (user opts in via Settings → Shortcuts)
-        precondition(!ShortcutAction.talkToCoucou.enabledByDefault,
-                     "talkToCoucou must be disabled by default")
-
         // All other global shortcuts are ON by default
-        let offByDefault: Set<ShortcutAction> = [.toggleIsland, .talkToCoucou]
+        let offByDefault: Set<ShortcutAction> = [.toggleIsland]
         for action in ShortcutAction.allCases where !offByDefault.contains(action) {
             precondition(action.enabledByDefault,
                          "\(action.rawValue) must be enabled by default")

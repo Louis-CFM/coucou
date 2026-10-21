@@ -7,7 +7,7 @@ import AppKit
 struct ShortcutsSettingsView: View {
     // Conflicts detected by HotKeyCenter (system already owns that combo)
     @State private var systemConflicts: Set<ShortcutAction> = []
-    // Internal duplicates (two Coucou shortcuts share the same combo)
+    // Internal duplicates (two Orca Notch shortcuts share the same combo)
     @State private var internalDups: Set<ShortcutAction> = []
 
     // Per-action state (enabled flag + current spec)

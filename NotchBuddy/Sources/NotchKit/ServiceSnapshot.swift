@@ -1,6 +1,6 @@
 import Foundation
 
-// What the iPhone shows for one service Mochi (GitHub, Stripe, Vercel, Resend,
+// What the iPhone shows for one service the mascot (GitHub, Stripe, Vercel, Resend,
 // Cal.com, n8n, Notion): its state dot, why it has that color, and the latest
 // items the Mac fetched. The Mac builds it from the data its pollers already
 // keep (ServicePublisher) and writes it to the private iCloud zone, encrypted;
@@ -28,7 +28,7 @@ struct ServiceSnapshot: Codable, Equatable, Sendable {
     var tone: ServiceTone
     /// One line under the name ("Balance 1 240,00 EUR", "2 pull requests").
     var headline: String
-    /// Why the dot has its color ("CI failing on coucou · main").
+    /// Why the dot has its color ("CI failing on orca-notch · main").
     var reason: String
     var sections: [ServiceSection]
     var updatedAt: Date
@@ -51,7 +51,7 @@ struct ServiceSnapshot: Codable, Equatable, Sendable {
 }
 
 extension PillCatalog {
-    /// The service Mochi the iPhone shows, in this order.
+    /// The service the mascot the iPhone shows, in this order.
     static let phoneServices = [
         "integration_github", "integration_stripe", "integration_vercel", "integration_resend",
         "integration_calcom", "integration_n8n", "integration_notion",

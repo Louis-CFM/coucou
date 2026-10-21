@@ -5,7 +5,7 @@ import ApplicationServices
 
 enum WindowContextCapture {
 
-    /// Returns a PromptContext from the given app (typically the last app active before NotchBuddy).
+    /// Returns a PromptContext from the given app (typically the last app active before Orca Notch).
     /// Uses AXUIElement for window title (requires Accessibility permission).
     /// Uses AppleScript for browser URL (Safari, Chrome, Arc, Firefox, Edge).
     static func captureActive(from app: NSRunningApplication? = NSWorkspace.shared.frontmostApplication) -> PromptContext? {

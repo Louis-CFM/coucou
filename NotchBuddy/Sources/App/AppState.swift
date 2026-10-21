@@ -23,7 +23,7 @@ final class AppState: ObservableObject {
     var notchHeight: CGFloat = IslandConst.notchHeight
     var hasNotch = true
 
-    // Last app active before NotchBuddy (for window context capture)
+    // Last app active before Orca Notch (for window context capture)
     var lastExternalApp: NSRunningApplication? = nil
 
     // Bot drag-attach state (hides original bot while ghost follows cursor)
@@ -130,13 +130,6 @@ final class AppState: ObservableObject {
         }
     }
 
-    // Selected app language ("" = System, else BCP-47 code e.g. "fr")
-    @Published var appLanguage: String = {
-        let bundleId = Bundle.main.bundleIdentifier ?? "dev.hfps.orca-notch"
-        let langs = UserDefaults.standard.persistentDomain(forName: bundleId)?["AppleLanguages"] as? [String]
-        return langs?.first ?? ""
-    }()
-
     // Context for prompt (window attach / file)
     @Published var promptContext: PromptContext? = nil
 
@@ -162,11 +155,6 @@ final class AppState: ObservableObject {
     // Absence interval — persisted
     var absenceInterval: TimeInterval = 3 * 60 {
         didSet { UserDefaults.standard.set(absenceInterval, forKey: "absenceInterval") }
-    }
-
-    // Greeting threshold — how long hidden before greeting on reappear (default 2 min)
-    var greetThresholdSeconds: TimeInterval = 120 {
-        didSet { UserDefaults.standard.set(greetThresholdSeconds, forKey: "greetThreshold") }
     }
 
     // Hotkey to show island (e.g. ⌘⇧N)
@@ -323,7 +311,6 @@ final class AppState: ObservableObject {
             autoCloseInterval = (v == 60) ? 15 : v
         }
         if let v = ud.object(forKey: "absenceInterval")   as? Double { absenceInterval   = v }
-        if let v = ud.object(forKey: "greetThreshold")    as? Double { greetThresholdSeconds = v }
         if let v = ud.object(forKey: "hotkeyEnabled") as? Bool  { hotkeyEnabled = v }
         if let v = ud.object(forKey: "hotkeyFlags")   as? Int   { hotkeyFlags = UInt(v) }
         if let v = ud.object(forKey: "hotkeyCode")    as? Int   { hotkeyCode = UInt16(v) }

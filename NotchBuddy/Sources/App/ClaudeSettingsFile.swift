@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - ClaudeSettingsFile
-// Reads and rewrites a settings file Coucou does not own (~/.claude/settings.json).
+// Reads and rewrites a settings file Orca Notch does not own (~/.claude/settings.json).
 // The rules are the ones in CLAUDE.md: never start from an empty object when the
 // file is there but unusable, always take a backup, and only ever write over the
 // exact bytes the user was shown.
@@ -19,9 +19,9 @@ enum ClaudeSettingsFile {
         var errorDescription: String? {
             switch self {
             case .unreadable(let name):
-                return "\(name) cannot be read — Coucou has not touched it."
+                return "\(name) cannot be read — Orca Notch has not touched it."
             case .invalid(let name):
-                return "\(name) is not valid JSON — Coucou has not touched it."
+                return "\(name) is not valid JSON — Orca Notch has not touched it."
             case .changed(let name):
                 return "\(name) changed since the preview. Nothing was written — review it again."
             case .backupFailed(let name):
@@ -29,7 +29,7 @@ enum ClaudeSettingsFile {
             case .writeFailed(let name):
                 return "Could not write \(name). The original is untouched."
             case .unexpectedHooks(let name):
-                return "\(name): \"hooks\" has an unexpected type — Coucou has not touched it."
+                return "\(name): \"hooks\" has an unexpected type — Orca Notch has not touched it."
             }
         }
     }
@@ -107,7 +107,7 @@ enum ClaudeSettingsFile {
         // Written beside the target and renamed over it: a crash or a full disk
         // leaves the original intact rather than half a file.
         let temp = target.deletingLastPathComponent()
-            .appendingPathComponent("\(target.lastPathComponent).coucou-\(ProcessInfo.processInfo.processIdentifier)")
+            .appendingPathComponent("\(target.lastPathComponent).orca-notch-\(ProcessInfo.processInfo.processIdentifier)")
         try? fm.removeItem(at: temp)
         guard fm.createFile(atPath: temp.path, contents: data,
                             attributes: [.posixPermissions: NSNumber(value: 0o600)]) else {
