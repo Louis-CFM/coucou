@@ -119,7 +119,14 @@ reasons even when child-session history is pruned. The main-session `session_sto
 snapshot takes precedence when recovery replaces the outcome. Terminal
 `agent_end` still decides whether work continues; a cut-off stream can report an
 abort from its settled messages without an `assistant_message` callback. Historical
-assistant timestamps are excluded from the new run. Only a finalized `stop` is successful. Terminal `error` or `length` is a failure;
+assistant timestamps are excluded from the new run. A terminal snapshot must belong
+to the admitted run before its outcome metadata can be used. OMP 18.12 supplies no
+run identifier on `agent_end`: after a new run starts before its predecessor's end
+notification arrives, empty/pruned or otherwise uncorrelated end snapshots are
+ignored for the rest of that extension runtime. A later terminal snapshot containing that run's
+observed assistant metadata still completes it. If every terminal snapshot stays
+ambiguous, the pill may remain busy until the next correlated settlement or session
+shutdown; guessing an owner could instead terminate active work. Only a finalized `stop` is successful. Terminal `error` or `length` is a failure;
 missing, aborted or otherwise incomplete outcomes are neutral (`Interrupt`),
 avoiding a false success alert. Idle side queries do not admit agent runs. These hooks return no decisions or rewritten content. A tool failure alone does not
 mark the entire run failed.

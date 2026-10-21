@@ -127,3 +127,63 @@ test("OMP notifications may overtake: recovery, subagent failures, aborts and la
   ]);
   assert.equal(JSON.stringify(records).includes("SECRET"), false);
 });
+
+test("OMP delayed terminal notifications cannot settle a newer same-session run", async t => {
+  const { writeFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  for (const pruned of [false, true]) {
+    const f = await fixture(t);
+    process.env.PI_CODING_AGENT_DIR = f.dir;
+    const { loadExtensions, ExtensionRunner } = await import("@oh-my-pi/pi-coding-agent/extensibility/extensions");
+    const { SessionManager } = await import("@oh-my-pi/pi-coding-agent/session/session-manager");
+    const key = Symbol.for("coucou.contract.terminal-gate");
+    const gate = Promise.withResolvers();
+    const entered = Promise.withResolvers();
+    globalThis[key] = { gate, entered };
+    const blocker = join(f.dir, "preceding-terminal-extension.ts");
+    await writeFile(blocker, `export default function (api) {
+      let first = true;
+      api.on("agent_end", async () => {
+        if (!first) return;
+        first = false;
+        const { gate, entered } = globalThis[Symbol.for("coucou.contract.terminal-gate")];
+        entered.resolve();
+        await gate.promise;
+      });
+    }`);
+    const path = fileURLToPath(new URL("../oh-my-pi/coucou.ts", import.meta.url));
+    const loaded = await loadExtensions([blocker, path], f.dir);
+    assert.deepEqual(loaded.errors, []);
+    const session = SessionManager.inMemory(f.dir);
+    const runner = new ExtensionRunner(loaded.extensions, loaded.runtime, f.dir, session, {});
+    const errors = [];
+    runner.onError(error => errors.push(error));
+    const assistant = (timestamp, stopReason) => ({
+      role: "assistant", timestamp, stopReason, content: [], api: "openai-completions",
+      provider: "openai", model: "fixture", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+        totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    });
+    await runner.emit({ type: "session_start" });
+    await runner.emitBeforeAgentStart("A", undefined, []);
+    const a = assistant(10, "stop");
+    await runner.emitAssistantMessage(a);
+    session.appendMessage(a);
+    const late = runner.emit({ type: "agent_end", messages: pruned ? [] : [a] });
+    await entered.promise;
+    await runner.emitBeforeAgentStart("B", undefined, []);
+    const tool = assistant(11, "toolUse");
+    await runner.emitAssistantMessage(tool);
+    gate.resolve();
+    await late;
+    await runner.emit({ type: "tool_execution_start", toolName: "read", toolCallId: "b", args: {} });
+    const b = assistant(12, "stop");
+    await runner.emitAssistantMessage(b);
+    await runner.emit({ type: "agent_end", messages: [a, tool, b] });
+    await runner.emit({ type: "session_shutdown" });
+    delete globalThis[key];
+    assert.deepEqual(errors, []);
+    assert.deepEqual((await f.records()).map(r => r.payload.hook_event_name), [
+      "SessionStart", "UserPromptSubmit", "UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd",
+    ], `pruned prior terminal = ${pruned}`);
+  }
+});
