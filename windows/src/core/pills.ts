@@ -146,7 +146,7 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
 /** The always-on pill unless the user picks another workspace tool. */
 export const DEFAULT_MAIN_PILL = "integration_claude";
 
-/** How many declared pills may sit next to the main one (4 on the Mac; 5 on this machine). */
+/** How many declared pills may sit next to the main one (4 on the Mac; Windows has room for 5, so WhatsApp fits). */
 export const MAX_DECLARED = 5;
 
 /** The OS this page runs on. Only the Windows webview says "Windows". */
