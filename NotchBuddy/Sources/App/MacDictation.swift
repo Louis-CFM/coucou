@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AVFoundation
 import Carbon
 import Speech
@@ -307,4 +306,3 @@ extension Notification.Name {
     static let dictationDidStart = Notification.Name("notchBuddy.dictationDidStart")
     static let dictationDidEnd   = Notification.Name("notchBuddy.dictationDidEnd")
 }
-#endif

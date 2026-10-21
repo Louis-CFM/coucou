@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 import AppKit
 
@@ -252,4 +251,3 @@ struct SpotifyCardView: View {
         .padding(.trailing, 36)
     }
 }
-#endif

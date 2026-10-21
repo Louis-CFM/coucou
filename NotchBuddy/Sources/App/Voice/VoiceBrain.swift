@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
@@ -507,4 +506,3 @@ struct StatusTool: Tool, @unchecked Sendable {
 }
 
 #endif // canImport(FoundationModels)
-#endif // !APPSTORE

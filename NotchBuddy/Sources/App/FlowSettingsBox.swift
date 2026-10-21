@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 /// Settings → Voice: Flow dictation (hold a key, speak, the words are pasted where you type).
@@ -69,4 +68,3 @@ struct FlowSettingsBox: View {
         .onAppear { flow.recheckTrust() }
     }
 }
-#endif

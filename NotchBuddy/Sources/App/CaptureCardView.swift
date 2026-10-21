@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 /// The island after ⌘⇧S: Mochi on the left (he just swallowed the capture), the image, and what
@@ -51,4 +50,3 @@ struct CaptureCardView: View {
             : String(localized: "capture.hint")
     }
 }
-#endif

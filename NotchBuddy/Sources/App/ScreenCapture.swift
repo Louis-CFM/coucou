@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import Carbon.HIToolbox
 import SwiftUI
@@ -471,4 +470,3 @@ struct CaptureAnnotationView: View {
         return NSImage(cgImage: out, size: image.size)
     }
 }
-#endif

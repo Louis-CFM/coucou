@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 /// Coucou Flow → Statistics: what you dictated, how fast, and where.
@@ -176,4 +175,3 @@ private struct HubAppBars: View {
         }
     }
 }
-#endif

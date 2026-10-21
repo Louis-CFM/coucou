@@ -539,11 +539,9 @@ struct IslandHeader: View {
             HStack(spacing: 5) {
                 TabButton(icon: "house.fill", view: .overview, state: state)
                 TabButton(icon: "bubble.left.fill", view: .prompt, state: state, preAction: {
-                    #if !APPSTORE
                     if state.promptContext == nil {
                         state.promptContext = WindowContextCapture.captureActive(from: state.lastExternalApp)
                     }
-                    #endif
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
             }
@@ -553,7 +551,6 @@ struct IslandHeader: View {
 
             // Right: plan pill (GitHub build, home view only) + action icons
             HStack(spacing: 8) {
-                #if !APPSTORE
                 // Claude and Codex both on: only Claude here (two pills and the icons do not
                 // clear the notch); Codex is a row in the Claude plan card.
                 if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
@@ -561,7 +558,6 @@ struct IslandHeader: View {
                 } else if state.view == .overview && state.showCodexPlanInNotch {
                     ClaudePlanHeaderPill(state: state, codex: true)
                 }
-                #endif
                 HStack(spacing: 14) {
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -640,7 +636,6 @@ struct TabButton: View {
 
 // MARK: - Claude Plan header pill (GitHub build only)
 
-#if !APPSTORE
 struct ClaudePlanHeaderPill: View {
     @ObservedObject var state: AppState
     var codex: Bool = false
@@ -702,7 +697,6 @@ struct ClaudePlanHeaderPill: View {
         .onAppear { if codex { state.refreshCodexPlanUsage() } }
     }
 }
-#endif
 
 // MARK: - Compact mini mochi grid (2×2 to the right of the notch)
 

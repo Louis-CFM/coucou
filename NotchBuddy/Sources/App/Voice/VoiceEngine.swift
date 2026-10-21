@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import AVFoundation
 import Speech
@@ -783,4 +782,3 @@ extension Notification.Name {
     static let voiceWoke     = Notification.Name("notchBuddy.voiceWoke")
     static let voiceFinished = Notification.Name("notchBuddy.voiceFinished")
 }
-#endif

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - ElevenLabsTTS
@@ -91,4 +90,3 @@ final class ElevenLabsTTS {
         return Voice(id: id, name: v["name"] as? String ?? id)
     }
 }
-#endif

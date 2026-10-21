@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - MusicTarget
@@ -80,4 +79,3 @@ struct PendingVoiceQuestion {
     /// True once Coucou has asked the question a second time (it never asks a third time).
     var askedAgain: Bool = false
 }
-#endif

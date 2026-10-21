@@ -136,11 +136,7 @@ enum PillCatalog {
 
     /// Pills available in the current build target.
     static var available: [PillDefinition] {
-        #if APPSTORE
-        all.filter { !$0.githubOnly }
-        #else
         all
-        #endif
     }
 
     /// Default ID for the always-on main workspace pill.

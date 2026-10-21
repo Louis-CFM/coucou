@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AudioToolbox
 import AVFoundation
 import CoreAudio
@@ -273,4 +272,3 @@ final class SystemAudioTap: @unchecked Sendable {
         return uid as String
     }
 }
-#endif

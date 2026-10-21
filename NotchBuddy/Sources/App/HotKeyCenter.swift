@@ -95,9 +95,6 @@ final class HotKeyCenter {
         conflicts.removeAll()
 
         for action in ShortcutAction.allCases {
-            #if APPSTORE
-            if action.isNonAppStore { continue }
-            #endif
             if !ShortcutLogic.isEnabled(action) { continue }
             registerOne(action)
         }
@@ -114,9 +111,6 @@ final class HotKeyCenter {
         }
         conflicts.remove(action)
 
-        #if APPSTORE
-        if action.isNonAppStore { return }
-        #endif
         if !ShortcutLogic.isEnabled(action) { return }
         registerOne(action)
     }

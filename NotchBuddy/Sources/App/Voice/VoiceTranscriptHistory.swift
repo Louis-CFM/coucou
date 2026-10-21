@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - VoiceTranscriptHistory
@@ -62,4 +61,3 @@ final class VoiceTranscriptHistory: ObservableObject {
         }.joined(separator: "\n")
     }
 }
-#endif

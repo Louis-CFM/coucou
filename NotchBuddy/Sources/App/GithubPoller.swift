@@ -34,11 +34,7 @@ final class GithubPoller: @unchecked Sendable {
     /// when its pill isn't in the notch).
     @MainActor private static var isWanted: Bool {
         if AppState.shared.activeIntegrations.contains("integration_github") { return true }
-        #if PHONE_LINK
-        return UserDefaults.standard.bool(forKey: "iPhoneSyncEnabled")
-        #else
         return false
-        #endif
     }
 
     // MARK: - Stats (unchanged logic)

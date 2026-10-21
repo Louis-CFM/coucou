@@ -538,7 +538,6 @@ final class ClaudeService {
         }
     }
 
-    #if !APPSTORE
     // MARK: - Voice brain turn (Claude with Coucou's tools)
 
     /// One Messages API call for the voice brain: returns the assistant content blocks and
@@ -623,7 +622,6 @@ final class ClaudeService {
         let spoken = VoiceQuery.spokenText(text)
         return spoken.isEmpty ? nil : spoken
     }
-    #endif
 
     // MARK: - API call
 

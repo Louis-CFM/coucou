@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AVFoundation
 
 // MARK: - VoiceSpeaker
@@ -232,4 +231,3 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         }
     }
 }
-#endif

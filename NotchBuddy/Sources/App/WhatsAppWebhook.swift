@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 import Network
 
@@ -95,4 +94,3 @@ final class WhatsAppWebhook: @unchecked Sendable {
         }
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AVFoundation
 import Speech
 
@@ -132,4 +131,3 @@ enum VoiceSettings {
         }
     }
 }
-#endif

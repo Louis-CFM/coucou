@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import SwiftUI
 
@@ -772,4 +771,3 @@ final class FlowPillController {
         }
     }
 }
-#endif

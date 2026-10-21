@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 import AppKit
 
@@ -761,4 +760,3 @@ struct WhatsAppSettingsSection: View {
         wa.settingsChanged()
     }
 }
-#endif

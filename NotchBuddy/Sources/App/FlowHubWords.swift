@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import SwiftUI
 
@@ -338,4 +337,3 @@ struct HubAppIcon: View {
     }
 }
 
-#endif

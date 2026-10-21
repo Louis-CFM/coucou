@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 
 /// One dictation, kept for the history of the Coucou Flow window.
@@ -291,4 +290,3 @@ final class FlowStore: ObservableObject {
         return try? decoder.decode(type, from: data)
     }
 }
-#endif

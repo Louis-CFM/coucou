@@ -1,7 +1,6 @@
-#if !APPSTORE
 import Foundation
 
-// GitHub build only (#if !APPSTORE): the App Store build is sandboxed and may not run
+// GitHub build only: the App Store build is sandboxed and may not run
 // another program. Starts the GOWA binary the user picked as a child of Coucou, on the
 // address set in Settings, and stops it when Coucou quits.
 
@@ -108,4 +107,3 @@ final class WhatsAppGOWAProcess {
         process = nil
     }
 }
-#endif

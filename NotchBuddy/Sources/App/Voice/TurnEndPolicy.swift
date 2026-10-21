@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - TurnEndPolicy
@@ -54,4 +53,3 @@ enum TurnEndPolicy {
         "increase", "decrease", "set",
     ]
 }
-#endif

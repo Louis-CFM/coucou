@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 import CryptoKit
 
@@ -169,4 +168,3 @@ private final class GitHubOnly: NSObject, URLSessionTaskDelegate, Sendable {
         completionHandler(WAGOWARelease.allowedHost(request.url?.host) ? request : nil)
     }
 }
-#endif

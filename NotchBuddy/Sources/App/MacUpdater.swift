@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import Foundation
 import Security
@@ -361,4 +360,3 @@ private final class UpdateGitHubOnly: NSObject, URLSessionTaskDelegate, Sendable
         completionHandler(MacUpdate.allowedHost(request.url?.host) ? request : nil)
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import Combine
 import SwiftUI
@@ -424,4 +423,3 @@ struct VoiceCaptionView: View {
         .allowsHitTesting(false)
     }
 }
-#endif

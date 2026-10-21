@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 
 // MARK: - LiveMusicControl
@@ -98,4 +97,3 @@ extension VoiceActionRunner {
         }
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import SwiftUI
 
@@ -286,4 +285,3 @@ struct HubSetupCard: View {
         .onAppear { flow.recheckTrust() }
     }
 }
-#endif

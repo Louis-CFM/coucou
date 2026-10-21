@@ -9,7 +9,6 @@ struct NotchBuddyApp: App {
         Settings {
             SettingsView()
         }
-        #if !APPSTORE
         .commands {
             // ⌘, and Coucou → Settings… open the notch's pages of the Coucou window.
             CommandGroup(replacing: .appSettings) {
@@ -19,6 +18,5 @@ struct NotchBuddyApp: App {
                 .keyboardShortcut(",")
             }
         }
-        #endif
     }
 }

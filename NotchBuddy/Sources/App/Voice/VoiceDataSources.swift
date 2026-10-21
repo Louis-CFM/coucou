@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import Contacts
 
@@ -389,4 +388,3 @@ enum AppLookup {
             ?? apps.first(where: { $0.norm.contains(wanted) })?.url
     }
 }
-#endif

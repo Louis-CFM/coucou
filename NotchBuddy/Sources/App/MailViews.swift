@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 import AppKit
 
@@ -222,4 +221,3 @@ struct MailDetailView: View {
         .onAppear { mail.loadPreview(message) }
     }
 }
-#endif

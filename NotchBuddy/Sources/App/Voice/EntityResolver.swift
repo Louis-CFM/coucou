@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - EntityResolver
@@ -148,4 +147,3 @@ enum EntityResolver {
         return row[n]
     }
 }
-#endif

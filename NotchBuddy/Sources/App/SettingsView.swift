@@ -33,7 +33,6 @@ struct SettingsView: View {
     @State private var pendingHookJSON: String = ""
     @State private var hookNeedsUpdate: Bool = HookServer.hooksNeedUpdate()
 
-    #if !APPSTORE
     @State private var showStatusLineDiff: Bool = false
     @State private var pendingStatusLineJSON: String = ""
     @State private var statusLinePendingInstall: Bool = true
@@ -83,7 +82,6 @@ struct SettingsView: View {
     @State private var pendingHermesConfigContent: String = ""
     @AppStorage("hermesApprovalsEnabled") private var hermesApprovalsEnabled: Bool = false
     @State private var hermesSupportsApprovals: Bool = false
-    #endif
 
     // Multi-provider chat keys
     @State private var googleKey: String   = KeychainStore.shared.get("google-api-key") ?? ""
@@ -143,11 +141,6 @@ struct SettingsView: View {
     private var section: String { embeddedSection ?? selectedSection }
     // Active pills: the pill whose colour palette is open, if any
     @State private var colorPalettePill: String? = nil
-    #if PHONE_LINK
-    @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
-    @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
-    @AppStorage("iPhoneInstructionsEnabled") private var iPhoneInstructionsEnabled = false
-    #endif
     @AppStorage(ClaudeHost.terminalCardsKey) private var terminalCardsEnabled = false
     @State private var customSoundCount = SoundEngine.shared.customized.count
 
@@ -190,9 +183,7 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
                         SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
                         SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
-                        #if !APPSTORE
                         SettingsSidebarRow(title: "Voice",        icon: "mic.fill",                          color: "#F97316").tag("voice")
-                        #endif
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
@@ -234,9 +225,7 @@ struct SettingsView: View {
             }
         }
         .onAppear {
-            #if !APPSTORE
             state.refreshPlanRelayState()
-            #endif
             guard fetchedModels.isEmpty,
                   let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
             Task {
@@ -278,9 +267,7 @@ struct SettingsView: View {
         case "agents":       agentsSection
         case "chat":         chatSection
         case "integrations": integrationsSection
-        #if !APPSTORE
         case "voice":        voiceSection
-        #endif
         case "shortcuts":    ShortcutsSettingsView()
         default:             generalSection
         }
@@ -438,9 +425,7 @@ struct SettingsView: View {
                 .padding(6)
         }
 
-        #if !APPSTORE
         UpdateSettingsSection()
-        #endif
 
         GroupBox(String(localized: "Weekly recap")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -504,35 +489,6 @@ struct SettingsView: View {
             .padding(6)
         }
 
-        #if PHONE_LINK
-        GroupBox("iPhone") {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(String(localized: "iphone.sync.toggle"), isOn: $iPhoneSyncEnabled)
-                    .onChange(of: iPhoneSyncEnabled) { _, on in CloudProbe.shared.setEnabled(on) }
-                Text(String(localized: "iphone.sync.description"))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Toggle(String(localized: "iphone.live-activity.toggle"), isOn: $iPhoneLiveActivityEnabled)
-                    .disabled(!iPhoneSyncEnabled)
-                    .onChange(of: iPhoneLiveActivityEnabled) { _, on in LiveActivityRelay.shared.setEnabled(on) }
-                Text(String(localized: "iphone.live-activity.description"))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                #if !APPSTORE
-                Toggle(String(localized: "iphone.instruction.toggle"), isOn: $iPhoneInstructionsEnabled)
-                    .disabled(!iPhoneSyncEnabled)
-                    .onChange(of: iPhoneInstructionsEnabled) { _, on in InstructionRunner.shared.setEnabled(on) }
-                Text(String(localized: "iphone.instruction.description"))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                #endif
-            }
-            .padding(6)
-        }
-        #endif
     }
 
     private func refreshConnectedScreens() {
@@ -594,23 +550,8 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(.orange)
                     }
-                    #if APPSTORE
-                    Button(String(localized: "hooks.update")) { installHooksAppStore() }
-                    #else
                     Button(String(localized: "hooks.update")) { installHooks() }
-                    #endif
                 }
-                #if APPSTORE
-                Text("~/.claude/coucou/nb-hook")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.secondary)
-                HStack(spacing: 10) {
-                    Button(String(localized: "hooks.install")) { installHooksAppStore() }
-                        .buttonStyle(.borderedProminent)
-                    Button(String(localized: "hooks.uninstall")) { uninstallHooksAppStore() }
-                        .buttonStyle(.bordered)
-                }
-                #else
                 Text("nb-hook : \(HookServer.hookScriptPath)")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
@@ -620,14 +561,12 @@ struct SettingsView: View {
                     Button(String(localized: "hooks.uninstall")) { uninstallHooks() }
                         .buttonStyle(.bordered)
                 }
-                #endif
                 Toggle("Answer questions and permissions from terminal sessions in the notch", isOn: $terminalCardsEnabled)
                 Text("Off: sessions in Warp, Terminal, iTerm… show in the notch, but their questions and permission requests are asked in the terminal. On: the notch shows them first, and the terminal waits until you answer there or close the island (up to 2 min).")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                #if !APPSTORE
                 if showDiff {
                     ScrollView {
                         Text(pendingHookJSON)
@@ -645,12 +584,10 @@ struct SettingsView: View {
                             .buttonStyle(.bordered)
                     }
                 }
-                #endif
             }
             .padding(6)
         }
 
-        #if !APPSTORE
         ClaudeDesktopChatSettingsSection()
 
         GroupBox(String(localized: "hooks.gemini.title")) {
@@ -955,7 +892,6 @@ struct SettingsView: View {
             }
             .padding(6)
         }
-        #if !APPSTORE
         .task(id: hermesPluginInstalled) {
             guard hermesPluginInstalled else { hermesSupportsApprovals = false; return }
             let result = await Task.detached(priority: .background) {
@@ -963,7 +899,6 @@ struct SettingsView: View {
             }.value
             await MainActor.run { hermesSupportsApprovals = result }
         }
-        #endif
 
         GroupBox(String(localized: "plan.title")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -1034,7 +969,6 @@ struct SettingsView: View {
             }
             .padding(6)
         }
-        #endif
     }
 
     // MARK: - Chat section
@@ -1370,11 +1304,9 @@ struct SettingsView: View {
                 PortfolioSettingsSection()
                     .padding(.top, 4)
 
-                #if !APPSTORE
                 // WhatsApp through a local gateway: its own fields, saved by its own button.
                 WhatsAppSettingsSection()
                     .padding(.top, 4)
-                #endif
 
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()
@@ -1388,7 +1320,6 @@ struct SettingsView: View {
 
     // MARK: - Voice section
 
-    #if !APPSTORE
     @State private var voicePermissionsGranted: Bool = false
     @ObservedObject private var voiceEngine = VoiceEngine.shared
     @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
@@ -1571,7 +1502,6 @@ struct SettingsView: View {
         }
     }
 
-    #if !APPSTORE
     private func localModelStatusLabel(_ status: LocalModelStatus) -> String {
         switch status {
         case .available:            return String(localized: "voice.model-available")
@@ -1579,7 +1509,6 @@ struct SettingsView: View {
         case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
         }
     }
-    #endif
 
     // MARK: - Transcript history debug view (in-memory, cleared on close)
 
@@ -1645,7 +1574,6 @@ struct SettingsView: View {
         case .undetermined: return String(localized: "Not requested")
         }
     }
-    #endif
 
     // MARK: - Actions
 
@@ -1666,54 +1594,6 @@ struct SettingsView: View {
 
     // MARK: - App Store: hooks via NSOpenPanel + security-scoped bookmark
 
-    #if APPSTORE
-    private func pickClaudeFolder(prompt: String) -> URL? {
-        let panel = NSOpenPanel()
-        panel.message = "Select your .claude folder (press ⇧⌘. to show hidden files)"
-        panel.prompt = prompt
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.showsHiddenFiles = true
-        let realHomePath = getpwuid(getuid()).flatMap { String(cString: $0.pointee.pw_dir, encoding: .utf8) }
-            ?? "/Users/\(NSUserName())"
-        panel.directoryURL = URL(fileURLWithPath: realHomePath)
-        guard panel.runModal() == .OK, let url = panel.url else { return nil }
-        guard url.lastPathComponent == ".claude" else {
-            statusMessage = String(localized: "status.select-claude-folder")
-            return nil
-        }
-        return url
-    }
-
-    private func installHooksAppStore() {
-        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
-        let alert = NSAlert()
-        alert.messageText = String(localized: "alert.hooks.title")
-        alert.informativeText = String(localized: "alert.hooks.body")
-        alert.addButton(withTitle: String(localized: "alert.hooks.button-install"))
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        alert.alertStyle = .informational
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        do {
-            try HookServer.shared.installAndWriteClaudeHooksAppStore(claudeURL: claudeURL)
-            hookNeedsUpdate = false
-            statusMessage = String(localized: "status.hooks-installed-claude")
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-        }
-    }
-
-    private func uninstallHooksAppStore() {
-        guard let claudeURL = pickClaudeFolder(prompt: "Select") else { return }
-        do {
-            try HookServer.shared.uninstallClaudeHooksAppStore(claudeURL: claudeURL)
-            statusMessage = String(localized: "status.hooks-removed")
-        } catch {
-            statusMessage = "❌ \(error.localizedDescription)"
-        }
-    }
-    #endif
 
     private func connectLocal(provider: ChatProvider) async {
         let rawURL = provider == .ollama ? ollamaURL : lmstudioURL
@@ -1782,7 +1662,6 @@ struct SettingsView: View {
         }
     }
 
-    #if !APPSTORE
     private func triggerGeminiPreview(install: Bool) {
         do {
             geminiPendingInstall = install
@@ -2075,7 +1954,6 @@ struct SettingsView: View {
             statusMessage = "❌ \(error.localizedDescription)"
         }
     }
-    #endif
 
     private func saveIntegrations() {
         saveKey("resend-api-key",  value: resendKey)
@@ -2189,7 +2067,6 @@ struct SettingsView: View {
         let hint: String? = {
             if isMain { return nil }
             if def.comingSoon { return String(localized: "Coming soon") }
-            #if !APPSTORE
             if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()      { return String(localized: "Hooks not installed") }
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()        { return String(localized: "Hooks not installed") }
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()      { return String(localized: "Hooks not installed") }
@@ -2198,7 +2075,6 @@ struct SettingsView: View {
             if def.id == "agent_opencode"      && !HookServer.openCodePluginInstalled()  { return String(localized: "Plugin not installed") }
             if def.id == "agent_amp"           && !HookServer.ampPluginInstalled()       { return String(localized: "Plugin not installed") }
             if def.id == SpotifyController.pillId && !SpotifyController.shared.isInstalled { return String(localized: "Not installed") }
-            #endif
             if def.category == .ai {
                 if let provider = ChatProvider(pillID: def.id), provider.isLocal {
                     let url = provider == .ollama ? state.ollamaServerURL : state.lmstudioServerURL

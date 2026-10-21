@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - ClaudeVoiceBrain
@@ -322,4 +321,3 @@ final class ClaudeVoiceBrain {
         return ("Email card shown to \(address)\(with). Nothing is sent until the user clicks Send.\(note)\(attach)", true)
     }
 }
-#endif

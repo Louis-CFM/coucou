@@ -28,29 +28,13 @@ struct IslandViewContent: View {
         case .wardrobe:  WardrobeView(state: state)
         case .recap:     WeeklyRecapCardView(state: state)
         case .listening:
-            #if !APPSTORE
             VoiceListeningView(isActive: state.view == .listening)
-            #else
-            EmptyView()
-            #endif
         case .voiceResult:
-            #if !APPSTORE
             VoiceResultView()
-            #else
-            EmptyView()
-            #endif
         case .capture:
-            #if !APPSTORE
             CaptureCardView()
-            #else
-            EmptyView()
-            #endif
         case .update:
-            #if !APPSTORE
             UpdateCardView()
-            #else
-            EmptyView()
-            #endif
         }
     }
 }
@@ -125,7 +109,6 @@ struct OverviewView: View {
                 }
 
                 // Plan detail overlays on top of normal content (GitHub build, home view only)
-                #if !APPSTORE
                 if state.showingPlanDetail {
                     CardBackground(wash: nil)
                     Group {
@@ -149,7 +132,6 @@ struct OverviewView: View {
                     }
                     .transition(.opacity)
                 }
-                #endif
 
                 // Diff overlay — replaces ticker when a diff step is tapped
                 if let diffId = activeDiffId,
@@ -161,11 +143,7 @@ struct OverviewView: View {
                 }
 
                 // ↗ jump button — last in ZStack so it renders on top; hidden while any detail is open
-                #if !APPSTORE
                 let hideJumpButton = showingN8nDetail || state.showingPlanDetail || activeDiffId != nil
-                #else
-                let hideJumpButton = showingN8nDetail || activeDiffId != nil
-                #endif
                 if !hideJumpButton {
                     Button(action: { openAgentTarget(agent) }) {
                         Image(systemName: "arrow.up.right")
@@ -191,20 +169,14 @@ struct OverviewView: View {
         .onChange(of: state.focusId) { _, new in
             showingN8nDetail = false
             activeDiffId = nil
-            #if !APPSTORE
             withAnimation(.easeIn(duration: 0.16)) { state.showingPlanDetail = false }
-            #endif
             if new == "integration_github" { GithubPoller.shared.refreshIfStale() }
         }
-        #if !APPSTORE
         .onChange(of: state.view) { _, v in
             if v != .overview { state.showingPlanDetail = false; activeDiffId = nil }
         }
-        #endif
         .onChange(of: state.mode) { _, m in
-            #if !APPSTORE
             if m != .expanded { state.showingPlanDetail = false; activeDiffId = nil }
-            #endif
             if m == .expanded && state.focusId == "integration_github" {
                 GithubPoller.shared.refreshIfStale()
             }
@@ -234,15 +206,11 @@ struct OverviewView: View {
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_mail":
-            #if !APPSTORE
             MailController.shared.openMail()
-            #endif
         case "integration_whatsapp":
-            #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "net.whatsapp.WhatsApp") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
-            #endif
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
@@ -266,26 +234,20 @@ struct OverviewView: View {
         case "integration_calcom":
             NSWorkspace.shared.open(URL(string: "https://app.cal.com/bookings")!)
         case "agent_cursor":
-            #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
-            #endif
         case "agent_codex":
-            #if !APPSTORE
             if let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.openai.codex") {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
             }
-            #endif
         case "agent_claude-desktop":
             openClaudeDesktopApp()
         case "agent_gemini", "agent_antigravity",
              "agent_copilot", "agent_muse", "agent_opencode", "agent_amp":
-            #if !APPSTORE
             TerminalTarget.activate(sessionBundleId: nil)
-            #endif
         case "ai_anthropic":
             switchChatProvider(.anthropic)
         case "ai_google":
@@ -297,13 +259,9 @@ struct OverviewView: View {
         case "ai_lmstudio":
             switchChatProvider(.lmstudio)
         case "integration_music":
-            #if !APPSTORE
             MusicController.shared.openMusic()
-            #endif
         case "integration_spotify":
-            #if !APPSTORE
             SpotifyController.shared.openSpotify()
-            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -311,9 +269,7 @@ struct OverviewView: View {
                     NSWorkspace.shared.open(url)
                 }
             } else {
-                #if !APPSTORE
                 TerminalTarget.activate(sessionBundleId: task.sessionBundleId)
-                #endif
             }
         }
     }
@@ -697,12 +653,10 @@ struct ErrorView: View {
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                     } else {
-                        #if !APPSTORE
                         PrimaryButton("Open terminal") {
                             openSessionApp(task)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
-                        #endif
                     }
                     SecondaryButton("OK") {
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -717,7 +671,6 @@ struct ErrorView: View {
     }
 }
 
-#if !APPSTORE
 /// The app a session runs in (its terminal, or VS Code), else any known terminal.
 private func openSessionApp(_ task: AgentTask?) {
     if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
@@ -725,7 +678,6 @@ private func openSessionApp(_ task: AgentTask?) {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
     }
 }
-#endif
 
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
@@ -762,12 +714,10 @@ struct FinishedView: View {
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                     } else {
-                        #if !APPSTORE
                         PrimaryButton("Open terminal") {
                             openSessionApp(state.focusTask)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
-                        #endif
                     }
                     SecondaryButton("OK") {
                         NotificationCenter.default.post(name: .islandCollapse, object: nil)
@@ -857,7 +807,6 @@ struct DiffCardView: View {
 
     private func openInEditor(_ diff: FileDiff) {
         let path = diff.path
-        #if !APPSTORE
         let codePaths = ["/opt/homebrew/bin/code", "/usr/local/bin/code", "/usr/bin/code",
                          "\(NSHomeDirectory())/.nvm/current/bin/code"]
         if let codePath = codePaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
@@ -868,7 +817,6 @@ struct DiffCardView: View {
             try? p.run()
             return
         }
-        #endif
         NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }
 }
@@ -1257,22 +1205,6 @@ struct MailView: View {
     }
 
     private func sendViaAppleMail(to: String, subject: String) {
-        #if APPSTORE
-        // App Store: no AppleScript — use NSSharingService to compose (user sends manually)
-        guard let service = NSSharingService(named: .composeEmail) else {
-            statusMsg = String(localized: "Mail not available.")
-            return
-        }
-        var items: [Any] = [bodyText.isEmpty ? " " : bodyText]
-        if let url = state.droppedFile?.url,
-           FileManager.default.fileExists(atPath: url.path) {
-            items.append(url)
-        }
-        service.recipients = [to]
-        service.subject = subject
-        service.perform(withItems: items)
-        onSuccess(recipient: to)
-        #else
         func asEscape(_ s: String) -> String {
             s.replacingOccurrences(of: "\\", with: "\\\\")
              .replacingOccurrences(of: "\"", with: "\\\"")
@@ -1319,7 +1251,6 @@ struct MailView: View {
                 if let message { statusMsg = message } else { onSuccess(recipient: recipient) }
             }
         }
-        #endif
     }
 
     private func onSuccess(recipient: String) {
@@ -1336,7 +1267,6 @@ struct MailView: View {
 
 // MARK: - Prompt (chat)
 
-#if !APPSTORE
 /// The mic's right-click menu: Automatic (the user's languages) or one fixed language.
 private struct DictationLanguageMenu: View {
     @Bindable var dictation: MacDictation
@@ -1368,7 +1298,6 @@ private struct DictationLanguageMenu: View {
         return chosen == MacDictation.automatic || automatic.contains(chosen) ? automatic : automatic + [chosen]
     }
 }
-#endif
 
 struct PromptView: View {
     @ObservedObject var state: AppState
@@ -1376,9 +1305,7 @@ struct PromptView: View {
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
 
-    #if !APPSTORE
     @State private var dictation = MacDictation()
-    #endif
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: .indigo)
@@ -1468,7 +1395,6 @@ struct PromptView: View {
                         .focused($focused)
                         .onSubmit { sendMessage() }
 
-                    #if !APPSTORE
                     // Dictate instead of typing (on-device speech recognition when available)
                     Button {
                         Task {
@@ -1488,7 +1414,6 @@ struct PromptView: View {
                     .onChange(of: dictation.transcript) { _, _ in
                         if dictation.isRecording { text = dictation.text }
                     }
-                    #endif
 
                     Button(action: sendMessage) {
                         Image(systemName: "arrow.up")
@@ -1534,7 +1459,6 @@ struct PromptView: View {
     }
 
     private func sendMessage() {
-        #if !APPSTORE
         // Still dictating: take the final words (and the right language) before sending.
         if dictation.isRecording {
             Task {
@@ -1543,7 +1467,6 @@ struct PromptView: View {
             }
             return
         }
-        #endif
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         text = ""
@@ -1892,9 +1815,7 @@ struct IntegrationCardView: View {
     var onDiffTap: ((Int) -> Void)? = nil
     @ObservedObject private var appState = AppState.shared
     @State private var githubDetailSection: GitHubDetailSection = .myPRs
-    #if !APPSTORE
     @ObservedObject private var mailController = MailController.shared
-    #endif
 
     private var isConfigured: Bool {
         switch task.id {
@@ -1903,73 +1824,29 @@ struct IntegrationCardView: View {
         case "integration_claude", "agent_cursor":
             return HookServer.claudeHooksInstalled()
         case "agent_codex":
-            #if !APPSTORE
             return HookServer.codexHooksInstalled()
-            #else
-            return false
-            #endif
         case "agent_gemini":
-            #if !APPSTORE
             return HookServer.geminiHooksInstalled()
-            #else
-            return false
-            #endif
         case "agent_antigravity":
-            #if !APPSTORE
             return HookServer.agyHooksInstalled()
-            #else
-            return false
-            #endif
         case "agent_copilot":
-            #if !APPSTORE
             return HookServer.copilotHooksInstalled()
-            #else
-            return false
-            #endif
         case "agent_muse":
-            #if !APPSTORE
             return HookServer.museHooksInstalled()
-            #else
-            return false
-            #endif
         case "agent_opencode":
-            #if !APPSTORE
             return HookServer.openCodePluginInstalled()
-            #else
-            return false
-            #endif
         case "agent_amp":
-            #if !APPSTORE
             return HookServer.ampPluginInstalled()
-            #else
-            return false
-            #endif
         case "agent_hermes":
-            #if !APPSTORE
             return HookServer.hermesPluginInstalled()
-            #else
-            return false
-            #endif
         case "agent_claude-desktop":
             return true  // nothing to install: the relay tags desktop sessions on its own
         case "integration_music":
-            #if !APPSTORE
             return true  // Apple Music is always installed on macOS
-            #else
-            return false
-            #endif
         case "integration_mail":
-            #if !APPSTORE
             return true  // Apple Mail is always installed on macOS: nothing to set up
-            #else
-            return false
-            #endif
         case "integration_whatsapp":
-            #if !APPSTORE
             return WhatsAppSettings.enabled
-            #else
-            return false
-            #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
         case "integration_portfolio":
@@ -2056,48 +1933,32 @@ struct IntegrationCardView: View {
 
     // Apple Music: show card when a track is loaded (playing or paused) or automation is denied
     private var musicIsActive: Bool {
-        #if !APPSTORE
         guard task.id == "integration_music" else { return false }
         if appState.musicAutomationDenied { return true }
         return MusicController.shared.trackTitle != nil
-        #else
-        return false
-        #endif
     }
 
     // Apple Mail: the message list once Mail is open and allowed (else the idle card says why)
     private var mailHasData: Bool {
-        #if !APPSTORE
         guard task.id == "integration_mail" else { return false }
         let mail = MailController.shared
         return mail.isMailRunning && !mail.automationDenied
-        #else
-        return false
-        #endif
     }
 
     // Spotify: its own card for every state (playing, idle, not installed, Automation denied)
     private var isSpotify: Bool {
-        #if !APPSTORE
         return task.id == "integration_spotify"
-        #else
-        return false
-        #endif
     }
 
     private var statusDot: Color {
-        #if !APPSTORE
         if task.id == "integration_music" {
             if appState.musicAutomationDenied { return Color(hex: "#F4505E") }
             return appState.musicPlaying ? Color(hex: "#FA2D48") : Color(hex: "#22C55E")
         }
-        #endif
-        #if !APPSTORE
         if task.id == "integration_mail" {
             if mailController.automationDenied { return Color(hex: "#F4505E") }
             return mailController.isMailRunning ? Color(hex: "#22C55E") : Color(hex: "#6B7079")
         }
-        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return Color(hex: "#6B7079") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -2107,19 +1968,15 @@ struct IntegrationCardView: View {
     }
 
     private var statusLabel: String {
-        #if !APPSTORE
         if task.id == "integration_music" {
             if appState.musicAutomationDenied { return String(localized: "Automation not allowed") }
             if appState.musicPlaying { return String(format: String(localized: "Playing · %@"), MusicController.shared.trackTitle ?? String(localized: "Unknown")) }
             return String(localized: "Not playing")
         }
-        #endif
-        #if !APPSTORE
         if task.id == "integration_mail" {
             if mailController.automationDenied { return String(localized: "Automation not allowed") }
             return mailController.isMailRunning ? String(localized: "Loading…") : String(localized: "Mail is closed")
         }
-        #endif
         if PillCatalog.definition(for: task.id)?.comingSoon == true { return String(localized: "Coming soon") }
         let svcErr = task.id == "integration_stripe" ? appState.stripeError
                    : task.id == "integration_calcom"  ? appState.calcomError
@@ -2218,10 +2075,8 @@ struct IntegrationCardView: View {
             NotionCardView()
                 .transition(.opacity)
         } else if musicIsActive {
-            #if !APPSTORE
             MusicCardView()
                 .transition(.opacity)
-            #endif
         } else if task.id == "integration_crypto" {
             // Its own card in every state (loading, no coins, prices).
             CryptoCardView()
@@ -2231,20 +2086,14 @@ struct IntegrationCardView: View {
                 .transition(.opacity)
         } else if task.id == "integration_whatsapp" {
             // Its own card in every state (not linked, no message, conversations).
-            #if !APPSTORE
             WhatsAppCardView()
                 .transition(.opacity)
-            #endif
         } else if mailHasData {
-            #if !APPSTORE
             MailCardView()
                 .transition(.opacity)
-            #endif
         } else if isSpotify {
-            #if !APPSTORE
             SpotifyCardView()
                 .transition(.opacity)
-            #endif
         } else if agentSessionActive {
             // Active session view — reuse overview layout
             VStack(alignment: .leading, spacing: 0) {
@@ -2322,7 +2171,6 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.7))
                             .buttonStyle(.plain)
                     } else if task.id == "agent_cursor" {
-                        #if !APPSTORE
                         if let url = NSWorkspace.shared.urlForApplication(
                             withBundleIdentifier: "com.todesktop.230313mzl4w4u92") {
                             Button("Open Cursor") {
@@ -2333,9 +2181,7 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                         }
-                        #endif
                     } else if task.id == "agent_codex" {
-                        #if !APPSTORE
                         if let url = NSWorkspace.shared.urlForApplication(
                             withBundleIdentifier: "com.openai.codex") {
                             Button("Open Codex") {
@@ -2346,7 +2192,6 @@ struct IntegrationCardView: View {
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
                             .buttonStyle(.plain)
                         }
-                        #endif
                     } else if let provider = ChatProvider(pillID: task.id) {
                         if isConfigured {
                             Button(String(format: String(localized: "Chat with %@"), task.name)) {
@@ -2357,7 +2202,6 @@ struct IntegrationCardView: View {
                             .buttonStyle(.plain)
                         }
                     } else if task.id == "integration_music" {
-                        #if !APPSTORE
                         Button("Open Music") { MusicController.shared.openMusic() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
@@ -2368,9 +2212,7 @@ struct IntegrationCardView: View {
                                 .foregroundColor(Color(hex: "#8E939C"))
                                 .buttonStyle(.plain)
                         }
-                        #endif
                     } else if task.id == "integration_mail" {
-                        #if !APPSTORE
                         Button("Open Mail") { MailController.shared.openMail() }
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: task.color).opacity(0.85))
@@ -2381,7 +2223,6 @@ struct IntegrationCardView: View {
                                 .foregroundColor(Color(hex: "#8E939C"))
                                 .buttonStyle(.plain)
                         }
-                        #endif
                     } else if n8nHasActivity {
                         // Clickable pill — tap to open execution detail
                         let success = task.state == .finished
@@ -4111,7 +3952,6 @@ struct AgentPillsView: View {
             Spacer(minLength: 0)
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(displayTasks) { task in
-                    #if !APPSTORE
                     if task.id == "integration_music" {
                         MusicPill(task: task, state: state, swapping: $swapping) {
                             swapping = true
@@ -4134,14 +3974,6 @@ struct AgentPillsView: View {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
                         }
                     }
-                    #else
-                    AgentPill(task: task, state: state, swapping: $swapping) {
-                        swapping = true
-                        state.setFocus(task.id)
-                        SoundEngine.shared.play("blip")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { swapping = false }
-                    }
-                    #endif
                 }
             }
             .padding(.horizontal, 8)
@@ -4214,7 +4046,6 @@ struct AgentPill: View {
 
 // MARK: - Music Pill (GitHub build only)
 
-#if !APPSTORE
 struct MusicPill: View {
     let task: AgentTask
     @ObservedObject var state: AppState
@@ -4319,11 +4150,9 @@ struct MusicControlButton: View {
         }
     }
 }
-#endif
 
 // MARK: - Music Card View (GitHub build only)
 
-#if !APPSTORE
 struct MusicCardView: View {
     @ObservedObject private var controller = MusicController.shared
     @ObservedObject private var appState = AppState.shared
@@ -4413,7 +4242,6 @@ struct MusicCardView: View {
         .padding(.top, 4)
     }
 }
-#endif
 
 struct PillBadgeView: View {
     let badge: PillBadge

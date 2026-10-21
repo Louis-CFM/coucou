@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // The two local WhatsApp gateways Coucou can talk to. Each call goes to the URL set in
@@ -354,4 +353,3 @@ actor OpenWAProvider: WhatsAppProvider {
         jid.hasSuffix("@s.whatsapp.net") ? jid.replacingOccurrences(of: "@s.whatsapp.net", with: "@c.us") : jid
     }
 }
-#endif

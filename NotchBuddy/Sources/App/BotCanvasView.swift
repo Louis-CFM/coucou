@@ -40,7 +40,6 @@ struct BotCanvasView: View {
                 }
                 // Integration pills have a fixed brand color → use it as bodyColor.
                 // Claude Code tasks use state-based gradient (working=blue, thinking=purple, etc.).
-                #if !APPSTORE
                 if state.showingPlanDetail {
                     let hex = state.planDetailIsCodex
                         ? CodexPlanGauge.color(state.codexPlanUsage)
@@ -51,15 +50,9 @@ struct BotCanvasView: View {
                         ? cgColorFromHex(state.focusTask!.color)
                         : nil
                 }
-                #else
-                engine.bodyColor = (state.focusTask?.isIntegration == true)
-                    ? cgColorFromHex(state.focusTask!.color)
-                    : nil
-                #endif
 
                 // Compute shouldDance per-frame (no observer lag)
                 let dancing: Bool = {
-                    #if !APPSTORE
                     let active = AppState.shared.activeIntegrations
                     let music = AppState.shared.musicPlaying && active.contains("integration_music")
                     let spotify = SpotifyController.shared.isPlaying && active.contains(SpotifyController.pillId)
@@ -70,9 +63,6 @@ struct BotCanvasView: View {
                     guard state.mode == .expanded && state.view == .overview else { return false }
                     return (music && state.focusId == "integration_music")
                         || (spotify && state.focusId == SpotifyController.pillId)
-                    #else
-                    return false
-                    #endif
                 }()
                 engine.setDancing(dancing)
                 let isWardrobe = state.mode == .expanded && state.view == .wardrobe
@@ -81,7 +71,6 @@ struct BotCanvasView: View {
                 engine.setOutfit(showOutfit ? state.resolvedOutfit : .none,
                                  animated: state.view != .wardrobe)
 
-                #if !APPSTORE
                 if state.view == .listening {
                     // Expanded listening view only (no longer used by voice, kept for the
                     // view itself). Smoothed so the eyes do not follow every mic frame.
@@ -96,7 +85,6 @@ struct BotCanvasView: View {
                 // Propagate voice sub-state every frame so BotEngine gets transitions promptly.
                 if state.voiceActive { engine.voiceSubState = state.voiceSubState }
                 else if engine.voiceSubState != .none { engine.voiceSubState = .none }
-                #endif
 
                 MochiFrameClock.advance(engine)
                 var ctx = context
@@ -127,11 +115,9 @@ struct BotCanvasView: View {
         .onChange(of: state.effectiveState) { _, newState in
             engine.setState(newState)
         }
-        #if !APPSTORE
         .onChange(of: state.voiceActive) { _, on in
             if on { engine.enterVoiceCompact() } else { engine.exitVoiceCompact() }
         }
-        #endif
         .onChange(of: state.view) { oldView, newView in
             // Morph up when upload view is active
             if state.mode == .expanded && newView == .upload {
@@ -140,13 +126,11 @@ struct BotCanvasView: View {
                 // Any other view (not mid-gulp): morph back
                 engine.anim("morph", keys: [TweenKey(target: 0, duration: 550, ease: Ease.inOut)])
             }
-            #if !APPSTORE
             if newView == .listening {
                 engine.enterListening()
             } else if oldView == .listening {
                 engine.exitListening(hadCommand: !VoiceEngine.shared.commandTranscript.isEmpty)
             }
-            #endif
         }
         .onChange(of: state.mode) { _, newMode in
             // Hard-reset morph when island collapses

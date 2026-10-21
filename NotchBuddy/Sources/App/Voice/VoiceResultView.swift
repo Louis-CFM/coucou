@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 // MARK: - VoiceResultView
@@ -39,4 +38,3 @@ struct VoiceResultView: View {
         }
     }
 }
-#endif

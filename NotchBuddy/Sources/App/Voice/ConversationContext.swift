@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - ConversationContext
@@ -124,4 +123,3 @@ struct ConversationContext {
         }
     }
 }
-#endif

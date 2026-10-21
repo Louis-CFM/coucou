@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AVFoundation
 import Accelerate
 
@@ -240,4 +239,3 @@ private extension AVAudioPCMBuffer {
         return sum / Double(chans)
     }
 }
-#endif

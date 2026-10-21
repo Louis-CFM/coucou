@@ -125,14 +125,12 @@ final class DemoEngine: ObservableObject {
         RecapStore.shared.demoSummaryOverride = demoWeeklySummary()
 
         // Plan usage override (in-memory, never persisted)
-        #if !APPSTORE
         let now = Date()
         s.demoPlanUsageOverride = PlanUsage(
             fiveHour: PlanWindow(usedPct: 42.0, resetsAt: now.addingTimeInterval(4 * 3600)),
             sevenDay: PlanWindow(usedPct: 37.0, resetsAt: now.addingTimeInterval(3 * 24 * 3600)),
             updatedAt: now
         )
-        #endif
 
         // Inject integration data (no activeIntegrations setter, no UserDefaults write)
         injectIntegrationData()
@@ -177,9 +175,7 @@ final class DemoEngine: ObservableObject {
 
         // Clear demo overrides
         RecapStore.shared.demoSummaryOverride = nil
-        #if !APPSTORE
         AppState.shared.demoPlanUsageOverride = nil
-        #endif
 
         let s = AppState.shared
 

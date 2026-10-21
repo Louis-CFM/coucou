@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import ApplicationServices
 import SwiftUI
@@ -126,9 +125,7 @@ final class ClaudeDesktopChatWatcher {
         return value as? String
     }
 }
-#endif
 
-#if !APPSTORE
 /// Settings → Agents → Claude Desktop chats.
 struct ClaudeDesktopChatSettingsSection: View {
     @State private var on = ClaudeDesktopChatWatcher.enabled
@@ -161,4 +158,3 @@ struct ClaudeDesktopChatSettingsSection: View {
         .onAppear { trusted = AXIsProcessTrusted() }
     }
 }
-#endif

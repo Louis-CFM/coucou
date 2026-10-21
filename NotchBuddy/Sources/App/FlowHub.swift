@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import Carbon
 import SwiftUI
@@ -566,4 +565,3 @@ extension NSPasteboard {
         general.setString(text, forType: .string)
     }
 }
-#endif

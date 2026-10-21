@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import SwiftUI
 
@@ -716,4 +715,3 @@ struct HubSummaryEnginePicker: View {
         }
     }
 }
-#endif

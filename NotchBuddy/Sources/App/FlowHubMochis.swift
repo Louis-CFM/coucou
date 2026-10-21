@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import SwiftUI
 
@@ -512,4 +511,3 @@ struct HubEmptyState: View {
         .padding(.vertical, 22)
     }
 }
-#endif

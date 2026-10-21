@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import ApplicationServices
 import Carbon
@@ -556,4 +555,3 @@ enum FlowPaste {
         board.writeObjects(objects)
     }
 }
-#endif

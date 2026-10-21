@@ -17,13 +17,7 @@ final class HookServer: @unchecked Sendable {
             .appendingPathComponent("NotchBuddy")
     }
     static var socketPath: String {
-        #if APPSTORE
-        // Container home root keeps path ≤ 103 bytes (sun_path limit on macOS is 104 incl. NUL)
-        // /Users/louis/Library/Containers/fr.louisraille.Coucou/Data/nb.sock = 66 bytes ✓
-        return NSHomeDirectory() + "/nb.sock"
-        #else
         return supportDir.appendingPathComponent("nb.sock").path
-        #endif
     }
     // hookScriptPath is only used by the non-App Store build.
     // App Store build derives the command from the panel-selected claudeURL in buildHooksData(claudeURL:).
@@ -280,9 +274,7 @@ final class HookServer: @unchecked Sendable {
         let dir = Self.supportDir
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? FileManager.default.setAttributes([.posixPermissions: 0o700 as NSNumber], ofItemAtPath: dir.path)
-        #if !APPSTORE
         installHookScript()
-        #endif
         Thread.detachNewThread { self.serverThread() }
     }
 
@@ -442,11 +434,7 @@ final class HookServer: @unchecked Sendable {
         // • Cursor bundle ID → agent_cursor
         // • VS Code → integration_claude
         // • a known terminal (Warp, Terminal, iTerm…) → integration_claude, host recorded on the task
-        #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
-        #else
-        let isCodexEvent = false
-        #endif
         let agentId: String
         let isExternalAgent: Bool
         var hostApp: String? = nil
@@ -491,10 +479,6 @@ final class HookServer: @unchecked Sendable {
             ? "\(agentId)+\(cwd)"
             : sessionId
 
-        #if PHONE_LINK
-        // The iPhone's "last turn" (prompt, actions, diffs, answer).
-        if !isExternalAgent { TurnRecorder.shared.record(event: name, payload: payload, pillId: agentId) }
-        #endif
 
         // Waiting permission requests: an event that settles one (its tool finished, or its
         // turn ended) takes it off the card, then is processed normally.
@@ -819,7 +803,6 @@ final class HookServer: @unchecked Sendable {
         // Codex, Copilot CLI and Muse Code get the same approval card as Claude Code / Cursor.
         // Other external agents (any other coucou_agent) answer immediately with "ask"
         // so the agent re-asks in its own terminal — they do not get a notch card.
-        #if !APPSTORE
         let isCodexRequest   = rawAgent == "codex"
         let isCopilotRequest = rawAgent == "copilot"
         let isMuseRequest    = rawAgent == "muse"
@@ -829,12 +812,6 @@ final class HookServer: @unchecked Sendable {
         let isHermesRequest  = rawAgent == "hermes"
             && UserDefaults.standard.bool(forKey: "hermesApprovalsEnabled")
             && (payload["coucou_has_transport"] as? Bool == true)
-        #else
-        let isCodexRequest   = false
-        let isCopilotRequest = false
-        let isMuseRequest    = false
-        let isHermesRequest  = false
-        #endif
         if !isCodexRequest && !isCopilotRequest && !isMuseRequest && !isHermesRequest && Self.validateAgent(rawAgent) != nil {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
@@ -1014,11 +991,7 @@ final class HookServer: @unchecked Sendable {
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
-        #if !APPSTORE
         let isCodexRequest = rawAgent == "codex"
-        #else
-        let isCodexRequest = false
-        #endif
         let pillId: String
         if isCodexRequest {
             pillId = "agent_codex"
@@ -1364,10 +1337,6 @@ final class HookServer: @unchecked Sendable {
     // MARK: - nb-hook script installation
 
     func installHookScript() {
-        #if APPSTORE
-        // In App Store mode the script is written during settings hook installation
-        // (requires NSOpenPanel to ~/.claude chosen by the user)
-        #else
         let dir = Self.supportDir
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? FileManager.default.setAttributes([.posixPermissions: 0o700 as NSNumber], ofItemAtPath: dir.path)
@@ -1379,7 +1348,6 @@ final class HookServer: @unchecked Sendable {
         let pyURL = wrapperURL.deletingLastPathComponent().appendingPathComponent("nb-hook.py")
         try? nbHookPythonGitHub.write(to: pyURL, atomically: true, encoding: .utf8)
         _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
-        #endif
     }
 
     // MARK: - Outdated hook detection
@@ -1459,12 +1427,7 @@ final class HookServer: @unchecked Sendable {
         let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
         var settings = snapshot.object
         let hookPath = Self.hookScriptPath
-        #if APPSTORE
-        // Sandboxed apps create quarantined files; /bin/sh bypasses the quarantine flag
-        let quotedCmd = "/bin/sh \"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
-        #else
         let quotedCmd = "\"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
-        #endif
         let events: [(String, Int)] = [
             ("SessionStart", 10), ("SessionEnd", 10),
             ("UserPromptSubmit", 10),
@@ -1650,113 +1613,22 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: - App Store: hooks via security-scoped bookmark
 
-    #if APPSTORE
-    /// Writes nb-hook script and updates settings.json in one shot.
-    /// claudeURL must be a URL from NSOpenPanel (sandbox access is granted immediately — no security scope needed).
-    func installAndWriteClaudeHooksAppStore(claudeURL: URL) throws {
-        let (data, original) = try buildHooksData(claudeURL: claudeURL)
-
-        // Write nb-hook (shell wrapper) + nb-hook.py (Python relay) into ~/.claude/coucou/
-        let coucouDir = claudeURL.appendingPathComponent("coucou")
-        try FileManager.default.createDirectory(at: coucouDir, withIntermediateDirectories: true)
-        let wrapperURL = coucouDir.appendingPathComponent("nb-hook")
-        try nbHookShellWrapper.write(to: wrapperURL, atomically: true, encoding: .utf8)
-        _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: wrapperURL.path)
-        let pyURL = coucouDir.appendingPathComponent("nb-hook.py")
-        try nbHookPythonAppStore.write(to: pyURL, atomically: true, encoding: .utf8)
-        _ = try? FileManager.default.setAttributes([.posixPermissions: 0o755 as NSNumber], ofItemAtPath: pyURL.path)
-
-        // Write settings.json (with backup)
-        let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: original)
-        UserDefaults.standard.set(true, forKey: "coucouHooksInstalled")
-    }
-
-    func uninstallClaudeHooksAppStore(claudeURL: URL) throws {
-        let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
-        var settings = snapshot.object
-        guard var hooks = settings["hooks"] as? [String: Any] else { return }
-        for key in hooks.keys {
-            if var matchers = hooks[key] as? [[String: Any]] {
-                matchers.removeAll { matcher in
-                    (matcher["hooks"] as? [[String: Any]])?.contains {
-                        ($0["command"] as? String)?.contains("coucou") == true ||
-                        ($0["command"] as? String)?.contains("NotchBuddy") == true
-                    } ?? false
-                }
-                if matchers.isEmpty { hooks.removeValue(forKey: key) }
-                else { hooks[key] = matchers }
-            }
-        }
-        settings["hooks"] = hooks
-        let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
-        UserDefaults.standard.set(false, forKey: "coucouHooksInstalled")
-    }
-
-    private func buildHooksData(claudeURL: URL) throws -> (data: Data, original: Data?) {
-        let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        // Unreadable or invalid settings must stop here, never count as empty.
-        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
-        var settings = snapshot.object
-        // Derive hook path from the panel-selected claudeURL (real ~/.claude, not container)
-        let hookPath = claudeURL.appendingPathComponent("coucou/nb-hook").path
-        let quotedCmd = "/bin/sh \"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
-        let events: [(String, Int)] = [
-            ("SessionStart", 10), ("SessionEnd", 10),
-            ("UserPromptSubmit", 10),
-            ("PreToolUse", 10), ("PostToolUse", 10), ("PostToolUseFailure", 10),
-            ("PermissionRequest", 120),
-            ("Notification", 10),
-            ("Stop", 10), ("StopFailure", 10),
-            ("SubagentStart", 10), ("SubagentStop", 10),
-        ]
-        // "hooks" in a shape we do not know is refused, never replaced.
-        var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
-        for (event, timeout) in events {
-            var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
-            existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
-                ($0["command"] as? String)?.contains("coucou") == true ||
-                ($0["command"] as? String)?.contains("NotchBuddy") == true
-            } ?? false }
-            existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
-            hooks[event] = existing
-        }
-        // Dedicated AskUserQuestion PreToolUse hook (Claude Code 2.1.85+, timeout 130s)
-        var preToolUse = hooks["PreToolUse"] as? [[String: Any]] ?? []
-        preToolUse.append([
-            "matcher": "AskUserQuestion",
-            "hooks": [["type": "command", "command": "\(quotedCmd) --ask", "timeout": 130]],
-        ])
-        hooks["PreToolUse"] = preToolUse
-        settings["hooks"] = hooks
-        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        return (data, snapshot.bytes)
-    }
-    #endif
 
     // MARK: - Claude Code installed-state detection (both builds)
 
     /// True when ~/.claude/settings.json already routes Claude Code events to Coucou.
     /// Cursor sessions ride on these same hooks, so they share this state.
     static func claudeHooksInstalled() -> Bool {
-        #if APPSTORE
-        // Sandboxed: can't read ~/.claude directly — check the install flag set on write.
-        return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
-        #else
         let url = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
         guard let data = try? Data(contentsOf: url),
               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         else { return false }
         return coucouHooksPresent(inSettings: json)
-        #endif
     }
 
-    // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
+    // MARK: - Gemini CLI and Antigravity hook installers  
 
-    #if !APPSTORE
     private static var geminiSettingsURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini/settings.json")
     }
@@ -2024,7 +1896,7 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
-    // MARK: - Codex hook installer  (#if !APPSTORE only)
+    // MARK: - Codex hook installer  
 
     static var codexHooksURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/hooks.json")
@@ -2720,7 +2592,6 @@ export default function (amp: any): void {
     /// Finds the hermes binary, reads its shebang to get the right interpreter (never uses
     /// system python3), and runs an import check with a 3-second timeout.
     /// Returns false if hermes/interpreter not found, or import fails.
-    #if !APPSTORE
     static func hermesSupportsApprovalTransport() -> Bool {
         guard let hermesPath = hermesExecutablePath(),
               let pythonPath = interpreterFromShebang(hermesPath),
@@ -2737,7 +2608,6 @@ export default function (amp: any): void {
         if group.wait(timeout: .now() + 3) == .timedOut { task.terminate(); return false }
         return task.terminationStatus == 0
     }
-    #endif
 
     private func buildHermesInitPy() -> String {
         let path = Self.hookScriptPath
@@ -3219,7 +3089,6 @@ description: Coucou notch integration — generated by Coucou.app
     private func sha256Hex(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
-    #endif
 }
 
 // MARK: - Notification names for hook server → controller communication

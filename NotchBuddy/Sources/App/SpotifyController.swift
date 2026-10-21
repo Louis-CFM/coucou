@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 import AppKit
 import Combine
@@ -525,4 +524,3 @@ final class SpotifyController: ObservableObject {
         return result
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - VoiceGenderNames
@@ -38,4 +37,3 @@ enum VoiceGenderNames {
         return nil
     }
 }
-#endif

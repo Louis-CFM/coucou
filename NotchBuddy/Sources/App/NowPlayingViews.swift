@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 import AppKit
 
@@ -183,4 +182,3 @@ struct NowPlayingPressStyle: ButtonStyle {
             .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
-#endif

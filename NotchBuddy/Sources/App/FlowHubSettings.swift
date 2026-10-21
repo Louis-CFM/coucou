@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import SwiftUI
 
@@ -302,4 +301,3 @@ private struct HubEngineRow<Trailing: View>: View {
         }
     }
 }
-#endif

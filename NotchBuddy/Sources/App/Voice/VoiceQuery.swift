@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - VoiceQuery
@@ -791,4 +790,3 @@ enum VoiceAnswer {
         }
     }
 }
-#endif

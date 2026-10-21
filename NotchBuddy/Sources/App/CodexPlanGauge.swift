@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 // MARK: - Codex plan usage
@@ -208,4 +207,3 @@ struct CodexPlanCardView: View {
         return text
     }
 }
-#endif

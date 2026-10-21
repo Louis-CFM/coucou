@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AVFoundation
 import Speech
 
@@ -236,4 +235,3 @@ final class WakeSpotter: @unchecked Sendable {
         }
     }
 }
-#endif

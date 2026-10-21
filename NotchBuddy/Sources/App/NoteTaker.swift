@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AppKit
 import AVFoundation
 @preconcurrency import FluidAudio
@@ -686,4 +685,3 @@ final class NoteTaker: ObservableObject {
         }
     }
 }
-#endif

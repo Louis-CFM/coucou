@@ -23,7 +23,6 @@ final class IslandWindowController: NSWindowController {
     private var confusedRecoveryTimer: DispatchWorkItem?
 
     // Voice result auto-dismiss timer
-    #if !APPSTORE
     private var voiceResultWork: DispatchWorkItem?
     /// True only while Coucou listens for the answer to a question it asked.
     private var isInConversation = false
@@ -33,7 +32,6 @@ final class IslandWindowController: NSWindowController {
     private var conversationContext = ConversationContext()
     private var consecutiveFailures = 0
     private var hasSpokenPasCompris = false
-    #endif
 
     // Suppress peek sound on next reveal (e.g. musicReveal)
     var silentNextReveal = false
@@ -156,7 +154,6 @@ final class IslandWindowController: NSWindowController {
         }
         dropView.onFilesDropped = { [weak self] urls in
             Task { @MainActor in
-                #if !APPSTORE
                 // During the voice email (above all after "any attachment?"), a file
                 // dropped on the notch goes into that email.
                 if VoiceActionRunner.shared.isMailInProgress, let url = urls.first {
@@ -168,7 +165,6 @@ final class IslandWindowController: NSWindowController {
                     self?.attachToVoiceMailCard(url)
                     return
                 }
-                #endif
                 await FileDropHandler.handle(urls: urls, state: AppState.shared)
             }
         }
@@ -183,9 +179,7 @@ final class IslandWindowController: NSWindowController {
         startLocalKeyMonitor()
         startHotKeys()
         wireFSM()
-        #if !APPSTORE
         VoiceActionRunner.shared.configureLive()
-        #endif
 
         // Make panel key whenever the prompt/chat view becomes active
         // (nonactivatingPanel never auto-becomes key, but TextField needs it)
@@ -285,9 +279,7 @@ final class IslandWindowController: NSWindowController {
                     }
                 } else if from == .listening {
                     // Voice session ended — no peek sound, just compact
-                    #if !APPSTORE
                     VoiceEngine.shared.cancelListening()
-                    #endif
                 }
                 // setMode BEFORE changing view: onChange(of: state.view) guards on .expanded,
                 // so setting view while already compact won't trigger a spurious open animation.
@@ -310,10 +302,8 @@ final class IslandWindowController: NSWindowController {
 
             case .listening:
                 // Island stays compact; caption panel handles display.
-                #if !APPSTORE
                 let screen = IslandWindowController.islandScreen()
                 VoiceCaptionManager.shared.show(on: screen, notchHeight: AppState.shared.notchHeight)
-                #endif
             }
         }
 
@@ -325,16 +315,11 @@ final class IslandWindowController: NSWindowController {
         }
 
         // An approval, or an email prepared by voice, stays open until I click.
-        #if !APPSTORE
         // A WhatsApp reply being typed holds the island open, like a voice mail draft.
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil
                            || WhatsAppController.shared.composing }
-        #else
-        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
-        #endif
 
         // Voice: wake phrase detected → open listening island
-        #if !APPSTORE
         NotificationCenter.default.addObserver(
             forName: .voiceWoke, object: nil, queue: .main
         ) { [weak self] note in
@@ -386,7 +371,6 @@ final class IslandWindowController: NSWindowController {
                 }
             }
         }
-        #endif
     }
 
     // MARK: - Polling loop
@@ -624,7 +608,6 @@ final class IslandWindowController: NSWindowController {
         guard fsm.isHeldOpen?() != true || keepsApprovalPending else { return }
         if !keepsApprovalPending { state.isPinned = false }
         finishedPinTimer?.cancel()
-        #if !APPSTORE
         VoiceSpeaker.shared.stop()
         if isInConversation || AppState.shared.voiceActive {
             // Closing the island ends the voice exchange (speech was just cut, so its
@@ -637,7 +620,6 @@ final class IslandWindowController: NSWindowController {
             AppState.shared.voiceResult = nil
             AppState.shared.voiceActive = false
         }
-        #endif
         // Keep the FSM in step with what is on screen (home/coucou → petit now).
         fsm.collapse()
         setMode(.compact)
@@ -681,14 +663,10 @@ final class IslandWindowController: NSWindowController {
             }
 
         case .jumpToTerminal:
-            #if !APPSTORE
             performJumpToTerminal()
-            #endif
 
         case .attachFrontWindow:
-            #if !APPSTORE
             performAttachFrontWindow()
-            #endif
 
         case .nextPill:
             cyclePill(by: +1)
@@ -715,16 +693,12 @@ final class IslandWindowController: NSWindowController {
             }
 
         case .talkToCoucou:
-            #if !APPSTORE
             VoiceSpeaker.shared.stop()
             VoiceEngine.shared.startListeningDirectly()
-            #endif
 
         case .captureScreen:
-            #if !APPSTORE
             appendAppLog("nb.log", "[Capture] shortcut pressed")
             ScreenCapture.shared.begin()
-            #endif
         }
     }
 
@@ -825,7 +799,6 @@ final class IslandWindowController: NSWindowController {
 
     // MARK: - Terminal jump
 
-    #if !APPSTORE
     private func performJumpToTerminal() {
         guard state.focusTask != nil else {
             SoundEngine.shared.play("error")
@@ -852,7 +825,6 @@ final class IslandWindowController: NSWindowController {
         islandPanel.makeKey()
         expand(to: .prompt)
     }
-    #endif
 
     // MARK: - Keyboard (Escape closes)
 
@@ -976,7 +948,6 @@ final class IslandWindowController: NSWindowController {
                 self.attachDragStart = nil
                 self.state.stateOverride = nil
 
-                #if !APPSTORE
                 let windowCtx = self.windowContextAtPoint(mouse)
                 let inNotchZone = self.window?.frame.contains(mouse) == true
 
@@ -998,17 +969,6 @@ final class IslandWindowController: NSWindowController {
                     // Drop back in notch zone → Mochi returns to notch
                     self.hideDragGhost()
                 }
-                #else
-                let inNotchZoneAS = self.window?.frame.contains(mouse) == true
-                if !inNotchZoneAS {
-                    let ghost = self.dragGhostPanel
-                    self.dragGhostPanel = nil
-                    self.hideDragGhost()
-                    DesktopMochiController.shared.install(ghostPanel: ghost, at: mouse)
-                } else {
-                    self.hideDragGhost()
-                }
-                #endif
             }
         }
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
@@ -1466,7 +1426,6 @@ struct GhostBotView: View {
 
 // MARK: - Voice command handling
 
-#if !APPSTORE
 extension IslandWindowController {
 
     /// Run the intent derived from `transcript`, show VoiceResultView, then continue conversation or collapse.
@@ -2005,7 +1964,6 @@ extension IslandWindowController {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 }
-#endif
 
 // MARK: - Notification names
 

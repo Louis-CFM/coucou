@@ -454,7 +454,6 @@ final class AppState: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3600, execute: work)
     }
 
-    #if !APPSTORE
     @Published var musicPlaying: Bool = false
     @Published var musicAutomationDenied: Bool = false
 
@@ -466,7 +465,6 @@ final class AppState: ObservableObject {
     /// Listening / thinking / speaking — drives per-frame Mochi animations.
     /// Set by IslandWindowController; read by BotCanvasView each display frame.
     @Published var voiceSubState: BotVoiceSubState = .none
-    #endif
 
     // Claude plan gauge (from statusline hook)
     @Published var claudePlanUsage: PlanUsage? = nil {
@@ -479,7 +477,6 @@ final class AppState: ObservableObject {
     }
 
     // Plan gauge: show pill in notch header — persisted
-    #if !APPSTORE
     @Published var showPlanInNotch: Bool = false {
         didSet { UserDefaults.standard.set(showPlanInNotch, forKey: "showPlanInNotch") }
     }
@@ -517,7 +514,6 @@ final class AppState: ObservableObject {
     func refreshPlanRelayState() {
         planRelayInstalled = HookServer.statusLineInstalled()
     }
-    #endif
 
     // MARK: - Init (loads persisted settings)
 
@@ -564,11 +560,9 @@ final class AppState: ObservableObject {
         }
         if let d = ud.data(forKey: "claudePlanUsage"),
            let u = try? JSONDecoder().decode(PlanUsage.self, from: d) { claudePlanUsage = u }
-        #if !APPSTORE
         if let v = ud.object(forKey: "showPlanInNotch") as? Bool { showPlanInNotch = v }
         if let v = ud.object(forKey: "showCodexPlanInNotch") as? Bool { showCodexPlanInNotch = v }
         planRelayInstalled = HookServer.statusLineInstalled()
-        #endif
 
         // Sync SoundEngine volume on launch
         SoundEngine.shared.volume = Float(soundVolume)

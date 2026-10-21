@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - Protocols (injectable for tests)
@@ -713,4 +712,3 @@ final class VoiceActionRunner {
         return NSLocalizedString(key, comment: "")
     }
 }
-#endif

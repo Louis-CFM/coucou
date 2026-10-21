@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 /// The languages Flow can translate into: speak in any language, the words are pasted in this one.
@@ -117,4 +116,3 @@ enum FlowLanguages {
         all.first { $0.code == code }
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 /// The clean-up of Flow dictation: Claude removes the "euh", the repeats and the corrections said
@@ -170,4 +169,3 @@ enum FlowCleanup {
         return lines.joined(separator: "\n")
     }
 }
-#endif

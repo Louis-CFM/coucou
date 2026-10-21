@@ -6,17 +6,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
     private var demoMenuItem: NSMenuItem?
-    #if !APPSTORE
     /// "Update Coucou to 0.6.0…", shown only when a new version is out.
     private var updateMenuItem: NSMenuItem?
-    #endif
 
     func applicationWillTerminate(_ notification: Notification) {
-        #if !APPSTORE
         NoteTaker.shared.shutdown()
         // The GOWA gateway Coucou started never outlives it.
         WhatsAppGOWAProcess.shared.stopNow()
-        #endif
         DemoEngine.shared.stop()
         HotKeyCenter.shared.unregisterAll()
     }
@@ -26,16 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         signal(SIGPIPE, SIG_IGN)
         // Warm up Keychain cache on main thread BEFORE any poller or view touches it
         _ = KeychainStore.shared
-        #if APPSTORE
-        NSApp.setActivationPolicy(.accessory)
-        #else
         // In the Dock like a regular app (Coucou → Settings → Flow), or only in the menu bar.
         NSApp.setActivationPolicy(FlowHubController.showInDock ? .regular : .accessory)
-        #endif
         setupMenuBarItem()
         setupIsland()
         MachineVitals.shared.start()
-        #if !APPSTORE
         // Opened by hand (Finder, Dock, Spotlight): the Coucou window shows. Not at login.
         if FlowHubController.openAtLaunch && !FlowHubController.launchedAtLogin() {
             Task { @MainActor in
@@ -43,7 +34,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 FlowHubController.shared.show()
             }
         }
-        #endif
         #if DEBUG
         let debugMenu = NSMenu(title: "Debug")
         debugMenu.addItem(NSMenuItem(title: "Render recap image", action: #selector(renderRecapImage), keyEquivalent: ""))
@@ -51,22 +41,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         debugMenuItem.submenu = debugMenu
         NSApp.mainMenu?.addItem(debugMenuItem)
         #endif
-        #if PHONE_LINK
-        CloudProbe.shared.startIfEnabled()
-        #endif
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        #if APPSTORE
-        openIsland()
-        #else
         // A click on the Dock icon: the Coucou window.
         FlowHubController.shared.show()
-        #endif
         return true
     }
 
-    #if !APPSTORE
     /// Right-click on the Dock icon.
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         let menu = NSMenu()
@@ -98,7 +80,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { await taker.start() }
         }
     }
-    #endif
 
     // MARK: - Menu bar
 
@@ -117,17 +98,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(demoItem)
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Open Coucou", comment: ""), action: #selector(openIsland), keyEquivalent: "")
-        #if !APPSTORE
         let updateItem = NSMenuItem(title: "", action: #selector(openUpdate), keyEquivalent: "")
         updateItem.isHidden = true
         updateMenuItem = updateItem
         menu.addItem(updateItem)
-        #endif
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Weekly recap", comment: ""), action: #selector(openWeeklyRecap), keyEquivalent: "")
-        #if !APPSTORE
         menu.addItem(withTitle: String(localized: "hub.menu"), action: #selector(openFlowHub), keyEquivalent: "")
-        #endif
         menu.addItem(withTitle: NSLocalizedString("Settings…", comment: ""), action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Quit", comment: ""), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -151,7 +128,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.expand(to: .recap)
     }
 
-    #if !APPSTORE
     @objc private func openUpdate() {
         MacUpdater.shared.show()
     }
@@ -160,7 +136,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if AppState.shared.mode == .expanded { islandController?.collapse() }
         FlowHubController.shared.show(.dictation)
     }
-    #endif
 
     private var settingsWindow: NSWindow?
 
@@ -174,30 +149,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openSettings() {
         // The island floats above every window; fold it away so it can't cover Settings.
         if AppState.shared.mode == .expanded { islandController?.collapse() }
-        #if !APPSTORE
         // Everything in one place: Settings are the notch's pages of the Coucou window.
         let section = UserDefaults.standard.string(forKey: "settingsSection") ?? "general"
         FlowHubController.shared.show(HubPage.forSettings(section))
-        #else
-
-        if let w = settingsWindow, w.isVisible {
-            placeBelowIsland(w)
-            w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return
-        }
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
-                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                           backing: .buffered, defer: false)
-        win.title = String(localized: "settings.window.title")
-        let host = NSHostingView(rootView: SettingsView())
-        host.sizingOptions = [.minSize]
-        win.contentView = host
-        win.contentMinSize = NSSize(width: 640, height: 420)
-        win.isReleasedWhenClosed = false
-        placeBelowIsland(win)
-        settingsWindow = win
-        win.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        #endif
     }
 
     /// Centres the window horizontally and keeps its title bar clear of the island panel
@@ -278,10 +232,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
-        #if !APPSTORE
         _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
         FlowDictation.shared.start()  // watches the dictation key only if Flow dictation is on
-        #endif
         N8nPoller.shared.start()
         VercelPoller.shared.start()
         ResendPoller.shared.start()
@@ -304,14 +256,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: .checkMondayRecap, object: nil, queue: .main) { [weak self] _ in
             self?.checkMondayRecap()
         }
-        #if !APPSTORE
         _ = MusicController.shared
         _ = SpotifyController.shared
         MailController.shared.start()
         WhatsAppController.shared.start()
         MacUpdater.shared.start()
         ClaudeDesktopChatWatcher.shared.start()
-        #endif
         CryptoController.shared.start()
         PortfolioController.shared.start()
     }
@@ -324,13 +274,11 @@ extension AppDelegate: NSMenuDelegate {
         demoMenuItem?.title = DemoEngine.shared.isActive
             ? NSLocalizedString("demo.stop", comment: "")
             : NSLocalizedString("Demo mode", comment: "")
-        #if !APPSTORE
         if let r = MacUpdater.shared.latest, MacUpdate.isNewer(r.version, than: MacUpdater.currentVersion) {
             updateMenuItem?.title = String(format: String(localized: "update.menu %@"), r.version)
             updateMenuItem?.isHidden = false
         } else {
             updateMenuItem?.isHidden = true
         }
-        #endif
     }
 }

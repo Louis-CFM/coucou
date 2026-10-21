@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 import AppKit
 import Combine
@@ -354,4 +353,3 @@ final class MusicController: ObservableObject {
         }
     }
 }
-#endif

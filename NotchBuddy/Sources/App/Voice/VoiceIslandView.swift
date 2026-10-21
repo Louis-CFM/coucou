@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 // MARK: - VoiceListeningView
@@ -87,4 +86,3 @@ private struct MicDotView: View {
             .onDisappear { pulsing = false }
     }
 }
-#endif

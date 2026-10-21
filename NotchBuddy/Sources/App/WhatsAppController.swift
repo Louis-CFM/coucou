@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 import AppKit
 import Combine
@@ -638,4 +637,3 @@ final class WhatsAppController: ObservableObject {
         filters.ignored.remove(chat)
     }
 }
-#endif

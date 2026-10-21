@@ -1,4 +1,3 @@
-#if !APPSTORE
 import Foundation
 
 // MARK: - IntentParser
@@ -784,4 +783,3 @@ enum IntentParser {
         ["mets", "de", "la", "musique"], ["mets", "du", "son"],
     ]
 }
-#endif

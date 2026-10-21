@@ -1,4 +1,3 @@
-#if !APPSTORE
 import AVFoundation
 @preconcurrency import FluidAudio
 import os
@@ -258,4 +257,3 @@ final class ParakeetDictation: @unchecked Sendable {
         return true
     }
 }
-#endif
