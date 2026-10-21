@@ -1757,6 +1757,19 @@
    "de": "Coucou konnte nicht einfügen: Deine Worte wurden kopiert. Drücke ⌘V und erlaube Bedienungshilfen, damit Coucou sie für dich einfügt.",
    "tr": "Coucou yapıştıramadı: sözlerin kopyalandı. ⌘V tuşlarına bas ve Coucou'nun senin için yapıştırabilmesi için Erişilebilirlik izni ver."
   },
+  "Coucou discovers MCP servers you already configured in Claude Desktop, Cursor, VS Code, or OpenCode. Enabled tools become available to the chat.": {
+   "zh-Hans": "Coucou 会发现你在 Claude Desktop、Cursor、VS Code 或 OpenCode 中已配置的 MCP 服务器。启用的工具可在聊天中使用。",
+   "hi": "Coucou उन MCP सर्वरों का पता लगाता है जिन्हें आपने पहले ही Claude Desktop, Cursor, VS Code या OpenCode में कॉन्फ़िगर किया है। सक्षम किए गए टूल चैट के लिए उपलब्ध हो जाते हैं।",
+   "es": "Coucou detecta los servidores MCP que ya configuraste en Claude Desktop, Cursor, VS Code u OpenCode. Las herramientas habilitadas estarán disponibles en el chat.",
+   "ar": "يكتشف Coucou خوادم MCP التي قمت بتهيئتها بالفعل في Claude Desktop أو Cursor أو VS Code أو OpenCode. تصبح الأدوات الممكّنة متاحة للدردشة.",
+   "fr": "Coucou détecte les serveurs MCP déjà configurés dans Claude Desktop, Cursor, VS Code ou OpenCode. Les outils activés deviennent disponibles pour le chat.",
+   "bn": "Coucou আপনার Claude Desktop, Cursor, VS Code বা OpenCode-এ ইতিমধ্যে কনফিগার করা MCP সার্ভারগুলো শনাক্ত করে। সক্ষম টুলগুলো চ্যাটে ব্যবহারযোগ্য হয়ে ওঠে।",
+   "pt-BR": "O Coucou detecta servidores MCP já configurados no Claude Desktop, Cursor, VS Code ou OpenCode. As ferramentas habilitadas ficam disponíveis para o chat.",
+   "ru": "Coucou обнаруживает серверы MCP, уже настроенные в Claude Desktop, Cursor, VS Code или OpenCode. Включенные инструменты становятся доступны в чате.",
+   "id": "Coucou mendeteksi server MCP yang sudah Anda konfigurasi di Claude Desktop, Cursor, VS Code, atau OpenCode. Alat yang diaktifkan akan tersedia untuk obrolan.",
+   "de": "Coucou erkennt MCP-Server, die Sie bereits in Claude Desktop, Cursor, VS Code oder OpenCode konfiguriert haben. Aktivierte Tools stehen dem Chat zur Verfügung.",
+   "tr": "Coucou; Claude Desktop, Cursor, VS Code veya OpenCode'da yapılandırdığınız MCP sunucularını keşfeder. Etkinleştirilen araçlar sohbette kullanılabilir hale gelir."
+  },
   "Coucou is up to date": {
    "zh-Hans": "Coucou 已是最新版本",
    "hi": "Coucou अप-टू-डेट है",
@@ -3758,6 +3771,19 @@
    "id": "Sesi terpanjang",
    "de": "Längste Sitzung",
    "tr": "En uzun oturum"
+  },
+  "MCP Tools & Connectors": {
+   "zh-Hans": "MCP 工具与连接器",
+   "hi": "MCP टूल्स और कनेक्टर्स",
+   "es": "Herramientas y conectores MCP",
+   "ar": "أدوات وموصلات MCP",
+   "fr": "Outils et connecteurs MCP",
+   "bn": "MCP টুল ও কানেক্টর",
+   "pt-BR": "Ferramentas e conectores MCP",
+   "ru": "Инструменты и коннекторы MCP",
+   "id": "Alat & Konektor MCP",
+   "de": "MCP-Tools & Konnektoren",
+   "tr": "MCP Araçları ve Bağlayıcıları"
   },
   "Mac voice": {
    "zh-Hans": "Mac 语音",
@@ -6307,6 +6333,19 @@
    "de": "SITZUNGEN",
    "tr": "OTURUMLAR"
   },
+  "Safe mode: mutating tools require approval in the Notch.": {
+   "zh-Hans": "安全模式：修改类工具需要在刘海中获得批准。",
+   "hi": "सुरक्षित मोड: बदलाव करने वाले टूल्स के लिए नॉच में अनुमोदन आवश्यक है।",
+   "es": "Modo seguro: las herramientas de modificación requieren aprobación en el Notch.",
+   "ar": "الوضع الآمن: تتطلب الأدوات التي تجري تغييرات موافقة في النوتش.",
+   "fr": "Mode sécurisé : les outils de modification nécessitent une approbation dans le Notch.",
+   "bn": "নিরাপদ মোড: পরিবর্তনকারী টুলগুলোর জন্য নচে অনুমোদনের প্রয়োজন।",
+   "pt-BR": "Modo seguro: ferramentas de modificação exigem aprovação no Notch.",
+   "ru": "Безопасный режим: изменяющие инструменты требуют подтверждения в Notch.",
+   "id": "Mode aman: alat pengubah memerlukan persetujuan di Notch.",
+   "de": "Sicherer Modus: Ändernde Tools erfordern eine Bestätigung in der Notch.",
+   "tr": "Güvenli mod: değişiklik yapan araçlar Çentik'te onay gerektirir."
+  },
   "Said by": {
    "zh-Hans": "说话人",
    "hi": "किसने कहा",
@@ -6410,6 +6449,19 @@
    "id": "Ucapkan idemu sesukamu: hasilnya ditempel sebagai prompt yang jelas (tujuan, konteks, langkah, batasan, selesai jika), siap untuk Claude Code, Cursor, atau ChatGPT.",
    "de": "Sprich deine Idee einfach aus: Sie wird als klarer Prompt eingefügt (Ziel, Kontext, Schritte, Einschränkungen und Abschlusskriterien), bereit für Claude Code, Cursor oder ChatGPT.",
    "tr": "Fikrini aklına geldiği gibi anlat: Claude Code, Cursor veya ChatGPT için hazır, açık bir istem olarak yapıştırılır (hedef, bağlam, adımlar, kısıtlar ve tamamlanma ölçütleri)."
+  },
+  "Scans existing configuration files on this Mac without making any modifications.": {
+   "zh-Hans": "扫描此 Mac 上的现有配置文件，而不作任何修改。",
+   "hi": "बिना किसी संशोधन के इस Mac पर मौजूदा कॉन्फ़िगरेशन फ़ाइलों को स्कैन करता है।",
+   "es": "Escanea los archivos de configuración existentes en este Mac sin realizar modificaciones.",
+   "ar": "يمسح ملفات التهيئة الحالية على هذا الـ Mac دون إجراء أي تعديلات.",
+   "fr": "Analyse les fichiers de configuration existants sur ce Mac sans effectuer de modifications.",
+   "bn": "কোনো পরিবর্তন না করেই এই Mac-এর বিদ্যমান কনফিগারেশন ফাইল স্ক্যান করে।",
+   "pt-BR": "Verifica os arquivos de configuração existentes neste Mac sem fazer alterações.",
+   "ru": "Сканирует существующие файлы конфигурации на этом Mac без внесения изменений.",
+   "id": "Memindai file konfigurasi yang ada di Mac ini tanpa melakukan perubahan apa pun.",
+   "de": "Scannt bestehende Konfigurationsdateien auf diesem Mac, ohne Änderungen vorzunehmen.",
+   "tr": "Bu Mac'teki mevcut yapılandırma dosyalarını hiçbir değişiklik yapmadan tarar."
   },
   "Scarf": {
    "zh-Hans": "围巾",
