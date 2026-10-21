@@ -4,7 +4,7 @@
 // island's settings are drawn here, one Notch page at a time.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
+import { Bridge, onEvent, type ClaudeAccountStatus, type HookPreview, type HookStatus, type ShortcutsReport } from "../core/bridge";
 import { CUSTOM_SERVER_KEY, providerDef, urlExposure } from "../core/providers";
 import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
@@ -272,6 +272,26 @@ function planSection(status: HookStatus): HTMLElement {
     redraw();
   };
 
+  // Your Claude account (claude_account.rs): live numbers from claude.ai.
+  const account = h("div", { class: "row" });
+  const drawAccount = (s: ClaudeAccountStatus | null) => {
+    const live = s?.connected === true && s.signedIn !== false && s.updatedAt != null;
+    const word = !s?.connected
+      ? (s?.signingIn ? t("Waiting for you to sign in…") : t("Not connected"))
+      : s.signedIn === false ? t("Signed out of claude.ai") : live ? t("Connected") : t("Connecting…");
+    account.replaceChildren(
+      h("label", { text: t("Claude account") }),
+      statusDot(live),
+      h("span", { class: "hint", text: word }),
+      s?.connected && s.signedIn !== false
+        ? h("button", { class: "danger", text: t("Disconnect"), onclick: () => void Bridge.claudeAccountDisconnect() })
+        : h("button", { class: "primary", text: s?.connected ? t("Sign in again…") : t("Connect…"), onclick: () => void Bridge.claudeAccountConnect() }),
+    );
+  };
+  drawAccount(null);
+  void Bridge.claudeAccountStatus().then(drawAccount);
+  void onEvent<ClaudeAccountStatus>("claude-account", drawAccount);
+
   function draw() {
     // The switch shows "on" while the install it asked for is being reviewed.
     const sw = toggle(settings.showPlanInNotch, (on) => {
@@ -296,6 +316,8 @@ function planSection(status: HookStatus): HTMLElement {
         text: PLAN_SETTINGS_TEXT.claude,
       }),
       h("div", { class: "hint", text: PLAN_SETTINGS_TEXT.claudeCli }),
+      h("div", { class: "hint", text: t("Live numbers, the same the Claude app shows: connect your Claude account and sign in to claude.ai once, in Coucou's own window. Your password goes to claude.ai only; Coucou keeps the session in its folder and only reads your usage.") }),
+      account,
       h("div", { class: "row" }, h("label", { text: PLAN_SETTINGS_TEXT.showClaude }), sw),
       h("div", { class: "row" },
         h("label", { text: t("Relay") }),

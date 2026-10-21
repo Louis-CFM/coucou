@@ -7144,6 +7144,97 @@
    "id": "Commit atau push dihentikan: kode berubah setelah tes terakhir.",
    "de": "Commit oder Push gestoppt: Der Code hat sich nach dem letzten Testlauf geändert.",
    "tr": "Bir commit ya da push durduruldu: son test çalıştırmasından sonra kod değişti."
+  },
+  "Sign in to Claude": {
+   "zh-Hans": "登录 Claude",
+   "hi": "Claude में साइन इन करें",
+   "es": "Iniciar sesión en Claude",
+   "ar": "تسجيل الدخول إلى Claude",
+   "fr": "Se connecter à Claude",
+   "bn": "Claude-এ সাইন ইন করুন",
+   "pt-BR": "Entrar no Claude",
+   "ru": "Вход в Claude",
+   "id": "Masuk ke Claude",
+   "de": "Bei Claude anmelden",
+   "tr": "Claude'da oturum aç"
+  },
+  "Live numbers, the same the Claude app shows: connect your Claude account and sign in to claude.ai once, in Coucou's own window. Your password goes to claude.ai only; Coucou keeps the session in its folder and only reads your usage.": {
+   "zh-Hans": "实时数据，与 Claude 应用显示的一致：连接你的 Claude 账号，在 Coucou 自己的窗口中登录 claude.ai 一次。你的密码只发送给 claude.ai；Coucou 把会话保存在它的文件夹中，只读取你的用量。",
+   "hi": "लाइव आँकड़े, वही जो Claude ऐप दिखाता है: अपना Claude खाता कनेक्ट करें और Coucou की अपनी विंडो में एक बार claude.ai में साइन इन करें। आपका पासवर्ड सिर्फ़ claude.ai को जाता है; Coucou सत्र को अपने फ़ोल्डर में रखता है और सिर्फ़ आपका उपयोग पढ़ता है।",
+   "es": "Cifras en vivo, las mismas que muestra la app de Claude: conecta tu cuenta de Claude e inicia sesión en claude.ai una vez, en la propia ventana de Coucou. Tu contraseña solo va a claude.ai; Coucou guarda la sesión en su carpeta y solo lee tu uso.",
+   "ar": "أرقام حية، هي نفسها التي يعرضها تطبيق Claude: اربط حسابك على Claude وسجّل الدخول إلى claude.ai مرة واحدة في نافذة Coucou الخاصة. تذهب كلمة مرورك إلى claude.ai فقط؛ يحتفظ Coucou بالجلسة في مجلده ولا يقرأ سوى استخدامك.",
+   "fr": "Des chiffres en direct, les mêmes que l'app Claude : connecte ton compte Claude et connecte-toi à claude.ai une fois, dans la fenêtre de Coucou. Ton mot de passe ne va qu'à claude.ai ; Coucou garde la session dans son dossier et ne lit que ton utilisation.",
+   "bn": "লাইভ সংখ্যা, Claude অ্যাপ যা দেখায় সেই একই: আপনার Claude অ্যাকাউন্ট সংযুক্ত করুন এবং Coucou-র নিজস্ব উইন্ডোতে একবার claude.ai-তে সাইন ইন করুন। আপনার পাসওয়ার্ড শুধু claude.ai-তে যায়; Coucou সেশনটি নিজের ফোল্ডারে রাখে এবং শুধু আপনার ব্যবহার পড়ে।",
+   "pt-BR": "Números ao vivo, os mesmos que o app do Claude mostra: conecte sua conta do Claude e entre no claude.ai uma vez, na janela do próprio Coucou. Sua senha vai só para o claude.ai; o Coucou guarda a sessão na pasta dele e só lê seu uso.",
+   "ru": "Живые цифры, те же, что показывает приложение Claude: подключите аккаунт Claude и войдите на claude.ai один раз в собственном окне Coucou. Пароль уходит только на claude.ai; Coucou хранит сессию в своей папке и читает только ваше использование.",
+   "id": "Angka langsung, sama dengan yang ditampilkan aplikasi Claude: hubungkan akun Claude Anda dan masuk ke claude.ai sekali, di jendela Coucou sendiri. Kata sandi Anda hanya dikirim ke claude.ai; Coucou menyimpan sesinya di foldernya dan hanya membaca penggunaan Anda.",
+   "de": "Live-Zahlen, dieselben wie in der Claude-App: Verbinde dein Claude-Konto und melde dich einmal bei claude.ai an, in Coucous eigenem Fenster. Dein Passwort geht nur an claude.ai; Coucou behält die Sitzung in seinem Ordner und liest nur deine Nutzung.",
+   "tr": "Canlı rakamlar, Claude uygulamasının gösterdiğiyle aynı: Claude hesabını bağla ve Coucou'nun kendi penceresinde claude.ai'de bir kez oturum aç. Parolan yalnızca claude.ai'ye gider; Coucou oturumu kendi klasöründe tutar ve yalnızca kullanımını okur."
+  },
+  "Waiting for you to sign in…": {
+   "zh-Hans": "等待你登录…",
+   "hi": "आपके साइन इन करने की प्रतीक्षा…",
+   "es": "Esperando a que inicies sesión…",
+   "ar": "بانتظار تسجيل دخولك…",
+   "fr": "En attente de ta connexion…",
+   "bn": "আপনার সাইন ইনের অপেক্ষায়…",
+   "pt-BR": "Esperando você entrar…",
+   "ru": "Ожидание входа…",
+   "id": "Menunggu Anda masuk…",
+   "de": "Warte auf deine Anmeldung…",
+   "tr": "Oturum açmanı bekliyor…"
+  },
+  "Signed out of claude.ai": {
+   "zh-Hans": "已退出 claude.ai",
+   "hi": "claude.ai से साइन आउट",
+   "es": "Sesión cerrada en claude.ai",
+   "ar": "تم تسجيل الخروج من claude.ai",
+   "fr": "Déconnecté de claude.ai",
+   "bn": "claude.ai থেকে সাইন আউট",
+   "pt-BR": "Saiu do claude.ai",
+   "ru": "Выход из claude.ai",
+   "id": "Keluar dari claude.ai",
+   "de": "Von claude.ai abgemeldet",
+   "tr": "claude.ai oturumu kapalı"
+  },
+  "Claude account": {
+   "zh-Hans": "Claude 账号",
+   "hi": "Claude खाता",
+   "es": "Cuenta de Claude",
+   "ar": "حساب Claude",
+   "fr": "Compte Claude",
+   "bn": "Claude অ্যাকাউন্ট",
+   "pt-BR": "Conta do Claude",
+   "ru": "Аккаунт Claude",
+   "id": "Akun Claude",
+   "de": "Claude-Konto",
+   "tr": "Claude hesabı"
+  },
+  "Sign in again…": {
+   "zh-Hans": "重新登录…",
+   "hi": "फिर से साइन इन करें…",
+   "es": "Volver a iniciar sesión…",
+   "ar": "تسجيل الدخول مجددًا…",
+   "fr": "Se reconnecter…",
+   "bn": "আবার সাইন ইন করুন…",
+   "pt-BR": "Entrar de novo…",
+   "ru": "Войти снова…",
+   "id": "Masuk lagi…",
+   "de": "Erneut anmelden…",
+   "tr": "Yeniden oturum aç…"
+  },
+  "Connect…": {
+   "zh-Hans": "连接…",
+   "hi": "कनेक्ट करें…",
+   "es": "Conectar…",
+   "ar": "ربط…",
+   "fr": "Connecter…",
+   "bn": "সংযুক্ত করুন…",
+   "pt-BR": "Conectar…",
+   "ru": "Подключить…",
+   "id": "Hubungkan…",
+   "de": "Verbinden…",
+   "tr": "Bağla…"
   }
  }
 }

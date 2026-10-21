@@ -461,7 +461,11 @@ export const Bridge = {
   /** The newest plan sample the Claude desktop app recorded (src-tauri/src/claude_plan.rs). */
   claudeDesktopPlan: () =>
     call<{ at: number; fiveHour: number | null; sevenDay: number | null } | null>("claude_desktop_plan"),
-  /** The plan's use right now, from Anthropic with Claude Code's sign-in (claude_plan.rs). */
+  /** Your Claude account, signed in once in Coucou's own claude.ai window (claude_account.rs). */
+  claudeAccountStatus: () => call<ClaudeAccountStatus>("claude_account_status"),
+  claudeAccountConnect: () => call<void>("claude_account_connect"),
+  claudeAccountDisconnect: () => call<void>("claude_account_disconnect"),
+  /** The plan's use right now, from claude.ai or with Claude Code's sign-in (claude_plan.rs). */
   claudeLivePlan: () =>
     call<{ fiveHour: number | null; sevenDay: number | null; fiveHourResetsAt: string | null; sevenDayResetsAt: string | null } | null>(
       "claude_live_plan",
@@ -497,6 +501,14 @@ export const Bridge = {
   /** The release's page on github.com. */
   updateOpenPage: () => call<void>("update_open_page"),
 };
+
+/** Your Claude account in Coucou: connected, signed in, when claude.ai last answered (epoch ms). */
+export interface ClaudeAccountStatus {
+  connected: boolean;
+  signedIn: boolean | null;
+  signingIn: boolean;
+  updatedAt: number | null;
+}
 
 /** The double-check's answer: P(the tests pass), or why it couldn't say. */
 export interface CheckAnswer {

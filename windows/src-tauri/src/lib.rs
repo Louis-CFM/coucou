@@ -5,6 +5,7 @@ mod agents;
 mod capture;
 mod chat;
 mod claude;
+mod claude_account;
 mod claude_plan;
 mod codex_plan;
 mod config_file;
@@ -954,6 +955,9 @@ pub fn run() {
             mail::mail_send,
             claude_plan::claude_desktop_plan,
             claude_plan::claude_live_plan,
+            claude_account::claude_account_connect,
+            claude_account::claude_account_disconnect,
+            claude_account::claude_account_status,
             tests_check::tests_check,
             tests_check::tests_check_ping,
             tests_check::tests_git_diff,
@@ -1074,6 +1078,8 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             whatsapp::start(&handle);
+            // Live plan usage from claude.ai, once you connected your account.
+            claude_account::start(&handle);
             // Laya while the double-check is Local; the relay's fix-loop marker.
             tests_check::settings_saved(&handle);
             shortcuts::apply(&handle, &loaded.shortcuts);

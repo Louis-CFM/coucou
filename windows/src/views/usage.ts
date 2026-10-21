@@ -9,7 +9,7 @@
 // Mochi wears the plan's colour while it is open. It closes when the view, the
 // mode or the focused pill changes.
 
-import { Bridge } from "../core/bridge";
+import { Bridge, onEvent } from "../core/bridge";
 import {
   PLAN_TEXT, claudeSubtitle, codexIsStale, codexResetsLabel, codexSubtitle, dominantPct,
   effectivePct, parseCodexPlan, pillLabel, planColor, resetLabel,
@@ -139,6 +139,8 @@ async function refreshClaudePlan(): Promise<void> {
 /** Now, and every minute: the gauge follows the plan as it is used. */
 export function startClaudeDesktopPlan(): void {
   void refreshClaudePlan();
+  // claude.ai just answered (claude_account.rs): shown at once, not at the next minute.
+  void onEvent("claude-usage", () => void refreshClaudePlan());
   window.setInterval(() => void refreshClaudePlan(), 60_000);
 }
 

@@ -121,9 +121,13 @@ pub fn parse_live(json: &Value) -> Option<LivePlan> {
     (plan.five_hour.is_some() || plan.seven_day.is_some()).then_some(plan)
 }
 
-/// The plan's use right now, or None: no Claude Code sign-in, expired, offline.
+/// The plan's use right now, or None: no account connected (claude_account.rs) and
+/// no Claude Code sign-in, expired, offline.
 #[tauri::command]
 pub async fn claude_live_plan() -> Option<LivePlan> {
+    if let Some(plan) = crate::claude_account::latest().as_ref().and_then(parse_live) {
+        return Some(plan);
+    }
     let token = claude_code_token()?;
     let client = reqwest::Client::builder().timeout(Duration::from_secs(8)).build().ok()?;
     let res = client
