@@ -88,9 +88,10 @@ pub struct Moodmaker {
 
 impl Moodmaker {
     pub fn next(&mut self, s: &Sample, top: Vec<String>) -> Mood {
-        // Two readings in a row above 80 %.
-        self.busy_samples = if s.cpu >= 0.8 { self.busy_samples + 1 } else { 0 };
-        let busy = if self.busy_samples >= 2 { ((s.cpu - 0.6) / 0.3).clamp(0.0, 1.0) } else { 0.0 };
+        // Half a minute in a row at 85 % or more (ten readings): a laptop that is
+        // often busy kept Mochi hopping and sweating all day on short spikes.
+        self.busy_samples = if s.cpu >= 0.85 { self.busy_samples + 1 } else { 0 };
+        let busy = if self.busy_samples >= BUSY_SAMPLES { ((s.cpu - 0.75) / 0.2).clamp(0.0, 1.0) } else { 0.0 };
 
         let low = |b: Option<Battery>| b.is_some_and(|b| !b.on_power && b.percent < 20);
         let is_low = low(s.battery);
@@ -137,6 +138,8 @@ pub fn heat_level(celsius: Option<f64>) -> f64 {
 }
 
 const GB: f64 = 1024.0 * 1024.0 * 1024.0;
+/// Readings (3 s apart) at full load before Mochi panics.
+const BUSY_SAMPLES: u32 = 10;
 
 /// Physical memory in use → the Mac's memory pressure: warning 0.6, critical 1.
 pub fn memory_level(load: u32) -> f64 {
@@ -464,7 +467,10 @@ mod tests {
     #[test]
     fn a_short_spike_does_not_make_him_sweat() {
         let mut m = Moodmaker::default();
-        assert_eq!(m.next(&sample(0.95), vec!["node".into()]).busy, 0.0);
+        // Under half a minute at full load (ten readings): still calm.
+        for _ in 1..BUSY_SAMPLES {
+            assert_eq!(m.next(&sample(0.95), vec!["node".into()]).busy, 0.0);
+        }
         let mood = m.next(&sample(0.95), vec!["node".into()]);
         assert!(mood.busy > 0.9, "{mood:?}");
         assert_eq!(mood.top, vec!["node".to_string()]);

@@ -62,8 +62,10 @@ pub const ACTIONS: &[ActionDef] = &[
     action("openChat", "Ctrl+Alt+Space", true, true),
     action("goToAlert", "Ctrl+Alt+A", true, true),
     action("jumpToTerminal", "Ctrl+Alt+T", true, true),
-    // The front window's app and title go with the next chat question.
-    action("attachFrontWindow", "Ctrl+Alt+F", true, true),
+    // The front window's app and title go with the next chat question. No key by
+    // default: Ctrl+Alt+F belongs to other apps too (code editors format with it),
+    // and taken globally it opened the island in their place. Set one in Settings.
+    action("attachFrontWindow", "", true, true),
     action("nextPill", "Ctrl+Alt+Right", true, true),
     action("prevPill", "Ctrl+Alt+Left", true, true),
     action("muteToggle", "Ctrl+Alt+S", true, true),
@@ -680,7 +682,8 @@ mod wayland {
             assert_eq!(of(&r, "desktopToggle").status, Status::Refused);
             // Never handed over: untouched.
             assert_eq!(of(&r, "toggleIsland").status, Status::Off);
-            assert_eq!(of(&r, "attachFrontWindow").status, Status::Refused);
+            // No key by default: off, like the island toggle.
+            assert_eq!(of(&r, "attachFrontWindow").status, Status::Off);
         }
 
         #[test]

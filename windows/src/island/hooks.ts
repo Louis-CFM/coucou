@@ -477,9 +477,14 @@ function handleHook(island: Island, payload: HookPayload) {
         Sound.play("question");
         surface("overview", true);
       } else {
+        // Already at work (thinking or on an earlier tool): the island it showed may
+        // have hidden since, and stays hidden. Bringing it back on every tool call
+        // flashed it at the top of the screen all through a long request; it comes
+        // back for what needs you: a question, an approval, the finish or an error.
+        const atWork = ["thinking", "working"].includes(State.tasks.find((x) => x.id === agentId)?.state ?? "");
         State.updateTask(agentId, "working");
         State.appendStep(agentId, stepLabel(tool, payload.tool_input ?? {}));
-        surface("overview", false);
+        if (!atWork) surface("overview", false);
       }
       break;
     }

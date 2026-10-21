@@ -79,7 +79,8 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   def("openChat", "Ctrl+Alt+Space", true, true),
   def("goToAlert", "Ctrl+Alt+A", true, true),
   def("jumpToTerminal", "Ctrl+Alt+T", true, true),
-  def("attachFrontWindow", "Ctrl+Alt+F", true, true),
+  // No key by default (Ctrl+Alt+F belongs to other apps too): set one in Settings.
+  def("attachFrontWindow", "", true, true),
   def("nextPill", "Ctrl+Alt+Right", true, true),
   def("prevPill", "Ctrl+Alt+Left", true, true),
   def("muteToggle", "Ctrl+Alt+S", true, true),

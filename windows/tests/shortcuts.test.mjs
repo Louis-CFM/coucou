@@ -80,7 +80,7 @@ test("only the island toggle is off by default, and every action is ported", () 
     assert.equal(d.ported, true, d.id);
   }
   assert.deepEqual(activeKeys({}).map(([id]) => id), [
-    "openChat", "goToAlert", "jumpToTerminal", "attachFrontWindow", "nextPill", "prevPill", "muteToggle", "desktopToggle",
+    "openChat", "goToAlert", "jumpToTerminal", "nextPill", "prevPill", "muteToggle", "desktopToggle",
     "wardrobeToggle", "captureScreen",
   ]);
   // The Mac's ⌃⌥D, on the same letter.
