@@ -57,6 +57,9 @@ enum FlowKey: String, CaseIterable, Identifiable {
 @MainActor
 final class FlowDictation: ObservableObject {
     static let shared = FlowDictation()
+    private(set) static var existing: FlowDictation?
+    private var finishingCount = 0
+    var busy: Bool { current != nil || finishingCount > 0 }
 
     static let enabledKey = "flowDictationEnabled"
     /// How long the microphone stays open after the key comes up.
@@ -102,6 +105,7 @@ final class FlowDictation: ObservableObject {
         let bands = FlowAudioBands()
         self.bands = bands
         pill = FlowPillController(bands: bands)
+        Self.existing = self
         // The pill's buttons, under the pointer.
         pill.setEdge(pillEdge)
         pill.model.keyLabel = key.label
@@ -114,7 +118,7 @@ final class FlowDictation: ObservableObject {
 
     /// The pill's microphone: hands-free, as after a double tap, until ✓ or the key.
     func startHandsFree() {
-        guard isEnabled, logic.phase == .idle, current == nil else { return }
+        guard !AgentsOnlyPreference.shared.enabled, isEnabled, logic.phase == .idle, current == nil else { return }
         logic.lock()
         begin()
         pill.model.phase = .locked
@@ -130,14 +134,22 @@ final class FlowDictation: ObservableObject {
     /// At launch: listens for the key if Flow dictation is on.
     func start() {
         refresh()
-        if isEnabled, FlowStore.shared.engine == .parakeet { Parakeet.shared.preload() }
+        if !AgentsOnlyPreference.shared.enabled, isEnabled, FlowStore.shared.engine == .parakeet { Parakeet.shared.preload() }
+    }
+
+    func stop() {
+        removeMonitors()
+        trustTask?.cancel(); trustTask = nil
+        startTask?.cancel(); startTask = nil
+        cancelAll()
+        pill.setEnabled(false)
     }
 
     func refresh() {
         removeMonitors()
         trusted = AXIsProcessTrusted()
-        pill.setEnabled(isEnabled)
-        guard isEnabled else {
+        pill.setEnabled(isEnabled && !AgentsOnlyPreference.shared.enabled)
+        guard isEnabled && !AgentsOnlyPreference.shared.enabled else {
             cancelAll()
             trustTask?.cancel(); trustTask = nil
             return
@@ -157,7 +169,7 @@ final class FlowDictation: ObservableObject {
         let now = AXIsProcessTrusted()
         guard now != trusted else { return }
         trusted = now
-        guard isEnabled else { return }
+        guard isEnabled && !AgentsOnlyPreference.shared.enabled else { return }
         removeMonitors()
         installMonitors()
         if !now { waitForTrust() }
@@ -336,7 +348,9 @@ final class FlowDictation: ObservableObject {
         pill.model.phase = .thinking
         listen.stoppedAt = Date()
         let opening = startTask
+        finishingCount += 1
         Task { @MainActor [weak self] in
+            defer { self?.finishingCount -= 1 }
             await opening?.value
             // The key often comes up while the last word is still being said: keep listening a
             // moment so it makes it in.

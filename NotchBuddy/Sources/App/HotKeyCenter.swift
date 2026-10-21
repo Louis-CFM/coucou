@@ -98,6 +98,7 @@ final class HotKeyCenter {
             #if APPSTORE
             if action.isNonAppStore { continue }
             #endif
+            if AgentsOnlyPreference.shared.enabled && !action.isAgentRelevant { continue }
             if !ShortcutLogic.isEnabled(action) { continue }
             registerOne(action)
         }
@@ -117,6 +118,7 @@ final class HotKeyCenter {
         #if APPSTORE
         if action.isNonAppStore { return }
         #endif
+        if AgentsOnlyPreference.shared.enabled && !action.isAgentRelevant { return }
         if !ShortcutLogic.isEnabled(action) { return }
         registerOne(action)
     }

@@ -7,24 +7,22 @@ import Foundation
 
 final class N8nPoller: @unchecked Sendable {
     static let shared = N8nPoller()
-    private var timer: DispatchSourceTimer?
+    private let activity = ServiceActivity()
     private var lastExecutionId: String = ""
 
     private init() {}
 
     func start() {
-        guard timer == nil else { return }
-        let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 3, repeating: 15, leeway: .seconds(3))
-        t.setEventHandler { [weak self] in self?.poll() }
-        t.resume()
-        timer = t
+        guard activity.start(after: 3, every: 15, leeway: 3,
+                             poll: { [weak self] in self?.poll() }) else { return }
     }
+
+    func stop() { activity.stop() }
 
     // MARK: - Poll list endpoint
 
     private func poll() {
-        guard !DemoEngine.isPollerPaused else { return }
+        guard activity.running, !DemoEngine.isPollerPaused else { return }
         guard let apiKey  = KeychainStore.shared.get("n8n-api-key"),
               let rawBase = KeychainStore.shared.get("n8n-url") else {
             return   // not configured: nothing to do, nothing to log (this runs every 15 s)
@@ -37,7 +35,7 @@ final class N8nPoller: @unchecked Sendable {
         tryList(endpoints, apiKey: apiKey, base: base, idx: 0)
     }
 
-    private func tryList(_ urls: [String], apiKey: String, base: String, idx: Int) {
+    private func tryList(_ urls: [String], apiKey: String, base: String, idx: Int, updates: ServiceActivity.Delivery? = nil) {
         guard idx < urls.count, let url = URL(string: urls[idx]) else {
             n8nLog("All list endpoints failed")
             return
@@ -46,22 +44,22 @@ final class N8nPoller: @unchecked Sendable {
         req.setValue(apiKey, forHTTPHeaderField: "X-N8N-API-KEY")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+        activity.dataTask(with: req, from: updates) { [weak self] data, response, error, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if let error {
                 self.n8nLog("Network error: \(error.localizedDescription)")
-                self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
+                self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1, updates: updates)
                 return
             }
             guard let data else {
-                self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
+                self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1, updates: updates)
                 return
             }
             // Only failures and changes are logged: a quiet poll writes nothing to disk.
             guard code == 200 else {
                 self.n8nLog("HTTP \(code) · \(data.count) bytes")
-                self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1)
+                self.tryList(urls, apiKey: apiKey, base: base, idx: idx + 1, updates: updates)
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) else { return }
@@ -106,38 +104,39 @@ final class N8nPoller: @unchecked Sendable {
                 "\(base)/rest/executions/\(id)?includeData=true",
                 "\(base)/rest/executions/\(id)",
             ]
-            self.fetchDetail(detailUrls, apiKey: apiKey, success: success, idx: 0)
-        }.resume()
+            self.fetchDetail(detailUrls, apiKey: apiKey, success: success, idx: 0, updates: updates)
+        }?.resume()
     }
 
     // MARK: - Fetch full execution detail
 
-    private func fetchDetail(_ urls: [String], apiKey: String, success: Bool, idx: Int) {
+    private func fetchDetail(_ urls: [String], apiKey: String, success: Bool, idx: Int, updates: ServiceActivity.Delivery) {
+        guard updates.isCurrent else { return }
         guard idx < urls.count, let url = URL(string: urls[idx]) else {
-            dispatch(success: success, name: "Workflow", detail: nil)
+            dispatch(success: success, name: "Workflow", detail: nil, updates: updates)
             return
         }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.setValue(apiKey, forHTTPHeaderField: "X-N8N-API-KEY")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+        activity.dataTask(with: req, from: updates) { [weak self] data, response, _, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
                 self.n8nLog("Detail HTTP \(code) \(url.host ?? "?")\(url.path)")
-                self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1)
+                self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1, updates: updates)
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1)
+                self.fetchDetail(urls, apiKey: apiKey, success: success, idx: idx + 1, updates: updates)
                 return
             }
             let name = self.extractWorkflowName(from: json)
             let detail = self.parseDetail(from: json, success: success)
             self.n8nLog("Parsed: \(name)")
-            self.dispatch(success: success, name: name, detail: detail)
-        }.resume()
+            self.dispatch(success: success, name: name, detail: detail, updates: updates)
+        }?.resume()
     }
 
     private func extractWorkflowName(from json: [String: Any]) -> String {
@@ -213,8 +212,12 @@ final class N8nPoller: @unchecked Sendable {
 
     // MARK: - Dispatch to main
 
-    private func dispatch(success: Bool, name: String, detail: String?) {
-        DispatchQueue.main.async { self.handleExecution(success: success, name: name, detail: detail) }
+    private func dispatch(success: Bool, name: String, detail: String?, updates: ServiceActivity.Delivery) {
+        let action: @MainActor @Sendable () -> Void = {
+            guard !AgentsOnlyPreference.shared.enabled else { return }
+            self.handleExecution(success: success, name: name, detail: detail)
+        }
+        updates.onMain(action)
     }
 
     @MainActor

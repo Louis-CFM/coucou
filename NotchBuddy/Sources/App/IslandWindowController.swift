@@ -610,6 +610,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     func expand(to view: IslandView) {
+        guard !state.agentsOnly || view.isAgentRelevant else { return }
         state.view = view
         if state.mode == .expanded {
             // Already expanded — just switch view
@@ -653,6 +654,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     func handleHotKey(_ action: ShortcutAction) {
+        guard !state.agentsOnly || action.isAgentRelevant else { return }
         switch action {
         case .toggleIsland:
             if state.mode == .expanded {
@@ -840,6 +842,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     private func performAttachFrontWindow() {
+        guard !state.agentsOnly else { return }
         guard let app = state.lastExternalApp else {
             SoundEngine.shared.play("error"); return
         }
@@ -937,7 +940,7 @@ final class IslandWindowController: NSWindowController {
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
-                guard self.wasInIsland else { return }
+                guard self.wasInIsland, !self.state.agentsOnly else { return }
                 self.fsm.userInteracted()
                 self.pendingIslandClick = true
                 self.hoverTimer?.cancel()
@@ -957,7 +960,7 @@ final class IslandWindowController: NSWindowController {
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDragged) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
-                guard let start = self.attachDragStart, !self.inAttachDrag else { return }
+                guard !self.state.agentsOnly, let start = self.attachDragStart, !self.inAttachDrag else { return }
                 let m = NSEvent.mouseLocation
                 guard hypot(m.x - start.x, m.y - start.y) > 3 else { return }
                 self.inAttachDrag = true
@@ -1472,6 +1475,7 @@ extension IslandWindowController {
     /// Run the intent derived from `transcript`, show VoiceResultView, then continue conversation or collapse.
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
+        guard !state.agentsOnly else { return }
         let t0     = Date()
         let pills  = PillCatalog.available
         let runner = VoiceActionRunner.shared

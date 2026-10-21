@@ -2,22 +2,20 @@ import Foundation
 
 final class CalcomPoller: @unchecked Sendable {
     static let shared = CalcomPoller()
-    private var timer: DispatchSourceTimer?
+    private let activity = ServiceActivity()
     private init() {}
 
     func start() {
-        guard timer == nil else { return }
-        let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 8, repeating: 300, leeway: .seconds(30))
-        t.setEventHandler { [weak self] in self?.poll() }
-        t.resume()
-        timer = t
+        guard activity.start(after: 8, every: 300, leeway: 30,
+                             poll: { [weak self] in self?.poll() }) else { return }
     }
 
     func pollNow() { poll() }
 
+    func stop() { activity.stop() }
+
     private func poll() {
-        guard !DemoEngine.isPollerPaused else { return }
+        guard activity.running, !DemoEngine.isPollerPaused else { return }
         guard let key = KeychainStore.shared.get("calcom-api-key") else { return }
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
@@ -38,7 +36,7 @@ final class CalcomPoller: @unchecked Sendable {
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.setValue("2024-08-13", forHTTPHeaderField: "cal-api-version")
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+        activity.dataTask(with: req) { [weak self] data, response, error, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if code != 200 {
@@ -46,7 +44,10 @@ final class CalcomPoller: @unchecked Sendable {
                 if code == 401 { msg = "Invalid API key (401)" }
                 else if code == 0 { msg = error?.localizedDescription ?? "No connection" }
                 else { msg = "API error \(code)" }
-                DispatchQueue.main.async { AppState.shared.setIfChanged(\.calcomError, msg) }
+                updates.onMain {
+                    guard !AgentsOnlyPreference.shared.enabled else { return }
+                    AppState.shared.setIfChanged(\.calcomError, msg)
+                }
                 return
             }
             guard let data,
@@ -54,12 +55,13 @@ final class CalcomPoller: @unchecked Sendable {
                   let rawList = json["data"] as? [[String: Any]] else { return }
 
             let parsed = rawList.compactMap { self.parseBooking($0) }
-            DispatchQueue.main.async {
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
                 AppState.shared.setIfChanged(\.calcomError, nil)
                 AppState.shared.setIfChanged(\.calcomBookings, parsed)
                 AppState.shared.setIfChanged(\.calcomLoaded, true)
             }
-        }.resume()
+        }?.resume()
     }
 
     private func parseBooking(_ b: [String: Any]) -> CalcomBooking? {

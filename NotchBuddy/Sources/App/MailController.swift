@@ -79,15 +79,20 @@ final class MailController: ObservableObject {
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
+    private let jobs = FeatureTasks()
     private var fetching = false
+    private var refreshTask: Task<Void, Never>?
     private var lastFetch: Date = .distantPast
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.mail")
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains(Self.pillId)
+        !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {
+    private init() {}
+
+    private func observeIfNeeded() {
+        guard notifTokens.isEmpty else { return }
         isMailRunning = Self.mailRunning()
 
         let ws = NSWorkspace.shared.notificationCenter
@@ -124,7 +129,20 @@ final class MailController: ObservableObject {
     }
 
     /// Called once at launch so the controller starts observing.
-    func start() { updatePolling() }
+    func start() { jobs.start(); observeIfNeeded(); updatePolling() }
+
+    func stop() {
+        jobs.stop()
+        cancellables.removeAll()
+        for token in notifTokens {
+            DistributedNotificationCenter.default().removeObserver(token)
+            NSWorkspace.shared.notificationCenter.removeObserver(token)
+        }
+        notifTokens.removeAll()
+        timer?.invalidate(); timer = nil
+        refreshTask?.cancel(); refreshTask = nil
+        fetching = false
+    }
 
     // MARK: - Polling
 
@@ -167,8 +185,9 @@ final class MailController: ObservableObject {
         isMailRunning = true
         fetching = true
         lastFetch = Date()
-        Task {
+        refreshTask = Task {
             let result = await runAppleScript(Self.listScript(perInbox: Self.keep))
+            guard !Task.isCancelled, isPillActive else { return }
             fetching = false
             guard case .success(let values) = result, let text = values.first else { return }
             let parsed = Self.parseList(text)
@@ -184,7 +203,7 @@ final class MailController: ObservableObject {
     /// The message's text (first 1,200 characters), read once and cached.
     func loadPreview(_ message: MailMessage) {
         guard previews[message.id] == nil, Self.mailRunning() else { return }
-        Task {
+        jobs.run { [self] in
             let script = Self.messageScript(message, body: """
                 set c to ""
                 try
@@ -194,6 +213,7 @@ final class MailController: ObservableObject {
                 return c
                 """)
             let result = await runAppleScript(script)
+            guard !Task.isCancelled, isPillActive else { return }
             if case .success(let values) = result {
                 let text = (values.first ?? "")
                     .replacingOccurrences(of: "\r", with: "\n")
@@ -208,12 +228,12 @@ final class MailController: ObservableObject {
     }
 
     func markAsRead(_ message: MailMessage) {
-        guard Self.mailRunning() else { return }
+        guard !AgentsOnlyPreference.shared.enabled, Self.mailRunning() else { return }
         if let i = messages.firstIndex(where: { $0.id == message.id }) {
             if !messages[i].isRead, let u = unreadCount { unreadCount = max(0, u - 1) }
             messages[i].isRead = true
         }
-        Task {
+        jobs.run { [self] in
             await runAppleScript(Self.messageScript(message, body: "set read status of m to true"))
         }
     }
@@ -221,8 +241,8 @@ final class MailController: ObservableObject {
     /// Opens Mail's own reply window for the message. Nothing is sent: the user writes
     /// and sends from Mail.
     func reply(_ message: MailMessage) {
-        guard Self.mailRunning() else { return }
-        Task {
+        guard !AgentsOnlyPreference.shared.enabled, Self.mailRunning() else { return }
+        jobs.run { [self] in
             await runAppleScript(Self.messageScript(message, body: """
                 reply m with opening window
                 activate
@@ -231,8 +251,8 @@ final class MailController: ObservableObject {
     }
 
     func openInMail(_ message: MailMessage) {
-        guard Self.mailRunning() else { openMail(); return }
-        Task {
+        guard !AgentsOnlyPreference.shared.enabled, Self.mailRunning() else { openMail(); return }
+        jobs.run { [self] in
             await runAppleScript(Self.messageScript(message, body: """
                 open m
                 activate
@@ -241,6 +261,7 @@ final class MailController: ObservableObject {
     }
 
     func openMail() {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.bundleId) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
         }
@@ -378,6 +399,7 @@ final class MailController: ObservableObject {
     private func runAppleScript(_ source: String) async -> ScriptResult {
         await withCheckedContinuation { cont in
             queue.async {
+                guard !AgentsOnlyPreference.shared.enabled else { cont.resume(returning: .error); return }
                 guard let script = NSAppleScript(source: source) else {
                     cont.resume(returning: .error)
                     return

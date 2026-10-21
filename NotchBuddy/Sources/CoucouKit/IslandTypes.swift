@@ -282,3 +282,13 @@ enum IslandConst {
         .prompt:    "rgba(99,102,241,0.22)",
     ]
 }
+
+
+extension IslandView {
+    var isAgentRelevant: Bool {
+        switch self {
+        case .overview, .empty, .approval, .question, .error, .finished, .settings, .recap: return true
+        default: return false
+        }
+    }
+}

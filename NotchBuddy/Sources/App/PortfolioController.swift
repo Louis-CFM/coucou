@@ -209,13 +209,17 @@ final class PortfolioController: ObservableObject {
 
     private var timer: Timer?
     private var fetching = false
+    private var refreshTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains(Self.pillId)
+        !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {
+    private init() {}
+
+    private func observeIfNeeded() {
+        guard cancellables.isEmpty else { return }
         AppState.shared.$activeIntegrations
             .map { $0.contains(Self.pillId) }
             .removeDuplicates()
@@ -225,7 +229,7 @@ final class PortfolioController: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func start() { updatePolling() }
+    func start() { observeIfNeeded(); updatePolling() }
 
     func settingsChanged() {
         accounts = []
@@ -263,7 +267,7 @@ final class PortfolioController: ObservableObject {
         let configured = PortfolioSettings.configuredAccounts
         guard !configured.isEmpty else { accounts = []; loaded = true; return }
         fetching = true
-        Task {
+        refreshTask = Task {
             var result: [PortfolioAccount] = []
             await withTaskGroup(of: PortfolioAccount.self) { group in
                 for account in configured {
@@ -271,11 +275,13 @@ final class PortfolioController: ObservableObject {
                 }
                 for await a in group { result.append(a) }
             }
+            guard !Task.isCancelled, isPillActive else { return }
             // Stable order: match the configured order
             let ordered = configured.compactMap { conf in result.first { $0.id == conf.id } }
             // Get prices for all held symbols
             let symbols = Set(ordered.flatMap { $0.holdings.map(\.symbol) })
             let prices = await Self.fetchPrices(symbols: Array(symbols))
+            guard !Task.isCancelled, isPillActive else { return }
             var priced = ordered
             for i in priced.indices {
                 for j in priced[i].holdings.indices {
@@ -294,6 +300,13 @@ final class PortfolioController: ObservableObject {
             loaded = true
             lastUpdate = Date()
         }
+    }
+
+    func stop() {
+        cancellables.removeAll()
+        timer?.invalidate(); timer = nil
+        refreshTask?.cancel(); refreshTask = nil
+        fetching = false
     }
 
     // MARK: - Account fetch dispatch

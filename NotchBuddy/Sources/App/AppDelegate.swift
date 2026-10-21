@@ -6,6 +6,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
     private var demoMenuItem: NSMenuItem?
+    private lazy var optionalFeatures: OptionalFeatureRuntime = {
+        let features: [OptionalFeatureRuntime.Feature] = [
+            .init(start: { N8nPoller.shared.start() }, stop: { N8nPoller.shared.stop() }),
+            .init(start: { VercelPoller.shared.start() }, stop: { VercelPoller.shared.stop() }),
+            .init(start: { ResendPoller.shared.start() }, stop: { ResendPoller.shared.stop() }),
+            .init(start: { GithubPoller.shared.start() }, stop: { GithubPoller.shared.stop() }),
+            .init(start: { StripePoller.shared.start() }, stop: { StripePoller.shared.stop() }),
+            .init(start: { CalcomPoller.shared.start() }, stop: { CalcomPoller.shared.stop() }),
+            .init(start: { NotionPoller.shared.start() }, stop: { NotionPoller.shared.stop() }),
+            .init(start: { MachineVitals.shared.start() }, stop: { MachineVitals.shared.stop() }),
+            .init(start: { CryptoController.shared.start() }, stop: { CryptoController.shared.stop() }),
+            .init(start: { PortfolioController.shared.start() }, stop: { PortfolioController.shared.stop() }),
+        ]
+        #if !APPSTORE
+        return OptionalFeatureRuntime(features: features + [
+            .init(start: { VoiceEngine.shared.start() }, stop: { VoiceEngine.shared.stop() }),
+            .init(start: { FlowDictation.shared.start() }, stop: { FlowDictation.shared.stop() }),
+            .init(start: { NoteTaker.existing?.startObserving() }, stop: { NoteTaker.existing?.stopObserving() }),
+            .init(start: { MusicController.shared.start() }, stop: { MusicController.shared.stop() }),
+            .init(start: { SpotifyController.shared.start() }, stop: { SpotifyController.shared.stop() }),
+            .init(start: { MailController.shared.start() }, stop: { MailController.shared.stop() }),
+            .init(start: { WhatsAppController.shared.start() }, stop: { WhatsAppController.shared.stop() }),
+            .init(start: { MacUpdater.shared.start() }, stop: { MacUpdater.shared.stop() }),
+        ])
+        #else
+        return OptionalFeatureRuntime(features: features)
+        #endif
+    }()
     #if !APPSTORE
     /// "Update Coucou to 0.6.0…", shown only when a new version is out.
     private var updateMenuItem: NSMenuItem?
@@ -34,7 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         setupMenuBarItem()
         setupIsland()
-        MachineVitals.shared.start()
         #if !APPSTORE
         // Opened by hand (Finder, Dock, Spotlight): the Coucou window shows. Not at login.
         if FlowHubController.openAtLaunch && !FlowHubController.launchedAtLogin() {
@@ -75,10 +102,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.target = self
             menu.addItem(item)
         }
-        add(String(localized: "hub.page.dictation"), #selector(openFlowHub))
-        add(String(localized: "hub.page.notes"), #selector(openNotes))
-        add(NoteTaker.shared.isRecording ? String(localized: "notes.stop") : String(localized: "hub.record-call"),
-            #selector(toggleCallRecording))
+        if !AppState.shared.agentsOnly {
+            add(String(localized: "hub.page.dictation"), #selector(openFlowHub))
+            add(String(localized: "hub.page.notes"), #selector(openNotes))
+            add(NoteTaker.shared.isRecording ? String(localized: "notes.stop") : String(localized: "hub.record-call"),
+                #selector(toggleCallRecording))
+        }
         menu.addItem(.separator())
         add(String(localized: "Open Coucou"), #selector(openIsland))
         add(NSLocalizedString("Settings…", comment: ""), #selector(openSettings))
@@ -138,13 +167,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Actions
 
     @objc private func toggleDemoMode() {
+        guard !AppState.shared.agentsOnly else { return }
         if DemoEngine.shared.isActive { DemoEngine.shared.stop() }
         else { DemoEngine.shared.start() }
     }
 
     @objc private func openIsland() {
         islandController?.fsm.openedExternally()
-        islandController?.expand(to: .overview)
+        islandController?.expand(to: AppState.shared.tasks.isEmpty ? .empty : .overview)
     }
 
     @objc private func openWeeklyRecap() {
@@ -153,6 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     #if !APPSTORE
     @objc private func openUpdate() {
+        guard !AppState.shared.agentsOnly else { return }
         MacUpdater.shared.show()
     }
 
@@ -278,22 +309,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController?.showWindow(nil)
         islandController?.fsm.launch()
         HookServer.shared.start()
-        #if !APPSTORE
-        _ = VoiceEngine.shared  // registers system observers; starts mic only if the user enabled voice
-        FlowDictation.shared.start()  // watches the dictation key only if Flow dictation is on
-        #endif
-        N8nPoller.shared.start()
-        VercelPoller.shared.start()
-        ResendPoller.shared.start()
-        GithubPoller.shared.start()
-        StripePoller.shared.start()
-        CalcomPoller.shared.start()
-        NotionPoller.shared.start()
+        optionalFeatures.apply(agentsOnly: AppState.shared.agentsOnly)
+        NotificationCenter.default.addObserver(self, selector: #selector(agentsOnlyModeChanged),
+                                               name: .agentsOnlyModeChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
         // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
         NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { [weak self] _ in
-            DesktopMochiController.shared.launchFlyIfNeeded()
+            if !AgentsOnlyPreference.shared.enabled { DesktopMochiController.shared.launchFlyIfNeeded() }
             self?.checkMondayRecap()
         }
         // Check for Monday recap on wake and when a new session/prompt arrives
@@ -305,15 +328,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.checkMondayRecap()
         }
         #if !APPSTORE
-        _ = MusicController.shared
-        _ = SpotifyController.shared
-        MailController.shared.start()
-        WhatsAppController.shared.start()
-        MacUpdater.shared.start()
         ClaudeDesktopChatWatcher.shared.start()
         #endif
-        CryptoController.shared.start()
-        PortfolioController.shared.start()
+    }
+
+    @objc private func agentsOnlyModeChanged() {
+        let state = AppState.shared
+        if state.agentsOnly {
+            DemoEngine.shared.stop()
+            DesktopMochiController.existing?.suspendForAgentsOnly()
+            state.refreshAgentConnections()
+        } else {
+            DesktopMochiController.shared.resumeAfterAgentsOnly()
+        }
+        optionalFeatures.apply(agentsOnly: state.agentsOnly)
+        HotKeyCenter.shared.registerAll()
+        #if !APPSTORE
+        if state.agentsOnly { FlowHubController.shared.router.page = .general }
+        #endif
+        #if PHONE_LINK
+        CloudProbe.shared.updateServiceMode()
+        #endif
     }
 }
 
@@ -321,10 +356,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
+        demoMenuItem?.isHidden = AppState.shared.agentsOnly
         demoMenuItem?.title = DemoEngine.shared.isActive
             ? NSLocalizedString("demo.stop", comment: "")
             : NSLocalizedString("Demo mode", comment: "")
         #if !APPSTORE
+        if AppState.shared.agentsOnly { updateMenuItem?.isHidden = true; return }
         if let r = MacUpdater.shared.latest, MacUpdate.isNewer(r.version, than: MacUpdater.currentVersion) {
             updateMenuItem?.title = String(format: String(localized: "update.menu %@"), r.version)
             updateMenuItem?.isHidden = false

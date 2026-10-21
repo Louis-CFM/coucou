@@ -471,6 +471,7 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        state.observedAgent(agentId)
         let focused = state.focusId == agentId
         // The user is looking at the session's terminal: a finish or an error is already in
         // front of them, so the pill only takes a badge (no sound, no reveal). Warp exposes

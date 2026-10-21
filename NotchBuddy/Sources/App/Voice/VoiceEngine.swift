@@ -42,7 +42,7 @@ final class VoiceEngine: ObservableObject {
     private var lowPowerMode    = false
     private var dictationActive = 0
 
-    var isPaused: Bool { screenLocked || screenSleeping || lowPowerMode || dictationActive > 0 }
+    var isPaused: Bool { AgentsOnlyPreference.shared.enabled || screenLocked || screenSleeping || lowPowerMode || dictationActive > 0 }
 
     // MARK: - Audio pipeline (main-thread owned)
 
@@ -111,8 +111,23 @@ final class VoiceEngine: ObservableObject {
         lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         let buildHash = Bundle.main.object(forInfoDictionaryKey: "CoucouGitHash") as? String ?? "unknown"
         appendAppLog("nb.log", "[Voice] build \(buildHash)")
+    }
+
+    private var systemObservers: [(NotificationCenter, NSObjectProtocol)] = []
+
+    func start() {
+        guard systemObservers.isEmpty else { return }
+        lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         observeSystemEvents()
         if isEnabled && !isPaused { startAudioPipeline() }
+    }
+
+    func stop() {
+        for (center, token) in systemObservers { center.removeObserver(token) }
+        systemObservers.removeAll()
+        endConversation()
+        stopAudioPipeline()
+        VoiceSpeaker.shared.stop()
     }
 
     // MARK: - Enable / pause
@@ -203,6 +218,7 @@ final class VoiceEngine: ObservableObject {
     // MARK: - Pipeline lifecycle
 
     private func startAudioPipeline() {
+        guard !isPaused else { return }
         guard audio == nil else { return }
         guard let loc = suitableLocale() else {
             recognizerUnavailable = true
@@ -721,34 +737,34 @@ final class VoiceEngine: ObservableObject {
 
     private func observeSystemEvents() {
         let dc = DistributedNotificationCenter.default()
-        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"),
+        systemObservers.append((dc, dc.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"),
                        object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.screenLocked = true;  self?.updatePause() }
-        }
-        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"),
+        }))
+        systemObservers.append((dc, dc.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"),
                        object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.screenLocked = false; self?.updatePause() }
-        }
+        }))
 
         let ws = NSWorkspace.shared.notificationCenter
-        ws.addObserver(forName: NSWorkspace.willSleepNotification,
+        systemObservers.append((ws, ws.addObserver(forName: NSWorkspace.willSleepNotification,
                        object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.screenSleeping = true;  self?.updatePause() }
-        }
-        ws.addObserver(forName: NSWorkspace.didWakeNotification,
+        }))
+        systemObservers.append((ws, ws.addObserver(forName: NSWorkspace.didWakeNotification,
                        object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.screenSleeping = false; self?.updatePause() }
-        }
-        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification,
+        }))
+        systemObservers.append((ws, ws.addObserver(forName: NSWorkspace.screensDidSleepNotification,
                        object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.screenSleeping = true;  self?.updatePause() }
-        }
-        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification,
+        }))
+        systemObservers.append((ws, ws.addObserver(forName: NSWorkspace.screensDidWakeNotification,
                        object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.screenSleeping = false; self?.updatePause() }
-        }
+        }))
 
-        NotificationCenter.default.addObserver(
+        systemObservers.append((NotificationCenter.default, NotificationCenter.default.addObserver(
             forName: NSNotification.Name.NSProcessInfoPowerStateDidChange,
             object: nil, queue: .main
         ) { [weak self] _ in
@@ -756,24 +772,24 @@ final class VoiceEngine: ObservableObject {
                 self?.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
                 self?.updatePause()
             }
-        }
+        }))
 
-        NotificationCenter.default.addObserver(
+        systemObservers.append((NotificationCenter.default, NotificationCenter.default.addObserver(
             forName: .dictationDidStart, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.dictationActive += 1
                 self?.updatePause()
             }
-        }
-        NotificationCenter.default.addObserver(
+        }))
+        systemObservers.append((NotificationCenter.default, NotificationCenter.default.addObserver(
             forName: .dictationDidEnd, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.dictationActive = max(0, (self?.dictationActive ?? 0) - 1)
                 self?.updatePause()
             }
-        }
+        }))
     }
 }
 

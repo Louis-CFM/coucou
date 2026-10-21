@@ -158,6 +158,7 @@ final class CryptoController: ObservableObject {
 
     private var timer: Timer?
     private var fetching = false
+    private var refreshTask: Task<Void, Never>?
     private var lastCandles: Date = .distantPast
     /// Price each coin had at the last alert (or when first seen).
     private var reference: [String: Double] = [:]
@@ -165,10 +166,13 @@ final class CryptoController: ObservableObject {
     private var lastSettings = ""
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains(Self.pillId)
+        !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {
+    private init() {}
+
+    private func observeIfNeeded() {
+        guard cancellables.isEmpty else { return }
         AppState.shared.$activeIntegrations
             .map { $0.contains(Self.pillId) }
             .removeDuplicates()
@@ -179,7 +183,7 @@ final class CryptoController: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func start() { updatePolling() }
+    func start() { observeIfNeeded(); updatePolling() }
 
     /// Exchange, currency or coins changed in Settings: start over with the new list.
     func settingsChanged() {
@@ -235,7 +239,7 @@ final class CryptoController: ObservableObject {
         }
         let withCandles = Date().timeIntervalSince(lastCandles) > 600
         fetching = true
-        Task {
+        refreshTask = Task {
             var fresh: [CryptoQuote] = []
             var notFound: [String] = []
             await withTaskGroup(of: (Int, CryptoQuote?).self) { group in
@@ -250,6 +254,7 @@ final class CryptoController: ObservableObject {
                 }
                 fresh = coins.indices.compactMap { byIndex[$0] }
             }
+            guard !Task.isCancelled, isPillActive else { return }
             fetching = false
             // Keep the previous curve until a new one is read.
             let previous = Dictionary(uniqueKeysWithValues: quotes.map { ($0.symbol, $0.spark) })
@@ -284,6 +289,13 @@ final class CryptoController: ObservableObject {
             }
         }
         return quote
+    }
+
+    func stop() {
+        cancellables.removeAll()
+        timer?.invalidate(); timer = nil
+        refreshTask?.cancel(); refreshTask = nil
+        fetching = false
     }
 
     // MARK: - Alerts

@@ -2,22 +2,20 @@ import Foundation
 
 final class NotionPoller: @unchecked Sendable {
     static let shared = NotionPoller()
-    private var timer: DispatchSourceTimer?
+    private let activity = ServiceActivity()
     private init() {}
 
     func start() {
-        guard timer == nil else { return }
-        let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 9, repeating: 300, leeway: .seconds(30))
-        t.setEventHandler { [weak self] in self?.poll() }
-        t.resume()
-        timer = t
+        guard activity.start(after: 9, every: 300, leeway: 30,
+                             poll: { [weak self] in self?.poll() }) else { return }
     }
 
     func pollNow() { poll() }
 
+    func stop() { activity.stop() }
+
     private func poll() {
-        guard !DemoEngine.isPollerPaused else { return }
+        guard activity.running, !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("notion-api-key") else { return }
         guard let url = URL(string: "https://api.notion.com/v1/search") else { return }
         var req = URLRequest(url: url, timeoutInterval: 10)
@@ -31,7 +29,7 @@ final class NotionPoller: @unchecked Sendable {
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+        activity.dataTask(with: req) { [weak self] data, response, error, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if code != 200 {
@@ -39,7 +37,10 @@ final class NotionPoller: @unchecked Sendable {
                 if code == 401 { msg = "Invalid API key (401)" }
                 else if code == 0 { msg = error?.localizedDescription ?? "No connection" }
                 else { msg = "API error \(code)" }
-                DispatchQueue.main.async { AppState.shared.setIfChanged(\.notionError, msg) }
+                updates.onMain {
+                    guard !AgentsOnlyPreference.shared.enabled else { return }
+                    AppState.shared.setIfChanged(\.notionError, msg)
+                }
                 return
             }
             guard let data,
@@ -47,12 +48,13 @@ final class NotionPoller: @unchecked Sendable {
                   let results = json["results"] as? [[String: Any]] else { return }
 
             let pages = results.compactMap { self.parsePage($0) }
-            DispatchQueue.main.async {
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
                 AppState.shared.setIfChanged(\.notionError, nil)
                 AppState.shared.notionPages = pages
                 AppState.shared.setIfChanged(\.notionLoaded, true)
             }
-        }.resume()
+        }?.resume()
     }
 
     private func parsePage(_ obj: [String: Any]) -> NotionPage? {

@@ -70,10 +70,14 @@ final class MacUpdater: ObservableObject {
         }
     }
 
+    private var launchCheck: DispatchWorkItem?
     private var timer: Timer?
     private var downloadTask: URLSessionDownloadTask?
+    private var generation = 0
 
-    private let session: URLSession = {
+    private var session = MacUpdater.makeSession()
+
+    private static func makeSession() -> URLSession {
         let config = URLSessionConfiguration.ephemeral
         config.urlCache = nil
         config.httpCookieStorage = nil
@@ -81,13 +85,16 @@ final class MacUpdater: ObservableObject {
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 900
         return URLSession(configuration: config, delegate: UpdateGitHubOnly(), delegateQueue: nil)
-    }()
+    }
 
     // MARK: - Schedule
 
     /// At launch: a first look 30 s in, then every hour (a GitHub call only every 6 h).
     func start() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in self?.tick(launch: true) }
+        guard timer == nil, !AgentsOnlyPreference.shared.enabled else { return }
+        let work = DispatchWorkItem { [weak self] in self?.tick(launch: true) }
+        launchCheck = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30, execute: work)
         timer?.invalidate()
         let t = Timer(timeInterval: 3600, repeats: true) { _ in
             Task { @MainActor in MacUpdater.shared.tick() }
@@ -97,7 +104,17 @@ final class MacUpdater: ObservableObject {
         timer = t
     }
 
+    func stop() {
+        launchCheck?.cancel(); launchCheck = nil
+        timer?.invalidate(); timer = nil
+        generation += 1
+        session.invalidateAndCancel()
+        session = Self.makeSession()
+        if lastCheck == .checking { lastCheck = .none }
+    }
+
     private func tick(launch: Bool = false) {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         switch Self.consent {
         case nil:
             askIfFree()
@@ -140,12 +157,15 @@ final class MacUpdater: ObservableObject {
     // MARK: - Check
 
     func check(manual: Bool) async {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard !busy, lastCheck != .checking else { return }
+        let token = generation
         lastCheck = .checking
         var req = URLRequest(url: MacUpdate.releasesURL)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         do {
             let (data, response) = try await session.data(for: req)
+            guard token == generation, !AgentsOnlyPreference.shared.enabled else { return }
             lastCheckDate = Date()
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { lastCheck = .unreachable; return }
             guard let release = MacUpdate.latest(data), MacUpdate.isNewer(release.version, than: Self.currentVersion) else {
@@ -163,6 +183,7 @@ final class MacUpdater: ObservableObject {
                 announceIfFree()
             }
         } catch {
+            guard token == generation else { return }
             lastCheck = .unreachable
         }
     }
@@ -182,6 +203,7 @@ final class MacUpdater: ObservableObject {
 
     /// Opens the card on this release (menu bar, Settings, the timer).
     func show(_ release: MacUpdate.Release? = nil) {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard let release = release ?? latest else { return }
         if !busy { phase = .available(release) }
         NotificationCenter.default.post(name: .hookExpand, object: IslandView.update)

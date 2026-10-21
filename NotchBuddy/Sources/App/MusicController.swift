@@ -17,13 +17,18 @@ final class MusicController: ObservableObject {
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
+    private let jobs = FeatureTasks()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.music")
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains("integration_music")
+        !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains("integration_music")
     }
 
-    private init() {
+    private init() {}
+
+    func start() {
+        jobs.start()
+        guard notifTokens.isEmpty else { return }
         // playerInfo fires whenever Music state changes (play/pause/track change).
         // Extract Sendable String? values before crossing into @MainActor.
         let tok1 = DistributedNotificationCenter.default().addObserver(
@@ -89,6 +94,17 @@ final class MusicController: ObservableObject {
             .store(in: &cancellables)
     }
 
+    func stop() {
+        jobs.stop()
+        cancellables.removeAll()
+        for token in notifTokens {
+            DistributedNotificationCenter.default().removeObserver(token)
+            NSWorkspace.shared.notificationCenter.removeObserver(token)
+        }
+        notifTokens.removeAll()
+        clearState()
+    }
+
     // MARK: - Private helpers
 
     private func isMusicRunning() -> Bool {
@@ -152,7 +168,7 @@ final class MusicController: ObservableObject {
     }
 
     private func fetchAndApply() {
-        Task {
+        jobs.run { [self] in
             let result = await runAppleScript("""
                 tell application id "com.apple.Music"
                     set ps to player state as string
@@ -174,7 +190,7 @@ final class MusicController: ObservableObject {
                     return {ps, n, ar, al}
                 end tell
             """)
-            guard case .success(let values) = result, values.count >= 4 else { return }
+            guard !Task.isCancelled, isPillActive, case .success(let values) = result, values.count >= 4 else { return }
             let playing    = values[0] == "playing"
             let wasPlaying = AppState.shared.musicPlaying
             trackTitle = values[1].isEmpty ? nil : Self.shortTitle(values[1])
@@ -242,7 +258,7 @@ final class MusicController: ObservableObject {
     }
 
     func adjustVolume(by delta: Int) {
-        Task {
+        jobs.run { [self] in
             let result = await runAppleScript(
                 #"tell application id "com.apple.Music" to set sound volume to (sound volume + \#(delta))"#
             )
@@ -319,6 +335,7 @@ final class MusicController: ObservableObject {
     private func runAppleScript(_ source: String) async -> ScriptResult {
         await withCheckedContinuation { cont in
             queue.async {
+                guard !AgentsOnlyPreference.shared.enabled else { cont.resume(returning: .error); return }
                 let script = NSAppleScript(source: source)!
                 var errDict: NSDictionary?
                 let desc = script.executeAndReturnError(&errDict)

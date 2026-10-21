@@ -24,6 +24,12 @@ Check auto-close timing and live setting changes:
 bash scripts/test-auto-close.sh
 ```
 
+Check agents-only visibility, persisted switching and optional feature lifecycles:
+
+```bash
+bash scripts/test-agents-only-mode.sh
+```
+
 Check macOS translations:
 
 ```bash

@@ -19,6 +19,7 @@ enum FlowEngine: String, CaseIterable, Identifiable {
 @MainActor
 final class Parakeet: ObservableObject {
     static let shared = Parakeet()
+    private(set) static var existing: Parakeet?
 
     /// Parakeet Ultra: v3's 25 languages, more accurate than v3, same speed.
     nonisolated static let version: AsrModelVersion = .ultra
@@ -35,8 +36,13 @@ final class Parakeet: ObservableObject {
     @Published private(set) var state: State = .missing
 
     private var loading: Task<AsrManager, Error>?
+    private var loadingActive = false
+    var busy: Bool {
+        if case .downloading = state { return true }
+        return loadingActive
+    }
 
-    private init() { refresh() }
+    private init() { Self.existing = self; refresh() }
 
     nonisolated static var isSupported: Bool {
         #if arch(arm64)
@@ -70,6 +76,7 @@ final class Parakeet: ObservableObject {
 
     /// Downloads Parakeet and the diarizer, then loads Parakeet so the first dictation is quick.
     func download() {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard Self.isSupported else { return }
         if case .downloading = state { return }
         state = .downloading(0)
@@ -117,7 +124,10 @@ final class Parakeet: ObservableObject {
 
     /// Loads Parakeet once; later calls get the same instance.
     func manager() async throws -> AsrManager {
+        guard !AgentsOnlyPreference.shared.enabled else { throw CancellationError() }
         if let loading { return try await loading.value }
+        loadingActive = true
+        defer { loadingActive = false }
         let task = Task<AsrManager, Error> {
             let models = try await AsrModels.load(from: Self.asrDirectory, version: Self.version)
             let asr = AsrManager(config: .default)
@@ -135,7 +145,7 @@ final class Parakeet: ObservableObject {
 
     /// Loads the model in the background when dictation will use it, so the first one is quick.
     func preload() {
-        guard state == .ready, loading == nil else { return }
+        guard !AgentsOnlyPreference.shared.enabled, state == .ready, loading == nil else { return }
         Task { @MainActor in _ = try? await manager() }
     }
 

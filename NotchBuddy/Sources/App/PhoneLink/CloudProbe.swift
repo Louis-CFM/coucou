@@ -178,6 +178,17 @@ final class CloudProbe {
 
     // MARK: Pong
 
+    func updateServiceMode() {
+        guard pollTask != nil else { return }
+        if AgentsOnlyPreference.shared.enabled {
+            ServicePublisher.shared.stop()
+            ServiceDetailRunner.shared.stop()
+        } else {
+            ServicePublisher.shared.start()
+            ServiceDetailRunner.shared.start()
+        }
+    }
+
     func handleRemoteNotification(_ userInfo: [String: Any]) {
         guard CKNotification(fromRemoteNotificationDictionary: userInfo) != nil else {
             log("remote notification received, not from CloudKit (keys: \(userInfo.keys.sorted().joined(separator: ", ")))")

@@ -240,3 +240,13 @@ enum ShortcutLogic {
         ("⎋",           String(localized: "shortcut.island.close")),
     ]
 }
+
+
+extension ShortcutAction {
+    var isAgentRelevant: Bool {
+        switch self {
+        case .toggleIsland, .goToAlert, .jumpToTerminal, .nextPill, .prevPill, .muteToggle: return true
+        default: return false
+        }
+    }
+}

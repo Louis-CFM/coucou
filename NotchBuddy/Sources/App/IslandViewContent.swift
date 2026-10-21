@@ -329,15 +329,20 @@ struct EmptyStateView: View {
             CardBackground(wash: nil)
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Nothing running right now.")
+                    Text(state.agentsOnly ? String(localized: "focus.no-agents") : String(localized: "Nothing running right now."))
                         .font(.system(size: 15, weight: .semibold))
-                    Text("Drop a file or window, or ask me anything.")
+                    Text(state.agentsOnly ? String(localized: "focus.connect-help") : String(localized: "Drop a file or window, or ask me anything."))
                         .font(.system(size: 13))
                         .foregroundColor(Color(hex: "#9398A1"))
                 }
                 Spacer()
-                PrimaryButton("Ask Claude") {
-                    state.view = .prompt
+                if state.agentsOnly {
+                    Button(String(localized: "Agents")) {
+                        NotificationCenter.default.post(name: .openFullSettings, object: "agents")
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    PrimaryButton("Ask Claude") { state.view = .prompt }
                 }
             }
             .padding(.leading, 118)
@@ -5124,7 +5129,7 @@ struct SettingsIslandView: View {
                 // Connection status
                 HStack(spacing: 14) {
                     StatusBadge(label: "Claude Code", ok: claudeConnected)
-                    StatusBadge(label: "API", ok: apiConnected)
+                    if !state.agentsOnly { StatusBadge(label: "API", ok: apiConnected) }
                     Spacer()
                     Button("Settings…") {
                         NotificationCenter.default.post(name: .openFullSettings, object: nil)
@@ -5166,6 +5171,7 @@ struct StatusBadge: View {
 @MainActor
 func switchChatProvider(_ provider: ChatProvider) {
     let state = AppState.shared
+    guard !state.agentsOnly else { return }
     if provider != state.chatProvider {
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
             state.chatProvider = provider
