@@ -48,7 +48,7 @@ func mergedHermesConfig(_ base: String, enableApprovals: Bool) -> String? {
         return sectionIdx ..< end
     }
 
-    let transportLine = "\(ind2)transport: coucou"
+    let transportLine = "\(ind2)transport: orca-notch"
     let fallbackLine  = "\(ind2)transport_fallback: builtin"
 
     func ensureApprovalTransport() {
@@ -88,11 +88,11 @@ func mergedHermesConfig(_ base: String, enableApprovals: Bool) -> String? {
     func removeApprovalTransport() {
         lines.removeAll { line in
             let t = line.trimmingCharacters(in: .whitespaces)
-            return t == "transport: coucou" || t == "transport_fallback: builtin"
+            return t == "transport: orca-notch" || t == "transport_fallback: builtin"
         }
     }
 
-    func ensureCoucouPlugin() {
+    func ensureOrcaNotchPlugin() {
         if let pluginsIdx = topLevelIndex(key: "plugins") {
             let pluginsRange = sectionRange(from: pluginsIdx)
             if let enabledIdx = (pluginsRange.lowerBound + 1 ..< pluginsRange.upperBound)
@@ -100,35 +100,35 @@ func mergedHermesConfig(_ base: String, enableApprovals: Bool) -> String? {
                 let enabledLine = lines[enabledIdx]
                 let trimmed = enabledLine.trimmingCharacters(in: .whitespaces)
                 if trimmed.contains("[") && trimmed.contains("]") {
-                    if trimmed.contains("coucou") { return }
+                    if trimmed.contains("orca-notch") { return }
                     if trimmed == "enabled: []" || trimmed == "enabled:[]" {
                         let prefix = enabledLine.prefix(while: { $0 == " " })
                         lines[enabledIdx] = "\(prefix)enabled:"
-                        lines.insert("\(prefix)\(ind)- coucou", at: enabledIdx + 1)
+                        lines.insert("\(prefix)\(ind)- orca-notch", at: enabledIdx + 1)
                     } else {
-                        lines[enabledIdx] = enabledLine.replacingOccurrences(of: "]", with: ", coucou]")
+                        lines[enabledIdx] = enabledLine.replacingOccurrences(of: "]", with: ", orca-notch]")
                     }
                 } else {
                     let enabledRange = sectionRange(from: enabledIdx)
                     let alreadyPresent = (enabledRange.lowerBound + 1 ..< enabledRange.upperBound)
-                        .contains { lines[$0].trimmingCharacters(in: .whitespaces) == "- coucou" }
+                        .contains { lines[$0].trimmingCharacters(in: .whitespaces) == "- orca-notch" }
                     if alreadyPresent { return }
                     let prefix = enabledLine.prefix(while: { $0 == " " })
-                    lines.insert("\(prefix)\(ind)- coucou", at: enabledIdx + 1)
+                    lines.insert("\(prefix)\(ind)- orca-notch", at: enabledIdx + 1)
                 }
             } else {
                 lines.insert("\(ind)enabled:", at: pluginsIdx + 1)
-                lines.insert("\(ind)\(ind)- coucou", at: pluginsIdx + 2)
+                lines.insert("\(ind)\(ind)- orca-notch", at: pluginsIdx + 2)
             }
         } else {
             if lines.last != "" { lines.append("") }
             lines.append("plugins:")
             lines.append("\(ind)enabled:")
-            lines.append("\(ind)\(ind)- coucou")
+            lines.append("\(ind)\(ind)- orca-notch")
         }
     }
 
-    func removeCoucouPlugin() {
+    func removeOrcaNotchPlugin() {
         guard let pluginsIdx = topLevelIndex(key: "plugins") else { return }
         let pluginsRange = sectionRange(from: pluginsIdx)
         guard let enabledIdx = (pluginsRange.lowerBound + 1 ..< pluginsRange.upperBound)
@@ -138,20 +138,20 @@ func mergedHermesConfig(_ base: String, enableApprovals: Bool) -> String? {
         let trimmed = enabledLine.trimmingCharacters(in: .whitespaces)
         if trimmed.contains("[") && trimmed.contains("]") {
             let cleaned = trimmed
-                .replacingOccurrences(of: ", coucou", with: "")
-                .replacingOccurrences(of: "coucou, ", with: "")
-                .replacingOccurrences(of: "coucou",   with: "")
+                .replacingOccurrences(of: ", orca-notch", with: "")
+                .replacingOccurrences(of: "orca-notch, ", with: "")
+                .replacingOccurrences(of: "orca-notch",   with: "")
             let prefix = enabledLine.prefix(while: { $0 == " " })
             lines[enabledIdx] = "\(prefix)\(cleaned)"
         } else {
             let enabledRange = sectionRange(from: enabledIdx)
             let toRemove = (enabledRange.lowerBound + 1 ..< enabledRange.upperBound)
-                .filter { lines[$0].trimmingCharacters(in: .whitespaces) == "- coucou" }
+                .filter { lines[$0].trimmingCharacters(in: .whitespaces) == "- orca-notch" }
             for i in toRemove.reversed() { lines.remove(at: i) }
         }
     }
 
-    ensureCoucouPlugin()
+    ensureOrcaNotchPlugin()
     if enableApprovals { ensureApprovalTransport() } else { removeApprovalTransport() }
     return lines.joined(separator: "\n")
 }
@@ -241,44 +241,44 @@ func check(_ name: String, _ result: String?, contains: [String] = [], notContai
 print("HermesConfigMergerTests")
 print("=======================")
 
-// 1. Empty file → adds plugins.enabled.coucou
-check("1. empty file → adds plugins/enabled/coucou",
+// 1. Empty file → adds plugins.enabled.orca-notch
+check("1. empty file → adds plugins/enabled/orca-notch",
       mergedHermesConfig("", enableApprovals: false),
-      contains: ["plugins:", "enabled:", "- coucou"])
+      contains: ["plugins:", "enabled:", "- orca-notch"])
 
-// 2. plugins: exists but no enabled: → adds enabled with coucou
-check("2. plugins without enabled → adds enabled/coucou",
+// 2. plugins: exists but no enabled: → adds enabled with orca-notch
+check("2. plugins without enabled → adds enabled/orca-notch",
       mergedHermesConfig("plugins:\n  disabled: []\n", enableApprovals: false),
-      contains: ["enabled:", "- coucou"])
+      contains: ["enabled:", "- orca-notch"])
 
-// 3. plugins.enabled with other item → adds coucou
-check("3. plugins.enabled other items → adds coucou",
+// 3. plugins.enabled with other item → adds orca-notch
+check("3. plugins.enabled other items → adds orca-notch",
       mergedHermesConfig("plugins:\n  enabled:\n    - other\n", enableApprovals: false),
-      contains: ["- other", "- coucou"])
+      contains: ["- other", "- orca-notch"])
 
-// 4. coucou already in plugins.enabled → no duplicate
-let case4 = mergedHermesConfig("plugins:\n  enabled:\n    - coucou\n", enableApprovals: false)
-check("4. coucou already present → no duplicate",
+// 4. orca-notch already in plugins.enabled → no duplicate
+let case4 = mergedHermesConfig("plugins:\n  enabled:\n    - orca-notch\n", enableApprovals: false)
+check("4. orca-notch already present → no duplicate",
       case4,
-      contains: ["- coucou"],
+      contains: ["- orca-notch"],
       notContains: [])
-// Verify only one occurrence of "- coucou"
+// Verify only one occurrence of "- orca-notch"
 if let r4 = case4 {
-    let count = r4.components(separatedBy: "- coucou").count - 1
-    if count == 1 { print("  PASS 4b. no duplicate coucou entry"); passed += 1 }
-    else { print("  FAIL 4b. got \(count) coucou entries"); failed += 1 }
+    let count = r4.components(separatedBy: "- orca-notch").count - 1
+    if count == 1 { print("  PASS 4b. no duplicate orca-notch entry"); passed += 1 }
+    else { print("  FAIL 4b. got \(count) orca-notch entries"); failed += 1 }
 }
 
-// 5. enabled: [] (empty inline list) → expands to block list with coucou
-check("5. enabled: [] → expands to block with coucou",
+// 5. enabled: [] (empty inline list) → expands to block list with orca-notch
+check("5. enabled: [] → expands to block with orca-notch",
       mergedHermesConfig("plugins:\n  enabled: []\n", enableApprovals: false),
-      contains: ["- coucou"],
+      contains: ["- orca-notch"],
       notContains: ["enabled: []"])
 
-// 6. enabled: [other] inline list → adds coucou to inline list
-check("6. enabled: [other] inline → adds coucou",
+// 6. enabled: [other] inline list → adds orca-notch to inline list
+check("6. enabled: [other] inline → adds orca-notch",
       mergedHermesConfig("plugins:\n  enabled: [other]\n", enableApprovals: false),
-      contains: ["coucou"])
+      contains: ["orca-notch"])
 
 // 7. Another section with its own enabled: key → only modifies under plugins:
 let case7 = """
@@ -290,42 +290,42 @@ plugins:
 """
 check("7. another section's enabled: not modified",
       mergedHermesConfig(case7, enableApprovals: false),
-      contains: ["features:", "enabled: [x]", "- coucou"])
+      contains: ["features:", "enabled: [x]", "- orca-notch"])
 
-// 8. coucou in disabled: → still adds to enabled:
-check("8. coucou in disabled → also adds to enabled",
-      mergedHermesConfig("plugins:\n  disabled:\n    - coucou\n  enabled:\n    - other\n", enableApprovals: false),
-      contains: ["- coucou", "- other"])
+// 8. orca-notch in disabled: → still adds to enabled:
+check("8. orca-notch in disabled → also adds to enabled",
+      mergedHermesConfig("plugins:\n  disabled:\n    - orca-notch\n  enabled:\n    - other\n", enableApprovals: false),
+      contains: ["- orca-notch", "- other"])
 
 // 9. security: without approval: → adds approval with transport keys
 check("9. security without approval → adds transport keys",
       mergedHermesConfig("security:\n  allow_private_urls: false\n", enableApprovals: true),
-      contains: ["approval:", "transport: coucou", "transport_fallback: builtin"])
+      contains: ["approval:", "transport: orca-notch", "transport_fallback: builtin"])
 
-// 10a. Uninstall: removes - coucou from enabled
+// 10a. Uninstall: removes - orca-notch from enabled
 let case10a = """
 plugins:
   enabled:
-    - coucou
+    - orca-notch
     - other
 security:
   approval:
-    transport: coucou
+    transport: orca-notch
     transport_fallback: builtin
 """
-check("10a. uninstall: removes coucou from enabled, transport keys",
+check("10a. uninstall: removes orca-notch from enabled, transport keys",
       mergedHermesConfig(case10a, enableApprovals: false),
-      notContains: ["transport: coucou", "transport_fallback: builtin"])
+      notContains: ["transport: orca-notch", "transport_fallback: builtin"])
 
 // 10b. After uninstall (disable approvals), transport keys removed
 check("10b. disable approvals: transport keys removed",
-      mergedHermesConfig("security:\n  approval:\n    transport: coucou\n    transport_fallback: builtin\n",
+      mergedHermesConfig("security:\n  approval:\n    transport: orca-notch\n    transport_fallback: builtin\n",
                          enableApprovals: false),
-      notContains: ["transport: coucou", "transport_fallback: builtin"])
+      notContains: ["transport: orca-notch", "transport_fallback: builtin"])
 
 // 11. Flow map → returns nil
 check("11. flow map { } → returns nil",
-      mergedHermesConfig("{plugins: {enabled: [coucou]}}", enableApprovals: false),
+      mergedHermesConfig("{plugins: {enabled: [orca-notch]}}", enableApprovals: false),
       expectNil: true)
 
 // 12. 4-space indentation → uses 4 spaces
@@ -337,12 +337,12 @@ plugins:
 """
 check("12. 4-space indent → uses 4 spaces",
       mergedHermesConfig(base12, enableApprovals: false),
-      contains: ["        - coucou"])   // 8 spaces = 2 levels of 4
+      contains: ["        - orca-notch"])   // 8 spaces = 2 levels of 4
 
 // 13. Enable approvals: adds both transport keys
 check("13. enableApprovals=true adds both transport keys",
       mergedHermesConfig("", enableApprovals: true),
-      contains: ["transport: coucou", "transport_fallback: builtin"])
+      contains: ["transport: orca-notch", "transport_fallback: builtin"])
 
 // 14. security.approval already has transport → update, not duplicate
 let case14 = """
@@ -353,7 +353,7 @@ security:
 """
 check("14. existing transport → updated, no duplicate",
       mergedHermesConfig(case14, enableApprovals: true),
-      contains: ["transport: coucou", "transport_fallback: builtin"],
+      contains: ["transport: orca-notch", "transport_fallback: builtin"],
       notContains: ["transport: terminal", "transport_fallback: deny"])
 
 print("")

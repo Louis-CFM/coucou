@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- A round dot; its colour is set in code from the tone. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <solid android:color="#FFFFFFFF" />
-    <size android:width="@dimen/widget_dot" android:height="@dimen/widget_dot" />
-</shape>

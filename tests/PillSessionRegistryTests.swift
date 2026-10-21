@@ -23,11 +23,11 @@ enum PillSessionRegistryTests {
         print("\nSingle session")
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou", "/tmp/coucou"), working: false)
+            reg.note(pill: claude, display: display("a", "orca-notch", "/tmp/orca-notch"), working: false)
             check("one live session", reg.liveCount(pill: claude) == 1)
             check("not working after SessionStart", reg.workingCount(pill: claude) == 0)
 
-            reg.note(pill: claude, display: display("a", "coucou", "/tmp/coucou"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch", "/tmp/orca-notch"), working: true)
             check("working after a tool call", reg.workingCount(pill: claude) == 1)
 
             check("Stop reaches the pill", reg.endTurn(pill: claude, session: "a") == .pill)
@@ -42,7 +42,7 @@ enum PillSessionRegistryTests {
         print("\nTwo sessions behind one pill")
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou", "/a"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch", "/a"), working: true)
             reg.note(pill: claude, display: display("b", "lokil", "/b"), working: true)
             check("both live", reg.liveCount(pill: claude) == 2)
             check("both working", reg.workingCount(pill: claude) == 2)
@@ -63,7 +63,7 @@ enum PillSessionRegistryTests {
         print("\nResting sibling")
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch"), working: true)
             reg.note(pill: claude, display: display("b", "lokil"), working: true)
             _ = reg.endTurn(pill: claude, session: "b")
             check("A's Stop reaches the pill once B rests",
@@ -76,10 +76,10 @@ enum PillSessionRegistryTests {
         print("\nDisplay ownership")
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou", "/a"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch", "/a"), working: true)
             reg.note(pill: claude, display: display("b", "lokil", "/b"), working: true)
             check("oldest session owns the name", reg.displayOwner(of: claude)?.session == "a")
-            check("name is A's", reg.displayOwner(of: claude)?.projectName == "coucou")
+            check("name is A's", reg.displayOwner(of: claude)?.projectName == "orca-notch")
             check("A may write the card", reg.ownsDisplay(pill: claude, session: "a"))
             check("B may not rename the card under A",
                   !reg.ownsDisplay(pill: claude, session: "b"))
@@ -87,7 +87,7 @@ enum PillSessionRegistryTests {
             // B keeps working; the name must not flip.
             reg.note(pill: claude, display: display("b", "lokil", "/b"), working: true)
             check("name still A's after more B events",
-                  reg.displayOwner(of: claude)?.projectName == "coucou")
+                  reg.displayOwner(of: claude)?.projectName == "orca-notch")
 
             _ = reg.endSession(pill: claude, session: "a")
             check("B inherits the display", reg.displayOwner(of: claude)?.session == "b")
@@ -130,7 +130,7 @@ enum PillSessionRegistryTests {
 
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou"), working: false)
+            reg.note(pill: claude, display: display("a", "orca-notch"), working: false)
             reg.note(pill: claude, display: display("b", "lokil"), working: false)
             check("no turn seen yet: the oldest owns the name",
                   reg.displayOwner(of: claude)?.session == "a")
@@ -140,8 +140,8 @@ enum PillSessionRegistryTests {
         print("\nPartial payloads")
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou", "/a"), working: true)
-            reg.note(pill: claude, display: display("a", "coucou", ""), working: false)
+            reg.note(pill: claude, display: display("a", "orca-notch", "/a"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch", ""), working: false)
             check("cwd kept when the event carries none",
                   reg.displayOwner(of: claude)?.cwd == "/a")
             check("working flag is sticky inside a turn", reg.workingCount(pill: claude) == 1)
@@ -151,7 +151,7 @@ enum PillSessionRegistryTests {
         print("\nSeparate pills")
         do {
             var reg = PillSessionRegistry()
-            reg.note(pill: claude, display: display("a", "coucou"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch"), working: true)
             reg.note(pill: "agent_cursor", display: display("b", "lokil"), working: true)
             check("Cursor's Stop reaches its own pill",
                   reg.endTurn(pill: "agent_cursor", session: "b") == .pill)
@@ -169,7 +169,7 @@ enum PillSessionRegistryTests {
             check("a SessionEnd from nowhere reaches the pill",
                   reg.endSession(pill: claude, session: "ghost") == .pill)
 
-            reg.note(pill: claude, display: display("a", "coucou"), working: true)
+            reg.note(pill: claude, display: display("a", "orca-notch"), working: true)
             check("a Stop from nowhere spares a working session",
                   reg.endTurn(pill: claude, session: "ghost") == .sessionOnly)
             check("a SessionEnd from nowhere spares a live session",
@@ -181,7 +181,7 @@ enum PillSessionRegistryTests {
         do {
             var reg = PillSessionRegistry()
             let start = Date(timeIntervalSince1970: 1_000_000)
-            reg.note(pill: claude, display: display("a", "coucou"), working: true, now: start)
+            reg.note(pill: claude, display: display("a", "orca-notch"), working: true, now: start)
             reg.note(pill: claude, display: display("b", "lokil"), working: true, now: start)
 
             let soon = start.addingTimeInterval(PillSessionRegistry.maxTurnSilence - 60)
@@ -206,7 +206,7 @@ enum PillSessionRegistryTests {
         do {
             var reg = PillSessionRegistry()
             let start = Date(timeIntervalSince1970: 1_000_000)
-            reg.note(pill: claude, display: display("a", "coucou"), working: true, now: start)
+            reg.note(pill: claude, display: display("a", "orca-notch"), working: true, now: start)
             reg.note(pill: claude, display: display("b", "lokil"), working: true, now: start)
 
             let later = start.addingTimeInterval(PillSessionRegistry.maxSilence + 60)
@@ -222,8 +222,8 @@ enum PillSessionRegistryTests {
         do {
             var reg = PillSessionRegistry()
             reg.note(pill: claude,
-                     display: PillSessionRegistry.Display(session: "a", projectName: "coucou",
-                                                          cwd: "/tmp/coucou",
+                     display: PillSessionRegistry.Display(session: "a", projectName: "orca-notch",
+                                                          cwd: "/tmp/orca-notch",
                                                           hostApp: "com.googlecode.iterm2"),
                      working: true)
             reg.note(pill: claude,

@@ -5,61 +5,34 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Coucou</string>
+	<string>Orca Notch</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>fr.louisraille.NotchBuddy</string>
+	<string>dev.hfps.orca-notch</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>en</string>
-		<string>ar</string>
-		<string>bn</string>
-		<string>de</string>
-		<string>es</string>
-		<string>fr</string>
-		<string>hi</string>
-		<string>id</string>
-		<string>pt-BR</string>
-		<string>ru</string>
-		<string>th</string>
-		<string>tr</string>
-		<string>zh-Hans</string>
-		<string>zh-Hant</string>
-	</array>
 	<key>CFBundleName</key>
-	<string>Coucou</string>
+	<string>Orca Notch</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5.2</string>
+	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>19</string>
+	<string>1</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>Pour lire le titre de la fenêtre active et l'attacher comme contexte.</string>
+	<string>To raise the terminal window of an agent session.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pour sauter au terminal, envoyer des mails et piloter Musique et Spotify.</string>
-	<key>NSAudioCaptureUsageDescription</key>
-	<string>Coucou records what your Mac plays only while you note a call, to write down what the other people say.</string>
-	<key>NSContactsUsageDescription</key>
-	<string>Coucou looks up an email address when you ask it, by voice, to prepare an email.</string>
-	<key>NSFocusStatusUsageDescription</key>
-	<string>Coucou stays quiet about new WhatsApp messages while a Focus is on.</string>
+	<string>To jump to the terminal running an agent session.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Coucou uses the microphone when you dictate, and to note your calls when you ask it to.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Coucou turns your voice into the text of a chat message.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 </dict>

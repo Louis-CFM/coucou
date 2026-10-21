@@ -1,13 +1,12 @@
-#if !APPSTORE
 import AppKit
 import ApplicationServices
 import SwiftUI
 
-// A regular Claude Desktop chat (not a Code session) runs no hook, so Coucou never hears that a
+// A regular Claude Desktop chat (not a Code session) runs no hook, so Orca Notch never hears that a
 // reply is done (#686). This watcher fills the gap, experimental and off by default: when you
 // leave the Claude app while it is still writing (its "Stop response" button is on screen),
-// Coucou looks once a second, through the Accessibility API, for that button to go away. Then
-// Mochi jumps and the Claude Desktop pill says the reply is ready. Nothing runs while Claude is
+// Orca Notch looks once a second, through the Accessibility API, for that button to go away. Then
+// the mascot jumps and the Claude Desktop pill says the reply is ready. Nothing runs while Claude is
 // in front, while it isn't writing, or when the setting is off; no text of the chat is read,
 // only whether the stop button is there.
 
@@ -126,9 +125,7 @@ final class ClaudeDesktopChatWatcher {
         return value as? String
     }
 }
-#endif
 
-#if !APPSTORE
 /// Settings → Agents → Claude Desktop chats.
 struct ClaudeDesktopChatSettingsSection: View {
     @State private var on = ClaudeDesktopChatWatcher.enabled
@@ -161,4 +158,3 @@ struct ClaudeDesktopChatSettingsSection: View {
         .onAppear { trusted = AXIsProcessTrusted() }
     }
 }
-#endif

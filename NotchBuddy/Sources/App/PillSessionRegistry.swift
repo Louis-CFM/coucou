@@ -5,7 +5,7 @@ import Foundation
 /// Keeps track of the agent sessions living behind each pill.
 ///
 /// A pill is picked from the client that sent the event — bundle ID,
-/// `term_program`, `coucou_agent` — never from the session. Two `claude`
+/// `term_program`, `orca_notch_agent` — never from the session. Two `claude`
 /// started in two projects under VS Code therefore land on the same
 /// `integration_claude`, while `AppState.tasks` holds one entry per pill.
 /// Without a session set, the first session to end wipes the card and the
@@ -96,7 +96,7 @@ struct PillSessionRegistry {
     /// Ends a session's turn without ending the session: a `Stop` closes a
     /// turn, and the user can send another prompt right after.
     ///
-    /// A session we have never seen stays untracked — Coucou can start in the
+    /// A session we have never seen stays untracked — Orca Notch can start in the
     /// middle of one, and a session we only ever heard stop owns nothing.
     mutating func endTurn(pill: String, session: String, now: Date = Date()) -> TerminalScope {
         var p = pills[pill] ?? Pill()

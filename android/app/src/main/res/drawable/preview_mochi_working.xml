@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Mochi in the "working" state with his glow behind him, as the Widget picker shows him (vectors only). -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@drawable/preview_glow_working" />
-    <item android:drawable="@drawable/preview_face_working" />
-</layer-list>

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Shortcut Action
 
-/// Every keyboard shortcut Coucou knows about.
+/// Every keyboard shortcut Orca Notch knows about.
 /// The first 10 cases are *global* (registered with Carbon and effective from any app).
 /// Island-local shortcuts are documented in `ShortcutLogic.islandShortcuts` but are
 /// not managed here — they are handled by a local NSEvent monitor in IslandWindowController.
@@ -16,10 +16,6 @@ enum ShortcutAction: String, CaseIterable, Sendable {
     case nextPill          = "nextPill"           // ⌃⌥] — next pill, open if closed
     case prevPill          = "prevPill"           // ⌃⌥[ — previous pill, open if closed
     case muteToggle        = "muteToggle"         // ⌃⌥M — mute / unmute sounds
-    case desktopToggle     = "desktopToggle"      // ⌃⌥D — send Mochi to desktop / bring back
-    case wardrobeToggle    = "wardrobeToggle"     // ⌃⌥G — open / close wardrobe
-    case talkToCoucou      = "talkToCoucou"       // (unset) — start listening without wake phrase (non-AppStore)
-    case captureScreen     = "captureScreen"      // ⌘⇧S — capture a part of the screen for Claude (non-AppStore)
 
     // MARK: UserDefaults keys
 
@@ -48,20 +44,16 @@ enum ShortcutAction: String, CaseIterable, Sendable {
         case .nextPill:          return String(localized: "shortcut.next-pill")
         case .prevPill:          return String(localized: "shortcut.prev-pill")
         case .muteToggle:        return String(localized: "shortcut.mute-toggle")
-        case .desktopToggle:     return String(localized: "shortcut.desktop-toggle")
-        case .wardrobeToggle:    return String(localized: "shortcut.wardrobe")
-        case .talkToCoucou:      return String(localized: "shortcut.talk-to-coucou")
-        case .captureScreen:     return String(localized: "shortcut.capture")
         }
     }
 
     /// Whether this action should be omitted from App Store builds.
     var isAppStoreOnly: Bool { false }
-    var isNonAppStore: Bool  { self == .attachFrontWindow || self == .talkToCoucou || self == .captureScreen }
+    var isNonAppStore: Bool  { self == .attachFrontWindow }
 
     /// Whether the shortcut is enabled by default.
-    /// `toggleIsland` and `talkToCoucou` are off by default; all others are on.
-    var enabledByDefault: Bool { self != .toggleIsland && self != .talkToCoucou }
+    /// `toggleIsland` is off by default; all others are on.
+    var enabledByDefault: Bool { self != .toggleIsland }
 }
 
 // MARK: - Shortcut Spec
@@ -106,10 +98,6 @@ enum ShortcutLogic {
         .nextPill:          ShortcutSpec(keyCode: 30, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥]
         .prevPill:          ShortcutSpec(keyCode: 33, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥[
         .muteToggle:        ShortcutSpec(keyCode: 46, nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥M
-        .desktopToggle:     ShortcutSpec(keyCode: 2,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥D
-        .wardrobeToggle:    ShortcutSpec(keyCode: 5,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥G
-        .talkToCoucou:      ShortcutSpec(keyCode: 9,  nsFlags: ShortcutSpec.ctrlOpt),  // ⌃⌥V (disabled by default)
-        .captureScreen:     ShortcutSpec(keyCode: 1,  nsFlags: ShortcutSpec.cmdShift), // ⌘⇧S
     ]
 
     // MARK: - Load / save (UserDefaults)
@@ -165,7 +153,7 @@ enum ShortcutLogic {
         return c
     }
 
-    // MARK: - Conflict detection (within Coucou's own shortcuts)
+    // MARK: - Conflict detection (within Orca Notch's own shortcuts)
 
     /// Returns the set of actions whose (keyCode, nsFlags) pair is shared with another action.
     static func duplicates(in specs: [ShortcutAction: ShortcutSpec]) -> Set<ShortcutAction> {

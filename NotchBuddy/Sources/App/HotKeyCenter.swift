@@ -11,7 +11,7 @@ private nonisolated(unsafe) var gHotKeyHandler: EventHandlerRef? = nil
 private nonisolated(unsafe) var gHotKeyTable: [UInt32: ShortcutAction] = [:]
 private nonisolated(unsafe) var gOnAction: ((ShortcutAction) -> Void)? = nil
 
-private func coucouHotKeyEventHandler(
+private func orcaNotchHotKeyEventHandler(
     _: EventHandlerCallRef?,
     _ event: EventRef?,
     _: UnsafeMutableRawPointer?
@@ -47,7 +47,7 @@ final class HotKeyCenter {
     static let shared = HotKeyCenter()
     private init() {}
 
-    // "COUC" in big-endian — unique signature for Coucou's hot-key IDs
+    // "COUC" in big-endian — unique signature for Orca Notch's hot-key IDs
     private let kSignature = OSType(0x434F5543)
 
     // Live registered refs (action → EventHotKeyRef)
@@ -70,7 +70,7 @@ final class HotKeyCenter {
             )
             InstallEventHandler(
                 GetApplicationEventTarget(),
-                coucouHotKeyEventHandler,
+                orcaNotchHotKeyEventHandler,
                 1, &spec,
                 nil, &gHotKeyHandler
             )
@@ -95,9 +95,6 @@ final class HotKeyCenter {
         conflicts.removeAll()
 
         for action in ShortcutAction.allCases {
-            #if APPSTORE
-            if action.isNonAppStore { continue }
-            #endif
             if !ShortcutLogic.isEnabled(action) { continue }
             registerOne(action)
         }
@@ -114,9 +111,6 @@ final class HotKeyCenter {
         }
         conflicts.remove(action)
 
-        #if APPSTORE
-        if action.isNonAppStore { return }
-        #endif
         if !ShortcutLogic.isEnabled(action) { return }
         registerOne(action)
     }

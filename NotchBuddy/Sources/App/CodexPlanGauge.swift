@@ -1,4 +1,3 @@
-#if !APPSTORE
 import SwiftUI
 
 // MARK: - Codex plan usage
@@ -65,7 +64,7 @@ enum CodexPlanGauge {
         defer { timeout.cancel() }
 
         let requests = [
-            #"{"id":1,"method":"initialize","params":{"clientInfo":{"name":"coucou","version":"1"}}}"#,
+            #"{"id":1,"method":"initialize","params":{"clientInfo":{"name":"orca-notch","version":"1"}}}"#,
             #"{"method":"initialized"}"#,
             #"{"id":2,"method":"account/rateLimits/read"}"#,
         ]
@@ -208,4 +207,3 @@ struct CodexPlanCardView: View {
         return text
     }
 }
-#endif
