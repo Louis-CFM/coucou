@@ -78,6 +78,7 @@ final class DemoEngine: ObservableObject {
     // MARK: Start
 
     func start() {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard !isActive else { return }
         isActive = true
         DemoEngine.isPollerPaused = true

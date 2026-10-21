@@ -14,7 +14,17 @@ enum ShortcutTests {
         testEnabledByDefault()
         testKeyCodeToString()
         testCardNavigation()
+        testAgentModeActions()
         print("ShortcutLogic: all cases passed")
+    }
+
+    static func testAgentModeActions() {
+        precondition(ShortcutAction.goToAlert.isAgentRelevant, "Agent approvals remain reachable")
+        precondition(ShortcutAction.jumpToTerminal.isAgentRelevant, "Connected agents retain terminal navigation")
+        precondition(ShortcutAction.nextPill.isAgentRelevant, "Agent switching remains reachable")
+        for action in [ShortcutAction.openChat, .talkToCoucou, .captureScreen, .attachFrontWindow, .desktopToggle, .wardrobeToggle] {
+            precondition(!action.isAgentRelevant, "Unrelated actions cannot activate through shortcuts: \(action)")
+        }
     }
 
     // MARK: - testDefaultsExhaustive

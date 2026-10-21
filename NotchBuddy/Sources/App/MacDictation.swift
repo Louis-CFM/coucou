@@ -22,6 +22,10 @@ final class MacDictation: @unchecked Sendable {
     private static let maxCandidates = 3
 
     var isRecording = false
+    private(set) var isStarting = false
+    @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var operation: UUID?
+    @ObservationIgnored private var onEnd: (@MainActor (String) -> Void)?
     var transcript = ""
     /// What was typed before dictating, kept in front of the words.
     var prefix = ""
@@ -31,11 +35,31 @@ final class MacDictation: @unchecked Sendable {
     }
 
     @ObservationIgnored private let engine = AVAudioEngine()
+    typealias Report = @Sendable (String?, [DictationTranscript.Piece], Float, Bool, Bool) -> Void
+    /// The OS boundary: contracts substitute audio/recognizer callbacks, while
+    /// admission, result handling and teardown remain the shipping code.
+    struct Recognition {
+        let locale: Locale
+        let request: SFSpeechAudioBufferRecognitionRequest
+        let start: (@escaping Report) -> (() -> Void)
+    }
+    struct Input {
+        let candidates: ([Locale]) -> [Recognition]
+        let startAudio: ([SFSpeechAudioBufferRecognitionRequest], FlowAudioBands?) -> Bool
+        let stopAudio: () -> Void
+    }
+    @ObservationIgnored private let authorization: () async -> Bool
+    @ObservationIgnored private let input: Input?
+
+    init(authorization: @escaping () async -> Bool = { await MacDictation.authorized() }, input: Input? = nil) {
+        self.authorization = authorization
+        self.input = input
+    }
     @ObservationIgnored private var candidates: [Candidate] = []
     /// The candidate whose words are shown while speaking.
     @ObservationIgnored private var lead = 0
     @ObservationIgnored private var finishing: CheckedContinuation<Void, Never>?
-    @ObservationIgnored private var isFinishing = false
+    private(set) var isFinishing = false
     @ObservationIgnored private var tapInstalled = false
     /// Flow dictation's pill: the microphone's levels by frequency, fed from the same tap.
     @ObservationIgnored var bands: FlowAudioBands?
@@ -45,10 +69,10 @@ final class MacDictation: @unchecked Sendable {
 
     /// One recognizer listening in one language.
     private final class Candidate {
-        let locale: Locale
-        let recognizer: SFSpeechRecognizer
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        var task: SFSpeechRecognitionTask?
+        let recognition: Recognition
+        var locale: Locale { recognition.locale }
+        var request: SFSpeechAudioBufferRecognitionRequest { recognition.request }
+        var cancel: (() -> Void)?
         /// What was heard, kept whole when the recognizer starts over after a pause.
         var heard = DictationTranscript()
         var words: String { heard.text }
@@ -56,20 +80,33 @@ final class MacDictation: @unchecked Sendable {
         var confidence: Float = 0
         var finished = false
 
-        init(locale: Locale, recognizer: SFSpeechRecognizer) {
-            self.locale = locale
-            self.recognizer = recognizer
-            request.shouldReportPartialResults = true
-            if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
-        }
+        init(_ recognition: Recognition) { self.recognition = recognition }
     }
 
     // MARK: Start / finish
 
-    @MainActor func start(from text: String) async {
-        guard !isRecording, await Self.authorized() else { return }
-        let built = Self.makeCandidates(language == Self.automatic ? Self.automaticLocales() : [Locale(identifier: language)])
-        guard !built.isEmpty, Self.startEngine(engine, feeding: built.map(\.request), bands: bands) else { return }
+    @MainActor func start(from text: String, onEnd: (@MainActor (String) -> Void)? = nil) async {
+        guard !Task.isCancelled, !isRecording, !isStarting, !AgentsOnlyPreference.shared.enabled else { return }
+        generation += 1
+        let token = generation
+        operation = AppState.shared.optionalWork.begin()
+        self.onEnd = onEnd
+        isStarting = true
+        defer {
+            if generation == token {
+                isStarting = false
+                if !isRecording { self.onEnd = nil; endOwnership() }
+            }
+        }
+        let authorized = await authorization()
+        guard authorized, token == generation, !Task.isCancelled,
+              !AgentsOnlyPreference.shared.enabled else { return }
+        let locales = language == Self.automatic ? Self.automaticLocales() : [Locale(identifier: language)]
+        let built = (input?.candidates(locales) ?? Self.makeCandidates(locales)).map(Candidate.init)
+        guard !built.isEmpty else { return }
+        let started = input?.startAudio(built.map(\.request), bands)
+            ?? Self.startEngine(engine, feeding: built.map(\.request), bands: bands)
+        guard started else { return }
         tapInstalled = true
         prefix = text.isEmpty || text.hasSuffix(" ") ? text : text + " "
         transcript = ""
@@ -78,9 +115,9 @@ final class MacDictation: @unchecked Sendable {
         isRecording = true
         NotificationCenter.default.post(name: .dictationDidStart, object: nil)
         for (index, candidate) in built.enumerated() {
-            candidate.task = Self.recognize(candidate) { [weak self] words, pieces, confidence, final, failed in
+            candidate.cancel = candidate.recognition.start { [weak self] words, pieces, confidence, final, failed in
                 Task { @MainActor in
-                    self?.update(index, words: words, pieces: pieces, confidence: confidence, final: final, failed: failed)
+                    self?.update(index, generation: token, words: words, pieces: pieces, confidence: confidence, final: final, failed: failed)
                 }
             }
         }
@@ -89,6 +126,7 @@ final class MacDictation: @unchecked Sendable {
     /// Stops listening and returns the field's text with the most likely transcript.
     @MainActor func finish() async -> String {
         guard isRecording else { return text }
+        let token = generation
         isFinishing = true
         stopEngine()
         candidates.forEach { $0.request.endAudio() }
@@ -99,10 +137,11 @@ final class MacDictation: @unchecked Sendable {
                 finishing = continuation
                 Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .milliseconds(1500))
-                    self?.resumeFinishing()
+                    if self?.generation == token { self?.resumeFinishing() }
                 }
             }
         }
+        guard generation == token else { return text }
         if let best = bestCandidate() {
             transcript = best.words
             if candidates.count > 1 {
@@ -115,25 +154,41 @@ final class MacDictation: @unchecked Sendable {
 
     /// Cancels without waiting (the view went away).
     @MainActor func stop() {
-        guard isRecording || !candidates.isEmpty else { return }
-        tearDown()
+        generation += 1
+        isStarting = false
+        if isRecording || !candidates.isEmpty { tearDown() }
+        else { onEnd = nil; endOwnership() }
     }
 
     @MainActor private func stopEngine() {
-        engine.stop()
-        if tapInstalled { engine.inputNode.removeTap(onBus: 0) }
+        if let input { input.stopAudio() }
+        else {
+            engine.stop()
+            if tapInstalled { engine.inputNode.removeTap(onBus: 0) }
+        }
         tapInstalled = false
     }
 
     @MainActor private func tearDown() {
+        generation += 1 // Queued results from this recognizer cannot touch its replacement.
         stopEngine()
-        candidates.forEach { $0.request.endAudio(); $0.task?.cancel() }
+        candidates.forEach { $0.request.endAudio(); $0.cancel?() }
         candidates = []
         lead = 0
         NotificationCenter.default.post(name: .dictationDidEnd, object: nil)
         isRecording = false
         isFinishing = false
         resumeFinishing()
+        let completed = onEnd
+        onEnd = nil
+        completed?(text) // Preserve final words before reopening the mode gate.
+        endOwnership()
+    }
+
+    @MainActor private func endOwnership() {
+        guard let operation else { return }
+        self.operation = nil
+        AppState.shared.optionalWork.end(operation)
     }
 
     @MainActor private func resumeFinishing() {
@@ -143,8 +198,8 @@ final class MacDictation: @unchecked Sendable {
 
     // MARK: Results
 
-    @MainActor private func update(_ index: Int, words: String?, pieces: [DictationTranscript.Piece], confidence: Float, final: Bool, failed: Bool) {
-        guard index < candidates.count else { return }
+    @MainActor private func update(_ index: Int, generation token: Int, words: String?, pieces: [DictationTranscript.Piece], confidence: Float, final: Bool, failed: Bool) {
+        guard token == generation, index < candidates.count else { return }
         let candidate = candidates[index]
         if let words { candidate.heard.absorb(words, pieces: pieces) }
         if confidence > 0 { candidate.confidence = confidence }
@@ -199,10 +254,10 @@ final class MacDictation: @unchecked Sendable {
     }
 
     nonisolated private static func recognize(
-        _ candidate: Candidate,
-        report: @escaping @Sendable (String?, [DictationTranscript.Piece], Float, Bool, Bool) -> Void
+        _ recognizer: SFSpeechRecognizer, request: SFSpeechAudioBufferRecognitionRequest,
+        report: @escaping Report
     ) -> SFSpeechRecognitionTask {
-        candidate.recognizer.recognitionTask(with: candidate.request) { result, error in
+        recognizer.recognitionTask(with: request) { result, error in
             let words = result?.bestTranscription.formattedString
             let segments = result?.bestTranscription.segments ?? []
             let confidence = segments.isEmpty ? 0 : segments.map(\.confidence).reduce(0, +) / Float(segments.count)
@@ -215,17 +270,27 @@ final class MacDictation: @unchecked Sendable {
 
     /// Recognizers that can run now. Extra languages in Automatic only listen on-device,
     /// so the audio never goes to Apple in a language you didn't speak.
-    private static func makeCandidates(_ locales: [Locale]) -> [Candidate] {
-        var out: [Candidate] = []
+    private static func makeCandidates(_ locales: [Locale]) -> [Recognition] {
+        var out: [Recognition] = []
         for locale in locales {
             guard let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable else { continue }
             if !out.isEmpty && !recognizer.supportsOnDeviceRecognition { continue }
-            out.append(Candidate(locale: locale, recognizer: recognizer))
+            out.append(recognition(recognizer))
         }
         if out.isEmpty, let fallback = SFSpeechRecognizer(), fallback.isAvailable {
-            out.append(Candidate(locale: fallback.locale, recognizer: fallback))
+            out.append(recognition(fallback))
         }
         return out
+    }
+
+    private static func recognition(_ recognizer: SFSpeechRecognizer) -> Recognition {
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
+        return Recognition(locale: recognizer.locale, request: request, start: { report in
+            let task = recognize(recognizer, request: request, report: report)
+            return { task.cancel() }
+        })
     }
 
     // MARK: Languages

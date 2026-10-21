@@ -1,6 +1,125 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+      "focus.mode-title": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Mode"
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "模式"
+            }
+          }
+        }
+      },
+      "focus.agents-only": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agents only"
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "僅限代理程式"
+            }
+          }
+        }
+      },
+      "focus.enabled-description": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Only connected agents are active. Services, media, Flow, voice and other optional features are suspended. Full mode restores your saved settings."
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "只有已連線的代理程式會運作。服務、媒體、Flow、語音與其他選用功能已暫停。完整模式會恢復您儲存的設定。"
+            }
+          }
+        }
+      },
+      "focus.full-description": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Full mode uses your saved features. Turn on Agents only to focus on connected agents and suspend unrelated activity."
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "完整模式會使用您儲存的功能。開啟「僅限代理程式」即可專注於已連線的代理程式，並暫停其他活動。"
+            }
+          }
+        }
+      },
+      "focus.no-agents": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No connected agents"
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "沒有已連線的代理程式"
+            }
+          }
+        }
+      },
+      "focus.connect-help": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Connect an agent in Settings, or start a session with its Coucou extension."
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "在「設定」中連線代理程式，或透過其 Coucou 擴充功能啟動工作階段。"
+            }
+          }
+        }
+      },
+      "focus.finish-current-work": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Finish the current recording, transcription, dictation, capture, file copy, chat, model download, media command or app update before switching modes."
+            }
+          },
+          "zh-Hant": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "切換模式前，請先完成目前的錄音、逐字稿、聽寫、擷取、檔案複製、聊天、模型下載、媒體操作或應用程式更新。"
+            }
+          }
+        }
+      },
     "Auto mode" : {
       "extractionState" : "manual",
       "localizations" : {

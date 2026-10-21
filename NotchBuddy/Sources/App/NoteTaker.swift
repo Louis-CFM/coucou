@@ -34,6 +34,7 @@ enum NoteSummaryEngine: String, CaseIterable, Identifiable {
 @MainActor
 final class NoteTaker: ObservableObject {
     static let shared = NoteTaker()
+    private(set) static var existing: NoteTaker?
 
     /// Newest first.
     @Published private(set) var notes: [Note] = []
@@ -69,14 +70,18 @@ final class NoteTaker: ObservableObject {
 
     static var folder: URL { HookServer.supportDir.appendingPathComponent("Notes", isDirectory: true) }
 
-    private init() {
+    init(loadStoredNotes: Bool = true) {
         if let saved = UserDefaults.standard.string(forKey: Self.engineKey), let engine = NoteSummaryEngine(rawValue: saved) {
             summaryEngine = engine
         } else {
-            summaryEngine = FlowCleanup.hasKey ? .claude : (Self.appleModelAvailable ? .apple : .off)
+            summaryEngine = loadStoredNotes && FlowCleanup.hasKey ? .claude : (loadStoredNotes && Self.appleModelAvailable ? .apple : .off)
         }
-        load()
-        loadVocabulary()
+        Self.existing = self
+        if loadStoredNotes { load(); loadVocabulary(); startObserving() }
+    }
+
+    func startObserving() {
+        guard appObserver == nil, !AgentsOnlyPreference.shared.enabled else { return }
         appObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { note in
@@ -88,6 +93,13 @@ final class NoteTaker: ObservableObject {
     }
 
     var isRecording: Bool { recording != nil }
+    private var finalizing: Set<UUID> = []
+    var busy: Bool { starting || recording != nil || !working.isEmpty || !finalizing.isEmpty }
+
+    func stopObserving() {
+        if let token = appObserver { NSWorkspace.shared.notificationCenter.removeObserver(token) }
+        appObserver = nil
+    }
 
     /// The pill's record button: starts or stops, and says what is missing.
     func toggleFromPill() {
@@ -111,7 +123,7 @@ final class NoteTaker: ObservableObject {
     // MARK: - Recording
 
     func start() async {
-        guard recording == nil, !starting else { return }
+        guard !AgentsOnlyPreference.shared.enabled, recording == nil, !starting else { return }
         starting = true
         defer { starting = false }
         startError = nil
@@ -184,6 +196,8 @@ final class NoteTaker: ObservableObject {
 
     func stop() {
         guard var note = recording else { return }
+        // Own finalization before clearing recording: close() can suspend before
+        // process() has a chance to claim its transcription work.
         liveTask?.cancel()
         liveTask = nil
         mic?.stop()
@@ -197,13 +211,23 @@ final class NoteTaker: ObservableObject {
         systemLevel = 0
         note.end = Date()
         note.status = .processing
+        finalizeRecording(note.id, close: {
+            await micChannel?.close()
+            await systemChannel?.close()
+        }, process: { await self.process(note.id) })
         recording = nil
         replace(note)
         FlowDictation.shared.pill.setNote(nil)
-        Task { @MainActor in
-            await micChannel?.close()
-            await systemChannel?.close()
-            await self.process(note.id)
+    }
+
+    @discardableResult
+    func finalizeRecording(_ id: UUID, close: @escaping () async -> Void,
+                           process: @escaping () async -> Void) -> Task<Void, Never> {
+        finalizing.insert(id)
+        return Task { @MainActor in
+            defer { self.finalizing.remove(id) }
+            await close()
+            await process()
         }
     }
 
@@ -234,7 +258,7 @@ final class NoteTaker: ObservableObject {
 
     /// Writes the transcript from the recordings, then the summary, then deletes the audio.
     func process(_ id: UUID) async {
-        guard var note = self.note(id), !working.contains(id) else { return }
+        guard !AgentsOnlyPreference.shared.enabled, var note = self.note(id), !working.contains(id) else { return }
         working.insert(id)
         defer { working.remove(id) }
         let dir = Self.folder(for: id)
@@ -670,7 +694,7 @@ final class NoteTaker: ObservableObject {
         }
         notes = loaded.sorted { $0.start > $1.start }
         let pending = notes.filter { $0.status == .processing }.map(\.id)
-        guard !pending.isEmpty else { return }
+        guard !AgentsOnlyPreference.shared.enabled, !pending.isEmpty else { return }
         guard Parakeet.shared.isReady else {
             // No models any more: shown as failed, with Retry once they are back.
             for id in pending {

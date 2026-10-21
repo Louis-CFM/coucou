@@ -7,26 +7,24 @@ import SwiftUI
 
 final class StripePoller: @unchecked Sendable {
     static let shared = StripePoller()
-    private var timer: DispatchSourceTimer?
+    private let activity = ServiceActivity()
     private var lastChargeId: String = ""
 
     private init() {}
 
     func start() {
-        guard timer == nil else { return }
-        let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 6, repeating: 30, leeway: .seconds(5))
-        t.setEventHandler { [weak self] in self?.poll() }
-        t.resume()
-        timer = t
+        guard activity.start(after: 6, every: 30, leeway: 5,
+                             poll: { [weak self] in self?.poll() }) else { return }
     }
+
+    func stop() { activity.stop() }
 
     // MARK: - Poll
 
     func pollNow() { poll() }
 
     private func poll() {
-        guard !DemoEngine.isPollerPaused else { return }
+        guard activity.running, !DemoEngine.isPollerPaused else { return }
         guard let key = KeychainStore.shared.get("stripe-api-key") else { return }
         fetchBalance(key: key)
         fetchCharges(key: key)
@@ -41,7 +39,7 @@ final class StripePoller: @unchecked Sendable {
         let creds = Data("\(key):".utf8).base64EncodedString()
         req.setValue("Basic \(creds)", forHTTPHeaderField: "Authorization")
 
-        URLSession.shared.dataTask(with: req) { data, response, error in
+        activity.dataTask(with: req) { data, response, error, updates in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if code != 200 {
                 let errMsg: String
@@ -49,7 +47,10 @@ final class StripePoller: @unchecked Sendable {
                 else if code == 403 { errMsg = "Use secret key (sk_live_… not pk_live_…)" }
                 else if code == 0   { errMsg = error?.localizedDescription ?? "No connection" }
                 else                { errMsg = "API error \(code)" }
-                DispatchQueue.main.async { AppState.shared.setIfChanged(\.stripeError, errMsg) }
+                updates.onMain {
+                    guard !AgentsOnlyPreference.shared.enabled else { return }
+                    AppState.shared.setIfChanged(\.stripeError, errMsg)
+                }
                 return
             }
             guard let data,
@@ -62,7 +63,8 @@ final class StripePoller: @unchecked Sendable {
             guard let currency = (allBuckets.first)?["currency"] as? String else { return }
             let amount = allBuckets.compactMap { $0["amount"] as? Int }.reduce(0, +)
 
-            DispatchQueue.main.async {
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
                 let state = AppState.shared
                 // Every @Published set redraws every island view: only on change.
                 state.setIfChanged(\.stripeError, nil)
@@ -75,7 +77,7 @@ final class StripePoller: @unchecked Sendable {
                 }
                 state.setIfChanged(\.stripeLoaded, true)
             }
-        }.resume()
+        }?.resume()
     }
 
     // MARK: - Charges
@@ -86,7 +88,7 @@ final class StripePoller: @unchecked Sendable {
         let creds = Data("\(key):".utf8).base64EncodedString()
         req.setValue("Basic \(creds)", forHTTPHeaderField: "Authorization")
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+        activity.dataTask(with: req) { [weak self] data, response, _, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else { return }
@@ -94,8 +96,11 @@ final class StripePoller: @unchecked Sendable {
                   let rawList = json["data"] as? [[String: Any]] else { return }
 
             let parsed = rawList.compactMap { self.parseCharge($0) }
-            DispatchQueue.main.async { self.handleCharges(parsed) }
-        }.resume()
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
+                self.handleCharges(parsed)
+            }
+        }?.resume()
     }
 
     private func parseCharge(_ c: [String: Any]) -> StripePayment? {

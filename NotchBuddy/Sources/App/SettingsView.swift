@@ -15,6 +15,7 @@ struct SettingsView: View {
         ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
     ]
     private static let customModelTag = "__custom__"
+    @State private var modelsTask: Task<Void, Never>?
     @State private var fetchedModels: [(id: String, label: String)] = []
     @State private var modelChoice: String = {
         let m = AppState.shared.claudeModel
@@ -140,7 +141,10 @@ struct SettingsView: View {
     /// Shown inside the Coucou Flow window (GitHub build): one section, without this window's
     /// sidebar, as the window has its own.
     private var embeddedSection: String? = nil
-    private var section: String { embeddedSection ?? selectedSection }
+    private var section: String {
+        let selected = embeddedSection ?? selectedSection
+        return state.agentsOnly && !["general", "agents", "shortcuts"].contains(selected) ? "general" : selected
+    }
     // Active pills: the pill whose colour palette is open, if any
     @State private var colorPalettePill: String? = nil
     #if PHONE_LINK
@@ -186,13 +190,17 @@ struct SettingsView: View {
                         set: { if let v = $0 { selectedSection = v; statusMessage = "" } }
                     )) {
                         SettingsSidebarRow(title: "General",      icon: "gearshape.fill",                    color: "#8E939C").tag("general")
-                        SettingsSidebarRow(title: "Active pills", icon: "square.grid.2x2.fill",              color: "#F5A524").tag("activepills")
+                        if !state.agentsOnly {
+                            SettingsSidebarRow(title: "Active pills", icon: "square.grid.2x2.fill", color: "#F5A524").tag("activepills")
+                        }
                         SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
+                        if !state.agentsOnly {
                         SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
                         SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
                         #if !APPSTORE
                         SettingsSidebarRow(title: "Voice",        icon: "mic.fill",                          color: "#F97316").tag("voice")
                         #endif
+                        }
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
@@ -237,10 +245,11 @@ struct SettingsView: View {
             #if !APPSTORE
             state.refreshPlanRelayState()
             #endif
-            guard fetchedModels.isEmpty,
+            guard !state.agentsOnly, fetchedModels.isEmpty,
                   let key = KeychainStore.shared.get("anthropic-api-key"), !key.isEmpty else { return }
-            Task {
+            modelsTask = Task {
                 let models = await ClaudeService.fetchModels(apiKey: key)
+                guard !Task.isCancelled, !state.agentsOnly else { return }
                 guard !models.isEmpty else { return }
                 await MainActor.run {
                     fetchedModels = models
@@ -255,6 +264,10 @@ struct SettingsView: View {
                 }
             }
         }
+        .onChange(of: state.agentsOnly) { _, focused in
+            if focused { modelsTask?.cancel(); modelsTask = nil }
+        }
+        .onDisappear { modelsTask?.cancel(); state.refreshAgentConnections() }
     }
 
     // MARK: - Section routing
@@ -289,6 +302,10 @@ struct SettingsView: View {
     // MARK: - General section
 
     @ViewBuilder private var generalSection: some View {
+        AgentsOnlyModeControl(enabled: Binding(
+            get: { state.agentsOnly }, set: { _ = state.setAgentsOnly($0) }
+        ), message: state.agentsOnlyError)
+        if !state.agentsOnly {
         GroupBox(String(localized: "demo.groupbox.title")) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(String(localized: "demo.description"))
@@ -533,6 +550,7 @@ struct SettingsView: View {
             .padding(6)
         }
         #endif
+        }
     }
 
     private func refreshConnectedScreens() {

@@ -22,10 +22,12 @@ final class ServicePublisher {
     private var published: [String: ServiceSnapshot] = [:]
     private var cleanedUp = false
     private var writing = false
+    private var writeTask: Task<Void, Never>?
+    private var cleanupTask: Task<Void, Never>?
     private var again = false
 
     func start() {
-        guard cancellable == nil else { return }
+        guard !AgentsOnlyPreference.shared.enabled, cancellable == nil else { return }
         let s = AppState.shared
         let changes: [AnyPublisher<Void, Never>] = [
             s.$stripePayments.map { _ in () }.eraseToAnyPublisher(),
@@ -51,21 +53,33 @@ final class ServicePublisher {
 
     /// Stops and deletes this Mac's services from iCloud.
     func stop() {
+        guard cancellable != nil else { return }
         cancellable = nil
+        let previous = writeTask
+        let previousCleanup = cleanupTask
+        previous?.cancel()
+        writeTask = nil
         let ids = PillCatalog.phoneServices.map {
             CKRecord.ID(recordName: ServiceSnapshot.recordName(for: $0), zoneID: SessionSnapshot.zoneID)
         }
         published = [:]
         cleanedUp = false
-        Task { _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false) }
+        cleanupTask = Task {
+            await previous?.value
+            await previousCleanup?.value
+            _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false)
+        }
         log("service publisher off")
     }
 
     private func publish() {
+        guard cancellable != nil, !AgentsOnlyPreference.shared.enabled else { return }
         guard !writing else { again = true; return }
         writing = true
         let snapshots = ServiceSnapshots.all(from: AppState.shared)
-        Task {
+        let cleanup = cleanupTask
+        writeTask = Task {
+            await cleanup?.value
             await write(snapshots)
             writing = false
             if again { again = false; publish() }
@@ -73,6 +87,7 @@ final class ServicePublisher {
     }
 
     private func write(_ snapshots: [String: ServiceSnapshot]) async {
+        guard !Task.isCancelled, !AgentsOnlyPreference.shared.enabled else { return }
         var deletions: [CKRecord.ID] = []
         if !cleanedUp {
             // Services this Mac no longer has (key removed since the last run).
@@ -93,6 +108,7 @@ final class ServicePublisher {
         do {
             let result = try await database.modifyRecords(saving: records, deleting: deletions,
                                                           savePolicy: .changedKeys, atomically: false)
+            guard !Task.isCancelled, !AgentsOnlyPreference.shared.enabled else { return }
             for (id, outcome) in result.saveResults {
                 guard let pillId = ServiceSnapshot.pillId(fromRecordName: id.recordName) else { continue }
                 if case .success = outcome { published[pillId] = snapshots[pillId] }
@@ -130,6 +146,7 @@ final class ServicePublisher {
 @MainActor
 enum ServiceSnapshots {
     static func all(from s: AppState) -> [String: ServiceSnapshot] {
+        guard !s.agentsOnly else { return [:] }
         let built = [github(s), stripe(s), vercel(s), resend(s), calcom(s), n8n(s), notion(s)].compactMap { $0 }
         return Dictionary(uniqueKeysWithValues: built.map { ($0.pillId, $0) })
     }

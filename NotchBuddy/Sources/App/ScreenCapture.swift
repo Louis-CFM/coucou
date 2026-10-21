@@ -25,6 +25,7 @@ final class ScreenCapture: ObservableObject {
     private var takenAt: Date? = nil
     private var running = false
     private var annotation: NSWindow? = nil
+    var busy: Bool { running || annotation?.isVisible == true }
 
     private static var folder: URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("CoucouCaptures", isDirectory: true)
@@ -35,6 +36,7 @@ final class ScreenCapture: ObservableObject {
     // MARK: - Capturing
 
     func begin() {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard !running else {
             appendAppLog("nb.log", "[Capture] already selecting a zone")
             return

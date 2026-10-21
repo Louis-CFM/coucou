@@ -169,6 +169,7 @@ final class FlowHubController {
 
     func show(_ page: HubPage? = nil) {
         if let page { router.page = page }
+        if AppState.shared.agentsOnly && ![HubPage.general, .agents, .shortcuts].contains(router.page) { router.page = .agents }
         if let window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -195,6 +196,7 @@ final class FlowHubController {
 }
 
 struct FlowHubView: View {
+    @ObservedObject private var state = AppState.shared
     @ObservedObject var router: HubRouter
     @ObservedObject var windowState: HubWindowState
 
@@ -223,7 +225,8 @@ struct FlowHubView: View {
     }
 
     @ViewBuilder private var page: some View {
-        switch router.page {
+        let selected = state.agentsOnly && ![HubPage.general, .agents, .shortcuts].contains(router.page) ? HubPage.general : router.page
+        switch selected {
         case .dictation:  HubHomePage(router: router)
         case .notes:      HubNotesPage()
         case .insights:   HubInsightsPage()
@@ -232,7 +235,7 @@ struct FlowHubView: View {
         case .styles:     HubStylesPage(router: router)
         case .settings:   HubSettingsPage()
         default:
-            if let section = router.page.settingsSection {
+            if let section = selected.settingsSection {
                 VStack(alignment: .leading, spacing: 0) {
                     HubHero(page: router.page, title: router.page.title, subtitle: HubPage.notchSubtitle(router.page))
                         .padding(.horizontal, 28)
@@ -248,6 +251,7 @@ struct FlowHubView: View {
 // MARK: - Sidebar
 
 private struct HubSidebar: View {
+    @ObservedObject private var state = AppState.shared
     @ObservedObject var router: HubRouter
     @ObservedObject private var flow = FlowDictation.shared
 
@@ -268,20 +272,23 @@ private struct HubSidebar: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
+                    if !state.agentsOnly {
                     HubSidebarHeader(text: "Flow")
                     ForEach(HubPage.flowPages) { page in
                         HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
                     }
+                    }
                     HubSidebarHeader(text: String(localized: "hub.section.notch"))
                         .padding(.top, 14)
-                    ForEach(HubPage.notchPages) { page in
+                    ForEach(HubPage.notchPages.filter { !state.agentsOnly || [.general, .agents, .shortcuts].contains($0) }) { page in
                         HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
                     }
                 }
             }
             .scrollIndicators(.never)
-            status
-                .padding(.top, 8)
+            if !state.agentsOnly {
+                status.padding(.top, 8)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 14)

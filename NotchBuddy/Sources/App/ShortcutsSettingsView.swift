@@ -27,7 +27,7 @@ struct ShortcutsSettingsView: View {
     private var globalSection: some View {
         GroupBox(String(localized: "shortcut.group.global")) {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(globalActions, id: \.self) { action in
+                ForEach(globalActions.filter { !AgentsOnlyPreference.shared.enabled || $0.isAgentRelevant }, id: \.self) { action in
                     shortcutRow(action)
                     if action != globalActions.last {
                         Divider().padding(.leading, 24)

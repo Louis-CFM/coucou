@@ -538,6 +538,7 @@ struct IslandHeader: View {
             // Left: tab capsules
             HStack(spacing: 5) {
                 TabButton(icon: "house.fill", view: .overview, state: state)
+                if !state.agentsOnly {
                 TabButton(icon: "bubble.left.fill", view: .prompt, state: state, preAction: {
                     #if !APPSTORE
                     if state.promptContext == nil {
@@ -546,6 +547,7 @@ struct IslandHeader: View {
                     #endif
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
+                }
             }
             .padding(.leading, 14)
 
@@ -556,9 +558,11 @@ struct IslandHeader: View {
                 #if !APPSTORE
                 // Claude and Codex both on: only Claude here (two pills and the icons do not
                 // clear the notch); Codex is a row in the Claude plan card.
-                if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled {
+                if state.view == .overview && state.showPlanInNotch && state.planRelayInstalled
+                    && (!state.agentsOnly || state.tasks.contains(where: { $0.id == "integration_claude" })) {
                     ClaudePlanHeaderPill(state: state)
-                } else if state.view == .overview && state.showCodexPlanInNotch {
+                } else if state.view == .overview && state.showCodexPlanInNotch
+                    && (!state.agentsOnly || state.tasks.contains(where: { $0.id == "agent_codex" })) {
                     ClaudePlanHeaderPill(state: state, codex: true)
                 }
                 #endif

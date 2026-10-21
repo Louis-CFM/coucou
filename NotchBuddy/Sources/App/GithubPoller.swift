@@ -2,7 +2,7 @@ import Foundation
 
 final class GithubPoller: @unchecked Sendable {
     static let shared = GithubPoller()
-    private var timer: DispatchSourceTimer?
+    private let activity = ServiceActivity()
     // All properties below are accessed only on the main thread.
     private var pulseInFlight = false
     private var nextPulse: DispatchWorkItem?
@@ -12,19 +12,17 @@ final class GithubPoller: @unchecked Sendable {
     private init() {}
 
     func start() {
-        guard timer == nil else { return }
         // Stats poll: every 5 minutes, starting 7 s after launch
-        let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 7, repeating: 300, leeway: .seconds(30))
-        t.setEventHandler { [weak self] in self?.pollStats() }
-        t.resume()
-        timer = t
+        guard activity.start(after: 7, every: 300, leeway: 30,
+                             poll: { [weak self] in self?.pollStats() }) else { return }
         // First pulse: 10 s after launch
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             self?.scheduleNextPulse(hasPending: false, delay: 10)
         }
         // First activity: 15 s after launch, then every 30 min
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             self?.scheduleNextActivity(delay: 15)
         }
     }
@@ -41,10 +39,19 @@ final class GithubPoller: @unchecked Sendable {
         #endif
     }
 
+    func stop() {
+        activity.stop()
+        tokenGeneration += 1
+        nextPulse?.cancel(); nextPulse = nil
+        nextActivity?.cancel(); nextActivity = nil
+        pulseInFlight = false
+        activityInFlight = false
+    }
+
     // MARK: - Stats (unchanged logic)
 
     private func pollStats() {
-        guard !DemoEngine.isPollerPaused else { return }
+        guard activity.running, !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("github-token") else { return }
         fetchUser(token: token)
     }
@@ -55,7 +62,7 @@ final class GithubPoller: @unchecked Sendable {
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+        activity.dataTask(with: req) { [weak self] data, response, _, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200,
@@ -65,34 +72,36 @@ final class GithubPoller: @unchecked Sendable {
             let privateOwned = (json["owned_private_repos"] as? Int)
                             ?? (json["total_private_repos"] as? Int)
                             ?? 0
-            self.fetchStars(token: token, totalRepos: publicRepos + privateOwned)
-        }.resume()
+            self.fetchStars(token: token, totalRepos: publicRepos + privateOwned, updates: updates)
+        }?.resume()
     }
 
-    private func fetchStars(token: String, totalRepos: Int) {
+    private func fetchStars(token: String, totalRepos: Int, updates: ServiceActivity.Delivery) {
         guard let url = URL(string: "https://api.github.com/user/repos?per_page=100&affiliation=owner&sort=pushed") else { return }
         var req = URLRequest(url: url, timeoutInterval: 15)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-        URLSession.shared.dataTask(with: req) { data, response, _ in
+        activity.dataTask(with: req, from: updates) { data, response, _, updates in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200,
                   let repos = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
 
             let totalStars = repos.reduce(0) { $0 + (($1["stargazers_count"] as? Int) ?? 0) }
-            DispatchQueue.main.async {
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
                 AppState.shared.githubStats = GitHubStats(totalRepos: totalRepos, totalStars: totalStars)
             }
-        }.resume()
+        }?.resume()
     }
 
     // MARK: - Pulse (GraphQL, single chain)
 
     /// Dispatches guards + state reads to main, then fires network on background.
     private func pollPulse() {
-        guard !DemoEngine.isPollerPaused else { scheduleNextPulse(hasPending: false); return }
+        guard activity.running, !DemoEngine.isPollerPaused else { scheduleNextPulse(hasPending: false); return }
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             guard let self, !self.pulseInFlight else { return }
             guard let token = KeychainStore.shared.get("github-token"),
                   Self.isWanted else {
@@ -118,12 +127,12 @@ final class GithubPoller: @unchecked Sendable {
         }
         req.httpBody = body
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+        activity.dataTask(with: req) { [weak self] data, response, _, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
                 self.nbLog("pulse HTTP \(code)")
-                self.finishPulse(hasPending: false)
+                self.finishPulse(hasPending: false, updates: updates)
                 return
             }
             // Partial GraphQL errors: if "data" is present, parse anyway and log error count.
@@ -133,13 +142,14 @@ final class GithubPoller: @unchecked Sendable {
                     self.nbLog("pulse GraphQL errors: \(errors.count)")
                 }
                 guard root["data"] is [String: Any] else {
-                    self.finishPulse(hasPending: false); return
+                    self.finishPulse(hasPending: false, updates: updates); return
                 }
             }
             guard let pulse = GitHubPulse.parse(data) else {
-                self.finishPulse(hasPending: false); return
+                self.finishPulse(hasPending: false, updates: updates); return
             }
-            DispatchQueue.main.async {
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
                 // Discard stale response if token changed while request was in flight
                 guard self.tokenGeneration == generation else { return }
                 let old = AppState.shared.githubPulse
@@ -151,14 +161,15 @@ final class GithubPoller: @unchecked Sendable {
                     AppState.shared.handleGitHubEvents(events)
                 }
             }
-            self.finishPulse(hasPending: pulse.hasPending)
-        }.resume()
+            self.finishPulse(hasPending: pulse.hasPending, updates: updates)
+        }?.resume()
     }
 
     /// Refreshes pulse data immediately if the last fetch is older than maxAge seconds (or absent).
     /// No-op when a request is already in flight. Safe to call from any thread.
     func refreshIfStale(maxAge: TimeInterval = 60) {
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             guard let self, !self.pulseInFlight else { return }
             guard GitHubPulse.isStale(fetchedAt: AppState.shared.githubPulse?.fetchedAt,
                                       maxAge: maxAge) else { return }
@@ -174,6 +185,7 @@ final class GithubPoller: @unchecked Sendable {
     /// Safe to call from any thread.
     func triggerPulseNow() {
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             guard let self else { return }
             self.tokenGeneration += 1
             self.nextPulse?.cancel()
@@ -188,17 +200,20 @@ final class GithubPoller: @unchecked Sendable {
     }
 
     /// Called from any thread; dispatches cleanup to main then schedules next poll.
-    private func finishPulse(hasPending: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
+    private func finishPulse(hasPending: Bool, updates: ServiceActivity.Delivery? = nil) {
+        let action: @MainActor @Sendable () -> Void = { [weak self] in
+            guard let self, self.activity.running, !AgentsOnlyPreference.shared.enabled else { return }
             self.pulseInFlight = false
             self.scheduleNextPulse(hasPending: hasPending)
         }
+        if let updates { updates.onMain(action) }
+        else { DispatchQueue.main.async(execute: action) }
     }
 
     /// Cancels any pending scheduled poll and schedules a new one on the main queue.
     /// Must run on the main thread.
     private func scheduleNextPulse(hasPending: Bool, delay: Double? = nil) {
+        guard activity.running else { return }
         nextPulse?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.pollPulse() }
         nextPulse = work
@@ -209,8 +224,9 @@ final class GithubPoller: @unchecked Sendable {
     // MARK: - Activity (contribution calendar, 30 min cadence)
 
     private func pollActivity() {
-        guard !DemoEngine.isPollerPaused else { scheduleNextActivity(); return }
+        guard activity.running, !DemoEngine.isPollerPaused else { scheduleNextActivity(); return }
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             guard let self, !self.activityInFlight else { return }
             guard let token = KeychainStore.shared.get("github-token"),
                   Self.isWanted else {
@@ -236,12 +252,12 @@ final class GithubPoller: @unchecked Sendable {
         }
         req.httpBody = body
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
+        activity.dataTask(with: req) { [weak self] data, response, _, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else {
                 self.nbLog("activity HTTP \(code)")
-                self.finishActivity()
+                self.finishActivity(updates: updates)
                 return
             }
             if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -249,23 +265,25 @@ final class GithubPoller: @unchecked Sendable {
                     self.nbLog("activity GraphQL errors: \(errors.count)")
                 }
                 guard root["data"] is [String: Any] else {
-                    self.finishActivity(); return
+                    self.finishActivity(updates: updates); return
                 }
             }
             guard let activity = GitHubActivity.parse(data) else {
-                self.finishActivity(); return
+                self.finishActivity(updates: updates); return
             }
-            DispatchQueue.main.async {
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
                 guard self.tokenGeneration == generation else { return }
                 AppState.shared.githubActivity = activity
             }
-            self.finishActivity()
-        }.resume()
+            self.finishActivity(updates: updates)
+        }?.resume()
     }
 
     /// Refreshes activity data immediately if stale. Safe to call from any thread.
     func refreshActivityIfStale(maxAge: TimeInterval = 300) {
         DispatchQueue.main.async { [weak self] in
+            guard !AgentsOnlyPreference.shared.enabled else { return }
             guard let self, !self.activityInFlight else { return }
             guard GitHubPulse.isStale(fetchedAt: AppState.shared.githubActivity?.fetchedAt,
                                       maxAge: maxAge) else { return }
@@ -275,15 +293,18 @@ final class GithubPoller: @unchecked Sendable {
         }
     }
 
-    private func finishActivity() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
+    private func finishActivity(updates: ServiceActivity.Delivery? = nil) {
+        let action: @MainActor @Sendable () -> Void = { [weak self] in
+            guard let self, self.activity.running, !AgentsOnlyPreference.shared.enabled else { return }
             self.activityInFlight = false
             self.scheduleNextActivity()
         }
+        if let updates { updates.onMain(action) }
+        else { DispatchQueue.main.async(execute: action) }
     }
 
     private func scheduleNextActivity(delay: Double? = nil) {
+        guard activity.running else { return }
         nextActivity?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.pollActivity() }
         nextActivity = work

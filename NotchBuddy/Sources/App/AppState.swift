@@ -7,9 +7,73 @@ import Combine
 final class AppState: ObservableObject {
     static let shared = AppState()
 
+    @Published private(set) var agentsOnly = AgentsOnlyPreference.shared.enabled
+    @Published private(set) var agentsOnlyError: String?
+    private var connectedAgentIds: Set<String> = []
+    private var observedAgentIds: Set<String> = []
+    private var savedOptionalTasks: [AgentTask] = []
+    /// Request ownership outlives the typing animation (which ends at first token).
+    let optionalWork = OptionalWork()
+    @Published var promptDraft = ""
+    private var agentDisplayPolicy: AgentDisplayPolicy {
+        AgentDisplayPolicy(agentsOnly: agentsOnly, connectedIDs: connectedAgentIds)
+    }
+
+    @discardableResult
+    func setAgentsOnly(_ enabled: Bool) -> Bool {
+        guard enabled != agentsOnly else { return true }
+        if enabled && (optionalWork.busy || !loadingProviderModels.isEmpty || FileDropHandler.busy
+                       || (DesktopMochiController.existing?.modeTransitionBusy ?? false)) {
+            agentsOnlyError = String(localized: "focus.finish-current-work")
+            return false
+        }
+        #if !APPSTORE
+        // Do not discard recordings or interrupt their transcript/summary writes.
+        if enabled && ((NoteTaker.existing?.busy ?? false) || (Parakeet.existing?.busy ?? false)
+                       || (FlowDictation.existing?.busy ?? false) || ScreenCapture.shared.busy
+                       || (VoiceEngine.existing?.modeTransitionBusy ?? false)
+                       || voiceSubState == .thinking || MacUpdater.shared.busy) {
+            agentsOnlyError = String(localized: "focus.finish-current-work")
+            return false
+        }
+        #endif
+        agentsOnlyError = nil
+        if enabled { savedOptionalTasks = tasks.filter { !AgentConnections.isAgent($0.id) } }
+        AgentsOnlyPreference.shared.set(enabled)
+        agentsOnly = enabled
+        if !enabled {
+            for task in savedOptionalTasks where !tasks.contains(where: { $0.id == task.id }) { tasks.append(task) }
+            savedOptionalTasks = []
+        }
+        refreshAgentConnections()
+        if pendingApproval == nil && pendingQuestion == nil { view = tasks.isEmpty ? .empty : .overview }
+        NotificationCenter.default.post(name: .agentsOnlyModeChanged, object: nil)
+        return true
+    }
+
+    func refreshAgentConnections() {
+        connectedAgentIds = AgentConnections.configured().union(observedAgentIds)
+        if agentsOnly { tasks.removeAll { !agentDisplayPolicy.allows($0.id) } }
+        loadIntegrationTasks()
+        if !tasks.contains(where: { $0.id == focusId }) { focusId = tasks.first?.id }
+        syncView()
+    }
+
+    func observedAgent(_ id: String) {
+        guard AgentConnections.isAgent(id) else { return }
+        observedAgentIds.insert(id)
+        connectedAgentIds.insert(id)
+    }
+
     // Island state
     @Published var mode: IslandMode = .hidden
-    @Published var view: IslandView = .overview
+    @Published var view: IslandView = .overview {
+        didSet {
+            if agentsOnly && (!view.isAgentRelevant || (view == .overview && tasks.isEmpty)) {
+                view = tasks.isEmpty ? .empty : .overview
+            }
+        }
+    }
 
     // Tasks
     @Published var tasks: [AgentTask] = []
@@ -165,6 +229,7 @@ final class AppState: ObservableObject {
     /// Fetches models for `provider` if not already loaded or loading.
     /// Sets `providerModelFetchError` if the key is absent or the request fails.
     func fetchModelsIfNeeded(for provider: ChatProvider) {
+        guard !agentsOnly else { return }
         guard !loadingProviderModels.contains(provider),
               fetchedProviderModels[provider] == nil else { return }
         // Local providers: fetch from server URL (no API key needed)
@@ -574,6 +639,7 @@ final class AppState: ObservableObject {
         SoundEngine.shared.volume = Float(soundVolume)
 
         // Always load integration pills
+        connectedAgentIds = AgentConnections.configured()
         loadIntegrationTasks()
     }
 
@@ -590,6 +656,7 @@ final class AppState: ObservableObject {
     // MARK: - Task management
 
     func addTask(_ task: AgentTask) {
+        guard !agentsOnly || connectedAgentIds.contains(task.id) else { return }
         guard !tasks.contains(where: { $0.id == task.id }) else { return }
         tasks.append(task)
         if focusId == nil { focusId = task.id }
@@ -600,8 +667,8 @@ final class AppState: ObservableObject {
     func removeTask(id: String) {
         // mainPillId: always reset, never remove (the active workspace tool)
         // activeIntegrations: also reset (user declared it active, keep it as idle)
-        let isProtected = id == mainPillId
-        let isActiveDecl = PillCatalog.definition(for: id) != nil && activeIntegrations.contains(id)
+        let isProtected = agentsOnly ? connectedAgentIds.contains(id) : id == mainPillId
+        let isActiveDecl = !agentsOnly && PillCatalog.definition(for: id) != nil && activeIntegrations.contains(id)
         if isProtected || isActiveDecl {
             if let idx = tasks.firstIndex(where: { $0.id == id }) {
                 let catalogName = PillCatalog.definition(for: id)?.name
@@ -609,6 +676,7 @@ final class AppState: ObservableObject {
                 tasks[idx].steps      = []
                 tasks[idx].stepIndex  = 0
                 tasks[idx].pillBadge  = nil
+                tasks[idx].isPlaceholder = true
                 if let n = catalogName { tasks[idx].name = n }
             }
             return
@@ -621,6 +689,7 @@ final class AppState: ObservableObject {
     }
 
     func updateTask(id: String, state: BotState) {
+        guard !agentsOnly || connectedAgentIds.contains(id) else { return }
         guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
         tasks[idx].state = state
     }
@@ -687,19 +756,19 @@ final class AppState: ObservableObject {
         activeIntegrations.remove(mainPillId)
         for def in catalog {
             // mainPillId always loads; activeIntegrations load
-            let shouldLoad = def.id == mainPillId || activeIntegrations.contains(def.id)
+            let shouldLoad = agentDisplayPolicy.loadsCatalog(def.id, main: mainPillId, active: activeIntegrations)
             let loaded = tasks.contains(where: { $0.id == def.id })
             if shouldLoad && !loaded {
                 let task = AgentTask(id: def.id, name: def.name, color: def.color,
-                                     state: .idle, steps: [], source: def.source, isIntegration: true)
+                                     state: .idle, steps: [], source: def.source, isIntegration: true, isPlaceholder: true)
                 tasks.append(task)
             }
             if !shouldLoad && loaded {
-                tasks.removeAll { $0.id == def.id }
+                tasks.removeAll { $0.id == def.id && $0.isPlaceholder }
             }
         }
         sortTasksByCatalog()
-        if focusId == nil { focusId = mainPillId }
+        if focusId == nil { focusId = agentsOnly ? tasks.first?.id : mainPillId }
         syncMode()
     }
 
@@ -730,7 +799,7 @@ final class AppState: ObservableObject {
             if let def = PillCatalog.available.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {
                 let task = AgentTask(id: def.id, name: def.name, color: def.color,
-                                     state: .idle, steps: [], source: def.source, isIntegration: true)
+                                     state: .idle, steps: [], source: def.source, isIntegration: true, isPlaceholder: true)
                 tasks.append(task)
                 sortTasksByCatalog()
             }

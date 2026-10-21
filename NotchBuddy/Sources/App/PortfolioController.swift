@@ -208,14 +208,28 @@ final class PortfolioController: ObservableObject {
     @Published private(set) var lastUpdate: Date?
 
     private var timer: Timer?
-    private var fetching = false
+    private var refreshOwnership = RefreshOwnership()
+    private var refreshTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains(Self.pillId)
+        !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {
+    private let configuredAccounts: () -> [PortfolioAccount]
+    private let readAccount: @Sendable (PortfolioAccount) async -> PortfolioAccount
+    private let readPrices: @Sendable ([String]) async -> [String: PriceInfo]
+
+    init(configuredAccounts: @escaping () -> [PortfolioAccount] = { PortfolioSettings.configuredAccounts },
+         readAccount: @escaping @Sendable (PortfolioAccount) async -> PortfolioAccount = { await PortfolioController.fetchAccount($0) },
+         readPrices: @escaping @Sendable ([String]) async -> [String: PriceInfo] = { await PortfolioController.fetchPrices(symbols: $0) }) {
+        self.configuredAccounts = configuredAccounts
+        self.readAccount = readAccount
+        self.readPrices = readPrices
+    }
+
+    private func observeIfNeeded() {
+        guard cancellables.isEmpty else { return }
         AppState.shared.$activeIntegrations
             .map { $0.contains(Self.pillId) }
             .removeDuplicates()
@@ -225,9 +239,10 @@ final class PortfolioController: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func start() { updatePolling() }
+    func start() { observeIfNeeded(); updatePolling() }
 
     func settingsChanged() {
+        cancelRefresh()
         accounts = []
         loaded = false
         refresh()
@@ -250,6 +265,7 @@ final class PortfolioController: ObservableObject {
             }
             refresh()
         } else {
+            cancelRefresh()
             timer?.invalidate()
             timer = nil
             accounts = []
@@ -259,23 +275,27 @@ final class PortfolioController: ObservableObject {
     }
 
     func refresh() {
-        guard isPillActive, !fetching else { return }
-        let configured = PortfolioSettings.configuredAccounts
+        guard isPillActive, !refreshOwnership.busy else { return }
+        let configured = configuredAccounts()
         guard !configured.isEmpty else { accounts = []; loaded = true; return }
-        fetching = true
-        Task {
+        guard let request = refreshOwnership.begin() else { return }
+        let readAccount = self.readAccount
+        refreshTask = Task {
+            defer { refreshOwnership.finish(request) }
             var result: [PortfolioAccount] = []
             await withTaskGroup(of: PortfolioAccount.self) { group in
                 for account in configured {
-                    group.addTask { await Self.fetchAccount(account) }
+                    group.addTask { await readAccount(account) }
                 }
                 for await a in group { result.append(a) }
             }
+            guard !Task.isCancelled, refreshOwnership.owns(request), isPillActive else { return }
             // Stable order: match the configured order
             let ordered = configured.compactMap { conf in result.first { $0.id == conf.id } }
             // Get prices for all held symbols
             let symbols = Set(ordered.flatMap { $0.holdings.map(\.symbol) })
-            let prices = await Self.fetchPrices(symbols: Array(symbols))
+            let prices = await readPrices(Array(symbols))
+            guard !Task.isCancelled, refreshOwnership.owns(request), isPillActive else { return }
             var priced = ordered
             for i in priced.indices {
                 for j in priced[i].holdings.indices {
@@ -289,11 +309,22 @@ final class PortfolioController: ObservableObject {
                     }
                 }
             }
-            fetching = false
             accounts = priced
             loaded = true
             lastUpdate = Date()
         }
+    }
+
+    private func cancelRefresh() {
+        refreshOwnership.cancel()
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
+    func stop() {
+        cancellables.removeAll()
+        timer?.invalidate(); timer = nil
+        cancelRefresh()
     }
 
     // MARK: - Account fetch dispatch
@@ -315,7 +346,7 @@ final class PortfolioController: ObservableObject {
 
     // MARK: - Price fetch (Coinbase public, no key)
 
-    private struct PriceInfo: Sendable {
+    struct PriceInfo: Sendable {
         var price: Double
         var change24h: Double?
         var history: [Double]   // 7 daily closes, oldest first

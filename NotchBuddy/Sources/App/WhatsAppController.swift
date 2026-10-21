@@ -149,12 +149,16 @@ final class WhatsAppController: ObservableObject {
     /// Bumped at each start and stop: an answer from before a restart is dropped.
     private var generation = 0
     private var cancellables = Set<AnyCancellable>()
+    private let jobs = FeatureTasks()
 
     private var shouldRun: Bool {
-        WhatsAppSettings.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
+        WhatsAppSettings.enabled && !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {
+    private init() {}
+
+    private func observeIfNeeded() {
+        guard cancellables.isEmpty else { return }
         // Pill turned on or off from anywhere: follow it on the next turn (the sink runs
         // before the property changes).
         AppState.shared.$activeIntegrations
@@ -171,7 +175,11 @@ final class WhatsAppController: ObservableObject {
     }
 
     /// Called once at launch.
-    func start() { update() }
+    func start() {
+        jobs.start()
+        observeIfNeeded()
+        update()
+    }
 
     /// Settings changed (turned on/off, gateway, URL, credentials, port): start over.
     func settingsChanged() {
@@ -194,6 +202,13 @@ final class WhatsAppController: ObservableObject {
     private func update() {
         if shouldRun && provider == nil { begin() }
         else if !shouldRun && provider != nil { stop(forget: true) }
+    }
+
+    func stop() {
+        jobs.stop()
+        cancellables.removeAll()
+        stop(forget: false)
+        WhatsAppGOWAProcess.shared.stopNow()
     }
 
     // MARK: - Lifecycle
@@ -273,7 +288,7 @@ final class WhatsAppController: ObservableObject {
         guard let provider, !refreshing else { return }
         refreshing = true
         let gen = generation
-        Task {
+        jobs.run { [self] in
             defer { if gen == generation { refreshing = false } }
             do {
                 let status = try await provider.status()
@@ -438,7 +453,7 @@ final class WhatsAppController: ObservableObject {
         let since = lastPoll.addingTimeInterval(-30)   // a little overlap; duplicates are dropped
         let started = Date()
         let gen = generation
-        Task {
+        jobs.run { [self] in
             defer { if gen == generation { polling = false } }
             guard let messages = try? await provider.recentMessages(since: since, me: me), gen == generation else { return }
             lastPoll = started
@@ -469,7 +484,7 @@ final class WhatsAppController: ObservableObject {
               conv.name == WAJID.displayNumber(chat), !namingGroups.contains(chat) else { return }
         namingGroups.insert(chat)
         let gen = generation
-        Task {
+        jobs.run { [self] in
             if let name = await provider.groupName(chat), gen == generation { inbox.rename(chat, to: name) }
         }
     }
@@ -484,7 +499,7 @@ final class WhatsAppController: ObservableObject {
         guard let provider else { return }
         if WhatsAppSettings.markReadOnOpen { markRead(chat) }
         let gen = generation
-        Task {
+        jobs.run { [self] in
             guard let history = try? await provider.messages(chat: chat, limit: 10, me: me), gen == generation else { return }
             for message in history { inbox.add(message, filters: filters, history: true) }
         }
@@ -505,7 +520,7 @@ final class WhatsAppController: ObservableObject {
         // Nothing new: no receipt to send.
         guard hadUnread else { return }
         let last = conv.messages.last { !$0.fromMe }?.id
-        Task { try? await provider.markRead(chat: key, lastIncoming: last) }
+        jobs.run { try? await provider.markRead(chat: key, lastIncoming: last) }
     }
 
     /// Sends a reply. Only to a conversation already in the inbox, one at a time, a few a minute.
@@ -537,7 +552,7 @@ final class WhatsAppController: ObservableObject {
             // Replying reads the conversation, whatever the setting.
             let last = inbox.conversations[key]?.messages.last { !$0.fromMe }?.id
             if inbox.visibleUnread(filters: filters) == 0 { clearBadge() }
-            Task { try? await provider.markRead(chat: key, lastIncoming: last) }
+            jobs.run { try? await provider.markRead(chat: key, lastIncoming: last) }
             return true
         } catch let error as WAError {
             switch error {

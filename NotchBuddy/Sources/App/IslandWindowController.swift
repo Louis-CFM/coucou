@@ -610,6 +610,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     func expand(to view: IslandView) {
+        guard !state.agentsOnly || view.isAgentRelevant else { return }
         state.view = view
         if state.mode == .expanded {
             // Already expanded — just switch view
@@ -653,6 +654,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     func handleHotKey(_ action: ShortcutAction) {
+        guard !state.agentsOnly || action.isAgentRelevant else { return }
         switch action {
         case .toggleIsland:
             if state.mode == .expanded {
@@ -840,6 +842,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     private func performAttachFrontWindow() {
+        guard !state.agentsOnly else { return }
         guard let app = state.lastExternalApp else {
             SoundEngine.shared.play("error"); return
         }
@@ -937,27 +940,15 @@ final class IslandWindowController: NSWindowController {
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
-                guard self.wasInIsland else { return }
-                self.fsm.userInteracted()
-                self.pendingIslandClick = true
-                self.hoverTimer?.cancel()
-                self.botHoverTimer?.cancel()
-                self.botHovering = false
-                // Drag only starts when clicking directly on the bot head
-                guard self.isBotHit(event.locationInWindow) else { return }
-                // Notch Mochi is invisible when on desktop — no drag, no slap
-                guard !self.state.mochiOnDesktop else { return }
-                self.attachDragStart = NSEvent.mouseLocation
-                // Post slap only when expanded
-                guard self.state.mode == .expanded else { return }
-                NotificationCenter.default.post(name: .triggerSlap, object: nil)
+                self.beginIslandClick(inIsland: self.wasInIsland, onBot: self.isBotHit(event.locationInWindow),
+                                      position: NSEvent.mouseLocation)
             }
             return event
         }
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDragged) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
-                guard let start = self.attachDragStart, !self.inAttachDrag else { return }
+                guard !self.state.agentsOnly, let start = self.attachDragStart, !self.inAttachDrag else { return }
                 let m = NSEvent.mouseLocation
                 guard hypot(m.x - start.x, m.y - start.y) > 3 else { return }
                 self.inAttachDrag = true
@@ -1014,22 +1005,7 @@ final class IslandWindowController: NSWindowController {
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
             guard let self else { return event }
             MainActor.assumeIsolated {
-                let hadPendingClick = self.pendingIslandClick
-                let wasDragging     = self.inAttachDrag
-                self.pendingIslandClick = false
-                if wasDragging {
-                    finishDrag()
-                } else {
-                    self.attachDragStart = nil
-                    if hadPendingClick && self.state.mode != .expanded {
-                        if self.fsm.state == .home {
-                            // FSM already thinks it's open (e.g. the view folded it): just reopen.
-                            self.expand(to: self.defaultView())
-                        } else {
-                            self.fsm.click()   // FSM petit/hidden→home; onTransition calls expand(to:)
-                        }
-                    }
-                }
+                self.endIslandClick(finishAttachDrag: finishDrag)
             }
             return event
         }
@@ -1350,6 +1326,45 @@ final class IslandWindowController: NSWindowController {
         return dx*dx + dy*dy <= radius * radius
     }
 
+    /// Shared by the native event monitor and contract tests. Basic click
+    /// bookkeeping is independent of optional drag/slap behavior.
+    func beginIslandClick(inIsland: Bool, onBot: Bool, position: NSPoint) {
+        guard inIsland else { return }
+        fsm.userInteracted()
+        pendingIslandClick = true
+        hoverTimer?.cancel()
+        botHoverTimer?.cancel()
+        botHovering = false
+        guard !state.agentsOnly else { return }
+        // Drag only starts when clicking directly on the bot head
+        guard onBot else { return }
+        // Notch Mochi is invisible when on desktop — no drag, no slap
+        guard !state.mochiOnDesktop else { return }
+        attachDragStart = position
+        // Post slap only when expanded
+        guard state.mode == .expanded else { return }
+        NotificationCenter.default.post(name: .triggerSlap, object: nil)
+    }
+
+    func endIslandClick(finishAttachDrag: (() -> Void)? = nil) {
+        let hadPendingClick = pendingIslandClick
+        let wasDragging     = inAttachDrag
+        pendingIslandClick = false
+        if wasDragging {
+            finishAttachDrag?()
+        } else {
+            attachDragStart = nil
+            if hadPendingClick && state.mode != .expanded {
+                if fsm.state == .home {
+                    // FSM already thinks it's open (e.g. the view folded it): just reopen.
+                    expand(to: defaultView())
+                } else {
+                    fsm.click()   // FSM petit/hidden→home; onTransition calls expand(to:)
+                }
+            }
+        }
+    }
+
     // MARK: - Notch detection (static)
 
     static func notchScreen() -> NSScreen? {
@@ -1472,6 +1487,7 @@ extension IslandWindowController {
     /// Run the intent derived from `transcript`, show VoiceResultView, then continue conversation or collapse.
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
+        guard !state.agentsOnly else { return }
         let t0     = Date()
         let pills  = PillCatalog.available
         let runner = VoiceActionRunner.shared

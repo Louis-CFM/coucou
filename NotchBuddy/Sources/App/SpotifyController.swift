@@ -49,6 +49,7 @@ final class SpotifyController: ObservableObject {
 
     private var notifTokens: [Any] = []
     private var cancellables = Set<AnyCancellable>()
+    private let jobs = FeatureTasks()
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.spotify")
     private var artworkCache: [String: NSImage] = [:]
     private var artworkCacheOrder: [String] = []
@@ -57,7 +58,7 @@ final class SpotifyController: ObservableObject {
     private var volumeTask: Task<Void, Never>?
 
     private var isPillActive: Bool {
-        AppState.shared.activeIntegrations.contains(Self.pillId)
+        !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
     private var automationGranted: Bool {
@@ -69,7 +70,7 @@ final class SpotifyController: ObservableObject {
     }
 
     var isRunning: Bool {
-        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == Self.bundleId }
+        running()
     }
 
     /// Where playback is now, extrapolated from the last anchor.
@@ -80,7 +81,18 @@ final class SpotifyController: ObservableObject {
         return min(p, d)
     }
 
-    private init() {
+    private let running: () -> Bool
+    private let executeScript: ((String) async -> ScriptResult)?
+    init(running: @escaping () -> Bool = {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == SpotifyController.bundleId }
+    }, executeScript: ((String) async -> ScriptResult)? = nil) {
+        self.running = running
+        self.executeScript = executeScript
+    }
+
+    func start() {
+        jobs.start()
+        guard notifTokens.isEmpty else { return }
         // Spotify posts this on play, pause and track change. Seeks inside Spotify don't post it,
         // so the card re-reads the position when it appears.
         let tok1 = DistributedNotificationCenter.default().addObserver(
@@ -149,6 +161,18 @@ final class SpotifyController: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    func stop() {
+        jobs.stop()
+        cancellables.removeAll()
+        for token in notifTokens {
+            DistributedNotificationCenter.default().removeObserver(token)
+            NSWorkspace.shared.notificationCenter.removeObserver(token)
+        }
+        notifTokens.removeAll()
+        volumeTask?.cancel(); volumeTask = nil
+        clearState()
     }
 
     // MARK: - State
@@ -231,7 +255,7 @@ final class SpotifyController: ObservableObject {
     /// The first call is what makes macOS ask for Automation.
     func refresh() {
         guard isPillActive, isRunning else { return }
-        Task {
+        jobs.run { [self] in
             let result = await runAppleScript("""
                 tell application id "com.spotify.client"
                     set ps to player state as string
@@ -270,7 +294,7 @@ final class SpotifyController: ObservableObject {
                 end tell
             """)
             guard case .success(let v) = result, let ps = v.first?.text else { return }
-            guard isPillActive else { return }
+            guard !Task.isCancelled, isPillActive else { return }
             if ps == "stopped" || v.count < 11 { clearState(); return }
 
             let artworkURL = v[10].text.isEmpty ? nil : v[10].text
@@ -301,7 +325,7 @@ final class SpotifyController: ObservableObject {
         let id = track.id
         let direct = track.artworkURL
         let page = track.webURL
-        Task {
+        jobs.run { [self] in
             defer { if artworkLoadingId == id { artworkLoadingId = nil } }
             var imageURL = direct.flatMap(Self.spotifyImageURL)
             if imageURL == nil, let page {
@@ -311,6 +335,7 @@ final class SpotifyController: ObservableObject {
                   let (data, response) = try? await URLSession.shared.data(from: imageURL),
                   (response as? HTTPURLResponse)?.statusCode == 200,
                   let image = NSImage(data: data) else { return }
+            guard !Task.isCancelled, isPillActive else { return }
             cacheArtwork(image, for: id)
             if self.track?.id == id { artwork = image }
         }
@@ -399,12 +424,14 @@ final class SpotifyController: ObservableObject {
 
     /// Coalesced: a slider drag sends at most one Apple Event every 120 ms.
     func setVolume(_ value: Int) {
-        guard isRunning else { return }
+        guard isRunning, !AgentsOnlyPreference.shared.enabled else { return }
         let v = min(100, max(0, value))
         volume = v
         pendingVolume = v
         guard volumeTask == nil else { return }
-        volumeTask = Task {
+        let operation = AppState.shared.optionalWork.begin()
+        volumeTask = Task { [self] in
+            defer { AppState.shared.optionalWork.end(operation) }
             while let v = pendingVolume {
                 pendingVolume = nil
                 await runAppleScript(#"tell application id "com.spotify.client" to set sound volume to \#(v)"#)
@@ -415,7 +442,7 @@ final class SpotifyController: ObservableObject {
     }
 
     private func command(_ verb: String, refreshAfter: Bool = true) {
-        Task {
+        jobs.run { [self] in
             let result = await runAppleScript(#"tell application id "com.spotify.client" to \#(verb)"#)
             guard refreshAfter, case .success = result else { return }
             // Let Spotify settle on the new track before reading it back
@@ -490,9 +517,11 @@ final class SpotifyController: ObservableObject {
 
     @discardableResult
     private func runAppleScript(_ source: String) async -> ScriptResult {
+        if let executeScript { return await executeScript(source) }
         let grantedKey = Self.grantedKey
         let result: ScriptResult = await withCheckedContinuation { cont in
             queue.async {
+                guard !AgentsOnlyPreference.shared.enabled else { cont.resume(returning: .error); return }
                 guard let script = NSAppleScript(source: source) else {
                     cont.resume(returning: .error); return
                 }

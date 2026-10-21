@@ -20,6 +20,9 @@ final class ServiceDetailRunner {
 
     private var database: CKDatabase { CKContainer(identifier: CloudProbe.containerID).privateCloudDatabase }
     private var pollTask: Task<Void, Never>?
+    private var checkTask: Task<Void, Never>?
+    private var cleanupTask: Task<Void, Never>?
+    private var generation = 0
     private var changeToken: CKServerChangeToken?
     /// The last detail sent per service: actions are checked against it.
     private var lastDetails: [String: ServiceDetail] = [:]
@@ -28,7 +31,8 @@ final class ServiceDetailRunner {
     private var again = false
 
     func start() {
-        guard pollTask == nil else { return }
+        guard !AgentsOnlyPreference.shared.enabled, pollTask == nil else { return }
+        generation += 1
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.checkNow()
@@ -40,26 +44,44 @@ final class ServiceDetailRunner {
 
     /// Stops and deletes the details this Mac wrote to iCloud.
     func stop() {
+        guard pollTask != nil else { return }
+        generation += 1
+        let previous = checkTask
+        let previousCleanup = cleanupTask
+        previous?.cancel(); checkTask = nil
+        checking = false; again = false
         pollTask?.cancel()
         pollTask = nil
         lastDetails = [:]
         let ids = PillCatalog.phoneServices.map {
             CKRecord.ID(recordName: ServiceDetail.recordName(for: $0), zoneID: SessionSnapshot.zoneID)
         }
-        Task { _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false) }
+        cleanupTask = Task {
+            await previous?.value
+            await previousCleanup?.value
+            _ = try? await database.modifyRecords(saving: [], deleting: ids, savePolicy: .changedKeys, atomically: false)
+        }
     }
 
     /// From the CloudKit push and the fallback check. One check at a time: two
     /// overlapping checks would share the change token and could run an action twice.
     func checkNow() async {
-        guard pollTask != nil else { return }
+        guard !AgentsOnlyPreference.shared.enabled, pollTask != nil else { return }
         guard !checking else { again = true; return }
         checking = true
-        repeat {
-            again = false
-            await check()
-        } while again
-        checking = false
+        let token = generation
+        let cleanup = cleanupTask
+        let work = Task {
+            await cleanup?.value
+            guard !Task.isCancelled else { return }
+            repeat {
+                again = false
+                await check()
+            } while again && !Task.isCancelled && !AgentsOnlyPreference.shared.enabled
+        }
+        checkTask = work
+        await work.value
+        if generation == token { checking = false; checkTask = nil }
     }
 
     // MARK: Requests
@@ -68,9 +90,10 @@ final class ServiceDetailRunner {
         var found: [CKRecord] = []
         do {
             var more = true
-            while more {
+            while more && !Task.isCancelled && !AgentsOnlyPreference.shared.enabled {
                 let changes = try await database.recordZoneChanges(inZoneWith: SessionSnapshot.zoneID, since: changeToken,
                                                                    desiredKeys: ["pillId", "kind", "requestedAt", "target"])
+                guard !Task.isCancelled else { return }
                 for (_, result) in changes.modificationResultsByID {
                     if case .success(let mod) = result, mod.record.recordType == ServiceDetail.requestType {
                         found.append(mod.record)
@@ -85,7 +108,7 @@ final class ServiceDetailRunner {
         } catch {
             return
         }
-        guard !found.isEmpty else { return }
+        guard !Task.isCancelled, !AgentsOnlyPreference.shared.enabled, !found.isEmpty else { return }
         // Single use: act only on the requests this Mac actually removed from iCloud.
         guard let removed = try? await database.modifyRecords(saving: [], deleting: found.map(\.recordID),
                                                               savePolicy: .changedKeys, atomically: false) else {
@@ -138,6 +161,7 @@ final class ServiceDetailRunner {
     }
 
     private func publish(pillId: String, lastAction: ServiceActionResult?) async {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         var detail = await ServiceAPI.detail(for: pillId)
         // The iPhone sync was turned off while the API was read: write nothing.
         guard !Task.isCancelled, pollTask != nil else { return }
@@ -201,6 +225,7 @@ enum ServiceAPI {
 
     private static func request(_ urlString: String, method: String = "GET", headers: [String: String],
                                 body: [String: Any]? = nil) async throws -> Any {
+        guard !Task.isCancelled, !AgentsOnlyPreference.shared.enabled else { throw CancellationError() }
         guard let url = URL(string: urlString) else { throw Failure(status: 0, message: "Bad address") }
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.httpMethod = method
@@ -257,6 +282,9 @@ enum ServiceAPI {
     // MARK: Reading
 
     static func detail(for pillId: String) async -> ServiceDetail {
+        guard !AgentsOnlyPreference.shared.enabled else {
+            return ServiceDetail(pillId: pillId, fetchedAt: Date(), error: String(localized: "focus.agents-only"))
+        }
         do {
             switch pillId {
             case "integration_vercel": return try await vercel()
@@ -719,6 +747,7 @@ enum ServiceAPI {
 
     /// Runs one action. Returns a short line for the iPhone.
     static func perform(kind: String, target: String) async throws -> String {
+        guard !AgentsOnlyPreference.shared.enabled else { throw Failure(status: 0, message: String(localized: "focus.agents-only")) }
         switch kind {
         case "vercel.redeploy":
             let parts = target.split(separator: "|", omittingEmptySubsequences: false).map(String.init)

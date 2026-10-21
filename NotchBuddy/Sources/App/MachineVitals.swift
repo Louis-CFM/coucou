@@ -46,6 +46,7 @@ final class MachineVitals: ObservableObject {
 
     /// Starts following whether Mochi is on screen. Called once at launch.
     func start() {
+        guard subscriptions.isEmpty else { return }
         let state = AppState.shared
         // Everything is received on the main thread: macOS posts some of these (the thermal
         // state) from a background queue, and Mochi's code only runs on the main one.
@@ -62,12 +63,19 @@ final class MachineVitals: ObservableObject {
         refreshRunning()
     }
 
+    func stop() {
+        subscriptions.removeAll()
+        timer?.invalidate(); timer = nil
+        memoryPressure?.cancel(); memoryPressure = nil
+        mood = .calm; summary = nil
+    }
+
     private var onScreen: Bool {
         AppState.shared.mode != .hidden || AppState.shared.mochiOnDesktop
     }
 
     private func refreshRunning() {
-        let run = enabled && onScreen
+        let run = enabled && onScreen && !AgentsOnlyPreference.shared.enabled
         if run, timer == nil {
             lastTicks = nil
             lastProcessTimes = [:]
@@ -91,7 +99,7 @@ final class MachineVitals: ObservableObject {
     // MARK: - Reading the Mac
 
     private func sample() {
-        guard enabled else { return }
+        guard enabled && !AgentsOnlyPreference.shared.enabled else { return }
         if let ticks = Self.cpuTicks() {
             if let last = lastTicks, ticks.total > last.total {
                 cpu = Double(ticks.busy - last.busy) / Double(ticks.total - last.total)

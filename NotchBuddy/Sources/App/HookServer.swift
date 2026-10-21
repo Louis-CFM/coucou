@@ -471,6 +471,7 @@ final class HookServer: @unchecked Sendable {
             return
         }
 
+        state.observedAgent(agentId)
         let focused = state.focusId == agentId
         // The user is looking at the session's terminal: a finish or an error is already in
         // front of them, so the pill only takes a badge (no sound, no reveal). Warp exposes
@@ -710,7 +711,10 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func upsertExternalAgent(id: String, name: String) {
         let state = AppState.shared
-        guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
+        if let index = state.tasks.firstIndex(where: { $0.id == id }) {
+            if state.tasks[index].isPlaceholder { state.tasks[index].isPlaceholder = false }
+            return
+        }
         let color: String
         if let def = PillCatalog.definition(for: id) {
             color = def.color
@@ -1141,6 +1145,7 @@ final class HookServer: @unchecked Sendable {
     private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
+            if state.tasks[idx].isPlaceholder { state.tasks[idx].isPlaceholder = false }
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }

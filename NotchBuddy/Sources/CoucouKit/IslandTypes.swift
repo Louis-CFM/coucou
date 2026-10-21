@@ -84,6 +84,9 @@ struct AgentTask: Identifiable, Equatable {
     var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
+    /// Catalog placeholders may be reconciled away; a hook-owned session card
+    /// retains its activity even when it is not manually selected in the catalog.
+    var isPlaceholder = false
 }
 
 enum AgentSource: Equatable {
@@ -281,4 +284,14 @@ enum IslandConst {
         .result:    "rgba(52,211,153,0.22)",
         .prompt:    "rgba(99,102,241,0.22)",
     ]
+}
+
+
+extension IslandView {
+    var isAgentRelevant: Bool {
+        switch self {
+        case .overview, .empty, .approval, .question, .error, .finished, .settings, .recap: return true
+        default: return false
+        }
+    }
 }

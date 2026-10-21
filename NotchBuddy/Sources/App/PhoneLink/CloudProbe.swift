@@ -23,7 +23,7 @@ final class CloudProbe {
     static let zoneID = CKRecordZone.ID(zoneName: "Coucou", ownerName: CKCurrentUserDefaultName)
     private static let subscriptionID = "coucou-zone-mac"
 
-    private let container = CKContainer(identifier: CloudProbe.containerID)
+    private lazy var container = CKContainer(identifier: CloudProbe.containerID)
     private var database: CKDatabase { container.privateCloudDatabase }
 
     private let launchDate = Date()
@@ -36,6 +36,18 @@ final class CloudProbe {
     private var started = false
     private var pingTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
+    private let startServices: () -> Void
+    private let stopServices: () -> Void
+
+    init(started: Bool = false, startServices: @escaping () -> Void = {
+        ServiceDetailRunner.shared.start(); ServicePublisher.shared.start()
+    }, stopServices: @escaping () -> Void = {
+        ServiceDetailRunner.shared.stop(); ServicePublisher.shared.stop()
+    }) {
+        self.started = started
+        self.startServices = startServices
+        self.stopServices = stopServices
+    }
 
     private var appLabel: String {
         #if APPSTORE
@@ -72,8 +84,7 @@ final class CloudProbe {
         SessionPublisher.shared.stop()
         ApprovalRelay.shared.stop()
         QuestionRelay.shared.stop()
-        ServiceDetailRunner.shared.stop()
-        ServicePublisher.shared.stop()
+        stopServices()
         TurnRecorder.shared.stop()
         #if !APPSTORE
         InstructionRunner.shared.stop()
@@ -95,8 +106,7 @@ final class CloudProbe {
         SessionPublisher.shared.start()
         ApprovalRelay.shared.start()
         QuestionRelay.shared.start()
-        ServiceDetailRunner.shared.start()
-        ServicePublisher.shared.start()
+        startServices()
         TurnRecorder.shared.start()
         #if !APPSTORE
         InstructionRunner.shared.startIfEnabled()
@@ -177,6 +187,15 @@ final class CloudProbe {
     }
 
     // MARK: Pong
+
+    func updateServiceMode() {
+        guard started else { return }
+        if AgentsOnlyPreference.shared.enabled {
+            stopServices()
+        } else {
+            startServices()
+        }
+    }
 
     func handleRemoteNotification(_ userInfo: [String: Any]) {
         guard CKNotification(fromRemoteNotificationDictionary: userInfo) != nil else {

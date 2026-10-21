@@ -21,16 +21,19 @@ final class FileDropNSView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard !AgentsOnlyPreference.shared.enabled else { return [] }
         onDragEntered?(sender.draggingLocation)
         return .copy
     }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard !AgentsOnlyPreference.shared.enabled else { return [] }
         onDragUpdated?(sender.draggingLocation)
         return .copy
     }
     override func draggingExited(_ sender: NSDraggingInfo?) { onDragExited?() }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard !AgentsOnlyPreference.shared.enabled else { return false }
         guard let urls = sender.draggingPasteboard.readObjects(
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true]
@@ -42,10 +45,16 @@ final class FileDropNSView: NSView {
 
 // MARK: - File drop handler
 
+@MainActor
 enum FileDropHandler {
-    @MainActor
+    private static var activeOperations = 0
+    static var busy: Bool { activeOperations > 0 }
+
     static func handle(urls: [URL], state: AppState) async {
+        guard !state.agentsOnly else { return }
         guard let url = urls.first else { return }
+        activeOperations += 1
+        defer { activeOperations -= 1 }
         let name = url.lastPathComponent
 
         // Start animation immediately — do NOT block on file copy.
@@ -60,6 +69,7 @@ enum FileDropHandler {
 
         // Copy to inbox in background — update state when done
         let inbox = HookServer.supportDir.appendingPathComponent("inbox")
+        activeOperations += 1
         Task.detached {
             try? FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
             let dest = inbox.appendingPathComponent(name)
@@ -70,6 +80,7 @@ enum FileDropHandler {
                     state.promptContext = .file(name: name, fileURL: dest)
                 }
             }
+            await MainActor.run { activeOperations -= 1 }
         }
 
         // Drop feedback

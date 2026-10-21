@@ -6,24 +6,22 @@ import Foundation
 
 final class VercelPoller: @unchecked Sendable {
     static let shared = VercelPoller()
-    private var timer: DispatchSourceTimer?
+    private let activity = ServiceActivity()
     private var lastDeploymentId: String = ""
 
     private init() {}
 
     func start() {
-        guard timer == nil else { return }
-        let t = DispatchSource.makeTimerSource(queue: .global(qos: .background))
-        t.schedule(deadline: .now() + 5, repeating: 30, leeway: .seconds(5))
-        t.setEventHandler { [weak self] in self?.poll() }
-        t.resume()
-        timer = t
+        guard activity.start(after: 5, every: 30, leeway: 5,
+                             poll: { [weak self] in self?.poll() }) else { return }
     }
+
+    func stop() { activity.stop() }
 
     // MARK: - Poll
 
     private func poll() {
-        guard !DemoEngine.isPollerPaused else { return }
+        guard activity.running, !DemoEngine.isPollerPaused else { return }
         guard let token = KeychainStore.shared.get("vercel-token") else { return }
 
         // Fetch last 5 terminal deployments
@@ -32,7 +30,7 @@ final class VercelPoller: @unchecked Sendable {
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+        activity.dataTask(with: req) { [weak self] data, response, error, updates in
             guard let self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard let data, code == 200 else { return }
@@ -46,8 +44,11 @@ final class VercelPoller: @unchecked Sendable {
                 .filter { terminal.contains($0.state) }
             guard !parsed.isEmpty else { return }
 
-            DispatchQueue.main.async { self.handleDeployments(parsed) }
-        }.resume()
+            updates.onMain {
+                guard !AgentsOnlyPreference.shared.enabled else { return }
+                self.handleDeployments(parsed)
+            }
+        }?.resume()
     }
 
     private func parseDeployment(_ d: [String: Any]) -> VercelDeployment? {

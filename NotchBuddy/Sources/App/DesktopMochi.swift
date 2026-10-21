@@ -105,10 +105,15 @@ struct DesktopBotView: View {
 @MainActor
 final class DesktopMochiController {
     static let shared = DesktopMochiController()
+    private(set) static var existing: DesktopMochiController?
+    private var screenObservers: [(NotificationCenter, NSObjectProtocol)] = []
+    var modeTransitionBusy: Bool { panel != nil && phase != .onDesktop }
+
     private init() {
+        Self.existing = self
         observeScreenSleep()
         observeScreenLock()
-        observeAlerts()   // permanent — lives for the lifetime of the singleton
+        observeAlerts()   // suspended alongside the optional desktop companion
     }
 
     private var panel: NSPanel?
@@ -136,7 +141,7 @@ final class DesktopMochiController {
 
     // Lifecycle subscriptions (cleared on retractForAlert + fullTearDown)
     private var cancellables: Set<AnyCancellable> = []
-    // Alert subscription — permanent, only released with the singleton
+    // Alert subscription — released when the desktop companion is suspended
     private var alertSubscription: AnyCancellable?
 
     // Event monitors
@@ -157,6 +162,7 @@ final class DesktopMochiController {
 
     /// Fly Mochi to the desktop if not there, or bring him back if he is.
     func flyOutOrHome() {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         if phase == .home {
             UserDefaults.standard.set(true, forKey: DesktopMochiController.enabledKey)
             launchFlyIfNeeded()
@@ -170,7 +176,7 @@ final class DesktopMochiController {
     /// Promote `ghostPanel` (the drag ghost) or create a fresh panel as the desktop Mochi,
     /// centered on `screenPoint`. Called by `IslandWindowController.finishDrag`.
     func install(ghostPanel: NSPanel?, at screenPoint: NSPoint) {
-        guard panel == nil, phase == .home else { ghostPanel?.close(); return }
+        guard !AgentsOnlyPreference.shared.enabled, panel == nil, phase == .home else { ghostPanel?.close(); return }
         let s = DesktopMochiController.panelSize
 
         let p: NSPanel
@@ -249,6 +255,7 @@ final class DesktopMochiController {
     /// Fly a new panel from the notch to the saved desktop position.
     /// Called by AppDelegate after `.greetComplete`, and by the alert-return path.
     func launchFlyIfNeeded() {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard UserDefaults.standard.bool(forKey: DesktopMochiController.enabledKey) else { return }
         guard phase == .home else { return }
         guard panel == nil else { return }
@@ -394,7 +401,23 @@ final class DesktopMochiController {
         fullTearDown()
     }
 
-    private func fullTearDown() {
+    /// Park the companion without changing its saved position or enabled preference.
+    func suspendForAgentsOnly() {
+        stopPolling()
+        removeEventMonitors()
+        alertSubscription = nil
+        for (center, token) in screenObservers { center.removeObserver(token) }
+        screenObservers.removeAll()
+        fullTearDown(preservePreference: true)
+    }
+
+    func resumeAfterAgentsOnly() {
+        if screenObservers.isEmpty { observeScreenSleep(); observeScreenLock() }
+        if alertSubscription == nil { observeAlerts() }
+        launchFlyIfNeeded()
+    }
+
+    private func fullTearDown(preservePreference: Bool = false) {
         phase = .home
         cancellables.removeAll()
         pendingSlapWorkItem?.cancel()
@@ -405,7 +428,7 @@ final class DesktopMochiController {
         isDragging = false
         isSleeping = false
         AppState.shared.mochiOnDesktop = false
-        UserDefaults.standard.set(false, forKey: DesktopMochiController.enabledKey)
+        if !preservePreference { UserDefaults.standard.set(false, forKey: DesktopMochiController.enabledKey) }
     }
 
     // MARK: - Panel factory
@@ -440,7 +463,7 @@ final class DesktopMochiController {
             .store(in: &cancellables)
     }
 
-    // MARK: - Alert observation (permanent — installed once at init)
+    // MARK: - Alert observation
 
     private func observeAlerts() {
         alertSubscription = Publishers.CombineLatest(
@@ -685,7 +708,8 @@ final class DesktopMochiController {
     // MARK: - Screen sleep / wake
 
     private func observeScreenSleep() {
-        NSWorkspace.shared.notificationCenter.addObserver(
+        let center = NSWorkspace.shared.notificationCenter
+        screenObservers.append((center, center.addObserver(
             forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
@@ -693,8 +717,8 @@ final class DesktopMochiController {
                 self?.viewState?.paused = true
                 self?.pausePollingForScreen()
             }
-        }
-        NSWorkspace.shared.notificationCenter.addObserver(
+        }))
+        screenObservers.append((center, center.addObserver(
             forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
@@ -702,13 +726,14 @@ final class DesktopMochiController {
                 self?.viewState?.paused = false
                 self?.resumePollingForScreen()
             }
-        }
+        }))
     }
 
     // MARK: - Screen lock / unlock
 
     private func observeScreenLock() {
-        DistributedNotificationCenter.default().addObserver(
+        let center = DistributedNotificationCenter.default()
+        screenObservers.append((center, center.addObserver(
             forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
@@ -716,8 +741,8 @@ final class DesktopMochiController {
                 self?.viewState?.paused = true
                 self?.pausePollingForScreen()
             }
-        }
-        DistributedNotificationCenter.default().addObserver(
+        }))
+        screenObservers.append((center, center.addObserver(
             forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
@@ -725,7 +750,7 @@ final class DesktopMochiController {
                 self?.viewState?.paused = false
                 self?.resumePollingForScreen()
             }
-        }
+        }))
     }
 
     // MARK: - Position helpers
