@@ -2,7 +2,7 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const context = id => ({ cwd: "/project/example", sessionManager: { getSessionId: () => id } });
+export const context = id => ({ cwd: "/project/example", isIdle: () => true, sessionManager: { getSessionId: () => id, getBranch: () => [] } });
 
 export function register(factory) {
   const handlers = new Map();

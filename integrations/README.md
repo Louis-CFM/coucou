@@ -103,7 +103,7 @@ Events are not retried while Coucou is unavailable; a later event reconnects nor
 | --- | --- |
 | `session_start` | `SessionStart` |
 | OMP `session_switch` / `session_branch` with a new session id | old `SessionEnd`, new `SessionStart` |
-| `before_agent_start` (also OMP `agent_start` for synthetic continuations) | `UserPromptSubmit` without prompt text |
+| `before_agent_start` | `UserPromptSubmit` without prompt text |
 | `tool_execution_start` | `PreToolUse` with tool name |
 | `tool_execution_end` | `PostToolUse` or `PostToolUseFailure` |
 | Pi `agent_settled` | `Stop`, `StopFailure`, or `Interrupt` using settlement outcome |
@@ -112,8 +112,16 @@ Events are not retried while Coucou is unavailable; a later event reconnects nor
 
 Pi's low-level `agent_end` is ignored: retries, compaction, or queued continuations
 may follow. OMP's `willContinue` / `awaitingAsyncWork` similarly suppress premature
-finish alerts. OMP records only the stop reason from `message_end`, since recovery
-can prune a failed assistant from the final history. A tool failure alone does not
+finish alerts. OMP notification types can overtake one another: `agent_start` and `message_end`
+are deliberately not used as state boundaries. An admitted `before_agent_start`
+(or awaited `context` for a synthetic model continuation) owns a run, and awaited `assistant_message` snapshots retain finalized stop
+reasons even when child-session history is pruned. The main-session `session_stop`
+snapshot takes precedence when recovery replaces the outcome. Terminal
+`agent_end` still decides whether work continues; a cut-off stream can report an
+abort from its settled messages without an `assistant_message` callback. Historical
+assistant timestamps are excluded from the new run. Only a finalized `stop` is successful. Terminal `error` or `length` is a failure;
+missing, aborted or otherwise incomplete outcomes are neutral (`Interrupt`),
+avoiding a false success alert. Idle side queries do not admit agent runs. These hooks return no decisions or rewritten content. A tool failure alone does not
 mark the entire run failed.
 
 The extensions send only the event, harness tag, namespaced session id, directory,

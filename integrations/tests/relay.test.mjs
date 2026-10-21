@@ -51,7 +51,7 @@ test("both extensions reach a Unix socket through Coucou's actual Python relay",
     await emit("session_start", {}, context("real-relay"));
     await emit("before_agent_start", { prompt: "SECRET" }, context("real-relay"));
     if (agent === "pi") await emit("agent_settled", { aborted: false }, context("real-relay"));
-    else await emit("agent_end", { messages: [] }, context("real-relay"));
+    else await emit("agent_end", { messages: [{ role: "assistant", timestamp: 1, stopReason: "stop" }] }, context("real-relay"));
     await emit("session_shutdown");
     assert.deepEqual(received.filter(e => e.coucou_agent === agent).map(e => e.hook_event_name), [
       "SessionStart", "UserPromptSubmit", "Stop", "SessionEnd",

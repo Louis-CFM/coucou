@@ -69,27 +69,27 @@ test("Pi: only settlement completes the run; final outcome and abort win", async
   ]);
 });
 
-test("OMP: retries and background work stay busy; terminal errors and aborts differ", async t => {
+test("OMP: awaited outcomes survive pruning; retries stay busy and aborts differ", async t => {
   const f = await fixture(t);
   const emit = register(omp);
   await emit("session_start");
-  await emit("agent_start");
-  const messages = [{ role: "assistant", stopReason: "error" }];
-  await emit("message_end", { message: messages[0] });
-  await emit("agent_end", { willContinue: true, messages });
-  await emit("agent_end", { willContinue: true, awaitingAsyncWork: true, messages });
-  await emit("agent_end", { awaitingAsyncWork: true, messages });
-  // The failed assistant may have been pruned from the active history by recovery.
+  await emit("before_agent_start");
+  const error = { role: "assistant", timestamp: 1, stopReason: "error" };
+  await emit("assistant_message", { message: error });
+  await emit("agent_end", { willContinue: true, messages: [] });
+  await emit("agent_end", { awaitingAsyncWork: true, messages: [] });
+  await emit("session_stop", { session_id: "one", last_assistant_message: error, signal: new AbortController().signal });
   await emit("agent_end", { messages: [] });
-  await emit("agent_start");
-  await emit("agent_end", { messages });
-  await emit("message_end", { message: { role: "assistant", stopReason: "stop" } });
-  await emit("agent_end", { messages: [...messages, { role: "assistant", stopReason: "stop" }] });
-  await emit("message_end", { message: { role: "assistant", stopReason: "aborted" } });
-  await emit("agent_end", { messages: [] });
+  await emit("agent_start"); // A notification delivered after settlement must not resurrect the run.
+  await emit("before_agent_start");
+  const success = { role: "assistant", timestamp: 2, stopReason: "stop" };
+  await emit("assistant_message", { message: success });
+  await emit("agent_end", { messages: [error, success] });
+  await emit("before_agent_start");
+  await emit("agent_end", { messages: [{ role: "assistant", timestamp: 3, stopReason: "aborted" }] });
   await emit("session_shutdown");
   assert.deepEqual((await f.records()).map(r => r.payload.hook_event_name), [
-    "SessionStart", "UserPromptSubmit", "StopFailure", "UserPromptSubmit", "Stop", "Stop", "Interrupt", "SessionEnd",
+    "SessionStart", "UserPromptSubmit", "StopFailure", "UserPromptSubmit", "Stop", "UserPromptSubmit", "Interrupt", "SessionEnd",
   ]);
 });
 
@@ -153,4 +153,29 @@ test("relay discovery uses installed paths, explicit overrides and no shell inte
     command: "C:\\Users\\test\\AppData\\Local\\Coucou\\bin\\coucou-hook.exe", args: [],
   });
   assert.equal(relayCommand("freebsd", {}), undefined);
+});
+
+test("OMP: prior-run snapshots and replaced sessions cannot settle an admitted run", async t => {
+  const f = await fixture(t);
+  const emit = register(omp);
+  const old = { role: "assistant", timestamp: 1, stopReason: "stop" };
+  const first = context("first");
+  first.sessionManager.getBranch = () => [{ type: "message", message: old }];
+  await emit("session_start", {}, first);
+  await emit("before_agent_start", {}, first);
+  await emit("agent_end", { messages: [old] }, first);
+  await emit("assistant_message", { message: { role: "assistant", timestamp: 2, stopReason: "error" } }, first);
+  await emit("agent_end", { messages: [] }, first);
+  const second = context("second");
+  await emit("session_switch", {}, second);
+  await emit("agent_end", { messages: [] }, first);
+  await emit("before_agent_start", {}, second);
+  await emit("agent_end", { messages: [old] }, first);
+  // No finalized assistant (e.g. an early interrupt) is neutral, never a false success.
+  await emit("agent_end", { messages: [] }, second);
+  await emit("session_shutdown");
+  assert.deepEqual((await f.records()).map(r => r.payload.hook_event_name), [
+    "SessionStart", "UserPromptSubmit", "StopFailure", "SessionEnd", "SessionStart",
+    "UserPromptSubmit", "Interrupt", "SessionEnd",
+  ]);
 });
