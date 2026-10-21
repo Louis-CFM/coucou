@@ -5,6 +5,7 @@ mod agents;
 mod capture;
 mod chat;
 mod claude;
+mod claude_plan;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -865,6 +866,7 @@ pub fn run() {
             flow::chat::chat_dictate_stop,
             flow::chat::chat_dictate_cancel,
             mail::mail_send,
+            claude_plan::claude_desktop_plan,
             vitals::vitals_set_active,
             capture::capture_begin,
             capture::capture_paste,

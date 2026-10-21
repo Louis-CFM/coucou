@@ -282,6 +282,22 @@ class AppState {
     for (const fn of this.listeners) fn();
   }
 
+  /**
+   * The overview grown tall, open on the focused pill: an agent at work (its
+   * steps and the file it changes) or WhatsApp (room for the conversations).
+   */
+  get tallOverview(): "work" | "whatsapp" | null {
+    if (this.mode !== "expanded" || this.view !== "overview") return null;
+    const task = this.focusTask;
+    if (!task) return null;
+    if (task.id === "integration_whatsapp") return "whatsapp";
+    if (task.state !== "working" && task.state !== "thinking" && task.state !== "searching") return null;
+    const category = pillDefinition(task.id)?.category;
+    const agent = (task.source === "agent" && !task.isIntegration) || category === "workspace" ||
+      category === "agent" || (category == null && task.id.startsWith("agent_"));
+    return agent ? "work" : null;
+  }
+
   get focusTask(): AgentTask | null {
     return this.tasks.find((t) => t.id === this.focusId) ?? this.tasks[0] ?? null;
   }

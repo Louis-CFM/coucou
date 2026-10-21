@@ -17,6 +17,7 @@ import {
   PlanCard, buildPlanPill, claudePillVisible, codexPillVisible, planCardOpen, refreshCodexPlanUsage,
 } from "./usage";
 import { buildDiffCard } from "./diff";
+import { buildWorkCard } from "./work";
 import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
@@ -234,7 +235,7 @@ function buildOverview(actions: ViewActions): ViewHost {
   let pillIds = "";
   let detailOpen = false;
   let lastFocus: string | null = null;
-  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | null = null;
+  let mode: "ticker" | "card" | "plan" | "diff" | "spotify" | "whatsapp" | "work" | null = null;
   let cardKey = "";
   /** The list row highlighted at the last sync, to scroll only when it moves. */
   let shownSelection: number | null = null;
@@ -334,6 +335,8 @@ function buildOverview(actions: ViewActions): ViewHost {
         cardKey = "";
       }
       syncPlanTimer(planOpen);
+      const tall = State.tallOverview;
+      el.classList.toggle("tall", tall != null);
 
       // A diff that has since been dropped (cap, expiry, session end) just closes.
       const diff = task && activeDiffId != null ? State.findDiff(task.id, activeDiffId) : null;
@@ -346,6 +349,19 @@ function buildOverview(actions: ViewActions): ViewHost {
           mode = "plan";
         }
         plan.sync();
+      } else if (task && tall === "work") {
+        // An agent at work, seen whole: its steps, and the diff picked or its latest edit.
+        const diffs = State.sessionDiffs.get(task.id);
+        const shown = diff ?? diffs?.[diffs.length - 1] ?? null;
+        const key = ["work", language(), task.id, task.state, task.color, task.steps.join("|"), shown?.id ?? ""].join("~");
+        if (key !== cardKey) {
+          cardKey = key;
+          mode = "work";
+          clear(leftBody);
+          leftBody.append(buildWorkCard(task, shown, {
+            open: (path) => void Bridge.openFileInVSCode(path),
+          }));
+        }
       } else if (task && diff) {
         const key = `diff~${task.id}~${diff.id}`;
         if (key !== cardKey) {

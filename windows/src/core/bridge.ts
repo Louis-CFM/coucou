@@ -450,6 +450,10 @@ export const Bridge = {
   /** "resend" when Resend sent it, "mailApp" when the mail app was opened instead. */
   mailSend: (to: string, subject: string, body: string, path: string | null) =>
     callOrThrow<"resend" | "mailApp">("mail_send", { to, subject, body, path }),
+
+  /** The newest plan sample the Claude desktop app recorded (src-tauri/src/claude_plan.rs). */
+  claudeDesktopPlan: () =>
+    call<{ at: number; fiveHour: number | null; sevenDay: number | null } | null>("claude_desktop_plan"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";

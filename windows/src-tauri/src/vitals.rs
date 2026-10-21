@@ -35,6 +35,9 @@ pub struct Sample {
     pub cpu: f64,
     /// Share of physical memory in use, 0…100.
     pub memory_load: u32,
+    /// Physical memory in use and in all, bytes (0 when unknown).
+    pub memory_used: u64,
+    pub memory_total: u64,
     /// The warmest thermal zone, °C, when Windows reports one.
     pub temperature: Option<f64>,
     pub battery: Option<Battery>,
@@ -56,12 +59,22 @@ pub struct Mood {
     pub battery: Option<Battery>,
     /// Plugged in while he was tired: he wakes up (a happy hop and a pop).
     pub woke: bool,
+    /// What the hover line shows as numbers.
+    pub memory: Option<Memory>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Memory {
+    pub percent: u32,
+    pub used_gb: f64,
+    pub total_gb: f64,
 }
 
 impl Mood {
     /// Nothing to show: the reader is off.
     pub fn calm() -> Self {
-        Mood { busy: 0.0, hot: 0.0, full: 0.0, tired: 0.0, asleep: false, cpu: 0.0, top: Vec::new(), battery: None, woke: false }
+        Mood { busy: 0.0, hot: 0.0, full: 0.0, tired: 0.0, asleep: false, cpu: 0.0, top: Vec::new(), battery: None, woke: false, memory: None }
     }
 }
 
@@ -98,6 +111,11 @@ impl Moodmaker {
             top: if busy > 0.0 { top } else { Vec::new() },
             battery: s.battery,
             woke,
+            memory: (s.memory_total > 0).then(|| Memory {
+                percent: s.memory_load,
+                used_gb: s.memory_used as f64 / GB,
+                total_gb: s.memory_total as f64 / GB,
+            }),
         }
     }
 
@@ -117,6 +135,8 @@ pub fn heat_level(celsius: Option<f64>) -> f64 {
         _ => 0.0,
     }
 }
+
+const GB: f64 = 1024.0 * 1024.0 * 1024.0;
 
 /// Physical memory in use → the Mac's memory pressure: warning 0.6, critical 1.
 pub fn memory_level(load: u32) -> f64 {
@@ -262,9 +282,12 @@ mod os {
                 }
                 self.last_cpu = Some((busy, total));
             }
+            let (memory_load, memory_used, memory_total) = memory();
             Sample {
                 cpu: self.cpu.clamp(0.0, 1.0),
-                memory_load: memory_load(),
+                memory_load,
+                memory_used,
+                memory_total,
                 temperature: self.thermal.and_then(|(q, c)| temperature(q, c)),
                 battery: battery(),
             }
@@ -301,9 +324,14 @@ mod os {
         Some((total.saturating_sub(ticks(idle)), total))
     }
 
-    fn memory_load() -> u32 {
+    /// (load %, used bytes, total bytes), as Task Manager counts them.
+    fn memory() -> (u32, u64, u64) {
         let mut status = MEMORYSTATUSEX { dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32, ..Default::default() };
-        if unsafe { GlobalMemoryStatusEx(&mut status) }.is_ok() { status.dwMemoryLoad } else { 0 }
+        if unsafe { GlobalMemoryStatusEx(&mut status) }.is_ok() {
+            (status.dwMemoryLoad, status.ullTotalPhys.saturating_sub(status.ullAvailPhys), status.ullTotalPhys)
+        } else {
+            (0, 0, 0)
+        }
     }
 
     /// The internal battery, or None on a desktop computer.

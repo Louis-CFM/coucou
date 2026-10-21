@@ -25,10 +25,10 @@ function hasNumbers(u: PlanUsage | null | undefined): boolean {
   return !!u && (u.fiveHour != null || u.sevenDay != null);
 }
 
-/** The Claude pill is in the header: overview, turned on, relay in, and numbers came. */
+/** The Claude pill is in the header: overview, turned on, and numbers came (from
+ * the status line relay or the Claude desktop app). */
 export function claudePillVisible(): boolean {
-  const s = State.settings;
-  return State.view === "overview" && s.showPlanInNotch && s.planRelayInstalled && hasNumbers(State.planUsage);
+  return State.view === "overview" && State.settings.showPlanInNotch && hasNumbers(State.planUsage);
 }
 
 /** The Codex pill is in the header: overview, turned on, and Codex answered with numbers. */
@@ -83,6 +83,34 @@ export function storedClaudePlanUsage(): string | null {
   } catch {
     return null;
   }
+}
+
+// ── Claude numbers from the Claude desktop app ────────────────────────────────
+
+const FIVE_HOURS = 5 * 3_600_000;
+const WEEK = 7 * 86_400_000;
+
+/**
+ * The Claude desktop app's latest sample, when it is newer than what the
+ * status line said. Its samples carry no reset times: a window whose sample is
+ * older than the window itself is shown as reset.
+ */
+export async function refreshClaudeDesktopPlan(now = Date.now()): Promise<void> {
+  if (State.paused) return;
+  const p = await Bridge.claudeDesktopPlan();
+  if (!p) return;
+  if (State.planUsage && State.planUsage.updatedAt > p.at && State.planUsage.fiveHour?.resetsAt !== 0) return;
+  const age = now - p.at;
+  const usage: PlanUsage = { updatedAt: p.at };
+  if (p.fiveHour != null) usage.fiveHour = { usedPct: age > FIVE_HOURS ? 0 : p.fiveHour, resetsAt: 0 };
+  if (p.sevenDay != null) usage.sevenDay = { usedPct: age > WEEK ? 0 : p.sevenDay, resetsAt: 0 };
+  if (usage.fiveHour || usage.sevenDay) setClaudePlanUsage(usage);
+}
+
+/** Reads the Claude app's record now and every five minutes. */
+export function startClaudeDesktopPlan(): void {
+  void refreshClaudeDesktopPlan();
+  window.setInterval(() => void refreshClaudeDesktopPlan(), 5 * 60_000);
 }
 
 // ── Codex numbers ─────────────────────────────────────────────────────────────

@@ -787,7 +787,7 @@ export class Island {
   // ── Geometry ────────────────────────────────────────────────────────────────
 
   private targetSize(): { w: number; h: number; r: number } {
-    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
+    let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length, State.tallOverview);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
       h = QUESTION_PICKER_H;
     }
@@ -1186,7 +1186,7 @@ export class Island {
   };
 
   private updateBotTargets() {
-    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress);
+    const p = botPosition(State.mode, State.view, this.height.value, State.uploadProgress, State.tallOverview);
     this.botCx.target = p.cx;
     this.botCy.target = p.cy;
     this.botSize.target = p.diameter / 0.6;
@@ -1307,6 +1307,8 @@ export class Island {
 
   // ── DOM sync ────────────────────────────────────────────────────────────────
 
+  private shownTall: "work" | "whatsapp" | null = null;
+
   private syncDom() {
     const expanded = State.mode === "expanded";
     const greetingActive = expanded && State.view === "greeting";
@@ -1324,6 +1326,15 @@ export class Island {
     this.greetingShown = greetingActive;
     // A wardrobe try-on never outlives the wardrobe.
     if (State.wardrobePreview && !(expanded && State.view === "wardrobe")) State.wardrobePreview = null;
+
+    // An agent starting or stopping work, or the WhatsApp pill picked: the
+    // overview grows tall or back.
+    const tall = State.tallOverview;
+    if (tall !== this.shownTall) {
+      const shrinking = this.shownTall != null && tall == null;
+      this.shownTall = tall;
+      if (expanded) this.animateGeometry(shrinking);
+    }
 
     this.header.sync();
     for (const [name, view] of this.views) {

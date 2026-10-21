@@ -4625,6 +4625,17 @@
    "pt-BR": "Libere um espaço em Pílulas ativas para mostrar a do WhatsApp (no máximo {max}).",
    "ru": "Освободите место в активных пилюлях для WhatsApp (не больше {max}).",
    "id": "Kosongkan tempat di Pil aktif untuk menampilkan pil WhatsApp (maksimal {max})."
+  },
+  "Memory {used}/{total} GB ({pct} %)": {
+   "zh-Hans": "内存 {used}/{total} GB（{pct}%）",
+   "hi": "मेमोरी {used}/{total} GB ({pct} %)",
+   "es": "Memoria {used}/{total} GB ({pct} %)",
+   "ar": "الذاكرة {used}/{total} غيغابايت ({pct}٪)",
+   "fr": "Mémoire {used}/{total} Go ({pct} %)",
+   "bn": "মেমরি {used}/{total} GB ({pct} %)",
+   "pt-BR": "Memória {used}/{total} GB ({pct} %)",
+   "ru": "Память {used}/{total} ГБ ({pct} %)",
+   "id": "Memori {used}/{total} GB ({pct} %)"
   }
  }
 }

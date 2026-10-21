@@ -16,6 +16,8 @@ export interface VitalsReport {
   top: string[];
   battery: { percent: number; onPower: boolean } | null;
   woke: boolean;
+  /** Physical memory, as Task Manager counts it; null while the reader is off. */
+  memory?: { percent: number; usedGb: number; totalGb: number } | null;
 }
 
 export function moodOf(r: VitalsReport | null): MochiMood {
@@ -25,18 +27,16 @@ export function moodOf(r: VitalsReport | null): MochiMood {
 
 /** The words under the island, the most telling first (MachineVitals.describe). */
 export function describeVitals(r: VitalsReport | null): string | null {
-  if (!r) return null;
-  const parts: string[] = [];
-  if (r.busy > 0) {
-    const pct = Math.round(r.cpu * 100);
-    parts.push(r.top.length ? `CPU ${pct} % · ${r.top.slice(0, 2).join(", ")}` : `CPU ${pct} %`);
-  }
+  if (!r || !r.memory) return null;
+  // The numbers themselves, as Task Manager shows them, every time.
+  const cpu = Math.round(r.cpu * 100);
+  const parts: string[] = [r.top.length ? `CPU ${cpu} % · ${r.top.slice(0, 2).join(", ")}` : `CPU ${cpu} %`];
+  const m = r.memory;
+  parts.push(t("Memory {used}/{total} GB ({pct} %)", { used: m.usedGb.toFixed(1), total: m.totalGb.toFixed(1), pct: m.percent }));
   if (r.hot >= 0.8) parts.push(t("Your computer is hot"));
   else if (r.hot > 0) parts.push(t("Your computer is warm"));
-  if (r.full >= 1) parts.push(t("Memory is full"));
-  else if (r.full > 0) parts.push(t("Memory is short"));
   if (r.battery && (r.tired > 0 || r.asleep)) parts.push(t("Battery {0} %", { 0: r.battery.percent }));
-  return parts.length ? parts.slice(0, 2).join(" · ") : null;
+  return parts.join(" · ");
 }
 
 /** The dot's colour in the hover line: what matters most. */

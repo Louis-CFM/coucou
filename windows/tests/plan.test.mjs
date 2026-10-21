@@ -207,11 +207,9 @@ test("both pills are off by default, so the header is as it shipped", () => {
   assert.equal(codexPillVisible(), false);
 });
 
-test("the Claude pill needs the switch, the relay, numbers and the overview", () => {
+test("the Claude pill needs the switch, numbers and the overview", () => {
   State.settings.showPlanInNotch = true;
-  assert.equal(claudePillVisible(), false);
-  State.settings.planRelayInstalled = true;
-  // No numbers yet: no pill of dashes.
+  // No numbers yet (no relay call, no Claude desktop sample): no pill of dashes.
   assert.equal(claudePillVisible(), false);
   State.planUsage = { fiveHour: win(20, Date.now() / 1000 + 3600), updatedAt: Date.now() };
   assert.equal(claudePillVisible(), true);
