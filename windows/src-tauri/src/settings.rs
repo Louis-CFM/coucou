@@ -110,6 +110,8 @@ pub struct Settings {
     pub test_checker: String,
     /// Laya's address when it isn't the default one (tests_check.rs keeps it local).
     pub laya_url: String,
+    /// A Laya already on this computer (its folder, with its .venv); empty: Coucou's own copy.
+    pub laya_dir: String,
     /// Claude Code is sent back when it finishes with its tests failing. Off by default.
     pub fix_failing_tests: bool,
 }
@@ -182,6 +184,7 @@ impl Default for Settings {
             alerts_from_all_pills: false,
             test_checker: "off".into(),
             laya_url: String::new(),
+            laya_dir: String::new(),
             fix_failing_tests: false,
         }
     }
@@ -475,6 +478,7 @@ mod tests {
   "alertsFromAllPills": true,
   "testChecker": "local",
   "layaUrl": "http://127.0.0.1:8001",
+  "layaDir": "D:\\Laya",
   "fixFailingTests": true
 }"##;
 
@@ -988,6 +992,7 @@ mod tests {
                 "alertsFromAllPills",
                 "testChecker",
                 "layaUrl",
+                "layaDir",
                 "fixFailingTests",
             ]
         );

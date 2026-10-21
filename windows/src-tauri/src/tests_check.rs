@@ -19,7 +19,7 @@
 // it can see, `fix-loop.on` in Coucou's folder).
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -56,6 +56,8 @@ fn questions() -> Value {
 struct Config {
     mode: String,
     laya_url: String,
+    /// A Laya already on this computer (its folder), else Coucou's own copy.
+    laya_dir: String,
     fix_loop: bool,
 }
 
@@ -63,9 +65,14 @@ fn config(app: &AppHandle) -> Config {
     app.try_state::<crate::Shared>()
         .map(|s| {
             let s = s.settings.lock().unwrap();
-            Config { mode: s.test_checker.clone(), laya_url: s.laya_url.clone(), fix_loop: s.fix_failing_tests }
+            Config {
+                mode: s.test_checker.clone(),
+                laya_url: s.laya_url.clone(),
+                laya_dir: s.laya_dir.clone(),
+                fix_loop: s.fix_failing_tests,
+            }
         })
-        .unwrap_or(Config { mode: "off".into(), laya_url: String::new(), fix_loop: false })
+        .unwrap_or(Config { mode: "off".into(), laya_url: String::new(), laya_dir: String::new(), fix_loop: false })
 }
 
 fn laya_url(c: &Config) -> String {
@@ -254,16 +261,23 @@ pub struct LayaStatus {
     pub line: String,
     pub installed: bool,
     pub running: bool,
+    /// Running, but started outside Coucou (its own run.bat): used, never stopped.
+    pub external: bool,
 }
 
 struct Laya {
     status: LayaStatus,
     server: Option<Child>,
+    /// The folder the server Coucou started runs from.
+    started_in: Option<PathBuf>,
     busy: bool,
 }
 
 static LAYA: Mutex<Option<Laya>> = Mutex::new(None);
+/// One start at a time: two saves in a row must not start two servers.
+static STARTING: Mutex<()> = Mutex::new(());
 
+/// Coucou's own copy ("Set up Laya").
 fn laya_dir() -> PathBuf {
     crate::platform::local_dir().join("laya")
 }
@@ -272,29 +286,72 @@ fn venv_bin(name: &str) -> PathBuf {
     laya_dir().join(".venv").join("Scripts").join(format!("{name}.exe"))
 }
 
-fn installed() -> bool {
-    venv_bin("laya-serve").is_file()
+/// Where Laya runs from: the folder picked in Settings, else Coucou's own copy.
+fn laya_home(c: &Config) -> PathBuf {
+    let dir = c.laya_dir.trim();
+    if dir.is_empty() { laya_dir() } else { PathBuf::from(dir) }
+}
+
+/// How to start the Laya in `dir`: a hand-made `laya_serve.py` next to its
+/// environment (it knows its own model cache), else the environment's `laya-serve`.
+fn runner(dir: &Path) -> Option<(PathBuf, Vec<String>)> {
+    let scripts = dir.join(".venv").join("Scripts");
+    let python = scripts.join("python.exe");
+    let script = dir.join("laya_serve.py");
+    if python.is_file() && script.is_file() {
+        return Some((python, vec![script.to_string_lossy().to_string()]));
+    }
+    let serve = scripts.join("laya-serve.exe");
+    serve.is_file().then(|| (serve, Vec::new()))
+}
+
+fn installed(c: &Config) -> bool {
+    runner(&laya_home(c)).is_some()
+}
+
+fn laya_port(c: &Config) -> u16 {
+    laya_url(c).rsplit(':').next().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8000)
+}
+
+/// Whether a Laya answers on `port`: Some(true) ready, Some(false) still loading
+/// its model, None nobody there.
+fn probe(port: u16) -> Option<bool> {
+    let url = format!("http://127.0.0.1:{port}/health");
+    tauri::async_runtime::block_on(async move {
+        let c = reqwest::Client::builder().timeout(Duration::from_secs(3)).no_proxy().build().ok()?;
+        let r = c.get(url).send().await.ok()?;
+        Some(r.status().is_success())
+    })
 }
 
 fn with_laya<T>(f: impl FnOnce(&mut Laya) -> T) -> T {
     let mut slot = LAYA.lock().unwrap();
     let laya = slot.get_or_insert_with(|| Laya {
-        status: LayaStatus { phase: "idle".into(), message: String::new(), line: String::new(), installed: installed(), running: false },
+        status: LayaStatus {
+            phase: "idle".into(),
+            message: String::new(),
+            line: String::new(),
+            installed: false,
+            running: false,
+            external: false,
+        },
         server: None,
+        started_in: None,
         busy: false,
     });
     f(laya)
 }
 
 fn publish(app: &AppHandle) {
+    let installed = installed(&config(app));
     let status = with_laya(|l| {
         if let Some(child) = l.server.as_mut() {
             if !matches!(child.try_wait(), Ok(None)) {
                 l.server = None;
             }
         }
-        l.status.installed = installed();
-        l.status.running = l.server.is_some();
+        l.status.installed = installed;
+        l.status.running = l.server.is_some() || l.status.external;
         l.status.clone()
     });
     let _ = app.emit("laya", status);
@@ -411,7 +468,7 @@ pub fn laya_setup(app: AppHandle) {
         let py = venv_bin("python");
         let _ = run(&app, &py, &["-m", "pip", "install", "--upgrade", "--quiet", "pip"]);
         let (ok, _) = run(&app, &py, &["-m", "pip", "install", "--progress-bar", "off", "laya[serve]"]);
-        if !ok || !installed() {
+        if !ok || !venv_bin("laya-serve").is_file() {
             set(&app, "error", t("Installing Laya failed. Check your connection and try again."));
             done(&app);
             return;
@@ -423,25 +480,59 @@ pub fn laya_setup(app: AppHandle) {
 
 fn start_server(app: &AppHandle) {
     use crate::i18n::t;
-    if !installed() || with_laya(|l| l.server.is_some()) {
-        publish(app);
+    let _one = STARTING.lock().unwrap_or_else(|e| e.into_inner());
+    let c = config(app);
+    let home = laya_home(&c);
+    let port = laya_port(&c);
+    // Already ours, from this folder: nothing to do. From another one: moved.
+    match with_laya(|l| l.server.as_ref().map(|_| l.started_in.clone())) {
+        Some(Some(dir)) if dir == home => {
+            publish(app);
+            return;
+        }
+        Some(_) => stop_server(),
+        None => {}
+    }
+    // A Laya started outside Coucou (its own run.bat) is used as it is.
+    if let Some(ready) = probe(port) {
+        with_laya(|l| l.status.external = true);
+        if ready {
+            set(app, "ready", t("Laya is already running on this computer."));
+        } else {
+            set(app, "starting", t("Starting Laya…"));
+            wait_ready(app.clone(), port);
+        }
         return;
     }
-    let port = laya_url(&config(app)).rsplit(':').next().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8000);
+    with_laya(|l| l.status.external = false);
+    let Some((program, args)) = runner(&home) else {
+        if c.laya_dir.trim().is_empty() {
+            publish(app);
+        } else {
+            set(app, "error", t("No Laya was found in that folder."));
+        }
+        return;
+    };
+    let own = c.laya_dir.trim().is_empty();
     let hf = laya_dir().join("hf");
-    let log = std::fs::File::create(laya_dir().join("laya.log")).ok();
-    let mut cmd = Command::new(venv_bin("laya-serve"));
-    cmd.current_dir(laya_dir())
+    let _ = std::fs::create_dir_all(crate::platform::local_dir());
+    let log = std::fs::File::create(crate::platform::local_dir().join("laya.log")).ok();
+    let mut cmd = Command::new(&program);
+    cmd.args(&args)
+        .current_dir(&home)
         // Only this computer, never every network (Laya's own default is 0.0.0.0).
         .env("LAYA_HOST", "127.0.0.1")
         .env("LAYA_PORT", port.to_string())
         .env("LAYA_MODELS", "english")
-        .env("HF_HOME", &hf)
         .env("HF_HUB_DISABLE_TELEMETRY", "1")
         .env("PYTHONUNBUFFERED", "1")
         .env("PYTHONIOENCODING", "utf-8")
         .env_remove("LAYA_API_KEY")
         .stdin(Stdio::null());
+    // Coucou's copy keeps its model in its folder; a picked Laya keeps its own.
+    if own {
+        cmd.env("HF_HOME", &hf);
+    }
     match &log {
         Some(f) => {
             cmd.stdout(f.try_clone().map(Stdio::from).unwrap_or(Stdio::null()));
@@ -453,37 +544,43 @@ fn start_server(app: &AppHandle) {
     }
     match hidden(&mut cmd).spawn() {
         Ok(child) => {
-            with_laya(|l| l.server = Some(child));
-            let first = !hf.join("hub").exists();
-            set(app, "starting", if first { t("Starting Laya. The first time it downloads its model (about 850 MB)…") } else { t("Starting Laya…") });
-            let app = app.clone();
-            std::thread::spawn(move || {
-                // Up to 20 minutes for the first model download, then ready.
-                for _ in 0..600 {
-                    std::thread::sleep(Duration::from_secs(2));
-                    if !with_laya(|l| l.server.is_some()) {
-                        return;
-                    }
-                    let url = format!("http://127.0.0.1:{port}/health");
-                    let ok = tauri::async_runtime::block_on(async move {
-                        let c = reqwest::Client::builder().timeout(Duration::from_secs(3)).no_proxy().build().ok()?;
-                        c.get(url).send().await.ok().map(|r| r.status().is_success())
-                    })
-                    .unwrap_or(false);
-                    if ok {
-                        set(&app, "ready", t("Laya is ready on this computer."));
-                        return;
-                    }
-                }
-                set(&app, "error", t("Laya didn't start. See laya.log in Coucou's folder."));
+            with_laya(|l| {
+                l.server = Some(child);
+                l.started_in = Some(home.clone());
             });
+            let first = own && !hf.join("hub").exists();
+            set(app, "starting", if first { t("Starting Laya. The first time it downloads its model (about 850 MB)…") } else { t("Starting Laya…") });
+            wait_ready(app.clone(), port);
         }
         Err(_) => set(app, "error", t("Laya couldn't be started.")),
     }
 }
 
+/// Polls Laya's health until it is ready: up to 20 minutes for a first model download.
+fn wait_ready(app: AppHandle, port: u16) {
+    use crate::i18n::t;
+    std::thread::spawn(move || {
+        for _ in 0..600 {
+            std::thread::sleep(Duration::from_secs(2));
+            if !with_laya(|l| l.server.is_some() || l.status.external) {
+                return;
+            }
+            if probe(port) == Some(true) {
+                set(&app, "ready", t("Laya is ready on this computer."));
+                return;
+            }
+        }
+        set(&app, "error", t("Laya didn't start. See laya.log in Coucou's folder."));
+    });
+}
+
+/// Stops the Laya Coucou started; one started outside Coucou is only let go.
 fn stop_server() {
-    if let Some(mut child) = with_laya(|l| l.server.take()) {
+    with_laya(|l| l.status.external = false);
+    if let Some(mut child) = with_laya(|l| {
+        l.started_in = None;
+        l.server.take()
+    }) {
         // laya-serve.exe starts python.exe: the whole tree goes.
         let mut kill = Command::new("taskkill");
         kill.args(["/PID", &child.id().to_string(), "/T", "/F"]).stdout(Stdio::null()).stderr(Stdio::null());
@@ -501,7 +598,8 @@ pub fn laya_status(app: AppHandle) -> LayaStatus {
 
 #[tauri::command]
 pub fn laya_start(app: AppHandle) {
-    start_server(&app);
+    // Off the main thread: it asks Laya's health first.
+    std::thread::spawn(move || start_server(&app));
 }
 
 #[tauri::command]
@@ -510,7 +608,8 @@ pub fn laya_stop(app: AppHandle) {
     set(&app, "idle", String::new());
 }
 
-/// "Remove Laya": stops it and deletes its environment and model (its whole folder).
+/// "Remove Laya": stops it and deletes Coucou's own copy (its whole folder). A
+/// Laya picked in Settings is never touched.
 #[tauri::command]
 pub fn laya_remove(app: AppHandle) {
     stop_server();
@@ -533,7 +632,7 @@ pub fn settings_saved(app: &AppHandle) {
     } else {
         let _ = std::fs::remove_file(marker());
     }
-    if c.mode == "local" && installed() {
+    if c.mode == "local" {
         let app = app.clone();
         std::thread::spawn(move || start_server(&app));
     } else {
@@ -648,8 +747,27 @@ mod tests {
     }
 
     #[test]
+    fn a_laya_folder_runs_its_own_script_else_its_laya_serve() {
+        let dir = std::env::temp_dir().join(format!("coucou-laya-{}", std::process::id()));
+        let scripts = dir.join(".venv").join("Scripts");
+        std::fs::create_dir_all(&scripts).unwrap();
+        assert!(runner(&dir).is_none());
+        std::fs::write(scripts.join("laya-serve.exe"), b"").unwrap();
+        assert_eq!(runner(&dir).unwrap().0, scripts.join("laya-serve.exe"));
+        std::fs::write(scripts.join("python.exe"), b"").unwrap();
+        std::fs::write(dir.join("laya_serve.py"), b"").unwrap();
+        let (program, args) = runner(&dir).unwrap();
+        assert_eq!(program, scripts.join("python.exe"));
+        assert!(args[0].ends_with("laya_serve.py"));
+        let c = Config { mode: "local".into(), laya_url: String::new(), laya_dir: format!(" {} ", dir.display()), fix_loop: false };
+        assert_eq!(laya_home(&c), dir);
+        assert!(installed(&c));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn laya_is_only_ever_asked_on_this_computer() {
-        let c = |u: &str| Config { mode: "local".into(), laya_url: u.into(), fix_loop: false };
+        let c = |u: &str| Config { mode: "local".into(), laya_url: u.into(), laya_dir: String::new(), fix_loop: false };
         assert_eq!(laya_url(&c("http://127.0.0.1:9000/")), "http://127.0.0.1:9000");
         assert_eq!(laya_url(&c("https://evil.example.com")), LAYA_URL);
         assert_eq!(laya_url(&c("")), LAYA_URL);

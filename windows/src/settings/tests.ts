@@ -36,7 +36,7 @@ export function testsSection(settings: () => Settings, save: () => void): HTMLEl
     box.append(
       h("div", { class: "hint", style: MUTED, text: t("When an agent runs its tests, Coucou reads the result from the output itself, not from what the agent says: “Tests passed · 48 passed”, “Tests failed · 1 failed”.") }),
       h("div", { class: "row", style: "gap:10px" },
-        toggle(s.fixFailingTests === true, (v) => { s.fixFailingTests = v; save(); }),
+        toggle(s.fixFailingTests === true, (v) => { settings().fixFailingTests = v; save(); }),
         h("span", { style: "font-size:12.5px", text: t("Make Claude fix failing tests") }),
       ),
       h("div", { class: "hint", style: MUTED, text: t("When Claude Code finishes while its last test run failed, Coucou sends it back to fix them, at most twice per request. It never changes your files itself.") }),
@@ -48,7 +48,7 @@ export function testsSection(settings: () => Settings, save: () => void): HTMLEl
         class: mode === id ? "primary" : "",
         text: label,
         onclick: () => {
-          s.testChecker = id;
+          settings().testChecker = id;
           test = null;
           save();
           draw();
@@ -65,16 +65,36 @@ export function testsSection(settings: () => Settings, save: () => void): HTMLEl
       const line = st ? [st.message, st.line].filter(Boolean).join(" — ") : "";
       const buttons = h("div", { class: "row", style: "gap:6px" });
       const busy = st != null && ["python", "venv", "install", "starting"].includes(st.phase);
-      if (!st?.installed) {
-        buttons.append(h("button", { class: "primary", text: t("Set up Laya"), disabled: busy, onclick: () => void Bridge.layaSetup() }));
+      const custom = (s.layaDir ?? "").trim() !== "";
+      if (st?.external) {
+        // Started outside Coucou: used as it is, nothing to start, stop or remove.
+      } else if (!st?.installed) {
+        if (!custom) buttons.append(h("button", { class: "primary", text: t("Set up Laya"), disabled: busy, onclick: () => void Bridge.layaSetup() }));
       } else {
         if (st.running) buttons.append(h("button", { text: t("Stop"), onclick: () => void Bridge.layaStop() }));
         else buttons.append(h("button", { class: "primary", text: t("Start"), disabled: busy, onclick: () => void Bridge.layaStart() }));
-        buttons.append(h("button", { class: "danger", text: t("Remove Laya"), disabled: busy, onclick: () => void Bridge.layaRemove() }));
+        // Only Coucou's own copy: a Laya picked below is never deleted.
+        if (!custom) buttons.append(h("button", { class: "danger", text: t("Remove Laya"), disabled: busy, onclick: () => void Bridge.layaRemove() }));
       }
+      const folder = h("input", { type: "text", value: s.layaDir ?? "", placeholder: t("Coucou's own copy"), spellcheck: false, style: "flex:1;min-width:0" }) as HTMLInputElement;
+      const use = () => {
+        const v = folder.value.trim();
+        if (v === (settings().layaDir ?? "").trim()) return;
+        settings().layaDir = v;
+        test = null;
+        save();
+        draw();
+      };
+      folder.addEventListener("keydown", (e) => { if (e.key === "Enter") use(); });
       buttons.append(testButton("local"));
       box.append(
         h("div", { class: "hint", style: MUTED, text: t("Laya (by Convai Innovations) runs on this computer only: nothing leaves it. Setting it up installs Python packages and PyTorch in Coucou's folder (a few GB, once), then its model (about 850 MB). It needs Python 3.10 to 3.13.") }),
+        h("div", { class: "row", style: "gap:6px" },
+          h("span", { style: "font-size:12.5px;white-space:nowrap", text: t("Laya folder") }),
+          folder,
+          h("button", { text: t("Use"), onclick: use }),
+        ),
+        h("div", { class: "hint", style: MUTED, text: t("Already have Laya? Enter its folder (the one with its .venv). Coucou starts it from there and never changes or removes it. A Laya that is already running is used as it is.") }),
         buttons,
       );
       if (line) box.append(h("div", { style: `${MUTED};color:${st?.phase === "error" ? "#F4505E" : "#8E939C"}`, text: line }));

@@ -6884,6 +6884,84 @@
    "id": "Laya tidak bisa dijalankan.",
    "de": "Laya konnte nicht gestartet werden.",
    "tr": "Laya başlatılamadı."
+  },
+  "Laya folder": {
+   "zh-Hans": "Laya 文件夹",
+   "hi": "Laya फ़ोल्डर",
+   "es": "Carpeta de Laya",
+   "ar": "مجلد Laya",
+   "fr": "Dossier de Laya",
+   "bn": "Laya ফোল্ডার",
+   "pt-BR": "Pasta do Laya",
+   "ru": "Папка Laya",
+   "id": "Folder Laya",
+   "de": "Laya-Ordner",
+   "tr": "Laya klasörü"
+  },
+  "Coucou's own copy": {
+   "zh-Hans": "Coucou 自己的副本",
+   "hi": "Coucou की अपनी कॉपी",
+   "es": "La copia propia de Coucou",
+   "ar": "نسخة Coucou الخاصة",
+   "fr": "La copie de Coucou",
+   "bn": "Coucou-র নিজস্ব কপি",
+   "pt-BR": "A cópia do próprio Coucou",
+   "ru": "Собственная копия Coucou",
+   "id": "Salinan milik Coucou",
+   "de": "Coucous eigene Kopie",
+   "tr": "Coucou'nun kendi kopyası"
+  },
+  "Use": {
+   "zh-Hans": "使用",
+   "hi": "इस्तेमाल करें",
+   "es": "Usar",
+   "ar": "استخدام",
+   "fr": "Utiliser",
+   "bn": "ব্যবহার করুন",
+   "pt-BR": "Usar",
+   "ru": "Использовать",
+   "id": "Gunakan",
+   "de": "Verwenden",
+   "tr": "Kullan"
+  },
+  "Already have Laya? Enter its folder (the one with its .venv). Coucou starts it from there and never changes or removes it. A Laya that is already running is used as it is.": {
+   "zh-Hans": "已经有 Laya？输入它的文件夹（包含 .venv 的那个）。Coucou 会从那里启动它，绝不修改或删除它。已在运行的 Laya 会直接使用。",
+   "hi": "पहले से Laya है? उसका फ़ोल्डर लिखें (जिसमें उसका .venv है)। Coucou उसे वहीं से शुरू करता है और उसे कभी नहीं बदलता या हटाता। पहले से चल रहा Laya वैसे ही इस्तेमाल होता है।",
+   "es": "¿Ya tienes Laya? Escribe su carpeta (la que tiene su .venv). Coucou lo inicia desde ahí y nunca la cambia ni la borra. Un Laya que ya está en marcha se usa tal cual.",
+   "ar": "لديك Laya بالفعل؟ أدخل مجلده (الذي يحتوي على .venv). يشغّله Coucou من هناك ولا يغيّره أو يحذفه أبدًا. ويُستخدم Laya الذي يعمل بالفعل كما هو.",
+   "fr": "Tu as déjà Laya ? Indique son dossier (celui qui contient son .venv). Coucou le lance depuis là et ne le modifie ni ne le supprime jamais. Un Laya déjà lancé est utilisé tel quel.",
+   "bn": "আগে থেকেই Laya আছে? তার ফোল্ডারটি লিখুন (যেটিতে .venv আছে)। Coucou সেখান থেকেই চালু করে এবং কখনো বদলায় বা মুছে না। আগে থেকে চলমান Laya যেমন আছে তেমনই ব্যবহার হয়।",
+   "pt-BR": "Já tem o Laya? Digite a pasta dele (a que tem o .venv). O Coucou o inicia de lá e nunca a altera nem remove. Um Laya que já está rodando é usado como está.",
+   "ru": "Уже есть Laya? Укажите его папку (ту, где лежит .venv). Coucou запустит его оттуда и никогда не изменит и не удалит её. Уже запущенный Laya используется как есть.",
+   "id": "Sudah punya Laya? Masukkan foldernya (yang berisi .venv). Coucou menjalankannya dari sana dan tidak pernah mengubah atau menghapusnya. Laya yang sudah berjalan dipakai apa adanya.",
+   "de": "Hast du Laya schon? Gib seinen Ordner ein (den mit seiner .venv). Coucou startet es von dort und ändert oder löscht ihn nie. Ein bereits laufendes Laya wird so verwendet, wie es ist.",
+   "tr": "Laya zaten var mı? Klasörünü gir (.venv'in olduğu klasör). Coucou onu oradan başlatır, asla değiştirmez veya silmez. Zaten çalışan bir Laya olduğu gibi kullanılır."
+  },
+  "Laya is already running on this computer.": {
+   "zh-Hans": "Laya 已在这台电脑上运行。",
+   "hi": "Laya इस कंप्यूटर पर पहले से चल रहा है।",
+   "es": "Laya ya está en marcha en este ordenador.",
+   "ar": "Laya يعمل بالفعل على هذا الكمبيوتر.",
+   "fr": "Laya tourne déjà sur cet ordinateur.",
+   "bn": "Laya এই কম্পিউটারে আগে থেকেই চলছে।",
+   "pt-BR": "O Laya já está rodando neste computador.",
+   "ru": "Laya уже запущен на этом компьютере.",
+   "id": "Laya sudah berjalan di komputer ini.",
+   "de": "Laya läuft bereits auf diesem Computer.",
+   "tr": "Laya bu bilgisayarda zaten çalışıyor."
+  },
+  "No Laya was found in that folder.": {
+   "zh-Hans": "在该文件夹中没有找到 Laya。",
+   "hi": "उस फ़ोल्डर में Laya नहीं मिला।",
+   "es": "No se encontró Laya en esa carpeta.",
+   "ar": "لم يُعثر على Laya في ذلك المجلد.",
+   "fr": "Aucun Laya trouvé dans ce dossier.",
+   "bn": "সেই ফোল্ডারে কোনো Laya পাওয়া যায়নি।",
+   "pt-BR": "Nenhum Laya foi encontrado nessa pasta.",
+   "ru": "В этой папке Laya не найден.",
+   "id": "Tidak ada Laya di folder itu.",
+   "de": "In diesem Ordner wurde kein Laya gefunden.",
+   "tr": "O klasörde Laya bulunamadı."
   }
  }
 }

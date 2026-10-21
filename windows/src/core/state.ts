@@ -112,6 +112,8 @@ export interface Settings {
   /** Double-check unclear test results: Laya here, Jev in the cloud. */
   testChecker: "off" | "local" | "cloud";
   layaUrl: string;
+  /** A Laya already on this computer (its folder); empty: Coucou's own copy. */
+  layaDir: string;
   /** Claude Code is sent back when it finishes with failing tests. */
   fixFailingTests: boolean;
   absenceInterval: number;
@@ -185,6 +187,7 @@ export const DEFAULT_SETTINGS: Settings = {
   alertsFromAllPills: false,
   testChecker: "off",
   layaUrl: "",
+  layaDir: "",
   fixFailingTests: false,
   absenceInterval: 180,
   activeIntegrations: [

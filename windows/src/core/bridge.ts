@@ -508,6 +508,8 @@ export interface LayaStatus {
   line: string;
   installed: boolean;
   running: boolean;
+  /** Started outside Coucou (its own run.bat): used, never stopped. */
+  external: boolean;
 }
 
 /** Allow / Deny, or the plan card's choices (ExitPlanMode). */
