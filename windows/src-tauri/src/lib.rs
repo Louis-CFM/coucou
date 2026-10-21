@@ -522,6 +522,12 @@ fn approval_ack(app: AppHandle, request_id: String) {
 
 /// Nobody can act on this request — the island is paused, or another card is
 /// already up. Claude Code falls back to asking in the terminal immediately.
+/// The fix loop's word for a relay that waits (island/loop.ts).
+#[tauri::command]
+fn loop_answer(app: AppHandle, id: String, answer: Option<String>) {
+    pipe::loop_answer(&app, &id, answer);
+}
+
 #[tauri::command]
 fn approval_decline(app: AppHandle, request_id: String) {
     recap::forget_request(&app, &request_id);
@@ -949,7 +955,8 @@ pub fn run() {
             claude_plan::claude_desktop_plan,
             tests_check::tests_check,
             tests_check::tests_check_ping,
-            tests_check::tests_note,
+            tests_check::tests_git_diff,
+            loop_answer,
             tests_check::laya_status,
             tests_check::laya_setup,
             tests_check::laya_start,

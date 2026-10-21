@@ -18,7 +18,6 @@
 // does. The relay waits for that answer only while the loop is on (a marker file
 // it can see, `fix-loop.on` in Coucou's folder).
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -33,8 +32,6 @@ pub const JEV_KEY: &str = "typesafe-api-key";
 const JEV_URL: &str = "https://api.typesafe.ai";
 const JEV_MODEL: &str = "jev-1.13.0";
 pub const LAYA_URL: &str = "http://127.0.0.1:8000";
-/// Times one request may be sent back (dotpals: at most twice per request).
-const MAX_SEND_BACKS: u32 = 2;
 
 /// claude-referee's done.met question, asked about the tests passing.
 fn questions() -> Value {
@@ -649,72 +646,36 @@ pub fn shutdown() {
 }
 
 // ── Fix loop ──────────────────────────────────────────────────────────────────
+// Its decisions are the island's (island/loop.ts, dotpals' rules); the relay waits
+// for them only while the marker is there (settings_saved).
 
-#[derive(Default)]
-struct SessionTests {
-    /// The last test run failed: its summary ("2 failed: test_sum").
-    failing: Option<String>,
-    /// Times this request was sent back.
-    sent_back: u32,
-}
-
-static SESSIONS: Mutex<Option<HashMap<String, SessionTests>>> = Mutex::new(None);
-
-fn with_session<T>(id: &str, f: impl FnOnce(&mut SessionTests) -> T) -> T {
-    let mut slot = SESSIONS.lock().unwrap();
-    let map = slot.get_or_insert_with(HashMap::new);
-    if map.len() > 200 {
-        map.clear();
-    }
-    f(map.entry(id.to_string()).or_default())
-}
-
-/// The island read a test run: `failed` with what failed, or passed (clears it).
+/// Git's view of the test files in `cwd` (dotpals' testDiff, bridge/ground.js): the
+/// `-U0` diff against HEAD of the files that look like tests, or None outside a
+/// repository. The island compares two of them to see a test weakened by any
+/// means, not only by an edit tool. Read only: git is never asked to change anything.
 #[tauri::command]
-pub fn tests_note(session_id: String, failed: bool, summary: String) {
-    if session_id.is_empty() {
-        return;
-    }
-    with_session(&session_id, |s| s.failing = failed.then(|| summary.chars().take(200).collect()));
-}
-
-/// Every hook event goes by here (pipe.rs). A new prompt is a new request: its
-/// send-backs start again.
-pub fn observe(payload: &Value, event: &str) {
-    if event == "UserPromptSubmit" {
-        if let Some(id) = payload.get("session_id").and_then(Value::as_str) {
-            with_session(id, |s| s.sent_back = 0);
-        }
-    }
-}
-
-/// The fix loop is on (Settings).
-pub fn fix_loop_on(app: &AppHandle) -> bool {
-    config(app).fix_loop
-}
-
-/// Claude Code is ending its turn: the line the relay prints, to send it back
-/// when its tests fail, or None. Only Claude Code, only with the loop on.
-pub fn stop_reply(app: &AppHandle, payload: &Value) -> Option<String> {
-    if !config(app).fix_loop || payload.get("coucou_agent").and_then(Value::as_str).is_some_and(|a| !a.is_empty()) {
+pub async fn tests_git_diff(cwd: String) -> Option<String> {
+    if cwd.trim().is_empty() || !Path::new(&cwd).is_dir() {
         return None;
     }
-    let id = payload.get("session_id").and_then(Value::as_str)?;
-    stop_decision(id)
-}
-
-pub fn stop_decision(session_id: &str) -> Option<String> {
-    with_session(session_id, |s| {
-        let failing = s.failing.clone()?;
-        if s.sent_back >= MAX_SEND_BACKS {
-            return None;
-        }
-        s.sent_back += 1;
-        let reason = format!(
-            "Coucou: the last test run failed ({failing}). Fix the code so the tests pass, run them again, then finish. Don't change the tests just to make them pass."
-        );
-        Some(json!({ "decision": "block", "reason": reason }).to_string())
+    tauri::async_runtime::spawn_blocking(move || {
+        let globs = ["**/*test*", "**/*spec*", "**/test/**", "**/tests/**", "**/__tests__/**", "**/spec/**"]
+            .map(|g| format!(":(top,glob){g}"));
+        let mut cmd = Command::new("git");
+        cmd.args(["-c", "core.quotepath=off", "diff", "-U0", "--no-color", "--no-ext-diff", "HEAD", "--"])
+            .args(&globs)
+            .current_dir(&cwd)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        let out = hidden(&mut cmd).output().ok()?;
+        // The island reads 8000 characters of changed lines at most.
+        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).chars().take(200_000).collect())
     })
+    .await
+    .ok()
+    .flatten()
 }
 
 #[cfg(test)]
@@ -732,22 +693,6 @@ mod tests {
         assert_eq!(redact_line("test_tokenizer FAILED", home), "test_tokenizer FAILED");
         assert_eq!(redact_line("3 passed, 1 failed", home), "3 passed, 1 failed");
         assert_eq!(redact_line("tests/test_math.py::test_sum FAILED", home), "tests/test_math.py::test_sum FAILED");
-    }
-
-    #[test]
-    fn a_failing_session_is_sent_back_twice_per_request_then_let_go() {
-        let id = "s-fix-loop";
-        tests_note(id.into(), true, "1 failed: test_sum".into());
-        let first: Value = serde_json::from_str(&stop_decision(id).unwrap()).unwrap();
-        assert_eq!(first["decision"], "block");
-        assert!(first["reason"].as_str().unwrap().contains("1 failed: test_sum"));
-        assert!(stop_decision(id).is_some());
-        assert!(stop_decision(id).is_none(), "at most twice");
-        // A new request starts again; tests passing let it finish.
-        observe(&json!({ "session_id": id }), "UserPromptSubmit");
-        assert!(stop_decision(id).is_some());
-        tests_note(id.into(), false, String::new());
-        assert!(stop_decision(id).is_none());
     }
 
     #[test]

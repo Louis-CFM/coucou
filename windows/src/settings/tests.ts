@@ -39,7 +39,7 @@ export function testsSection(settings: () => Settings, save: () => void): HTMLEl
         toggle(s.fixFailingTests === true, (v) => { settings().fixFailingTests = v; save(); }),
         h("span", { style: "font-size:12.5px", text: t("Make Claude fix failing tests") }),
       ),
-      h("div", { class: "hint", style: MUTED, text: t("When Claude Code finishes while its last test run failed, Coucou sends it back to fix them, at most twice per request. It never changes your files itself.") }),
+      h("div", { class: "hint", style: MUTED, text: t("Claude Code is told when a test run fails, and sent back when it tries to finish, commit or push while its tests fail, weren't run after its changes, or were changed just to pass. At most twice per request. Coucou never changes your files itself.") }),
       h("div", { style: "font-size:12.5px;font-weight:500;padding-top:6px", text: t("Double-check unclear test results") }),
     );
     const modes = h("div", { class: "row", style: "gap:4px" });

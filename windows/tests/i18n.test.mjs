@@ -395,6 +395,9 @@ const NOT_TEXT = new Set([
   "file", // the kind of a chat context: { kind: "file" }
   "finished", // a task state and a pill badge
   "failed", // a test verdict state (core/tests.ts), like "finished"
+  "running", // a step's state in the fix loop (island/loop.ts)
+  "failing", // the fix loop's test state: the last run failed
+  "Edit", // Claude Code's tool, as its hooks name it
   "unknown", // a CI state
   "Resend", // the service's name (the Mac's "Resend" is a button: send again)
   "Stop", // Claude Code's hook event (the Mac's "Stop" is a button)

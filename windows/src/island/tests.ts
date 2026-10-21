@@ -1,10 +1,11 @@
 // Test runs an agent made → its card. The relay keeps the end of a test
 // command's output; its verdict becomes a step ("Tests passed · 48 passed",
-// "Tests failed · 1 failed: test_sum"), a failure badges the pill, Rust is told
-// for the fix loop, and an unclear run is asked about once when the
-// double-check is on (Laya here, or Jev): dotpals' "Was it tested?".
+// "Tests failed · 1 failed: test_sum"), a failure badges the pill, and an
+// unclear run is asked about once when the double-check is on (Laya here, or
+// Jev): dotpals' "Was it tested?". The fix loop (./loop.ts) waits for the same
+// answer rather than asking twice.
 
-import { Bridge } from "../core/bridge";
+import { Bridge, type CheckAnswer } from "../core/bridge";
 import { State } from "../core/state";
 import {
   evidenceOf, stateOfProbability, testVerdict, verdictStep, worthChecking, type TestRun, type TestVerdict,
@@ -13,20 +14,18 @@ import { t } from "../i18n/i18n";
 
 interface TestPayload {
   session_id?: string;
+  tool_use_id?: string;
   tool_input?: Record<string, unknown>;
   coucou_test_output?: unknown;
   coucou_test_failed?: unknown;
   coucou_test_stopped?: unknown;
 }
 
-/** What the fix loop tells Claude when it is sent back: the counts and the failing tests. */
-function summaryOf(v: TestVerdict): string {
-  const f = v.facts;
-  // English on purpose: this goes to Claude, not on screen.
-  if (!f.parsed) return "no test summary in the output, only a failing exit code";
-  const parts = [f.failed && `${f.failed} failed`, f.errors && `${f.errors} errors`, f.passed && `${f.passed} passed`].filter(Boolean);
-  const names = f.failing.slice(0, 3).map((n) => String(n).split("::").pop());
-  return parts.join(", ") + (names.length ? `: ${names.join(", ")}` : "");
+/** The double-check's answer for a run, by `<session>:<tool_use_id>`: the fix loop reads the same one. */
+const checks = new Map<string, Promise<CheckAnswer | null>>();
+
+export function checkFor(key: string): Promise<CheckAnswer | null> | undefined {
+  return checks.get(key);
 }
 
 /** The step `from` on `pillId`'s card becomes `to` (the double-check answered). */
@@ -51,11 +50,14 @@ export function recordTestRun(pillId: string, payload: TestPayload) {
   const step = verdictStep(verdict);
   State.appendStep(pillId, step);
   if (verdict.state === "failed" && State.focusId !== pillId) State.setPillBadge(pillId, "error");
-  const session = payload.session_id ?? "";
-  void Bridge.testsNote(session, verdict.state === "failed", summaryOf(verdict));
 
   if (!worthChecking(verdict) || State.settings.testChecker === "off" || !State.settings.testChecker) return;
-  void Bridge.testsCheck(evidenceOf(run, verdict)).then((answer) => {
+  const asked = Bridge.testsCheck(evidenceOf(run, verdict)).catch(() => null);
+  if (payload.session_id && payload.tool_use_id) {
+    checks.set(`${payload.session_id}:${payload.tool_use_id}`, asked);
+    if (checks.size > 50) checks.delete(checks.keys().next().value!);
+  }
+  void asked.then((answer) => {
     if (!answer) return;
     const by = answer.by === "laya" ? "Laya" : "Jev";
     if (answer.p == null) {
@@ -69,9 +71,6 @@ export function recordTestRun(pillId: string, payload: TestPayload) {
     }
     const checked: TestVerdict = { ...verdict, state, source: "checker" };
     replaceStep(pillId, step, verdictStep(checked, { by: answer.by, p: answer.p }));
-    if (state === "failed") {
-      if (State.focusId !== pillId) State.setPillBadge(pillId, "error");
-      void Bridge.testsNote(session, true, `${summaryOf(verdict)} (checked by ${by})`);
-    }
+    if (state === "failed" && State.focusId !== pillId) State.setPillBadge(pillId, "error");
   });
 }

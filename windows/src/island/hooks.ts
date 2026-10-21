@@ -16,6 +16,7 @@ import { parseClaudePlan, restorePlanUsage } from "../core/plan";
 import { setClaudePlanUsage, storedClaudePlanUsage } from "../views/usage";
 import { N_, t } from "../i18n/i18n";
 import { recordTestRun } from "./tests";
+import { decideLoop, observeLoop, type LoopDecision } from "./loop";
 
 const CLAUDE_ID = "integration_claude";
 const CURSOR_ID = "agent_cursor";
@@ -75,8 +76,10 @@ interface HookPayload {
   coucou_test_output?: string;
   coucou_test_failed?: boolean;
   coucou_test_stopped?: boolean;
-  /** The fix loop sent this Stop back (tests_check.rs). */
+  /** The fix loop sent this Stop back (./loop.ts). */
   coucou_sent_back?: boolean;
+  /** The relay waits for the fix loop's word on this one (pipe.rs). */
+  coucou_loop_id?: string;
   /** StatusLine (the plan usage relay): Claude Code's 5-hour and weekly limits. */
   rate_limits?: unknown;
 }
@@ -314,7 +317,45 @@ function recordDiff(agentId: string, payload: HookPayload) {
 export function registerHookHandlers(island: Island) {
   // The last plan numbers seen survive a restart, as on the Mac.
   State.planUsage ??= restorePlanUsage(storedClaudePlanUsage());
-  void onEvent<HookPayload>("hook", (payload) => handleHook(island, payload));
+  void onEvent<HookPayload>("hook", (payload) => routeHook(island, payload));
+}
+
+/** The pill a hook event belongs on: the same routing as handleHook. */
+function pillOf(payload: HookPayload): string {
+  const validAgent = validateAgent(payload.coucou_agent);
+  return validAgent ? `agent_${validAgent}` : payload.term_editor === "cursor" ? CURSOR_ID : CLAUDE_ID;
+}
+
+/**
+ * Every hook event goes by the fix loop first (./loop.ts). A relay waiting for its
+ * word (coucou_loop_id) always gets one, paused or not; a Stop is decided before
+ * the card hears it, so a session sent back stays at work.
+ */
+function routeHook(island: Island, payload: HookPayload) {
+  if (payload.hook_event_name !== "StatusLine") observeLoop(payload);
+  const id = payload.coucou_loop_id;
+  if (!id) return handleHook(island, payload);
+  if (State.paused) {
+    void Bridge.loopAnswer(id, null);
+    return handleHook(island, payload);
+  }
+  const tell = (d: LoopDecision) => {
+    void Bridge.loopAnswer(id, d.answer);
+    const pill = pillOf(payload);
+    for (const note of d.notes) State.appendStep(pill, note);
+    if (d.alert && State.focusId !== pill) State.setPillBadge(pill, "error");
+  };
+  if (payload.hook_event_name === "Stop") {
+    void decideLoop(payload).then((d) => {
+      if (d.answer) payload.coucou_sent_back = true;
+      handleHook(island, payload);
+      tell(d);
+    });
+    return;
+  }
+  // After the card heard it: a test run's verdict, and its double-check, start there.
+  handleHook(island, payload);
+  void decideLoop(payload).then(tell);
 }
 
 function handleHook(island: Island, payload: HookPayload) {
@@ -487,7 +528,6 @@ function handleHook(island: Island, payload: HookPayload) {
       if (payload.coucou_sent_back === true) {
         supersedeStop();
         State.updateTask(agentId, "working");
-        State.appendStep(agentId, t("Sent back to fix the failing tests"));
         break;
       }
       State.updateTask(agentId, "finished");

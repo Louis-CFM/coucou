@@ -37,14 +37,11 @@ pub fn stdout_with_plan(
     question: Option<&Value>,
     plan: Option<&Value>,
 ) -> Option<String> {
-    // The fix loop (Coucou's Settings): Claude Code ending its turn while its tests
-    // fail is sent back. Only that exact block, only for Claude Code; it never
-    // allows anything.
-    if event == "Stop" && agent.is_empty() {
-        return decision
-            .and_then(|d| serde_json::from_str::<Value>(d).ok())
-            .filter(|v| v.get("decision").and_then(Value::as_str) == Some("block") && v.get("reason").is_some_and(Value::is_string))
-            .map(|v| json!({ "decision": "block", "reason": v["reason"] }).to_string());
+    // The fix loop (Coucou's Settings, island/loop.ts): Claude Code told its tests
+    // failed, sent back when it stops, a commit or push held back. Only those exact
+    // shapes, only for Claude Code; it never allows anything.
+    if agent.is_empty() && matches!(event, "Stop" | "PreToolUse" | "PostToolUse" | "PostToolUseFailure") {
+        return decision.and_then(|d| loop_json(event, d));
     }
     if event != "PermissionRequest" {
         // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
@@ -77,6 +74,35 @@ pub fn stdout_with_plan(
             None => decision_json(d, question),
         }),
         _ => decision.and_then(|d| decision_json(d, None)),
+    }
+}
+
+/// The fix loop's word, rebuilt from its text alone: a block at Stop, a deny before
+/// a tool, a note after one. Anything else prints nothing.
+fn loop_json(event: &str, decision: &str) -> Option<String> {
+    let v = serde_json::from_str::<Value>(decision).ok()?;
+    let text = |v: Option<&Value>| v.and_then(Value::as_str).filter(|s| !s.trim().is_empty()).map(str::to_string);
+    let out = v.get("hookSpecificOutput");
+    match event {
+        "Stop" => {
+            if v.get("decision").and_then(Value::as_str) != Some("block") {
+                return None;
+            }
+            let reason = text(v.get("reason"))?;
+            Some(json!({ "decision": "block", "reason": reason }).to_string())
+        }
+        "PreToolUse" => {
+            let out = out?;
+            if out.get("permissionDecision").and_then(Value::as_str) != Some("deny") {
+                return None;
+            }
+            let reason = text(out.get("permissionDecisionReason"))?;
+            Some(json!({ "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason } }).to_string())
+        }
+        _ => {
+            let context = text(out?.get("additionalContext"))?;
+            Some(json!({ "hookSpecificOutput": { "hookEventName": event, "additionalContext": context } }).to_string())
+        }
     }
 }
 
@@ -185,6 +211,20 @@ fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fix_loop_only_ever_denies_or_adds_a_note() {
+        let deny = r#"{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"tests fail"}}"#;
+        let out: Value = serde_json::from_str(&stdout("", "PreToolUse", Some(deny), None).unwrap()).unwrap();
+        assert_eq!(out["hookSpecificOutput"]["permissionDecision"], "deny");
+        let allow = deny.replace("\"deny\"", "\"allow\"");
+        assert!(stdout("", "PreToolUse", Some(&allow), None).is_none());
+        let note = r#"{"hookSpecificOutput":{"hookEventName":"x","additionalContext":"they failed","decision":{"behavior":"allow"}}}"#;
+        let out: Value = serde_json::from_str(&stdout("", "PostToolUse", Some(note), None).unwrap()).unwrap();
+        assert_eq!(out, json!({ "hookSpecificOutput": { "hookEventName": "PostToolUse", "additionalContext": "they failed" } }));
+        assert!(stdout("", "PostToolUseFailure", Some("{}"), None).is_none());
+        assert!(stdout("", "PreToolUse", None, None).is_none());
+    }
 
     #[test]
     fn a_stop_is_only_ever_blocked_with_a_reason() {

@@ -38,9 +38,16 @@ const CONNECT_TIMEOUT: Duration = Duration::from_millis(300);
 const FIRE_AND_FORGET_BUDGET: Duration = Duration::from_secs(2);
 /// How long a permission prompt may stay on screen before the terminal takes over.
 const DECISION_BUDGET: Duration = Duration::from_secs(110);
-/// Claude Code's Stop, while the fix loop is on: the app answers at once (from
-/// what it already knows), so this is only there in case it doesn't.
-const STOP_BUDGET: Duration = Duration::from_secs(2);
+/// The fix loop (Coucou's Settings): how long Claude Code waits for the island's
+/// word. After a test run it may first ask the double-check (5 s); a stop and a
+/// commit are answered from what the island already knows.
+fn loop_budget(event: &str) -> Duration {
+    match event {
+        "Stop" => Duration::from_secs(3),
+        "PreToolUse" => Duration::from_secs(2),
+        _ => Duration::from_secs(7),
+    }
+}
 /// How much of a test command's output is kept: its end, where the summary is.
 const TEST_OUTPUT_TAIL: usize = 8_000;
 
@@ -105,6 +112,8 @@ struct Event {
     /// For Claude Code's ExitPlanMode, the plan as it was proposed: an allow for it
     /// only counts with the plan sent back (reply.rs).
     plan: Option<Value>,
+    /// The fix loop is on and may answer this one: the relay waits for it.
+    loop_reply: bool,
 }
 
 fn main() {
@@ -128,17 +137,14 @@ fn main() {
     // Only an agent whose decisions the island can give waits for one; any other
     // would be held for nothing, its decision being thrown away (reply.rs).
     let waits_for_answer = event.name == "PermissionRequest" && reply::takes_decisions(&args.agent);
-    // "Make Claude fix failing tests" (Coucou's Settings): a Claude Code session
-    // ending its turn may be sent back. The app leaves a marker while it is on.
-    let fix_loop = event.name == "Stop" && args.agent.is_empty() && fix_loop_on(&env);
     let budget = if waits_for_answer {
         DECISION_BUDGET
-    } else if fix_loop {
-        STOP_BUDGET
+    } else if event.loop_reply {
+        loop_budget(&event.name)
     } else {
         FIRE_AND_FORGET_BUDGET
     };
-    let waits_for_answer = waits_for_answer || fix_loop;
+    let waits_for_answer = waits_for_answer || event.loop_reply;
 
     // The worker owns every blocking call. If it overruns the budget we simply
     // stop listening and exit: the process dying takes the pipe handle with it.
@@ -166,6 +172,22 @@ fn fix_loop_on(env: &dyn Fn(&str) -> Option<String>) -> bool {
     env("LOCALAPPDATA")
         .map(|dir| std::path::Path::new(&dir).join("Coucou").join("fix-loop.on").is_file())
         .unwrap_or(false)
+}
+
+/// The command of a shell tool call (Bash, PowerShell).
+fn shell_command(map: &Map<String, Value>) -> Option<&str> {
+    let tool = map.get("tool_name").and_then(Value::as_str)?;
+    if tool != "Bash" && tool != "PowerShell" {
+        return None;
+    }
+    map.get("tool_input").and_then(|i| i.get("command")).and_then(Value::as_str)
+}
+
+/// A command that may commit, push, open a pull request or publish. The island
+/// decides (dotpals' ships); this only spares every other command the wait.
+fn may_ship(command: &str) -> bool {
+    let c = command.to_ascii_lowercase();
+    (c.contains("git") && (c.contains("commit") || c.contains("push"))) || c.contains("gh pr create") || c.contains("npm publish")
 }
 
 /// A shell command that runs tests (dotpals' list): npm test, pytest, cargo test…
@@ -264,6 +286,17 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
     map.insert("hook_event_name".into(), Value::String(name.clone()));
 
     let tests = test_output(map, &name);
+    // "Make Claude fix failing tests" (Coucou's Settings, which leaves a marker while
+    // it is on): Claude Code, here or in the Claude app, waits for the island's word
+    // after a test run, before a commit or push, and when it stops (island/loop.ts).
+    let loop_reply = args.agent.is_empty()
+        && match name.as_str() {
+            "Stop" => true,
+            "PreToolUse" => shell_command(map).is_some_and(may_ship),
+            "PostToolUse" | "PostToolUseFailure" => tests.is_some(),
+            _ => false,
+        }
+        && fix_loop_on(env);
     for field in DROPPED_FIELDS {
         map.remove(*field);
     }
@@ -292,10 +325,13 @@ fn prepare(raw: &[u8], args: &Args, env: &dyn Fn(&str) -> Option<String>, cwd: &
         map.insert("coucou_test_failed".into(), Value::Bool(failed));
         map.insert("coucou_test_stopped".into(), Value::Bool(stopped));
     }
+    if let (true, Some(map)) = (loop_reply, payload.as_object_mut()) {
+        map.insert("coucou_loop".into(), Value::Bool(true));
+    }
 
     let mut line = payload.to_string();
     line.push('\n');
-    Some(Event { line, name, question, plan })
+    Some(Event { line, name, question, plan, loop_reply })
 }
 
 /// Which terminal the session runs in. Unlike macOS, Coucou here accepts events
@@ -538,6 +574,32 @@ mod tests {
         let (v, ev) = run(r#"{"hook_event_name":"stop","status":"error","tool_output":"huge"}"#, "cursor", "");
         assert_eq!(ev.name, "StopFailure");
         assert!(v.get("tool_output").is_none());
+    }
+
+    #[test]
+    fn the_fix_loop_waits_only_where_it_may_answer() {
+        let dir = std::env::temp_dir().join(format!("coucou-loop-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("Coucou")).unwrap();
+        let marker = dir.join("Coucou").join("fix-loop.on");
+        std::fs::write(&marker, b"1").unwrap();
+        let local = dir.to_string_lossy().to_string();
+        let env = move |k: &str| (k == "LOCALAPPDATA").then(|| local.clone());
+        let waits = |raw: &str, agent: &str, event: &str| {
+            let args = Args { agent: agent.into(), event: event.into() };
+            let ev = prepare(raw.as_bytes(), &args, &env, "/x").unwrap();
+            let v: Value = serde_json::from_str(ev.line.trim_end()).unwrap();
+            assert_eq!(v.get("coucou_loop").is_some(), ev.loop_reply);
+            ev.loop_reply
+        };
+        assert!(waits(r#"{"hook_event_name":"Stop"}"#, "", "Stop"));
+        assert!(!waits(r#"{"hook_event_name":"Stop"}"#, "codex", "Stop"));
+        assert!(waits(r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}"#, "", "PreToolUse"));
+        assert!(!waits(r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}"#, "", "PreToolUse"));
+        assert!(waits(r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"npm test"},"tool_response":{"stdout":"ok"}}"#, "", "PostToolUse"));
+        assert!(!waits(r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"ls"},"tool_response":{"stdout":"ok"}}"#, "", "PostToolUse"));
+        std::fs::remove_file(&marker).unwrap();
+        assert!(!waits(r#"{"hook_event_name":"Stop"}"#, "", "Stop"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

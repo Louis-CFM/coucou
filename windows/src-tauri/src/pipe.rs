@@ -216,17 +216,25 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
     // Counts for the weekly recap — never the command, path or prompt itself.
     crate::recap::observe(&app, &payload);
 
-    crate::tests_check::observe(&payload, &event);
-    // Claude Code ending its turn while the fix loop is on: the relay waits for
-    // this line (a block when its tests fail, else nothing). Before the island
-    // hears the Stop, so it can say the session was sent back.
-    if event == "Stop" && crate::tests_check::fix_loop_on(&app) {
-        let reply = crate::tests_check::stop_reply(&app, &payload);
-        if reply.is_some() {
-            payload["coucou_sent_back"] = json!(true);
-        }
-        let _ = pipe.write_all(format!("{}\n", reply.unwrap_or_default()).as_bytes()).await;
+    // "Make Claude fix failing tests": after a test run, before a commit or push and
+    // when Claude Code stops, the relay waits for the island's word (island/loop.ts).
+    // Nothing back in time is no word: Claude Code carries on.
+    if payload.get("coucou_loop").and_then(Value::as_bool) == Some(true) {
+        let id = format!("loop-{}-{}", std::process::id(), COUNTER.fetch_add(1, Ordering::Relaxed));
+        let (tx, mut rx) = mpsc::channel::<Reply>(2);
+        app.state::<Pending>().0.lock().unwrap().insert(id.clone(), tx);
+        payload["coucou_loop_id"] = json!(id);
+        log::line(format!("hook {event} (fix loop)"));
+        let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
+        let answer = match tokio::time::timeout(loop_wait(&event), rx.recv()).await {
+            Ok(Some(Reply::Decision(d))) => d,
+            _ => String::new(),
+        };
+        app.state::<Pending>().0.lock().unwrap().remove(&id);
+        let _ = pipe.write_all(format!("{answer}\n").as_bytes()).await;
         let _ = pipe.flush().await;
+        pipe.finish();
+        return;
     }
 
     if event != "PermissionRequest" {
@@ -260,6 +268,16 @@ async fn handle(app: AppHandle, mut pipe: impl Relay) {
         let _ = pipe.flush().await;
     }
     pipe.finish();
+}
+
+/// Just under the relay's own wait (loop_budget in coucou-hook), so the answer
+/// always reaches it.
+fn loop_wait(event: &str) -> Duration {
+    match event {
+        "Stop" => Duration::from_millis(2_500),
+        "PreToolUse" => Duration::from_millis(1_500),
+        _ => Duration::from_millis(6_500),
+    }
 }
 
 /// Finds, once per session, the window it runs in — see session_window.rs.
@@ -363,6 +381,17 @@ pub fn answer(app: &AppHandle, request_id: &str, decision: &str) {
     };
     log::line(format!("decision id={request_id} {word}"));
     send(app, request_id, Reply::Decision(word.to_string()), false);
+}
+
+/// The fix loop's word (island/loop.ts), or none: Claude Code carries on. The
+/// relay checks its shape again before Claude Code sees it (reply.rs).
+pub fn loop_answer(app: &AppHandle, id: &str, answer: Option<String>) {
+    let reply = match answer.filter(|a| !a.trim().is_empty()) {
+        // One line: the relay reads up to the first newline.
+        Some(a) => Reply::Decision(a.replace(['\r', '\n'], " ")),
+        None => Reply::Decline,
+    };
+    send(app, id, reply, false);
 }
 
 /// Called when an option is picked for a question Claude Code asked. `answers`

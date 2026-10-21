@@ -466,9 +466,10 @@ export const Bridge = {
   /** The double-check of one unclear run; null while it is off. */
   testsCheck: (evidence: Record<string, unknown>) => call<CheckAnswer | null>("tests_check", { evidence }),
   testsCheckPing: (mode: "local" | "cloud") => call<CheckAnswer>("tests_check_ping", { mode }),
-  /** A session's last test run, for the fix loop. */
-  testsNote: (sessionId: string, failed: boolean, summary: string) =>
-    call<void>("tests_note", { sessionId, failed, summary }),
+  /** Git's view of the test files in a folder, for the fix loop (island/loop.ts). */
+  testsGitDiff: (cwd: string) => call<string | null>("tests_git_diff", { cwd }),
+  /** The fix loop's word for a relay that waits; null: none, Claude Code carries on. */
+  loopAnswer: (id: string, answer: string | null) => call<void>("loop_answer", { id, answer }),
   layaStatus: () => call<LayaStatus>("laya_status"),
   layaSetup: () => call<void>("laya_setup"),
   layaStart: () => call<void>("laya_start"),

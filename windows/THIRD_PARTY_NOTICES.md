@@ -2,7 +2,9 @@
 
 ## dotpals
 
-`src/core/testout.ts` (how a test run's output is read) and the test double-check's
+`src/core/testout.ts` (how a test run's output is read), `src/core/story.ts` and
+`src/core/storyrecap.ts` (the rules of the fix loop: tests failing, out of date or
+weakened, commits held back), and the test double-check's
 question and thresholds (`src-tauri/src/tests_check.rs`) come from dotpals,
 https://github.com/Rikinshah787/dotpals, under the MIT License:
 
