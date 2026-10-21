@@ -1769,6 +1769,19 @@
    "de": "Zahlung",
    "tr": "Ödeme"
   },
+  "Personal access token with read_api and read_user scopes.": {
+   "zh-Hans": "具有 read_api 和 read_user 权限的个人访问令牌。",
+   "hi": "read_api और read_user स्कोप वाला व्यक्तिगत एक्सेस टोकन।",
+   "es": "Token de acceso personal con los permisos read_api y read_user.",
+   "ar": "رمز وصول شخصي بصلاحيتي read_api وread_user.",
+   "fr": "Jeton d’accès personnel avec les autorisations read_api et read_user.",
+   "bn": "read_api ও read_user অনুমতিসহ ব্যক্তিগত অ্যাক্সেস টোকেন।",
+   "pt-BR": "Token de acesso pessoal com os escopos read_api e read_user.",
+   "ru": "Личный токен доступа с правами read_api и read_user.",
+   "id": "Token akses pribadi dengan cakupan read_api dan read_user.",
+   "de": "Persönliches Zugriffstoken mit den Berechtigungen read_api und read_user.",
+   "tr": "read_api ve read_user kapsamlarına sahip kişisel erişim belirteci."
+  },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
    "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",

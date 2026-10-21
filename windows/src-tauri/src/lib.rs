@@ -332,6 +332,47 @@ fn spawn_editor(editor: &std::path::Path, target: &std::ffi::OsStr) -> bool {
     platform::no_console(&mut cmd).spawn().is_ok()
 }
 
+/// Opens a GitLab link only when it belongs to the configured instance. This
+/// also covers self-hosted installations without exposing their token.
+#[tauri::command]
+fn open_gitlab_url(url: String) {
+    let base = secrets::get("gitlab-url").unwrap_or_else(|| "https://gitlab.com".into());
+    let (Ok(target), Ok(instance)) = (reqwest::Url::parse(&url), reqwest::Url::parse(base.trim())) else { return };
+    if is_forge_instance_url(&target, &instance) {
+        open_url(url);
+    }
+}
+
+fn is_forge_instance_url(target: &reqwest::Url, instance: &reqwest::Url) -> bool {
+    if !matches!(target.scheme(), "http" | "https")
+        || target.scheme() != instance.scheme()
+        || target.host_str() != instance.host_str()
+        || target.port_or_known_default() != instance.port_or_known_default()
+    {
+        return false;
+    }
+    let base = instance.path().trim_end_matches('/');
+    base.is_empty() || target.path() == base || target.path().starts_with(&format!("{base}/"))
+}
+
+/// The configured Gitea address is a credential-store value, so the island
+/// asks Rust to open it instead of ever receiving it.
+#[tauri::command]
+fn open_gitea() {
+    if let Some(url) = secrets::get("gitea-url") {
+        open_url(url);
+    }
+}
+
+#[tauri::command]
+fn open_gitea_url(url: String) {
+    let (Ok(target), Some(base)) = (reqwest::Url::parse(&url), secrets::get("gitea-url")) else { return };
+    let Ok(instance) = reqwest::Url::parse(&base) else { return };
+    if is_forge_instance_url(&target, &instance) {
+        open_url(url);
+    }
+}
+
 /// "Open terminal" opens the working folder in the configured editor (or VS Code / $EDITOR),
 /// and falls back to the file manager otherwise.
 #[tauri::command]
@@ -654,6 +695,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
             integrations::github_token_changed(&app);
         }
     }
+    if key == "gitea-token" || key == "gitea-url" {
+        integrations::gitea_credentials_changed(&app);
+    }
     Ok(())
 }
 
@@ -666,6 +710,9 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     }
     if had {
         integrations::github_token_changed(&app);
+    }
+    if key == "gitea-token" || key == "gitea-url" {
+        integrations::gitea_credentials_changed(&app);
     }
     Ok(())
 }
@@ -873,6 +920,9 @@ pub fn run() {
             hub_shown,
             list_monitors,
             open_url,
+            open_gitlab_url,
+            open_gitea,
+            open_gitea_url,
             open_in_vscode,
             open_session,
             open_claude_desktop,
@@ -1072,8 +1122,25 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::diff_file;
+    use super::{diff_file, is_forge_instance_url};
     use super::*;
+
+    #[test]
+    fn forge_links_stay_on_the_configured_instance() {
+        let instance = reqwest::Url::parse("https://git.example.com/team/").unwrap();
+        assert!(is_forge_instance_url(
+            &reqwest::Url::parse("https://git.example.com/team/me/project").unwrap(),
+            &instance,
+        ));
+        assert!(!is_forge_instance_url(
+            &reqwest::Url::parse("https://git.example.com/other/project").unwrap(),
+            &instance,
+        ));
+        assert!(!is_forge_instance_url(
+            &reqwest::Url::parse("https://evil.example/team/me/project").unwrap(),
+            &instance,
+        ));
+    }
 
     #[test]
     fn only_an_existing_file_by_its_full_path_reaches_the_editor() {
