@@ -245,6 +245,64 @@ side (tray, errors) embeds the same two files.
 
 ## Chat and keys
 
+### Chat with your Codex / ChatGPT plan
+
+The island can also chat through your existing **Codex CLI ChatGPT login** on
+Windows and Linux. This is separate from the OpenAI API-key provider and uses
+your plan's Codex allowance, subject to its limits. Coucou does not fall back to
+API billing or read/copy Codex's credentials.
+
+1. Install [Codex CLI](https://learn.chatgpt.com/docs/cli) and run `codex login`
+   in a terminal. Choose **Sign in with ChatGPT** with a plan that has Codex access.
+2. Open **Settings → Notch → Chat → Codex (ChatGPT)** and click **Refresh**.
+   Once connected, click **Use in chat**, or pick **Codex (ChatGPT)** from the
+   model picker above the island's chat box. Models are discovered from Codex.
+3. Chat normally. Text files dropped on the island are supported up to 200 KB;
+   images and PDFs are not supported by this provider yet.
+
+Only an explicitly selected Codex provider starts this chat path. Status/model
+checks do not make an inference request. An API-key login is rejected with
+instructions to sign in with ChatGPT; changing accounts or signing out remains
+the CLI's responsibility so Coucou cannot sign other Codex clients out.
+
+Each turn starts a private stdio app-server in an empty temporary directory,
+with an ephemeral read-only thread. Shell, browser, computer, image, extension,
+hook and agent features are disabled; unexpected tool/approval requests fail
+the turn. This is text chat without web search, not a project coding session.
+The conversation is replayed from Coucou's memory; reset cancels the current
+turn. Processes have a 180-second deadline, bounded input/output, and are
+terminated after each operation. Existing Codex activity hooks and usage pills
+are independent.
+
+Tested against Codex CLI **0.163.0** with a real ChatGPT-authenticated two-turn
+conversation, plus isolated signed-out initialization and thread setup with a
+required MCP server disabled. Chat requires a working ChatGPT login and model
+access. The [official app-server protocol](https://learn.chatgpt.com/docs/app-server)
+documents the authentication and model APIs.
+
+Protocol regression tests (no login, no inference, no speech/Tauri linkage):
+
+```powershell
+cd windows
+node scripts/test-codex-chat.mjs
+```
+
+The same transport tests also run under `cargo test --workspace`. The standalone
+runner exists for machines whose native UI/audio toolchain cannot link the full
+app. An optional real-CLI smoke check uses an isolated signed-out `CODEX_HOME`:
+
+```powershell
+$env:COUCOU_CODEX_SMOKE_BIN = 'C:\absolute\path\to\codex.exe'
+node scripts/test-codex-chat.mjs --smoke
+```
+
+`node scripts/test-codex-chat.mjs --live` is a separate opt-in check: with
+`COUCOU_CODEX_SMOKE_BIN` set, it uses the CLI's existing ChatGPT session for two
+small inference requests and verifies conversation replay. It consumes plan
+allowance; it is ignored by ordinary tests and never runs in CI by default.
+
+### API keys
+
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.

@@ -16,7 +16,7 @@ export function modelId(provider: string, model: string): string {
 export function providerOf(id: string): string | null {
   const at = id.indexOf("/");
   const provider = at > 0 ? id.slice(0, at) : "";
-  return PROVIDERS.some((p) => p.id === provider) && id.length > at + 1 ? provider : null;
+  return PROVIDERS.some((p) => p.id === provider && p.id !== "codex") && id.length > at + 1 ? provider : null;
 }
 
 /** `allowed` with `id` ticked or unticked: no duplicates, order kept, capped. */

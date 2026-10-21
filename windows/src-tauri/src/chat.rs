@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{claude, codex_chat, local_chat, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -72,6 +72,11 @@ pub struct Turn {
 }
 
 impl Chat {
+    pub fn is_current(&self, turn: &Turn) -> bool {
+        let c = self.inner.lock().unwrap();
+        c.epoch == turn.epoch && c.owner.as_deref() == Some(turn.provider.as_str())
+    }
+
     pub fn reset(&self) {
         let mut c = self.inner.lock().unwrap();
         let epoch = c.epoch + 1;
@@ -207,6 +212,9 @@ pub async fn send(
     let context = context.map(checked_context).transpose()?;
     let provider = settings.chat_provider.as_str();
     let model = model_for(settings, provider);
+    if provider == codex_chat::PROVIDER {
+        return codex_chat::send(app, query, context, &model).await;
+    }
     if provider == ANTHROPIC || provider.is_empty() {
         return claude::send(chat, &model, query, context).await;
     }
@@ -246,6 +254,10 @@ pub async fn send_for_phone(
 /// that provider, and only once it has a key (or, for a local server, an
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
+    if provider == codex_chat::PROVIDER {
+        return tauri::async_runtime::spawn_blocking(codex_chat::models).await
+            .map_err(|_| "Codex model lookup stopped.".to_string())?;
+    }
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
         let key = secrets::get(claude::KEY).ok_or_else(no_key)?;

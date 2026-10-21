@@ -146,7 +146,7 @@ function buildPicker(onChange: () => void): Picker {
   async function loadModels() {
     const p = providerDef(State.settings.chatProvider);
     const ticket = ++request;
-    const cached = p.urlField ? undefined : cache.get(p.id);
+    const cached = p.urlField || p.id === "codex" ? undefined : cache.get(p.id);
     if (cached) {
       drawModels(p, cached);
       return;
@@ -161,7 +161,7 @@ function buildPicker(onChange: () => void): Picker {
     try {
       const models = await Bridge.chatModels(p.id);
       if (ticket !== request) return;
-      if (!p.urlField) cache.set(p.id, models);
+      if (!p.urlField && p.id !== "codex") cache.set(p.id, models);
       const keep = pickModel(p, models.map((m) => m.id), activeModel(State.settings));
       if (keep && keep !== activeModel(State.settings)) {
         State.settings = withModel(State.settings, p.id, keep);
@@ -170,7 +170,7 @@ function buildPicker(onChange: () => void): Picker {
       }
       drawModels(p, models);
     } catch (err) {
-      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key));
+      if (ticket === request) status(String(err).replace(/^Error:\s*/, ""), Boolean(p.key) || p.id === "codex");
     }
   }
 
@@ -235,6 +235,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   (el.querySelector(".card") as HTMLElement).style.setProperty("--wash", "rgba(99,102,241,0.5)");
 
   let sending = false;
+  let sendingHistory: ChatMessage[] | null = null;
   let renderedCount = -1;
   // A local model answers token by token: where its text so far is shown.
   let live: HTMLElement | null = null;
@@ -254,7 +255,7 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
   });
 
   void onEvent<string>("chat-delta", (text) => {
-    if (!sending || !text) return; // nothing visible yet: the dots stay
+    if (!sending || sendingHistory !== State.chatHistory || !text) return;
     if (!live) {
       live = h("div", { class: "reply" });
       log.querySelector(".typing")?.parentElement?.remove();
@@ -270,6 +271,8 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     if (picker.isOpen) picker.close();
     input.value = "";
     sending = true;
+    const history = State.chatHistory;
+    sendingHistory = history;
     drawModelButton();
     Sound.play("send");
 
@@ -284,16 +287,19 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
 
     try {
       const reply = await Bridge.chatSend(query, context);
+      if (State.chatHistory !== history) return;
       State.chatHistory.push({ id: nextId++, role: "assistant", content: reply.text });
       State.stateOverride = null;
       Sound.play("finish");
     } catch (err) {
+      if (State.chatHistory !== history) return;
       State.stateOverride = null;
       State.noteMessage = String(err).replace(/^Error:\s*/, "");
       State.view = "note";
       Sound.play("error");
     } finally {
       sending = false;
+      sendingHistory = null;
       live = null;
       renderedCount = -1; // the finished answer replaces the streamed one
       drawModelButton();

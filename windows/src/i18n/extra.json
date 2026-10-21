@@ -4519,19 +4519,6 @@
    "de": "Die in der Insel angezeigten Kapseln, ihre Reihenfolge und Farben.",
    "tr": "Adada gösterilen araçlar, sıraları ve renkleri."
   },
-  "The AI of the island's chat, with your own keys.": {
-   "zh-Hans": "岛内聊天使用的 AI，用你自己的密钥。",
-   "hi": "आइलैंड की चैट का AI, आपकी अपनी कुंजियों के साथ।",
-   "es": "La IA del chat de la isla, con tus propias claves.",
-   "ar": "ذكاء دردشة الجزيرة الاصطناعي، بمفاتيحك الخاصة.",
-   "fr": "L'IA du chat de l'île, avec tes propres clés.",
-   "bn": "আইল্যান্ডের চ্যাটের AI, আপনার নিজের কী দিয়ে।",
-   "pt-BR": "A IA do chat da ilha, com suas próprias chaves.",
-   "ru": "ИИ чата острова — с вашими собственными ключами.",
-   "id": "AI untuk obrolan pulau, dengan kuncimu sendiri.",
-   "de": "Die KI im Chat der Insel, mit deinen eigenen Schlüsseln.",
-   "tr": "Adanın sohbetindeki yapay zekâ, kendi anahtarlarınla."
-  },
   "Your agents and their approvals on your Android phone, over your Wi-Fi.": {
    "zh-Hans": "通过你的 Wi-Fi，在 Android 手机上查看代理并批准请求。",
    "hi": "आपके Wi-Fi पर, आपके Android फ़ोन पर आपके एजेंट और उनकी मंज़ूरियाँ।",
@@ -5129,6 +5116,110 @@
    "id": "Perbarui Coucou ke {version}…",
    "de": "Coucou auf {version} aktualisieren…",
    "tr": "Coucou'yu {version} sürümüne güncelle…"
+  },
+  "Use your ChatGPT plan through Codex CLI. No API key; your plan's limits apply.": {
+   "zh-Hans": "通过 Codex CLI 使用 ChatGPT 套餐。无需 API 密钥；适用套餐用量限制。",
+   "hi": "Codex CLI से अपना ChatGPT प्लान इस्तेमाल करें। API कुंजी नहीं चाहिए; प्लान की सीमाएँ लागू हैं।",
+   "es": "Usa tu plan de ChatGPT mediante Codex CLI. Sin API key; se aplican los límites de tu plan.",
+   "ar": "استخدم خطة ChatGPT عبر Codex CLI. لا يلزم مفتاح API؛ تنطبق حدود خطتك.",
+   "fr": "Utilise ton forfait ChatGPT via Codex CLI. Sans clé API ; les limites de ton forfait s’appliquent.",
+   "bn": "Codex CLI দিয়ে আপনার ChatGPT প্ল্যান ব্যবহার করুন। API কী লাগে না; প্ল্যানের সীমা প্রযোজ্য।",
+   "pt-BR": "Use seu plano do ChatGPT pelo Codex CLI. Sem chave de API; os limites do plano se aplicam.",
+   "ru": "Используйте план ChatGPT через Codex CLI. Ключ API не нужен; действуют лимиты плана.",
+   "id": "Gunakan paket ChatGPT melalui Codex CLI. Tanpa kunci API; batas paket berlaku.",
+   "de": "Nutze deinen ChatGPT-Tarif über Codex CLI. Kein API-Schlüssel nötig; die Tariflimits gelten.",
+   "tr": "ChatGPT planını Codex CLI üzerinden kullan. API anahtarı gerekmez; plan sınırları geçerlidir."
+  },
+  "Install Codex CLI, then sign in with ChatGPT using codex login.": {
+   "zh-Hans": "安装 Codex CLI，然后运行 codex login 使用 ChatGPT 登录。",
+   "hi": "Codex CLI इंस्टॉल करें, फिर codex login से ChatGPT में साइन इन करें।",
+   "es": "Instala Codex CLI e inicia sesión con ChatGPT ejecutando codex login.",
+   "ar": "ثبّت Codex CLI، ثم سجّل الدخول باستخدام ChatGPT عبر codex login.",
+   "fr": "Installe Codex CLI, puis connecte-toi avec ChatGPT via codex login.",
+   "bn": "Codex CLI ইনস্টল করুন, তারপর codex login দিয়ে ChatGPT-তে সাইন ইন করুন।",
+   "pt-BR": "Instale o Codex CLI e entre com o ChatGPT usando codex login.",
+   "ru": "Установите Codex CLI и войдите через ChatGPT командой codex login.",
+   "id": "Instal Codex CLI, lalu masuk dengan ChatGPT menggunakan codex login.",
+   "de": "Installiere Codex CLI und melde dich mit codex login über ChatGPT an.",
+   "tr": "Codex CLI yükle, ardından codex login ile ChatGPT oturumu aç."
+  },
+  "Sign in to Codex with ChatGPT first: run codex login in a terminal, then refresh.": {
+   "zh-Hans": "请先用 ChatGPT 登录 Codex：在终端运行 codex login，然后刷新。",
+   "hi": "पहले ChatGPT से Codex में साइन इन करें: टर्मिनल में codex login चलाएँ, फिर रीफ़्रेश करें।",
+   "es": "Primero inicia sesión en Codex con ChatGPT: ejecuta codex login en una terminal y actualiza.",
+   "ar": "سجّل الدخول إلى Codex باستخدام ChatGPT أولاً: شغّل codex login في الطرفية ثم حدّث.",
+   "fr": "Connecte-toi d’abord à Codex avec ChatGPT : lance codex login dans un terminal, puis actualise.",
+   "bn": "আগে ChatGPT দিয়ে Codex-এ সাইন ইন করুন: টার্মিনালে codex login চালিয়ে রিফ্রেশ করুন।",
+   "pt-BR": "Primeiro entre no Codex com o ChatGPT: execute codex login no terminal e atualize.",
+   "ru": "Сначала войдите в Codex через ChatGPT: выполните codex login в терминале и обновите.",
+   "id": "Masuk ke Codex dengan ChatGPT dahulu: jalankan codex login di terminal, lalu segarkan.",
+   "de": "Melde dich zuerst mit ChatGPT bei Codex an: Führe codex login im Terminal aus und aktualisiere dann.",
+   "tr": "Önce ChatGPT ile Codex oturumu aç: terminalde codex login çalıştır, ardından yenile."
+  },
+  "Codex chat accepts text files up to 200 KB.": {
+   "zh-Hans": "Codex 聊天支持不超过 200 KB 的文本文件。",
+   "hi": "Codex चैट में 200 KB तक की टेक्स्ट फ़ाइलें भेजी जा सकती हैं।",
+   "es": "El chat de Codex admite archivos de texto de hasta 200 KB.",
+   "ar": "تقبل محادثة Codex ملفات نصية حتى 200 KB.",
+   "fr": "Le chat Codex accepte les fichiers texte jusqu’à 200 Ko.",
+   "bn": "Codex চ্যাটে সর্বোচ্চ 200 KB টেক্সট ফাইল দেওয়া যায়।",
+   "pt-BR": "O chat do Codex aceita arquivos de texto de até 200 KB.",
+   "ru": "Чат Codex принимает текстовые файлы до 200 КБ.",
+   "id": "Chat Codex menerima berkas teks hingga 200 KB.",
+   "de": "Der Codex-Chat akzeptiert Textdateien bis 200 KB.",
+   "tr": "Codex sohbeti 200 KB boyutuna kadar metin dosyalarını kabul eder."
+  },
+  "Codex chat currently supports text files only.": {
+   "zh-Hans": "Codex 聊天目前仅支持文本文件。",
+   "hi": "Codex चैट अभी केवल टेक्स्ट फ़ाइलें स्वीकार करता है।",
+   "es": "El chat de Codex actualmente solo admite archivos de texto.",
+   "ar": "تدعم محادثة Codex حالياً الملفات النصية فقط.",
+   "fr": "Le chat Codex ne prend en charge que les fichiers texte pour le moment.",
+   "bn": "Codex চ্যাটে এখন শুধু টেক্সট ফাইল সমর্থিত।",
+   "pt-BR": "O chat do Codex atualmente aceita apenas arquivos de texto.",
+   "ru": "Чат Codex пока поддерживает только текстовые файлы.",
+   "id": "Chat Codex saat ini hanya mendukung berkas teks.",
+   "de": "Der Codex-Chat unterstützt derzeit nur Textdateien.",
+   "tr": "Codex sohbeti şu anda yalnızca metin dosyalarını destekler."
+  },
+  "This conversation is too long. Start a new chat.": {
+   "zh-Hans": "此对话过长。请开始新的聊天。",
+   "hi": "यह बातचीत बहुत लंबी है। नई चैट शुरू करें।",
+   "es": "Esta conversación es demasiado larga. Inicia un chat nuevo.",
+   "ar": "هذه المحادثة طويلة جداً. ابدأ محادثة جديدة.",
+   "fr": "Cette conversation est trop longue. Commence un nouveau chat.",
+   "bn": "এই কথোপকথন অনেক বড়। নতুন চ্যাট শুরু করুন।",
+   "pt-BR": "Esta conversa é muito longa. Inicie um novo chat.",
+   "ru": "Разговор слишком длинный. Начните новый чат.",
+   "id": "Percakapan ini terlalu panjang. Mulai chat baru.",
+   "de": "Diese Unterhaltung ist zu lang. Starte einen neuen Chat.",
+   "tr": "Bu konuşma çok uzun. Yeni bir sohbet başlat."
+  },
+  "Codex took too long to answer. Try again.": {
+   "zh-Hans": "Codex 回复超时。请重试。",
+   "hi": "Codex ने जवाब देने में बहुत समय लिया। फिर कोशिश करें।",
+   "es": "Codex tardó demasiado en responder. Inténtalo de nuevo.",
+   "ar": "استغرق Codex وقتاً طويلاً للرد. حاول مجدداً.",
+   "fr": "Codex a mis trop de temps à répondre. Réessaie.",
+   "bn": "Codex উত্তর দিতে অনেক সময় নিয়েছে। আবার চেষ্টা করুন।",
+   "pt-BR": "O Codex demorou muito para responder. Tente novamente.",
+   "ru": "Codex слишком долго отвечает. Попробуйте ещё раз.",
+   "id": "Codex terlalu lama menjawab. Coba lagi.",
+   "de": "Codex hat zu lange für die Antwort gebraucht. Versuche es erneut.",
+   "tr": "Codex yanıt vermekte çok gecikti. Tekrar dene."
+  },
+  "Choose who answers the island's chat.": {
+   "zh-Hans": "选择由谁回答浮岛聊天。",
+   "hi": "चुनें कि आइलैंड की चैट का जवाब कौन देगा।",
+   "es": "Elige quién responde al chat de la isla.",
+   "ar": "اختر من يجيب في محادثة الجزيرة.",
+   "fr": "Choisis qui répond dans le chat de l’île.",
+   "bn": "আইল্যান্ডের চ্যাটে কে উত্তর দেবে তা বেছে নিন।",
+   "pt-BR": "Escolha quem responde ao chat da ilha.",
+   "ru": "Выберите, кто отвечает в чате островка.",
+   "id": "Pilih siapa yang menjawab chat pulau.",
+   "de": "Wähle, wer im Chat der Insel antwortet.",
+   "tr": "Adanın sohbetini kimin yanıtlayacağını seç."
   }
  }
 }

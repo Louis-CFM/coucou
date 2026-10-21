@@ -4,6 +4,7 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod codex_chat;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -486,6 +487,13 @@ async fn codex_plan_usage() -> Option<serde_json::Value> {
     tauri::async_runtime::spawn_blocking(codex_plan::read).await.ok().flatten()
 }
 
+/// Only queried from Settings → Chat; no inference or credential access.
+#[tauri::command]
+async fn codex_chat_status() -> Result<codex_chat::Status, String> {
+    tauri::async_runtime::spawn_blocking(codex_chat::status).await
+        .map_err(|_| "Codex status lookup stopped.".to_string())?
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     recap::record_decision(&app, &request_id, &decision);
@@ -833,6 +841,7 @@ pub fn run() {
             status_line_preview,
             status_line_apply,
             codex_plan_usage,
+            codex_chat_status,
             approval_decision,
             approval_answer,
             approval_ack,

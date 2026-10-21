@@ -54,7 +54,7 @@ test("a provider without a key is never asked for its models", async () => {
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
+  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter", "Codex (ChatGPT)"]);
   assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
@@ -121,4 +121,52 @@ test("a local answer streams into one reply, then the finished text replaces it"
   assert.equal(view.el.find(".reply")[0].textContent, "Hello there!");
   assert.deepEqual(State.chatHistory.map((m) => m.role), ["user", "assistant"]);
   assert.ok(!$(".model-btn").disabled);
+});
+
+test("Codex discovers models without an API key and refreshes after a login change", async () => {
+  State.settings.chatProvider = "codex";
+  answers.secret_present = false;
+  answers.chat_models = [{ id: "plan-model", label: "Plan model" }];
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(sent("secret_present"), []);
+  assert.deepEqual(sent("chat_models"), [{ provider: "codex" }]);
+  assert.equal(State.settings.chatModels.codex, "plan-model");
+  $(".model-btn").fire("click");
+  $(".model-btn").fire("click");
+  await flush();
+  assert.equal(sent("chat_models").length, 2);
+});
+
+test("a signed-out Codex account surfaces its error and opens Settings without switching provider", async () => {
+  State.settings.chatProvider = "codex";
+  answers.chat_models = () => { throw new Error("Sign in with ChatGPT first"); };
+  $(".model-btn").fire("click");
+  await flush();
+  assert.match($(".picker-status").textContent, /Sign in with ChatGPT first/);
+  $(".picker-link").fire("click");
+  assert.equal(sent("open_settings_window").length, 1);
+  assert.equal(State.settings.chatProvider, "codex");
+});
+
+test("resetting a Codex chat discards late deltas, answers and cancellation errors", async () => {
+  for (const fails of [false, true]) {
+    let resolve, reject;
+    answers.chat_send = () => new Promise((yes, no) => { resolve = yes; reject = no; });
+    State.settings.chatProvider = "codex";
+    $(".chat-input").value = "hello";
+    $(".send-btn").fire("click");
+    await flush();
+    State.chatHistory = [];
+    State.stateOverride = null;
+    State.view = "prompt";
+    emit("chat-delta", "stale reply");
+    if (fails) reject(new Error("Chat was reset."));
+    else resolve({ text: "late reply" });
+    await flush();
+    view.sync();
+    assert.deepEqual(State.chatHistory, []);
+    assert.equal(State.view, "prompt");
+    assert.equal(view.el.find(".reply").length, 0);
+  }
 });
