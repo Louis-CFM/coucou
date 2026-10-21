@@ -80,7 +80,7 @@ final class MailController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
     private let jobs = FeatureTasks()
-    private var fetching = false
+    private var refreshOwnership = RefreshOwnership()
     private var refreshTask: Task<Void, Never>?
     private var lastFetch: Date = .distantPast
     private let queue = DispatchQueue(label: "fr.louisraille.coucou.mail")
@@ -89,7 +89,14 @@ final class MailController: ObservableObject {
         !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {}
+    private let mailAvailable: () -> Bool
+    private let executeScript: ((String) async -> ScriptResult)?
+
+    init(mailAvailable: @escaping () -> Bool = { MailController.mailRunning() },
+         executeScript: ((String) async -> ScriptResult)? = nil) {
+        self.mailAvailable = mailAvailable
+        self.executeScript = executeScript
+    }
 
     private func observeIfNeeded() {
         guard notifTokens.isEmpty else { return }
@@ -131,6 +138,12 @@ final class MailController: ObservableObject {
     /// Called once at launch so the controller starts observing.
     func start() { jobs.start(); observeIfNeeded(); updatePolling() }
 
+    private func cancelRefresh() {
+        refreshOwnership.cancel()
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
     func stop() {
         jobs.stop()
         cancellables.removeAll()
@@ -140,8 +153,7 @@ final class MailController: ObservableObject {
         }
         notifTokens.removeAll()
         timer?.invalidate(); timer = nil
-        refreshTask?.cancel(); refreshTask = nil
-        fetching = false
+        cancelRefresh()
     }
 
     // MARK: - Polling
@@ -162,6 +174,7 @@ final class MailController: ObservableObject {
             }
             refresh()
         } else {
+            cancelRefresh()
             timer?.invalidate()
             timer = nil
             if !isPillActive {
@@ -181,14 +194,14 @@ final class MailController: ObservableObject {
 
     /// Reads the unread count and the latest messages of every inbox.
     func refresh() {
-        guard isPillActive, Self.mailRunning(), !fetching else { return }
+        guard isPillActive, mailAvailable(), !refreshOwnership.busy else { return }
         isMailRunning = true
-        fetching = true
+        guard let request = refreshOwnership.begin() else { return }
         lastFetch = Date()
         refreshTask = Task {
+            defer { refreshOwnership.finish(request) }
             let result = await runAppleScript(Self.listScript(perInbox: Self.keep))
-            guard !Task.isCancelled, isPillActive else { return }
-            fetching = false
+            guard !Task.isCancelled, refreshOwnership.owns(request), isPillActive else { return }
             guard case .success(let values) = result, let text = values.first else { return }
             let parsed = Self.parseList(text)
             unreadCount = parsed.unread
@@ -397,7 +410,8 @@ final class MailController: ObservableObject {
 
     @discardableResult
     private func runAppleScript(_ source: String) async -> ScriptResult {
-        await withCheckedContinuation { cont in
+        if let executeScript { return await executeScript(source) }
+        return await withCheckedContinuation { cont in
             queue.async {
                 guard !AgentsOnlyPreference.shared.enabled else { cont.resume(returning: .error); return }
                 guard let script = NSAppleScript(source: source) else {

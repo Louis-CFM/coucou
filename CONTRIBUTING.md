@@ -28,6 +28,8 @@ Check agents-only visibility, persisted switching and optional feature lifecycle
 
 ```bash
 bash scripts/test-agents-only-mode.sh
+bash scripts/test-agents-only-integration.sh github
+bash scripts/test-agents-only-integration.sh appstore
 ```
 
 Check macOS translations:

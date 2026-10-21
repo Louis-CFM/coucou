@@ -24,7 +24,8 @@ final class MusicController: ObservableObject {
         !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains("integration_music")
     }
 
-    private init() {}
+    private let executeScript: ((String) async -> ScriptResult)?
+    init(executeScript: ((String) async -> ScriptResult)? = nil) { self.executeScript = executeScript }
 
     func start() {
         jobs.start()
@@ -243,8 +244,13 @@ final class MusicController: ObservableObject {
     }
 
     func setVolume(_ pct: Int) {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         let clamped = max(0, min(100, pct))
-        Task { await runAppleScript(#"tell application id "com.apple.Music" to set sound volume to \#(clamped)"#) }
+        let operation = AppState.shared.optionalWork.begin()
+        Task {
+            defer { AppState.shared.optionalWork.end(operation) }
+            await runAppleScript(#"tell application id "com.apple.Music" to set sound volume to \#(clamped)"#)
+        }
     }
 
     func nextTrack() {
@@ -333,7 +339,8 @@ final class MusicController: ObservableObject {
 
     @discardableResult
     private func runAppleScript(_ source: String) async -> ScriptResult {
-        await withCheckedContinuation { cont in
+        if let executeScript { return await executeScript(source) }
+        return await withCheckedContinuation { cont in
             queue.async {
                 guard !AgentsOnlyPreference.shared.enabled else { cont.resume(returning: .error); return }
                 let script = NSAppleScript(source: source)!

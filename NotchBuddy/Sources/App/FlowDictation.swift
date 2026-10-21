@@ -47,6 +47,31 @@ enum FlowKey: String, CaseIterable, Identifiable {
     }
 }
 
+/// System input boundary; injected by native lifecycle tests without registering
+/// real global keyboard monitors or requesting Accessibility permission.
+@MainActor
+struct FlowInputAccess {
+    typealias Handler = @MainActor (NSEvent.EventType, UInt16, NSEvent.ModifierFlags, String?) -> Void
+    var trusted: () -> Bool
+    var wait: () async throws -> Void
+    var install: (@escaping Handler) -> [Any]
+    var remove: (Any) -> Void
+
+    static var system: Self {
+        Self(trusted: AXIsProcessTrusted, wait: { try await Task.sleep(for: .seconds(2)) }, install: { handler in
+            var tokens: [Any] = []
+            if let global = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: { event in
+                MainActor.assumeIsolated { handler(event.type, event.keyCode, event.modifierFlags, event.type == .keyDown ? event.charactersIgnoringModifiers : nil) }
+            }) { tokens.append(global) }
+            if let local = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: { event in
+                MainActor.assumeIsolated { handler(event.type, event.keyCode, event.modifierFlags, event.type == .keyDown ? event.charactersIgnoringModifiers : nil) }
+                return event
+            }) { tokens.append(local) }
+            return tokens
+        }, remove: NSEvent.removeMonitor)
+    }
+}
+
 /// Flow dictation, like Wispr Flow (GitHub build): hold a key anywhere on the Mac, speak, let go,
 /// and the words are pasted where you type. A small pill at the bottom of the screen shows that
 /// Coucou listens, its dots moving with the graves and the aigus of your voice.
@@ -101,11 +126,15 @@ final class FlowDictation: ObservableObject {
     private var promptedThisRun = false
     let pill: FlowPillController
 
-    private init() {
+    private let inputAccess: FlowInputAccess
+
+    init(inputAccess: FlowInputAccess = .system) {
+        self.inputAccess = inputAccess
         let bands = FlowAudioBands()
         self.bands = bands
         pill = FlowPillController(bands: bands)
         Self.existing = self
+        trusted = inputAccess.trusted()
         // The pill's buttons, under the pointer.
         pill.setEdge(pillEdge)
         pill.model.keyLabel = key.label
@@ -147,7 +176,7 @@ final class FlowDictation: ObservableObject {
 
     func refresh() {
         removeMonitors()
-        trusted = AXIsProcessTrusted()
+        trusted = inputAccess.trusted()
         pill.setEnabled(isEnabled && !AgentsOnlyPreference.shared.enabled)
         guard isEnabled && !AgentsOnlyPreference.shared.enabled else {
             cancelAll()
@@ -166,7 +195,7 @@ final class FlowDictation: ObservableObject {
     /// Reads the permission again (Settings shows it; a new build of Coucou loses it, see flow.accessibility).
     /// Once it is there, the monitors are reinstalled so the global one starts getting Esc and the other keys.
     func recheckTrust() {
-        let now = AXIsProcessTrusted()
+        let now = inputAccess.trusted()
         guard now != trusted else { return }
         trusted = now
         guard isEnabled && !AgentsOnlyPreference.shared.enabled else { return }
@@ -184,22 +213,15 @@ final class FlowDictation: ObservableObject {
     // MARK: - The key
 
     private func installMonitors() {
-        // A global monitor sees the key in other apps, a local one while Coucou itself is in front.
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: { [weak self] event in
-            let info = (event.type, event.keyCode, event.modifierFlags,
-                        event.type == .keyDown ? event.charactersIgnoringModifiers : nil)
-            MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2, characters: info.3) }
-        }) { monitors.append(global) }
-        if let local = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: { [weak self] event in
-            let info = (event.type, event.keyCode, event.modifierFlags,
-                        event.type == .keyDown ? event.charactersIgnoringModifiers : nil)
-            MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2, characters: info.3) }
-            return event
-        }) { monitors.append(local) }
+        guard isEnabled, !AgentsOnlyPreference.shared.enabled, !Task.isCancelled else { return }
+        guard monitors.isEmpty else { return }
+        monitors = inputAccess.install { [weak self] type, keyCode, flags, characters in
+            self?.handle(type: type, keyCode: keyCode, flags: flags, characters: characters)
+        }
     }
 
     private func removeMonitors() {
-        monitors.forEach { NSEvent.removeMonitor($0) }
+        monitors.forEach { inputAccess.remove($0) }
         monitors.removeAll()
     }
 
@@ -209,9 +231,12 @@ final class FlowDictation: ObservableObject {
         trustTask?.cancel()
         trustTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
-                guard let self, self.isEnabled else { return }
-                if AXIsProcessTrusted() {
+                guard let access = self?.inputAccess else { return }
+                do { try await access.wait() }
+                catch { return }
+                guard !Task.isCancelled, let self, self.isEnabled,
+                      !AgentsOnlyPreference.shared.enabled else { return }
+                if self.inputAccess.trusted() {
                     self.trusted = true
                     self.removeMonitors()
                     self.installMonitors()
@@ -229,6 +254,7 @@ final class FlowDictation: ObservableObject {
 
     /// Pastes the last dictation again (⌃⌘V, or the button of the history).
     func pasteAgain(_ text: String? = nil) {
+        guard !AgentsOnlyPreference.shared.enabled else { return }
         guard let text = text ?? FlowStore.shared.lastText, !text.isEmpty else { return }
         switch FlowPaste.insert(text) {
         case .pasted:   pill.flash(.pastedAgain)
@@ -238,6 +264,7 @@ final class FlowDictation: ObservableObject {
     }
 
     private func handle(type: NSEvent.EventType, keyCode: UInt16, flags: NSEvent.ModifierFlags, characters: String?) {
+        guard isEnabled, !AgentsOnlyPreference.shared.enabled else { return }
         let now = ProcessInfo.processInfo.systemUptime
         switch type {
         case .keyDown:
@@ -316,6 +343,7 @@ final class FlowDictation: ObservableObject {
     }
 
     private func begin() {
+        guard isEnabled, !AgentsOnlyPreference.shared.enabled, !Task.isCancelled else { return }
         // After this key event is handled: a permission granted meanwhile reinstalls the monitors.
         Task { @MainActor [weak self] in self?.recheckTrust() }
         let listen = Listen(useParakeet: FlowStore.shared.engine == .parakeet && Parakeet.shared.isReady)

@@ -70,16 +70,14 @@ final class NoteTaker: ObservableObject {
 
     static var folder: URL { HookServer.supportDir.appendingPathComponent("Notes", isDirectory: true) }
 
-    private init() {
+    init(loadStoredNotes: Bool = true) {
         if let saved = UserDefaults.standard.string(forKey: Self.engineKey), let engine = NoteSummaryEngine(rawValue: saved) {
             summaryEngine = engine
         } else {
-            summaryEngine = FlowCleanup.hasKey ? .claude : (Self.appleModelAvailable ? .apple : .off)
+            summaryEngine = loadStoredNotes && FlowCleanup.hasKey ? .claude : (loadStoredNotes && Self.appleModelAvailable ? .apple : .off)
         }
         Self.existing = self
-        load()
-        loadVocabulary()
-        startObserving()
+        if loadStoredNotes { load(); loadVocabulary(); startObserving() }
     }
 
     func startObserving() {
@@ -95,7 +93,8 @@ final class NoteTaker: ObservableObject {
     }
 
     var isRecording: Bool { recording != nil }
-    var busy: Bool { starting || recording != nil || !working.isEmpty }
+    private var finalizing: Set<UUID> = []
+    var busy: Bool { starting || recording != nil || !working.isEmpty || !finalizing.isEmpty }
 
     func stopObserving() {
         if let token = appObserver { NSWorkspace.shared.notificationCenter.removeObserver(token) }
@@ -197,6 +196,8 @@ final class NoteTaker: ObservableObject {
 
     func stop() {
         guard var note = recording else { return }
+        // Own finalization before clearing recording: close() can suspend before
+        // process() has a chance to claim its transcription work.
         liveTask?.cancel()
         liveTask = nil
         mic?.stop()
@@ -210,13 +211,23 @@ final class NoteTaker: ObservableObject {
         systemLevel = 0
         note.end = Date()
         note.status = .processing
+        finalizeRecording(note.id, close: {
+            await micChannel?.close()
+            await systemChannel?.close()
+        }, process: { await self.process(note.id) })
         recording = nil
         replace(note)
         FlowDictation.shared.pill.setNote(nil)
-        Task { @MainActor in
-            await micChannel?.close()
-            await systemChannel?.close()
-            await self.process(note.id)
+    }
+
+    @discardableResult
+    func finalizeRecording(_ id: UUID, close: @escaping () async -> Void,
+                           process: @escaping () async -> Void) -> Task<Void, Never> {
+        finalizing.insert(id)
+        return Task { @MainActor in
+            defer { self.finalizing.remove(id) }
+            await close()
+            await process()
         }
     }
 

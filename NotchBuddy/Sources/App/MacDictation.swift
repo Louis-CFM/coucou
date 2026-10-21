@@ -22,6 +22,8 @@ final class MacDictation: @unchecked Sendable {
     private static let maxCandidates = 3
 
     var isRecording = false
+    private(set) var isStarting = false
+    @ObservationIgnored private var generation = 0
     var transcript = ""
     /// What was typed before dictating, kept in front of the words.
     var prefix = ""
@@ -31,11 +33,16 @@ final class MacDictation: @unchecked Sendable {
     }
 
     @ObservationIgnored private let engine = AVAudioEngine()
+    @ObservationIgnored private let authorization: () async -> Bool
+
+    init(authorization: @escaping () async -> Bool = { await MacDictation.authorized() }) {
+        self.authorization = authorization
+    }
     @ObservationIgnored private var candidates: [Candidate] = []
     /// The candidate whose words are shown while speaking.
     @ObservationIgnored private var lead = 0
     @ObservationIgnored private var finishing: CheckedContinuation<Void, Never>?
-    @ObservationIgnored private var isFinishing = false
+    private(set) var isFinishing = false
     @ObservationIgnored private var tapInstalled = false
     /// Flow dictation's pill: the microphone's levels by frequency, fed from the same tap.
     @ObservationIgnored var bands: FlowAudioBands?
@@ -67,7 +74,14 @@ final class MacDictation: @unchecked Sendable {
     // MARK: Start / finish
 
     @MainActor func start(from text: String) async {
-        guard !isRecording, await Self.authorized() else { return }
+        guard !isRecording, !isStarting, !AgentsOnlyPreference.shared.enabled else { return }
+        generation += 1
+        let token = generation
+        isStarting = true
+        defer { if generation == token { isStarting = false } }
+        let authorized = await authorization()
+        guard authorized, token == generation, !Task.isCancelled,
+              !AgentsOnlyPreference.shared.enabled else { return }
         let built = Self.makeCandidates(language == Self.automatic ? Self.automaticLocales() : [Locale(identifier: language)])
         guard !built.isEmpty, Self.startEngine(engine, feeding: built.map(\.request), bands: bands) else { return }
         tapInstalled = true
@@ -115,6 +129,8 @@ final class MacDictation: @unchecked Sendable {
 
     /// Cancels without waiting (the view went away).
     @MainActor func stop() {
+        generation += 1
+        isStarting = false
         guard isRecording || !candidates.isEmpty else { return }
         tearDown()
     }

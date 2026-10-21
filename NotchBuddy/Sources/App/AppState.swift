@@ -12,6 +12,9 @@ final class AppState: ObservableObject {
     private var connectedAgentIds: Set<String> = []
     private var observedAgentIds: Set<String> = []
     private var savedOptionalTasks: [AgentTask] = []
+    /// Request ownership outlives the typing animation (which ends at first token).
+    let optionalWork = OptionalWork()
+    @Published var promptDraft = ""
     private var agentDisplayPolicy: AgentDisplayPolicy {
         AgentDisplayPolicy(agentsOnly: agentsOnly, connectedIDs: connectedAgentIds)
     }
@@ -19,7 +22,8 @@ final class AppState: ObservableObject {
     @discardableResult
     func setAgentsOnly(_ enabled: Bool) -> Bool {
         guard enabled != agentsOnly else { return true }
-        if enabled && (FileDropHandler.busy || (DesktopMochiController.existing?.modeTransitionBusy ?? false)) {
+        if enabled && (optionalWork.busy || !loadingProviderModels.isEmpty || FileDropHandler.busy
+                       || (DesktopMochiController.existing?.modeTransitionBusy ?? false)) {
             agentsOnlyError = String(localized: "focus.finish-current-work")
             return false
         }
@@ -27,7 +31,7 @@ final class AppState: ObservableObject {
         // Do not discard recordings or interrupt their transcript/summary writes.
         if enabled && ((NoteTaker.existing?.busy ?? false) || (Parakeet.existing?.busy ?? false)
                        || (FlowDictation.existing?.busy ?? false) || ScreenCapture.shared.busy
-                       || stateOverride != nil || !loadingProviderModels.isEmpty
+                       || (VoiceEngine.existing?.modeTransitionBusy ?? false)
                        || voiceSubState == .thinking || MacUpdater.shared.busy) {
             agentsOnlyError = String(localized: "focus.finish-current-work")
             return false
@@ -672,6 +676,7 @@ final class AppState: ObservableObject {
                 tasks[idx].steps      = []
                 tasks[idx].stepIndex  = 0
                 tasks[idx].pillBadge  = nil
+                tasks[idx].isPlaceholder = true
                 if let n = catalogName { tasks[idx].name = n }
             }
             return
@@ -755,11 +760,11 @@ final class AppState: ObservableObject {
             let loaded = tasks.contains(where: { $0.id == def.id })
             if shouldLoad && !loaded {
                 let task = AgentTask(id: def.id, name: def.name, color: def.color,
-                                     state: .idle, steps: [], source: def.source, isIntegration: true)
+                                     state: .idle, steps: [], source: def.source, isIntegration: true, isPlaceholder: true)
                 tasks.append(task)
             }
             if !shouldLoad && loaded {
-                tasks.removeAll { $0.id == def.id }
+                tasks.removeAll { $0.id == def.id && $0.isPlaceholder }
             }
         }
         sortTasksByCatalog()
@@ -794,7 +799,7 @@ final class AppState: ObservableObject {
             if let def = PillCatalog.available.first(where: { $0.id == id }),
                !tasks.contains(where: { $0.id == id }) {
                 let task = AgentTask(id: def.id, name: def.name, color: def.color,
-                                     state: .idle, steps: [], source: def.source, isIntegration: true)
+                                     state: .idle, steps: [], source: def.source, isIntegration: true, isPlaceholder: true)
                 tasks.append(task)
                 sortTasksByCatalog()
             }

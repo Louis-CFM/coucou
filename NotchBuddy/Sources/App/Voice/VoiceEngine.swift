@@ -3,6 +3,24 @@ import AppKit
 import AVFoundation
 import Speech
 
+/// Media boundary shared with native tests; setters retain request ownership
+/// until their actual Apple Event finishes, including volume restoration.
+@MainActor
+struct VoiceMusicAccess {
+    var spotifyPlaying: () -> Bool
+    var spotifyVolume: () -> Int
+    var setSpotifyVolume: (Int) -> Void
+    var musicPlaying: () -> Bool
+    var musicVolume: () async -> Int?
+    var setMusicVolume: (Int) -> Void
+
+    static var system: Self {
+        Self(spotifyPlaying: { SpotifyController.shared.isPlaying }, spotifyVolume: { SpotifyController.shared.volume },
+             setSpotifyVolume: { SpotifyController.shared.setVolume($0) }, musicPlaying: { AppState.shared.musicPlaying },
+             musicVolume: { await MusicController.shared.getVolume() }, setMusicVolume: { MusicController.shared.setVolume($0) })
+    }
+}
+
 // MARK: - VoiceEngine
 //
 // Coordinator for the «OK Coucou» voice feature.
@@ -21,6 +39,8 @@ import Speech
 @MainActor
 final class VoiceEngine: ObservableObject {
     static let shared = VoiceEngine()
+    private(set) static var existing: VoiceEngine?
+    var modeTransitionBusy: Bool { isListeningForCommand || isDuckingMusic }
 
     // MARK: - Published state
 
@@ -107,7 +127,11 @@ final class VoiceEngine: ObservableObject {
 
     // MARK: - Init
 
-    private init() {
+    private let musicAccess: VoiceMusicAccess
+
+    init(musicAccess: VoiceMusicAccess = .system) {
+        self.musicAccess = musicAccess
+        Self.existing = self
         lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         let buildHash = Bundle.main.object(forInfoDictionaryKey: "CoucouGitHash") as? String ?? "unknown"
         appendAppLog("nb.log", "[Voice] build \(buildHash)")
@@ -534,21 +558,23 @@ final class VoiceEngine: ObservableObject {
 
     /// Lower Apple Music and Spotify to 25 % while a command is in progress.
     /// Saves the current volumes so `restoreMusic()` can undo the change.
-    private func duckMusic() {
+    func duckMusic() {
         guard !isDuckingMusic else { return }
         isDuckingMusic = true
 
-        if SpotifyController.shared.isPlaying {
-            savedSpotifyVolume = SpotifyController.shared.volume
-            SpotifyController.shared.setVolume(25)
+        if musicAccess.spotifyPlaying() {
+            savedSpotifyVolume = musicAccess.spotifyVolume()
+            musicAccess.setSpotifyVolume(25)
             appendAppLog("nb.log", "[Voice] music duck spotify \(savedSpotifyVolume ?? -1) → 25")
         }
 
-        if AppState.shared.musicPlaying {
+        if musicAccess.musicPlaying() {
+            let operation = AppState.shared.optionalWork.begin()
             Task {
-                if let vol = await MusicController.shared.getVolume() {
+                defer { AppState.shared.optionalWork.end(operation) }
+                if let vol = await musicAccess.musicVolume(), isDuckingMusic {
                     savedMusicVolume = vol
-                    MusicController.shared.setVolume(25)
+                    musicAccess.setMusicVolume(25)
                     appendAppLog("nb.log", "[Voice] music duck apple \(vol) → 25")
                 }
             }
@@ -557,7 +583,7 @@ final class VoiceEngine: ObservableObject {
 
     /// Restore volumes saved by `duckMusic()`.
     /// Skipped when the command was itself a volume command (`volumeCommandExecuted`).
-    private func restoreMusic() {
+    func restoreMusic() {
         guard isDuckingMusic else { return }
         isDuckingMusic = false
 
@@ -571,12 +597,12 @@ final class VoiceEngine: ObservableObject {
         }
 
         if let vol = savedSpotifyVolume {
-            SpotifyController.shared.setVolume(vol)
+            musicAccess.setSpotifyVolume(vol)
             appendAppLog("nb.log", "[Voice] music restore spotify → \(vol)")
             savedSpotifyVolume = nil
         }
         if let vol = savedMusicVolume {
-            MusicController.shared.setVolume(vol)
+            musicAccess.setMusicVolume(vol)
             appendAppLog("nb.log", "[Voice] music restore apple → \(vol)")
             savedMusicVolume = nil
         }

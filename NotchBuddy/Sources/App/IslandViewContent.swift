@@ -1377,12 +1377,16 @@ private struct DictationLanguageMenu: View {
 
 struct PromptView: View {
     @ObservedObject var state: AppState
-    @State private var text: String = ""
+    private var text: String {
+        get { state.promptDraft }
+        nonmutating set { state.promptDraft = newValue }
+    }
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
 
     #if !APPSTORE
     @State private var dictation = MacDictation()
+    @State private var dictationOperation: UUID?
     #endif
     var body: some View {
         ZStack(alignment: .leading) {
@@ -1467,7 +1471,7 @@ struct PromptView: View {
                 .padding(.horizontal, 10)
 
                 HStack(spacing: 8) {
-                    TextField(state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…"), text: $text)
+                    TextField(state.chatHistory.isEmpty ? String(localized: "Ask me anything…") : String(localized: "Continue…"), text: $state.promptDraft)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
                         .focused($focused)
@@ -1476,9 +1480,13 @@ struct PromptView: View {
                     #if !APPSTORE
                     // Dictate instead of typing (on-device speech recognition when available)
                     Button {
+                        guard !state.agentsOnly, !dictation.isStarting, !dictation.isFinishing else { return }
+                        let operation = dictationOperation ?? state.optionalWork.begin()
+                        dictationOperation = operation
                         Task {
                             if dictation.isRecording { text = await dictation.finish() }
                             else { await dictation.start(from: text) }
+                            if !dictation.isRecording { endDictationOwnership(operation) }
                         }
                     } label: {
                         Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
@@ -1488,6 +1496,7 @@ struct PromptView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(dictation.isStarting || dictation.isFinishing)
                     .help(dictation.isRecording ? String(localized: "Stop dictation") : String(localized: "Dictate (right-click to choose the language)"))
                     .contextMenu { DictationLanguageMenu(dictation: dictation) }
                     .onChange(of: dictation.transcript) { _, _ in
@@ -1515,6 +1524,15 @@ struct PromptView: View {
         }
         .padding(.bottom, 10)
         .onAppear { focused = true }
+        #if !APPSTORE
+        .onDisappear {
+            // Keep partial words in shared draft state if another route removes
+            // the view. stop() releases the local microphone synchronously.
+            if dictation.isRecording { text = dictation.text }
+            dictation.stop()
+            if let operation = dictationOperation { endDictationOwnership(operation) }
+        }
+        #endif
         .onChange(of: state.view) { _, view in
             if view == .prompt {
                 state.fetchModelsIfNeeded(for: state.chatProvider)
@@ -1539,10 +1557,14 @@ struct PromptView: View {
     }
 
     private func sendMessage() {
+        guard !state.agentsOnly else { return }
         #if !APPSTORE
+        guard !dictation.isStarting, !dictation.isFinishing else { return }
         // Still dictating: take the final words (and the right language) before sending.
         if dictation.isRecording {
+            let operation = dictationOperation ?? state.optionalWork.begin()
             Task {
+                defer { endDictationOwnership(operation) }
                 text = await dictation.finish()
                 sendMessage()
             }
@@ -1555,11 +1577,20 @@ struct PromptView: View {
         focused = false
         state.chatHistory.append(ChatMessage(role: .user, content: query))
         state.stateOverride = .thinking
+        let operation = state.optionalWork.begin()
         Task {
+            defer { state.optionalWork.end(operation) }
             await ClaudeService.shared.chat(query: query, context: state.promptContext, state: state)
             await MainActor.run { focused = true }
         }
     }
+
+    #if !APPSTORE
+    private func endDictationOwnership(_ operation: UUID) {
+        state.optionalWork.end(operation)
+        if dictationOperation == operation { dictationOperation = nil }
+    }
+    #endif
 }
 
 

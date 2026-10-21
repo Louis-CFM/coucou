@@ -49,7 +49,7 @@ agent settings and relevant shortcuts remain available. No mode switch installs
 or removes an agent integration.
 
 Finish an active recording, dictation, transcription, chat, capture, file copy,
-model download, app update or companion flight before entering the mode. The
+model download, app update, media command or companion flight before entering the mode. The
 switch stays off and explains this if such work is in progress. This avoids
 losing work or leaving a recording/write partially complete. Background HTTP work
 is cancelled on entry; operations already delivered to another process or remote
@@ -60,6 +60,9 @@ and polling once, following the existing individual feature settings.
 
 ```sh
 bash scripts/test-agents-only-mode.sh
+# Real application source contracts, isolated app/preferences and fake external boundaries:
+bash scripts/test-agents-only-integration.sh github
+bash scripts/test-agents-only-integration.sh appstore
 python3 scripts/test-localization.py
 # Native toggle test and screenshot (requires a macOS GUI session):
 bash scripts/render-agents-only-mode.sh
@@ -78,7 +81,18 @@ balanced listener ownership, cancellation/resumption of optional jobs, real
 URLSession cancellation using a local URLProtocol, stopped timers, rejected stale
 UI delivery and rejected fallback requests after restart. It uses no model or
 service credentials. The native preview also clicks the production switch in both
-directions and checks its binding, without launching the installed app. The two app builds also compile the actual feature wiring.
+directions and checks its binding, without launching the installed app. The native integration executable compiles the shipping sources with a separate
+entry point and unique test preferences domain. It exercises the real streaming
+chat service through a fake URLProtocol (including the first visible token),
+AppState switching and catalog reconciliation, normal click-to-open handlers,
+CloudProbe's sync-on/ping-off path, and Mail/Crypto/Portfolio refresh cancellation
+and late completions. The GitHub variant also checks the actual Flow permission
+waiter, Notetaker finalization through asynchronous close/process, MacDictation's
+late permission cancellation, shared prompt draft retention, and VoiceEngine's
+saved-volume restoration through fake Music/Spotify Apple Event executors. The
+application delegate is not launched; log writes and external boundaries are
+isolated. No microphone, model, real media app or CloudKit request is used. Both
+Mac targets and their DebugCloud configurations should also be built.
 
 For manual testing with your own configured services, start in full mode, note
 which optional features run, then enable Agents only while a connected agent

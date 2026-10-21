@@ -244,6 +244,9 @@ final class ClaudeService {
     // MARK: - Chat (multi-turn, natural text + web search)
 
     func chat(query: String, context: PromptContext?, state: AppState) async {
+        guard !state.agentsOnly else { return }
+        let request = state.optionalWork.begin()
+        defer { state.optionalWork.end(request) }
         if DemoEngine.shared.isActive {
             state.stateOverride = .thinking
             await DemoEngine.shared.streamChatResponse(for: query)
@@ -299,7 +302,7 @@ final class ClaudeService {
 
     // MARK: - OpenAI-compatible chat (Google Gemini / OpenAI / Ollama / LM Studio)
 
-    func chatOpenAICompatible(query: String, context: PromptContext?, state: AppState) async {
+    private func chatOpenAICompatible(query: String, context: PromptContext?, state: AppState) async {
         let provider = state.chatProvider
         guard provider != .anthropic else { return }
 
@@ -490,6 +493,9 @@ final class ClaudeService {
     // MARK: - Structured search (M8 — window attach + web search)
 
     func search(query: String, context: PromptContext?, state: AppState) async {
+        guard !state.agentsOnly else { return }
+        let request = state.optionalWork.begin()
+        defer { state.optionalWork.end(request) }
         guard let key = apiKey, !key.isEmpty else {
             await showError("Anthropic API key missing. Open settings to configure it.", state: state)
             return

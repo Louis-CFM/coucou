@@ -70,7 +70,7 @@ final class SpotifyController: ObservableObject {
     }
 
     var isRunning: Bool {
-        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == Self.bundleId }
+        running()
     }
 
     /// Where playback is now, extrapolated from the last anchor.
@@ -81,7 +81,14 @@ final class SpotifyController: ObservableObject {
         return min(p, d)
     }
 
-    private init() {}
+    private let running: () -> Bool
+    private let executeScript: ((String) async -> ScriptResult)?
+    init(running: @escaping () -> Bool = {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == SpotifyController.bundleId }
+    }, executeScript: ((String) async -> ScriptResult)? = nil) {
+        self.running = running
+        self.executeScript = executeScript
+    }
 
     func start() {
         jobs.start()
@@ -417,12 +424,14 @@ final class SpotifyController: ObservableObject {
 
     /// Coalesced: a slider drag sends at most one Apple Event every 120 ms.
     func setVolume(_ value: Int) {
-        guard isRunning else { return }
+        guard isRunning, !AgentsOnlyPreference.shared.enabled else { return }
         let v = min(100, max(0, value))
         volume = v
         pendingVolume = v
         guard volumeTask == nil else { return }
+        let operation = AppState.shared.optionalWork.begin()
         volumeTask = Task { [self] in
+            defer { AppState.shared.optionalWork.end(operation) }
             while let v = pendingVolume {
                 pendingVolume = nil
                 await runAppleScript(#"tell application id "com.spotify.client" to set sound volume to \#(v)"#)
@@ -508,6 +517,7 @@ final class SpotifyController: ObservableObject {
 
     @discardableResult
     private func runAppleScript(_ source: String) async -> ScriptResult {
+        if let executeScript { return await executeScript(source) }
         let grantedKey = Self.grantedKey
         let result: ScriptResult = await withCheckedContinuation { cont in
             queue.async {

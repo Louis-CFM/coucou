@@ -157,7 +157,7 @@ final class CryptoController: ObservableObject {
     @Published private(set) var alertSymbol: String?
 
     private var timer: Timer?
-    private var fetching = false
+    private var refreshOwnership = RefreshOwnership()
     private var refreshTask: Task<Void, Never>?
     private var lastCandles: Date = .distantPast
     /// Price each coin had at the last alert (or when first seen).
@@ -169,7 +169,11 @@ final class CryptoController: ObservableObject {
         !AgentsOnlyPreference.shared.enabled && AppState.shared.activeIntegrations.contains(Self.pillId)
     }
 
-    private init() {}
+    private let fetchQuote: @Sendable (String, CryptoExchange, String, Bool) async -> CryptoQuote?
+
+    init(fetchQuote: @escaping @Sendable (String, CryptoExchange, String, Bool) async -> CryptoQuote? = {
+        await CryptoController.fetch($0, exchange: $1, currency: $2, candles: $3)
+    }) { self.fetchQuote = fetchQuote }
 
     private func observeIfNeeded() {
         guard cancellables.isEmpty else { return }
@@ -189,6 +193,7 @@ final class CryptoController: ObservableObject {
     func settingsChanged() {
         let key = "\(CryptoSettings.exchange.rawValue)|\(CryptoSettings.currency)|\(CryptoSettings.coins.joined(separator: ","))"
         guard key != lastSettings else { return }
+        cancelRefresh()
         lastSettings = key
         quotes = []
         missing = []
@@ -211,6 +216,7 @@ final class CryptoController: ObservableObject {
             lastSettings = "\(CryptoSettings.exchange.rawValue)|\(CryptoSettings.currency)|\(CryptoSettings.coins.joined(separator: ","))"
             refresh()
         } else {
+            cancelRefresh()
             timer?.invalidate()
             timer = nil
             quotes = []
@@ -229,7 +235,7 @@ final class CryptoController: ObservableObject {
     }
 
     func refresh() {
-        guard isPillActive, !fetching else { return }
+        guard isPillActive, !refreshOwnership.busy else { return }
         let exchange = CryptoSettings.exchange
         let currency = CryptoSettings.currency
         let coins = CryptoSettings.coins
@@ -238,14 +244,16 @@ final class CryptoController: ObservableObject {
             return
         }
         let withCandles = Date().timeIntervalSince(lastCandles) > 600
-        fetching = true
+        guard let request = refreshOwnership.begin() else { return }
+        let fetchQuote = self.fetchQuote
         refreshTask = Task {
+            defer { refreshOwnership.finish(request) }
             var fresh: [CryptoQuote] = []
             var notFound: [String] = []
             await withTaskGroup(of: (Int, CryptoQuote?).self) { group in
                 for (i, coin) in coins.enumerated() {
                     group.addTask {
-                        (i, await Self.fetch(coin, exchange: exchange, currency: currency, candles: withCandles))
+                        (i, await fetchQuote(coin, exchange, currency, withCandles))
                     }
                 }
                 var byIndex: [Int: CryptoQuote] = [:]
@@ -254,8 +262,7 @@ final class CryptoController: ObservableObject {
                 }
                 fresh = coins.indices.compactMap { byIndex[$0] }
             }
-            guard !Task.isCancelled, isPillActive else { return }
-            fetching = false
+            guard !Task.isCancelled, refreshOwnership.owns(request), isPillActive else { return }
             // Keep the previous curve until a new one is read.
             let previous = Dictionary(uniqueKeysWithValues: quotes.map { ($0.symbol, $0.spark) })
             for i in fresh.indices where fresh[i].spark.isEmpty {
@@ -291,11 +298,16 @@ final class CryptoController: ObservableObject {
         return quote
     }
 
+    private func cancelRefresh() {
+        refreshOwnership.cancel()
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
     func stop() {
         cancellables.removeAll()
         timer?.invalidate(); timer = nil
-        refreshTask?.cancel(); refreshTask = nil
-        fetching = false
+        cancelRefresh()
     }
 
     // MARK: - Alerts

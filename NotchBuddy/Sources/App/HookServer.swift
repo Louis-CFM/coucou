@@ -711,7 +711,10 @@ final class HookServer: @unchecked Sendable {
     @MainActor
     private func upsertExternalAgent(id: String, name: String) {
         let state = AppState.shared
-        guard state.tasks.firstIndex(where: { $0.id == id }) == nil else { return }
+        if let index = state.tasks.firstIndex(where: { $0.id == id }) {
+            if state.tasks[index].isPlaceholder { state.tasks[index].isPlaceholder = false }
+            return
+        }
         let color: String
         if let def = PillCatalog.definition(for: id) {
             color = def.color
@@ -1142,6 +1145,7 @@ final class HookServer: @unchecked Sendable {
     private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
+            if state.tasks[idx].isPlaceholder { state.tasks[idx].isPlaceholder = false }
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }

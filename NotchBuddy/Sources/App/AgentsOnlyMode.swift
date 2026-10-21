@@ -1,5 +1,29 @@
 import Foundation
 
+/// Work admitted by a UI action must be claimed before its Task is scheduled.
+/// The owner keeps the claim until final results and cleanup have completed.
+@MainActor
+final class OptionalWork {
+    private var active: Set<UUID> = []
+    var busy: Bool { !active.isEmpty }
+    func begin() -> UUID { let id = UUID(); active.insert(id); return id }
+    func end(_ id: UUID) { active.remove(id) }
+}
+
+/// A cancelled refresh cannot clear the ownership of its replacement request.
+@MainActor
+struct RefreshOwnership {
+    private var current: UUID?
+    var busy: Bool { current != nil }
+    mutating func begin() -> UUID? {
+        guard current == nil else { return nil }
+        let id = UUID(); current = id; return id
+    }
+    func owns(_ id: UUID) -> Bool { current == id }
+    mutating func finish(_ id: UUID) { if owns(id) { current = nil } }
+    mutating func cancel() { current = nil }
+}
+
 struct AgentDisplayPolicy {
     let agentsOnly: Bool
     let connectedIDs: Set<String>
