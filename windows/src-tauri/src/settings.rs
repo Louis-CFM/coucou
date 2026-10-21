@@ -102,6 +102,8 @@ pub struct Settings {
     /// it is warm, puffed up when memory is short, sleepy on a low battery
     /// (vitals.rs, the Mac's "Mochi and your Mac"). On by default, as there.
     pub mochi_feels_computer: bool,
+    /// The date and time in the middle of the compact island. Off by default.
+    pub show_clock: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -168,6 +170,7 @@ impl Default for Settings {
             phone_relay: false,
             phone_relay_url: String::new(),
             mochi_feels_computer: true,
+            show_clock: false,
         }
     }
 }
@@ -455,7 +458,8 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
-  "mochiFeelsComputer": false
+  "mochiFeelsComputer": false,
+  "showClock": true
 }"##;
 
     fn custom() -> Value {
@@ -964,6 +968,7 @@ mod tests {
                 "phoneRelay",
                 "phoneRelayUrl",
                 "mochiFeelsComputer",
+                "showClock",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

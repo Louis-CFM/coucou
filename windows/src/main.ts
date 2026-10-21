@@ -16,6 +16,7 @@ import { SPOTIFY_ID } from "./core/spotify";
 import { registerWhatsAppHandlers } from "./island/whatsapp";
 import { startClaudeDesktopPlan } from "./views/usage";
 import { Recap } from "./recap/recap";
+import { Updates } from "./island/update";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
@@ -93,6 +94,11 @@ async function main() {
         setPaused(false);
         island.alert("wardrobe");
         break;
+      // "Update Coucou to X…", only in the menu while a new version is out.
+      case "update":
+        setPaused(false);
+        Updates.show();
+        break;
       case "pause":
         setPaused(!State.paused);
         if (State.paused) island.fsm.forceHidden();
@@ -153,6 +159,8 @@ async function main() {
   registerWhatsAppHandlers(island);
   // Claude plan usage when Claude Code runs in the Claude desktop app (no status line there).
   startClaudeDesktopPlan();
+  // New versions: Rust offers the card, the island opens it when nothing else waits.
+  await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.
   if (State.settings.activeIntegrations.includes(SPOTIFY_ID)) {
     void Bridge.spotifyRefresh().then((s) => s && applySpotify(island, s));

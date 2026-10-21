@@ -22,6 +22,7 @@ import { lastTextStep } from "../core/diff";
 import { Bridge } from "../core/bridge";
 import { buildRecap } from "./recap";
 import { buildWardrobe } from "./wardrobe";
+import { buildUpdate } from "./update";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
 import { buildWhatsAppCard } from "./whatsapp";
@@ -898,6 +899,7 @@ export function buildViews(
   map.set("recap", buildRecap(actions));
   map.set("wardrobe", buildWardrobe(actions));
   map.set("capture", buildCapture(actions));
+  map.set("update", buildUpdate());
   // Not in the Windows v1: sending a file by email, window attach + web result.
   map.set("mail", buildMail(actions));
   map.set("searching", buildPlaceholder(tl("Claude is searching…"), ""));

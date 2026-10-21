@@ -9,6 +9,7 @@ import type { Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { WhatsAppPrefs, WhatsAppState } from "./whatsapp";
+import type { UpdateStatus } from "./update";
 
 export const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -206,6 +207,12 @@ export const Bridge = {
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
+  /** Opens a GitLab link only when it belongs to the configured instance. */
+  openGitLabUrl: (url: string) => call<void>("open_gitlab_url", { url }),
+  /** Opens the configured Gitea instance without exposing its URL to the page. */
+  openGitea: () => call<void>("open_gitea"),
+  /** Opens a Gitea link only if it belongs to the configured instance. */
+  openGiteaUrl: (url: string) => call<void>("open_gitea_url", { url }),
 
   /** Which of these sounds have a file of the user's own in the sounds folder. */
   customSounds: (names: readonly string[]) => call<string[]>("custom_sounds", { names }),
@@ -454,6 +461,22 @@ export const Bridge = {
   /** The newest plan sample the Claude desktop app recorded (src-tauri/src/claude_plan.rs). */
   claudeDesktopPlan: () =>
     call<{ at: number; fiveHour: number | null; sevenDay: number | null } | null>("claude_desktop_plan"),
+  // ── New versions (src-tauri/src/update.rs) ────────────────────────────────
+  updateStatus: () => call<UpdateStatus>("update_status"),
+  /** The island's question or Settings' toggle: may Coucou look at GitHub on its own? */
+  updateSetConsent: (allowed: boolean) => call<void>("update_set_consent", { allowed }),
+  /** "Check now": one look at GitHub, the toggle on or off. */
+  updateCheck: () => call<UpdateStatus>("update_check"),
+  /** The island opened the card Rust offered ("ask" or "announce"). */
+  updateShown: (kind: "ask" | "announce") => call<void>("update_shown", { kind }),
+  /** Settings → Install X: opens the island's update card. */
+  updateShow: () => call<void>("update_show"),
+  updateLater: () => call<void>("update_later"),
+  updateDismiss: () => call<void>("update_dismiss"),
+  /** "Update now" (Windows): download, check the SHA-256, run the installer, quit. */
+  updateInstall: () => call<void>("update_install"),
+  /** The release's page on github.com. */
+  updateOpenPage: () => call<void>("update_open_page"),
 };
 
 export type SpotifyAction = "playPause" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "volume";
