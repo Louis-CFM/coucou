@@ -53,9 +53,11 @@ struct Account {
     signed_in: Option<bool>,
     /// The sign-in window is up.
     signing_in: bool,
+    /// The sign-in window has been made (until then, its absence means nothing).
+    window_made: bool,
 }
 
-static ACCOUNT: Mutex<Account> = Mutex::new(Account { usage: None, signed_in: None, signing_in: false });
+static ACCOUNT: Mutex<Account> = Mutex::new(Account { usage: None, signed_in: None, signing_in: false, window_made: false });
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -123,6 +125,11 @@ fn report(app: &AppHandle, fragment: &str) {
     let Ok(v) = serde_json::from_str::<Value>(&percent_decode(fragment)) else { return };
     let signed_in = v.get("signedIn").and_then(Value::as_bool);
     let usage = v.get("usage").filter(|u| u.is_object()).cloned();
+    if usage.is_none() {
+        // Why there are no numbers: signed out, or claude.ai's status code. Never the answer itself.
+        let status = v.get("status").and_then(Value::as_u64).unwrap_or(0);
+        crate::log::line(format!("claude account: no usage (signed in: {signed_in:?}, status {status})"));
+    }
     let was_signing_in = {
         let mut a = ACCOUNT.lock().unwrap();
         if signed_in.is_some() {
@@ -158,6 +165,15 @@ fn report(app: &AppHandle, fragment: &str) {
     publish(app);
 }
 
+/// claude.ai's session cookie is there: signed in. Read from a thread of our own,
+/// never the main one (reading cookies there waits for itself on Windows).
+fn has_session(w: &tauri::WebviewWindow) -> bool {
+    let Ok(url) = "https://claude.ai".parse() else { return false };
+    w.cookies_for_url(url)
+        .map(|cookies| cookies.iter().any(|c| c.name() == "sessionKey" && !c.value().is_empty()))
+        .unwrap_or(false)
+}
+
 fn ask(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(LABEL) {
         let _ = w.eval(PROBE);
@@ -186,8 +202,24 @@ fn window(app: &AppHandle, show: bool) -> Option<tauri::WebviewWindow> {
             }
             true
         })
+        // "Continue with Google" / "with Apple" sign in in a popup that reports back to
+        // the page: those open (as the browser would open them); nothing else does.
+        .on_new_window(|url, _| {
+            let host = url.host_str().unwrap_or_default();
+            let sign_in = ["accounts.google.com", "appleid.apple.com", "claude.ai"];
+            if url.scheme() == "https" && sign_in.iter().any(|h| host == *h || host.ends_with(&format!(".{h}"))) {
+                tauri::webview::NewWindowResponse::Allow
+            } else {
+                tauri::webview::NewWindowResponse::Deny
+            }
+        })
         .on_page_load(move |_, payload| {
-            if payload.event() == PageLoadEvent::Finished && payload.url().host_str() == Some("claude.ai") {
+            // Never while you sign in: the ask ends in a navigation, which would cut the
+            // sign-in page off as it loads. Signing in is seen from the cookies instead.
+            if payload.event() == PageLoadEvent::Finished
+                && payload.url().host_str() == Some("claude.ai")
+                && !ACCOUNT.lock().unwrap().signing_in
+            {
                 ask(&loaded);
             }
         })
@@ -199,14 +231,24 @@ fn window(app: &AppHandle, show: bool) -> Option<tauri::WebviewWindow> {
 /// made from a command on the main thread would wait for itself.
 #[tauri::command]
 pub async fn claude_account_connect(app: AppHandle) {
-    ACCOUNT.lock().unwrap().signing_in = true;
+    // Before the window is made, so its first page isn't asked; and the watch for a
+    // sign-in only gives up on a window that is gone, not one being made.
+    {
+        let mut a = ACCOUNT.lock().unwrap();
+        a.signing_in = true;
+        a.window_made = false;
+    }
     if let Some(w) = window(&app, true) {
         if let Ok(url) = SIGN_IN.parse() {
             let _ = w.navigate(url);
         }
         let _ = w.set_skip_taskbar(false);
+        let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
+        ACCOUNT.lock().unwrap().window_made = true;
+    } else {
+        ACCOUNT.lock().unwrap().signing_in = false;
     }
     publish(&app);
 }
@@ -246,14 +288,32 @@ pub fn start(app: &AppHandle) {
         std::thread::sleep(Duration::from_secs(5));
         let mut last = std::time::Instant::now() - EVERY;
         loop {
-            let signing_in = ACCOUNT.lock().unwrap().signing_in;
+            let (signing_in, made) = {
+                let a = ACCOUNT.lock().unwrap();
+                (a.signing_in, a.window_made)
+            };
             // The sign-in window closed before it was done: nothing to wait for.
-            if signing_in && app.get_webview_window(LABEL).is_none() {
+            if signing_in && made && app.get_webview_window(LABEL).is_none() {
                 ACCOUNT.lock().unwrap().signing_in = false;
                 publish(&app);
             } else if signing_in {
-                // claude.ai may finish signing in without a page load: look every few seconds.
-                ask(&app);
+                // Signed in once claude.ai has set its session cookie: the window steps
+                // out of the way and asks from the quiet page.
+                if app.get_webview_window(LABEL).is_some_and(|w| has_session(&w)) {
+                    crate::log::line("claude account: signed in");
+                    ACCOUNT.lock().unwrap().signing_in = false;
+                    let _ = std::fs::create_dir_all(crate::platform::local_dir());
+                    let _ = std::fs::write(marker(), b"1");
+                    if let Some(w) = app.get_webview_window(LABEL) {
+                        let _ = w.hide();
+                        let _ = w.set_skip_taskbar(true);
+                        if let Ok(url) = QUIET.parse() {
+                            let _ = w.navigate(url);
+                        }
+                    }
+                    last = std::time::Instant::now();
+                    publish(&app);
+                }
             } else if connected() && last.elapsed() >= EVERY {
                 last = std::time::Instant::now();
                 if app.get_webview_window(LABEL).is_some() {
