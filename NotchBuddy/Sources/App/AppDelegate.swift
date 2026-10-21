@@ -71,5 +71,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
         ClaudeDesktopChatWatcher.shared.start()
+        OrcaIslandBridge.shared.start()
     }
 }

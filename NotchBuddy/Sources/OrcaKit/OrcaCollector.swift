@@ -49,6 +49,20 @@ public actor OrcaCollector {
         return snapshot(includeRemote: includeRemote, now: now, calendar: calendar)
     }
 
+    /// Fast cycle: only `worktree ps` (counters and list); the other sources keep their last good value.
+    public func collectFast(includeRemote: Bool = true, now: Date = Date(), calendar: Calendar = .current) async -> OrcaSnapshot {
+        let result = await attempt { try await self.fetchWorktrees() }
+        let at = Int(now.timeIntervalSince1970)
+        switch result {
+        case .success(let value):
+            raw.worktrees = value
+            health[.worktrees] = OrcaSourceHealth(ok: true, lastSuccessAt: at)
+        case .failure(let e):
+            health[.worktrees] = OrcaSourceHealth(ok: false, lastSuccessAt: health[.worktrees]?.lastSuccessAt, error: e.summary)
+        }
+        return snapshot(includeRemote: includeRemote, now: now, calendar: calendar)
+    }
+
     /// Re-derives from the last good data without touching the CLI.
     public func snapshot(includeRemote: Bool = true, now: Date = Date(), calendar: Calendar = .current) -> OrcaSnapshot {
         OrcaDerivation.derive(raw: raw, sources: health, lastCompleteCycleAt: lastCompleteAt, pollInterval: pollInterval,

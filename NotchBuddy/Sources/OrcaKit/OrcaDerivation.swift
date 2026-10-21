@@ -43,10 +43,11 @@ enum OrcaDerivation {
         let workersByWorkspace = Dictionary(grouping: summaries) { $0.worker.projection?.workspace?.id ?? "" }
 
         var workspaces: [OrcaWorkspace] = []
+        var workspaceAlerts = 0
         var doneToday = Set<String>()
         for w in visible {
             let id = w.worktreeId ?? "\(w.repo ?? "")/\(w.displayName ?? "")"
-            let agents = (w.agents ?? []).map { a in
+            var agents = (w.agents ?? []).map { a in
                 OrcaAgent(type: a.agentType, state: a.state, since: a.stateStartedAt.map(seconds), tool: a.toolName,
                           last: OrcaFormatting.oneLine(a.lastAssistantMessage, limit: 160))
             }
@@ -57,6 +58,19 @@ enum OrcaDerivation {
                 || agents.contains { $0.state != "working" && $0.state != "done" }
                 || ws.contains { $0.requiresAction }
             let attention = wantsYou && recent
+            let failed = ws.contains { $0.outcome == "failed" }
+            // Unread result or a worker asking for action (recent), or a failed worker: the user is needed.
+            let needsUser = ((w.unread == true || ws.contains { $0.requiresAction }) && recent) || failed
+            for i in agents.indices {
+                agents[i].status = agentStatus(agents[i], recent: recent, todayStart: todayStart, tomorrowStart: tomorrowStart)
+            }
+            // Unread / requires-action / failed belong to the workspace, not to one agent: the agent
+            // that finished last carries the bell, so one thing that needs you rings once.
+            if needsUser, !agents.contains(where: { $0.status == .alert }),
+               let last = agents.indices.filter({ agents[$0].state == "done" }).max(by: { (agents[$0].since ?? 0) < (agents[$1].since ?? 0) }) {
+                agents[last].status = .alert
+            }
+            if needsUser && !agents.contains(where: { $0.status == .alert }) { workspaceAlerts += 1 }
             let pr = w.linkedPR.map { OrcaPullRequest(number: $0.number, state: $0.state) }
             let state: OrcaWorkspaceState
             if ws.contains(where: { $0.outcome == "failed" }) { state = .failed }
@@ -99,6 +113,19 @@ enum OrcaDerivation {
         counts.remote = workspaces.filter(\.isRemote).count
         counts.doneToday = doneToday.count
 
+        var agentCounts = OrcaAgentCounts()
+        for agent in workspaces.flatMap(\.agents) {
+            switch agent.status {
+            case .running: agentCounts.running += 1
+            case .finished: agentCounts.finished += 1
+            case .alert: agentCounts.alert += 1
+            case .idle: break
+            }
+        }
+        // A workspace that needs the user with no agent in the alert state (worker failed, unread
+        // terminal output, ...) still rings the bell once.
+        agentCounts.alert += workspaceAlerts
+
         var workerCounts = OrcaWorkerCounts()
         for item in summaries {
             switch item.summary.outcome {
@@ -115,7 +142,7 @@ enum OrcaDerivation {
             generatedAt: nowSec, stale: stale,
             orca: OrcaRuntimeInfo(ok: (sources[.status]?.ok ?? false) && runtime?.state == "ready" && runtime?.reachable != false,
                                   version: runtime?.appVersion),
-            counts: counts, workers: workerCounts,
+            counts: counts, agentCounts: agentCounts, workers: workerCounts,
             usage: usage(raw.rateLimits, now: now, calendar: calendar),
             workspaces: workspaces, sources: sources)
     }
@@ -134,6 +161,17 @@ enum OrcaDerivation {
         case "succeeded": "succeeded"
         case "failed": "failed"
         default: "running"
+        }
+    }
+
+    /// Per-agent counter rule. `recent` = workspace activity within 24 h (the OrcaKit needs-you window).
+    static func agentStatus(_ agent: OrcaAgent, recent: Bool,
+                            todayStart: Int, tomorrowStart: Int) -> OrcaAgentStatus {
+        switch agent.state {
+        case "working": return .running
+        case "done":
+            return inDay(agent.since, todayStart, tomorrowStart) ? .finished : .idle
+        default: return recent ? .alert : .idle   // waiting for input / permission, blocked, ...
         }
     }
 

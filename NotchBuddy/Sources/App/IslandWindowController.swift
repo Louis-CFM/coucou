@@ -251,6 +251,7 @@ final class IslandWindowController: NSWindowController {
 
         // An approval stays open until I click.
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+        fsm.keepsCompact = { AppState.shared.orcaKeepsIslandVisible }
     }
 
     // MARK: - Polling loop
@@ -1013,12 +1014,12 @@ final class IslandWindowController: NSWindowController {
 
     func defaultView() -> IslandView {
         if state.pendingApproval != nil { return .approval }
-        return state.tasks.isEmpty ? .empty : .overview
+        return .overview   // the Orca workspace list; `.empty` renders the same
     }
 
     func baseMode() -> IslandMode {
         guard state.isPresent else { return .hidden }
-        return state.tasks.isEmpty ? .hidden : .compact
+        return state.tasks.isEmpty && !state.orcaKeepsIslandVisible ? .hidden : .compact
     }
 
     // MARK: - Activity reset (call on any user interaction in island)

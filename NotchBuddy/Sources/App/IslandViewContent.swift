@@ -8,8 +8,7 @@ struct IslandViewContent: View {
 
     var body: some View {
         switch view {
-        case .overview:  OverviewView(state: state)
-        case .empty:     EmptyStateView(state: state)
+        case .overview, .empty: OrcaWorkspaceListView(state: state)
         case .approval:  ApprovalView(state: state)
         case .question:  QuestionView(state: state)
         case .error:     ErrorView(state: state)

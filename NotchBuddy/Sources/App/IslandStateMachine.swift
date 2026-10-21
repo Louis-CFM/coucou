@@ -19,6 +19,10 @@ final class IslandStateMachine {
     /// When non-nil and returns true, timers and mouse-leave never auto-collapse or hide the island.
     var isHeldOpen: (() -> Bool)?
 
+    /// When it returns true the compact island is not hidden by its timer (Orca agents running or
+    /// waiting on the user: the counters must stay on screen).
+    var keepsCompact: (() -> Bool)?
+
     /// home → petit delay (seconds), kept in sync with the auto-close preference.
     var homeToPetitDelay: TimeInterval = 15 {
         didSet {
@@ -134,12 +138,19 @@ final class IslandStateMachine {
         schedulePetitHide()
     }
 
+    /// The reason to stay compact is gone (Orca went idle): start the usual hide countdown.
+    func resumeHideTimer() {
+        guard state == .petit else { return }
+        schedulePetitHide()
+    }
+
     // MARK: – Timers
 
     private func schedulePetitHide() {
         petitHideWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            guard let self, self.state == .petit, !(self.isHeldOpen?() ?? false) else { return }
+            guard let self, self.state == .petit, !(self.isHeldOpen?() ?? false),
+                  !(self.keepsCompact?() ?? false) else { return }
             self.transition(to: .hidden)
         }
         petitHideWork = item

@@ -11,6 +11,10 @@ final class AppState: ObservableObject {
     @Published var mode: IslandMode = .hidden
     @Published var view: IslandView = .overview
 
+    // Orca data (OrcaIslandBridge): counters of the closed island, workspace list of the open one
+    @Published var orca: OrcaSnapshot = .empty
+    var orcaKeepsIslandVisible: Bool { orca.agentCounts.keepsIslandVisible }
+
     // Tasks
     @Published var tasks: [AgentTask] = []
     @Published var focusId: String? = nil
@@ -417,9 +421,10 @@ final class AppState: ObservableObject {
 
     func syncMode() {
         // If no tasks and not expanded/peek, go hidden
-        if tasks.isEmpty && mode == .compact {
+        let hasContent = !tasks.isEmpty || orcaKeepsIslandVisible
+        if !hasContent && mode == .compact {
             mode = .hidden
-        } else if !tasks.isEmpty && mode == .hidden && isPresent {
+        } else if hasContent && mode == .hidden && isPresent {
             mode = .compact
         }
     }
