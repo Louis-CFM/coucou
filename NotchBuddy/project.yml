@@ -454,3 +454,39 @@ targets:
         OTHER_CODE_SIGN_FLAGS: ""
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
+
+  # OrcaKit: pure-Swift data layer reading Orca state from the `orca` CLI. Built as its own
+  # framework only to unit-test it (`xcodebuild test -scheme OrcaKit`); the app targets already
+  # compile Sources/OrcaKit through their `Sources` glob.
+  OrcaKit:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/OrcaKit
+        type: group
+    scheme:
+      testTargets:
+        - OrcaKitTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.louisraille.NotchBuddy.OrcaKit
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        ENABLE_HARDENED_RUNTIME: NO
+
+  OrcaKitTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/OrcaKitTests
+        type: group
+    dependencies:
+      - target: OrcaKit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        ENABLE_HARDENED_RUNTIME: NO
