@@ -406,6 +406,14 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
+/// True while the island sits under a top bar (GNOME) rather than against the
+/// screen edge: the page then draws it as a floating pill.
+static FLOATING: AtomicBool = AtomicBool::new(false);
+
+pub fn floating() -> bool {
+    FLOATING.load(Ordering::Relaxed)
+}
+
 /// Places and sizes the window: the full panel, or `collapsed` to the size the
 /// closed island needs (the wake strip when it shows nothing).
 /// Windows: how far a taskbar docked at the top of this display (or another
@@ -441,6 +449,9 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: Option<(f64, f64)>
     // Linux: GNOME's top bar, which no window can cover (platform::top_inset).
     let bar = (platform::top_inset(&win, lx, ly) as f64 * scale).round() as i32;
     let y = mp.y + top_inset(&m) + bar;
+    if FLOATING.swap(bar > 0, Ordering::Relaxed) != (bar > 0) {
+        let _ = app.emit_to(WINDOW_LABEL, "island-floating", bar > 0);
+    }
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
