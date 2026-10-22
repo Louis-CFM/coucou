@@ -62,7 +62,8 @@ async function main() {
 
   await onEvent<{ x: number; y: number }>("cursor", ({ x, y }) => island.onCursor(x, y));
   await onEvent<boolean>("pointer-inside", (inside) => island.setPointerInside(inside));
-  await onEvent<null>("wake-hover", () => island.wakeFromEdge());
+  // `true`: something dragged up from below, which wakes the island even over a browser.
+  await onEvent<boolean | null>("wake-hover", (carrying) => island.wakeFromEdge(carrying === true));
   await onEvent<VitalsReport>("vitals", (r) => island.setVitals(r));
   await onEvent<null>("capture-begin", () => island.onCaptureBegin());
   await onEvent<{ path: string; dataUrl: string }>("capture-ready", (c) => island.onCaptureReady(c));

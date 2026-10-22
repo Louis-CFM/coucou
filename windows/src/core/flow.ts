@@ -61,6 +61,8 @@ export interface FlowStatus {
   /** "ok", or why the key can't be watched ("wayland", "no-display"). */
   keys: string;
   hasClaudeKey: boolean;
+  /** Who answers « OK Coucou »: Claude, Gemini (no Claude key), or none. */
+  voiceBrain?: "claude" | "gemini" | null;
   /** The languages Flow can translate into, by code. */
   languages: string[];
   mics: { name: string; default: boolean }[];

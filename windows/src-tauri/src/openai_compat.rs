@@ -106,7 +106,9 @@ const MAX_TOKENS: u32 = 4096;
 /// Text and code files are inlined; anything larger is skipped.
 const MAX_INLINE_TEXT: u64 = 200_000;
 /// Images are sent inline as data URLs; past this size they are skipped.
-const MAX_IMAGE: u64 = 5_000_000;
+// A phone photo or a full-screen capture is often over 5 MB; Gemini takes about
+// 20 MB per request once encoded, and OpenAI 20 MB per image.
+const MAX_IMAGE: u64 = 14_000_000;
 
 fn url(p: &Provider, tail: &str) -> Result<Url, String> {
     let base = Url::parse(p.base_url).map_err(|e| e.to_string())?;

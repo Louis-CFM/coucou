@@ -242,6 +242,8 @@ class AppState {
 
   promptContext: PromptContext | null = null;
   droppedFile: { name: string; path: string } | null = null;
+  /** Settles once the dropped file's copy is in the inbox (the question waits for it). */
+  droppedFileReady: Promise<void> | null = null;
   noteMessage: string | null = null;
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];

@@ -136,6 +136,7 @@ export class Island {
     };
     State.subscribe(() => {
       this.syncVitalsReader();
+      this.showVitalsLine();
       this.syncCaptureCard();
       this.dirty = true;
       this.ensureRunning();
@@ -558,7 +559,10 @@ export class Island {
   private showVitalsLine() {
     const el = this.vitalsLine;
     if (!el) return;
-    const text = this.overMochi ? describeVitals(this.vitals) : null;
+    // On Mochi, or the island open on its home view: the computer's numbers are
+    // there to read even with Mochi out on the desktop.
+    const homeOpen = State.mode === "expanded" && State.view === "overview";
+    const text = this.overMochi || homeOpen ? describeVitals(this.vitals) : null;
     if (!text || !this.vitals) {
       el.classList.remove("on");
       return;
@@ -739,7 +743,7 @@ export class Island {
     this.setView("uploading");
     this.ensureRunning();
 
-    void Bridge.ingestFile(path)
+    State.droppedFileReady = Bridge.ingestFile(path)
       .then((file) => {
         // Cancelled (or replaced by another drop) while the copy was running.
         if (State.droppedFile?.path !== path) return;
@@ -955,9 +959,11 @@ export class Island {
    * The pointer reached the wake strip at the top of the screen: from the
    * strip's own `mouseenter`, or from Rust's `wake-hover` when the webview
    * missed it. Both may fire for one push; only the first does anything.
+   * A file carried up from below (`dragging`) wakes it in front of a browser
+   * too: the browser rule is for its tab strip, and the drop needs the island.
    */
-  wakeFromEdge() {
-    if (this.browserInFront) return;
+  wakeFromEdge(dragging = false) {
+    if (this.browserInFront && !dragging) return;
     Sound.resume();
     if (State.mode === "hidden") this.fsm.mouseEntered();
   }

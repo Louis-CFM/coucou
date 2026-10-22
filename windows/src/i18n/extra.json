@@ -4714,19 +4714,6 @@
    "de": "Erkennt « OK Coucou » hier, ohne Internet.",
    "tr": "« OK Coucou » ifadesini burada, internet olmadan duyar."
   },
-  "Coucou answers with Claude: add your Claude key in Notch → Chat.": {
-   "zh-Hans": "Coucou 用 Claude 回答：请在 Notch → 聊天 中添加你的 Claude 密钥。",
-   "hi": "Coucou Claude से जवाब देता है: Notch → चैट में अपनी Claude कुंजी जोड़ें।",
-   "es": "Coucou responde con Claude: añade tu clave de Claude en Notch → Chat.",
-   "ar": "يجيب Coucou باستخدام Claude: أضف مفتاح Claude الخاص بك في Notch ← الدردشة.",
-   "fr": "Coucou répond avec Claude : ajoute ta clé Claude dans Notch → Chat.",
-   "bn": "Coucou Claude দিয়ে উত্তর দেয়: Notch → চ্যাট-এ আপনার Claude কী যোগ করুন।",
-   "pt-BR": "O Coucou responde com o Claude: adicione sua chave do Claude em Notch → Chat.",
-   "ru": "Coucou отвечает с помощью Claude: добавьте свой ключ Claude в Notch → Чат.",
-   "id": "Coucou menjawab dengan Claude: tambahkan kunci Claude-mu di Notch → Obrolan.",
-   "de": "Coucou antwortet mit Claude: Füge deinen Claude-Schlüssel unter Notch → Chat hinzu.",
-   "tr": "Coucou, Claude ile yanıt verir: Çentik → Sohbet bölümünden Claude anahtarını ekle."
-  },
   "Download the voice model so Coucou can hear you.": {
    "zh-Hans": "下载语音模型，Coucou 才能听到你。",
    "hi": "आवाज़ मॉडल डाउनलोड करें ताकि Coucou आपको सुन सके।",
@@ -7287,6 +7274,45 @@
    "id": "Laya butuh sekitar {need} GB memori kosong untuk memuat modelnya; sekarang {free} GB kosong. Tutup beberapa aplikasi, lalu tekan Mulai.",
    "de": "Laya braucht etwa {need} GB freien Arbeitsspeicher für sein Modell; frei sind gerade {free} GB. Schließ ein paar Apps und drück dann auf Starten.",
    "tr": "Laya'nın modelini yüklemek için yaklaşık {need} GB boş belleğe ihtiyacı var; şu an {free} GB boş. Birkaç uygulamayı kapatıp Başlat'a bas."
+  },
+  "Coucou heard nothing: speak closer to the microphone, or pick another one in Flow → Settings.": {
+   "zh-Hans": "Coucou 什么也没听到：请靠近麦克风说话，或在 Flow → 设置 中选择其他麦克风。",
+   "hi": "Coucou को कुछ सुनाई नहीं दिया: माइक्रोफ़ोन के पास बोलें, या Flow → सेटिंग्स में दूसरा चुनें।",
+   "es": "Coucou no oyó nada: habla más cerca del micrófono o elige otro en Flow → Ajustes.",
+   "ar": "لم يسمع Coucou شيئًا: تحدّث بالقرب من الميكروفون، أو اختر ميكروفونًا آخر في Flow ← الإعدادات.",
+   "fr": "Coucou n'a rien entendu : parle plus près du micro, ou choisis-en un autre dans Flow → Réglages.",
+   "bn": "Coucou কিছুই শুনতে পায়নি: মাইক্রোফোনের কাছে কথা বলুন, অথবা Flow → সেটিংসে অন্যটি বেছে নিন।",
+   "pt-BR": "O Coucou não ouviu nada: fale mais perto do microfone ou escolha outro em Flow → Configurações.",
+   "ru": "Coucou ничего не услышал: говорите ближе к микрофону или выберите другой в Flow → Настройки.",
+   "id": "Coucou tidak mendengar apa pun: bicaralah lebih dekat ke mikrofon, atau pilih yang lain di Flow → Pengaturan.",
+   "de": "Coucou hat nichts gehört: Sprich näher am Mikrofon oder wähle ein anderes unter Flow → Einstellungen.",
+   "tr": "Coucou hiçbir şey duymadı: mikrofona daha yakın konuş ya da Flow → Ayarlar'dan başka birini seç."
+  },
+  "Coucou answers with Claude or Gemini: add a Claude or Google AI key in Notch → Chat.": {
+   "zh-Hans": "Coucou 用 Claude 或 Gemini 回答：请在 Notch → 聊天 中添加 Claude 或 Google AI 密钥。",
+   "hi": "Coucou, Claude या Gemini से जवाब देता है: Notch → चैट में Claude या Google AI की जोड़ें।",
+   "es": "Coucou responde con Claude o Gemini: añade una clave de Claude o de Google AI en Notch → Chat.",
+   "ar": "يجيب Coucou عبر Claude أو Gemini: أضف مفتاح Claude أو Google AI في Notch ← الدردشة.",
+   "fr": "Coucou répond avec Claude ou Gemini : ajoute une clé Claude ou Google AI dans Notch → Chat.",
+   "bn": "Coucou, Claude বা Gemini দিয়ে উত্তর দেয়: Notch → চ্যাটে Claude বা Google AI কী যোগ করুন।",
+   "pt-BR": "O Coucou responde com Claude ou Gemini: adicione uma chave do Claude ou do Google AI em Notch → Chat.",
+   "ru": "Coucou отвечает через Claude или Gemini: добавьте ключ Claude или Google AI в Notch → Чат.",
+   "id": "Coucou menjawab dengan Claude atau Gemini: tambahkan kunci Claude atau Google AI di Notch → Chat.",
+   "de": "Coucou antwortet mit Claude oder Gemini: Füge unter Notch → Chat einen Claude- oder Google-AI-Schlüssel hinzu.",
+   "tr": "Coucou, Claude veya Gemini ile yanıt verir: Notch → Sohbet'te bir Claude ya da Google AI anahtarı ekle."
+  },
+  "Coucou answers with Gemini, through your Google AI key.": {
+   "zh-Hans": "Coucou 通过你的 Google AI 密钥使用 Gemini 回答。",
+   "hi": "Coucou आपकी Google AI की के ज़रिए Gemini से जवाब देता है।",
+   "es": "Coucou responde con Gemini, mediante tu clave de Google AI.",
+   "ar": "يجيب Coucou عبر Gemini باستخدام مفتاح Google AI الخاص بك.",
+   "fr": "Coucou répond avec Gemini, grâce à ta clé Google AI.",
+   "bn": "Coucou আপনার Google AI কী দিয়ে Gemini-তে উত্তর দেয়।",
+   "pt-BR": "O Coucou responde com o Gemini, usando sua chave do Google AI.",
+   "ru": "Coucou отвечает через Gemini с вашим ключом Google AI.",
+   "id": "Coucou menjawab dengan Gemini, melalui kunci Google AI Anda.",
+   "de": "Coucou antwortet mit Gemini, über deinen Google-AI-Schlüssel.",
+   "tr": "Coucou, Google AI anahtarınla Gemini üzerinden yanıt verir."
   }
  }
 }

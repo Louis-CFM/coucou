@@ -357,6 +357,13 @@ fn finish(app: &AppHandle, flow: &Arc<Flow>, mut l: Listening, busy: Arc<AtomicB
     // Too short or silent: nothing to send to the model.
     if samples.len() < 16_000 / 4 || peak < 0.004 {
         pill::update(app, |s| s.phase = "idle".into());
+        // A real attempt (a second or more) that heard nothing is said, not
+        // dropped without a word: a quiet or wrong microphone looked like
+        // dictation not working at all. A short tap stays quiet.
+        if seconds >= 1.0 {
+            crate::log::line(format!("flow: heard nothing in {seconds:.1} s (peak {peak:.4})"));
+            pill::announce(app, "mic", "#FF6B6B", t("Coucou heard nothing: speak closer to the microphone, or pick another one in Flow → Settings."), None, 6);
+        }
         return;
     }
     pill::update(app, |s| s.phase = "thinking".into());
@@ -379,7 +386,9 @@ fn process(app: &AppHandle, flow: &Arc<Flow>, samples: &[f32], front: Option<&(S
     let transcript = speech::transcribe(samples).ok_or("the voice model is not loaded")?;
     let raw = transcript.text.trim().to_string();
     if raw.is_empty() {
+        crate::log::line(format!("flow: no words in {seconds:.1} s of sound"));
         pill::update(app, |s| s.phase = "idle".into());
+        pill::announce(app, "mic", "#FF6B6B", t("Coucou heard nothing: speak closer to the microphone, or pick another one in Flow → Settings."), None, 6);
         return Ok(());
     }
     let (prepared, style, cleanup, words, key, prompt_mode, translate_to) = {
@@ -462,6 +471,8 @@ pub struct FlowStatus {
     /// "ok", or why the key can't be watched here ("wayland", "no-display").
     keys: String,
     has_claude_key: bool,
+    /// Who answers « OK Coucou »: "claude", "gemini" (no Claude key), or none.
+    voice_brain: Option<&'static str>,
     /// The languages Flow can translate into, by code (the page names them).
     languages: Vec<&'static str>,
     mics: Vec<audio::InputDevice>,
@@ -482,6 +493,7 @@ pub fn flow_status(flow: State<Arc<Flow>>) -> FlowStatus {
             Err(why) => why.into(),
         },
         has_claude_key: cleanup::has_key(),
+        voice_brain: crate::voice::brain::available(),
         languages: languages::codes(),
         mics: audio::input_devices(),
         platform: if cfg!(windows) { "windows" } else { "linux" },

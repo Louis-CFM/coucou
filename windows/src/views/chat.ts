@@ -329,6 +329,9 @@ export function buildPrompt(onHeightChange: () => void): ViewHost {
     State.notify();
     onHeightChange();
 
+    // A file just dropped is still being copied: the question waits for the copy,
+    // or it would go with a path the chat refuses.
+    if (State.droppedFileReady) await State.droppedFileReady;
     const file = State.droppedFile;
     const attached = State.promptContext;
     const context: ChatContext | null = State.chatHistory.length !== 1

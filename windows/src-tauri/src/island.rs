@@ -507,6 +507,9 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
 /// How often the wake strip is checked while the island is hidden, in ms.
 const WAKE_POLL_MS: u64 = 40;
+/// A press this far below the top of the screen (logical px) starts a drag that
+/// may wake the island over a browser: the tab strip sits above it.
+const DRAG_FROM_BELOW: f64 = 80.0;
 
 /// Emits `wake-hover` when the cursor arrives on the wake strip while the island
 /// is hidden. The strip's own DOM `mouseenter` is not enough on Windows: WebView2
@@ -522,21 +525,49 @@ pub fn spawn_wake_poll(app: AppHandle, gate: Arc<PollGate>) {
     }
     std::thread::spawn(move || {
         let mut was_inside: Option<bool> = None;
+        // The left button: whether it went down well below the top of the screen.
+        let mut was_down = false;
+        let mut pressed_low = false;
+        // What this poll last set while a browser is in front (None: not its business).
+        let mut passing: Option<bool> = None;
         loop {
             std::thread::sleep(Duration::from_millis(WAKE_POLL_MS));
+            let Some((cx, cy)) = cursor_physical() else { continue };
+            let down = platform::left_button_down();
+            if down && !was_down {
+                let scale = window(&app).and_then(|w| w.scale_factor().ok()).unwrap_or(1.0);
+                pressed_low = cy > DRAG_FROM_BELOW * scale;
+            }
+            was_down = down;
+            // Something carried up from below (a file from a download bar, a page, a
+            // folder), not a click or a drag on the tab strip at the top.
+            let carrying = down && pressed_low;
             if !gate.collapsed.load(Ordering::Relaxed) {
                 was_inside = None;
+                passing = None;
                 continue;
+            }
+            // In front of a browser the hidden strip lets the mouse through to its
+            // tabs (refresh_click_through); while a file is carried up, it takes the
+            // drag instead, or the drop could never reach the island.
+            if gate.browser_front.load(Ordering::Relaxed) {
+                let pass = !carrying;
+                if passing != Some(pass) {
+                    set_ignore_cursor(&app, pass);
+                    passing = Some(pass);
+                }
+            } else {
+                passing = None;
             }
             let Some(win) = window(&app) else { continue };
             let (Ok(origin), Ok(size)) = (win.outer_position(), win.outer_size()) else { continue };
-            let Some((cx, cy)) = cursor_physical() else { continue };
             let inside = cx >= origin.x as f64
                 && cx < (origin.x + size.width as i32) as f64
                 && cy >= origin.y as f64
                 && cy < (origin.y + size.height as i32) as f64;
             if inside && was_inside == Some(false) {
-                let _ = win.emit("wake-hover", ());
+                // `true`: a drag carried up; it wakes the island even over a browser.
+                let _ = win.emit("wake-hover", carrying);
             }
             was_inside = Some(inside);
         }
