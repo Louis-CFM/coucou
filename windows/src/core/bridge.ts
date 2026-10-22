@@ -32,6 +32,8 @@ export interface BootInfo {
   hookPath: string;
   /** False where the OS has no global cursor (Wayland): see Island.followPageCursor. */
   cursorPoll: boolean;
+  /** The island sits under a top bar (GNOME): see Island.setFloating. */
+  floating: boolean;
 }
 
 /** The phone link (src-tauri/src/phone_link): how it is, never its secrets. */
@@ -605,7 +607,8 @@ export type BridgeEvent =
   | { name: "cursor"; payload: { x: number; y: number } }
   | { name: "tray"; payload: string }
   | { name: "hook"; payload: Record<string, unknown> }
-  | { name: "screen-changed"; payload: null };
+  | { name: "screen-changed"; payload: null }
+  | { name: "island-floating"; payload: boolean };
 
 export interface DragDropPayload {
   type: "enter" | "over" | "drop" | "leave";
