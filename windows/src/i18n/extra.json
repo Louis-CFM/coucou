@@ -3388,19 +3388,6 @@
       "de": "{name} wurde nicht von Coucou erstellt — Coucou hat nichts verändert.",
       "tr": "{name} Coucou tarafından oluşturulmadı — Coucou bunu değiştirmedi."
     },
-    "{name} — {width}×{height} at {x},{y}": {
-      "zh-Hans": "{name} — {width}×{height}，位于 {x},{y}",
-      "hi": "{name} — {width}×{height}, स्थिति {x},{y}",
-      "es": "{name} — {width}×{height} en {x},{y}",
-      "ar": "{name} — {width}×{height} عند {x},{y}",
-      "fr": "{name} — {width}×{height} à {x},{y}",
-      "bn": "{name} — {width}×{height}, অবস্থান {x},{y}",
-      "pt-BR": "{name} — {width}×{height} em {x},{y}",
-      "ru": "{name} — {width}×{height} в точке {x},{y}",
-      "id": "{name} — {width}×{height} di {x},{y}",
-      "de": "{name} — {width}×{height} bei {x},{y}",
-      "tr": "{name} — {width}×{height}, konum: {x},{y}"
-    },
     "{name}: model not found (404). Pick another one above the chat box. {detail}": {
       "zh-Hans": "{name}：未找到模型（404）。请在聊天框上方选择其他模型。{detail}",
       "hi": "{name}: मॉडल नहीं मिला (404)। चैट बॉक्स के ऊपर कोई दूसरा चुनें। {detail}",
@@ -6143,6 +6130,45 @@
       "id": "Atas tengah",
       "de": "Oben mittig",
       "tr": "Üstte ortada"
+    },
+    "Display {n} — {width}×{height}": {
+      "zh-Hans": "显示器 {n} — {width}×{height}",
+      "hi": "डिस्प्ले {n} — {width}×{height}",
+      "es": "Pantalla {n} — {width}×{height}",
+      "ar": "الشاشة {n} — {width}×{height}",
+      "fr": "Écran {n} — {width}×{height}",
+      "bn": "ডিসপ্লে {n} — {width}×{height}",
+      "pt-BR": "Tela {n} — {width}×{height}",
+      "ru": "Дисплей {n} — {width}×{height}",
+      "id": "Layar {n} — {width}×{height}",
+      "de": "Bildschirm {n} — {width}×{height}",
+      "tr": "Ekran {n} — {width}×{height}"
+    },
+    "Display {n} — {width}×{height} (main)": {
+      "zh-Hans": "显示器 {n} — {width}×{height}（主显示器）",
+      "hi": "डिस्प्ले {n} — {width}×{height} (मुख्य)",
+      "es": "Pantalla {n} — {width}×{height} (principal)",
+      "ar": "الشاشة {n} — {width}×{height} (الرئيسية)",
+      "fr": "Écran {n} — {width}×{height} (principal)",
+      "bn": "ডিসপ্লে {n} — {width}×{height} (প্রধান)",
+      "pt-BR": "Tela {n} — {width}×{height} (principal)",
+      "ru": "Дисплей {n} — {width}×{height} (основной)",
+      "id": "Layar {n} — {width}×{height} (utama)",
+      "de": "Bildschirm {n} — {width}×{height} (Hauptbildschirm)",
+      "tr": "Ekran {n} — {width}×{height} (ana ekran)"
+    },
+    "Displays are numbered from left to right.": {
+      "zh-Hans": "显示器按从左到右的顺序编号。",
+      "hi": "डिस्प्ले बाएँ से दाएँ क्रम में गिने जाते हैं।",
+      "es": "Las pantallas se numeran de izquierda a derecha.",
+      "ar": "تُرقَّم الشاشات من اليسار إلى اليمين.",
+      "fr": "Les écrans sont numérotés de gauche à droite.",
+      "bn": "ডিসপ্লেগুলো বাঁ থেকে ডানে নম্বর দেওয়া হয়।",
+      "pt-BR": "As telas são numeradas da esquerda para a direita.",
+      "ru": "Дисплеи пронумерованы слева направо.",
+      "id": "Layar diberi nomor dari kiri ke kanan.",
+      "de": "Die Bildschirme sind von links nach rechts nummeriert.",
+      "tr": "Ekranlar soldan sağa numaralandırılır."
     }
   }
 }

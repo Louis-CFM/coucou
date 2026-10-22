@@ -135,25 +135,35 @@ pub struct MonitorChoice {
 
 pub fn monitor_choices(app: &AppHandle) -> Vec<MonitorChoice> {
     let Ok(monitors) = app.available_monitors() else { return Vec::new() };
-    monitors
-        .iter()
-        .map(|m| {
-            let d = describe(m);
-            MonitorChoice {
-                key: d.key(),
-                label: crate::i18n::tf(
-                    "{name} — {width}×{height} at {x},{y}",
-                    &[
-                        ("name", &d.name),
-                        ("width", &d.w.to_string()),
-                        ("height", &d.h.to_string()),
-                        ("x", &d.x.to_string()),
-                        ("y", &d.y.to_string()),
-                    ],
-                ),
-            }
+    let ids: Vec<DisplayId> = monitors.iter().map(describe).collect();
+    let primary = app.primary_monitor().ok().flatten().map(|m| describe(&m));
+    ids.iter()
+        .zip(display_numbers(&ids))
+        .map(|(d, n)| {
+            let (n, w, h) = (n.to_string(), d.w.to_string(), d.h.to_string());
+            let vars = [("n", n.as_str()), ("width", w.as_str()), ("height", h.as_str())];
+            let label = if Some(d) == primary.as_ref() {
+                crate::i18n::tf("Display {n} — {width}×{height} (main)", &vars)
+            } else {
+                crate::i18n::tf("Display {n} — {width}×{height}", &vars)
+            };
+            // The key is unchanged: preferences saved before still match.
+            MonitorChoice { key: d.key(), label }
         })
         .collect()
+}
+
+/// Each display's number in Settings, in the order of `ids`: from left to
+/// right, and from top to bottom when one sits above another. Two monitors of
+/// the same model share a name, so a number tells them apart.
+fn display_numbers(ids: &[DisplayId]) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..ids.len()).collect();
+    order.sort_by_key(|&i| (ids[i].x, ids[i].y));
+    let mut numbers = vec![0; ids.len()];
+    for (n, i) in order.into_iter().enumerate() {
+        numbers[i] = n + 1;
+    }
+    numbers
 }
 
 /// What a display is remembered by: its logical origin, plus its name and
@@ -330,6 +340,19 @@ mod display_tests {
         assert_eq!(pick_display("at:1920,0", &[lap.clone(), ext.clone()]), Some(1));
         assert_eq!(pick_display("primary", &[lap, ext]), None);
         assert_eq!(pick_display("at:nonsense", &[]), None);
+    }
+
+    #[test]
+    fn displays_are_numbered_from_left_to_right() {
+        // Enumerated main first, then the one on its left, then the one on its right.
+        let main = d("DISPLAY1", 0, 0, 1920, 1080);
+        let left = d("DISPLAY2", -1920, 0, 1920, 1080);
+        let right = d("DISPLAY3", 1920, 0, 1920, 1080);
+        assert_eq!(display_numbers(&[main.clone(), left, right]), [2, 1, 3]);
+        // One above the main display comes first.
+        let above = d("DISPLAY2", 0, -1080, 1920, 1080);
+        assert_eq!(display_numbers(&[main.clone(), above]), [2, 1]);
+        assert_eq!(display_numbers(&[main]), [1]);
     }
 
     #[test]

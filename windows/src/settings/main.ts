@@ -1027,6 +1027,7 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Island lives on") }),
       screen,
     ),
+    h("div", { class: "hint", text: t("Displays are numbered from left to right.") }),
     ...placementRows,
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
