@@ -50,6 +50,7 @@ export class IslandStateMachine {
 
   private homeDelay = 15;
   private byHover = false;
+  private neverHide = false;
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
@@ -154,13 +155,23 @@ export class IslandStateMachine {
     this.transition("hidden");
   }
 
+  /**
+   * The compact island never hides on its own (the bottom-left placement, on
+   * the taskbar). Turned off, a compact island hides after the usual delay.
+   */
+  setNeverHide(on: boolean) {
+    if (on === this.neverHide) return;
+    this.neverHide = on;
+    if (this.state === "petit") this.schedulePetitHide();
+  }
+
   // ── Timers ──────────────────────────────────────────────────────────────────
 
   private schedulePetitHide() {
     this.clear("petitHide");
     // A card folded away while it waits for an answer keeps the compact island
     // on screen, so it can be reopened (isHeldOpen on macOS).
-    if (this.pinned) return;
+    if (this.pinned || this.neverHide) return;
     this.petitHide = window.setTimeout(() => {
       this.petitHide = null;
       if (this.state === "petit" && !this.pinned) this.transition("hidden");
