@@ -22,6 +22,7 @@ mod integrations;
 mod calcom;
 mod island;
 mod launch;
+mod jira;
 mod local_chat;
 mod log;
 mod mail;
@@ -281,6 +282,24 @@ fn is_forge_instance_url(target: &reqwest::Url, instance: &reqwest::Url) -> bool
 #[tauri::command]
 fn open_gitea() {
     if let Some(url) = secrets::get("gitea-url") {
+        open_url(url);
+    }
+}
+
+/// Opens the configured Jira site, whose address the page never receives.
+#[tauri::command]
+fn open_jira() {
+    if let Some(url) = secrets::get("jira-url") {
+        open_url(url);
+    }
+}
+
+/// Opens a Jira link only if it belongs to the configured site.
+#[tauri::command]
+fn open_jira_url(url: String) {
+    let (Ok(target), Some(base)) = (reqwest::Url::parse(&url), secrets::get("jira-url")) else { return };
+    let Ok(instance) = reqwest::Url::parse(base.trim()) else { return };
+    if is_forge_instance_url(&target, &instance) {
         open_url(url);
     }
 }
@@ -665,6 +684,9 @@ fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> 
     if key == "gitea-token" || key == "gitea-url" {
         integrations::gitea_credentials_changed(&app);
     }
+    if key.starts_with("jira-") {
+        integrations::jira_credentials_changed(&app);
+    }
     Ok(())
 }
 
@@ -680,6 +702,9 @@ fn secret_clear(app: AppHandle, key: String) -> Result<(), String> {
     }
     if key == "gitea-token" || key == "gitea-url" {
         integrations::gitea_credentials_changed(&app);
+    }
+    if key.starts_with("jira-") {
+        integrations::jira_credentials_changed(&app);
     }
     Ok(())
 }
@@ -925,6 +950,8 @@ pub fn run() {
             open_gitlab_url,
             open_gitea,
             open_gitea_url,
+            open_jira,
+            open_jira_url,
             open_in_vscode,
             open_session,
             launch::launch_session,
