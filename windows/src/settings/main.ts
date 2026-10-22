@@ -784,6 +784,13 @@ const INTEGRATIONS: IntegrationDef[] = [
       { key: "gitea-url", label: N_("Instance URL"), placeholder: "https://gitea.example.com", secret: false },
       { key: "gitea-token", label: N_("Token"), placeholder: "…", secret: true },
     ] },
+  { id: "integration_jira", name: "Jira", color: "#2684FF",
+    fields: [
+      { key: "jira-url", label: N_("Site URL"), placeholder: "https://your-team.atlassian.net", secret: false },
+      { key: "jira-email", label: N_("Email"), placeholder: "you@example.com", secret: false },
+      { key: "jira-token", label: N_("API token"), placeholder: "…", secret: true },
+    ],
+    hint: N_("Jira Cloud: your email and an API token. Jira Server or Data Center: leave the email empty and use a personal access token.") },
   { id: "integration_vercel", name: "Vercel", color: "#7C5CFF",
     fields: [{ key: "vercel-token", label: N_("Token"), placeholder: "…", secret: true }] },
   { id: "integration_n8n", name: "n8n", color: "#F29B38",
@@ -1365,7 +1372,7 @@ async function render() {
   const shortcutReport = await Bridge.shortcutsStatus();
 
   const keys = [
-    "stripe-api-key", "github-token", "gitlab-url", "gitlab-token", "gitea-url", "gitea-token", "vercel-token",
+    "stripe-api-key", "github-token", "gitlab-url", "gitlab-token", "gitea-url", "gitea-token", "jira-url", "jira-email", "jira-token", "vercel-token",
     "n8n-url", "n8n-api-key", "resend-api-key", "notion-api-key", "calcom-api-key",
   ];
   const present: Record<string, boolean> = {};

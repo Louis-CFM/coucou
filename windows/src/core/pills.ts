@@ -126,6 +126,8 @@ export const PILL_CATALOG: readonly PillDefinition[] = [
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("gitlab-token") },
   { id: "integration_gitea", name: "Gitea", color: "#609926", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("gitea-token") },
+  { id: "integration_jira", name: "Jira", color: "#2684FF", category: "service",
+    subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("jira-token") },
   { id: "integration_notion", name: "Notion", color: "#8C8C8C", category: "service",
     subtitle: N_("Integration"), source: "n8n", support: "yes", connect: key("notion-api-key") },
   { id: "integration_calcom", name: "Cal.com", color: "#C9956A", category: "service",

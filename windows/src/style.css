@@ -1759,6 +1759,33 @@ input[type="range"]::-webkit-slider-thumb {
   font-style: normal;
 }
 
+/* Jira's sprint: one line, a bar of done / in progress / to do, then the counts. */
+.jira-sprint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 2px;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  text-align: left;
+  cursor: default;
+}
+
+.jira-bar {
+  display: flex;
+  flex: 0 0 56px;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.jira-bar i {
+  display: block;
+  height: 100%;
+}
+
 .int-empty {
   font: 400 11px var(--font);
   color: var(--dim-3);

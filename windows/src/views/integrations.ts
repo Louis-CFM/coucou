@@ -286,6 +286,53 @@ function giteaCard(): HTMLElement {
       statRow(ICONS.stack, "#6B7079", t("Repositories"), String(d.totalRepos ?? 0))));
 }
 
+// ── Jira ──────────────────────────────────────────────────────────────────────
+
+const JIRA_BLUE = "#2684FF";
+
+/** The active sprint (a bar of done / in progress / to do) and the latest comments from others. */
+function jiraCard(): HTMLElement {
+  const d = get("integration_jira");
+  const sprint = (d.sprint ?? null) as Record<string, unknown> | null;
+  const left = sprint && typeof sprint.daysLeft === "number" ? t("{n}d left", { n: sprint.daysLeft }) : "";
+  const card = h("div", { class: "int-card" }, header(JIRA_BLUE, "Jira", sprint ? String(sprint.name) : t("Comments")));
+  if (sprint) {
+    const done = Number(sprint.done ?? 0);
+    const doing = Number(sprint.inProgress ?? 0);
+    const todo = Number(sprint.todo ?? 0);
+    const total = Math.max(done + doing + todo, 1);
+    const segment = (count: number, color: string) => h("i", { style: `width:${(count / total) * 100}%;background:${color}` });
+    const mine = Number(sprint.mineDone ?? 0) + Number(sprint.mineInProgress ?? 0) + Number(sprint.mineTodo ?? 0);
+    card.append(
+      h(
+        "button",
+        { class: "jira-sprint", onclick: () => { if (typeof sprint.url === "string") void Bridge.openJiraUrl(sprint.url); } },
+        h("span", { class: "jira-bar" }, segment(done, "#22C55E"), segment(doing, JIRA_BLUE), segment(todo, "#3A3E46")),
+        h("span", { class: "int-sub", text: t("{done}/{total} done · mine {mine}", { done, total: done + doing + todo, mine: `${sprint.mineDone ?? 0}/${mine}` }) }),
+        h("span", { class: "int-ago", text: left }),
+      ),
+    );
+  }
+  const rows = h("div", { class: "int-rows tight" });
+  const comments = arr("integration_jira", "comments");
+  if (comments.length === 0) rows.append(h("div", { class: "int-empty", text: t("No new comments") }));
+  for (const c of comments.slice(0, sprint ? 2 : 3)) {
+    rows.append(
+      h(
+        "button",
+        { class: "int-page", onclick: () => { if (typeof c.url === "string") void Bridge.openJiraUrl(c.url); } },
+        c.mention
+          ? h("i", { class: "int-emoji", style: "color:#F5A524", text: "@" })
+          : h("i", { class: "int-emoji", style: `color:${JIRA_BLUE}` }, svg(ICONS.bubble, 9)),
+        h("span", { class: "int-name", text: `${String(c.key ?? "")} · ${String(c.author ?? "")}: ${String(c.text ?? "")}` }),
+        h("span", { class: "int-ago", text: timeAgo(c.createdAt) }),
+      ),
+    );
+  }
+  card.append(rows);
+  return card;
+}
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 
 function stripeCard(): HTMLElement {
@@ -452,6 +499,8 @@ export function hasIntegrationData(id: string): boolean {
     case "integration_gitlab": return get(id).projects != null;
     case "integration_gitea":
       return get(id).totalRepos != null;
+    case "integration_jira":
+      return get(id).me != null;
     case "integration_stripe":
       return info.loaded;
     case "integration_notion":
@@ -506,6 +555,8 @@ export function renderIntegrationCard(task: AgentTask, hooks: IntegrationCardHoo
     case "integration_gitlab": return gitlabCard();
     case "integration_gitea":
       return giteaCard();
+    case "integration_jira":
+      return jiraCard();
     case "integration_stripe":
       return stripeCard();
     case "integration_notion":
