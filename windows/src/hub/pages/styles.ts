@@ -18,7 +18,7 @@ export async function stylesPage(page: HTMLElement, ctx: HubContext) {
   const save = () => void FlowBridge.setStyles(styles);
   page.append(ctx.hero("styles", t("Styles"), t("Claude cleans up what you say, in the style of the app you write in.")));
 
-  const perApp = h("div", {});
+  const perApp = h("div", { class: "hub-applist" });
   const drawApps = () => {
     clear(perApp);
     perApp.classList.toggle("dimmed", !ctx.status.prefs.cleanup);
