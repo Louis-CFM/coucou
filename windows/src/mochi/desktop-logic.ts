@@ -328,3 +328,21 @@ export class DesktopMochiController {
     }
   }
 }
+
+/**
+ * Asks until there is an answer: `ask` gives null when the call failed (not when
+ * the answer is "no"), and is tried again `tries` times, `waitMs` apart.
+ */
+export async function askUntilAnswered<T>(
+  ask: () => Promise<T | null>,
+  tries: number,
+  waitMs: number,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<T | null> {
+  for (let i = 0; i < tries; i++) {
+    const answer = await ask();
+    if (answer != null) return answer;
+    await wait(waitMs);
+  }
+  return null;
+}
