@@ -137,6 +137,10 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    /// Shown inside the Coucou Flow window (GitHub build): one section, without this window's
+    /// sidebar, as the window has its own.
+    private var embeddedSection: String? = nil
+    private var section: String { embeddedSection ?? selectedSection }
     // Active pills: the pill whose colour palette is open, if any
     @State private var colorPalettePill: String? = nil
     #if PHONE_LINK
@@ -155,6 +159,7 @@ struct SettingsView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            if embeddedSection == nil {
             // Sidebar — 200 pt, sidebar visual effect background
             ZStack(alignment: .topLeading) {
                 SidebarBackground()
@@ -197,21 +202,26 @@ struct SettingsView: View {
             .frame(width: 200)
 
             Divider()
+            }
 
             // Detail panel
             VStack(alignment: .leading, spacing: 0) {
-                Text(sectionTitle)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
+                if embeddedSection == nil {
+                    Text(sectionTitle)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 12)
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         sectionContent
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, embeddedSection == nil ? 20 : 28)
+                    .padding(.top, embeddedSection == nil ? 0 : 20)
                     .padding(.bottom, 16)
+                    .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
                 }
                 if !statusMessage.isEmpty {
                     Divider()
@@ -250,7 +260,7 @@ struct SettingsView: View {
     // MARK: - Section routing
 
     private var sectionTitle: String {
-        switch selectedSection {
+        switch section {
         case "general":      return String(localized: "General")
         case "activepills":  return String(localized: "Active pills")
         case "agents":       return String(localized: "Agents")
@@ -263,7 +273,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var sectionContent: some View {
-        switch selectedSection {
+        switch section {
         case "activepills":  activePillsSection
         case "agents":       agentsSection
         case "chat":         chatSection
@@ -332,6 +342,8 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Open on hover", isOn: $state.openOnHover)
                     .help("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.")
+                Toggle(String(localized: "alerts.all-pills"), isOn: $state.alertsFromAllPills)
+                    .help(String(localized: "alerts.all-pills.help"))
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)
@@ -379,6 +391,19 @@ struct SettingsView: View {
             }
         }
 
+        GroupBox(String(localized: "vitals.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "vitals.toggle"), isOn: Binding(
+                    get: { MachineVitals.shared.enabled },
+                    set: { MachineVitals.shared.enabled = $0 }))
+                Text("vitals.about")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
+        }
+
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
@@ -413,6 +438,10 @@ struct SettingsView: View {
                 .padding(6)
         }
 
+        #if !APPSTORE
+        UpdateSettingsSection()
+        #endif
+
         GroupBox(String(localized: "Weekly recap")) {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(String(localized: "Keep a history of my coding sessions"), isOn: $state.recapEnabled)
@@ -433,6 +462,7 @@ struct SettingsView: View {
                     Text(String(localized: "System")).tag("")
                     Text("English").tag("en")
                     Text("简体中文").tag("zh-Hans")
+                    Text("繁體中文").tag("zh-Hant")
                     Text("हिन्दी").tag("hi")
                     Text("Español").tag("es")
                     Text("العربية").tag("ar")
@@ -441,6 +471,9 @@ struct SettingsView: View {
                     Text("Português (Brasil)").tag("pt-BR")
                     Text("Русский").tag("ru")
                     Text("Bahasa Indonesia").tag("id")
+                    Text("Deutsch").tag("de")
+                    Text("Türkçe").tag("tr")
+                    Text("ไทย").tag("th")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -618,6 +651,8 @@ struct SettingsView: View {
         }
 
         #if !APPSTORE
+        ClaudeDesktopChatSettingsSection()
+
         GroupBox(String(localized: "hooks.gemini.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(geminiHooksInstalled
@@ -1086,7 +1121,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("deepseek-api-key", value: deepseekKey)
-                    statusMessage = "DeepSeek key saved."
+                    statusMessage = String(localized: "status.deepseek-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -1100,7 +1135,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("qwen-api-key", value: qwenKey)
-                    statusMessage = "Qwen key saved."
+                    statusMessage = String(localized: "status.qwen-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -1114,7 +1149,7 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button(String(localized: "Save")) {
                     KeychainStore.shared.set("moonshot-api-key", value: moonshotKey)
-                    statusMessage = "Moonshot key saved."
+                    statusMessage = String(localized: "status.moonshot-key-saved")
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -1334,6 +1369,12 @@ struct SettingsView: View {
                 // Portfolio: exchange accounts + wallets.
                 PortfolioSettingsSection()
                     .padding(.top, 4)
+
+                #if !APPSTORE
+                // WhatsApp through a local gateway: its own fields, saved by its own button.
+                WhatsAppSettingsSection()
+                    .padding(.top, 4)
+                #endif
 
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()
@@ -2407,5 +2448,13 @@ struct ShortcutRecorderButton: View {
             34:"I", 37:"L", 38:"J", 40:"K", 45:"N", 46:"M", 49:"Space", 50:"`", 27:"-"
         ]
         return map[c] ?? "·"
+    }
+}
+
+extension SettingsView {
+    /// One section of Settings, for the Coucou Flow window.
+    init(embeddedSection: String) {
+        self.init()
+        self.embeddedSection = embeddedSection
     }
 }

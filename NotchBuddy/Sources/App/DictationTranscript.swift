@@ -45,12 +45,17 @@ struct DictationTranscript: Equatable {
             current = formatted
             return
         }
-        // Earlier words the new result left out, that no new word covers: put them back.
+        // Earlier words the new result left out, that no new word covers: put them back. Only words
+        // that had a time of their own (partial results often come without), and never words the new
+        // text already says (times can shift between results).
         let kept = pieces.filter { old in
-            old.end <= last.start + Self.tolerance
+            old.end > old.start
+                && old.end <= last.start + Self.tolerance
                 && !new.contains { Self.close(old, $0) }
         }
-        if kept.isEmpty {
+        let alreadySaid = !kept.isEmpty
+            && Self.normalized(formatted).contains(Self.normalized(kept.map(\.text).joined(separator: " ")))
+        if kept.isEmpty || alreadySaid {
             pieces = new
             current = formatted
         } else {
@@ -70,6 +75,12 @@ struct DictationTranscript: Equatable {
         let n = new.split(whereSeparator: \.isWhitespace)
         guard p.count >= 3, !n.isEmpty, n.count * 2 <= p.count else { return false }
         return p[0].lowercased() != n[0].lowercased()
+    }
+
+    /// Lowercase letters and digits, single spaces: "Salut, Coucou !" → "salut coucou".
+    static func normalized(_ s: String) -> String {
+        let kept = s.lowercased().map { $0.isLetter || $0.isNumber ? $0 : " " }
+        return String(kept).split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     private static func close(_ a: Piece, _ b: Piece) -> Bool {

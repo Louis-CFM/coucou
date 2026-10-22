@@ -16,10 +16,16 @@ pub const KNOWN_KEYS: &[&str] = &[
     "n8n-api-key",
     "vercel-token",
     "github-token",
+    "gitlab-url",
+    "gitlab-token",
+    "gitea-url",
+    "gitea-token",
     "stripe-api-key",
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
+    // « OK Coucou »'s answers in an ElevenLabs voice.
+    "elevenlabs-api-key",
 ];
 
 fn entry(key: &str) -> Option<Entry> {

@@ -47,6 +47,20 @@
 		1C2BB61FA83015C42B321E0E /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		1D23613B270FE8B11C5E27A7 /* IslandDisplayChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A09E73F1E58019EF6EA2A62 /* IslandDisplayChoice.swift */; };
 		1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
+		8885D645C2235B74ACFFBD5C /* FlowHubMochis.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA206D2358F698DD382DA32 /* FlowHubMochis.swift */; };
+		C25D058C2C5B4B7A93238F3A /* NoteTaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91A6EB483F6EC87C05CC6C69 /* NoteTaker.swift */; };
+		AA4B80F3F49E23FED830EC7D /* NoteAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2BE0A486C4ED7BEDDC96548 /* NoteAudio.swift */; };
+		A52241F5F37D87CB9BB8E4E0 /* NoteModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BB44A1EDFFD50C0688BD09 /* NoteModels.swift */; };
+		43346F544B8BF45F651C87B4 /* ParakeetEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9007267453D60200C2CB8F4 /* ParakeetEngine.swift */; };
+		8090516AA01E97B3F0D16261 /* FlowHubNotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2FE56D7F32FCF7453CFB1B /* FlowHubNotes.swift */; };
+		7FBFCF6C9075D9EFD351961B /* FlowHubSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19503827102C75174006BF9E /* FlowHubSettings.swift */; };
+		88376FD9D48E9A77EF57C0FD /* FlowHubWords.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27F4F64C08DD3F72AF4C2FB /* FlowHubWords.swift */; };
+		299AF513444806BD9BA0CF96 /* FlowHubInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF9B196F3433D1B9ED839E6 /* FlowHubInsights.swift */; };
+		D3ADD680385678E53FC78655 /* FlowHubHome.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACE1C363C3E70B1E3B4D23B /* FlowHubHome.swift */; };
+		3E0F7C69420EFF9A4957A626 /* FlowHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CF1F66182B1E903A14454D /* FlowHub.swift */; };
+		C023D194AD85560A6F98E478 /* FlowCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0505B873924343CA2616B88 /* FlowCleanup.swift */; };
+		19D47205BAFE0A10B0CBE339 /* FlowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8265AEA7DA40AB9C850741B /* FlowStore.swift */; };
+		3A42E18567D03203D3DD3486 /* FlowText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DB76AD36667A057426F959 /* FlowText.swift */; };
 		5663BA3BFBE656C2F5C00290 /* DictationTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78597C8DAC0BA94D4AD6E870 /* DictationTranscript.swift */; };
 		0AF77F5721986BE11151CE87 /* FlowSettingsBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0565D4D4D369E3ADD9CEF697 /* FlowSettingsBox.swift */; };
 		614F9783757FE777EF4CABB5 /* FlowPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D06C32348E26EAA1087BFC /* FlowPill.swift */; };
@@ -133,6 +147,20 @@
 		65CB53E20B2289CA3AC3E8FE /* TurnSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1C4152EBDBD7C24CABFFD7 /* TurnSnapshot.swift */; };
 		6613EB914852E6EEB1FF37BF /* IntentParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39753CFF90B494D449CCD95 /* IntentParser.swift */; };
 		6726F74966EDE7F82BFE89B2 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
+		C839C6CBE10ADE51BBC9D954 /* FlowHubMochis.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA206D2358F698DD382DA32 /* FlowHubMochis.swift */; };
+		BAFE1A37B0ACEFDCE29E2B1E /* NoteTaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91A6EB483F6EC87C05CC6C69 /* NoteTaker.swift */; };
+		B42017CDFF5A9ED72E2FF99B /* NoteAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2BE0A486C4ED7BEDDC96548 /* NoteAudio.swift */; };
+		ACC4A6ED5F5915F5B0DE9DD6 /* NoteModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BB44A1EDFFD50C0688BD09 /* NoteModels.swift */; };
+		B63AC65188449D52DB5DDC29 /* ParakeetEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9007267453D60200C2CB8F4 /* ParakeetEngine.swift */; };
+		C500511EDFF4761BDA4488CE /* FlowHubNotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2FE56D7F32FCF7453CFB1B /* FlowHubNotes.swift */; };
+		A5260F0D566968C8A2FE43BD /* FlowHubSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19503827102C75174006BF9E /* FlowHubSettings.swift */; };
+		4176623B12ACEAFC98ED5821 /* FlowHubWords.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27F4F64C08DD3F72AF4C2FB /* FlowHubWords.swift */; };
+		C9B8E68C2A81617292FEECBB /* FlowHubInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF9B196F3433D1B9ED839E6 /* FlowHubInsights.swift */; };
+		6B3C267F0AD334A56AC6C8A4 /* FlowHubHome.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACE1C363C3E70B1E3B4D23B /* FlowHubHome.swift */; };
+		0CF1FAFFA2A1589B1A32AD64 /* FlowHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CF1F66182B1E903A14454D /* FlowHub.swift */; };
+		011FB76783F2CF532EEFF7FC /* FlowCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0505B873924343CA2616B88 /* FlowCleanup.swift */; };
+		E3E32D45E5570AE6CF52DAC0 /* FlowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8265AEA7DA40AB9C850741B /* FlowStore.swift */; };
+		4FAE0FDA3500A44DC05E7852 /* FlowText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DB76AD36667A057426F959 /* FlowText.swift */; };
 		AAC6AB081F959CEE5FE628C8 /* DictationTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78597C8DAC0BA94D4AD6E870 /* DictationTranscript.swift */; };
 		98863553DD449BD791A1E00C /* FlowSettingsBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0565D4D4D369E3ADD9CEF697 /* FlowSettingsBox.swift */; };
 		15C9E266B443EFE70908510B /* FlowPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D06C32348E26EAA1087BFC /* FlowPill.swift */; };
@@ -352,6 +380,7 @@
 		FBBC4CDE82B5886A83A27D7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 506824380E9C80B9BC6DCE72 /* Assets.xcassets */; };
 		FDF87CF7C5F703EDD9A7CC14 /* CloudProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28323DC20034A281F6829884 /* CloudProbe.swift */; };
 		FEFEF1EBAB0E6CA74A33C10B /* SafeWebURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2FDED98F7F6C755A72C97A3 /* SafeWebURL.swift */; };
+		8896DCFCB54BA53FE1EE49AC /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FAFFA455BB88CDC7BB499851 /* FluidAudio */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -472,6 +501,20 @@
 		871CA2BADC67D97C97C7009D /* error.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = error.wav; sourceTree = "<group>"; };
 		8790ACE9F73BD74640A0F20C /* LocalChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalChat.swift; sourceTree = "<group>"; };
 		87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTarget.swift; sourceTree = "<group>"; };
+		EDA206D2358F698DD382DA32 /* FlowHubMochis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubMochis.swift; sourceTree = "<group>"; };
+		91A6EB483F6EC87C05CC6C69 /* NoteTaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTaker.swift; sourceTree = "<group>"; };
+		D2BE0A486C4ED7BEDDC96548 /* NoteAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteAudio.swift; sourceTree = "<group>"; };
+		66BB44A1EDFFD50C0688BD09 /* NoteModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteModels.swift; sourceTree = "<group>"; };
+		C9007267453D60200C2CB8F4 /* ParakeetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetEngine.swift; sourceTree = "<group>"; };
+		3B2FE56D7F32FCF7453CFB1B /* FlowHubNotes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubNotes.swift; sourceTree = "<group>"; };
+		19503827102C75174006BF9E /* FlowHubSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubSettings.swift; sourceTree = "<group>"; };
+		C27F4F64C08DD3F72AF4C2FB /* FlowHubWords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubWords.swift; sourceTree = "<group>"; };
+		FAF9B196F3433D1B9ED839E6 /* FlowHubInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubInsights.swift; sourceTree = "<group>"; };
+		EACE1C363C3E70B1E3B4D23B /* FlowHubHome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubHome.swift; sourceTree = "<group>"; };
+		82CF1F66182B1E903A14454D /* FlowHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHub.swift; sourceTree = "<group>"; };
+		A0505B873924343CA2616B88 /* FlowCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowCleanup.swift; sourceTree = "<group>"; };
+		A8265AEA7DA40AB9C850741B /* FlowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowStore.swift; sourceTree = "<group>"; };
+		A5DB76AD36667A057426F959 /* FlowText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowText.swift; sourceTree = "<group>"; };
 		78597C8DAC0BA94D4AD6E870 /* DictationTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTranscript.swift; sourceTree = "<group>"; };
 		0565D4D4D369E3ADD9CEF697 /* FlowSettingsBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSettingsBox.swift; sourceTree = "<group>"; };
 		79D06C32348E26EAA1087BFC /* FlowPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowPill.swift; sourceTree = "<group>"; };
@@ -560,6 +603,17 @@
 		FADC1FE5696B1075932D0B7C /* InstructionRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionRunner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		DDB8BA12A0DFFF47015C999A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8896DCFCB54BA53FE1EE49AC /* FluidAudio in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		061D81F5DBAB8DB3ADFD0CB8 /* sounds */ = {
 			isa = PBXGroup;
@@ -633,6 +687,20 @@
 				914A792788D403F836BEB570 /* SpotifyViews.swift */,
 				2EF78999D68D56ADE4CEFBE2 /* StripePoller.swift */,
 				87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */,
+				EDA206D2358F698DD382DA32 /* FlowHubMochis.swift */,
+				91A6EB483F6EC87C05CC6C69 /* NoteTaker.swift */,
+				D2BE0A486C4ED7BEDDC96548 /* NoteAudio.swift */,
+				66BB44A1EDFFD50C0688BD09 /* NoteModels.swift */,
+				C9007267453D60200C2CB8F4 /* ParakeetEngine.swift */,
+				3B2FE56D7F32FCF7453CFB1B /* FlowHubNotes.swift */,
+				19503827102C75174006BF9E /* FlowHubSettings.swift */,
+				C27F4F64C08DD3F72AF4C2FB /* FlowHubWords.swift */,
+				FAF9B196F3433D1B9ED839E6 /* FlowHubInsights.swift */,
+				EACE1C363C3E70B1E3B4D23B /* FlowHubHome.swift */,
+				82CF1F66182B1E903A14454D /* FlowHub.swift */,
+				A0505B873924343CA2616B88 /* FlowCleanup.swift */,
+				A8265AEA7DA40AB9C850741B /* FlowStore.swift */,
+				A5DB76AD36667A057426F959 /* FlowText.swift */,
 				78597C8DAC0BA94D4AD6E870 /* DictationTranscript.swift */,
 				0565D4D4D369E3ADD9CEF697 /* FlowSettingsBox.swift */,
 				79D06C32348E26EAA1087BFC /* FlowPill.swift */,
@@ -853,6 +921,7 @@
 				002591692F471861383A29CD /* Sources */,
 				A0E1A749D68BF03D3FDE4473 /* Resources */,
 				FDEB6FD7AAB82BAA78A891E1 /* Write Git Hash to Info.plist */,
+				DDB8BA12A0DFFF47015C999A /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -860,6 +929,7 @@
 			);
 			name = NotchBuddy;
 			packageProductDependencies = (
+				FAFFA455BB88CDC7BB499851 /* FluidAudio */,
 			);
 			productName = NotchBuddy;
 			productReference = A14A61070D293AB4BBA303F7 /* NotchBuddy.app */;
@@ -957,6 +1027,9 @@
 			);
 			mainGroup = C8A9AE71DB5C532D78C7784B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1DFD1CFF91133E3B9FCD52E3 /* XCRemoteSwiftPackageReference "FluidAudio" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6CF11AAA7898712CF6DB364A /* Products */;
 			projectDirPath = "";
@@ -1122,6 +1195,20 @@
 				1558BB00C530B721172F6E65 /* StripePoller.swift in Sources */,
 				9EA178EA395B116336C1FA10 /* TerminalTarget+AppKit.swift in Sources */,
 				1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */,
+				8885D645C2235B74ACFFBD5C /* FlowHubMochis.swift in Sources */,
+				C25D058C2C5B4B7A93238F3A /* NoteTaker.swift in Sources */,
+				AA4B80F3F49E23FED830EC7D /* NoteAudio.swift in Sources */,
+				A52241F5F37D87CB9BB8E4E0 /* NoteModels.swift in Sources */,
+				43346F544B8BF45F651C87B4 /* ParakeetEngine.swift in Sources */,
+				8090516AA01E97B3F0D16261 /* FlowHubNotes.swift in Sources */,
+				7FBFCF6C9075D9EFD351961B /* FlowHubSettings.swift in Sources */,
+				88376FD9D48E9A77EF57C0FD /* FlowHubWords.swift in Sources */,
+				299AF513444806BD9BA0CF96 /* FlowHubInsights.swift in Sources */,
+				D3ADD680385678E53FC78655 /* FlowHubHome.swift in Sources */,
+				3E0F7C69420EFF9A4957A626 /* FlowHub.swift in Sources */,
+				C023D194AD85560A6F98E478 /* FlowCleanup.swift in Sources */,
+				19D47205BAFE0A10B0CBE339 /* FlowStore.swift in Sources */,
+				3A42E18567D03203D3DD3486 /* FlowText.swift in Sources */,
 				5663BA3BFBE656C2F5C00290 /* DictationTranscript.swift in Sources */,
 				0AF77F5721986BE11151CE87 /* FlowSettingsBox.swift in Sources */,
 				614F9783757FE777EF4CABB5 /* FlowPill.swift in Sources */,
@@ -1329,6 +1416,20 @@
 				E4B9986674F4D425826F15A8 /* StripePoller.swift in Sources */,
 				11F14DB97C93CF84DF9D5C43 /* TerminalTarget+AppKit.swift in Sources */,
 				6726F74966EDE7F82BFE89B2 /* TerminalTarget.swift in Sources */,
+				C839C6CBE10ADE51BBC9D954 /* FlowHubMochis.swift in Sources */,
+				BAFE1A37B0ACEFDCE29E2B1E /* NoteTaker.swift in Sources */,
+				B42017CDFF5A9ED72E2FF99B /* NoteAudio.swift in Sources */,
+				ACC4A6ED5F5915F5B0DE9DD6 /* NoteModels.swift in Sources */,
+				B63AC65188449D52DB5DDC29 /* ParakeetEngine.swift in Sources */,
+				C500511EDFF4761BDA4488CE /* FlowHubNotes.swift in Sources */,
+				A5260F0D566968C8A2FE43BD /* FlowHubSettings.swift in Sources */,
+				4176623B12ACEAFC98ED5821 /* FlowHubWords.swift in Sources */,
+				C9B8E68C2A81617292FEECBB /* FlowHubInsights.swift in Sources */,
+				6B3C267F0AD334A56AC6C8A4 /* FlowHubHome.swift in Sources */,
+				0CF1FAFFA2A1589B1A32AD64 /* FlowHub.swift in Sources */,
+				011FB76783F2CF532EEFF7FC /* FlowCleanup.swift in Sources */,
+				E3E32D45E5570AE6CF52DAC0 /* FlowStore.swift in Sources */,
+				4FAE0FDA3500A44DC05E7852 /* FlowText.swift in Sources */,
 				AAC6AB081F959CEE5FE628C8 /* DictationTranscript.swift in Sources */,
 				98863553DD449BD791A1E00C /* FlowSettingsBox.swift in Sources */,
 				15C9E266B443EFE70908510B /* FlowPill.swift in Sources */,
@@ -2264,6 +2365,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1DFD1CFF91133E3B9FCD52E3 /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio";
+			requirement = {
+				kind = exactVersion;
+				version = 0.17.7;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FAFFA455BB88CDC7BB499851 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1DFD1CFF91133E3B9FCD52E3 /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = ACF315E0C1F7FECADF1B4FBC /* Project object */;
 }

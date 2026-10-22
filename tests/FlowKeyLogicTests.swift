@@ -32,6 +32,15 @@ enum FlowKeyLogicTests {
             check("idle after the drop", k.phase == .idle)
         }
 
+        print("\nThe pill's microphone: hands-free at once")
+        do {
+            var k = FlowKeyLogic()
+            k.lock()
+            check("locked", k.phase == .locked)
+            check("the key pastes", k.keyDown(at: 5) == .finish)
+            check("idle after", k.phase == .idle)
+        }
+
         print("\nDouble tap: hands-free")
         do {
             var k = FlowKeyLogic()
@@ -133,6 +142,20 @@ enum FlowKeyLogicTests {
             check("untimed growth", u.text == "hello there my friend how are you")
             u.absorb("great")
             check("untimed fresh start", u.text == "hello there my friend how are you great")
+            // Partial results without times, then a final result with times: nothing doubled.
+            var f = DictationTranscript()
+            f.absorb("Salut coucou", pieces: [P(start: 0, end: 0, text: "Salut"), P(start: 0, end: 0, text: "coucou")])
+            f.absorb("Salut coucou comment tu vas", pieces: ["Salut", "coucou", "comment", "tu", "vas"].map { P(start: 0, end: 0, text: $0) })
+            f.absorb("Salut coucou comment tu vas", pieces: words([(0.6, "Salut"), (1.0, "coucou"), (1.5, "comment"), (1.9, "tu"), (2.1, "vas")]))
+            check("untimed partials then a timed final: said once", f.text == "Salut coucou comment tu vas")
+
+            // Times that move a lot between results, same words: said once.
+            var g = DictationTranscript()
+            g.absorb("Salut coucou comment tu vas", pieces: words([(0.0, "Salut"), (0.4, "coucou"), (0.8, "comment"), (1.1, "tu"), (1.3, "vas")]))
+            g.absorb("Salut, coucou, comment tu vas ?", pieces: words([(2.0, "Salut,"), (2.4, "coucou,"), (2.8, "comment"), (3.1, "tu"), (3.3, "vas ?")]))
+            check("same words at other times: said once", g.text == "Salut, coucou, comment tu vas ?")
+            check("normalized", DictationTranscript.normalized("Salut, Coucou !") == "salut coucou")
+
             check("a short correction is not a fresh start", !DictationTranscript.isRestart(previous: "one two three four", new: "one two"))
             check("too little text to call it a fresh start", !DictationTranscript.isRestart(previous: "one two", new: "three"))
         }

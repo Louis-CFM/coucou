@@ -1,0 +1,353 @@
+/* Flow dictation's pill (FlowPill.swift): a see-through capsule resting on an
+   edge of the screen, black once open, and a bubble beside it. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  font: 500 12.5px system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", sans-serif;
+  color: #fff;
+}
+
+#pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 8px;
+}
+
+#pill.bottom {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+}
+
+#pill.left {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 2px;
+}
+
+#pill.right {
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  padding-right: 2px;
+}
+
+.capsule {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 1.2px rgba(255, 255, 255, 0.42);
+  transition:
+    width 0.36s cubic-bezier(0.34, 1.36, 0.64, 1),
+    height 0.36s cubic-bezier(0.34, 1.36, 0.64, 1),
+    background 0.2s,
+    box-shadow 0.2s;
+}
+
+.capsule.open {
+  background: rgba(0, 0, 0, 0.94);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.capsule.handsfree {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(249, 115, 22, 0.85),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.1s ease-in,
+    transform 0.1s ease-in;
+}
+
+.capsule.open .content {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.2s ease-out 0.07s,
+    transform 0.2s ease-out 0.07s;
+}
+
+.vertical .content {
+  flex-direction: column;
+}
+
+.mochi {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  position: relative;
+}
+
+.mochi canvas {
+  position: absolute;
+  left: -7.33px;
+  top: -7.33px;
+  width: 36.67px;
+  height: 36.67px;
+}
+
+.pbtn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #e8e9ec;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.pbtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.pbtn.small {
+  width: 22px;
+  height: 22px;
+  flex-basis: 22px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.pbtn.filled {
+  background: #fff;
+  color: #000;
+}
+
+.pbtn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pbtn.small svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.6;
+}
+
+.bars {
+  display: flex;
+  align-items: center;
+  gap: 3.2px;
+  height: 22px;
+}
+
+.bars i {
+  width: 3.4px;
+  height: 3.4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.vertical .bars {
+  flex-direction: column;
+  height: auto;
+  width: 22px;
+}
+
+.vertical .bars i {
+  height: 3.4px;
+}
+
+.message {
+  font: 500 12px system-ui, "Segoe UI", sans-serif;
+  color: #e8e9ec;
+  white-space: nowrap;
+}
+
+.rec {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 3px rgba(255, 69, 58, 0.6);
+  flex: 0 0 8px;
+}
+
+.clock {
+  font: 600 12px system-ui, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #e8e9ec;
+}
+
+.vertical .clock {
+  font-size: 10px;
+}
+
+.stop {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.16);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.stop i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #fff;
+}
+
+/* The bubble beside the pill: a tip, a short message, an announcement. */
+.bubble {
+  flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 0 14px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  font: 600 12.5px system-ui, "Segoe UI", sans-serif;
+  white-space: nowrap;
+  animation: pop 0.2s ease-out;
+}
+
+.bubble.announce {
+  border-radius: 16px;
+  height: auto;
+  padding: 10px 10px 10px 14px;
+  gap: 10px;
+  white-space: normal;
+  max-width: 420px;
+  align-items: center;
+}
+
+.bubble.voice {
+  border-radius: 16px;
+  height: auto;
+  padding: 9px 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  white-space: normal;
+  max-width: 440px;
+}
+
+.bubble.voice .heard {
+  color: #9a9ea8;
+  font-weight: 500;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bubble.voice .answer {
+  color: #f2f3f5;
+  font-weight: 500;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bubble .icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.bubble .icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bubble .text {
+  font-weight: 500;
+  line-height: 1.35;
+  flex: 1 1 auto;
+}
+
+.bubble .act {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #fff;
+  color: #000;
+  font: 600 12px system-ui, "Segoe UI", sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bubble .close {
+  border: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #c7cad0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble .close svg {
+  width: 10px;
+  height: 10px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  fill: none;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

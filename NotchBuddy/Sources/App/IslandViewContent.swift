@@ -39,6 +39,18 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .capture:
+            #if !APPSTORE
+            CaptureCardView()
+            #else
+            EmptyView()
+            #endif
+        case .update:
+            #if !APPSTORE
+            UpdateCardView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }
@@ -225,6 +237,12 @@ struct OverviewView: View {
             #if !APPSTORE
             MailController.shared.openMail()
             #endif
+        case "integration_whatsapp":
+            #if !APPSTORE
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "net.whatsapp.WhatsApp") {
+                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+            }
+            #endif
         case "integration_crypto":
             let exchange = CryptoSettings.exchange
             if let first = CryptoSettings.coins.first,
@@ -346,11 +364,12 @@ struct ApprovalView: View {
         // Captured when the card is drawn: a click answers the request that was on screen,
         // and is ignored if the card has moved on to the next one since.
         let shownId = approval?.id
+        let isPlan = approval?.tool == "ExitPlanMode"
         ZStack {
             CardBackground(wash: .amber)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
-                    AgentWho(task: asker, label: "needs permission")
+                    AgentWho(task: asker, label: isPlan ? "has a plan ready" : "needs permission")
                     // Other requests waiting behind this one: "1/3".
                     if let count = approval?.queueCount, count > 1 {
                         Text(verbatim: "1/\(count)")
@@ -360,20 +379,35 @@ struct ApprovalView: View {
                     }
                 }
                 CodeBlock(text: approval?.command ?? approval?.tool ?? "…")
-                HStack(spacing: 8) {
-                    SecondaryButton("Deny") {
-                        HookServer.shared.sendApprovalDecision("deny", for: shownId)
+                if isPlan {
+                    // The terminal's plan dialog choices, not a tool permission.
+                    HStack(spacing: 8) {
+                        SecondaryButton("Change plan") {
+                            HookServer.shared.sendApprovalDecision("plan_change", for: shownId)
+                        }
+                        PrimaryButton("Auto mode") {
+                            HookServer.shared.sendApprovalDecision("plan_auto", for: shownId)
+                        }
+                        SecondaryButton("Manual") {
+                            HookServer.shared.sendApprovalDecision("plan_default", for: shownId)
+                        }
                     }
-                    PrimaryButton("Allow") {
-                        HookServer.shared.sendApprovalDecision("allow", for: shownId)
-                    }
-                    // Codex, Copilot CLI and Muse Code do not support updatedPermissions
-                    let hideAlways = approval?.pillId == "agent_codex"
-                        || approval?.pillId == "agent_copilot"
-                        || approval?.pillId == "agent_muse"
-                    if !hideAlways {
-                        SecondaryButton("Always") {
-                            HookServer.shared.sendApprovalDecision("always", for: shownId)
+                } else {
+                    HStack(spacing: 8) {
+                        SecondaryButton("Deny") {
+                            HookServer.shared.sendApprovalDecision("deny", for: shownId)
+                        }
+                        PrimaryButton("Allow") {
+                            HookServer.shared.sendApprovalDecision("allow", for: shownId)
+                        }
+                        // Codex, Copilot CLI and Muse Code do not support updatedPermissions
+                        let hideAlways = approval?.pillId == "agent_codex"
+                            || approval?.pillId == "agent_copilot"
+                            || approval?.pillId == "agent_muse"
+                        if !hideAlways {
+                            SecondaryButton("Always") {
+                                HookServer.shared.sendApprovalDecision("always", for: shownId)
+                            }
                         }
                     }
                 }
@@ -613,19 +647,66 @@ struct QuestionView: View {
 struct ErrorView: View {
     @ObservedObject var state: AppState
 
+    private var task: AgentTask? { state.focusTask }
+
+    /// The kind next to the name ("Claude Code", "n8n", "Agent"): agentWho already shows the name.
+    private var kind: String {
+        switch task?.source {
+        case .some(.n8n):   return "n8n"
+        case .some(.agent): return "Agent"
+        default:            return "Claude Code"
+        }
+    }
+
+    /// What went wrong: Claude Code's error (StopFailure) or n8n's, else the last step.
+    private var detail: String {
+        if let line = task?.finalLine, !line.isEmpty { return line }
+        if task?.source == .n8n, let steps = task?.steps, steps.count > 1, let last = steps.last { return last }
+        if task?.source != .n8n, let step = task?.steps.last(where: { !$0.isDiffStep }) { return step }
+        return String(localized: "No detail available.")
+    }
+
+    private var n8nURL: URL? {
+        guard task?.source == .n8n, let s = KeychainStore.shared.get("n8n-url") else { return nil }
+        return URL(string: s)
+    }
+
     var body: some View {
         ZStack {
             CardBackground(wash: .red)
             VStack(alignment: .leading, spacing: 5) {
-                AgentWho(task: state.focusTask, label: "n8n")
-                Text("Workflow stopped.")
+                AgentWho(task: task, label: kind)
+                Text(task?.source == .n8n ? LocalizedStringKey("Workflow stopped.") : LocalizedStringKey("Session stopped on an error."))
                     .font(.system(size: 15, weight: .semibold))
-                Text("Gmail node timed out after 30s. Retry or open n8n.")
+                Text(detail)
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#FF8D97"))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
                 HStack(spacing: 8) {
-                    PrimaryButton("Retry") { /* retry */ }
-                    SecondaryButton("Open in n8n") { /* open */ }
+                    if task?.source == .n8n {
+                        if let url = n8nURL {
+                            PrimaryButton("Open in n8n") {
+                                NSWorkspace.shared.open(url)
+                                NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                            }
+                        }
+                    } else if task?.id == "agent_claude-desktop" {
+                        PrimaryButton("Open Claude") {
+                            openClaudeDesktopApp()
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                    } else {
+                        #if !APPSTORE
+                        PrimaryButton("Open terminal") {
+                            openSessionApp(task)
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        }
+                        #endif
+                    }
+                    SecondaryButton("OK") {
+                        NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                    }
                 }
             }
             .padding(.leading, 116)
@@ -635,6 +716,16 @@ struct ErrorView: View {
         }
     }
 }
+
+#if !APPSTORE
+/// The app a session runs in (its terminal, or VS Code), else any known terminal.
+private func openSessionApp(_ task: AgentTask?) {
+    if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
+       !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+    }
+}
+#endif
 
 /// Brings the Claude desktop app forward (or launches it) — target of the Claude Desktop pill.
 private let claudeDesktopBundleId = "com.anthropic.claudefordesktop"
@@ -673,12 +764,7 @@ struct FinishedView: View {
                     } else {
                         #if !APPSTORE
                         PrimaryButton("Open terminal") {
-                            // The app the session runs in (its terminal, or VS Code), then any known terminal
-                            let task = state.focusTask
-                            if !(task?.id == "integration_claude" && ClaudeHost.activate(task?.hostApp)),
-                               !TerminalTarget.activate(sessionBundleId: task?.sessionBundleId) {
-                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                            }
+                            openSessionApp(state.focusTask)
                             NotificationCenter.default.post(name: .islandCollapse, object: nil)
                         }
                         #endif
@@ -1878,6 +1964,12 @@ struct IntegrationCardView: View {
             #else
             return false
             #endif
+        case "integration_whatsapp":
+            #if !APPSTORE
+            return WhatsAppSettings.enabled
+            #else
+            return false
+            #endif
         case "integration_crypto":
             return true  // public market data: no key, nothing to set up
         case "integration_portfolio":
@@ -2137,6 +2229,12 @@ struct IntegrationCardView: View {
         } else if task.id == "integration_portfolio" {
             PortfolioCardView()
                 .transition(.opacity)
+        } else if task.id == "integration_whatsapp" {
+            // Its own card in every state (not linked, no message, conversations).
+            #if !APPSTORE
+            WhatsAppCardView()
+                .transition(.opacity)
+            #endif
         } else if mailHasData {
             #if !APPSTORE
             MailCardView()

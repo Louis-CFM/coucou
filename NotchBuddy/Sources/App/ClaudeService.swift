@@ -75,6 +75,8 @@ final class KeychainStore: @unchecked Sendable {
         "calcom-api-key",
         "notion-api-key",
         "elevenlabs-api-key",
+        // WhatsApp (local gateway): its address, credentials and the webhook's signing secret
+        "whatsapp-url", "whatsapp-api-key", "whatsapp-webhook-secret",
         // Portfolio exchange credentials
         "portfolio-binance-key",  "portfolio-binance-secret",
         "portfolio-okx-key",      "portfolio-okx-secret",      "portfolio-okx-passphrase",
@@ -328,14 +330,17 @@ final class ClaudeService {
 
         // Auth header
         let authHeader: String
+        let cloudKey: String?   // the provider's own key, sent when streaming too
         if provider.isLocal {
             authHeader = "Bearer ollama"
+            cloudKey = nil
         } else {
             guard let key = KeychainStore.shared.get(provider.keychainKey), !key.isEmpty else {
                 await showError("\(provider.displayName) API key missing. Configure it in Settings.", state: state)
                 return
             }
             authHeader = "Bearer \(key)"
+            cloudKey = key
         }
 
         // Build messages
@@ -409,7 +414,8 @@ final class ClaudeService {
                 let final = try await LocalChat.streamChat(
                     baseURL: baseURL,
                     encodedBody: encodedBody,
-                    model: modelCopy
+                    model: modelCopy,
+                    apiKey: cloudKey
                 ) { [state, msgId] visible in
                     if !visible.isEmpty, state.stateOverride == .thinking {
                         state.stateOverride = nil   // hide typing dots on first visible text
