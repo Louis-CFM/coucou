@@ -143,6 +143,10 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const codexPill = buildPlanPill(true);
   const planPills = h("div", { class: "plan-pills" }, claudePill.el, codexPill.el);
   let codexShown = false;
+  // The icons drawn last: redrawing an unchanged one under a resting pointer
+  // makes Windows set the cursor again, and it flickers against the app behind.
+  let gearIcon: string = ICONS.gear;
+  let soundIcon: string = ICONS.speakerOn;
 
   function go(v: IslandViewName) {
     actions.blip();
@@ -165,10 +169,18 @@ export function buildHeader(actions: ViewActions): ViewHost {
       tabChat.classList.toggle("on", v === "prompt");
       tabDrop.classList.toggle("on", v === "upload");
       gearBtn.classList.toggle("on", v === "settings");
-      clear(gearBtn);
-      gearBtn.append(svg(v === "settings" ? ICONS.gearFill : ICONS.gear, 14));
-      clear(soundBtn);
-      soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff, 14));
+      const gear = v === "settings" ? ICONS.gearFill : ICONS.gear;
+      if (gear !== gearIcon) {
+        gearIcon = gear;
+        clear(gearBtn);
+        gearBtn.append(svg(gear, 14));
+      }
+      const sound = State.settings.soundEnabled ? ICONS.speakerOn : ICONS.speakerOff;
+      if (sound !== soundIcon) {
+        soundIcon = sound;
+        clear(soundBtn);
+        soundBtn.append(svg(sound, 14));
+      }
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },

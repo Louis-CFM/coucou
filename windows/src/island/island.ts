@@ -564,15 +564,16 @@ export class Island {
     const homeOpen = State.mode === "expanded" && State.view === "overview";
     const text = this.overMochi || homeOpen ? describeVitals(this.vitals) : null;
     if (!text || !this.vitals) {
-      el.classList.remove("on");
+      if (el.classList.contains("on")) el.classList.remove("on");
       return;
     }
     if (el.dataset.text !== text) {
       el.dataset.text = text;
       el.replaceChildren(h("i", { style: `background:${vitalsDot(this.vitals)}` }), h("span", { text }));
     }
-    el.style.top = `${this.height.value + 10}px`;
-    el.classList.add("on");
+    const top = `${this.height.value + 10}px`;
+    if (el.style.top !== top) el.style.top = top;
+    if (!el.classList.contains("on")) el.classList.add("on");
   }
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */

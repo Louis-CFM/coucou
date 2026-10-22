@@ -204,9 +204,8 @@ export function buildPlanPill(codex: boolean): PlanPill {
       el.style.setProperty("--plan", color);
       el.classList.toggle("active", isOpen());
       dotEl.style.background = color;
-      label.textContent = codex
-        ? pillLabel("Codex", State.codexPlanUsage)
-        : pillLabel("Claude", State.planUsage);
+      const text = codex ? pillLabel("Codex", State.codexPlanUsage) : pillLabel("Claude", State.planUsage);
+      if (label.textContent !== text) label.textContent = text;
     },
   };
 }
