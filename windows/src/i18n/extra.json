@@ -6091,6 +6091,58 @@
       "id": "Matikan pil lain untuk memberi tempat bagi WhatsApp (maksimal {max}).",
       "de": "Schalte eine andere Pill aus, um Platz für WhatsApp zu schaffen (höchstens {max}).",
       "tr": "WhatsApp’a yer açmak için başka bir hapı kapat (en fazla {max})."
+    },
+    "At the bottom left, the island stays on screen and opens upwards.": {
+      "zh-Hans": "放在左下角时，岛会一直显示，并向上展开。",
+      "hi": "नीचे बाईं ओर आइलैंड स्क्रीन पर बना रहता है और ऊपर की ओर खुलता है।",
+      "es": "Abajo a la izquierda, la isla se queda en pantalla y se abre hacia arriba.",
+      "ar": "في أسفل اليسار، يبقى الشريط ظاهرًا على الشاشة ويُفتح للأعلى.",
+      "fr": "En bas à gauche, l'île reste à l'écran et s'ouvre vers le haut.",
+      "bn": "নিচে বাঁদিকে আইল্যান্ড স্ক্রিনে থেকে যায় এবং উপরের দিকে খোলে।",
+      "pt-BR": "Embaixo à esquerda, a ilha fica sempre visível e abre para cima.",
+      "ru": "Внизу слева остров всегда на экране и открывается вверх.",
+      "id": "Di kiri bawah, pulau tetap tampil di layar dan terbuka ke atas.",
+      "de": "Unten links bleibt die Insel sichtbar und öffnet sich nach oben.",
+      "tr": "Sol altta ada ekranda kalır ve yukarı doğru açılır."
+    },
+    "Bottom left, on the taskbar": {
+      "zh-Hans": "左下角，在任务栏上",
+      "hi": "नीचे बाईं ओर, टास्कबार पर",
+      "es": "Abajo a la izquierda, en la barra de tareas",
+      "ar": "أسفل اليسار، على شريط المهام",
+      "fr": "En bas à gauche, sur la barre des tâches",
+      "bn": "নিচে বাঁদিকে, টাস্কবারে",
+      "pt-BR": "Embaixo à esquerda, na barra de tarefas",
+      "ru": "Внизу слева, на панели задач",
+      "id": "Kiri bawah, di bilah tugas",
+      "de": "Unten links, auf der Taskleiste",
+      "tr": "Sol altta, görev çubuğunda"
+    },
+    "Position": {
+      "zh-Hans": "位置",
+      "hi": "स्थिति",
+      "es": "Posición",
+      "ar": "الموضع",
+      "fr": "Position",
+      "bn": "অবস্থান",
+      "pt-BR": "Posição",
+      "ru": "Положение",
+      "id": "Posisi",
+      "de": "Position",
+      "tr": "Konum"
+    },
+    "Top centre": {
+      "zh-Hans": "顶部居中",
+      "hi": "ऊपर बीच में",
+      "es": "Arriba, centrada",
+      "ar": "في الأعلى، في المنتصف",
+      "fr": "En haut, au centre",
+      "bn": "উপরে মাঝখানে",
+      "pt-BR": "No topo, centralizada",
+      "ru": "Сверху по центру",
+      "id": "Atas tengah",
+      "de": "Oben mittig",
+      "tr": "Üstte ortada"
     }
   }
 }

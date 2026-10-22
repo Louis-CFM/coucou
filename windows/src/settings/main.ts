@@ -14,7 +14,7 @@ import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import type { UpdateStatus } from "../core/update";
 import { SOUND_NAMES } from "../core/sound";
 import {
-  MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
+  HOST_OS, MAX_DECLARED, PILL_CATEGORIES, availablePills, chooseMainPill, isComingSoon, mainPillChoices,
   sanitizeDeclared, toggleDeclared, type PillDefinition,
 } from "../core/pills";
 import { h, clear } from "../views/dom";
@@ -978,6 +978,25 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  // Where on that display. Windows only: on Linux the island stays at the top.
+  const placementRows: HTMLElement[] = [];
+  if (HOST_OS === "windows") {
+    const placement = h("select", {}) as HTMLSelectElement;
+    placement.append(
+      h("option", { value: "top", text: t("Top centre") }),
+      h("option", { value: "bottomLeft", text: t("Bottom left, on the taskbar") }),
+    );
+    placement.value = settings.placement === "bottomLeft" ? "bottomLeft" : "top";
+    placement.addEventListener("change", () => {
+      settings.placement = placement.value;
+      void save();
+    });
+    placementRows.push(
+      h("div", { class: "row" }, h("label", { text: t("Position") }), placement),
+      h("div", { class: "hint", text: t("At the bottom left, the island stays on screen and opens upwards.") }),
+    );
+  }
+
   return h(
     "section",
     {},
@@ -1008,6 +1027,7 @@ function generalSection(): HTMLElement {
       h("label", { text: t("Island lives on") }),
       screen,
     ),
+    ...placementRows,
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
       toggle(settings.autostart, (v) => { settings.autostart = v; void save(); }),
