@@ -34,7 +34,7 @@ function running(): boolean {
 
 function loop(now: number) {
   frame = null;
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
   const t = (now - start) / 1000;
   for (const a of live) {

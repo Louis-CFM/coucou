@@ -1140,7 +1140,7 @@ export class Island {
   }
 
   private frame = (nowMs: number) => {
-    const dt = Math.min(0.05, (nowMs - this.lastFrame) / 1000);
+    const dt = Math.min(0.05, Math.max(0, (nowMs - this.lastFrame) / 1000));
     this.lastFrame = nowMs;
 
     this.width.step(dt, nowMs);
