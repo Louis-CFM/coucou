@@ -533,6 +533,10 @@ pub fn pin_to_monitor(win: &WebviewWindow, x: i32, y: i32) {
     unsafe { layer::gtk_layer_set_monitor(gtk_window_ptr(&gw), mon_ptr) };
 }
 
+/// The island stays at the top on Linux: only the Windows taskbar has to be
+/// climbed over (island.rs, `at_bottom_left`).
+pub fn keep_topmost(_win: &WebviewWindow) {}
+
 /// Temporarily allow keyboard focus so a text field inside the island can be
 /// typed in.
 pub fn set_activating(win: &WebviewWindow, activating: bool) {
