@@ -547,7 +547,9 @@ own window.
   where WebKitGTK has none, `spd-say` (speech-dispatcher) or `espeak-ng`
   speaks if installed.
 - No notch, so the island lives at the top centre of the screen and retracts into
-  the top edge instead of hiding in a notch.
+  the top edge instead of hiding in a notch. On Windows it can sit at the bottom
+  left instead, on the taskbar (Settings → General → Position), where it stays on
+  screen and opens upwards.
 - Permission approval works from **any** terminal; the Mac build only listens to
   VS Code sessions.
 - "Open terminal" finds the session's window by walking up from the relay's
