@@ -36,6 +36,7 @@ export interface FlowPrefs {
   openAtLaunch: boolean;
   /** « OK Coucou »: listen for it and answer with Claude. */
   voice: boolean;
+  voiceSearch: "anthropic" | "parallel" | "off";
   voiceOutput: VoiceOutput;
   voiceGender: "female" | "male";
 }
