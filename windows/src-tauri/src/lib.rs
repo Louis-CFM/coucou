@@ -750,7 +750,18 @@ pub fn show_settings_window(app: &AppHandle) {
 /// "settings", "general", "shortcuts"…).
 pub fn show_hub(app: &AppHandle, page: Option<&str>) {
     let Some(win) = app.get_webview_window(HUB_LABEL) else {
-        log::line("Coucou window missing");
+        // Creating it at startup can fail on some machines (WebView2
+        // 0x80070578, #775): try again now, on the main thread, where
+        // window creation can't deadlock a command.
+        log::line("Coucou window missing, creating it again");
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            create_settings_window(&handle);
+            if let Some(win) = handle.get_webview_window(HUB_LABEL) {
+                let _ = win.show();
+                let _ = win.set_focus();
+            }
+        });
         return;
     };
     if let Some(page) = page {
