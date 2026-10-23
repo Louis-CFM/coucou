@@ -64,6 +64,10 @@ pub struct HookPreview {
 }
 
 pub fn settings_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(root) = tests::test_root() {
+        return root.join(".claude").join("settings.json");
+    }
     claude_dir(std::env::var_os("CLAUDE_CONFIG_DIR"), &platform::home_dir()).join("settings.json")
 }
 
@@ -249,6 +253,10 @@ pub fn write(install: bool, fingerprint: &str) -> Result<String, String> {
 
 /// Where the user's own status line waits while the relay stands in for it.
 pub fn status_line_previous_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(root) = tests::test_root() {
+        return root.join("data").join("bin").join("statusline-previous.json");
+    }
     settings::hook_exe_path().with_file_name("statusline-previous.json")
 }
 
@@ -478,6 +486,59 @@ fn install_relay(src: &Path, dest: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    // Filesystem tests must isolate both the home config and the local-data
+    // backup, without changing process-wide HOME, LOCALAPPDATA or XDG variables.
+    thread_local! {
+        static TEST_ROOT: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+    }
+
+    pub(super) fn test_root() -> Option<PathBuf> {
+        TEST_ROOT.with(|root| root.borrow().clone())
+    }
+
+    struct TestPaths(PathBuf);
+
+    impl TestPaths {
+        fn new() -> Self {
+            assert!(test_root().is_none(), "test paths are already installed");
+            let nonce = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+            let root = std::env::temp_dir()
+                .join(format!("coucou-hooks-{}-{nonce}", std::process::id()));
+            std::fs::create_dir(&root).unwrap();
+            TEST_ROOT.with(|slot| *slot.borrow_mut() = Some(root.clone()));
+            Self(root)
+        }
+    }
+
+    impl Drop for TestPaths {
+        fn drop(&mut self) {
+            TEST_ROOT.with(|slot| *slot.borrow_mut() = None);
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn filesystem_paths_are_thread_local_and_restored_after_a_panic() {
+        let outside = (settings_path(), status_line_previous_path());
+        let paths = TestPaths::new();
+        let root = paths.0.clone();
+        assert!(settings_path().starts_with(&root));
+        assert!(status_line_previous_path().starts_with(&root));
+        let other_thread = std::thread::spawn(|| (settings_path(), status_line_previous_path()))
+            .join().unwrap();
+        assert_eq!(other_thread, outside);
+
+        let result = std::panic::catch_unwind(move || {
+            let _paths = paths;
+            panic!("exercise test-path cleanup during unwinding");
+        });
+        assert!(result.is_err());
+        assert_eq!((settings_path(), status_line_previous_path()), outside);
+        assert!(!root.exists());
+    }
 
     #[test]
     fn the_hooks_leave_the_status_line_alone() {
@@ -554,8 +615,7 @@ mod tests {
         assert!(after["hooks"]["SomeEventWeDoNotTouch"].is_array());
 
         // Installing twice still leaves one entry of ours per event. (Compared
-        // by count: another test points HOME elsewhere meanwhile, which moves
-        // the relay path.)
+        // by count so the check is independent of the relay's absolute path.)
         let twice = merged(&after).unwrap();
         assert_eq!(twice["hooks"]["PreToolUse"].as_array().unwrap().iter().filter(|e| entry_is_ours(e)).count(), 1);
 
@@ -587,19 +647,17 @@ mod tests {
         assert_eq!(claude_dir(Some("E:/Claude/data".into()), home), PathBuf::from("E:/Claude/data"));
     }
 
-    /// Everything filesystem-shaped lives in one test on purpose: it points
-    /// the home directory at a temp directory, and that is process-wide.
+    /// All writes, including the saved status line and dated backups, stay in
+    /// this test's temporary directory. The guard also cleans up on panic.
     #[test]
     fn writing_backs_up_preserves_and_refuses_a_changed_file() {
-        let tmp = std::env::temp_dir().join(format!("coucou-hooks-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&tmp);
-        std::fs::create_dir_all(tmp.join(".claude")).unwrap();
-        std::env::set_var(platform::HOME_VAR, &tmp);
-        // A moved Claude folder would point outside the temp directory.
-        std::env::remove_var("CLAUDE_CONFIG_DIR");
-
+        let paths = TestPaths::new();
+        let tmp = &paths.0;
         let path = settings_path();
-        assert!(path.starts_with(&tmp), "the test must not touch the real home");
+        let saved = status_line_previous_path();
+        assert!(path.starts_with(tmp), "the test must not touch the real home");
+        assert!(saved.starts_with(tmp), "the test must not touch the real local data");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
 
         // A real-shaped file, written the way PowerShell 5 would: UTF-8 with BOM.
         let original = r#"{"model":"claude-opus-5","theme":"dark","tui":{"x":1},"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"other-tool.exe"}]}]}}"#;
@@ -697,7 +755,5 @@ mod tests {
             assert!(result.is_err());
             assert_eq!(std::fs::read(&path).unwrap(), original);
         }
-
-        let _ = std::fs::remove_dir_all(&tmp);
     }
 }
