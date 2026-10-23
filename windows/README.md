@@ -363,6 +363,24 @@ API key), and change the port of Coucou's webhook (47823).
   forward.
 - You type the path to your own GOWA binary instead of picking it.
 
+## Jira
+
+**Settings… → Integrations → Jira** takes your site's address and, for Jira
+Cloud, your email and an [API token](https://id.atlassian.com/manage-profile/security/api-tokens);
+for Jira Server or Data Center, leave the email empty and give a personal
+access token. The Jira pill shows:
+
+- **The active sprint** of your board (found from your latest issue in an open
+  sprint): a bar of done, in progress and to do, your own share, and the days
+  left. Click it to open the board.
+- **Comments** others left in the last 7 days on the issues assigned to you,
+  reported by you or that you watch, newest first. A comment that mentions you
+  starts with **@**. Click one to open it in Jira.
+
+The pill gets a badge and a sound on a new comment. Jira is checked every 5
+minutes; nothing is fetched while the pill is off or Coucou is paused. Jira is
+a Windows and Linux pill only: the Mac has none.
+
 ## New versions
 
 Coucou can tell you when a new version is out, and on Windows install it in one

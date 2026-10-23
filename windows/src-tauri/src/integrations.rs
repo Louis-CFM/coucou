@@ -1,5 +1,6 @@
 // Integration pollers — the Rust side of StripePoller / GithubPoller /
-// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller.
+// VercelPoller / N8nPoller / ResendPoller / NotionPoller / CalcomPoller, plus
+// Jira, which only Windows and Linux have.
 //
 // Same endpoints, same first-run delays and intervals as the Swift pollers. Each
 // one emits an `integration` event; the island owns the badge, the sound and the
@@ -19,6 +20,7 @@ use tokio::sync::Notify;
 
 use crate::github::{self, CiState, ContributionDay, GitHubActivity, GitHubPr, GitHubPulse, GitHubRepoCi, ReviewState};
 use crate::island::WINDOW_LABEL;
+use crate::jira;
 use crate::log;
 use crate::secrets;
 
@@ -73,6 +75,7 @@ pub fn start(app: AppHandle) {
     spawn(app.clone(), "integration_gitea", 7, 300, poll_gitea);
     spawn_github_loops(app.clone());
     spawn(app.clone(), "integration_calcom", 8, 300, poll_calcom);
+    spawn(app.clone(), jira::ID, 8, 300, poll_jira);
     spawn(app, "integration_notion", 9, 300, poll_notion);
 }
 
@@ -124,6 +127,7 @@ pub async fn poll_once(app: AppHandle, id: &str) {
         "integration_resend" => poll_resend(app).await,
         "integration_notion" => poll_notion(app).await,
         "integration_calcom" => poll_calcom(app).await,
+        jira::ID => poll_jira(app).await,
         _ => {}
     }
 }
@@ -1091,6 +1095,108 @@ async fn poll_calcom(app: AppHandle) {
         error: None,
         event: None,
     });
+}
+
+// ── Jira ──────────────────────────────────────────────────────────────────────
+
+async fn poll_jira(app: AppHandle) {
+    if PAUSED.load(Ordering::Relaxed) || !enabled(&app, jira::ID) {
+        return;
+    }
+    let Some(account) = jira::account() else { return };
+    let Ok(http) = reqwest::Client::builder().timeout(TIMEOUT).redirect(reqwest::redirect::Policy::none()).build() else {
+        return;
+    };
+    let Ok(response) = jira_get(&http, &account, format!("{}/rest/api/2/myself", account.base)).await else { return };
+    if !response.status().is_success() {
+        emit(&app, IntegrationUpdate {
+            id: jira::ID,
+            data: json!({}),
+            error: Some(status_error(response.status().as_u16(), &crate::i18n::t("Token lacks access"))),
+            event: None,
+        });
+        return;
+    }
+    let me = jira::me(&response.json().await.unwrap_or(json!({})));
+    let now = now_ms() as i64;
+
+    let followed = jira_search(&http, &account, &jira::followed_jql(), "summary,comment", 25).await;
+    let since = now - jira::COMMENT_WINDOW_DAYS * 86_400_000;
+    let comments = jira::recent_comments(&followed, &me, &account.base, since);
+    let sprint = jira_sprint(&http, &account, &me, now).await;
+
+    let event = comments.first().and_then(|c| {
+        let id = c.get("id").and_then(Value::as_str)?;
+        if !is_new("jira", id) {
+            return None;
+        }
+        let key = c.get("key").and_then(Value::as_str).unwrap_or_default();
+        let label = if c.get("mention").and_then(Value::as_bool).unwrap_or(false) {
+            crate::i18n::tf("Mentioned on {key}", &[("key", key)])
+        } else {
+            crate::i18n::tf("New comment on {key}", &[("key", key)])
+        };
+        let author = c.get("author").and_then(Value::as_str).unwrap_or_default();
+        let text = c.get("text").and_then(Value::as_str).unwrap_or_default();
+        Some(IntegrationEvent { success: true, label, detail: Some(format!("{author}: {text}")) })
+    });
+    emit(&app, IntegrationUpdate {
+        id: jira::ID,
+        data: json!({ "me": me.display_name, "comments": comments, "sprint": sprint }),
+        error: None,
+        event,
+    });
+}
+
+fn jira_get(http: &reqwest::Client, account: &jira::Account, url: String) -> impl std::future::Future<Output = reqwest::Result<reqwest::Response>> {
+    http.get(url).header("Authorization", &account.auth).header("Accept", "application/json").send()
+}
+
+/// The issues a JQL query finds, or none when Jira refuses it.
+async fn jira_search(http: &reqwest::Client, account: &jira::Account, jql: &str, fields: &str, max: u32) -> Vec<Value> {
+    let url = jira::search_url(account, jql, fields, max);
+    match jira_get(http, account, url).await {
+        Ok(r) if r.status().is_success() => {
+            let json: Value = r.json().await.unwrap_or(json!({}));
+            json.get("issues").and_then(Value::as_array).cloned().unwrap_or_default()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// The active sprint the user's latest sprint issue sits in, with its progress.
+async fn jira_sprint(http: &reqwest::Client, account: &jira::Account, me: &jira::Me, now: i64) -> Option<Value> {
+    let issues = jira_search(http, account, jira::SPRINT_JQL, "summary", 1).await;
+    let key = issues.first()?.get("key")?.as_str()?;
+    if !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return None;
+    }
+    let response = jira_get(http, account, format!("{}/rest/agile/1.0/issue/{key}?fields=sprint", account.base)).await.ok()?;
+    let issue: Value = response.error_for_status().ok()?.json().await.ok()?;
+    let sprint = issue.pointer("/fields/sprint").filter(|s| s.is_object())?.clone();
+    let id = sprint.get("id")?.as_i64()?;
+
+    let mut all: Vec<Value> = Vec::new();
+    while all.len() < 500 {
+        let url = format!("{}/rest/agile/1.0/sprint/{id}/issue?fields=status,assignee&maxResults=100&startAt={}", account.base, all.len());
+        let page: Value = jira_get(http, account, url).await.ok()?.error_for_status().ok()?.json().await.ok()?;
+        let batch = page.get("issues").and_then(Value::as_array).cloned().unwrap_or_default();
+        let total = page.get("total").and_then(Value::as_u64).unwrap_or(0) as usize;
+        let empty = batch.is_empty();
+        all.extend(batch);
+        if empty || all.len() >= total {
+            break;
+        }
+    }
+    jira::sprint_summary(&sprint, &all, me, &account.base, now)
+}
+
+/// A Jira address, email or token changed: the card restarts from the new account.
+pub fn jira_credentials_changed(app: &AppHandle) {
+    emit(app, IntegrationUpdate { id: jira::ID, data: json!({}), error: None, event: None });
+    if !PAUSED.load(Ordering::Relaxed) && enabled(app, jira::ID) {
+        tauri::async_runtime::spawn(poll_jira(app.clone()));
+    }
 }
 
 // ── n8n ───────────────────────────────────────────────────────────────────────
