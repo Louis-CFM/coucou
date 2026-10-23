@@ -393,6 +393,7 @@ const CHECKED = ["src/views", "src/settings", "src/island", "src/upload", "src/r
 /** Literals that are a translated word but are values in the code, not text on screen. */
 const NOT_TEXT = new Set([
   "file", // the kind of a chat context: { kind: "file" }
+  "files", // the Notch file-list view id, not user-facing text
   "finished", // a task state and a pill badge
   "unknown", // a CI state
   "Resend", // the service's name (the Mac's "Resend" is a button: send again)
