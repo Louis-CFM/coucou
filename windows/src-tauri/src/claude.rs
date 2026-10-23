@@ -217,10 +217,19 @@ async fn call_with_timeout(endpoint: &Url, key: &str, body: &Value, timeout: Dur
     if !status.is_success() {
         // Surface the API's own message, which is what makes a bad key obvious.
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
-        return Err(format!("Claude API {status}: {}", net::error_detail(&body)));
+        return Err(status_error(status.as_u16(), &format!("Claude API {status}: {}", net::error_detail(&body))));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
     serde_json::from_slice(&bytes).map_err(|e| tf("Bad API response: {error}", &[("error", &e.to_string())]))
+}
+
+/// A refused key says where to fix it, as the other providers' do; the status
+/// stays in the words, which the phone link sorts failures by.
+fn status_error(status: u16, raw: &str) -> String {
+    match status {
+        401 => tf("{name} rejected the API key ({status}). Check it in Settings.", &[("name", "Claude"), ("status", "401")]),
+        _ => raw.to_string(),
+    }
 }
 
 /// The models on the user's Anthropic account, newest first, as the API lists them.
@@ -236,7 +245,7 @@ pub async fn models(key: &str) -> Result<Vec<ModelInfo>, String> {
     let status = response.status();
     if !status.is_success() {
         let body = net::read_capped(response, net::MAX_ERROR_BODY).await.unwrap_or_default();
-        return Err(format!("Claude API {status}: {}", net::error_detail(&body)));
+        return Err(status_error(status.as_u16(), &format!("Claude API {status}: {}", net::error_detail(&body))));
     }
     let bytes = net::read_capped(response, net::MAX_BODY).await?;
     let json: Value = serde_json::from_slice(&bytes).map_err(|_| t("Unexpected API response."))?;
@@ -313,6 +322,14 @@ fn base64(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refused_key_says_where_to_fix_it_and_keeps_its_status() {
+        let err = status_error(401, "Claude API 401 Unauthorized: invalid x-api-key");
+        // "401" stays in the words: the phone link sorts it as a key problem by it.
+        assert_eq!(err, "Claude rejected the API key (401). Check it in Settings.");
+        assert_eq!(status_error(500, "Claude API 500: boom"), "Claude API 500: boom");
+    }
 
     #[test]
     fn base64_matches_rfc4648_vectors() {
