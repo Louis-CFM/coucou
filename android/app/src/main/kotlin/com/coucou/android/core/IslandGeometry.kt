@@ -37,14 +37,19 @@ object IslandGeometry {
     const val MIN_NOTCH_DP = 44
     const val HOLE_PAD_DP = 10
 
-    fun place(screenW: Int, density: Float, cutoutTop: PxRect?, statusBarH: Int): IslandBox {
+    /**
+     * [displayScaled]: the screen runs below the panel's own resolution (Samsung's FHD+ on a WQHD+
+     * panel). Some builds then report the cut-out's x in the panel's pixels (a Galaxy S20 at 1080 px
+     * wide says the centred hole is at x = 720), so its x is not trusted and the island is centred.
+     */
+    fun place(screenW: Int, density: Float, cutoutTop: PxRect?, statusBarH: Int, displayScaled: Boolean = false): IslandBox {
         fun dp(v: Int) = (v * density).toInt()
         // The flares sit outside the island's width, so they come off the room it may use.
         val maxW = min(screenW - 2 * dp(MARGIN_DP) - 2 * dp(EAR_DP), dp(MAX_W_DP))
         val cut = cutoutTop?.takeIf { it.width > 0 && it.bottom > 0 }
         val top = max(cut?.bottom ?: statusBarH, 0)
         // Keep the island on screen even when the cut-out is off-centre.
-        val rawOffset = cut?.let { it.centerX - screenW / 2 } ?: 0
+        val rawOffset = cut?.takeUnless { displayScaled }?.let { it.centerX - screenW / 2 } ?: 0
         val room = max(screenW / 2 - maxW / 2, 0)
         val offset = rawOffset.coerceIn(-room, room)
         // Hidden, the island is just a little wider than the camera hole, so it appears to grow out of it.
