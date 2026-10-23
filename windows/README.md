@@ -330,7 +330,7 @@ account only, because WhatsApp may restrict accounts that abuse it.
 
 - The island lists one row per conversation, with its initials, name, last
   message and unread count. Photos, voice messages and other media show as a
-  label; Coucou never downloads them.
+  label; the card never downloads them.
 - Click a conversation for its last ten messages and a reply field. **Enter**
   sends, **Shift+Enter** starts a new line and **Escape** goes back. Nothing is
   ever sent without your Enter or click.
@@ -339,6 +339,16 @@ account only, because WhatsApp may restrict accounts that abuse it.
   that chat.
 - Read receipts are sent only when you open a conversation, or only when you
   reply if you turn that setting off.
+- Focus WhatsApp's Mochi and open the chat: the island grows to 720×460 and
+  shows WhatsApp instead of the AI chat. Your chats on the left (with the
+  gateway's recent ones and an **Archived** row), the one you click on the
+  right with its whole history, 50 messages at a time as you scroll up.
+  **Forward** shows on hover or a right-click: pick a chat, then click
+  **Forward to …**. Photos and videos show when they scroll into view or on a
+  click, fetched through the gateway and kept in memory only while the chat is
+  open; GOWA itself keeps a copy of each one in its `statics` folder. Send one
+  with the attach button or by dropping it on the chat (16 MB at most), the
+  field as its caption. Every other Mochi keeps the AI chat.
 
 **Your own gateway**
 
@@ -362,6 +372,8 @@ API key), and change the port of Coucou's webhook (47823).
 - The card's ↗ opens WhatsApp Web, as there is no WhatsApp app here to bring
   forward.
 - You type the path to your own GOWA binary instead of picking it.
+- The big WhatsApp chat is only here, which is why the island's window is
+  720×460 instead of the Mac's 720×320.
 
 ## New versions
 

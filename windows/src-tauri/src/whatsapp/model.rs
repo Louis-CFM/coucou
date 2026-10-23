@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
-/// What a message holds besides text: only a label is shown, the media itself is never fetched.
+/// What a message holds besides text: a label, and for a photo or video the bytes the big WhatsApp
+/// chat fetches through the gateway when it shows one (in memory, never on disk).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Media {
@@ -39,6 +40,8 @@ pub struct Message {
     pub from_me: bool,
     /// The message mentions this account (only meaningful in groups).
     pub mentions_me: bool,
+    /// WhatsApp's "Forwarded" (only GOWA's webhook says so; stored messages don't carry it).
+    pub forwarded: bool,
     /// Set by the gateway when the chat name came with the message.
     #[serde(skip)]
     pub chat_name: Option<String>,
@@ -56,6 +59,7 @@ impl Message {
             date,
             from_me: false,
             mentions_me: false,
+            forwarded: false,
             chat_name: None,
         }
     }
@@ -108,6 +112,14 @@ pub fn display_number(jid: &str) -> String {
     } else {
         digits.to_string()
     }
+}
+
+/// A chat's name that names nothing: empty, only its number, or GOWA's stand-in for a group it
+/// hasn't named yet ("Group 120363…").
+pub fn unnamed(jid: &str, name: &str) -> bool {
+    let name = name.trim();
+    let id = user_part(jid);
+    name.is_empty() || name == display_number(jid) || name == id || name.strip_prefix("Group ") == Some(id)
 }
 
 /// The same person under its several forms: "33612345678:12@s.whatsapp.net" and
@@ -200,7 +212,7 @@ impl Inbox {
         } else {
             Some(message.sender_name.clone())
         };
-        let given = name.map(str::to_string).or_else(|| message.chat_name.clone()).filter(|n| !n.is_empty());
+        let given = name.map(str::to_string).or_else(|| message.chat_name.clone()).filter(|n| !unnamed(&chat, n));
         let mut conversation = self.conversations.remove(&chat).unwrap_or_else(|| Conversation {
             id: chat.clone(),
             name: given.clone().or_else(|| person_name.clone()).unwrap_or_else(|| number.clone()),
@@ -515,6 +527,10 @@ mod tests {
         assert!(!text_mentions("hey @33612345678", None));
         assert_eq!(display_number("33612345678:3@s.whatsapp.net"), "+33612345678");
         assert_eq!(display_number("abc@lid"), "abc");
+        assert!(unnamed("120363401@g.us", "+120363401"));
+        assert!(unnamed("120363401@g.us", "Group 120363401"));
+        assert!(!unnamed("120363401@g.us", "Group chat"));
+        assert!(!unnamed("120363401@g.us", "Famille"));
         assert_eq!(normalized("33612345678:12@c.us"), "33612345678@s.whatsapp.net");
         assert_eq!(normalized("nojid"), "nojid");
     }

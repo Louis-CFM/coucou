@@ -96,6 +96,7 @@ fn parse_gowa(json: &Value, me: Option<&str>) -> WebhookEvent {
     m.media = gowa_media(p);
     m.from_me = p.get("is_from_me").and_then(Value::as_bool).unwrap_or(false);
     m.mentions_me = model::is_group(&chat) && model::text_mentions(&body, mine.as_deref());
+    m.forwarded = p.get("forwarded").and_then(Value::as_bool).unwrap_or(false);
     WebhookEvent::Message(m)
 }
 
@@ -191,6 +192,58 @@ pub struct Status {
     pub me: Option<String>,
 }
 
+/// One chat of a gateway's own list (the big WhatsApp chat's): its last activity in ms, and whether
+/// it is archived on the phone.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChatEntry {
+    pub id: String,
+    pub name: String,
+    pub last: i64,
+    pub archived: bool,
+}
+
+/// What a file to send is, from its first bytes (never its name): a photo or a video WhatsApp takes,
+/// with its MIME type and true for a video. None for anything else.
+pub fn media_type(bytes: &[u8]) -> Option<(&'static str, bool)> {
+    let at = |i: usize, s: &[u8]| bytes.get(i..i + s.len()) == Some(s);
+    if at(0, &[0xFF, 0xD8, 0xFF]) {
+        Some(("image/jpeg", false))
+    } else if at(0, &[0x89, b'P', b'N', b'G']) {
+        Some(("image/png", false))
+    } else if at(0, b"GIF8") {
+        Some(("image/gif", false))
+    } else if at(0, b"RIFF") && at(8, b"WEBP") {
+        Some(("image/webp", false))
+    } else if at(4, b"ftyp") {
+        // ISO media: the brand tells QuickTime and 3GP from MP4.
+        Some((if at(8, b"qt  ") { "video/quicktime" } else if at(8, b"3gp") { "video/3gpp" } else { "video/mp4" }, true))
+    } else if at(0, &[0x1A, 0x45, 0xDF, 0xA3]) {
+        Some(("video/webm", true))
+    } else {
+        None
+    }
+}
+
+/// A `multipart/form-data` body (GOWA's /send/image and /send/video): the text fields, then the
+/// file. The boundary is the caller's; quotes and line breaks never reach a header.
+pub fn multipart(boundary: &str, fields: &[(&str, &str)], file: (&str, &str, &str, &[u8])) -> Vec<u8> {
+    let clean = |s: &str| s.chars().filter(|c| !matches!(c, '"' | '\r' | '\n' | '\\')).collect::<String>();
+    let mut out = Vec::new();
+    for (name, value) in fields {
+        out.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{}\"\r\n\r\n", clean(name)).as_bytes());
+        out.extend_from_slice(value.as_bytes());
+        out.extend_from_slice(b"\r\n");
+    }
+    let (field, filename, mime, bytes) = file;
+    out.extend_from_slice(
+        format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\nContent-Type: {mime}\r\n\r\n", clean(field), clean(filename))
+            .as_bytes(),
+    );
+    out.extend_from_slice(bytes);
+    out.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    out
+}
+
 pub mod gowa {
     use super::*;
 
@@ -229,7 +282,8 @@ pub mod gowa {
     }
 
     /// `whatsapp rest` for "Start GOWA automatically": on this computer only, on the URL's port,
-    /// and media never downloaded (Coucou shows a label), so GOWA keeps no photo or voice note.
+    /// and media never downloaded on arrival (Coucou shows a label). Only a photo or video the big
+    /// WhatsApp chat shows is, when it is shown, and GOWA keeps that copy in its statics folder.
     pub fn launch_arguments(port: u16) -> Vec<String> {
         vec![
             "rest".into(),
@@ -246,15 +300,34 @@ pub mod gowa {
 
     /// `GET /chats` → `results: {data: [{jid, name, last_message_time, …}], pagination}`.
     pub fn chats(data: &[u8]) -> Vec<(String, String, i64)> {
+        chat_list(data).into_iter().map(|c| (c.id, c.name, c.last)).collect()
+    }
+
+    /// The same list with each chat's `archived` (false when the gateway doesn't say).
+    pub fn chat_list(data: &[u8]) -> Vec<ChatEntry> {
         let Some(r) = results(data) else { return vec![] };
         let Some(list) = r.get("data").and_then(Value::as_array) else { return vec![] };
         list.iter()
             .filter_map(|c| {
-                let jid = text(c.get("jid"))?;
-                let name = c.get("name").and_then(Value::as_str).unwrap_or("").to_string();
-                Some((jid, name, rfc3339_ms(c.get("last_message_time").and_then(Value::as_str)).unwrap_or(0)))
+                Some(ChatEntry {
+                    id: text(c.get("jid"))?,
+                    name: c.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
+                    last: rfc3339_ms(c.get("last_message_time").and_then(Value::as_str)).unwrap_or(0),
+                    archived: c.get("archived").and_then(Value::as_bool).unwrap_or(false),
+                })
             })
             .collect()
+    }
+
+    /// `GET /message/{id}/download` → `results: {file_path, file_url, …}`: where GOWA put the media,
+    /// to fetch from the gateway itself (its statics folder only, never another host).
+    pub fn download_path(data: &[u8]) -> Option<String> {
+        let r = results(data)?;
+        let path = match r.get("file_url").and_then(Value::as_str).and_then(|u| reqwest::Url::parse(u).ok()) {
+            Some(url) => url.path().to_string(),
+            None => format!("/{}", r.get("file_path")?.as_str()?.trim_start_matches('/')),
+        };
+        (path.starts_with("/statics/") && !path.contains("..")).then_some(path)
     }
 
     /// `GET /chat/{jid}/messages` → `results: {data: [{id, chat_jid, sender_jid, sender_display_name,
@@ -384,6 +457,27 @@ pub mod openwa {
                 Some(msg)
             })
             .collect()
+    }
+
+    /// `GET /api/sessions/{id}/chats` → a bare array of `{id, name, isGroup, timestamp (s), archived, …}`,
+    /// newest first.
+    pub fn chats(data: &[u8]) -> Vec<ChatEntry> {
+        let Ok(Value::Array(list)) = serde_json::from_slice::<Value>(data) else { return vec![] };
+        list.iter()
+            .filter_map(|c| {
+                Some(ChatEntry {
+                    id: text(c.get("id"))?,
+                    name: c.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
+                    last: epoch_ms(c.get("timestamp")).unwrap_or(0),
+                    archived: c.get("archived").and_then(Value::as_bool).unwrap_or(false),
+                })
+            })
+            .collect()
+    }
+
+    /// A send's or forward's answer: `{messageId, timestamp}` (the id may be "").
+    pub fn sent_id(data: &[u8]) -> Option<String> {
+        text(serde_json::from_slice::<Value>(data).ok()?.get("messageId"))
     }
 
     /// NestJS error: `{statusCode, message (string or [string]), error}`.
@@ -711,6 +805,24 @@ mod tests {
         let stored = r#"{"messages":[{"waMessageId":"3EB0AB","chatId":"628123456789@c.us","from":"628123456789@c.us","chatName":"Alice","author":null,"body":"See you","type":"text","direction":"incoming","timestamp":1719306115}],"total":1}"#;
         let om = openwa::messages(stored.as_bytes(), None);
         assert_eq!((om[0].id.as_str(), om[0].chat_name.as_deref(), om[0].from_me), ("3EB0AB", Some("Alice"), false));
+        // docs/06-api-specification.md: GET /api/sessions/:sessionId/chats (ChatSummary).
+        let chats = r#"[{"id":"628123456789@c.us","name":"Alice","isGroup":false,"kind":"individual","unreadCount":2,"timestamp":1719306115,"lastMessage":"See you","archived":false,"pinned":false,"muted":false},{"id":"120363000000000000@g.us","name":"","isGroup":true,"timestamp":1719306000,"archived":true},{"name":"no id"}]"#;
+        let entry = |id: &str, name: &str, last: i64, archived: bool| ChatEntry { id: id.into(), name: name.into(), last, archived };
+        assert_eq!(openwa::chats(chats.as_bytes()), [
+            entry("628123456789@c.us", "Alice", 1_719_306_115_000, false),
+            entry("120363000000000000@g.us", "", 1_719_306_000_000, true),
+        ]);
+        assert!(openwa::chats(br#"{"statusCode":409}"#).is_empty());
+        // docs/openapi.yaml: Chat.archived; an older GOWA without it reads as not archived.
+        let gowa_chats = r#"{"code":"SUCCESS","results":{"data":[{"jid":"1@s.whatsapp.net","name":"A","last_message_time":"2025-07-13T11:06:00Z","archived":true},{"jid":"2@s.whatsapp.net","name":"B"}]}}"#;
+        assert_eq!(gowa::chat_list(gowa_chats.as_bytes()), [
+            entry("1@s.whatsapp.net", "A", 1_752_404_760_000, true),
+            entry("2@s.whatsapp.net", "B", 0, false),
+        ]);
+        assert_eq!(gowa::chats(gowa_chats.as_bytes())[0], ("1@s.whatsapp.net".to_string(), "A".to_string(), 1_752_404_760_000));
+        // POST /messages/forward, /messages/send-image: {messageId, timestamp}.
+        assert_eq!(openwa::sent_id(br#"{"messageId":"true_628_3EB0NEW","timestamp":1719312200}"#).as_deref(), Some("true_628_3EB0NEW"));
+        assert_eq!(openwa::sent_id(br#"{"messageId":"","timestamp":1}"#), None);
         assert_eq!(openwa::error_message(br#"{"statusCode":400,"message":["a","b"]}"#).as_deref(), Some("a, b"));
         assert_eq!(openwa::chat_id("336@s.whatsapp.net"), "336@c.us");
     }
@@ -745,6 +857,38 @@ mod tests {
         let plain: Vec<String> = ["whatsapp.exe".to_string()].to_vec();
         assert_eq!(release::binary_entry(&plain, "windows", "amd64").map(String::as_str), Some("whatsapp.exe"));
         assert_eq!(release::binary_entry(&plain, "linux", "amd64"), None);
+    }
+
+    #[test]
+    fn photos_videos_and_forwards() {
+        // docs/webhook-payload.md: "Forwarded Message".
+        let fwd = r#"{"event":"message","device_id":"628987654321@s.whatsapp.net","payload":{"id":"3EB0C127D7BACC83D6B3","chat_id":"628987654321@s.whatsapp.net","from":"628123456789@s.whatsapp.net","from_name":"John Doe","timestamp":"2023-10-15T11:45:00Z","body":"This is a forwarded message","forwarded":true}}"#;
+        assert!(message(Kind::Gowa, fwd, None).forwarded);
+        assert!(!message(Kind::Gowa, GOWA_TEXT, None).forwarded);
+        // docs/openapi.yaml: GET /message/{id}/download.
+        let saved = r#"{"code":"SUCCESS","results":{"message_id":"3EB0ABC","media_type":"image","filename":"image.jpg","file_path":"statics/media/628/2026-06-09/image.jpg","file_url":"http://localhost:3000/statics/media/628/2026-06-09/image.jpg","file_size":5242}}"#;
+        assert_eq!(gowa::download_path(saved.as_bytes()).as_deref(), Some("/statics/media/628/2026-06-09/image.jpg"));
+        let no_url = r#"{"code":"SUCCESS","results":{"file_path":"statics/media/628/a b.jpg"}}"#;
+        assert_eq!(gowa::download_path(no_url.as_bytes()).as_deref(), Some("/statics/media/628/a b.jpg"));
+        assert_eq!(gowa::download_path(br#"{"results":{"file_path":"/etc/passwd"}}"#), None);
+        assert_eq!(gowa::download_path(br#"{"results":{"file_path":"statics/../../secret"}}"#), None);
+        assert_eq!(gowa::download_path(br#"{"results":{"file_url":"http://evil.example/x.jpg"}}"#), None);
+        // What may be sent, from the first bytes.
+        assert_eq!(media_type(&[0xFF, 0xD8, 0xFF, 0xE0, 0, 0]), Some(("image/jpeg", false)));
+        assert_eq!(media_type(b"\x89PNG\r\n\x1a\n"), Some(("image/png", false)));
+        assert_eq!(media_type(b"RIFF\0\0\0\0WEBPVP8 "), Some(("image/webp", false)));
+        assert_eq!(media_type(b"\0\0\0\x18ftypmp42\0\0\0\0"), Some(("video/mp4", true)));
+        assert_eq!(media_type(b"\0\0\0\x14ftypqt  \0\0\0\0"), Some(("video/quicktime", true)));
+        assert_eq!(media_type(&[0x1A, 0x45, 0xDF, 0xA3, 1]), Some(("video/webm", true)));
+        assert_eq!(media_type(b"%PDF-1.7"), None);
+        assert_eq!(media_type(b""), None);
+        let body = multipart("B", &[("phone", "336@s.whatsapp.net"), ("caption", "salut")], ("image", "a\"b\r\n.jpg", "image/jpeg", b"JPG"));
+        assert_eq!(
+            String::from_utf8(body).unwrap(),
+            "--B\r\nContent-Disposition: form-data; name=\"phone\"\r\n\r\n336@s.whatsapp.net\r\n\
+             --B\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\nsalut\r\n\
+             --B\r\nContent-Disposition: form-data; name=\"image\"; filename=\"ab.jpg\"\r\nContent-Type: image/jpeg\r\n\r\nJPG\r\n--B--\r\n"
+        );
     }
 
     #[test]

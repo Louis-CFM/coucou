@@ -7,11 +7,14 @@ use std::time::Duration;
 use reqwest::{Method, Url};
 use serde_json::{json, Value};
 
-use super::gateway::{self, gowa, openwa, Kind, Link, Status};
+use super::gateway::{self, gowa, openwa, ChatEntry, Kind, Link, Status};
 use super::model::{self, Message};
 
 /// Ceiling for one answer of the gateway (a QR PNG is about 2 KB, a page of messages a few).
 const MAX_ANSWER: usize = 2 * 1024 * 1024;
+/// Ceiling for a photo or video, sent or shown (WhatsApp's own limit for a video message).
+pub const MAX_MEDIA: usize = 16 * 1024 * 1024;
+const MEDIA_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WaError {
@@ -86,13 +89,27 @@ impl Http {
     }
 
     pub async fn call(&self, method: Method, path: &str, query: &[(&str, String)], body: Option<Value>, timeout: Duration) -> Result<(Vec<u8>, u16), WaError> {
+        let body = body.map(|b| ("application/json".to_string(), b.to_string().into_bytes()));
+        self.call_raw(method, path, query, body, timeout, MAX_ANSWER).await
+    }
+
+    /// `call` with any body (its type, its bytes) and a ceiling of its own: photos and videos.
+    pub async fn call_raw(
+        &self,
+        method: Method,
+        path: &str,
+        query: &[(&str, String)],
+        body: Option<(String, Vec<u8>)>,
+        timeout: Duration,
+        cap: usize,
+    ) -> Result<(Vec<u8>, u16), WaError> {
         let url = endpoint(&self.base, path, query).ok_or(WaError::Unreachable)?;
         let mut req = self.client.request(method, url.clone()).timeout(timeout).header("Accept", "application/json");
         for (k, v) in &self.headers {
             req = req.header(*k, v);
         }
-        if let Some(body) = body {
-            req = req.header("Content-Type", "application/json").body(body.to_string());
+        if let Some((kind, bytes)) = body {
+            req = req.header("Content-Type", kind).body(bytes);
         }
         let response = req.send().await.map_err(|_| WaError::Unreachable)?;
         // Second lock: an answer from anywhere but the gateway is not one.
@@ -100,7 +117,7 @@ impl Http {
             return Err(WaError::Unreachable);
         }
         let code = response.status().as_u16();
-        let data = crate::net::read_capped(response, MAX_ANSWER).await.map_err(|_| WaError::Unreachable)?;
+        let data = crate::net::read_capped(response, cap).await.map_err(|_| WaError::Unreachable)?;
         Ok((data, code))
     }
 
@@ -184,6 +201,14 @@ impl Provider {
         Ok(data)
     }
 
+    /// `gowa_scoped` with any body (a multipart send) and a minute to answer.
+    async fn gowa_scoped_raw(http: &Http, slot: &tokio::sync::Mutex<Option<String>>, path: &str, body: (String, Vec<u8>)) -> Result<Vec<u8>, WaError> {
+        let id = Self::gowa_id(http, slot).await?;
+        let (data, code) = http.call_raw(Method::POST, path, &[("device_id", id)], Some(body), MEDIA_TIMEOUT, MAX_ANSWER).await?;
+        Self::gowa_check(&data, code)?;
+        Ok(data)
+    }
+
     // ── OpenWA ──
 
     fn openwa_check(data: &[u8], code: u16) -> Result<(), WaError> {
@@ -242,6 +267,15 @@ impl Provider {
     async fn openwa_scoped(http: &Http, slot: &tokio::sync::Mutex<Option<String>>, method: Method, path: &str, query: &[(&str, String)], body: Option<Value>) -> Result<Vec<u8>, WaError> {
         let id = Self::openwa_id(http, slot).await?;
         let (data, code) = http.call(method, &format!("/api/sessions/{}{path}", path_component(&id)), query, body, Duration::from_secs(10)).await?;
+        Self::openwa_check(&data, code)?;
+        Ok(data)
+    }
+
+    /// `openwa_scoped` for a photo or video, up (a JSON body) or down (`cap` bytes), in a minute.
+    async fn openwa_scoped_media(http: &Http, slot: &tokio::sync::Mutex<Option<String>>, method: Method, path: &str, body: Option<Value>, cap: usize) -> Result<Vec<u8>, WaError> {
+        let id = Self::openwa_id(http, slot).await?;
+        let body = body.map(|b| ("application/json".to_string(), b.to_string().into_bytes()));
+        let (data, code) = http.call_raw(method, &format!("/api/sessions/{}{path}", path_component(&id)), &[], body, MEDIA_TIMEOUT, cap).await?;
         Self::openwa_check(&data, code)?;
         Ok(data)
     }
@@ -342,20 +376,113 @@ impl Provider {
         Ok(out)
     }
 
-    /// The latest `limit` messages of one chat, oldest first.
-    pub async fn messages(&self, chat: &str, limit: usize, me: Option<&str>) -> Result<Vec<Message>, WaError> {
+    /// The latest `limit` messages of one chat, oldest first. With `before` (ms), the latest up to
+    /// that time: an older page of the big WhatsApp chat, that second included so a message sharing
+    /// it is never skipped (the page drops the ones it already has).
+    pub async fn messages(&self, chat: &str, limit: usize, before: Option<i64>, me: Option<&str>) -> Result<Vec<Message>, WaError> {
         let mut out = match self {
             Provider::Gowa { http, device } => {
                 let path = format!("/chat/{}/messages", path_component(chat));
-                gowa::messages(&Self::gowa_scoped(http, device, Method::GET, &path, &[("limit", limit.to_string())], None).await?, me)
+                let mut q = vec![("limit", limit.to_string())];
+                if let Some(before) = before {
+                    q.push(("end_time", gateway::iso_utc(before + 1000)));
+                }
+                gowa::messages(&Self::gowa_scoped(http, device, Method::GET, &path, &q, None).await?, me)
             }
             Provider::Openwa { http, session } => {
-                let q = [("chatId", openwa::chat_id(chat)), ("limit", limit.to_string()), ("inlineMedia", "false".into())];
+                let mut q = vec![("chatId", openwa::chat_id(chat)), ("limit", limit.to_string()), ("inlineMedia", "false".into())];
+                if let Some(before) = before {
+                    // `until` is exclusive; the newest by message time, not by arrival at the gateway.
+                    q.push(("until", (before + 1000).to_string()));
+                    q.push(("orderBy", "timestamp".into()));
+                }
                 openwa::messages(&Self::openwa_scoped(http, session, Method::GET, "/messages", &q, None).await?, me)
             }
         };
         out.sort_by_key(|m| m.date);
         Ok(out)
+    }
+
+    /// The gateway's latest chats, newest first, each saying whether it is archived.
+    pub async fn chats(&self) -> Result<Vec<ChatEntry>, WaError> {
+        match self {
+            Provider::Gowa { http, device } => {
+                // The latest 30 and, apart, the archived ones (older ones would miss the 30). A GOWA
+                // without the filter answers the same list twice: the first one counts.
+                let mut out = gowa::chat_list(&Self::gowa_scoped(http, device, Method::GET, "/chats", &[("limit", "30".into()), ("archived", "false".into())], None).await?);
+                let archived = gowa::chat_list(&Self::gowa_scoped(http, device, Method::GET, "/chats", &[("limit", "50".into()), ("archived", "true".into())], None).await?);
+                for mut c in archived {
+                    if !out.iter().any(|o| o.id == c.id) {
+                        c.archived = true;
+                        out.push(c);
+                    }
+                }
+                Ok(out)
+            }
+            // One list (no filter there), each chat with its own `archived`.
+            Provider::Openwa { http, session } => Ok(openwa::chats(&Self::openwa_scoped(http, session, Method::GET, "/chats", &[("limit", "100".into())], None).await?)),
+        }
+    }
+
+    /// The photo or video of one message, `MAX_MEDIA` at most. GOWA saves what it downloads in its
+    /// own statics folder first; OpenWA serves what it stored.
+    pub async fn media(&self, chat: &str, id: &str) -> Result<Vec<u8>, WaError> {
+        match self {
+            Provider::Gowa { http, device } => {
+                let path = format!("/message/{}/download", path_component(id));
+                let data = Self::gowa_scoped(http, device, Method::GET, &path, &[("phone", chat.to_string())], None).await?;
+                let file = gowa::download_path(&data).ok_or_else(|| WaError::Refused("media".into()))?;
+                let (bytes, code) = http.call_raw(Method::GET, &file, &[], None, MEDIA_TIMEOUT, MAX_MEDIA).await?;
+                if code != 200 {
+                    return Err(WaError::Refused(format!("HTTP {code}")));
+                }
+                Ok(bytes)
+            }
+            Provider::Openwa { http, session } => {
+                let path = format!("/messages/{}/{}/media", path_component(&openwa::chat_id(chat)), path_component(id));
+                Self::openwa_scoped_media(http, session, Method::GET, &path, None, MAX_MEDIA).await
+            }
+        }
+    }
+
+    /// Forwards a message with WhatsApp's own forward (the "Forwarded" label kept); the new id when given.
+    pub async fn forward(&self, from_chat: &str, id: &str, to_chat: &str) -> Result<Option<String>, WaError> {
+        match self {
+            Provider::Gowa { http, device } => {
+                let path = format!("/message/{}/forward", path_component(id));
+                Ok(gowa::sent_id(&Self::gowa_scoped(http, device, Method::POST, &path, &[], Some(json!({"phone": to_chat}))).await?))
+            }
+            Provider::Openwa { http, session } => {
+                let body = json!({"fromChatId": openwa::chat_id(from_chat), "toChatId": openwa::chat_id(to_chat), "messageId": id});
+                let data = Self::openwa_scoped(http, session, Method::POST, "/messages/forward", &[], Some(body)).await?;
+                Ok(openwa::sent_id(&data))
+            }
+        }
+    }
+
+    /// Sends a photo or video (its MIME type already checked) with an optional caption.
+    pub async fn send_media(&self, chat: &str, video: bool, mime: &str, name: &str, bytes: &[u8], caption: &str) -> Result<Option<String>, WaError> {
+        let field = if video { "video" } else { "image" };
+        match self {
+            Provider::Gowa { http, device } => {
+                let boundary = format!("coucou-{:x}", gateway::now_ms());
+                let mut fields = vec![("phone", chat)];
+                if !caption.is_empty() {
+                    fields.push(("caption", caption));
+                }
+                let body = gateway::multipart(&boundary, &fields, (field, name, mime, bytes));
+                let kind = format!("multipart/form-data; boundary={boundary}");
+                Ok(gowa::sent_id(&Self::gowa_scoped_raw(http, device, &format!("/send/{field}"), (kind, body)).await?))
+            }
+            Provider::Openwa { http, session } => {
+                let mut body = json!({"chatId": openwa::chat_id(chat), "base64": gateway::base64(bytes), "mimetype": mime, "filename": name});
+                if !caption.is_empty() {
+                    body["caption"] = json!(caption);
+                }
+                let data = Self::openwa_scoped_media(http, session, Method::POST, &format!("/messages/send-{field}"), Some(body), MAX_ANSWER).await?;
+                Ok(openwa::sent_id(&data))
+            }
+        }
     }
 
     /// Sends a text to an existing chat; the new message's id when the gateway gives it.
