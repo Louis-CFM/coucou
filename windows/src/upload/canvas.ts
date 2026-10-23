@@ -7,7 +7,7 @@
 
 import { State } from "../core/state";
 import { SCRIPT_FONTS } from "../core/fonts";
-import { N_, isRtl, t } from "../i18n/i18n";
+import { isRtl, t } from "../i18n/i18n";
 import {
   USC, eIn, eInOut, eOut, lerp, progressAt,
   type UploadEyeShape, type UploadFrame,
@@ -20,8 +20,6 @@ const TEXT_RIGHT = USC.CARD_X + USC.CARD_W - 16;
 /** The two choose buttons, as drawn and as hit areas. */
 const ASK_BTN = { x: 114, w: 168 };
 const CANCEL_BTN = { x: 290, w: 120 };
-/** Drop-zone chips (English keys, shown with `t()`). */
-const CHIPS = [N_("PDF"), N_("Images"), N_("Code"), N_("Docs")];
 
 /** Mirrors the reference `rr()`: a rounded rect, radius clamped to the box. */
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -223,32 +221,60 @@ export class UploadCanvas {
   private drawDropText(ctx: CanvasRenderingContext2D, f: UploadFrame) {
     ctx.save();
     ctx.globalAlpha = f.textAlpha;
-    const title = fitted(ctx, t("Drop your files here"), TEXT_RIGHT - USC.TEXT_X, 500, 13);
-    text(ctx, title.s, USC.TEXT_X, USC.TEXT_Y - 4, title.font, "#D5D7DB");
-
-    // The macOS port measures chips the same rough way, so the row lines up; a
-    // translation wider than that estimate gets the room it needs.
-    const labels = CHIPS.map((chip) => t(chip));
-    let chipPx = 11;
-    const widths = () => {
-      ctx.font = `500 ${chipPx}px ${FONT}`;
-      return labels.map((l) => Math.max(l.length * 6.5 + 16, Math.ceil(ctx.measureText(l).width) + 16));
-    };
-    let ws = widths();
-    const rowW = () => ws.reduce((a, b) => a + b, 0) + 6 * (ws.length - 1);
-    while (rowW() > TEXT_RIGHT - USC.TEXT_X && chipPx > 8.5) {
-      chipPx -= 0.5;
-      ws = widths();
-    }
-    let cx = USC.TEXT_X;
-    labels.forEach((chip, i) => {
-      const w = ws[i];
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
-      rr(ctx, cx, USC.TEXT_Y + 9, w, 18, 9);
-      ctx.fill();
-      text(ctx, chip, cx + 8, USC.TEXT_Y + 18, `500 ${chipPx}px ${FONT}`, "#B9BDC4");
-      cx += w + 6;
+    const labels = [t("Ask about file"), t("Keep in Notch")];
+    const zoneW = USC.CARD_W / labels.length;
+    const selected = f.cursorX < USC.CARD_X + USC.CARD_W / 2 ? 0 : 1;
+    labels.forEach((label, index) => {
+      const x = USC.CARD_X + index * zoneW;
+      if (index === selected) {
+        ctx.fillStyle = "rgba(34,197,94,0.13)";
+        rr(ctx, x + 3, USC.CARD_Y + 3, zoneW - 6, USC.CARD_H - 6, 15);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(52,211,153,0.55)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      const centerX = x + zoneW / 2;
+      this.drawDropZoneIcon(ctx, index, centerX, USC.CARD_Y + 40, index === selected);
+      text(ctx, fitted(ctx, label, zoneW - 20, 600, 12.5).s,
+        centerX, USC.CARD_Y + 80, `600 12.5px ${FONT}`,
+        index === selected ? "#E9FFF5" : "#C4C8CF", "center");
+      if (index > 0) {
+        ctx.beginPath();
+        ctx.moveTo(x, USC.CARD_Y + 18);
+        ctx.lineTo(x, USC.CARD_Y + USC.CARD_H - 18);
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     });
+    ctx.restore();
+  }
+
+  private drawDropZoneIcon(ctx: CanvasRenderingContext2D, index: number, x: number, y: number, selected: boolean) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = selected ? "#E9FFF5" : "#AEB4BE";
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (index === 0) {
+      // Document with a folded corner and a magnifying glass.
+      ctx.beginPath();
+      ctx.moveTo(-10, -13); ctx.lineTo(2, -13); ctx.lineTo(8, -7); ctx.lineTo(8, 5);
+      ctx.lineTo(-10, 5); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2, -13); ctx.lineTo(2, -7); ctx.lineTo(8, -7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(5, 7, 5, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(8.5, 10.5); ctx.lineTo(13, 15); ctx.stroke();
+    } else {
+      // Tray with a downward arrow.
+      ctx.beginPath();
+      ctx.moveTo(-13, 3); ctx.lineTo(-11, 10); ctx.lineTo(11, 10); ctx.lineTo(13, 3);
+      ctx.moveTo(-5, 5); ctx.lineTo(-5, 0); ctx.lineTo(5, 0); ctx.lineTo(5, 5);
+      ctx.moveTo(0, -13); ctx.lineTo(0, 3); ctx.moveTo(-5, -2); ctx.lineTo(0, 3); ctx.lineTo(5, -2);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 

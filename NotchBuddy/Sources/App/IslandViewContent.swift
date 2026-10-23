@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Dispatch view content by IslandView
 
@@ -27,6 +28,7 @@ struct IslandViewContent: View {
         case .greeting:  EmptyView()  // GreetingCanvasView overlaid in IslandRootView
         case .wardrobe:  WardrobeView(state: state)
         case .recap:     WeeklyRecapCardView(state: state)
+        case .files:     StashedFilesView(state: state)
         case .listening:
             #if !APPSTORE
             VoiceListeningView(isActive: state.view == .listening)
@@ -994,6 +996,129 @@ struct UploadView: View {
             .padding(.leading, 196)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+// MARK: - Files kept in the Notch
+
+struct StashedFilesView: View {
+    @ObservedObject var state: AppState
+    @State private var hoveredFileID: String?
+
+    private func removeFile(_ file: StashedFile) {
+        do {
+            try FileStashStore.remove(file)
+            state.stashedFiles = FileStashStore.list()
+        } catch {
+            state.noteMessage = error.localizedDescription
+        }
+    }
+
+    private var fileItems: some View {
+        LazyHStack(alignment: .top, spacing: 12) {
+            ForEach(state.stashedFiles) { file in
+                StashedFileTile(
+                    file: file,
+                    isHovered: hoveredFileID == file.id,
+                    onHover: { isHovering(file.id, $0) },
+                    onRemove: { removeFile(file) }
+                )
+            }
+        }
+    }
+
+    private func isHovering(_ id: String, _ hovering: Bool) {
+        if hovering {
+            hoveredFileID = id
+        } else if hoveredFileID == id {
+            hoveredFileID = nil
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            CardBackground(wash: nil)
+            HStack(spacing: 0) {
+                Spacer().frame(width: 112)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Files in Notch")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if state.stashedFiles.isEmpty {
+                        Text("Files you drop in the Notch will stay here until you remove them.")
+                            .font(.system(size: 11.5))
+                            .foregroundColor(Color(hex: "#9398A1"))
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        ScrollView(.horizontal) {
+                            fileItems
+                        }
+                        .frame(height: 102)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+    }
+}
+
+private struct StashedFileTile: View {
+    let file: StashedFile
+    let isHovered: Bool
+    let onHover: (Bool) -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        VStack(spacing: 5) {
+            ZStack(alignment: .topTrailing) {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: file.path))
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 54, height: 54)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(Color(hex: "#9398A1"))
+                        .frame(width: 21, height: 21)
+                        .background(Color(hex: "#33353A"))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Remove"))
+                // Keep the complete hit target inside the tile's rounded clip.
+                .offset(x: -3, y: 3)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
+            }
+            .frame(width: 76, height: 64)
+            Text(file.name)
+                .font(.system(size: 10.5))
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .multilineTextAlignment(.center)
+                .frame(width: 84, height: 28, alignment: .top)
+        }
+        .frame(width: 88, height: 98)
+        .background(Color.white.opacity(0.035))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .onDrag {
+            let provider = NSItemProvider()
+            provider.registerFileRepresentation(
+                forTypeIdentifier: UTType.fileURL.identifier,
+                fileOptions: .openInPlace,
+                visibility: .all
+            ) { completion in
+                completion(file.url, false, nil)
+                return nil
+            }
+            return provider
+        }
+        .onHover(perform: onHover)
     }
 }
 

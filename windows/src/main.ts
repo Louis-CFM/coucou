@@ -47,6 +47,12 @@ async function main() {
   if (boot) {
     State.settings = { ...State.settings, ...boot.settings };
   }
+  if (IS_TAURI) {
+    try {
+      State.stashedFiles = await Bridge.listStashedFiles();
+      State.notify();
+    } catch { /* Keep the island usable if the local stash cannot be read. */ }
+  }
   // A language change redraws the island in place: the texts given as tl(…)
   // relabel themselves (views/dom.ts) and the views redraw the rest on this
   // sync. Nothing is rebuilt, so tasks, steps and the chat stay as they are.

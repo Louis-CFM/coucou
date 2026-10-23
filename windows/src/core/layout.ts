@@ -25,7 +25,8 @@ export type IslandViewName =
   | "recap"
   | "wardrobe"
   | "update"
-  | "whatsNew";
+  | "whatsNew"
+  | "files";
 
 export type BotStateName =
   | "idle"
@@ -100,6 +101,7 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   // After an update: what the new version brings, then "Your Coucou so far".
   // Taller than a card, for two rows of items with their line.
   whatsNew: { height: 222, botX: 62, botY: null, botDiameter: 58, agentMode: "none" },
+  files: { height: 220, botX: 66, botY: null, botDiameter: 68, agentMode: "none" },
 };
 
 // The upload views above are only the fallback geometry. Once a file is actually

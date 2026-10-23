@@ -380,6 +380,8 @@ func botPosition(mode: IslandMode, view: IslandView, islandW: CGFloat, islandH: 
     case .compact: return (40, resting.botCenterY, resting.botDiameter, 1)
     case .expanded:
         let layout = IslandConst.viewLayouts[view]!
+        // Mochi needs a larger nominal diameter because the visible body uses
+        // only part of the BotCanvas frame (the canvas reserves particle space).
         let diameter = layout.botDiameter
         // Uploading: Mochi dot rides the leading edge of the progress fill.
         // Bar in island coords: left=36, width=526. cx = 36 + progress*526 (dot center at fill right edge).
@@ -495,7 +497,7 @@ struct IslandContentView: View {
                     // Views that fill available height instead of the fixed 98pt content frame:
                     // chat (prompt) is always flexible; mail is flexible only when active so
                     // it doesn't push the ZStack taller when inactive.
-                    let isTall = v == .prompt || ((v == .mail || v == .whatsNew) && active)
+                    let isTall = v == .prompt || ((v == .mail || v == .whatsNew || v == .files) && active)
                     let anim: Animation = active
                         ? .spring(response: 0.4, dampingFraction: 0.8).delay(0.16)
                         : .easeIn(duration: 0.16)
@@ -546,6 +548,7 @@ struct IslandHeader: View {
                     #endif
                 })
                 TabButton(icon: "plus", view: .upload, state: state)
+                TabButton(icon: "folder.fill", view: .files, state: state)
             }
             .padding(.leading, 14)
 

@@ -395,7 +395,7 @@ final class UploadSequenceEngine {
         // Content alpha values
         f.zoneOver   = sim.entered >= 0 && pt < USC.T_CHEW_END
         f.zoneAlpha  = 1 - usSeg(pt, USC.T_CHEW_END, USC.T_CHEW_END + 0.20)
-        f.textAlpha  = f.zoneAlpha * ((x > USC.TEXT_X-40 && isDragging) ? 0.25 : 1.0)
+        f.textAlpha  = f.zoneAlpha
         f.barReveal  = usEOut(usSeg(pt, USC.T_BAR_IN, USC.T_BAR_IN+0.25))
                      * (1 - usSeg(pt, growStart, growStart+0.20))
         f.barAlpha   = usSeg(pt, USC.T_BAR_IN+0.05, USC.T_BAR_IN+0.25)

@@ -21,6 +21,9 @@ final class IslandWindowController: NSWindowController {
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
+    private var fileDragExitWork: DispatchWorkItem?
+    private var fileDragPreviousView: IslandView?
+    private var fileDragPreviousMode: IslandMode?
 
     // Voice result auto-dismiss timer
     #if !APPSTORE
@@ -126,6 +129,12 @@ final class IslandWindowController: NSWindowController {
         dropView.autoresizingMask = [.width, .height]
         dropView.onDragEntered = { [weak self] loc in
             Task { @MainActor in
+                self?.fileDragExitWork?.cancel()
+                self?.fileDragExitWork = nil
+                if let self, (!UploadSequenceEngine.shared.isActive || self.fileDragPreviousView == nil) {
+                    self.fileDragPreviousView = AppState.shared.view
+                    self.fileDragPreviousMode = AppState.shared.mode
+                }
                 let iLoc = self?.windowToIsland(loc) ?? CGPoint(x: 320, y: 88)
                 AppState.shared.fileDragOver = true
                 // The voice mail card stays on screen: the file will be its attachment.
@@ -147,29 +156,88 @@ final class IslandWindowController: NSWindowController {
             }
         }
         dropView.onDragExited = {
-            Task { @MainActor in
-                AppState.shared.fileDragOver = false
-                // Do NOT collapse — drag session still active; island stays open.
-                NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.state.fileDragOver = false
                 UploadSequenceEngine.shared.exitZone()
+                // A successful drop clears these before AppKit sends its final exit.
+                guard self.fileDragPreviousView != nil || self.fileDragPreviousMode != nil else { return }
+
+                // AppKit also calls draggingExited when a drag is abandoned outside
+                // the island. Keep the upload card alive briefly for re-entry, then
+                // restore the view and mode from before this drag session.
+                let previousView = self.fileDragPreviousView
+                let previousMode = self.fileDragPreviousMode
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self, !self.state.fileDragOver else { return }
+                    UploadSequenceEngine.shared.deactivate()
+                    self.state.view = previousView ?? self.defaultView()
+                    if let previousMode { self.setMode(previousMode) }
+                    self.fileDragPreviousView = nil
+                    self.fileDragPreviousMode = nil
+                    self.fileDragExitWork = nil
+                    NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+                }
+                self.fileDragExitWork?.cancel()
+                self.fileDragExitWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
             }
         }
-        dropView.onFilesDropped = { [weak self] urls in
+        dropView.onFilesDropped = { [weak self] urls, location in
             Task { @MainActor in
+                guard let self else { return }
+                self.fileDragExitWork?.cancel()
+                self.fileDragExitWork = nil
+                self.fileDragPreviousView = nil
+                self.fileDragPreviousMode = nil
+                let panelHeight = self.window?.frame.height ?? 320
+                let panelWidth = self.window?.frame.width ?? 720
+                let islandLeft = (panelWidth - IslandConst.expandedWidth) / 2
+                let islandLocation = CGPoint(x: location.x - islandLeft, y: panelHeight - location.y)
+                let destination = FileDropDestination.at(x: islandLocation.x)
+                let state = AppState.shared
+                state.fileDragOver = false
+                switch destination {
+                case .stash:
+                    UploadSequenceEngine.shared.deactivate()
+                    do {
+                        _ = try await Task.detached(priority: .userInitiated) {
+                            try FileStashStore.add(urls: urls)
+                        }.value
+                        state.stashedFiles = FileStashStore.list()
+                        self.expand(to: .files)
+                    } catch {
+                        state.noteMessage = error.localizedDescription
+                        self.expand(to: .note)
+                    }
+                    return
+                case .airDrop:
+                    UploadSequenceEngine.shared.deactivate()
+                    guard let service = NSSharingService(named: .sendViaAirDrop) else {
+                        state.noteMessage = String(localized: "AirDrop is unavailable")
+                        self.expand(to: .note)
+                        return
+                    }
+                    self.expand(to: .overview)
+                    service.perform(withItems: urls)
+                    return
+                case .ask:
+                    break
+                }
                 #if !APPSTORE
                 // During the voice email (above all after "any attachment?"), a file
                 // dropped on the notch goes into that email.
                 if VoiceActionRunner.shared.isMailInProgress, let url = urls.first {
-                    await self?.attachVoiceMailFile(url)
+                    await self.attachVoiceMailFile(url)
                     return
                 }
                 // The mail card prepared by voice (Claude) is open: the file is its attachment.
                 if AppState.shared.voiceMailDraft != nil, AppState.shared.view == .mail, let url = urls.first {
-                    self?.attachToVoiceMailCard(url)
+                    self.attachToVoiceMailCard(url)
                     return
                 }
                 #endif
-                await FileDropHandler.handle(urls: urls, state: AppState.shared)
+                await FileDropHandler.handle(urls: urls, state: state)
             }
         }
 
