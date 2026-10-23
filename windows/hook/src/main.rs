@@ -50,9 +50,16 @@ mod statusline;
 
 /// The live diff needs the whole text of a file edit, once it has happened:
 /// PostToolUse of these tools keeps its edit strings far longer than the rest.
-const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write"];
+const DIFF_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write", "replace_file_content", "write_to_file"];
 /// The `tool_input` keys holding the text being replaced or written.
-const DIFF_FIELDS: &[&str] = &["old_string", "new_string", "content"];
+const DIFF_FIELDS: &[&str] = &[
+    "old_string",
+    "new_string",
+    "content",
+    "TargetContent",
+    "ReplacementContent",
+    "CodeContent",
+];
 /// Per edit string. The island stops diffing at 200 KB anyway (DiffEngine).
 const MAX_DIFF_FIELD_LEN: usize = 256 * 1024;
 /// For all edit strings of one event together, so the line stays well under the
@@ -499,6 +506,23 @@ mod tests {
         // Everything else keeps the ordinary cap, and nothing says "cut".
         assert!(v["cwd"].as_str().unwrap().len() <= MAX_FIELD_LEN + 4);
         assert!(v.get("coucou_diff_truncated").is_none());
+
+        let mut antigravity_edit = serde_json::json!({
+            "tool_name": "replace_file_content",
+            "tool_input": { "file_path": "/p/a.ts", "TargetContent": big, "ReplacementContent": big },
+        });
+        truncate_payload(&mut antigravity_edit, "PostToolUse");
+        assert_eq!(antigravity_edit["tool_input"]["TargetContent"].as_str().unwrap().len(), big.len());
+        assert_eq!(antigravity_edit["tool_input"]["ReplacementContent"].as_str().unwrap().len(), big.len());
+        assert!(antigravity_edit.get("coucou_diff_truncated").is_none());
+
+        let mut antigravity_write = serde_json::json!({
+            "tool_name": "write_to_file",
+            "tool_input": { "file_path": "/p/new.ts", "CodeContent": big },
+        });
+        truncate_payload(&mut antigravity_write, "PostToolUse");
+        assert_eq!(antigravity_write["tool_input"]["CodeContent"].as_str().unwrap().len(), big.len());
+        assert!(antigravity_write.get("coucou_diff_truncated").is_none());
 
         let mut multi = serde_json::json!({
             "tool_name": "MultiEdit",

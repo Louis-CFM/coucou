@@ -109,11 +109,12 @@ export function fromNew(content: string, path: string): FileDiff {
  */
 export function buildFileDiff(tool: string, input: Record<string, unknown>): FileDiff | null {
   const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
-  const path = str(input.file_path);
+  const path = str(input.file_path ?? input.TargetFile ?? input.AbsolutePath ?? input.FilePath);
   switch (tool) {
-    case "Edit": {
-      const oldText = str(input.old_string);
-      const newText = str(input.new_string);
+    case "Edit":
+    case "replace_file_content": {
+      const oldText = str(input.old_string ?? input.TargetContent);
+      const newText = str(input.new_string ?? input.ReplacementContent);
       if (oldText == null || newText == null || path == null) return null;
       if (!oldText && !newText) return null;
       const d = fromEdit(oldText, newText, path);
@@ -129,8 +130,8 @@ export function buildFileDiff(tool: string, input: Record<string, unknown>): Fil
       for (const edit of edits) {
         if (!edit || typeof edit !== "object") continue;
         const e = edit as Record<string, unknown>;
-        const oldText = str(e.old_string);
-        const newText = str(e.new_string);
+        const oldText = str(e.old_string ?? e.TargetContent);
+        const newText = str(e.new_string ?? e.ReplacementContent);
         if (oldText == null || newText == null) continue;
         const d = fromEdit(oldText, newText, path);
         added += d.added;
@@ -141,8 +142,9 @@ export function buildFileDiff(tool: string, input: Record<string, unknown>): Fil
       if (added === 0 && removed === 0) return null;
       return { id: 0, path, added, removed, hunks, tooLarge, isNewFile: false };
     }
-    case "Write": {
-      const content = str(input.content);
+    case "Write":
+    case "write_to_file": {
+      const content = str(input.content ?? input.CodeContent);
       if (path == null || !content) return null;
       const d = fromNew(content, path);
       return d.added > 0 || d.removed > 0 ? d : null;
