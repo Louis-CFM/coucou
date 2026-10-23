@@ -93,6 +93,7 @@ pub fn server(settings: &Settings, id: &str) -> Option<Server> {
     let (id, name, url, key) = match id {
         "ollama" => ("ollama", "Ollama", &settings.ollama_url, None),
         "lmstudio" => ("lmstudio", "LM Studio", &settings.lmstudio_url, None),
+        crate::omniroute::PROVIDER => return Some(crate::omniroute::server(settings)),
         "custom" => {
             let key = net::normalise_server_url(&settings.custom_url).ok().and_then(|u| custom_key_for(&u));
             ("custom", crate::i18n::n_("OpenAI-compatible server"), &settings.custom_url, key)
@@ -159,6 +160,7 @@ pub async fn connect(id: &str, typed: &str) -> Result<Connected, String> {
 /// The models of a connected server, for the picker in the chat view.
 pub async fn models(server: &Server) -> Result<Vec<ModelInfo>, String> {
     let url = base_url(server)?;
+    crate::omniroute::wake(server).await?;
     let models = list(&url, server.key.as_deref()).await?;
     if models.is_empty() {
         return Err(tf("No models yet. Download one in {name} first.", &[("name", &t(server.name))]));
@@ -278,6 +280,7 @@ pub async fn send_with(
     on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
     let base = base_url(server)?;
+    crate::omniroute::wake(server).await?;
     if model.is_empty() {
         return Err(t("Pick a model above the chat box first."));
     }

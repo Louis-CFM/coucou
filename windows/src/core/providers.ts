@@ -7,7 +7,7 @@ import { N_ } from "../i18n/i18n";
 
 export type ProviderId =
   | "anthropic" | "openai" | "google" | "openrouter"
-  | "ollama" | "lmstudio" | "custom";
+  | "ollama" | "lmstudio" | "custom" | "omniroute";
 
 export interface ProviderDef {
   id: ProviderId;
@@ -31,6 +31,8 @@ export const PROVIDERS: readonly ProviderDef[] = [
   { id: "ollama", name: "Ollama", accent: "#FACC15", key: null, urlField: "ollamaUrl", defaultModel: "", prefer: null },
   { id: "lmstudio", name: "LM Studio", accent: "#A3E635", key: null, urlField: "lmstudioUrl", defaultModel: "", prefer: null },
   { id: "custom", name: N_("Custom server"), accent: "#C0C4CC", key: null, urlField: "customUrl", defaultModel: "", prefer: null },
+  // Its address and key are its own (core/omniroute.ts).
+  { id: "omniroute", name: "OmniRoute", accent: "#8B5CF6", key: null, urlField: null, defaultModel: "", prefer: null },
 ];
 
 /** Credential store entry of the custom server's optional key. */
@@ -61,7 +63,7 @@ export function withModel(settings: Settings, provider: ProviderId, model: strin
 export function visibleProviders(settings: Settings): ProviderDef[] {
   return PROVIDERS.filter(
     (p) => !p.urlField || settings[p.urlField] !== "" || settings.chatProvider === p.id,
-  );
+  ).filter((p) => p.id !== "omniroute" || settings.omniroute?.enabled || settings.chatProvider === p.id);
 }
 
 /** The model to keep once the list arrives: the saved one if offered, else a sensible one. */
