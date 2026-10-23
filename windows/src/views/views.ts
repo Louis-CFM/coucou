@@ -25,7 +25,7 @@ import { buildUpdate } from "./update";
 import { buildWhatsNew } from "./whatsnew";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
 import { SPOTIFY_ID } from "../core/spotify";
-import { buildWhatsAppCard } from "./whatsapp";
+import { buildWhatsAppCard, buildWhatsAppChat, showsWhatsAppChat } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import type { Outfit, OutfitSelection } from "../mochi/wardrobe";
 import { language, t, tl, type Msg } from "../i18n/i18n";
@@ -824,6 +824,36 @@ function buildPlaceholder(title: Msg, sub: string): ViewHost {
 
 // ── Registry ──────────────────────────────────────────────────────────────────
 
+/** The chat view: WhatsApp on WhatsApp's Mochi (views/whatsapp.ts), the AI chat on every other one. */
+function buildChatView(actions: ViewActions, onHeightChange: () => void): ViewHost {
+  const ai = buildPrompt(onHeightChange);
+  const aiCard = ai.el.firstElementChild as HTMLElement;
+  const whatsapp = buildWhatsAppChat({
+    openSettings: () => actions.openSettingsWindow(),
+    holdOpen: (on) => actions.holdOpen(on),
+    back: () => actions.setView("overview"),
+  });
+  ai.el.append(whatsapp.el);
+  let shown: boolean | null = null;
+  return {
+    el: ai.el,
+    sync() {
+      const on = showsWhatsAppChat();
+      // Another Mochi picked, or a file dropped, while the chat is open: the island resizes.
+      if (shown != null && on !== shown) onHeightChange();
+      shown = on;
+      aiCard.style.display = on ? "none" : "";
+      whatsapp.el.style.display = on ? "" : "none";
+      if (on) whatsapp.sync();
+      else ai.sync();
+    },
+    focus() {
+      if (showsWhatsAppChat()) whatsapp.focus();
+      else ai.focus?.();
+    },
+  };
+}
+
 export function buildViews(
   actions: ViewActions,
   onChatHeightChange: () => void,
@@ -838,7 +868,7 @@ export function buildViews(
   map.set("confused", buildConfused());
   map.set("note", buildNote());
   map.set("settings", buildSettings(actions));
-  map.set("prompt", buildPrompt(onChatHeightChange));
+  map.set("prompt", buildChatView(actions, onChatHeightChange));
   map.set("upload", buildUpload());
   map.set("uploading", buildUploading());
   map.set("choose", buildChoose(actions));
