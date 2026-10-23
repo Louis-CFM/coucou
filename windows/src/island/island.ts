@@ -1,7 +1,7 @@
 // The island: DOM shell, sizing animation, Mochi placement, mouse handling.
 // Mirrors IslandRootView.swift + IslandWindowController.swift.
 
-import { Tracked, Spring, clamp } from "../core/anim";
+import { Tracked, Spring } from "../core/anim";
 import { Bridge, IS_TAURI, onDragDrop } from "../core/bridge";
 import {
   EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
@@ -63,6 +63,8 @@ export class Island {
   private clockEl!: HTMLElement;
   private clockTimer?: number;
   private countdown!: HTMLElement;
+  /** The deadline the countdown animation runs for; null when none runs. */
+  private countdownFor: number | null = null;
   private wakeStrip!: HTMLElement;
 
   private header!: ViewHost;
@@ -1167,19 +1169,23 @@ export class Island {
     return -Math.tanh((State.mouse.y - this.botCy.value) / 200);
   }
 
+  /**
+   * The bar is a CSS animation: the frame loop stops once Mochi is still, and
+   * a bar drawn from frames froze until the mouse moved again. It reads the
+   * state machine's own deadline, so the bar follows an auto-close delay edited
+   * while the countdown runs; it touches the DOM only when that deadline changes.
+   */
   private updateCountdown(nowMs: number) {
-    // The state machine's own deadline, so the bar follows an auto-close delay
-    // edited while the countdown runs.
-    const dueAt = this.fsm.homeCollapseDueAt;
-    if (State.mode !== "expanded" || State.isPinned || dueAt == null) {
-      this.countdown.style.width = "0px";
-      return;
-    }
-    const autoClose = this.fsm.homeToPetitDelay;
-    const windowS = Math.min(10, autoClose * 0.6);
-    const remaining = (dueAt - nowMs) / 1000;
-    this.countdown.style.width =
-      remaining < windowS ? `${Math.max(0, clamp(remaining / windowS, 0, 1) * 160)}px` : "0px";
+    const dueAt = State.mode !== "expanded" || State.isPinned ? null : this.fsm.homeCollapseDueAt;
+    if (dueAt === this.countdownFor) return;
+    this.countdownFor = dueAt;
+    const el = this.countdown;
+    el.style.animation = "none";
+    if (dueAt == null) return;
+    const windowS = Math.min(10, this.fsm.homeToPetitDelay * 0.6);
+    const startIn = (dueAt - nowMs) / 1000 - windowS;
+    void el.offsetWidth; // restart the animation from its first keyframe
+    el.style.animation = `countdown-shrink ${windowS}s linear ${startIn}s forwards`;
   }
 
   // ── DOM sync ────────────────────────────────────────────────────────────────
