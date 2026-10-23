@@ -103,10 +103,14 @@ pub struct Prefs {
     pub open_at_launch: bool,
     /// « OK Coucou »: listen for it and answer with Claude (needs the Claude key).
     pub voice: bool,
-    /// How Coucou answers out loud: "system", "elevenlabs" or "off".
+    /// How Coucou answers out loud: "system", "elevenlabs", "voicestudio" or "off".
     pub voice_output: String,
     /// The ElevenLabs voice: "female" or "male".
     pub voice_gender: String,
+    /// The local VoiceStudio server (OpenAI-compatible TTS).
+    pub voicestudio_url: String,
+    /// The VoiceStudio voice profile id.
+    pub voicestudio_voice: String,
 }
 
 impl Default for Prefs {
@@ -124,6 +128,8 @@ impl Default for Prefs {
             voice: false,
             voice_output: "system".into(),
             voice_gender: "female".into(),
+            voicestudio_url: "http://127.0.0.1:3900".into(),
+            voicestudio_voice: String::new(),
         }
     }
 }
