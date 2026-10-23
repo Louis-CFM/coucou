@@ -24,6 +24,8 @@ export interface ShortcutHost {
   setPinned(on: boolean): void;
   /** Gives the island the keyboard, so the in-island keys work (Mac: makeKey). */
   takeKeyboard(): void;
+  /** The chat field takes the typing, once the island has the keyboard. */
+  focusChat(): void;
   /** The wardrobe from any state, or back if it is open (Island.wardrobeAnywhere). */
   wardrobeAnywhere(): void;
   /** False where Mochi can't leave the island (GNOME on Wayland). */
@@ -63,6 +65,8 @@ export function runGlobalShortcut(host: ShortcutHost, action: string, resume: ()
     case "openChat":
       resume();
       host.alert("prompt");
+      host.takeKeyboard();
+      host.focusChat();
       break;
 
     case "goToAlert": {

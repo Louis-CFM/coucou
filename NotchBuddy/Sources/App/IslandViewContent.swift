@@ -1530,6 +1530,12 @@ struct PromptView: View {
             guard state.view == .prompt else { return }
             sendMessage()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .islandFocusChat)) { _ in
+            guard state.view == .prompt else { return }
+            // Cleared first: it can still read true from before the panel lost key.
+            focused = false
+            DispatchQueue.main.async { focused = true }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .islandNewConversation)) { _ in
             guard state.view == .prompt else { return }
             text = ""

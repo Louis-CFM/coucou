@@ -546,6 +546,10 @@ export class Island {
     void Bridge.focusWindow(true);
   }
 
+  focusChat() {
+    window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
+  }
+
   /** The desktop shortcut needs a desktop Mochi: none on GNOME's Wayland. */
   canLeaveIsland(): boolean {
     return this.desktop.supported;
@@ -1216,7 +1220,7 @@ export class Island {
       this.lastSyncedView = State.view;
       if (State.view === "prompt") {
         void Bridge.focusWindow(true);
-        window.setTimeout(() => this.views.get("prompt")?.focus?.(), 120);
+        this.focusChat();
       } else if (wasChat) {
         void Bridge.focusWindow(false);
       }
