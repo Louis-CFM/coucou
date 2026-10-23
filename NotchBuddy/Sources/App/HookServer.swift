@@ -484,7 +484,9 @@ final class HookServer: @unchecked Sendable {
             session: sessionId,
             projectName: isExternalAgent ? (validAgent ?? projectName) : projectName,
             cwd: isExternalAgent ? "" : cwd,
-            hostApp: hostApp, bundleId: bundleId)
+            hostApp: hostApp, bundleId: bundleId,
+            editorChat: !isExternalAgent && agentId == "integration_claude"
+                && ClaudeEditorChat.isExtensionChat(termProgram: termProgram, bundleId: bundleId))
         // For sessions that carry no id, derive a unique key from pill + cwd so that
         // concurrent anonymous sessions are tracked independently in RecapStore.
         let recapSessionId = (sessionId == "unknown" || sessionId.isEmpty)
@@ -1113,7 +1115,7 @@ final class HookServer: @unchecked Sendable {
         } else {
             upsertWorkspaceTask(id: pill, projectName: display.projectName, cwd: display.cwd,
                                 hostApp: display.hostApp, bundleId: display.bundleId,
-                                session: display.session)
+                                session: display.session, editorChat: display.editorChat)
         }
     }
 
@@ -1127,7 +1129,10 @@ final class HookServer: @unchecked Sendable {
         let state = AppState.shared
         state.tasks[idx].name = owner.projectName
         if !owner.cwd.isEmpty { state.tasks[idx].sessionCwd = owner.cwd }
-        if pill == "integration_claude" { state.tasks[idx].hostApp = owner.hostApp }
+        if pill == "integration_claude" {
+            state.tasks[idx].hostApp = owner.hostApp
+            state.tasks[idx].editorChatSession = owner.editorChat ? owner.session : nil
+        }
         if !owner.bundleId.isEmpty { state.tasks[idx].sessionBundleId = owner.bundleId }
     }
 
@@ -1138,13 +1143,16 @@ final class HookServer: @unchecked Sendable {
     /// still running), so a second session under the same client cannot rename the card,
     /// or send "Open terminal" elsewhere, out from under the first.
     @MainActor
-    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String) {
+    private func upsertWorkspaceTask(id: String, projectName: String, cwd: String = "", hostApp: String? = nil, bundleId: String = "", session: String, editorChat: Bool = false) {
         let state = AppState.shared
         if let idx = state.tasks.firstIndex(where: { $0.id == id }) {
             guard sessions.ownsDisplay(pill: id, session: session) else { return }
             state.tasks[idx].name = projectName
             if !cwd.isEmpty { state.tasks[idx].sessionCwd = cwd }
-            if id == "integration_claude" { state.tasks[idx].hostApp = hostApp }
+            if id == "integration_claude" {
+                state.tasks[idx].hostApp = hostApp
+                state.tasks[idx].editorChatSession = editorChat ? session : nil
+            }
             if !bundleId.isEmpty { state.tasks[idx].sessionBundleId = bundleId }
             return
         }
@@ -1154,7 +1162,11 @@ final class HookServer: @unchecked Sendable {
         let source = def?.source ?? .agent
         var task = AgentTask(id: id, name: projectName, color: color,
                              state: .idle, steps: [], source: source, isIntegration: true)
-        if id == "integration_claude" { task.hostApp = hostApp }
+        if id == "integration_claude" {
+            task.hostApp = hostApp
+            task.editorChatSession = editorChat ? session : nil
+        }
+        if !cwd.isEmpty { task.sessionCwd = cwd }
         if !bundleId.isEmpty { task.sessionBundleId = bundleId }
         if let mainIdx = state.tasks.firstIndex(where: { $0.id == state.mainPillId }) {
             state.tasks.insert(task, at: mainIdx + 1)

@@ -44,6 +44,8 @@ struct PillSessionRegistry {
         var hostApp: String? = nil
         /// Bundle id of the client (VS Code, Cursor…) that sent the event.
         var bundleId: String = ""
+        /// The session runs in the VS Code extension's chat panel (not a terminal).
+        var editorChat: Bool = false
     }
 
     private struct Session {
@@ -51,6 +53,7 @@ struct PillSessionRegistry {
         var cwd: String
         var hostApp: String?
         var bundleId: String
+        var editorChat: Bool = false
         var isWorking: Bool
         var lastSeen: Date
         /// Last time the session was mid-turn or ended a turn. A stray notification
@@ -84,7 +87,10 @@ struct PillSessionRegistry {
         session.projectName = display.projectName
         if !display.cwd.isEmpty { session.cwd = display.cwd }
         if display.hostApp != nil { session.hostApp = display.hostApp }
-        if !display.bundleId.isEmpty { session.bundleId = display.bundleId }
+        if !display.bundleId.isEmpty {
+            session.bundleId = display.bundleId
+            session.editorChat = display.editorChat
+        }
         if working { session.isWorking = true; session.lastWorked = now }
         session.lastSeen = now
         p.sessions[display.session] = session
@@ -138,7 +144,8 @@ struct PillSessionRegistry {
         }
         guard let id = working ?? lastWorked, let session = p.sessions[id] else { return nil }
         return Display(session: id, projectName: session.projectName, cwd: session.cwd,
-                       hostApp: session.hostApp, bundleId: session.bundleId)
+                       hostApp: session.hostApp, bundleId: session.bundleId,
+                       editorChat: session.editorChat)
     }
 
     /// Whether this session may write the pill's name and cwd. True when the
