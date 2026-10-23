@@ -161,3 +161,24 @@ for (const [what, event] of [
     assert.equal(task().finalLine, null);
   });
 }
+
+// ── Subagents ─────────────────────────────────────────────────────────────────
+
+test("the SubagentStop Claude Code sends after Stop leaves the last edit on the ticker (#840)", () => {
+  edit();
+  hook({ hook_event_name: "Stop", last_assistant_message: "Done." });
+  const steps = [...task().steps];
+  // Captured from Claude Code: no SubagentStart, empty agent_type, a few seconds after Stop.
+  hook({ hook_event_name: "SubagentStop", agent_id: "a6f6d8a2ad8a9ef2b", agent_type: "" });
+  assert.deepEqual(task().steps, steps);
+  assert.ok(parseDiffStep(task().steps.at(-2)));
+});
+
+test("a real subagent still shows its start and end, and an agent without agent_type too", () => {
+  hook({ hook_event_name: "SubagentStart", agent_id: "abb32627dee1d8ff6", agent_type: "Explore" });
+  hook({ hook_event_name: "SubagentStop", agent_id: "abb32627dee1d8ff6", agent_type: "Explore" });
+  assert.deepEqual(task().steps.slice(-2), ["+ subagent", "• subagent done"]);
+  hook({ hook_event_name: "SubagentStop" });
+  assert.equal(task().steps.at(-1), "• subagent done");
+  assert.equal(task().steps.length, 3);
+});
