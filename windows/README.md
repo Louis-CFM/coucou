@@ -249,6 +249,16 @@ side (tray, errors) embeds the same two files.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
+**No key? Claude Code answers instead.** When no Anthropic key is saved and
+the Claude Code CLI is installed (on PATH, or in the usual install folders),
+the chat, Flow's clean-up and the notes of a call run through `claude -p`,
+signed in with your own account. Coucou reads no credential: Claude Code
+answers exactly as it does in a terminal. Each run loads none of your settings
+(so none of your hooks), no MCP server and no skill, saves no session, and may
+only search the web (the chat) and read the file you dropped. « OK Coucou »
+still needs the key: its tools are Coucou's own. Saving a key switches
+everything back to the API.
+
 The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
 add their keys in **Settings… → Chat providers**, then click the model name
 above the chat box to switch provider and model, as on the Mac. The model list

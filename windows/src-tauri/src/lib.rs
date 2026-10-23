@@ -4,6 +4,7 @@ mod agent_hooks;
 mod agents;
 mod chat;
 mod claude;
+mod claude_code;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -577,6 +578,12 @@ fn secret_present(key: String) -> bool {
     secrets::present(&key)
 }
 
+/// Whether Claude can answer: an API key, or else the user's own Claude Code.
+#[tauri::command]
+fn claude_ready() -> bool {
+    claude::ready()
+}
+
 #[tauri::command]
 fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
     // Bound to its server's address: only local_set_key may store it.
@@ -848,6 +855,7 @@ pub fn run() {
             chat_reset,
             ingest_file,
             secret_present,
+            claude_ready,
             secret_set,
             secret_clear,
             refresh_integration,

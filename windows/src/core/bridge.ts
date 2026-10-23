@@ -380,6 +380,11 @@ export const Bridge = {
   ingestFile: (path: string) => callOrThrow<DroppedFile>("ingest_file", { path }),
   /** Only ever tells you whether a key exists — never its value. */
   secretPresent: (key: string) => call<boolean>("secret_present", { key }),
+  /** Whether Claude can answer: the API key, or else the user's own Claude Code. */
+  claudeReady: () => call<boolean>("claude_ready"),
+  /** Whether a provider can answer with this key: Claude Code stands in for a missing Anthropic one. */
+  keyReady: (key: string) =>
+    key === "anthropic-api-key" ? call<boolean>("claude_ready") : call<boolean>("secret_present", { key }),
   secretSet: (key: string, value: string) => callOrThrow<void>("secret_set", { key, value }),
   secretClear: (key: string) => callOrThrow<void>("secret_clear", { key }),
 

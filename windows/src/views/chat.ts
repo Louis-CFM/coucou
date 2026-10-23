@@ -152,7 +152,7 @@ function buildPicker(onChange: () => void): Picker {
       return;
     }
     // Nothing is asked of a provider that has no key yet.
-    if (p.key && !(await Bridge.secretPresent(p.key))) {
+    if (p.key && !(await Bridge.keyReady(p.key))) {
       if (ticket === request) status(t(STRINGS.noKey), true);
       return;
     }

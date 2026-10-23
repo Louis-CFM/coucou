@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::settings::Settings;
-use crate::{claude, local_chat, openai_compat, secrets};
+use crate::{claude, claude_code, local_chat, openai_compat, secrets};
 
 pub const ANTHROPIC: &str = "anthropic";
 
@@ -248,8 +248,10 @@ pub async fn send_for_phone(
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
     if provider == ANTHROPIC {
-        let key = secrets::get(claude::KEY).ok_or_else(no_key)?;
-        return claude::models(&key).await;
+        if let Some(key) = secrets::get(claude::KEY) {
+            return claude::models(&key).await;
+        }
+        return claude_code::available().then(claude_code::models).ok_or_else(no_key);
     }
     if let Some(p) = openai_compat::provider(provider) {
         let key = secrets::get(p.key).ok_or_else(no_key)?;

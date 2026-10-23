@@ -337,9 +337,15 @@ const MODELS: [string, string][] = [
   ["claude-haiku-4-5", "Claude Haiku 4.5"],
 ];
 
-function apiSection(hasKey: boolean): HTMLElement {
-  const dot = statusDot(hasKey);
-  const state = h("span", { class: "hint", text: hasKey ? t("Key saved in the {store}.", { store: KEY_STORE }) : t("No key yet — the chat needs one.") });
+/** The state line under Claude: the key, else Claude Code standing in for it, else what is missing. */
+function apiState(hasKey: boolean, relay: boolean): string {
+  if (hasKey) return t("Key saved in the {store}.", { store: KEY_STORE });
+  return relay ? t("No key: your Claude Code answers instead, with your account.") : t("No key yet — the chat needs one.");
+}
+
+function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
+  const dot = statusDot(hasKey || relay);
+  const state = h("span", { class: "hint", text: apiState(hasKey, relay) });
 
   const field = h("input", {
     type: "password",
@@ -355,10 +361,9 @@ function apiSection(hasKey: boolean): HTMLElement {
 
   async function refresh() {
     const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    dot.style.background = present ? "#22c55e" : "#f4505e";
-    state.textContent = present
-      ? t("Key saved in the {store}.", { store: KEY_STORE })
-      : t("No key yet — the chat needs one.");
+    const ready = (await Bridge.claudeReady()) ?? false;
+    dot.style.background = ready ? "#22c55e" : "#f4505e";
+    state.textContent = apiState(present, ready && !present);
     field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
     clearBtn.style.display = present ? "" : "none";
   }
@@ -1362,6 +1367,7 @@ async function render() {
   const agents = await Bridge.agentHooksList();
 
   const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
+  const claudeRelay = !hasKey && ((await Bridge.claudeReady()) ?? false);
   const shortcutReport = await Bridge.shortcutsStatus();
 
   const keys = [
@@ -1376,7 +1382,7 @@ async function render() {
   const connected: Record<string, boolean> = { ...((await Bridge.agentHooksStatus()) ?? {}) };
   for (const def of availablePills()) {
     if (def.connect.kind === "key") {
-      connected[def.id] = present[def.connect.key] ?? (await Bridge.secretPresent(def.connect.key)) ?? false;
+      connected[def.id] = present[def.connect.key] ?? (await Bridge.keyReady(def.connect.key)) ?? false;
     }
   }
   /** A chat provider's key was saved or removed: its pill's row says so at once. */
@@ -1401,7 +1407,7 @@ async function render() {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [apiSection(hasKey), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

@@ -56,7 +56,7 @@ pub fn read() -> Option<Value> {
     }
     let _busy = NotBusy;
 
-    let exe = platform::codex_candidates().into_iter().next()?;
+    let exe = platform::cli_candidates("codex").into_iter().next()?;
     let mut cmd = Command::new(&exe);
     cmd.arg("app-server").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
     // An npm install is a `#!/usr/bin/env node` script (or a .cmd calling node):

@@ -6091,6 +6091,84 @@
       "id": "Matikan pil lain untuk memberi tempat bagi WhatsApp (maksimal {max}).",
       "de": "Schalte eine andere Pill aus, um Platz für WhatsApp zu schaffen (höchstens {max}).",
       "tr": "WhatsApp’a yer açmak için başka bir hapı kapat (en fazla {max})."
+    },
+    "No key: your Claude Code answers instead, with your account.": {
+      "zh-Hans": "没有密钥：改由你的 Claude Code 用你的账户回答。",
+      "hi": "कोई कुंजी नहीं: इसके बजाय आपका Claude Code आपके खाते से जवाब देता है।",
+      "es": "Sin clave: responde tu Claude Code, con tu cuenta.",
+      "ar": "لا يوجد مفتاح: يجيب Claude Code الخاص بك بدلاً من ذلك، بحسابك.",
+      "fr": "Pas de clé : ton Claude Code répond à la place, avec ton compte.",
+      "bn": "কোনো কী নেই: এর বদলে আপনার Claude Code আপনার অ্যাকাউন্ট দিয়ে উত্তর দেয়।",
+      "pt-BR": "Sem chave: seu Claude Code responde no lugar, com sua conta.",
+      "ru": "Ключа нет: вместо него отвечает ваш Claude Code с вашей учётной записью.",
+      "id": "Tidak ada kunci: Claude Code Anda yang menjawab, dengan akun Anda.",
+      "de": "Kein Schlüssel: Stattdessen antwortet dein Claude Code mit deinem Konto.",
+      "tr": "Anahtar yok: bunun yerine Claude Code'unuz hesabınızla yanıtlıyor."
+    },
+    "Claude Code is not installed.": {
+      "zh-Hans": "未安装 Claude Code。",
+      "hi": "Claude Code इंस्टॉल नहीं है।",
+      "es": "Claude Code no está instalado.",
+      "ar": "Claude Code غير مثبّت.",
+      "fr": "Claude Code n'est pas installé.",
+      "bn": "Claude Code ইনস্টল করা নেই।",
+      "pt-BR": "O Claude Code não está instalado.",
+      "ru": "Claude Code не установлен.",
+      "id": "Claude Code belum terpasang.",
+      "de": "Claude Code ist nicht installiert.",
+      "tr": "Claude Code yüklü değil."
+    },
+    "Could not start Claude Code: {error}": {
+      "zh-Hans": "无法启动 Claude Code：{error}",
+      "hi": "Claude Code शुरू नहीं हो सका: {error}",
+      "es": "No se pudo iniciar Claude Code: {error}",
+      "ar": "تعذّر تشغيل Claude Code: {error}",
+      "fr": "Impossible de lancer Claude Code : {error}",
+      "bn": "Claude Code চালু করা যায়নি: {error}",
+      "pt-BR": "Não foi possível iniciar o Claude Code: {error}",
+      "ru": "Не удалось запустить Claude Code: {error}",
+      "id": "Tidak dapat memulai Claude Code: {error}",
+      "de": "Claude Code konnte nicht gestartet werden: {error}",
+      "tr": "Claude Code başlatılamadı: {error}"
+    },
+    "Claude Code took too long to answer.": {
+      "zh-Hans": "Claude Code 回答太慢。",
+      "hi": "Claude Code ने जवाब देने में बहुत देर की।",
+      "es": "Claude Code tardó demasiado en responder.",
+      "ar": "استغرق Claude Code وقتاً طويلاً للرد.",
+      "fr": "Claude Code a mis trop de temps à répondre.",
+      "bn": "Claude Code উত্তর দিতে খুব বেশি সময় নিয়েছে।",
+      "pt-BR": "O Claude Code demorou demais para responder.",
+      "ru": "Claude Code слишком долго не отвечал.",
+      "id": "Claude Code terlalu lama menjawab.",
+      "de": "Claude Code hat zu lange für die Antwort gebraucht.",
+      "tr": "Claude Code yanıt vermekte çok gecikti."
+    },
+    "Claude Code gave no answer.": {
+      "zh-Hans": "Claude Code 没有给出回答。",
+      "hi": "Claude Code ने कोई जवाब नहीं दिया।",
+      "es": "Claude Code no dio ninguna respuesta.",
+      "ar": "لم يقدّم Claude Code أي إجابة.",
+      "fr": "Claude Code n'a donné aucune réponse.",
+      "bn": "Claude Code কোনো উত্তর দেয়নি।",
+      "pt-BR": "O Claude Code não deu resposta.",
+      "ru": "Claude Code не дал ответа.",
+      "id": "Claude Code tidak memberi jawaban.",
+      "de": "Claude Code hat keine Antwort gegeben.",
+      "tr": "Claude Code yanıt vermedi."
+    },
+    "Claude Code could not answer.": {
+      "zh-Hans": "Claude Code 无法回答。",
+      "hi": "Claude Code जवाब नहीं दे सका।",
+      "es": "Claude Code no pudo responder.",
+      "ar": "لم يتمكن Claude Code من الإجابة.",
+      "fr": "Claude Code n'a pas pu répondre.",
+      "bn": "Claude Code উত্তর দিতে পারেনি।",
+      "pt-BR": "O Claude Code não conseguiu responder.",
+      "ru": "Claude Code не смог ответить.",
+      "id": "Claude Code tidak dapat menjawab.",
+      "de": "Claude Code konnte nicht antworten.",
+      "tr": "Claude Code yanıt veremedi."
     }
   }
 }

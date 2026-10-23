@@ -51,17 +51,30 @@ test("the model button shows the active provider's model", () => {
 
 test("a provider without a key is never asked for its models", async () => {
   answers.secret_present = false;
+  answers.claude_ready = false;
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
   assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
-  assert.deepEqual(sent("secret_present"), [{ key: "anthropic-api-key" }]);
+  assert.equal(sent("claude_ready").length, 1);
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
 });
 
+test("without a key, Claude Code standing in still lists Claude's models", async () => {
+  answers.secret_present = false;
+  answers.claude_ready = true;
+  answers.chat_models = [{ id: "claude-opus-5", label: "Claude Opus 5" }];
+  $(".model-btn").fire("click");
+  await flush();
+  assert.deepEqual(sent("secret_present"), []);
+  assert.deepEqual(sent("chat_models"), [{ provider: "anthropic" }]);
+  assert.deepEqual(models(), ["Claude Opus 5"]);
+});
+
 test("with a key, the models are listed and picking one saves it", async () => {
   answers.secret_present = true;
+  answers.claude_ready = true;
   answers.chat_models = [
     { id: "claude-opus-5", label: "Claude Opus 5" },
     { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
