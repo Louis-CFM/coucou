@@ -143,6 +143,12 @@ enum GitHubActivityTests {
             check("lastDays(9) all days",       act.lastDays(9).count == 9)
             check("lastDays(99) clamps to all", act.lastDays(99).count == 9)
             check("lastDays(0) empty",          act.lastDays(0).isEmpty)
+            let week = GitHubActivity(total: 0, weeks: [[
+                ContributionDay(date: "a", count: 0, level: 0, weekday: 0),
+                ContributionDay(date: "b", count: 6, level: 1, weekday: 1),
+                ContributionDay(date: "c", count: 33, level: 1, weekday: 2),
+                ContributionDay(date: "d", count: 63, level: 1, weekday: 3)]], fetchedAt: Date())
+            check("lastDays grades against the week", week.lastDays(4).map(\.level) == [0, 1, 3, 4])
         }
 
         // ── finish ────────────────────────────────────────────────────────────
