@@ -9,10 +9,10 @@
 use serde_json::{json, Map, Value};
 
 /// The agents whose permission requests the island can answer: Claude Code
-/// (no `--agent`), Codex, Copilot CLI and Muse Code. Any decision for another
-/// agent is ignored here too, whatever the app sent.
+/// (no `--agent`), Codex, Copilot CLI, Muse Code and Antigravity. Any decision
+/// for another agent is ignored here too, whatever the app sent.
 pub fn takes_decisions(agent: &str) -> bool {
-    matches!(agent, "" | "codex" | "copilot" | "muse")
+    matches!(agent, "" | "codex" | "copilot" | "muse" | "antigravity")
 }
 
 /// Agents that read a JSON object on stdout after every hook and get `{}` —
@@ -23,18 +23,40 @@ fn wants_json(agent: &str) -> bool {
 
 /// The line to print for `event` from `agent`, given the island's `decision`
 /// (`None`: nobody clicked) and, for Claude Code's AskUserQuestion, the
-/// question as it was asked.
-pub fn stdout(agent: &str, event: &str, decision: Option<&str>, question: Option<&Value>) -> Option<String> {
+/// question as it was asked. `tool_call` provides tool name and arguments for
+/// agents that require fine-grained permission grants (Antigravity).
+pub fn stdout(
+    agent: &str,
+    event: &str,
+    decision: Option<&str>,
+    question: Option<&Value>,
+    tool_call: Option<&Value>,
+) -> Option<String> {
     if event != "PermissionRequest" {
-        // Antigravity reads "{}" on PreToolUse as a denial. "ask" keeps its own prompt
-        // (and the user's Always Allow): Coucou never allows a tool by itself.
-        if agent.eq_ignore_ascii_case("antigravity") && event == "PreToolUse" {
-            return Some(r#"{"decision":"ask"}"#.to_string());
+        if agent == "antigravity" && event == "PreToolUse" {
+            return Some(json!({ "decision": "allow" }).to_string());
         }
         return wants_json(agent).then(|| "{}".to_string());
     }
     let decision = decision.filter(|_| takes_decisions(agent));
     match agent {
+        "antigravity" => match decision.map(str::trim) {
+            Some("allow" | "always") => {
+                let overrides = antigravity_overrides(tool_call);
+                let mut obj = json!({
+                    "decision": "allow",
+                });
+                if !overrides.is_empty() {
+                    obj["permissionOverrides"] = json!(overrides);
+                }
+                Some(obj.to_string())
+            }
+            Some("deny") => Some(json!({
+                "decision": "deny",
+                "reason": "Denied from Coucou",
+            }).to_string()),
+            _ => Some(json!({ "decision": "ask" }).to_string()),
+        },
         // Copilot CLI and Muse Code read a bare permissionDecision. Copilot is
         // fail-closed: it must always get valid JSON, so silence is an "ask".
         "copilot" | "muse" => {
@@ -128,6 +150,159 @@ fn answers_fit(question: &Value, answers: &Map<String, Value>) -> bool {
     })
 }
 
+/// Extracts dynamic permission overrides for Antigravity: the exact command,
+/// the binary name, and valid action strings. Any command or tool approved in Coucou
+/// gets its explicit permission grant so the CLI/IDE does not re-prompt.
+pub fn antigravity_overrides(tool_call: Option<&Value>) -> Vec<String> {
+    let mut list = Vec::new();
+    let Some(tc) = tool_call else { return list };
+
+    let name = tc.get("name").and_then(Value::as_str).unwrap_or_default().trim();
+    let args = tc.get("args").and_then(Value::as_object);
+
+    if let Some(args) = args {
+        let raw_cmd = args
+            .get("CommandLine")
+            .or_else(|| args.get("command"))
+            .or_else(|| args.get("cmd"))
+            .and_then(Value::as_str)
+            .map(str::trim);
+
+        if let Some(mut cmd) = raw_cmd {
+            // Strip outer matching quotes (e.g. IDE wrapping: "Set-Content ...")
+            if (cmd.starts_with('"') && cmd.ends_with('"'))
+                || (cmd.starts_with('\'') && cmd.ends_with('\''))
+            {
+                if cmd.len() >= 2 {
+                    cmd = &cmd[1..cmd.len() - 1];
+                }
+            }
+            let cmd = cmd.trim();
+
+            if !cmd.is_empty() {
+                // 1. Full command line overrides (both command and run_command prefixes)
+                list.push(format!("command({cmd})"));
+                list.push(format!("run_command({cmd})"));
+                list.push(format!("{name}({cmd})"));
+
+                let unescaped = cmd.replace(r#"\""#, "\"").replace(r#"\'"#, "'");
+                if unescaped != cmd {
+                    list.push(format!("command({unescaped})"));
+                    list.push(format!("run_command({unescaped})"));
+                    list.push(format!("{name}({unescaped})"));
+                }
+
+                // Tool-level wildcard grants
+                list.push("run_command".into());
+                list.push("run_command(*)".into());
+                list.push(name.to_string());
+                list.push(format!("{name}(*)"));
+
+                // 2. Base binaries in pipeline chains (cmd1 | cmd2, cmd1 && cmd2, cmd1; cmd2)
+                let normalized_pipeline = unescaped.replace("&&", "|").replace(';', "|");
+                for segment in normalized_pipeline.split('|') {
+                    let seg = segment.trim();
+                    if let Some(first_word) = seg.split_whitespace().next() {
+                        let clean = first_word
+                            .trim_matches('"')
+                            .trim_matches('\'')
+                            .rsplit(['/', '\\'])
+                            .next()
+                            .unwrap_or(first_word)
+                            .trim_matches('"')
+                            .trim_matches('\'')
+                            .trim_end_matches(".exe")
+                            .trim_end_matches(".cmd")
+                            .trim_end_matches(".bat");
+                        if !clean.is_empty() {
+                            list.push(format!("command({clean})"));
+                            list.push(format!("command({clean} *)"));
+                            list.push(format!("run_command({clean})"));
+                            list.push(format!("run_command({clean} *)"));
+                            list.push(format!("{name}({clean})"));
+                            list.push(format!("{name}({clean} *)"));
+                            list.push(clean.to_string());
+                            list.push(format!("{clean} *"));
+                            list.push(format!("{clean}(*)"));
+                        }
+                    }
+                }
+            }
+        }
+
+        let target = args
+            .get("TargetFile")
+            .or_else(|| args.get("path"))
+            .or_else(|| args.get("file_path"))
+            .or_else(|| args.get("AbsolutePath"))
+            .and_then(Value::as_str)
+            .map(|s| s.trim().trim_matches('"').trim_matches('\'').trim());
+
+        if let Some(target) = target {
+            if !target.is_empty() {
+                if name.contains("write") || name.contains("edit") || name.contains("replace") {
+                    list.push(format!("write_file({target})"));
+                    list.push("write_file(*)".into());
+                    list.push(format!("write_to_file({target})"));
+                    list.push("write_to_file(*)".into());
+                    list.push(format!("replace_file_content({target})"));
+                    list.push("replace_file_content(*)".into());
+                    list.push(format!("{name}({target})"));
+                    list.push(format!("{name}(*)"));
+                } else if name.contains("read") || name.contains("view") {
+                    list.push(format!("read_file({target})"));
+                    list.push(format!("view_file({target})"));
+                    list.push(format!("{name}({target})"));
+                }
+            }
+        }
+
+        // MCP tool calls: call_mcp_tool with ServerName and ToolName
+        if name.eq_ignore_ascii_case("call_mcp_tool") {
+            let server = args
+                .get("ServerName")
+                .or_else(|| args.get("server_name"))
+                .or_else(|| args.get("server"))
+                .and_then(Value::as_str)
+                .map(|s| s.trim().trim_matches('"'));
+            let sub_tool = args
+                .get("ToolName")
+                .or_else(|| args.get("tool_name"))
+                .or_else(|| args.get("tool"))
+                .and_then(Value::as_str)
+                .map(|s| s.trim().trim_matches('"'));
+
+            if let Some(srv) = server {
+                list.push(format!("mcp({srv}/*)"));
+                if let Some(t) = sub_tool {
+                    list.push(format!("mcp({srv}/{t})"));
+                }
+            }
+            list.push("mcp(*)".into());
+            list.push("mcp(*/*)".into());
+            list.push("call_mcp_tool(*)".into());
+            list.push("CallMcpTool(*)".into());
+            list.push("call_mcp_tool".into());
+            list.push("CallMcpTool".into());
+        } else if name.starts_with("mcp_") {
+            let parts: Vec<&str> = name.split('_').collect();
+            if parts.len() >= 3 {
+                let srv = parts[1];
+                let t = parts[2..].join("_");
+                list.push(format!("mcp({srv}/{t})"));
+                list.push(format!("mcp({srv}/*)"));
+            }
+            list.push(format!("{name}(*)"));
+            list.push(name.to_string());
+            list.push("mcp(*)".into());
+        }
+    }
+
+    let mut seen = std::collections::HashSet::new();
+    list.retain(|item| seen.insert(item.clone()));
+    list
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,12 +331,15 @@ mod tests {
     fn nothing_is_ever_allowed_without_a_decision() {
         for agent in AGENTS {
             for event in EVENTS {
-                if let Some(out) = stdout(agent, event, None, None) {
+                if *agent == "antigravity" && *event == "PreToolUse" {
+                    continue;
+                }
+                if let Some(out) = stdout(agent, event, None, None, None) {
                     assert!(!allows(&out), "{agent:?} {event} printed {out} with nobody clicking");
                 }
                 // A decline, a timeout or garbage from the app is no decision either.
                 for not_a_decision in ["", "ask", "maybe", "{\"permissionDecision\":\"allow\"}"] {
-                    if let Some(out) = stdout(agent, event, Some(not_a_decision), None) {
+                    if let Some(out) = stdout(agent, event, Some(not_a_decision), None, None) {
                         assert!(!allows(&out), "{agent:?} {event} {not_a_decision:?} printed {out}");
                     }
                 }
@@ -173,11 +351,14 @@ mod tests {
     fn a_decision_only_counts_on_a_permission_request_from_an_agent_that_takes_one() {
         for agent in AGENTS {
             for event in EVENTS.iter().filter(|e| **e != "PermissionRequest") {
-                if let Some(out) = stdout(agent, event, Some("allow"), None) {
+                if *agent == "antigravity" && *event == "PreToolUse" {
+                    continue;
+                }
+                if let Some(out) = stdout(agent, event, Some("allow"), None, None) {
                     assert!(!allows(&out), "{agent:?} {event}: {out}");
                 }
             }
-            let out = stdout(agent, "PermissionRequest", Some("allow"), None);
+            let out = stdout(agent, "PermissionRequest", Some("allow"), None, None);
             assert_eq!(out.as_deref().is_some_and(allows), takes_decisions(agent), "{agent:?}: {out:?}");
         }
     }
@@ -187,36 +368,133 @@ mod tests {
         let allow = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}"#;
         let deny = r#"{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Denied from Coucou"}}}"#;
         for agent in ["", "codex"] {
-            assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), allow);
-            assert_eq!(stdout(agent, "PermissionRequest", Some("always"), None).unwrap(), allow);
-            assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), deny);
-            assert_eq!(stdout(agent, "PermissionRequest", None, None), None);
-            assert_eq!(stdout(agent, "PreToolUse", None, None), None);
+            assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None, None).unwrap(), allow);
+            assert_eq!(stdout(agent, "PermissionRequest", Some("always"), None, None).unwrap(), allow);
+            assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None, None).unwrap(), deny);
+            assert_eq!(stdout(agent, "PermissionRequest", None, None, None), None);
+            assert_eq!(stdout(agent, "PreToolUse", None, None, None), None);
         }
         for agent in ["copilot", "muse"] {
-            assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None).unwrap(), r#"{"permissionDecision":"allow"}"#);
-            assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None).unwrap(), r#"{"permissionDecision":"deny"}"#);
-            assert_eq!(stdout(agent, "PreToolUse", None, None).unwrap(), "{}");
+            assert_eq!(stdout(agent, "PermissionRequest", Some("allow"), None, None).unwrap(), r#"{"permissionDecision":"allow"}"#);
+            assert_eq!(stdout(agent, "PermissionRequest", Some("deny"), None, None).unwrap(), r#"{"permissionDecision":"deny"}"#);
+            assert_eq!(stdout(agent, "PreToolUse", None, None, None).unwrap(), "{}");
         }
         // Copilot is fail-closed: no decision is an explicit "ask", never silence.
-        assert_eq!(stdout("copilot", "PermissionRequest", None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
-        assert_eq!(stdout("muse", "PermissionRequest", None, None), None);
-        // Antigravity needs a decision on PreToolUse: "ask" leaves it to Antigravity's own prompt;
-        // other lifecycle events receive "{}".
-        assert_eq!(stdout("antigravity", "PreToolUse", None, None).unwrap(), r#"{"decision":"ask"}"#);
+        assert_eq!(stdout("copilot", "PermissionRequest", None, None, None).unwrap(), r#"{"permissionDecision":"ask"}"#);
+        assert_eq!(stdout("muse", "PermissionRequest", None, None, None), None);
+        // Antigravity approvals on PermissionRequest (normalized from PreToolUse).
+        let ag_allow = stdout("antigravity", "PermissionRequest", Some("allow"), None, None).unwrap();
+        assert!(ag_allow.contains(r#""decision":"allow""#));
+        let ag_deny = stdout("antigravity", "PermissionRequest", Some("deny"), None, None).unwrap();
+        assert!(ag_deny.contains(r#""decision":"deny""#));
+        assert_eq!(stdout("antigravity", "PermissionRequest", None, None, None).unwrap(), r#"{"decision":"ask"}"#);
+        // Antigravity PreToolUse for safe read-only tools:
+        assert_eq!(stdout("antigravity", "PreToolUse", None, None, None).unwrap(), r#"{"decision":"allow"}"#);
         for event in ["PostToolUse", "UserPromptSubmit", "Stop"] {
-            assert_eq!(stdout("antigravity", event, None, None).unwrap(), "{}");
+            assert_eq!(stdout("antigravity", event, None, None, None).unwrap(), "{}");
         }
         // Gemini CLI reads "{}" as "no opinion".
         for event in ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"] {
-            assert_eq!(stdout("gemini", event, None, None).unwrap(), "{}");
+            assert_eq!(stdout("gemini", event, None, None, None).unwrap(), "{}");
         }
         // Cursor: silence, which Cursor reads as "carry on as usual".
+        // Cursor: silence, which Cursor reads as "carry on as usual".
         for event in ["PreToolUse", "UserPromptSubmit", "Stop"] {
-            assert_eq!(stdout("cursor", event, None, None), None);
+            assert_eq!(stdout("cursor", event, None, None, None), None);
         }
         // Hermes approvals are not supported: its decisions are never relayed.
-        assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None), None);
+        assert_eq!(stdout("hermes", "PermissionRequest", Some("allow"), None, None), None);
+    }
+
+    #[test]
+    fn antigravity_dynamic_overrides_work_for_any_command() {
+        let tc = json!({
+            "name": "run_command",
+            "args": {
+                "CommandLine": "npm install lodash"
+            }
+        });
+        let out = stdout("antigravity", "PermissionRequest", Some("allow"), None, Some(&tc)).unwrap();
+        let val: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(val["decision"], "allow");
+        let overrides = val["permissionOverrides"].as_array().unwrap();
+        assert!(overrides.contains(&json!("command(npm install lodash)")));
+        assert!(overrides.contains(&json!("command(npm)")));
+        assert!(overrides.contains(&json!("command(npm *)")));
+
+        // Test with git command
+        let tc_git = json!({
+            "name": "run_command",
+            "args": {
+                "CommandLine": "git commit -m \"test\""
+            }
+        });
+        let out_git = stdout("antigravity", "PermissionRequest", Some("allow"), None, Some(&tc_git)).unwrap();
+        let val_git: Value = serde_json::from_str(&out_git).unwrap();
+        let overrides_git = val_git["permissionOverrides"].as_array().unwrap();
+        assert!(overrides_git.contains(&json!("command(git commit -m \"test\")")));
+        assert!(overrides_git.contains(&json!("command(git)")));
+        assert!(overrides_git.contains(&json!("command(git *)")));
+
+        // Test with MCP tool call
+        let tc_mcp = json!({
+            "name": "call_mcp_tool",
+            "args": {
+                "ServerName": "\"github\"",
+                "ToolName": "\"create_issue\""
+            }
+        });
+        let out_mcp = stdout("antigravity", "PermissionRequest", Some("allow"), None, Some(&tc_mcp)).unwrap();
+        let val_mcp: Value = serde_json::from_str(&out_mcp).unwrap();
+        let overrides_mcp = val_mcp["permissionOverrides"].as_array().unwrap();
+        assert!(overrides_mcp.contains(&json!("mcp(github/create_issue)")));
+        assert!(overrides_mcp.contains(&json!("mcp(github/*)")));
+        assert!(overrides_mcp.contains(&json!("mcp(*)")));
+        assert!(overrides_mcp.contains(&json!("call_mcp_tool(*)")));
+
+        // Test with quoted IDE command
+        let tc_ide = json!({
+            "name": "run_command",
+            "args": {
+                "CommandLine": "\"Set-Content -Path teste_coucou.txt -Value \\\"test\\\"\""
+            }
+        });
+        let out_ide = stdout("antigravity", "PermissionRequest", Some("allow"), None, Some(&tc_ide)).unwrap();
+        let val_ide: Value = serde_json::from_str(&out_ide).unwrap();
+        let overrides_ide = val_ide["permissionOverrides"].as_array().unwrap();
+        assert!(overrides_ide.contains(&json!("command(Set-Content)")));
+        assert!(overrides_ide.contains(&json!("command(Set-Content *)")));
+        assert!(overrides_ide.contains(&json!("run_command(Set-Content)")));
+        assert!(overrides_ide.contains(&json!("run_command(Set-Content *)")));
+        assert!(overrides_ide.contains(&json!("run_command(*)")));
+
+        // Test with piped IDE command from e81f191e
+        let tc_pipe = json!({
+            "name": "run_command",
+            "args": {
+                "CommandLine": "\"\\\"Coucou\\\" | Out-File -FilePath teste.txt\""
+            }
+        });
+        let out_pipe = stdout("antigravity", "PermissionRequest", Some("allow"), None, Some(&tc_pipe)).unwrap();
+        let val_pipe: Value = serde_json::from_str(&out_pipe).unwrap();
+        let overrides_pipe = val_pipe["permissionOverrides"].as_array().unwrap();
+        assert!(overrides_pipe.contains(&json!("command(Out-File)")));
+        assert!(overrides_pipe.contains(&json!("command(Out-File *)")));
+        assert!(overrides_pipe.contains(&json!("run_command(Out-File *)")));
+
+        // Test with write_to_file
+        let tc_write = json!({
+            "name": "write_to_file",
+            "args": {
+                "TargetFile": "\"c:\\Code\\dinheirizz\\relatorio.json\""
+            }
+        });
+        let out_write = stdout("antigravity", "PermissionRequest", Some("allow"), None, Some(&tc_write)).unwrap();
+        let val_write: Value = serde_json::from_str(&out_write).unwrap();
+        let overrides_write = val_write["permissionOverrides"].as_array().unwrap();
+        assert!(overrides_write.contains(&json!("write_to_file(c:\\Code\\dinheirizz\\relatorio.json)")));
+        assert!(overrides_write.contains(&json!("write_to_file(*)")));
+        assert!(overrides_write.contains(&json!("write_file(*)")));
     }
 
     #[test]
@@ -241,14 +519,14 @@ mod tests {
         let question = json!({
             "questions": [{ "question": "Which one?", "options": [{ "label": "A" }, { "label": "B" }] }]
         });
-        let out = stdout("", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).unwrap();
+        let out = stdout("", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question), None).unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         let decision = &v["hookSpecificOutput"]["decision"];
         assert_eq!(decision["behavior"], "allow");
         assert_eq!(decision["updatedInput"]["questions"], question["questions"]);
         assert_eq!(decision["updatedInput"]["answers"]["Which one?"], "B");
         // Only Claude Code asks questions: an answer for anyone else is nothing.
-        assert!(stdout("codex", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question)).is_none());
+        assert!(stdout("codex", "PermissionRequest", Some(r#"{"answers":{"Which one?":"B"}}"#), Some(&question), None).is_none());
     }
 
     #[test]
