@@ -63,6 +63,9 @@ export const NOTCH_H = 32;
 export const COMPACT_W = 288; // NOTCH_W + 104
 export const EXPANDED_W = 640;
 
+/** Under a top bar (GNOME) the island floats this far below it, so Mochi's outfit fits above him. */
+export const FLOAT_GAP = 12;
+
 export const ROUNDED_CORNER = 14; // hidden / compact
 export const EXPANDED_CORNER = 22;
 

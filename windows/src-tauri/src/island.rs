@@ -350,6 +350,14 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
+/// True while the island sits under a top bar (GNOME) rather than against the
+/// screen edge: the page then draws it as a floating pill.
+static FLOATING: AtomicBool = AtomicBool::new(false);
+
+pub fn floating() -> bool {
+    FLOATING.load(Ordering::Relaxed)
+}
+
 /// Places and sizes the window. `collapsed` picks the wake strip instead of the panel.
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
@@ -363,7 +371,12 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
     let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+    let (lx, ly) = logical_origin(&m);
+    let inset = platform::top_inset(&win, lx, ly);
+    let y = mp.y + (inset as f64 * scale).round() as i32;
+    if FLOATING.swap(inset > 0, Ordering::Relaxed) != (inset > 0) {
+        let _ = app.emit_to(WINDOW_LABEL, "island-floating", inset > 0);
+    }
 
     // GTK never sizes a non-resizable window below its natural size (200 px
     // here), so on Linux the 6 px wake strip would stay a 200 px block. tao
@@ -374,7 +387,6 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let _ = win.set_resizable(true);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
-    let (lx, ly) = logical_origin(&m);
     platform::pin_to_monitor(&win, lx, ly);
     // Moving across displays can rescale the window: re-assert the physical size.
     let _ = win.set_size(PhysicalSize::new(pw, ph));

@@ -358,6 +358,11 @@ pub fn set_pointer_watch(_active: bool) {}
 /// `set_position` already places a Win32 window on the right display.
 pub fn pin_to_monitor(_win: &WebviewWindow, _x: i32, _y: i32) {}
 
+/// The island sits against the top edge: Windows has no top panel over it.
+pub fn top_inset(_win: &WebviewWindow, _x: i32, _y: i32) -> i32 {
+    0
+}
+
 // ── Session windows ("Open terminal") ─────────────────────────────────────────
 //
 // See session_window.rs: the relay's ancestors lead to the terminal or editor
