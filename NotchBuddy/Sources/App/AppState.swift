@@ -310,7 +310,7 @@ final class AppState: ObservableObject {
     }
 
     // Absence interval — persisted
-    var absenceInterval: TimeInterval = 3 * 60 {
+    @Published var absenceInterval: TimeInterval = 3 * 60 {
         didSet { UserDefaults.standard.set(absenceInterval, forKey: "absenceInterval") }
     }
 
