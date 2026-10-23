@@ -231,12 +231,10 @@ struct OverviewView: View {
         switch task.id {
         case "integration_claude":
             if ClaudeHost.activate(task.hostApp) { return }
-            let vscodeBundleId = "com.microsoft.VSCode"
-            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == vscodeBundleId }) {
-                app.activate(options: .activateIgnoringOtherApps)
-            } else {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
-            }
+            // openApplication also brings a running VS Code forward; activate() is ignored on macOS 14+.
+            let vscode = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode")
+                ?? URL(fileURLWithPath: "/Applications/Visual Studio Code.app")
+            NSWorkspace.shared.openApplication(at: vscode, configuration: .init(), completionHandler: nil)
         case "integration_resend":
             NSWorkspace.shared.open(URL(string: "https://resend.com/emails")!)
         case "integration_mail":
@@ -2474,10 +2472,11 @@ struct IntegrationCardView: View {
         }
 
         // No cwd: activate running instance or launch fresh
-        if let running = ids.compactMap({ id in
-            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }
+        // openApplication, not activate(): macOS 14+ ignores activate() from the island.
+        if let runningURL = ids.compactMap({ id in
+            NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == id }?.bundleURL
         }).first {
-            running.activate(options: .activateIgnoringOtherApps)
+            NSWorkspace.shared.openApplication(at: runningURL, configuration: .init(), completionHandler: nil)
             return
         }
         if let appURL = appURL {
