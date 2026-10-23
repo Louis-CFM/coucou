@@ -111,6 +111,9 @@ struct SettingsView: View {
     @AppStorage(CryptoSettings.coinsKey)        private var cryptoCoins = CryptoSettings.defaultCoins
     @AppStorage(CryptoSettings.alertKey)        private var cryptoAlert = false
     @AppStorage(CryptoSettings.alertPercentKey) private var cryptoAlertPercent = 5.0
+    #if !APPSTORE
+    @AppStorage(SpotifyLyricsStore.enabledKey)  private var spotifyLyrics = false
+    #endif
 
     // Hotkey
     @State private var hotkeyFlags: UInt    = AppState.shared.hotkeyFlags
@@ -1374,6 +1377,19 @@ struct SettingsView: View {
                 // WhatsApp through a local gateway: its own fields, saved by its own button.
                 WhatsAppSettingsSection()
                     .padding(.top, 4)
+
+                // Spotify lyrics: public LRCLIB, no key. Off until the user turns it on.
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: SpotifyController.green)).frame(width: 8, height: 8)
+                        Text(verbatim: "Spotify").font(.system(size: 12, weight: .semibold))
+                    }
+                    Toggle(String(localized: "spotify.lyrics.toggle"), isOn: $spotifyLyrics)
+                    Text(String(localized: "spotify.lyrics.hint"))
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(hex: "#8E939C"))
+                }
+                .padding(.top, 4)
                 #endif
 
                 Button(String(localized: "integrations.save")) {
