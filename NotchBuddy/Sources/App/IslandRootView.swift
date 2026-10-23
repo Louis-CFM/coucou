@@ -709,17 +709,24 @@ struct ClaudePlanHeaderPill: View {
 struct CompactMiniGrid: View {
     @ObservedObject var state: AppState
 
-    private var others: [AgentTask] {
-        Array(state.tasks.filter { $0.id != state.focusId }.prefix(4))
-    }
-
     var body: some View {
         let cols = [GridItem(.fixed(12), spacing: 4), GridItem(.fixed(12), spacing: 4)]
         LazyVGrid(columns: cols, spacing: 4) {
-            ForEach(others) { task in
-                MiniBotCanvasView(task: task)
-                    .frame(width: 12 / 0.6, height: 12 / 0.6)
-                    .frame(width: 12, height: 12, alignment: .center)
+            ForEach(state.gridSlots, id: \.id) { slot in
+                switch slot {
+                case .pill(let id):
+                    if let task = state.tasks.first(where: { $0.id == id }) {
+                        MiniBotCanvasView(task: task)
+                            .frame(width: 12 / 0.6, height: 12 / 0.6)
+                            .frame(width: 12, height: 12, alignment: .center)
+                    }
+                case .waiting(let ids):
+                    // More sessions wait than there are places: how many.
+                    Text(verbatim: "+\(ids.count)")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundColor(Color(hex: "#F5F6F8"))
+                        .frame(width: 12, height: 12)
+                }
             }
         }
         .frame(width: 28, height: 28)

@@ -85,6 +85,22 @@ struct AgentTask: Identifiable, Equatable {
     var sessionBundleId: String? = nil  // app the session runs in (hook bundle_id), for "Open terminal"
     var finalLine: String?   = nil  // last assistant message shown as static text after Stop
     var hostApp: String?     = nil  // bundle id of the terminal running a Claude Code session; nil = VS Code
+    /// The sessions sharing this pill, for the open card; empty while one session (or none) is behind it.
+    var sessionLines: [SessionLine] = []
+
+    /// The client pill this task belongs to: its id, or for a session's own pill
+    /// ("integration_claude#2") the pill of its client. Compare this, not `id`, to a pill ID.
+    var pill: String { PillCatalog.basePillId(id) }
+}
+
+/// One of several sessions behind a pill, as the open card lists them.
+struct SessionLine: Identifiable, Equatable {
+    var id: String
+    var title: String
+    var state: BotState
+    var lastStep: String
+    /// The session the pill shows (its name, steps and state are the pill's).
+    var isShown: Bool
 }
 
 enum AgentSource: Equatable {

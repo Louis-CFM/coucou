@@ -414,6 +414,10 @@ final class AppState: ObservableObject {
         didSet { QuestionLayout.height = pendingQuestion?.estimatedIslandHeight }
     }
 
+    /// Every AskUserQuestion waiting for an answer, oldest first: the first one is on the
+    /// card (`pendingQuestion`). Written by HookServer only; empty for a demo question.
+    @Published var waitingQuestions: [QueuedQuestion] = []
+
     // Per-pill flat list of FileDiffs, in order of reception.
     // Not @Published — steps[] changes already trigger redraws.
     var sessionDiffs: [String: [FileDiff]] = [:]
@@ -581,6 +585,15 @@ final class AppState: ObservableObject {
 
     var focusTask: AgentTask? {
         tasks.first { $0.id == focusId } ?? tasks.first
+    }
+
+    /// The places beside the focused pill (4, SessionBoard.slots): the pills as they come, a
+    /// waiting one (a session popped out of its client's pill, or a pill waiting itself) in the
+    /// place of an idle or finished pill, and "+N" for the waiting ones left over.
+    var gridSlots: [SessionBoard.Slot] {
+        SessionBoard.slots(tasks.filter { $0.id != focusId }.map {
+            SessionBoard.Cell(id: $0.id, state: $0.state, poppedOut: $0.id != $0.pill)
+        })
     }
 
     var effectiveState: BotState {
