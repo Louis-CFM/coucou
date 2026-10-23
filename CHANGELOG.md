@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **niri** *(Linux)* — "Open terminal" now brings the session's window forward on niri, native Wayland windows such as Zed's included (it used to reach only X11 and KDE windows). The README lists niri among the layer-shell compositors and shows the `binds` to put in `config.kdl` for the shortcuts, since niri has no GlobalShortcuts portal
+
 ## 0.6.1 — November 19, 2026
 
 - **Mochi no longer weighs down 120 Hz Macs** — on a ProMotion screen Mochi was redrawn 120 times a second, even folded in the notch: 35 to 60 % CPU, and as much again in WindowServer. He is now drawn at 60 fps while the island is open and 30 folded, the mini Mochis at 30, with the same motion on every screen; on a ProMotion Mac he also stops moving twice as fast (#1116, found by @liztim17)
