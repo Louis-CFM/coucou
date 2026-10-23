@@ -18,7 +18,8 @@
             "ru": "WhatsApp на острове",
             "id": "WhatsApp di pulau",
             "de": "WhatsApp in der Insel",
-            "tr": "Adada WhatsApp"
+            "tr": "Adada WhatsApp",
+            "ko": "아일랜드에서 WhatsApp"
           },
           "detail": {
             "en": "Your chats in the island, and replies without opening WhatsApp. Experimental.",
@@ -32,7 +33,8 @@
             "ru": "Чаты на острове и ответы без открытия WhatsApp. Экспериментально.",
             "id": "Obrolanmu di pulau, dan balas tanpa membuka WhatsApp. Eksperimental.",
             "de": "Deine Chats in der Insel und Antworten, ohne WhatsApp zu öffnen. Experimentell.",
-            "tr": "Sohbetlerin adada; WhatsApp’ı açmadan yanıtla. Deneysel."
+            "tr": "Sohbetlerin adada; WhatsApp’ı açmadan yanıtla. Deneysel.",
+            "ko": "채팅을 아일랜드에서 보고, WhatsApp을 열지 않고도 답장할 수 있어요. 실험적 기능이에요."
           }
         },
         {
@@ -49,7 +51,8 @@
             "ru": "Настройка в один клик",
             "id": "Siap dalam sekali klik",
             "de": "Eingerichtet mit einem Klick",
-            "tr": "Tek tıkla kurulum"
+            "tr": "Tek tıkla kurulum",
+            "ko": "클릭 한 번으로 설정"
           },
           "detail": {
             "en": "Coucou installs the gateway, checks it and shows the QR code to scan.",
@@ -63,7 +66,8 @@
             "ru": "Coucou ставит шлюз, проверяет его и показывает QR-код.",
             "id": "Coucou memasang gateway, memeriksanya, dan menampilkan kode QR.",
             "de": "Coucou installiert das Gateway, prüft es und zeigt den QR-Code.",
-            "tr": "Coucou ağ geçidini kurar, doğrular ve taranacak QR kodunu gösterir."
+            "tr": "Coucou ağ geçidini kurar, doğrular ve taranacak QR kodunu gösterir.",
+            "ko": "Coucou가 게이트웨이를 설치하고 확인한 다음, 스캔할 QR 코드까지 보여 줘요."
           }
         },
         {
@@ -80,7 +84,8 @@
             "ru": "Ничего не покидает компьютер",
             "id": "Tak ada yang keluar dari komputermu",
             "de": "Nichts verlässt deinen Computer",
-            "tr": "Hiçbir şey bilgisayarından çıkmaz"
+            "tr": "Hiçbir şey bilgisayarından çıkmaz",
+            "ko": "내용은 컴퓨터 밖으로 나가지 않아요"
           },
           "detail": {
             "en": "Messages stay in memory and are gone when Coucou quits.",
@@ -94,7 +99,8 @@
             "ru": "Сообщения хранятся только в памяти и исчезают при выходе из Coucou.",
             "id": "Pesan hanya di memori dan hilang saat Coucou ditutup.",
             "de": "Nachrichten bleiben im Speicher und sind weg, wenn Coucou beendet wird.",
-            "tr": "Mesajlar bellekte kalır, Coucou kapanınca silinir."
+            "tr": "Mesajlar bellekte kalır, Coucou kapanınca silinir.",
+            "ko": "메시지는 메모리에만 남고, Coucou를 끄면 사라져요."
           }
         }
       ]
@@ -116,7 +122,8 @@
             "bn": "আপডেটে Mochi নীল",
             "id": "Mochi biru saat ada pembaruan",
             "de": "Mochi wird blau bei Updates",
-            "tr": "Güncellemede Mochi maviye döner"
+            "tr": "Güncellemede Mochi maviye döner",
+            "ko": "업데이트가 있으면 모찌가 파랗게 돼요"
           },
           "detail": {
             "en": "A new version turns him blue, in the island and the tray. On Windows, one click installs it.",
@@ -130,7 +137,8 @@
             "ru": "Новая версия делает его синим — на острове и в области уведомлений. В Windows — в один клик.",
             "id": "Versi baru membuatnya biru, di pulau dan baki sistem. Di Windows, sekali klik untuk memasang.",
             "de": "Eine neue Version macht ihn blau, in der Insel und im Infobereich. Unter Windows reicht ein Klick.",
-            "tr": "Yeni sürüm onu adada ve sistem tepsisinde maviye çevirir. Windows’ta tek tıkla kurulur."
+            "tr": "Yeni sürüm onu adada ve sistem tepsisinde maviye çevirir. Windows’ta tek tıkla kurulur.",
+            "ko": "새 버전이 나오면 모찌가 아일랜드와 트레이에서 파랗게 변해요. Windows에서는 클릭 한 번이면 설치돼요."
           }
         },
         {
@@ -147,7 +155,8 @@
             "bn": "নতুন কী, এখানেই",
             "id": "Yang baru, langsung di sini",
             "de": "Neuigkeiten, direkt hier",
-            "tr": "Yenilikler, tam burada"
+            "tr": "Yenilikler, tam burada",
+            "ko": "새 소식을 여기서 바로"
           },
           "detail": {
             "en": "After each update: what it brings, then your Coucou so far.",
@@ -161,7 +170,8 @@
             "bn": "প্রতিটি আপডেটের পর: কী নতুন, তারপর এ পর্যন্ত আপনার Coucou।",
             "id": "Setelah tiap pembaruan: isinya, lalu Coucou-mu sejauh ini.",
             "de": "Nach jedem Update: was es bringt, dann dein Coucou bisher.",
-            "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n."
+            "tr": "Her güncellemeden sonra: getirdikleri, ardından şimdiye kadar Coucou’n.",
+            "ko": "업데이트할 때마다 새로 뭐가 생겼는지 보여 주고, 지금까지의 Coucou도 알려 줘요."
           }
         },
         {
@@ -178,7 +188,8 @@
             "ru": "GitLab и Gitea",
             "id": "GitLab dan Gitea",
             "de": "GitLab und Gitea",
-            "tr": "GitLab ve Gitea"
+            "tr": "GitLab ve Gitea",
+            "ko": "GitLab과 Gitea"
           },
           "detail": {
             "en": "Two new pills with your projects’ activity, like GitHub’s.",
@@ -192,7 +203,8 @@
             "ru": "Две новые пилюли с активностью ваших проектов, как у GitHub.",
             "id": "Dua pil baru berisi aktivitas proyekmu, seperti pil GitHub.",
             "de": "Zwei neue Pills mit der Aktivität deiner Projekte, wie bei GitHub.",
-            "tr": "Projelerinin etkinliğini gösteren iki yeni araç, GitHub’ınki gibi."
+            "tr": "Projelerinin etkinliğini gösteren iki yeni araç, GitHub’ınki gibi.",
+            "ko": "GitHub처럼 프로젝트 활동을 보여 주는 모찌가 두 개 더 생겼어요."
           }
         },
         {
@@ -209,7 +221,8 @@
             "ru": "Итоги недели на Android",
             "id": "Rekap mingguan di Android",
             "de": "Wochenrückblick auf Android",
-            "tr": "Android’de haftalık özet"
+            "tr": "Android’de haftalık özet",
+            "ko": "Android 주간 리캡"
           },
           "detail": {
             "en": "Last week’s numbers on your Android phone, if you turn it on.",
@@ -223,7 +236,8 @@
             "ru": "Цифры прошлой недели на вашем Android, если включите.",
             "id": "Angka minggu lalu di ponsel Android-mu, kalau kamu nyalakan.",
             "de": "Die Zahlen der letzten Woche auf deinem Android-Handy, wenn du es einschaltest.",
-            "tr": "Geçen haftanın sayıları Android telefonunda, açarsan."
+            "tr": "Geçen haftanın sayıları Android telefonunda, açarsan.",
+            "ko": "켜 두면 지난주 숫자를 Android 폰에서 볼 수 있어요."
           }
         }
       ]

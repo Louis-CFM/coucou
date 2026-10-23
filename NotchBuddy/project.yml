@@ -164,6 +164,7 @@ targets:
           - fr
           - hi
           - id
+          - ko
           - pt-BR
           - ru
           - th
@@ -247,6 +248,7 @@ targets:
           - fr
           - hi
           - id
+          - ko
           - pt-BR
           - ru
           - th

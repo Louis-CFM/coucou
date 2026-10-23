@@ -117,7 +117,7 @@ test("System follows the system's language when Coucou has it, else English", ()
 });
 
 test("the picker offers the Mac's languages, Arabic reads right to left", () => {
-  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr"]);
+  assert.deepEqual(LANGUAGES.map((l) => l.code), ["en", "zh-Hans", "hi", "es", "ar", "fr", "bn", "pt-BR", "ru", "id", "de", "tr", "ko"]);
   assert.equal(isRtl("ar"), true);
   assert.equal(OTHERS.some((l) => l !== "ar" && isRtl(l)), false);
 });
@@ -233,6 +233,38 @@ test("Turkish can be selected or resolved from regional system languages", () =>
 });
 
 test("Turkish Apple translations keep their placeholders and plural forms", () => checkAppleTranslations("tr"));
+
+test("Korean translates both tables, interpolates and falls back to English", () => {
+  inLanguage("ko", () => {
+    assert.equal(t("Allow"), "허용");
+    assert.equal(t("Deny"), "거부");
+    assert.equal(t("Open the chat"), "채팅 열기");
+    assert.equal(t("Uploading {name}", { name: "보고서.pdf" }), "보고서.pdf 업로드 중");
+    assert.equal(t("API error {code}", { code: 401 }), "API 오류 401");
+    assert.equal(t("Some brand new sentence."), "Some brand new sentence.");
+    assert.equal(isRtl(), false);
+  });
+});
+
+test("Korean has one form after any count in both tables", () => {
+  inLanguage("ko", () => {
+    for (const count of [0, 1, 2, 21]) {
+      assert.equal(tn("{count} repo", "{count} repos", count), `저장소 ${count}개`);
+      assert.equal(tn("✓ Connected · {count} model", "✓ Connected · {count} models", count),
+        `✓ 연결됨 · 모델 ${count}개`);
+    }
+  });
+});
+
+test("Korean can be selected or resolved from regional system languages", () => {
+  assert.equal(LANGUAGES.find((l) => l.code === "ko").name, "한국어");
+  assert.equal(resolveLanguage("ko", ["en-US"]), "ko");
+  for (const tag of ["ko", "ko-KR", "ko_KR.UTF-8"]) {
+    assert.equal(resolveLanguage("", [tag, "en-US"]), "ko");
+  }
+});
+
+test("Korean Apple translations keep their placeholders and plural forms", () => checkAppleTranslations("ko"));
 
 test("a language change relabels what was built, in place, and says so once", () => {
   let told = 0;
