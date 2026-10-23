@@ -437,6 +437,91 @@ pub fn make_non_activating(win: &WebviewWindow) {
     crate::log::line("island is a layer-shell overlay");
 }
 
+/// Extra space between the top of the screen and the island, in window-logical
+/// pixels, for the compositors where the island is an ordinary window.
+///
+/// A layer surface is anchored by the compositor over any top panel, the way the
+/// Mac island sits in the notch, so it needs no margin. GNOME has no
+/// layer-shell and draws its top bar above every window: with the island flush
+/// with the screen edge (as `apply_geometry` places it), the island's header row
+/// — home, chat, the gear and the speaker — ends up behind that bar, and only
+/// the body of the island is visible.
+///
+/// The margin is the bar's own height, read from `_NET_WORKAREA` on the X11 root
+/// window — the work area the compositor reserves around its panels. Mutter
+/// keeps it current, so a taller bar (a larger text-scaling factor, a second
+/// bar) is followed without a rebuild, and a desktop with no panel at all reports
+/// zero and gets none. `COUCOU_TOP_MARGIN` overrides it, in logical pixels.
+///
+/// `scale` is the island display's scale factor: `_NET_WORKAREA` counts physical
+/// pixels, and so does the position this is added to.
+pub fn island_top_margin(scale: f64) -> f64 {
+    let layer = layer_shell_wanted() && unsafe { layer::gtk_layer_is_supported() } != 0;
+    margin_for(
+        std::env::var("COUCOU_TOP_MARGIN").ok(),
+        is_gnome(&std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default()),
+        layer,
+        if layer { None } else { x11_workarea_top() },
+        scale,
+    )
+}
+
+/// Where the panels end at the top of the X screen, in physical pixels, from
+/// `_NET_WORKAREA` on the root window (the x, y, width, height of the area left
+/// over once the panels are subtracted). Read over the island's own X
+/// connection, so there is nothing to keep in step.
+///
+/// Cached for a second or two: `apply_geometry` asks on every open and close,
+/// and each ask opens an X connection. Short enough that a panel which changes
+/// height (Dash-to-Panel moving a bar, a scaling change) is picked up at once on
+/// the next open.
+fn x11_workarea_top() -> Option<i32> {
+    use std::time::{Duration, Instant};
+
+    static CACHE: Mutex<Option<(Instant, Option<i32>)>> = Mutex::new(None);
+    if let Some((at, top)) = *CACHE.lock().unwrap() {
+        if at.elapsed() < Duration::from_secs(2) {
+            return top;
+        }
+    }
+
+    let top = x11_workarea_top_uncached();
+    *CACHE.lock().unwrap() = Some((Instant::now(), top));
+    top
+}
+
+fn x11_workarea_top_uncached() -> Option<i32> {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{AtomEnum, ConnectionExt};
+
+    let (conn, screen) = x11rb::connect(None).ok()?;
+    let root = conn.setup().roots.get(screen)?.root;
+    let atom = conn.intern_atom(false, b"_NET_WORKAREA").ok()?.reply().ok()?.atom;
+    let reply = conn.get_property(false, root, atom, AtomEnum::CARDINAL, 0, 4).ok()?.reply().ok()?;
+    // x, y, width, height: the area left once the panels are subtracted.
+    let mut values = reply.value32()?;
+    let _x = values.next();
+    let y = values.next()?;
+    i32::try_from(y).ok().filter(|top| (0..=400).contains(top))
+}
+
+/// `island_top_margin`, without the environment or the X server: the override,
+/// then the panel height, then GNOME's default bar height.
+fn margin_for(env: Option<String>, gnome: bool, layer: bool, workarea_top: Option<i32>, scale: f64) -> f64 {
+    let sane = |m: f64| m.is_finite() && (0.0..=400.0).contains(&m);
+    if layer {
+        return 0.0;
+    }
+    if let Some(m) = env.as_deref().and_then(|v| v.trim().parse::<f64>().ok()).filter(|m| sane(*m)) {
+        return m;
+    }
+    if let Some(m) = workarea_top.map(|top| top as f64 / if sane(scale) && scale > 0.0 { scale } else { 1.0 }).filter(|m| sane(*m)) {
+        return m;
+    }
+    // GNOME's default top bar is 32 px; 36 leaves a little air under it.
+    if gnome { 36.0 } else { 0.0 }
+}
+
 thread_local! {
     /// The island's GTK window, for the pointer watch (GTK main thread only).
     static ISLAND_GTK: std::cell::RefCell<Option<gtk::ApplicationWindow>> =
@@ -806,6 +891,35 @@ mod tests {
         assert!(!should_prefer_x11("wayland", "GNOME", "0", ":0"));
         // No XWayland: keep the Wayland window rather than no display at all.
         assert!(!should_prefer_x11("wayland", "GNOME", "", ""));
+    }
+
+    #[test]
+    fn the_top_margin_makes_room_for_the_panel_only_where_it_is_needed() {
+        // The panel height the compositor reports, in logical pixels: the
+        // island starts exactly where the bar ends.
+        assert_eq!(margin_for(None, true, false, Some(32), 1.0), 32.0);
+        // HiDPI: the work area counts physical pixels, the margin is logical.
+        assert_eq!(margin_for(None, true, false, Some(60), 2.0), 30.0);
+        // No bar: flush with the edge.
+        assert_eq!(margin_for(None, true, false, Some(0), 1.0), 0.0);
+        // A work area we cannot trust falls back to GNOME's default bar.
+        assert_eq!(margin_for(None, true, false, None, 1.0), 36.0);
+        assert_eq!(margin_for(None, true, false, Some(9999), 1.0), 36.0);
+        // Another desktop with no panel above the island: flush with the edge.
+        assert_eq!(margin_for(None, false, false, None, 1.0), 0.0);
+        // A layer-shell compositor anchors the island over the panel itself.
+        assert_eq!(margin_for(None, true, true, Some(32), 1.0), 0.0);
+        assert_eq!(margin_for(Some("48".into()), true, true, Some(32), 1.0), 0.0);
+        // The override wins, whatever the desktop says.
+        assert_eq!(margin_for(Some("48".into()), true, false, Some(32), 1.0), 48.0);
+        assert_eq!(margin_for(Some(" 0 ".into()), true, false, Some(32), 1.0), 0.0);
+        // Nonsense falls back to the measured panel, never to a wild position.
+        for bad in ["", "abc", "-4", "1e9", "NaN"] {
+            assert_eq!(margin_for(Some(bad.into()), true, false, Some(32), 1.0), 32.0, "{bad}");
+            assert_eq!(margin_for(Some(bad.into()), false, false, None, 1.0), 0.0, "{bad}");
+        }
+        // A scale we cannot use must not divide the margin away.
+        assert_eq!(margin_for(None, true, false, Some(32), 0.0), 32.0);
     }
 
     #[test]
