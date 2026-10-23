@@ -128,6 +128,7 @@ function pillButton(icon: string, tip: string, action: () => void, opts: { small
     action();
   });
   b.addEventListener("pointerenter", () => {
+    if (tooltip === tip) return;
     tooltip = tip;
     render();
   });
@@ -265,10 +266,15 @@ function render() {
     capsule.style.width = `${vertical() ? thickness : length}px`;
     capsule.style.height = `${vertical() ? length : thickness}px`;
   });
-  // Bubble first in the DOM: the flex direction puts it beside the pill.
+  // Bubble first in the DOM: the flex direction puts it beside the pill. The
+  // capsule itself stays attached: taking it out and back in re-fires
+  // pointerenter on the button under the cursor, which renders again, in a
+  // loop that also eats every click (the press and the release land on a
+  // node that was removed in between).
   for (const old of root.querySelectorAll(".bubble")) old.remove();
   const b = bubble();
-  root.replaceChildren(...(b ? [b] : []), capsule);
+  if (b) root.prepend(b);
+  if (capsule.parentNode !== root) root.append(capsule);
   mochi.setState(state.phase === "thinking" || state.voice?.phase === "thinking" ? "thinking" : "idle");
   wake();
   // Where the mouse is taken, once the sizes have settled.
