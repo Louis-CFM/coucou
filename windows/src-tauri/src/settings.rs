@@ -99,6 +99,10 @@ pub struct Settings {
     pub phone_relay: bool,
     /// The relay's address (`wss://…`), empty until the user enters it. Not a secret. Owned by Rust.
     pub phone_relay_url: String,
+    /// Custom editor command to open project folders (e.g. "cursor", "zed", "code").
+    /// Falls back to $VISUAL, $EDITOR, then "code".
+    #[serde(default)]
+    pub editor: Option<String>,
     /// The date and time in the middle of the compact island. Off by default.
     pub show_clock: bool,
 }
@@ -167,6 +171,7 @@ impl Default for Settings {
             phone_services: Vec::new(),
             phone_relay: false,
             phone_relay_url: String::new(),
+            editor: None,
             show_clock: false,
         }
     }
@@ -456,6 +461,7 @@ mod tests {
   "phoneServices": ["integration_stripe"],
   "phoneRelay": true,
   "phoneRelayUrl": "wss://relay.example.workers.dev",
+  "editor": "cursor",
   "showClock": true
 }"##;
 
@@ -974,6 +980,7 @@ mod tests {
                 "phoneServices",
                 "phoneRelay",
                 "phoneRelayUrl",
+                "editor",
                 "showClock",
             ]
         );
