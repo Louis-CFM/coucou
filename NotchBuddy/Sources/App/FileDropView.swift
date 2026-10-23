@@ -50,7 +50,7 @@ enum FileDropHandler {
 
         // Start animation immediately — do NOT block on file copy.
         // Use original URL first; swap to inbox copy once background copy finishes.
-        state.droppedFile = DroppedFile(url: url, name: name)
+        state.droppedFile = DroppedFile(url: url, name: name, originalURL: url)
         state.uploadProgress = 0
         state.fileDragOver = false
         state.promptContext = .file(name: name, fileURL: url)
@@ -66,7 +66,7 @@ enum FileDropHandler {
             try? FileManager.default.removeItem(at: dest)
             if (try? FileManager.default.copyItem(at: url, to: dest)) != nil {
                 await MainActor.run {
-                    state.droppedFile = DroppedFile(url: dest, name: name)
+                    state.droppedFile = DroppedFile(url: dest, name: name, originalURL: url)
                     state.promptContext = .file(name: name, fileURL: dest)
                 }
             }
